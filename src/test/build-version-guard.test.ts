@@ -1013,6 +1013,13 @@ const PINNED = {
   //   than a guess: heapMb ~= 0.146 x postings_fetched - 10, fitted from five
   //   sampled slices, so the ~256MB ceiling lands near 1,800 postings and the
   //   old 12,000 budget could never bind.
+  //   Merged with the collection pass the other branch had numbered .61: the
+  //   rotation stopped discarding what it had already computed (field-change
+  //   history, lifecycle facets on closures and exits, an append-only board
+  //   state, click/search attribution, region_code) and every exit row now
+  //   carries origin_basis, so a stored duration says which clock produced it
+  //   instead of coalescing the employer's date with our first sighting. One
+  //   version line covers both: .61 never shipped on its own.
   buildVersion: "2026-09-06.62",
 };
 

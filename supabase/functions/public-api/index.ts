@@ -17,6 +17,11 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { locationTerms } from "../_shared/location-terms.ts";
 import { resumeRoleTerms } from "../_shared/fit-score.ts";
+// EVERY /v1 SEARCH LANDS IN THE SITE'S DEMAND LOG. This function proxies
+// job-board's `list`, which logs a search event unconditionally, so paying
+// API traffic has always been recorded as if a candidate typed it into the
+// site. The header says which it was. See _shared/search-caller.ts.
+import { searchCallerHeader } from "../_shared/search-caller.ts";
 // THE CLOSED DOMAINS, IMPORTED RATHER THAN RETYPED. A hand-copied list of
 // vendors or categories is a second list, and every filter defect this board
 // has shipped was two lists disagreeing. These are the same constants the
@@ -420,7 +425,10 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
   const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+    // caller=api on BOTH proxied routes — /v1/jobs?engine=ranked and POST
+    // /v1/fit both come through here — so a customer's query is countable as
+    // API demand and subtractable from the site's.
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("api") },
     body: JSON.stringify(body),
   });
   const out = await res.json().catch(() => ({}));

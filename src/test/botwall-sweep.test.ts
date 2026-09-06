@@ -22,6 +22,20 @@ const wf = readFileSync(resolve(__dirname, "../../.github/workflows/botwall-swee
 
 const t = (company: string, walls: string[], reached = true) => ({ company, walls, reached });
 
+/**
+ * The sweep with its prose removed, for the guards that must assert about CODE.
+ *
+ * A guard whose literal appears in a nearby COMMENT passes (or, negated,
+ * fails) on the explanation rather than on the behaviour. That has shipped
+ * here four times, and the argv guard below is exactly the shape that invites
+ * it: the fix's own comment quotes the broken expression on purpose.
+ */
+const sweepCode = sweep
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .split("\n")
+  .filter((l) => !/^\s*(\/\/|\*)/.test(l))
+  .join("\n");
+
 describe("the signature table catches a self-hosted wall", () => {
   it("matches on path, not host — the Recruitee lesson", () => {
     // captcha-base.recruiteecdn.com defeated a host allow-list silently, and
@@ -137,5 +151,128 @@ describe("the schedule", () => {
     // The run's colour must mean "did the sweep work", not "is a vendor open".
     expect(sweep).toMatch(/Exit 0 regardless/);
     expect(sweep).toMatch(/::warning title=Bot wall lifted::/);
+  });
+});
+
+/**
+ * THE CADENCE ITSELF, WHICH IS THE THING THAT WAS BROKEN.
+ *
+ * apply_tenant_walls held exactly one sweep (2026-08-07) despite a weekly
+ * schedule, and the reason was three characters of argument parsing. The
+ * workflow renders `npx tsx src/botwall-sweep.ts "${{ github.event.inputs.vendors }}"`,
+ * and on a `schedule` event github.event.inputs is null — so argv[2] is the
+ * empty STRING. `""?.split(",").filter(Boolean)` is `[]`, and `?? DEFAULT`
+ * never fires for an empty array, so every cron run swept zero vendors and
+ * exited green. It is invisible locally, because nobody runs the script
+ * without arguments.
+ */
+describe("an empty argument means 'not supplied', not 'nothing'", () => {
+  it("never guards an argv list with ?? alone", () => {
+    // The literal that caused it. `??` is nullish-only; "" is not nullish.
+    //
+    // Asserted against CODE ONLY. main()'s comment quotes the broken
+    // expression verbatim so the next reader knows what went wrong, and a
+    // guard that reads the whole file would fail on the explanation of the bug
+    // it is guarding — this repo has shipped that inversion four times.
+    expect(sweepCode).not.toMatch(/process\.argv\[\d\]\?\.split\([^)]*\)[^;]*\?\?/);
+    // ...and the comment really does still carry the explanation.
+    expect(sweep).toMatch(/optional chaining only guards nullish/);
+  });
+
+  it("falls back on LENGTH", () => {
+    expect(sweep).toMatch(/const vendors = asked\.length \? asked : DEFAULT_VENDORS/);
+  });
+
+  it("the workflow really does pass an empty string on a schedule", () => {
+    // If this ever stops being true the guard above is still correct, but the
+    // reason recorded next to it would be wrong.
+    expect(wf).toMatch(/schedule:/);
+    expect(wf).toMatch(/botwall-sweep\.ts "\$\{\{ github\.event\.inputs\.vendors \}\}"/);
+  });
+
+  it("resolves to the full closed set for every shape of empty input", () => {
+    // The parse, verbatim from main().
+    const resolve_ = (argv2: string | undefined) => {
+      const asked = (argv2 ?? "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean);
+      return asked.length ? asked : ["DEFAULTS"];
+    };
+    expect(resolve_("")).toEqual(["DEFAULTS"]);
+    expect(resolve_(undefined)).toEqual(["DEFAULTS"]);
+    expect(resolve_(" , ")).toEqual(["DEFAULTS"]);
+    expect(resolve_(" Workable , ashby ")).toEqual(["workable", "ashby"]);
+  });
+});
+
+describe("the sweep says who it is", () => {
+  it("stamps itself as maintenance on every board call", () => {
+    // job_board_search_events.caller DEFAULTS to 'web'. An unstamped self-call
+    // is not stored as unknown — it is stored as candidate demand, which is
+    // worse than the column not existing, and the day cannot be re-attributed.
+    expect(sweep).toMatch(/const SWEEP_CALLER = "maintenance"/);
+    expect(sweep).toMatch(/"x-rsp-caller": SWEEP_CALLER/);
+    expect(sweep).toMatch(/"x-rb-caller": SWEEP_CALLER/);
+    expect(sweep).toMatch(/action: "list", \.\.\.body, caller: SWEEP_CALLER/);
+  });
+
+  it("has no unstamped list caller", () => {
+    // One helper posts `action: "list"`; if a second appears it must carry the
+    // stamp too, so assert there is still exactly one.
+    expect(sweep.match(/action: "list"/g)?.length).toBe(1);
+  });
+});
+
+describe("the rolling walk covers the universe instead of a prefix of it", () => {
+  it("does not truncate the discovered list before the cursor sees it", () => {
+    // A deterministic sort plus a fixed prefix means the employers past the
+    // cut are discovered every week and probed never.
+    expect(sweep).not.toMatch(/universe\.slice\(0, TARGET_EMPLOYERS\)/);
+  });
+
+  it("steps by a fixed amount, not by this week's discovery yield", () => {
+    expect(sweep).toMatch(/const start = \(weekIndex\(\) \* PER_RUN\) % universe\.length/);
+    expect(sweep).not.toMatch(/weekIndex\(\) % slices/);
+  });
+
+  it("wraps rather than running off the end into an empty run", () => {
+    const walk = (week: number, len: number) => {
+      const start = (week * 240) % len;
+      const take = Math.min(240, len);
+      return Array.from({ length: take }, (_, i) => (start + i) % len);
+    };
+    // Nine consecutive weeks cover a 2,000-employer universe exactly once.
+    const seen = new Set<number>();
+    for (let w = 0; w < 9; w++) for (const i of walk(w, 2000)) seen.add(i);
+    expect(seen.size).toBe(2000);
+    // And no week is ever empty, whatever the yield.
+    for (const len of [1500, 1900, 2000, 240, 37]) {
+      for (let w = 0; w < 12; w++) expect(walk(w, len).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("the deadline costs every vendor, not the last two on the list", () => {
+    // bamboohr and rippling are last in DEFAULT_VENDORS and are the file's own
+    // "biggest blank on the map". Vendor-sequential probing sacrificed exactly
+    // them every time a run went long.
+    expect(sweep).toMatch(/PROBE ORDER IS ROUND-ROBIN ACROSS VENDORS/);
+    expect(sweep).not.toMatch(/for \(const vendor of vendors\) \{\n    const tenants = todays\.filter/);
+  });
+});
+
+describe("a vendor-level all-clear needs a denominator", () => {
+  it("will not call a vendor open off a one-page sample", () => {
+    // vendorVerdict says `clean` for 0/1, and a rolling window really can hand
+    // a vendor a single tenant. 30/30 walled on 2026-08-07 must not be
+    // overturned by one apply page that happened to load.
+    expect(isOpportunity(vendorVerdict([t("A", [])]).verdict)).toBe(true); // the raw verdict still says so
+    expect(sweep).toMatch(/const MIN_REACHED = \d+/);
+    expect(sweep).toMatch(/opportunities = findings\.filter\(\(\[, v\]\) => v\.reached >= MIN_REACHED\)/);
+  });
+
+  it("reports the small samples rather than hiding them", () => {
+    expect(sweep).toMatch(/n too small to judge/);
+  });
+
+  it("does not report 'still walled' when it simply could not tell", () => {
+    expect(sweep).toMatch(/nothing conclusive, which is not the same as still walled/);
   });
 });

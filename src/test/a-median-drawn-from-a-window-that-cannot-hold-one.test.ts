@@ -55,7 +55,17 @@ import { join, resolve } from "node:path";
  *      collector logs at most one re-listed title per employer per 24h;
  *   5. a statistic and its sample-size gate are computed over the same
  *      population — the `closed_90d 41 / median null` shape cannot return;
- *   6. the three `dated_coverage` bands exist in the render path.
+ *   6. the three `dated_coverage` bands exist in the render path;
+ *   7. no stored duration is aggregated across the two origin clocks. Rule 1
+ *      is about the number a reader sees; this one is about the number that
+ *      OUTLIVES ITS OWN EVIDENCE. `job_board_exits.days_on_board` stopped being
+ *      a coalesce on 2026-09-06 and now names its clock in `origin_basis`, so
+ *      the failure mode moved up a level: `roll_up_and_prune_exits` freezes
+ *      percentiles into a monthly summary and then PRUNES the raw rows, and a
+ *      percentile that mixed the two bases could never afterwards be separated,
+ *      because the rows that would have separated it are gone. The rule is
+ *      therefore segmentation rather than abstinence — an aggregate over
+ *      days_on_board pins one basis, a row-level read carries the basis along.
  *
  * COMMENT-STRIPPED FOR CODE, RAW FOR PROSE. This repo has shipped a guard that
  * passed on a spelling appearing only in a COMMENT while the code beneath it was
@@ -151,6 +161,81 @@ const IS_AGGREGATE = /percentile_cont|percentile_disc|\bavg\s*\(|\bsum\s*\(/i;
  *  compact badge forms of the same qualifier. */
 const FLOOR_MARKER = /at least|≥|×\+|\+×/;
 
+/** An aggregate that turns rows into a PUBLISHED duration. */
+const DURATION_AGGREGATE = /\b(?:percentile_cont|percentile_disc|avg|sum|min|max)\s*\(/gi;
+
+/** A restriction to exactly ONE clock. `origin_basis` names which of the two a
+ *  stored days_on_board was measured from; an aggregate that does not pin it to
+ *  a single value is averaging the employer's calendar with our crawler's. */
+const SINGLE_BASIS = /origin_basis\s*=\s*'(?:stated|discovered)'/i;
+
+/**
+ * The full span of ONE aggregate call: its own parentheses plus the
+ * `WITHIN GROUP (...)` and `FILTER (...)` clauses that bind to it.
+ *
+ * Span-scoped rather than window-scoped, and that is the whole point of this
+ * function. A ±260-character window around `days_on_board` inside a rollup's
+ * select list reaches the NEIGHBOURING select item's basis filter, so deleting
+ * the FILTER from one percentile would leave a window-scoped guard green while
+ * the number it protects had become a mixed clock. An aggregate cannot borrow
+ * its neighbour's restriction here.
+ */
+function aggregateSpan(code: string, at: number): string {
+  /** Index just past the balanced group that starts at `from` (which must be `(`). */
+  const past = (from: number): number => {
+    let depth = 0;
+    for (let i = from; i < code.length; i++) {
+      if (code[i] === "(") depth++;
+      else if (code[i] === ")") {
+        depth--;
+        if (depth === 0) return i + 1;
+      }
+    }
+    return code.length;
+  };
+  const open = code.indexOf("(", at);
+  if (open < 0) return code.slice(at);
+  let stop = past(open);
+  for (;;) {
+    const tail = /^\s*(?:WITHIN\s+GROUP|FILTER)\s*\(/i.exec(code.slice(stop));
+    if (!tail) break;
+    stop = past(stop + tail[0].length - 1);
+  }
+  return code.slice(at, stop);
+}
+
+const flat = (s: string) => s.replace(/\s+/g, " ").trim().slice(0, 140);
+
+/**
+ * Every place a function body lets `days_on_board` reach a number without saying
+ * which clock produced it. Two shapes, because there are two ways to lose it:
+ *
+ *   AGGREGATED — a percentile/avg/sum/min/max whose span mentions days_on_board
+ *   but pins no single origin_basis. This is the one that is IRREVERSIBLE in a
+ *   rollup: the stored figure outlives the rows that could have separated it.
+ *
+ *   CARRIED — a row-level read that drops the basis on the way through, so a
+ *   later expression cannot segment what it was handed.
+ */
+function unsegmentedDurationReads(code: string): string[] {
+  const spans: Array<[number, number]> = [];
+  const out: string[] = [];
+  for (const m of code.matchAll(DURATION_AGGREGATE)) {
+    const span = aggregateSpan(code, m.index!);
+    spans.push([m.index!, m.index! + span.length]);
+    if (!/days_on_board/i.test(span)) continue;
+    if (SINGLE_BASIS.test(span)) continue;
+    out.push(`aggregates days_on_board over both clocks at once: ${flat(span)}`);
+  }
+  for (const m of code.matchAll(/days_on_board/gi)) {
+    const at = m.index!;
+    if (spans.some(([a, b]) => at >= a && at < b)) continue;
+    if (/origin_basis/i.test(code.slice(Math.max(0, at - 220), at + 220))) continue;
+    out.push(`carries days_on_board without its basis: ${flat(code.slice(Math.max(0, at - 90), at + 90))}`);
+  }
+  return out;
+}
+
 describe("a median drawn from a window that cannot hold one — no published duration is measured from our discovery time", () => {
   it("no live function aggregates a duration from a coalesced origin", () => {
     // The headline medians were exactly this: percentile_cont over
@@ -211,21 +296,104 @@ describe("a median drawn from a window that cannot hold one — no published dur
     expect(offenders, "a coalesced origin may decide whether a row is served, never what a duration is").toEqual([]);
   });
 
-  it("no estimator reads days_on_board, the one coalesced duration the collector still writes", () => {
-    // This is what keeps the exception above from leaking. days_on_board is
-    // written from COALESCE(posted_at, first_seen) at three of the collector's
-    // four exit write sites — including the freshness sweep, which is the main
-    // producer of age-outs — so censoring at it would put our discovery time
-    // into the estimator on the MAJORITY of censored rows. That is the same
-    // basis bug in the one place it could never surface as a published number:
-    // it would only shift censored times. The censored arm uses
-    // job_board_exits.posted_at instead.
-    const readers = [...LIVE].filter(([, { code }]) => /days_on_board/i.test(code)).map(([n]) => n);
-    expect(readers, "the censored arm's origin is exits.posted_at, never days_on_board").toEqual([]);
+  it("nothing that publishes a duration reads an unsegmented days_on_board", () => {
+    // THE PREMISE MOVED ON 2026-09-06, AND THIS IS THE RULE THAT REPLACED IT.
+    //
+    // What this used to say was "no live function reads days_on_board at all",
+    // and the reason was that the column WAS the coalesce: three of the
+    // collector's four exit write sites computed it as
+    // (posted_at ?? first_seen) — including the freshness sweep, the main
+    // producer of age-outs — so any reader was reading a mixed clock whether it
+    // knew it or not, and the estimator would have taken our discovery time as
+    // the censoring time on the MAJORITY of censored rows.
+    //
+    // That is no longer what the column is. 20260906214000 stopped the coalesce
+    // at all four sites and added origin_basis ('stated' = the employer's
+    // posted_at, 'discovered' = our first_seen, NULL = written before the stamp
+    // existed), so a per-row duration now names its own clock. A blanket ban on
+    // reading it is therefore no longer the property worth holding: it forbids
+    // correct code, and — worse for a guard — it says nothing at all about the
+    // one thing that can still go wrong.
+    //
+    // WHAT CAN STILL GO WRONG is combining the two clocks back together in an
+    // AGGREGATE. That is the 2.8-day-median error rebuilt one level up, and in
+    // a rollup it is IRREVERSIBLE: roll_up_and_prune_exits summarises a month
+    // and then deletes the rows, so a percentile that mixed the bases can never
+    // afterwards be taken apart, because the evidence has been pruned. So the
+    // rule is segmentation, class-wide over every live function body: an
+    // aggregate touching days_on_board must pin origin_basis to a single value,
+    // and a row-level read must carry the basis along with it.
+    const offenders: string[] = [];
+    for (const [name, { file, code }] of LIVE) {
+      for (const o of unsegmentedDurationReads(code)) offenders.push(`${name} (${file}) ${o}`);
+    }
+    expect(offenders, "a stored duration that cannot say which clock it used is a mixed clock").toEqual([]);
 
+    // And the set of readers stays pinned. Segmentation is the property; this
+    // is the review gate on top of it, because every reader of this column is a
+    // decision about a duration and none should arrive by default.
+    const readers = [...LIVE].filter(([, { code }]) => /days_on_board/i.test(code)).map(([n]) => n).sort();
+    expect(readers, "a new reader of days_on_board needs a decision, not a default").toEqual([
+      "roll_up_and_prune_exits",
+    ]);
+
+    // The estimator itself still does not touch it. Its censored arm takes the
+    // employer's own date off the exit row, which is why it can restrict to the
+    // dated cohort and publish dated_coverage rather than coalescing.
     const curve = LIVE.get("get_company_fill_curve");
     expect(curve, "get_company_fill_curve must exist to be asserted against").toBeTruthy();
+    expect(/days_on_board/i.test(curve!.code), "the censoring time is not read from the stored duration").toBe(false);
     expect(curve!.code, "the censored arm reads the employer's own date").toMatch(/exited_at[\s\S]{0,120}posted_at/);
+  });
+
+  it("the exit rollup keeps the two clocks separable after the raw rows are gone", () => {
+    // The specific irreversibility, asserted at the specific function. Everything
+    // else in this file guards a number a reader can see; this guards a number
+    // whose EVIDENCE is deleted five lines later.
+    const rollup = LIVE.get("roll_up_and_prune_exits");
+    expect(rollup, "roll_up_and_prune_exits must exist to be asserted against").toBeTruthy();
+
+    // Both series survive. Filtering the rollup down to the stated clock would
+    // pass the segmentation rule above and still be wrong here, because the
+    // prune matches on the KEY: the discovered-basis rows of a summarised group
+    // would be deleted while being summarised nowhere.
+    expect(rollup!.code, "the stated-clock series").toMatch(/origin_basis\s*=\s*'stated'/);
+    expect(rollup!.code, "the discovered-clock series, kept rather than dropped").toMatch(
+      /origin_basis\s*=\s*'discovered'/,
+    );
+    expect(rollup!.code, "and the pre-stamp rows are counted, not folded into either").toMatch(
+      /origin_basis\s+IS\s+NULL/i,
+    );
+
+    // The pre-stamp rows get a COUNT and nothing else. A percentile over rows
+    // whose basis was never recorded is the mixed clock with a new name.
+    for (const m of rollup!.code.matchAll(DURATION_AGGREGATE)) {
+      const span = aggregateSpan(rollup!.code, m.index!);
+      if (!/origin_basis\s+IS\s+NULL/i.test(span)) continue;
+      expect(/percentile_|\bavg\s*\(/i.test(span), `basis-unrecorded rows may not get a percentile: ${flat(span)}`)
+        .toBe(false);
+    }
+
+    // PROSE, RAW: the decision and its cost are stated where a maintainer meets
+    // them. Located through the LIVE definition's own file rather than by
+    // filename, so re-issuing this function in a later migration carries the
+    // obligation with it instead of leaving the assertion on dead text.
+    const raw = read(join("supabase/migrations", rollup!.file));
+    const at = raw.indexOf("COMMENT ON FUNCTION public.roll_up_and_prune_exits");
+    expect(at, "the function must say what it decided about the two clocks").toBeGreaterThan(-1);
+    // Read the comment's VALUE, not its source: a COMMENT ON in this repo is a
+    // run of concatenated SQL literals, so `'\n  '` seams fall between words and
+    // a prose matcher applied to the raw source would be asserting against the
+    // line wrapping. Seams first, then the doubled-quote escape.
+    const comment = raw
+      .slice(at, raw.indexOf("';", at))
+      .replace(/'\s+'/g, "")
+      .replace(/''/g, "'");
+    expect(comment, "the COMMENT ON names the choice").toMatch(/SPLIT BY origin_basis/i);
+    expect(comment, "and both clocks by name").toMatch(/stated/i);
+    expect(comment, "and both clocks by name").toMatch(/discovered/i);
+    expect(comment, "and what happens to the rows that predate the stamp").toMatch(/n_basis_unrecorded/);
+    expect(raw, "the rejected alternatives are on the record with their costs").toMatch(/REJECTED/);
   });
 });
 
@@ -566,6 +734,57 @@ describe("a median drawn from a window that cannot hold one — the guard has te
     expect(FLOOR_MARKER.test("at least {{relistPct}}% re-listed")).toBe(true);
     expect(FLOOR_MARKER.test("≥{{pct}}% re-listed")).toBe(true);
     expect(FLOOR_MARKER.test("Re-lists roles often ({{n}}×+)")).toBe(true);
+  });
+
+  it("the aggregate span cannot borrow its neighbour's basis filter", () => {
+    // THE EXACT FALSE NEGATIVE A WINDOW-SCOPED VERSION OF THIS GUARD HAD, built
+    // from the real select list: two percentiles side by side, the FILTER
+    // deleted from the FIRST one only. Any ±260-character window around the
+    // first `days_on_board` reaches the second item's `origin_basis = 'stated'`
+    // and reports the summary as segmented while its stored median has silently
+    // become a mixed clock.
+    const oneFilterDeleted = `
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY s.days_on_board) AS p50_stated,
+      percentile_cont(0.75) WITHIN GROUP (ORDER BY s.days_on_board)
+        FILTER (WHERE s.origin_basis = 'stated' AND s.days_on_board IS NOT NULL) AS p75_stated,`;
+    const caught = unsegmentedDurationReads(oneFilterDeleted);
+    expect(caught.length, "the unfiltered percentile must be reported").toBe(1);
+    expect(caught[0]).toMatch(/aggregates days_on_board over both clocks/);
+    expect(caught[0], "and it must be the p50, not the p75").toMatch(/percentile_cont\(0\.5\)/);
+
+    // Both filtered: silent.
+    expect(unsegmentedDurationReads(`
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY s.days_on_board)
+        FILTER (WHERE s.origin_basis = 'stated') AS p50_stated,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY s.days_on_board)
+        FILTER (WHERE s.origin_basis = 'discovered') AS p50_disc,`)).toEqual([]);
+
+    // A basis mentioned but not PINNED is not segmentation. This is the shape a
+    // "just add the column to the GROUP BY of something else" fix produces.
+    expect(unsegmentedDurationReads(
+      "avg(e.days_on_board) FILTER (WHERE e.origin_basis IS NOT NULL) AS mean_days",
+    ).length, "a NOT NULL test admits both clocks at once").toBe(1);
+  });
+
+  it("the row-level half fires when a read drops the basis, and the SQL comment does not save it", () => {
+    expect(unsegmentedDurationReads(
+      "SELECT e.company_token, e.days_on_board FROM public.job_board_exits e",
+    ).length, "a duration handed on without its clock").toBe(1);
+    expect(unsegmentedDurationReads(
+      "SELECT e.company_token, e.days_on_board, e.origin_basis FROM public.job_board_exits e",
+    ), "the basis carried alongside is the fix").toEqual([]);
+
+    // THE SEVEN-TIME TRAP AGAIN, ON THE NEW MATCHER. A basis that exists only in
+    // a comment must not satisfy it — which is why the class-wide assertion runs
+    // against `code` and never against `raw`.
+    // The comment has to sit INSIDE the aggregate's own span to fool it at all —
+    // which is exactly where a maintainer commenting a FILTER out would leave it.
+    const commentedBasis = "percentile_cont(0.5) WITHIN GROUP (\n"
+      + "  ORDER BY s.days_on_board\n"
+      + "  -- FILTER (WHERE s.origin_basis = 'stated')\n"
+      + ") AS p50";
+    expect(unsegmentedDurationReads(commentedBasis).length, "raw text is fooled by the comment").toBe(0);
+    expect(unsegmentedDurationReads(stripSql(commentedBasis)).length, "stripped code is not").toBe(1);
   });
 
   it("comment stripping actually strips, and RAW actually keeps", () => {

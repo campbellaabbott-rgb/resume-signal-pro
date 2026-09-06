@@ -51,6 +51,9 @@
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
+// An agent's search is not a candidate's search. Both land in the same demand
+// log; only this header tells them apart. See _shared/search-caller.ts.
+import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { computeFit, resumeRoleTerms } from "../_shared/fit-score.ts";
 import { applyServingFences, parseCountries } from "../_shared/mandate-reach.ts";
 import {
@@ -184,7 +187,7 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
   const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("mcp") },
     body: JSON.stringify(body),
   });
   const out = await res.json().catch(() => ({}));

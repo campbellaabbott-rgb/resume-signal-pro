@@ -13,6 +13,18 @@
 # this project already has a rule against. The finding — a vendor going clean —
 # is a ::warning:: annotation on the run instead.
 #
+# ROLLING SINCE 2026-09-06. The weekly schedule was already here; what was
+# missing was that every run measured roughly the SAME tenants, so a year of
+# runs produced one dated snapshot instead of a series. Each run now walks the
+# next slice of an ordered employer universe (see worker/src/botwall-sweep.ts),
+# and a full pass takes a couple of months — after which the second visit to an
+# employer is what turns "walled on 2026-08-07" into "added a wall in October".
+#
+# The politeness knobs are untouched: three concurrent pages, one load each,
+# the same navigation timeout and the same waits. What changed is WHICH pages,
+# and the run's own wall-clock deadline, which is why the job timeout is longer
+# than it was — the sweep stops itself first and reports a partial slice.
+#
 # It solves nothing, submits nothing and spoofs nothing. It loads a public
 # posting's apply page and records what the page itself asks for.
 name: Bot-wall sweep
@@ -28,11 +40,18 @@ on:
         description: "Comma-separated vendors (default: the closed set)"
         required: false
         default: ""
+      tenants:
+        description: "Apply pages to load this run (default 240 — the 2026-08-07 sweep's own size)"
+        required: false
+        default: ""
 
 jobs:
   sweep:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The sweep's own deadline (SWEEP_DEADLINE_MIN, 20 by default) is what ends
+    # the probing phase; this bound only has to sit clear of it plus the deps
+    # and browser install, so the runner never kills a run mid-write.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -65,4 +84,4 @@ jobs:
           APPLY_WORKER_SECRET: ${{ secrets.APPLY_WORKER_SECRET }}
         # The script exits 2 when those are missing rather than reporting a
         # sweep that measured nothing — an empty result must not read as clean.
-        run: npx tsx src/botwall-sweep.ts "${{ github.event.inputs.vendors }}"
+        run: npx tsx src/botwall-sweep.ts "${{ github.event.inputs.vendors }}" "${{ github.event.inputs.tenants }}"

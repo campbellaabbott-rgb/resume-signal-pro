@@ -1,6 +1,11 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// THE BATTERY BELOW IS NOT CANDIDATE DEMAND. Its four filter probes call the
+// board's `list` action, which logs a search event unconditionally — so a
+// literal {salaryFloor: 100000} probe has been landing in the demand log on
+// every heartbeat run since the check shipped. See _shared/search-caller.ts.
+import { searchCallerHeader } from "../_shared/search-caller.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -1059,7 +1064,7 @@ serve(async (req) => {
         const probe = async (body: Record<string, unknown>) => {
           const r = await fetch(boardUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseServiceKey}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseServiceKey}`, ...searchCallerHeader('maintenance') },
             body: JSON.stringify(body),
             // Tight: list queries measure 1-3s, and this check must never be
             // the reason the heartbeat runs long (2026-07-26: a 17s status

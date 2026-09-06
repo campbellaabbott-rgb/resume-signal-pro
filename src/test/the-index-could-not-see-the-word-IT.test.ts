@@ -242,7 +242,11 @@ describe("the index can see the words people search for", () => {
     for (const d of ["searchDisclosures(body, applied, maxAgeClamped)", "intentDisclosure(intentLift)", "coverageDisclosure(applied, meta)", "searchId"]) {
       expect(blk, `the new exit must carry ${d}`).toContain(d);
     }
-    expect(/logSearch\("ranked", simpleGrouped\.jobs\.length, null, "fuzzy"\)/.test(blk),
+    // Pinned the whole call including its closing paren, so adding the
+    // shown-set argument for impression logging broke it while the property —
+    // this tier is reported as a RESCUE, not as the ranked path — was never in
+    // question. Pin the rescue argument, not the arity.
+    expect(/logSearch\("ranked", simpleGrouped\.jobs\.length, null, "fuzzy"[,)]/.test(blk),
       "the tier must appear in telemetry as a rescue, not as the ranked path").toBe(true);
   });
 });

@@ -708,6 +708,147 @@ export function detectCountry(location: string | null | undefined): string | nul
   return cityCountry(s);
 }
 
+// ── THE SUBDIVISION WE ALREADY PARSED AND THREW AWAY ────────────────────────
+//
+// detectCountry above runs P_US_STATE_CODE, P_US_STATE_NAME,
+// P_US_STATE_CODE_LEADING, P_CA_PROV_CODE and P_CA_PROV_NAME on every posting
+// the ingest touches — and then answers "US" or "CA" and DISCARDS which state
+// or province it just identified. The work is done; only the result is
+// dropped.
+//
+// WHY THAT MATTERS MORE THAN IT SOUNDS. Pay-disclosure law is state-level, not
+// national: Colorado, California, New York, Washington, Illinois, Hawaii,
+// Maryland, Minnesota, New Jersey and Vermont each require a salary range on a
+// posting; most states require nothing. With only a country column, "does this
+// employer disclose pay where it is required to?" cannot be asked at all — the
+// board can score a company at country granularity and no finer. The same is
+// true of every geographic cut of the fill, churn and ghost numbers.
+//
+// AND IT IS ONLY RECOVERABLE WHILE THE ROW IS LIVE. The parse runs on the
+// location string in the feed payload; once a posting closes, its row is
+// deleted and the string goes with it. A subdivision not stamped today is not
+// stamped ever.
+//
+// The country behaviour above is untouched, byte for byte: this is a second,
+// additive read of the same string.
+
+/** Bump when the vocabularies or the resolution order below change, exactly as
+ *  COUNTRY_MAP_VERSION does for the country table — a stored region_code is
+ *  only interpretable against the version of the rules that produced it. */
+export const REGION_MAP_VERSION = 1;
+
+// The SAME 49 names P_US_STATE_NAME carries, as a map so the match can be
+// turned into a code. Georgia is absent here for the reason it is absent
+// there: it is also a country, and a name match would place an Atlanta-less
+// "Georgia" in the United States. A miss leaves the posting's region null,
+// which is the board's stated behaviour for anything it cannot place; it never
+// places one wrongly.
+const US_STATE_NAME_TO_CODE: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", hawaii: "HI",
+  idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA", kansas: "KS",
+  kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD", massachusetts: "MA",
+  michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO", montana: "MT",
+  nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ",
+  "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND",
+  ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI",
+  "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX",
+  utah: "UT", vermont: "VT", virginia: "VA", washington: "WA",
+  "west virginia": "WV", wisconsin: "WI", wyoming: "WY",
+};
+
+const CA_PROV_NAME_TO_CODE: Record<string, string> = {
+  ontario: "ON", quebec: "QC", "british columbia": "BC", alberta: "AB",
+  manitoba: "MB", saskatchewan: "SK", "nova scotia": "NS",
+  "new brunswick": "NB", newfoundland: "NL",
+};
+
+/** Longest name first so "west virginia" cannot be shadowed by "virginia" and
+ *  "british columbia" cannot be shadowed by a shorter neighbour, whatever the
+ *  object literal's order happens to be. Built once at module load. */
+const namePattern = (names: string[]) =>
+  new RegExp(`\\b(${[...names].sort((a, b) => b.length - a.length).join("|")})\\b`, "i");
+const P_US_STATE_NAME_CAP = namePattern(Object.keys(US_STATE_NAME_TO_CODE));
+const P_CA_PROV_NAME_CAP = namePattern(Object.keys(CA_PROV_NAME_TO_CODE));
+
+/**
+ * The US state or Canadian province as an ISO 3166-2 subdivision code —
+ * "US-TX", "CA-ON" — or null when the string does not name one.
+ *
+ * TAKES THE ALREADY-RESOLVED COUNTRY, and only ever answers inside it. A
+ * region is a claim about where a job is, and the country is the stronger,
+ * already-adjudicated half of that claim; re-deriving it here would be a
+ * second implementation free to disagree with the first. Any country but US or
+ * CA returns null — the parse simply has no vocabulary for it.
+ *
+ * WHY THE CODE CARRIES ITS COUNTRY PREFIX. A bare "CA" is California to the US
+ * table and Canada to the country table, and "NL" is Newfoundland here and the
+ * Netherlands there. Storing "US-CA" makes the stored value unambiguous
+ * without a join, which is the whole point of writing it down.
+ *
+ * RESOLUTION ORDER, strongest evidence first, mirroring what the patterns' own
+ * comments say about their reliability:
+ *   1. the comma-prefixed code — "Austin, TX" — the most certain form;
+ *   2. the spelled-out name — "Austin, Texas";
+ *   3. the LEADING bare code — "TX Austin" — deliberately the weakest and
+ *      last, from a deliberately short code list.
+ *
+ * THE ONE COLLISION IT REFUSES TO GUESS AT. ", CA" is California in a US
+ * string and Canada in a Canadian one, and detectCountry resolves "Toronto,
+ * ON, CA" to US via exactly that token. When a US-branch match lands on CA and
+ * the same string also names a Canadian province, this returns null rather
+ * than filing a Toronto posting in California. Null is recoverable; a wrong
+ * subdivision, written into a longitudinal series, is not.
+ */
+export function detectRegion(
+  location: string | null | undefined,
+  country: string | null | undefined,
+): string | null {
+  if (!location) return null;
+  const cc = String(country ?? "").toUpperCase();
+  if (cc !== "US" && cc !== "CA") return null;
+  // The same 300-char window detectCountry reads, so the two can never
+  // disagree about which part of a long location string they looked at.
+  const s = String(location).slice(0, 300);
+
+  if (cc === "CA") {
+    const code = P_CA_PROV_CODE.exec(s);
+    if (code?.[1]) return `CA-${code[1]}`;
+    const name = P_CA_PROV_NAME_CAP.exec(s);
+    const mapped = name?.[1] ? CA_PROV_NAME_TO_CODE[name[1].toLowerCase()] : undefined;
+    return mapped ? `CA-${mapped}` : null;
+  }
+
+  const code = P_US_STATE_CODE.exec(s);
+  if (code?.[1]) {
+    // California, or a Canadian address detectCountry mis-filed? Do not guess.
+    if (code[1] === "CA" && (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME_CAP.test(s))) return null;
+    return `US-${code[1]}`;
+  }
+  const name = P_US_STATE_NAME_CAP.exec(s);
+  const mapped = name?.[1] ? US_STATE_NAME_TO_CODE[name[1].toLowerCase()] : undefined;
+  if (mapped) return `US-${mapped}`;
+  const leading = P_US_STATE_CODE_LEADING.exec(s);
+  if (leading?.[1]) return `US-${leading[1]}`;
+  return null;
+}
+
+/**
+ * Country and subdivision from one location string, in one call.
+ *
+ * The ingest resolves country as `j.country ?? detectCountry(j.location)` —
+ * the feed's structural field when it has one, the parse otherwise — so the
+ * `stated` argument exists to let a caller hand in the vendor's own country
+ * and still get a region parsed out of the free text beneath it.
+ */
+export function detectPlace(
+  location: string | null | undefined,
+  stated?: string | null,
+): { country: string | null; region: string | null } {
+  const country = (stated ?? null) || detectCountry(location);
+  return { country, region: detectRegion(location, country) };
+}
+
 interface GreenhouseJob {
   id: number;
   title: string;
