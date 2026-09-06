@@ -1008,7 +1008,12 @@ const PINNED = {
   //   own posted_at so a censored observation starts from the employer's date
   //   rather than our first sighting. Rows are still INSERTED, never dropped:
   //   the closure log is the one asset nobody can re-derive.
-  buildVersion: "2026-09-06.61",
+  //
+  // .62 — the slice is now sized from a measurement of the isolate rather
+  //   than a guess: heapMb ~= 0.146 x postings_fetched - 10, fitted from five
+  //   sampled slices, so the ~256MB ceiling lands near 1,800 postings and the
+  //   old 12,000 budget could never bind.
+  buildVersion: "2026-09-06.62",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {

@@ -35,7 +35,12 @@ const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const num = (n: string) => Number(CODE.match(new RegExp(`const ${n} = ([0-9_]+)`))![1].replace(/_/g, ""));
 
 /** Heap cost of one posting held in flight, measured 2026-09-05. */
-const KB_PER_POSTING = 105;
+// FITTED 2026-09-06 from five in-flight slices sampled off slice_trace:
+//   boards 7/28/44/57/51, fetched 357/1194/1529/1554/1641, heap 35/187/202/208/231
+//   heapMb ~= 0.146 x postings_fetched - 10
+// The earlier 105 came from ONE board and was treated as an outlier; it was
+// not. Heap per BOARD is noise, heap per POSTING is 100-160KB.
+const KB_PER_POSTING = 146;
 /** Where the isolate died. */
 const CEILING_MB = 256;
 
@@ -81,11 +86,21 @@ describe("the isolate was killed by one board", () => {
     // board can never reach the ceiling alone (asserted above from the
     // per-visit cap) and that the budget is a real number, not a placeholder
     // an order of magnitude past anything reachable.
+    // THIS ASSERTION USED TO REQUIRE THE OPPOSITE, and that is the lesson.
+    // It read `expect(budgetMb).toBeGreaterThan(CEILING_MB)` — it PINNED the
+    // budget at a value too high to ever bind, because at the time that was
+    // being argued for rather than against. A guard can hold a bug in place
+    // just as firmly as it holds a fix. What must be true is the property:
+    // a budget the isolate cannot survive is not a safeguard, it is a comment.
     const budgetMb = (num("SLICE_POSTING_BUDGET") * KB_PER_POSTING) / 1024;
-    expect(budgetMb, "at the OUTLIER cost this budget models ~1.2GB — which is why it never bound, and why the outlier cannot be the whole story")
-      .toBeGreaterThan(CEILING_MB);
-    expect(RAW, "the outlier and the observed cost must both stay written down")
-      .toMatch(/contradicts the model that set it|an outlier/i);
+    expect(budgetMb, "the budget must model UNDER the ceiling at the fitted cost, or it can never bind before death")
+      .toBeLessThan(CEILING_MB);
+    // ...and the worst single board on top of it must still fit, because the
+    // budget is checked before a board STARTS, not while it runs.
+    const worstBoardMb = (num("MAX_POSTINGS_PER_VISIT") * KB_PER_POSTING) / 1024;
+    expect(budgetMb + worstBoardMb, "budget + one board's overshoot must survive").toBeLessThan(CEILING_MB);
+    expect(RAW, "the fit that set these numbers must stay written down")
+      .toMatch(/0\.146 x postings_fetched/);
     expect(RAW).toMatch(/an order of magnitude too high to ever bind/);
   });
 

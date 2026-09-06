@@ -27,7 +27,14 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
 describe("nothing bounded the sum", () => {
   it("has a per-slice budget in POSTINGS", () => {
-    expect(CODE).toMatch(/const SLICE_POSTING_BUDGET = 12_000;/);
+    // Was a literal pin on 12_000. A literal cannot tell a budget that binds
+    // from one that never fires, and this one never fired: at the fitted
+    // ~146KB a posting, 12,000 postings models ~1.7GB against a ~256MB
+    // ceiling. Pin the PROPERTY instead — the budget is in postings, and it is
+    // reachable before the isolate dies.
+    expect(CODE).toMatch(/const SLICE_POSTING_BUDGET = [0-9_]+;/);
+    const budget = Number(CODE.match(/const SLICE_POSTING_BUDGET = ([0-9_]+);/)![1].replace(/_/g, ""));
+    expect(budget, "a budget the isolate cannot reach is not a bound").toBeLessThan(256 * 1024 / 146);
   });
 
   it("stops STARTING fetches at the budget, after the dormancy skip and before the fetch", () => {
