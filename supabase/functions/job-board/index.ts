@@ -112,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-08-30.59"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-08-30.60"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .36: JazzHR joins as vendor #20 (vendors/jazzhr.ts; a verified sample of boards enters sources.ts, so the bump is load-bearing for the bootstrap lane). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .23: bug-sweep round — the agency opt-out reaches the rescue tiers (it was bound in search_jobs only, so a rescue served the rows the caller hid, undisclosed); the per-company cap stops swallowing the employer it just surfaced; a withdrawn count no longer prints "not hiring"; the reverted pipe fix is restored
 
@@ -232,7 +232,20 @@ const FETCH_TIMEOUT_MS = 20_000;
 // that SURVIVES stamps and chains immediately, and a slice that dies waits for
 // the next cron tick. That trade is why 4 workers over 80 boards beats 8
 // workers over 80 boards that never finish.
-const CONCURRENCY = 4;
+// AND THAT MODEL WAS WRONG TOO. Halving the workers did not halve the peak:
+// .59 measured 136-213MB at board 34 with FOUR workers, where .58 reached
+// 214MB at board 82 with eight — fewer boards to the same ceiling, with half
+// the concurrency. Peak heap is therefore not the in-flight working set, and
+// throughput fell from 1,800 boards an hour to 640. Back to 8.
+//
+// What is established after a day of this: slices die before their terminal
+// stamp, they have done so since before any of today's changes, heap at death
+// is 200MB+ but does not track workers OR boards in any stable way, and the
+// posting budget, wall clock, board count, per-visit cap and concurrency have
+// each been measured on both sides and each refuted. The next honest step is
+// not another constant — it is the function's own logs, which say what the
+// runtime killed and why, and which nothing in this repo can reach.
+const CONCURRENCY = 8;
 const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
 // desc-sweep: per-posting description backfill. 8 concurrent detail fetches
 // matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the

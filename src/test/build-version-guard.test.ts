@@ -991,7 +991,12 @@ const PINNED = {
   //   held 2,429 postings across 8 workers at 214MB and died before stamping.
   //   Halving the workers halves the peak and keeps all 80 boards; it costs
   //   wall time per slice and buys a slice that stamps and chains.
-  buildVersion: "2026-08-30.59",
+  //
+  // .60 — concurrency back to 8. Halving it did not halve peak heap (213MB at
+  //   board 34 with four workers vs 214MB at board 82 with eight) and cut
+  //   throughput from 1,800 boards an hour to 640. The per-worker model was
+  //   wrong; this restores the best throughput measured today.
+  buildVersion: "2026-08-30.60",
 };
 
 describe("sources.ts and BUILD_VERSION move together", () => {
