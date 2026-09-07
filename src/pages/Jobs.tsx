@@ -2961,11 +2961,20 @@ export default function Jobs() {
   // means the board can be up to a slice-cycle behind a takedown. Returns
   // true if live (or unverifiable — never a false close); on a confirmed
   // close, drops the card for everyone here and tells the user.
-  const verifyJob = async (job: BoardJob): Promise<boolean> => {
+  // THREE ANSWERS, NOT TWO — `true` means the employer's own feed was read in
+  // full and still lists the role; `false` means it was read in full and does
+  // not; `null` means we could not decide, because that board pages short of
+  // the vendor's own advertised total (or the fetch failed). Collapsing null
+  // into true is how a user who correctly reported a posting gone got told
+  // "{{company}}'s own board still lists this role as open" — a confident claim
+  // about a named employer built on a read that never reached the posting.
+  const verifyJob = async (job: BoardJob): Promise<boolean | null> => {
     try {
       const { data } = await supabase.functions.invoke("job-board", { body: { action: "verify", ids: [job.id] } });
-      const live = (data as { live?: Record<string, boolean> })?.live;
-      if (live && live[job.id] === false) {
+      const live = (data as { live?: Record<string, boolean | null> })?.live;
+      if (!live || !(job.id in live)) return null; // no answer is not a confirmation
+      if (live[job.id] === null) return null;      // the board answered; our read could not reach the posting
+      if (live[job.id] === false) {
         setJobs((prev) => prev.filter((j) => j.id !== job.id));
         toast({
           title: t("jobsPage.postingClosedTitle", "That posting just closed"),
@@ -2973,7 +2982,7 @@ export default function Jobs() {
         });
         return false;
       }
-    } catch { /* unverifiable — don't block the user */ }
+    } catch { return null; /* unverifiable — never blocks the user, and never claims a confirmation either */ }
     return true;
   };
 
@@ -3371,10 +3380,21 @@ export default function Jobs() {
     } catch { /* the report is best-effort — never block the user on telemetry */ }
     if (reason === "gone") {
       const stillLive = await verifyJob(job); // prunes + toasts if confirmed gone
-      if (stillLive) {
+      if (stillLive === true) {
         toast({
           title: t("jobsPage.reportCheckedTitle", "We just re-checked it"),
           description: t("jobsPage.reportCheckedBody", "{{company}}'s own board still lists this role as open. Thanks for flagging — we log every report.", { company: job.company }),
+        });
+      } else if (stillLive === null) {
+        // THE USER IS PROBABLY RIGHT AND WE CANNOT PROVE IT EITHER WAY. This is
+        // the one path where the reader has independent evidence — they went and
+        // looked. Answering a correct report with "their board still lists it as
+        // open" was the same unearned claim about a named employer that .64
+        // deleted from the other direction, so the copy now says what actually
+        // happened: their feed is bigger than one read of ours.
+        toast({
+          title: t("jobsPage.reportUncheckableTitle", "We couldn't confirm either way"),
+          description: t("jobsPage.reportUncheckableBody", "{{company}}'s feed lists more roles than it lets us read in one pass, so we can't confirm this one is gone — or that it isn't. Your report is logged and the posting goes back in the queue for a deeper check.", { company: job.company }),
         });
       }
     } else {
@@ -3443,7 +3463,7 @@ export default function Jobs() {
   const checkFit = async (job: BoardJob) => {
     setFitFetching(job.id);
     try {
-      if (!(await verifyJob(job))) return;
+      if ((await verifyJob(job)) === false) return; // only a CONFIRMED closure stops the fit check; undecidable never blocks
       const { data: res, error: err } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description: string | undefined = res?.description;
       if (err || !description) throw new Error(err?.message ?? "no description");
@@ -4226,6 +4246,40 @@ export default function Jobs() {
    * below did individually before they shared one definition.
    */
   const pageTotalCount = (data?.total ?? 0) + (data?.relatedTotal ?? 0) || (data?.total ?? jobs.length);
+  /**
+   * THE LIST HAS NO NEXT PAGE — the exact complement of the load-more gate.
+   *
+   * Spelled out as `!( … )` around a character-identical copy of that gate
+   * rather than factored into one shared const, because a-headline-counts-what-
+   * the-board-can-serve pins the gate's LITERAL spelling in the JSX. Two copies
+   * that must stay identical is the lesser evil against a guard that would go
+   * quiet the moment they were unified; the end-of-results guard asserts they
+   * are the same characters, so a change to one that misses the other fails.
+   *
+   * Everything downstream of this hangs off it: the terminal card renders when
+   * and only when the load-more button does not, so the list can never again
+   * simply stop with nothing under it.
+   */
+  const listExhausted = !!data && !(data.hasMore !== false && (data.hasMore === true || typeof data.total !== "number" || jobs.length < pageTotalCount));
+  /**
+   * The server did not produce a count for this search — `total: null` with
+   * countUnavailable, or no total at all.
+   *
+   * WHY, IS NOT KNOWABLE HERE, and nothing downstream may name a reason. The
+   * server sets countUnavailable on at least five different paths: the count
+   * RPC erroring, the count exceeding its deadline, a bounded rescue tier whose
+   * only publishable figure would be its own window size, an augmented page
+   * where close matches were appended so no count describes what is on screen,
+   * and a page that disproves the count it was given. Two of those also ship
+   * `totalAtLeast`, a PROVEN FLOOR the results summary renders as "of 60+" —
+   * so this state is not even always "we have no number", and a card that says
+   * so contradicts the header above it.
+   *
+   * The terminal card prints no figure of its own in this state and runs no
+   * relaxation probes: the counter that did not answer is the same one every
+   * "drop this filter — N openings" button would have to ask.
+   */
+  const endCountUnknown = !data || data.countUnavailable === true || typeof data.total !== "number";
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // New-since-last-visit: where the divider goes in the (recency-sorted) list —
@@ -4778,18 +4832,78 @@ export default function Jobs() {
   // countOnly calls, cached per filter signature) and offer it as a button —
   // an actionable exit instead of a dead end. Feeds the same honest instinct
   // as the zero-result telemetry: never pad results, just say what would work.
-  const [zeroHelp, setZeroHelp] = useState<Array<{ key: string; label: string; count: number; capped: boolean; clear: () => void }> | null>(null);
-  const zeroSigRef = useRef("");
+  const [widenHelp, setWidenHelp] = useState<Array<{ key: string; label: string; count: number; capped: boolean; clear: () => void }> | null>(null);
+  /**
+   * DID THE PROBE ACTUALLY MEASURE EVERY FILTER IT IS ABOUT TO SPEAK FOR?
+   *
+   * `widenHelp = []` used to be read downstream as "we measured, and nothing
+   * helps" — a definite claim about the corpus. It is not: it is also what a
+   * BURST OF FAILURES looks like. invokeBoard resolves `{data: null, error}`
+   * rather than throwing, so a 429 off the rate budget (the same budget that
+   * once took upload and checkout down with it) landed as `count: 0`, fell
+   * under the floor, and left an empty array indistinguishable from a real
+   * refutation. And the end path probes only the first TWO active chips, so
+   * with five filters on, three were never asked about at all.
+   *
+   * This flag is true only when every candidate came back AND the candidates
+   * covered every active filter. The refuting sentence is gated on it; the
+   * neutral wording renders otherwise. Same instinct as healthFailed, which
+   * exists so "no proven-active companies" is never printed over an RPC error.
+   */
+  const [widenComplete, setWidenComplete] = useState(false);
+  const widenSigRef = useRef("");
+  /**
+   * TWO DEAD ENDS, ONE MEASUREMENT. A visitor who scrolled to the bottom of
+   * eleven results wants the same fact as one who got none: which single filter
+   * is costing the most, and how much. The probe below was written for the zero
+   * case and is correct for both — it derives its body from the page's own
+   * filter state, so it can never advertise a looser query than the one on
+   * screen.
+   *
+   * NARROW ONLY, AND BOUNDED. A browse that ran for six pages has no filter to
+   * blame, so relaxations are not the answer there and the burst never fires.
+   * The end case also takes TWO candidates where zero takes four: ending narrow
+   * is far commoner than ending empty, and every one of these is a board call
+   * against a rate budget that has already been exhausted once by ordinary
+   * browsing (upload and checkout went down with it).
+   *
+   * NEVER WHILE "ACTIVELY HIRING" IS ON. That chip has no board predicate — it
+   * filters the rows already served, in the browser — so every count a probe
+   * could return was measured WITHOUT it. The results summary already withdraws
+   * its server totals for exactly this reason (measured by the audit at 7 rows
+   * under a 10,000 headline); a "Remove Salary floor — 4,180 openings" button
+   * is that same defect wearing a control instead of a headline, and clicking
+   * it lands on a page still filtered down to a fraction of the number offered.
+   *
+   * Hoisted out of the effect so the card can tell "a probe is running" from
+   * "no probe was ever asked for" — those two states must not print the same
+   * sentence, and rendering the promise over a permanent spinner is what
+   * happens when they do.
+   */
+  const endTarget = listExhausted && jobs.length > 0 && jobs.length <= PAGE
+    && !endCountUnknown && !activelyHiringOnly && activeFilters.length > 0;
   useEffect(() => {
     // ROWS ON SCREEN MEAN THIS IS NOT A ZERO RESULT. `data.total` is the EXACT
     // segment, so a query matching only in descriptions has total 0 and a full
     // page — and without the second term every such search burned a four-probe
     // countOnly burst to offer "remove a filter" help underneath results the
     // visitor is already reading.
-    if (loading || refreshing || error || !data || data.total !== 0 || jobs.length > 0) { setZeroHelp(null); return; }
-    const sig = JSON.stringify([boardFilterBody(filterState), jobs.length > 0]);
-    if (zeroSigRef.current === sig) return;
-    zeroSigRef.current = sig;
+    // THE CACHE KEY IS CLEARED ON EVERY EARLY RETURN, and that is the whole
+    // point of these two assignments. The signature is derived from the filter
+    // BODY, which does not carry sortMode, searchNewestFirst or the fit-browse
+    // flag — all of which refetch the list. Changing the sort therefore nulled
+    // widenHelp on the way in and then hit the identical signature on the way
+    // out, early-returned, and left a colon-ended promise of counts sitting
+    // over a spinner that never resolved. The signature exists to stop a burst
+    // per render, not to survive a refetch.
+    if (loading || refreshing || error || !data) { widenSigRef.current = ""; setWidenHelp(null); setWidenComplete(false); return; }
+    const zeroTarget = data.total === 0 && jobs.length === 0;
+    // TWO DEAD ENDS, ONE MEASUREMENT — see endTarget above, which is hoisted so
+    // the terminal card can read the same condition this burst fires on.
+    if (!zeroTarget && !endTarget) { widenSigRef.current = ""; setWidenHelp(null); setWidenComplete(false); return; }
+    const sig = JSON.stringify([boardFilterBody(filterState), zeroTarget]);
+    if (widenSigRef.current === sig) return;
+    widenSigRef.current = sig;
     // The probe must carry EVERY active filter. It used to build its own body
     // and had already drifted twice: it omitted workMode and country (each
     // "remove X → N results" button was counted against a looser query than the
@@ -4849,35 +4963,149 @@ export default function Jobs() {
       // remoteOnly resets alongside, exactly as the mode chip's clear() does.
       RELAX[`mode:${m}`] = { workMode: withoutMode(filterState.workMode, m), remoteOnly: false };
     }
-    const candidates = activeFilters.slice(0, 4);
+    const candidates = activeFilters.slice(0, zeroTarget ? 4 : 2);
     let cancelled = false;
     (async () => {
-      const results = await Promise.all(candidates.map(async (c) => {
+      const probed = await Promise.all(candidates.map(async (c) => {
         try {
           // countCapped was dropped by the type parameter, so a relaxation
           // whose count hit the server ceiling advertised the cap as an exact
           // figure: "Remove country — 10,000 openings" when the truth is more.
           // This is the same defect just fixed server-side, surviving on the
           // client because the flag was never asked for.
-          const { data: r } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({
+          const { data: r, error: probeError } = await invokeBoard<{ total?: number; relatedTotal?: number; countCapped?: boolean; relatedCapped?: boolean }>({
             action: "list", countOnly: true, includeFacets: false,
             // Compound keys hit their exact per-value entry above; the family
             // prefix stays as the fallback for any key left unspecialized.
             ...boardFilterBody({ ...filterState, ...(RELAX[c.key] ?? RELAX[c.key.split(":")[0]] ?? {}) }),
           });
+          // A FAILED PROBE IS NOT A MEASUREMENT OF ZERO — it is the absence of
+          // a measurement, and it must leave the sample rather than join it as
+          // a nought. invokeBoard RESOLVES `{data: null, error}` instead of
+          // throwing, so the catch below never saw a 429, a WAF bounce or a
+          // 500: they arrived here as `(r?.total ?? 0) + … = 0`, were dropped
+          // by the floor, and turned into "we checked, and nothing helps" — a
+          // definite statement about the corpus manufactured out of our own
+          // rate limit. Null keeps them out of the sample entirely.
+          if (probeError || r == null) return null;
           // BOTH SEGMENTS, and before the `> 0` filter below. Counting only the
           // exact segment would advertise "1 opening" for a relaxation that
           // surfaces 94 rows, or drop the button entirely when the relaxation
           // surfaces nothing but description matches — which is the case a
           // stuck visitor most needs offered.
-          return { ...c, count: (r?.total ?? 0) + (r?.relatedTotal ?? 0), capped: r?.countCapped === true || r?.relatedCapped === true };
-        } catch { return { ...c, count: 0, capped: false }; }
+          return { ...c, count: (r.total ?? 0) + (r.relatedTotal ?? 0), capped: r.countCapped === true || r.relatedCapped === true };
+        } catch { return null; }
       }));
-      if (!cancelled) setZeroHelp(results.filter((r) => r.count > 0).sort((a, b) => b.count - a.count));
+      const results = probed.filter((r): r is NonNullable<typeof r> => r !== null);
+      // A RELAXATION MUST BEAT THE PAGE IT IS OFFERED ON. `count > 0` is the
+      // right floor for a zero result and far too low for a terminal one: at
+      // the foot of eleven results, "drop the pay floor — 11 openings" widens
+      // nothing and reads as a promise. On the end path a candidate has to
+      // surface strictly more than this search already reached.
+      const floor = zeroTarget ? 0 : pageTotalCount;
+      if (!cancelled) {
+        setWidenHelp(results.filter((r) => r.count > floor).sort((a, b) => b.count - a.count));
+        // WHAT THE EMPTY ARRAY IS ALLOWED TO MEAN. Only when every candidate
+        // answered AND the candidates were the whole active filter set may the
+        // card say the relaxations were checked and refuted. Two of five chips
+        // probed is not "we checked your filters", and two probes that both
+        // failed is not a measurement at all.
+        setWidenComplete(results.length === candidates.length && candidates.length === activeFilters.length);
+      }
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, refreshing, error, data, activeFilters, filterState]);
+    // The disable this once carried is gone: the terminal path reads four more
+    // values than the zero path did, and a suppressed dep list that no longer
+    // covers what the effect reads is how a probe goes on describing the
+    // previous filter set.
+  }, [loading, refreshing, error, data, activeFilters, filterState, endTarget, jobs.length, pageTotalCount]);
+
+  /**
+   * DID THE SERVER ITSELF SAY THE PAGING IS OVER?
+   *
+   * `listExhausted` is the complement of the load-more GATE, and that gate ends
+   * paging on a count comparison when the server is SILENT on hasMore — one
+   * wasted click was the whole cost of being wrong, so a heuristic was fine
+   * there. It is not fine under a sentence. A response carrying rows the counts
+   * do not cover (a related segment served without relatedTotal, ring rows past
+   * the FTS count, or an OLD deployed function that predates hasMore — this
+   * project's documented deploy failure, where a bundle over ~4.5MB reports
+   * success and serves the previous version) satisfies `jobs.length >=
+   * pageTotalCount` on page 1 and would have printed "You've reached the end"
+   * over a search the board never said was finished.
+   */
+  const endServerConfirmed = data?.hasMore === false;
+  /**
+   * ARE THESE ROWS EVEN MATCHES FOR THE FILTERS AS TYPED?
+   *
+   * The close-match rescue and the semantic tier serve rows the query did not
+   * match — each card wears a "close match" chip and a disclosure sits above
+   * the list — and on the fuzzy path `total` counts only what the rescue
+   * reached. A completeness claim about "these filters" over a page of
+   * approximations is a claim about a search that returned nothing.
+   */
+  const endApproximate = !!data?.fuzzy || !!data?.fuzzyExtra || !!data?.exactWordMatch
+    || jobs.some((j) => j.closeMatch === true);
+  /**
+   * MAY THE CARD SAY "THAT'S EVERYTHING THAT MATCHES"?
+   *
+   * Only when the server named a count, did not cap it, served rows covering
+   * it, and confirmed the end itself. hasMore:false is NOT exhaustion on every
+   * route: `deepPageable` excludes the company and simple retrievers and the
+   * SYMBOL route precisely so they never promise a page that would come back
+   * empty, which means those routes report hasMore:false AT THEIR WINDOW EDGE
+   * while `total` still names a far larger match set. Measured server-side:
+   * q="c++" publishes total 1682 and stops serving at SQL rank 200. The old
+   * card printed "You've seen everything this search reaches" three inches
+   * below a header reading "Showing 178 of 1,682" — the page contradicting
+   * itself on one screen, with the new sentence the one that was wrong.
+   *
+   * The benign case (grouping shortfall: `total` counts ungrouped rows) cannot
+   * be told from the harmful one on the client, so the completeness claim is
+   * withheld in BOTH rather than thresholded. What is left is a paging
+   * statement, which is true either way.
+   */
+  const endComplete = endServerConfirmed && !endCountUnknown && !endApproximate
+    && data?.countCapped !== true && data?.relatedCapped !== true
+    && jobs.length >= pageTotalCount;
+  /**
+   * WHICH OF THE THREE ENDINGS THE TERMINAL CARD IS RENDERING.
+   *
+   * They are not the same visitor and one card for all three would be the lazy
+   * answer:
+   *
+   *  "unknown" — the server produced no count. It can still say the paging is
+   *    over, because hasMore:false is the server's own word, but it must not
+   *    put a figure on the search or offer a measured relaxation, since the
+   *    counter that would measure it is the one that did not answer. This
+   *    branch says the least of the three.
+   *
+   *  "narrow" — filters are active and the whole search fitted inside one page.
+   *    The filters are what ended it, so the wideners the zero-result rescue
+   *    already measures are exactly what this visitor wants.
+   *
+   *  "broad" — pages of results and nothing to blame. Relaxing a filter is not
+   *    the move; an alert is, and that is the one thing this moment never
+   *    offered.
+   *
+   * Two states sit in front of those three because neither can honestly wear
+   * any of them:
+   *
+   *  "unconfirmed" — the server never said hasMore, so the end is our
+   *    inference, not its word. It gets a sentence that says exactly that.
+   *
+   *  "hidden" — the page has rows but the visitor's own browser-side filters
+   *    (dismissals, hide-viewed, Actively hiring) leave none on screen. The
+   *    counted headlines read off `shownCount`, so this used to render "End of
+   *    results — 0 openings shown for these filters" over an empty list, and
+   *    offer wideners measured against a page nobody can see.
+   */
+  const endKind: "unknown" | "narrow" | "broad" | "unconfirmed" | "hidden" =
+    !endServerConfirmed ? "unconfirmed"
+    : shownCount === 0 ? "hidden"
+    : endCountUnknown ? "unknown"
+    : activeFilters.length > 0 && jobs.length <= PAGE ? "narrow"
+    : "broad";
 
   // Disclosure-aware filtering: some filters can only match postings whose
   // employer DISCLOSED the field, so switching one on silently drops every
@@ -7687,12 +7915,12 @@ export default function Jobs() {
                   : t("jobsPage.zeroBody", "We only list postings verified from companies' own systems — nothing gets padded in. Loosening one filter helps:")}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
-                {(zeroHelp ?? []).map((s) => (
+                {(widenHelp ?? []).map((s) => (
                   <Button key={s.key} size="sm" variant="outline" onClick={s.clear}>
                     {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
                   </Button>
                 ))}
-                {zeroHelp === null && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                {widenHelp === null && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
               </div>
               {/* The catalog turns over daily — "nothing today" is not
                   "nothing ever". Saving the search wires it into the existing
@@ -9151,6 +9379,256 @@ export default function Jobs() {
                   </Button>
                 </div>
               )}
+              {/* THE END OF A LIST IS A STATE, NOT AN ABSENCE. Under the gate
+                  above there was nothing at all: when the server said
+                  hasMore:false the results simply stopped mid-scroll, with no
+                  sentence, no count and nowhere to go. Every visitor who
+                  exhausts a search met it — which is every visitor who searches
+                  something specific.
+
+                  `listExhausted` is the character-exact complement of that
+                  gate, so exactly one of the two blocks renders on every page
+                  that has rows; the list can never end in nothing again.
+
+                  WHAT IT MAY CLAIM. "That's all of them" is a statement about
+                  completeness and this board is in no position to make a loose
+                  one, so the scope line below says what is actually true —
+                  everything matching THESE filters, in the feeds we track, as
+                  of our last read of each — in the same terms as the sourceNote
+                  at the foot of the page, not a second story about freshness.
+                  The only figure any branch prints is `shownCount`, the rows on
+                  this page, labelled as shown; no branch prints `total`, whose
+                  ungrouped basis disagrees with the cards on screen on 43.9% of
+                  terminal pages, and the branch where the server produced no
+                  count at all prints no number and offers no measured
+                  relaxation.
+
+                  THREE ENDINGS, THREE DIFFERENT USERS. A narrow search that ran
+                  out is a filter problem and gets the measured wideners. A
+                  browse that ran for pages has no filter to blame and gets the
+                  alert instead — it is the highest-intent moment on the site
+                  and it used to render nothing. A search that ended without a
+                  count gets the fewest words of the three. */}
+              {listExhausted && (
+                <div className="rounded-2xl border border-border bg-card/60 p-5 mt-6 text-center">
+                  {refreshing ? (
+                    /* THE CLAIM STANDS DOWN FOR THE WINDOW IN WHICH IT IS NOT
+                       TRUE. Between a filter change and the response landing,
+                       the rows on screen belong to the PREVIOUS search while
+                       the chips above already read the new one — and this card
+                       went on announcing the end of a search the board has not
+                       run yet, with an alert button that would have saved the
+                       NEW filter state under results the visitor never saw.
+                       The load-more block directly above disables itself for
+                       exactly this window ("as long as the offer would be
+                       false") and the results summary marks itself "updating…";
+                       this is the same withdrawal. The card still RENDERS, so
+                       the list never goes back to ending in nothing. */
+                    <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      {t("jobsPage.endRefreshing", "Re-running this search for your new filters…")}
+                    </p>
+                  ) : (
+                  <>
+                  <p className="font-semibold text-foreground mb-1 flex items-center justify-center gap-2">
+                    {endKind === "narrow" || endKind === "broad"
+                      ? <Flag className="w-4 h-4 text-muted-foreground shrink-0" />
+                      : <Info className="w-4 h-4 text-muted-foreground shrink-0" />}
+                    {/* THE ONLY NUMBER ON THIS CARD, and it is a fact about the
+                        page rather than a claim about the corpus: shownCount is
+                        the cards rendered, the same basis the results summary
+                        and the screen-reader line already print. The server's
+                        `total` counts UNGROUPED rows and disagrees with what is
+                        on screen on most terminal pages, so it never appears
+                        here — and the branches where the server produced no
+                        count, never confirmed the end, or where the visitor's
+                        own filters have hidden every row, print no figure at
+                        all. A counted headline over an empty list read "End of
+                        results — 0 openings shown for these filters". */}
+                    {endKind === "unconfirmed"
+                      ? t("jobsPage.endUnconfirmedTitle", "That's everything this search returned")
+                      : endKind === "narrow"
+                      ? t("jobsPage.endNarrowTitle", "End of results — {{n}} openings shown for these filters", { n: shownCount.toLocaleString() })
+                      : endKind === "broad"
+                      ? t("jobsPage.endBroadTitle", "You've reached the end — {{n}} openings shown", { n: shownCount.toLocaleString() })
+                      : t("jobsPage.endUnknownTitle", "That's the last page for this search")}
+                  </p>
+                  {endKind === "unconfirmed" ? (
+                    /* The server never sent hasMore, so "this is the end" is
+                       OUR inference off a count comparison, not its word. Say
+                       which of the two this is instead of borrowing the
+                       authority of the other. */
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endUnconfirmedBody", "The board didn't say whether another page exists, so we've stopped here rather than call it the end.")}
+                    </p>
+                  ) : endKind === "hidden" ? (
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endHiddenBody", "There's no further page to load, and every posting this one returned is hidden by a filter you set in your browser — the lines above bring them back.")}
+                    </p>
+                  ) : endKind === "unknown" ? (
+                    /* NO CAUSE IS NAMED, because the client cannot observe one.
+                       This used to assert a deadline — "couldn't finish counting
+                       inside its time limit" — and a deadline is only ONE of the
+                       reasons the server withholds a count: it also does so when
+                       the count RPC errors, when a bounded rescue tier could
+                       only publish its own window size, when close matches were
+                       appended so no figure describes the page, and when the
+                       page itself disproves the count. On the typo-rescue exit
+                       nothing times out at all: the tier never counts, and the
+                       server publishes a PROVEN FLOOR which the header three
+                       inches above renders as "of 60+". So this no longer
+                       denies having a count either — that sentence contradicted
+                       a number already on the visitor's screen. It states the
+                       one thing that is true on every one of those paths. */
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endUnknownBody", "There's no further page to load for this search. The board didn't publish a count we can stand behind for it, so this card puts no figure on it.")}
+                    </p>
+                  ) : endKind === "narrow" && endTarget && widenHelp === null ? (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {t("jobsPage.endNarrowBody", "That's a narrow set of filters. Dropping one widens it — each count below was just measured against your current search:")}
+                      </p>
+                      {/* The colon above promises counts, so the spinner may
+                          only appear while a probe is genuinely in flight —
+                          endTarget is the probe's own firing condition, hoisted
+                          so this branch reads it rather than guessing from a
+                          null. It used to strand permanently: the probe's cache
+                          key is built from the filter BODY, which sortMode is
+                          not in, so changing the sort nulled widenHelp and then
+                          early-returned on an unchanged signature. */}
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                      </div>
+                    </>
+                  ) : endKind === "narrow" && (widenHelp?.length ?? 0) > 0 ? (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {t("jobsPage.endNarrowBody", "That's a narrow set of filters. Dropping one widens it — each count below was just measured against your current search:")}
+                      </p>
+                      {/* Same buttons, same key, same measurement as the
+                          zero-result rescue: one relaxation each, with the
+                          count it really reaches and a "+" when that count hit
+                          the server's cap. Only relaxations that beat this
+                          page's own total survive the filter that builds them,
+                          so a button here always offers more than the visitor
+                          already has. */}
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {(widenHelp ?? []).map((s) => (
+                          <Button key={s.key} size="sm" variant="outline" onClick={s.clear}>
+                            {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
+                          </Button>
+                        ))}
+                      </div>
+                    </>
+                  ) : endKind === "narrow" && widenComplete ? (
+                    /* MEASURED, AND NOTHING HELPED — and `widenComplete` is what
+                       earns the verb. An empty widenHelp on its own is also what
+                       a burst of FAILED probes looks like (invokeBoard resolves
+                       {data:null}, so a 429 off the rate budget used to arrive
+                       as a count of zero), and what a 2-of-5 sample looks like.
+                       Only when every active filter was asked and every probe
+                       answered may this say we checked. */
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endNarrowNoWidener", "We checked each of your filters, and dropping any one of them doesn't reach more postings. A different search term will do more here than a looser filter.")}
+                    </p>
+                  ) : endKind === "narrow" ? (
+                    /* Narrow, but nothing was measured — the probes failed, only
+                       some of the filters were asked about, or the Actively
+                       hiring chip is on, which no server count can describe.
+                       Advice, with no measurement claimed. */
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endNarrowUnmeasured", "That's a narrow set of filters. Loosening one, or trying a different search term, is where more postings would come from.")}
+                    </p>
+                  ) : endComplete ? (
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endBroadBody", "You've seen everything this search reaches. New postings appear here as we re-read each company's feed.")}
+                    </p>
+                  ) : (
+                    /* hasMore:false IS NOT ALWAYS EXHAUSTION. On the company and
+                       simple retrievers and the SYMBOL route the server reports
+                       it at the edge of a window it will not page past, while
+                       its own `total` still names a much larger match set —
+                       q="c++" counts 1,682 and stops serving at rank 200. The
+                       completeness sentence there contradicted the header on the
+                       same screen. This one claims only the paging. */
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t("jobsPage.endPagingOnlyBody", "There's no further page to load for this search — which isn't the same as having reached every posting that matches: some searches stop at the edge of what the board can page through.")}
+                    </p>
+                  )}
+                  {/* The scope of the claim, on every branch, and it is
+                      deliberately the sourceNote's position rather than a
+                      second, cheerier account of how current the catalog is —
+                      INCLUDING sourceNote's third clause. Keeping "the rotation
+                      runs continuously" while dropping the pointer to the
+                      measurement left the reader with an impression of cadence
+                      and no way to check it, at a moment when the live p50 is
+                      ~62 hours against a 6.7-hour baseline. The clause that
+                      makes the rotation sentence honest is the one that hands
+                      over the number, so it travels with it.
+
+                      Which scope: only a response that named a count, did not
+                      cap it, served rows covering it, confirmed the end itself
+                      and was not a close-match rescue may say "everything
+                      matching these filters". */}
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {endComplete
+                      ? t("jobsPage.endScope", "That's everything matching these filters in the company feeds we track, as of our last read of each one — the rotation runs continuously, and how far behind it is right now is a measurement rather than a promise:")
+                      : t("jobsPage.endScopeServed", "That's what we served for this search from the company feeds we track, as of our last read of each one — not necessarily every posting that matches. The rotation runs continuously, and how far behind it is right now is a measurement rather than a promise:")}
+                    {" "}
+                    <Link to="/ghost-job-index" className="text-primary hover:underline">
+                      {t("jobsPage.endScopeFreshness", "see the live re-check ages")}
+                    </Link>
+                  </p>
+                  {/* Someone who just exhausted a search is the best-qualified
+                      person on the site to be offered an alert, and this moment
+                      offered nothing at all. One CTA, not two: "Save this
+                      search" already sits above the results, and a card with a
+                      second, quieter version of it is clutter. Gated on the
+                      same condition that gates the save button, because a
+                      search with nothing in it is not one the digest can run. */}
+                  {(q || activeBoardFilterKeys(filterState).length > 0) && (
+                    <div className="mt-4 pt-3 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {t("jobsPage.endAlertHint", "Rather than checking back — we'll email you when new postings match this search.")}
+                      </p>
+                      <Button size="sm" variant="default" className="gap-1.5" onClick={() => saveCurrentSearch(true)}>
+                        <Bell className="w-3.5 h-3.5" />
+                        {t("jobsPage.endAlertCta", "Email me new matches")}
+                      </Button>
+                    </div>
+                  )}
+                  {/* AND WHEN THE ALERT CANNOT RENDER. The broad ending suppresses
+                      wideners on the grounds that the alert is the move here —
+                      but an unfiltered browse has no query and no filter keys,
+                      so the digest has nothing to watch and that block returns
+                      null, leaving a title, a sentence and no control at all:
+                      the "dead stop with a sentence on it" this whole card
+                      exists to replace. A search box the visitor has not used is
+                      the honest next step, and it is one keystroke away. */}
+                  {!q && activeBoardFilterKeys(filterState).length === 0 && (
+                    <div className="mt-4 pt-3 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {t("jobsPage.endBrowseHint", "Nothing is narrowing this list. A role title or a location reaches parts of the board this page never asked for.")}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="gap-1.5"
+                        onClick={() => {
+                          const box = document.getElementById("board-search") as HTMLInputElement | null;
+                          box?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          box?.focus();
+                        }}
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                        {t("jobsPage.endBrowseCta", "Search for a role")}
+                      </Button>
+                    </div>
+                  )}
+                  </>
+                  )}
+                </div>
+              )}
             </>
           )}
 
@@ -9178,7 +9656,7 @@ export default function Jobs() {
                 invisible right up until a missing translation would have
                 rendered it. Now there is one list, and it is the one the code
                 obeys. */}
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the whole catalog rotates around the clock \u2014 the live median and 95th-percentile re-check ages are published on the Ghost Job Index \u2014 and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: BOARD_SOURCE_LIST })}
+            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously \u2014 how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index \u2014 and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: BOARD_SOURCE_LIST })}
           </p>
         </div>
       </main>

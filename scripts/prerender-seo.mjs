@@ -56,6 +56,16 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // blocks on the network. ----
   let insights = null;
   let boardFacets = null;
+  // WHERE THE CORPUS FIGURES CAME FROM, because one consumer must refuse the
+  // fallback. Everything the bake renders is regenerated every run, so a
+  // snapshot-sourced count is merely stale for a day. public/llms.txt is not
+  // like that: it is CHECKED IN and SERVED, and the rewrite below overwrites it
+  // in place. Rewriting a committed, served claim from the last successful
+  // bake's numbers lets the figure ratchet DOWN with nothing to pull it back —
+  // the claim stays literally true ("N+"), so no guard fires, and the file the
+  // whole point of which was to stop being stale silently goes stale in the
+  // other direction. Live read or no rewrite.
+  let facetsSource = null;
   try {
     // Local builds read .env; CI/hosted builders inject process.env instead.
     let envText = "";
@@ -89,7 +99,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           });
           if (fr.ok) {
             const j = await fr.json();
-            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) boardFacets = j;
+            if (j && typeof j.total === "number" && Array.isArray(j.companiesFacet)) { boardFacets = j; facetsSource = "rpc"; }
           }
         } catch { /* retry; offline/slow build ships landers with fallback counts */ }
       }
@@ -129,6 +139,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
             companiesCount: typeof j.companiesCount === "number" ? j.companiesCount : j.companies.length,
             categoriesFacet: j.categories ?? {},
           };
+          facetsSource = "board-function";
           console.log("[prerender-seo] facets RPC unavailable — using the board function's cached facets");
         }
       }
@@ -140,6 +151,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       const snap = JSON.parse(readFileSync(FACETS_SNAPSHOT, "utf8"));
       if (snap && typeof snap.total === "number" && Array.isArray(snap.companiesFacet) && snap.companiesFacet.length > 100) {
         boardFacets = snap;
+        facetsSource = "snapshot";
         console.log(`[prerender-seo] live facets unreachable — committed snapshot from ${snap.savedAt} (counts are that bake's measurements)`);
       }
     } catch { /* no snapshot yet — pages fall back to countless copy, sitemap ratchet guards */ }
@@ -1020,11 +1032,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       write({
         path: `/jobs/field/${slug}`,
         title: n ? `${label} Jobs — ${fmt(n)}+ Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
-        description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "3,000+"} companies' official job boards and re-verified all day. Check your resume's fit free before you apply.`,
+        description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "3,000+"} companies' official job boards and re-checked continuously. Check your resume's fit free before you apply.`,
         content: `
           <h1>Live ${label} jobs</h1>
           <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
-          <p>The largest boards are re-checked about every 10–15 minutes and the whole catalog rotates continuously — every feed re-verified within a few hours — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
+          <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
@@ -1103,10 +1115,10 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
             const short = `${nm} Jobs — ${fmt(c.count)} Openings`;
             return short.length <= 68 ? short : `${nm} Jobs`;
           })(),
-          description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
+          description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
             <h1>Open roles at ${esc(nm)}</h1>
-            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-verified all day. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-checked continuously. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
             <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} companies` : ""}.</p>
           `,
@@ -1156,7 +1168,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         write({
           path: "/companies",
           title: `${fmt(primaries.length)} Companies Hiring Now — Verified Job Boards`,
-          description: `Every employer on the board with a dedicated page: ${fmt(primaries.length)} companies, each pulled straight from its own official career system and re-verified all day. No aggregators, no reposts.`,
+          description: `Every employer on the board with a dedicated page: ${fmt(primaries.length)} companies, each pulled straight from its own official career system and re-checked continuously. No aggregators, no reposts.`,
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
             <p class="text-muted-foreground mb-6">${fmt(primaries.length)} employers with dedicated pages, listed A–Z — every posting comes from the company's own hiring system. Looking for a specific role instead? <a href="/jobs" class="text-primary underline">Search the live board</a>.</p>
@@ -1649,7 +1661,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
     if (BOARD_TOTAL) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? BOARD_COMPANIES.toLocaleString("en-US") : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards re-check every 10-15 minutes and the whole catalog re-verifies within a few hours. Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? BOARD_COMPANIES.toLocaleString("en-US") : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -1704,15 +1716,48 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     // llms.txt headline counts: rewritten from live data each bake so the
     // hand-written overview can't drift 100k+ behind the board again
     // (audit 2026-07-25: it claimed 450,000+/20,000+ against a live
-    // 569k/23k). Patterns are deliberately narrow; on any miss the file
-    // ships unchanged.
+    // 569k/23k). Every count here comes from the SAME plusClaim/BOARD_*
+    // derivation the home title and the field landers use — llms.txt states
+    // no figure of its own, so there is no second copy to go stale.
+    // Patterns are deliberately narrow; on any miss the file ships unchanged,
+    // which is the failure mode that let the /explore company count sit at
+    // "24,000+" while the very same bake was rounding the headline company
+    // count to "31,000+" one file away: it had no pattern at all. A miss now
+    // WARNS on stderr rather than passing silently.
     try {
       let lt = readFileSync(join(root, "public/llms.txt"), "utf8");
-      if (BOARD_TOTAL && BOARD_COMPANIES) {
-        lt = lt.replace(/[\d,]+\+ openings from [\d,]+\+ companies/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} companies`);
+      const missed = [];
+      const sub = (re, to) => {
+        if (!re.test(lt)) { missed.push(String(re)); return; }
+        lt = lt.replace(re, to);
+      };
+      // THE GUARD GOES ON THE SOURCE, NOT ONLY ON THE PATTERN. The warning
+      // below fires when a REGEX misses; it says nothing about where the
+      // numbers came from. If the facets came from the committed snapshot,
+      // these substitutions would rewrite a checked-in, served claim from the
+      // last bake's measurements — which can only move the figure backwards or
+      // hold it still, silently, while every guard stays green because "N+" is
+      // still literally true. A live read is the only thing that earns the
+      // right to restate a published corpus figure.
+      const liveFacets = facetsSource === "rpc" || facetsSource === "board-function";
+      if (BOARD_TOTAL && BOARD_COMPANIES && !liveFacets) {
+        console.warn(`[prerender-seo] llms.txt corpus figures NOT refreshed — facets came from ${facetsSource ?? "no source"}, not a live read. The committed file keeps its current numbers rather than being rewritten from a stale snapshot.`);
       }
-      lt = lt.replace(/\b\d+ industries, 10 languages\b/, `${NIND} industries, 10 languages`);
-      lt = lt.replace(/\b\d+ industry pages\b/, `${NIND} industry pages`);
+      if (BOARD_TOTAL && BOARD_COMPANIES && liveFacets) {
+        sub(/[\d,]+\+ openings from [\d,]+\+ companies/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} companies`);
+        // Second corpus figure in the same file (the /explore line). It was
+        // NOT on any pattern list, so it never refreshed — the exact defect
+        // this whole finding is about, one file down from the sentence.
+        sub(/across all [\d,]+\+ companies on the board/, `across all ${plusClaim(BOARD_COMPANIES, 1000)} companies on the board`);
+      }
+      sub(/\b\d+ industries, 10 languages\b/, `${NIND} industries, 10 languages`);
+      sub(/\b\d+ industry pages\b/, `${NIND} industry pages`);
+      if (missed.length) {
+        // Not fatal to the bake, but never silent: an orphaned figure is a
+        // number nothing updates, which is how a true "+" claim rots into a
+        // false one.
+        console.warn(`[prerender-seo] llms.txt figure patterns matched nothing — those numbers are now ORPHANED and will not refresh: ${missed.join(", ")}`);
+      }
       writeFileSync(join(root, "public/llms.txt"), lt);
       writeFileSync(join(dist, "llms.txt"), lt);
     } catch { /* llms.txt absent — nothing to refresh */ }

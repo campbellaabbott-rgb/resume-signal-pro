@@ -41,8 +41,52 @@ const num = (n: string) => Number(CODE.match(new RegExp(`const ${n} = ([0-9_]+)`
 // The earlier 105 came from ONE board and was treated as an outlier; it was
 // not. Heap per BOARD is noise, heap per POSTING is 100-160KB.
 const KB_PER_POSTING = 146;
+/**
+ * AND THAT COEFFICIENT WAS FITTED ON A LEAK. Kept above as the record, not as
+ * a live bound.
+ *
+ * The chunked pagers abandoned unread page responses without cancelling them,
+ * so heap grew with every page the slice had ever read — which is why it fitted
+ * so cleanly against CUMULATIVE POSTINGS, a quantity that has no business
+ * costing memory once a response is parsed and dropped. `discardRest` closed
+ * it. Heap p50 fell 176MB -> 36MB, and the .63 slice held 1,216 postings in
+ * 35MB where 0.146 predicts ~168MB.
+ *
+ * 35MB / 1,216 = 29KB a posting, and that OVERSTATES the residual: it charges
+ * the runtime, the module and the in-flight bodies to postings as well. It is
+ * used here as an upper bound on what cumulative postings can still cost.
+ */
+const RESIDUAL_KB_PER_POSTING = 29;
+/**
+ * THE OTHER MEASURED COST, and the one the wall clock is spent on. Same live
+ * .63 slice as everything above: 1,216 postings, 24 boards, 51,027ms, four
+ * workers.
+ *
+ *   1,216 / 51.027 / 4 = 5.957 postings/s a worker
+ *   1,216 / 51.027     = 23.83 postings/s for the slice as a whole
+ *
+ * Both are kept, because they answer different questions and the file itself
+ * says which one is uncertain: parsing is serial (see MAX_RESPONSE_BYTES), so
+ * whether a fifth worker raises the aggregate rate at all is a hypothesis. The
+ * per-worker figure is the optimistic ceiling; the aggregate figure is what a
+ * fully parse-bound slice would still do, and it is what the budget is sized
+ * against so the sizing survives being wrong.
+ */
+const POSTINGS_PER_S_PER_WORKER = 5.957;
+const MEASURED_AGGREGATE_POSTINGS_PER_S = 23.83;
+/** Every slice that ever wrote a terminal stamp finished inside this; the one
+ *  recorded death ran 158.3s. Named so the wall arithmetic can cite it. */
+const SURVIVAL_ENVELOPE_S = 128;
 /** Where the isolate died. */
 const CEILING_MB = 256;
+/**
+ * What the in-flight bodies can cost at once — the OTHER half of the heap, and
+ * since the leak closed, the dominant half. Derived from the same constants the
+ * byte budget is derived from, so this cannot drift from it.
+ */
+const AMPLIFICATION = 6; // JSON wire bytes -> JS objects
+const peakInFlightMb = () =>
+  (Math.max(num("CONCURRENCY"), num("HOT_CONCURRENCY")) * num("MAX_RESPONSE_BYTES") * AMPLIFICATION) / 1e6;
 
 describe("the isolate was killed by one board", () => {
   it("a single board cannot hold enough postings to reach the ceiling", () => {
@@ -92,16 +136,84 @@ describe("the isolate was killed by one board", () => {
     // being argued for rather than against. A guard can hold a bug in place
     // just as firmly as it holds a fix. What must be true is the property:
     // a budget the isolate cannot survive is not a safeguard, it is a comment.
-    const budgetMb = (num("SLICE_POSTING_BUDGET") * KB_PER_POSTING) / 1024;
-    expect(budgetMb, "the budget must model UNDER the ceiling at the fitted cost, or it can never bind before death")
+    //
+    // .64 RE-DERIVES IT AGAINST THE POST-LEAK COST, and the direction of that
+    // change is worth naming: this guard was, for one day, pinning the budget
+    // BELOW 1,795 postings on a coefficient that measured a defect. It is the
+    // same failure as the version it replaced, one order of magnitude smaller —
+    // a guard enforcing a model nobody re-measured after the model's subject
+    // was fixed. So the property is now stated against the two costs that
+    // actually exist, each derived from the constants that produce it.
+    const residualMb = (num("SLICE_POSTING_BUDGET") * RESIDUAL_KB_PER_POSTING) / 1024;
+    // 1. The postings a slice accumulates must not, on their own, keep the
+    //    heap gate permanently tripped — a budget that does that is not a
+    //    budget, it is a second HEAP_SOFT_LIMIT_MB with a worse failure mode.
+    expect(residualMb, "the budget's own accumulation must sit inside the heap gate")
+      .toBeLessThan(num("HEAP_SOFT_LIMIT_MB"));
+    // 2. And accumulation PLUS every worker at the per-response ceiling — the
+    //    two halves of the heap — must still survive. This is the sum that
+    //    caps CONCURRENCY; see the byte arithmetic in index.ts.
+    expect(residualMb + peakInFlightMb(), "accumulation + peak in-flight bodies must survive the ceiling")
       .toBeLessThan(CEILING_MB);
-    // ...and the worst single board on top of it must still fit, because the
-    // budget is checked before a board STARTS, not while it runs.
-    const worstBoardMb = (num("MAX_POSTINGS_PER_VISIT") * KB_PER_POSTING) / 1024;
-    expect(budgetMb + worstBoardMb, "budget + one board's overshoot must survive").toBeLessThan(CEILING_MB);
-    expect(RAW, "the fit that set these numbers must stay written down")
+    // 3. Reachable, still — DERIVED, not pinned. This assertion used to read
+    //    `< 20_000`, which is the right property behind the wrong number:
+    //    20,000 is ~8x what five workers can fetch inside the wall clock, so
+    //    the guard permitted budgets the wall would beat and the binding check
+    //    was the heap one at 5,296. A budget the wall beats first is exactly
+    //    the "bound that cannot fire" this file was written about, pointing the
+    //    other way — and worse than the original, because a wall-stopped slice
+    //    lands past the 128s survival envelope and takes the chain down with
+    //    it.
+    //
+    //    So the ceiling comes out of the constants that produce it. Two rates,
+    //    because whether a fifth worker buys anything is an open question this
+    //    file names (parsing is serial):
+    const wallS = num("SLICE_WALL_BUDGET_MS") / 1000;
+    const optimistic = POSTINGS_PER_S_PER_WORKER * num("CONCURRENCY") * wallS;
+    const pessimistic = MEASURED_AGGREGATE_POSTINGS_PER_S * wallS;
+    expect(num("SLICE_POSTING_BUDGET"), "a budget no slice can reach is a comment, not a bound")
+      .toBeLessThan(optimistic);
+    //    And it must not merely be reachable — it must be reached with enough
+    //    of the wall left for the straggler and the post-loop tail, or the
+    //    posting budget stops being the thing that ends the loop and the wall
+    //    starts doing it on every slice.
+    const loopS = num("SLICE_POSTING_BUDGET") / (MEASURED_AGGREGATE_POSTINGS_PER_S);
+    const tailAllowanceS = 15;
+    expect(
+      wallS - loopS,
+      "even if the fifth worker buys nothing, the budget must fire with room for a straggler + the post-loop tail — otherwise the WALL ends the loop and the slice lands outside the 128s envelope",
+    ).toBeGreaterThan(num("FETCH_TIMEOUT_MS") / 1000 + tailAllowanceS);
+    //    ...and the slice that budget produces has to land inside the only
+    //    duration ever observed to survive.
+    expect(
+      loopS + num("FETCH_TIMEOUT_MS") / 1000 + tailAllowanceS,
+      "the expected (budget-bound) slice must land inside the observed survival envelope",
+    ).toBeLessThan(SURVIVAL_ENVELOPE_S);
+    expect(pessimistic, "sanity: the pessimistic ceiling is the tighter one").toBeLessThan(optimistic);
+
+    // 4. AND THE BOUND NOBODY HAD WRITTEN DOWN: the adaptive load shedder reads
+    //    ABSOLUTE slice duration, so this constant sets what its thresholds
+    //    mean. Raise the budget without moving them and a healthy slice reads
+    //    as distress — at level 2 that cuts CONCURRENCY to 3, which is BELOW
+    //    what the raise replaced, and it latches because the shed slice is
+    //    still budget-bound and still long. Tie them together here so the next
+    //    raise cannot pass the battery while quietly disarming the shedder.
+    const coldL1 = Number(CODE.match(/const l1 = hotPhase \? [0-9_]+ : ([0-9_]+);/)![1].replace(/_/g, ""));
+    const coldL2 = Number(CODE.match(/const l2 = hotPhase \? [0-9_]+ : ([0-9_]+);/)![1].replace(/_/g, ""));
+    // Against the WHOLE slice (loop + the post-loop tail), because coldEmaMs
+    // measures `Date.now() - sliceWallStart` at the terminal return, not the
+    // loop. Comparing a threshold on slice duration against loop duration is
+    // the same off-by-a-tail the wall-clock margin was making.
+    expect(coldL1 / 1000, "a HEALTHY cold slice must sit under the L1 shed line, with margin")
+      .toBeGreaterThan((loopS + tailAllowanceS) * 1.15);
+    expect(coldL2, "L2 must stay under what a wall-stopped slice reaches, or the shedder is structurally dead")
+      .toBeLessThan(num("SLICE_WALL_BUDGET_MS") + num("FETCH_TIMEOUT_MS"));
+    expect(coldL2, "L2 above L1").toBeGreaterThan(coldL1);
+    expect(RAW, "the fit that set the old numbers must stay written down")
       .toMatch(/0\.146 x postings_fetched/);
     expect(RAW).toMatch(/an order of magnitude too high to ever bind/);
+    expect(RAW, "and so must the measurement that retired it")
+      .toMatch(/~29KB a posting/);
   });
 
   it("the HOT lane is bounded by the same arithmetic — hot boards are the giants", () => {

@@ -195,9 +195,13 @@ let firstId = null;
     ok(Boolean(ff.asOf), "feedFreshness carries its own asOf", ff.asOf ?? "absent");
     ok(/re-verified/.test(ff.basis ?? "") && /NOT how long ago a role was posted/.test(ff.basis ?? ""),
       "feedFreshness says it measures OUR re-check cadence, not a posting's age");
-    // A plausibility bound, the heartbeat rule applied here: the published
-    // claim is re-verification within a few hours, and a p95 of zero or of a
-    // fortnight both mean the measurement is broken rather than the board.
+    // A plausibility bound, the heartbeat rule applied here. The "within a
+    // few hours" claim this once quoted was RETRACTED (2026-09-06); the copy
+    // now publishes the live median/P95 rather than naming a number, and the
+    // promise it does make is bounded by CLAIM_MEDIAN_MIN / CLAIM_P95_MIN in
+    // scan-heartbeat. This check stays a MEASUREMENT sanity bound: a p95 of
+    // zero or of a fortnight both mean the measurement is broken rather than
+    // the board, which is true whatever the copy says.
     ok(ff.p95Minutes > 0 && ff.p95Minutes < 20_160, "feedFreshness p95 is inside a plausible range", `${ff.p95Minutes} min`);
   }
   const bs = d.bySource ?? {};

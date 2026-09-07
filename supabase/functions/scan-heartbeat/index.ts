@@ -530,18 +530,40 @@ serve(async (req) => {
           skip('job_board_freshness_claim', `only ${f.boards ?? 0} stamped boards — too thin a sample to judge the published claim`);
         }
         if (f && typeof f.p95_min === 'number' && (f.boards ?? 0) > 1000) {
-          // MIRRORS THE PUBLISHED COPY, and moves when it moves. The copy used
-          // to promise "most feeds re-verified within a few hours"; the
-          // measured median reached 5.6h and P95 13.6h, so the sentence was
-          // false and this check was permanently red about it. The copy now
-          // promises around-the-clock rotation with the live median/P95
-          // PUBLISHED on the Ghost Job Index — so the bounds here guard that
-          // promise: the median must stay a same-day number (several passes a
-          // day) and no feed's P95 may exceed daily. If the public sentence
-          // ever names a number again, these constants move with it — the
-          // claim-drift rule.
-          const CLAIM_MEDIAN_MIN = 480;  // "rotates around the clock" — median at least ~3x/day
-          const CLAIM_P95_MIN = 1440;    // absolute: no tail slower than daily
+          // THIS STOPPED BEING A COPY MIRROR ON 2026-09-06, AND SAYING SO IS
+          // THE POINT OF THE COMMENT.
+          //
+          // The history: the copy promised "most feeds re-verified within a few
+          // hours", the measured median reached 5.6h, and this check was
+          // permanently red about a false sentence. The sentence was then
+          // rewritten to "the whole catalog rotates around the clock" and these
+          // bounds were set to mirror IT — median at least ~3x/day. That was
+          // still a cadence promise, and at a measured p50 of ~3,720 minutes it
+          // was false by ~7.75x against this very constant: the monitor was red
+          // and the copy asserting the thing the monitor said was untrue.
+          //
+          // So the copy was retracted rather than re-numbered. Every surface —
+          // the nine locales, public/llms.txt, the 17 field landers, llms-full
+          // — now says only that the rotation RUNS CONTINUOUSLY and that the
+          // live median and P95 re-check ages are published on the Ghost Job
+          // Index. No cadence, no completeness, nothing for a measurement to
+          // contradict. The claim that remains is "we publish the number", and
+          // the branch above (get_freshness_stats unavailable -> UNWATCHED) is
+          // what guards it.
+          //
+          // These bounds therefore guard the OPERATIONAL SLA the rotation is
+          // designed to deliver, not a published sentence. They are kept at the
+          // design intent rather than lowered to what the fleet currently does,
+          // because moving a bound to meet a measurement is how a monitor stops
+          // being one. EXPECTED RED at today's p50: job-board .64's throughput
+          // work is a ~15-16h lap, still well outside 480m, and the honest
+          // reading of this check is "rotation is behind its design target",
+          // which it is. It goes green when throughput lands, not before.
+          //
+          // IF PUBLIC COPY EVER NAMES A CADENCE AGAIN, this becomes a mirror
+          // again and moves with it — the claim-drift rule, unchanged.
+          const CLAIM_MEDIAN_MIN = 480;  // design SLA: a full rotation several times a day
+          const CLAIM_P95_MIN = 1440;    // design SLA: no tail slower than daily
           const claimBreach = f.p95_min > CLAIM_P95_MIN ||
             (typeof f.p50_min === 'number' && f.p50_min > CLAIM_MEDIAN_MIN);
           checks.push({
@@ -549,7 +571,7 @@ serve(async (req) => {
             passed: !claimBreach,
             responseTimeMs: 0,
             error: claimBreach
-              ? `measured re-verification median ${Math.round(f.p50_min ?? 0)}m / P95 ${(f.p95_min / 60).toFixed(1)}h — outside the published "around the clock" promise (median bound ${CLAIM_MEDIAN_MIN}m, P95 bound ${CLAIM_P95_MIN}m); raise rotation throughput or fix failing slices`
+              ? `measured re-verification median ${Math.round(f.p50_min ?? 0)}m / P95 ${(f.p95_min / 60).toFixed(1)}h — outside the rotation's DESIGN SLA (median bound ${CLAIM_MEDIAN_MIN}m, P95 bound ${CLAIM_P95_MIN}m). Public copy no longer promises a cadence, so this is an operations breach, not a false published claim; raise rotation throughput or fix failing slices`
               : undefined,
           });
           if (claimBreach) {
@@ -577,7 +599,7 @@ serve(async (req) => {
       const { data: audit } = await supabase
         .from('job_board_meta').select('v, updated_at').eq('k', 'audit').maybeSingle();
       if (audit) {
-        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string; byVendor?: Record<string, { sampled?: number; live?: number; gone?: number; accuracyPct?: number | null }> };
+        const aV = (audit.v ?? {}) as { accuracyPct?: number | null; live?: number; gone?: number; at?: string; byVendor?: Record<string, { sampled?: number; live?: number; gone?: number; pageCapped?: number; accuracyPct?: number | null }> };
         const auditAgeH = Math.round((Date.now() - new Date(audit.updated_at).getTime()) / 3600_000);
         // Per-vendor floor: the stratified audit samples every vendor, so one
         // broken vendor can't hide inside a healthy blended number. A vendor
@@ -600,6 +622,32 @@ serve(async (req) => {
         const badVendors = Object.entries(aV.byVendor ?? {})
           .filter(([, b]) => ((b.live ?? 0) + (b.gone ?? 0)) >= MIN_VENDOR_DECIDED && typeof b.accuracyPct === 'number' && b.accuracyPct < 80)
           .map(([v, b]) => `${v} ${b.accuracyPct}% of ${(b.live ?? 0) + (b.gone ?? 0)}`);
+        // AN ACCURACY FLOOR THAT CAN NEVER BE REACHED READS AS GREEN, AND THAT
+        // IS WORSE THAN NO FLOOR. job-board .64 stopped scoring a posting's
+        // absence from a PAGE-CAPPED board as a closure — correctly, it is not
+        // evidence of one — which moves those probes out of live+gone and into
+        // the undecided bucket. For a vendor whose deep boards dominate its
+        // draw (icims, rippling, adp, ukg, usajobs, jazzhr), decided can now sit
+        // at the base ~6 forever: it never reaches MIN_VENDOR_DECIDED, never
+        // enters badVendors, and a genuine fetcher break on that vendor pages
+        // nobody while the page prints its silence as health.
+        //
+        // So the collapse itself is the alarm. A vendor that is mostly
+        // undecidable is not a vendor we are measuring, and the honest thing is
+        // to say the measurement is missing rather than to let its absence
+        // count as a pass. Deliberately NOT an accuracy failure — the vendor may
+        // be perfectly fine — but it is a monitoring failure, which is the
+        // thing this function exists to notice.
+        const UNDECIDABLE_PCT = 60;   // over this share of a vendor's sample, the floor is unenforceable
+        const MIN_VENDOR_SAMPLED = 6; // the stratified base draw; below it there is nothing to judge either way
+        const unmeasurableVendors = Object.entries(aV.byVendor ?? {})
+          .filter(([, b]) => {
+            const sampled = b.sampled ?? 0;
+            const decided = (b.live ?? 0) + (b.gone ?? 0);
+            if (sampled < MIN_VENDOR_SAMPLED || decided >= MIN_VENDOR_DECIDED) return false;
+            return ((sampled - decided) / sampled) * 100 > UNDECIDABLE_PCT;
+          })
+          .map(([v, b]) => `${v} ${(b.live ?? 0) + (b.gone ?? 0)}/${b.sampled ?? 0} decided${(b.pageCapped ?? 0) > 0 ? ` (${b.pageCapped} page-capped)` : ''}`);
         const lowOverall = typeof aV.accuracyPct === 'number' && aV.accuracyPct < 97;
         const lowAccuracy = lowOverall || badVendors.length > 0;
         const auditStale = auditAgeH > 48;
@@ -613,6 +661,20 @@ serve(async (req) => {
                 : `ground-truth audit: only ${aV.accuracyPct}% of sampled postings confirmed live at the source (${aV.live}/${(aV.live ?? 0) + (aV.gone ?? 0)}) — the board is serving dead listings; check refresh/prune`)
             : auditStale ? `ground-truth audit hasn't run in ${auditAgeH}h — accuracy unmeasured; check the job-board-audit cron` : undefined,
         });
+        // Reported as its OWN check, not folded into the accuracy verdict: an
+        // unenforceable floor and a breached floor are different faults with
+        // different fixes (deepen or re-draw the vendor vs fix its feed), and
+        // the 2026-08-06 note above records what it costs to report one breach
+        // in another breach's words.
+        checks.push({
+          name: 'job_board_accuracy_measurable',
+          passed: unmeasurableVendors.length === 0,
+          responseTimeMs: 0,
+          error: unmeasurableVendors.length > 0
+            ? `ground-truth audit: the 80% per-vendor floor is UNENFORCEABLE for ${unmeasurableVendors.join(', ')} — most probes were undecidable (page-capped feeds read short of the vendor's advertised total), so this vendor cannot fail the floor no matter how broken it is; deepen its draw or probe its capped boards by detail endpoint`
+            : undefined,
+        });
+        if (unmeasurableVendors.length > 0 && overallStatus === 'healthy') overallStatus = 'degraded';
         if (lowAccuracy || auditStale) {
           if (overallStatus === 'healthy') overallStatus = 'degraded';
           // Name the breach that actually fired. This line read "Board accuracy

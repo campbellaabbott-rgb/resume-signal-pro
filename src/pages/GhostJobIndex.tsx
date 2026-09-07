@@ -56,12 +56,38 @@ interface Stats {
 interface Leader {
   company: string;
   company_token: string;
+  /** LEGACY NAME, NOT READ ANYWHERE ON THIS PAGE ANY MORE. Until
+   *  20260907010000 it was a count of closure EVENTS and this page rendered it
+   *  as "{{n}} filled" — the number that put 4,331 fills on an employer holding
+   *  220 open roles across 11 days. It is now a count of roles, but it is still
+   *  a 90-day accumulation printed beside a single-instant open count, and the
+   *  figure this list ranks on is the incidence below. Kept in the type so the
+   *  shape matches the RPC; deliberately unused. */
   closed_90d: number;
   open_roles: number;
   /** Actual measured window in days (ships with the genuine-fills RPC rebuild;
       absent from older cached rows — omit the fill claim then). */
   tracking_days?: number;
+  // ── FROM 20260907010000, WHICH IS WHAT THIS LIST NOW STATES ──────────────
+  // The RPC ranks on the cumulative-incidence fill rate at 14 days and returns
+  // it on the row, with `sufficient` already applied server-side (no row can
+  // come back without it). numeric arrives as a JSON number on one PostgREST
+  // build and a STRING on another, so every read goes through numOr.
+  /** R(14). A CEILING — renders "up to". */
+  fill_incidence_14d?: number | string | null;
+  /** Distinct roles that closed once and did not come back. A CEILING. */
+  filled_roles_ceiling?: number | string | null;
+  /** Share of the risk set carrying the employer's own posting date. */
+  dated_share?: number | string | null;
 }
+
+/** COERCE AT THE BOUNDARY. `"0.42" >= 0.3` is true by string collation, for
+ *  the wrong reason, and every gate below is a comparison. */
+const numOr = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 /** The two columns of get_company_fill_curve this page uses to re-state the
  *  leaderboard's count on the SAME population the curve publishes.
  *
@@ -82,8 +108,17 @@ interface Leader {
  *  fill claim from the unguarded source. */
 interface LeaderCurve {
   company_token: string;
+  /** ONE ROW PER CLOSURE EVENT, NOT PER ROLE — the curve's own body says so:
+   *  "named for a window of events and stay a window of events". This page
+   *  printed it as "{{n}} filled" for weeks. It is read only to decide whether
+   *  the curve answered at all; it is never rendered. */
   fills_90d: number;
   tracking_days: number;
+  fill_rate_14: number | string | null;
+  fill_rate_14_lo?: number | string | null;
+  fill_rate_14_hi?: number | string | null;
+  dated_coverage: number | string | null;
+  sufficient: boolean;
 }
 /** One category's row from get_category_fill_curve — the Aalen–Johansen
  *  cumulative incidence of a genuine fill, per docs/hiring-health-model.md §4.
@@ -119,6 +154,14 @@ interface AuditResult {
   live: number;
   gone: number;
   unknown: number;
+  /** The share of `unknown` where the board answered fine and we simply could
+   *  not read past our own page cap. Absent on audits written before .64. */
+  pageCapped?: number;
+  /** `unknown` minus `pageCapped` — probes where the fetch genuinely failed. */
+  unreachable?: number;
+  /** live + gone: the probes the accuracy figure below is actually computed on. */
+  decided?: number;
+  decidedPct?: number | null;
   accuracyPct: number | null;
   /** Rolling ~30-day history of daily audits, oldest first. */
   history?: Array<{ at: string; sampled: number; accuracyPct: number | null }>;
@@ -320,14 +363,47 @@ export default function GhostJobIndex() {
    *  the two orders genuinely differ. Sorting here is within the twenty rows
    *  the RPC already chose; it does not claim to be the guarded top twenty of
    *  the whole board, and the footnote does not say that it is. */
-  const shownLeaders = curveGuardRan
+  /** THE MEASURE FOR ONE LEADER, from the row first and the curve second —
+   *  the same two-source rule /explore applies, and never mixed.
+   *
+   *  What this replaces: `fills_90d / open_roles`, a closure-EVENT count over a
+   *  stock of open roles. It is the ranking 20260907010000 exists to delete —
+   *  unbounded (2,496% on the live data), with a per-employer denominator, and
+   *  mixing an 11-day row with a 50-day one as if the counts were comparable.
+   *  Worse, `fills_90d` is not deduped by posting_id, so a role that closed
+   *  twenty times contributed twenty "fills"; ranking on it ranked churn.
+   *
+   *  R(14) is a share of one employer's own risk set at one fixed horizon, so
+   *  every row answers the same question over the same number of days. */
+  const leaderRate = (c: Leader): { rate: number; ceiling: number | null; days: number | null; coverage: number | null } | null => {
+    const own = numOr(c.fill_incidence_14d);
+    if (own !== null) {
+      // The RPC gates on the curve's `sufficient` in its own WHERE and has no
+      // fallback ordering, so a row carrying an incidence IS the server's
+      // sufficiency finding. The coverage floor and the observation window are
+      // the two halves it explicitly leaves to the caller.
+      return { rate: own, ceiling: numOr(c.filled_roles_ceiling), days: c.tracking_days ?? null, coverage: numOr(c.dated_share) };
+    }
+    const g = leaderCurve[c.company_token];
+    if (!g || g.sufficient !== true) return null;
+    const r = numOr(g.fill_rate_14);
+    if (r === null) return null;
+    // NO COUNT FROM THIS SOURCE. fills_90d is a closure-event count and would
+    // render under the word "roles"; the rate is a cohort share and survives.
+    return { rate: r, ceiling: null, days: g.tracking_days ?? null, coverage: numOr(g.dated_coverage) };
+  };
+  /** The leaders this page lists, and the three bars they clear to be listed —
+   *  the same three `shownCurve` applies to the field table ten lines above,
+   *  which were never applied here. Ranked on the rate that renders. */
+  const shownLeaders = (curveGuardRan || leaders.some((c) => numOr(c.fill_incidence_14d) !== null))
     ? leaders
-        .filter((c) => (leaderCurve[c.company_token]?.fills_90d ?? 0) > 0)
-        .sort((a, b) => {
-          const ra = (leaderCurve[a.company_token]?.fills_90d ?? 0) / Math.max(a.open_roles || 1, 1);
-          const rb = (leaderCurve[b.company_token]?.fills_90d ?? 0) / Math.max(b.open_roles || 1, 1);
-          return rb - ra;
-        })
+        .map((c) => ({ c, m: leaderRate(c) }))
+        .filter((x): x is { c: Leader; m: NonNullable<ReturnType<typeof leaderRate>> } =>
+          !!x.m
+          && x.m.coverage !== null && x.m.coverage >= FILL_COVERAGE_QUALIFY
+          && x.m.days !== null && x.m.days >= FILL_RATE_MIN_TRACKING_DAYS)
+        .sort((a, b) => b.m.rate - a.m.rate)
+        .map((x) => x.c)
     : leaders;
   // Current name first, old name second. See the note on the interface: the
   // RPC renamed tracking_days -> observed_days and this page kept reading the
@@ -395,9 +471,14 @@ export default function GhostJobIndex() {
           </div>
         </div>
 
-        {/* Measured freshness — the live number behind the "re-verified within a
-            few hours" claim, computed from per-board verification stamps at page
-            load. Shown only when measured; never an aspiration. */}
+        {/* Measured freshness. This is no longer the number BEHIND a claim —
+            since the "re-verified within a few hours" promise was retracted
+            (2026-09-06) it IS the claim: llms.txt, the field landers and
+            jobsPage.sourceNote all now say "the live median and 95th-percentile
+            re-check ages are published on the Ghost Job Index" and point here.
+            Computed from per-board verification stamps at page load. Shown only
+            when measured; never an aspiration — if this block stops rendering,
+            those surfaces are pointing at nothing. */}
         {freshness && (
           <p className="text-xs text-muted-foreground -mt-5 mb-8">
             Measured right now across {freshness.boards.toLocaleString()} company feeds: the median feed was re-checked{" "}
@@ -434,7 +515,26 @@ export default function GhostJobIndex() {
               listings from this board — drawn evenly across hiring systems, not at random, so a single
               broken vendor cannot hide inside a large one — and re-checked each against the company's own system:{" "}
               <b className="text-success">{audit.accuracyPct}% were confirmed live at the source</b>
-              {" "}({audit.live} live, {audit.gone} already taken down{audit.unknown > 0 ? `, ${audit.unknown} unreachable` : ""}).
+              {" "}({audit.live} live, {audit.gone} already taken down
+              {audit.unknown > 0 && (() => {
+                // TWO REASONS A PROBE DOES NOT DECIDE, and they are opposite
+                // facts about the vendor. "Unreachable" means the fetch failed.
+                // A page-capped feed is the other thing entirely: it answered,
+                // it parsed, and it is simply larger than one read — roughly
+                // 4,300 of our 44,500 boards are on capped fetchers, so this is
+                // the common case and printing it as "unreachable" would be a
+                // false statement about a vendor that served every request.
+                const w = audit.pageCapped ?? 0;
+                const u = audit.unreachable ?? (audit.unknown - w);
+                const parts: string[] = [];
+                if (u > 0) parts.push(`${u} we could not reach`);
+                if (w > 0) parts.push(`${w} we could not decide (their feed is larger than one read)`);
+                return `, ${parts.length > 0 ? parts.join(", ") : `${audit.unknown} undecided`}`;
+              })()}).
+              {" "}The percentage is computed only over the probes that decided
+              {typeof audit.decided === "number" ? ` (${audit.decided} of ${audit.sampled}` : ""}
+              {typeof audit.decided === "number" && typeof audit.decidedPct === "number" ? `, ${audit.decidedPct}%)` : typeof audit.decided === "number" ? ")" : ""}
+              {" "}— undecidable probes leave the denominator rather than counting as passes.
               The handful already taken down are pruned by the next refresh cycle. We run this audit every day.
             </p>
             {/* An accuracy figure that quietly skips a hiring system is a figure
@@ -515,7 +615,7 @@ export default function GhostJobIndex() {
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
             { term: "How often roles are actually filled", method: "The share of a field's roles taken down for good — down, and not re-listed under the same title — within 14 days of the date the company itself published, never our discovery date, and never a median. Roles that come back up are counted as re-listings and shown separately; the two together are the share that left the board at all, so the fill figure is always the smaller number. We used to publish a median time to close and state its window beside it; the window was the problem. The board drops any posting older than 30 days, so a role that stays up longer leaves the board instead of being recorded as closed, and every fill surface then required a posting to have stood a week before it counted at all. A median drawn from a window of [7, 30] days lands near 15 whatever employers do — measured 2026-09-06, eighteen fields spanning nursing, law, retail and ML research agreed to within 1.4 days across roughly 600,000 closures. Roles that outlive the cap, and roles still up today, are now counted as unfinished rather than dropped from the sample, which is what that figure got wrong: dropping the slowest cases and taking a median of the rest is not censoring, it is truncation, and it biases the answer down without bound. Same-title relistings are held out as their own outcome, not counted as fills. Where more than half of a field's roles were still up at 30 days there is no typical figure to give and we say so instead of manufacturing one." },
-            { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system." },
+            { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system. The percentage is a share of the probes that DECIDED, and the count it was computed on is printed beside it: a probe we could not reach, and a probe on a feed larger than one read of ours, both leave the denominator instead of being scored either way. That exclusion is not a rounding detail — around a tenth of our boards page short of the vendor's own advertised total, and on those a posting's absence from our read is evidence about our page cap, not about the employer. Saying 'we could not decide' is the only honest answer there, and it is why this figure is published with its own basis attached." },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
         />
@@ -611,33 +711,44 @@ export default function GhostJobIndex() {
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
                   <span className="flex-1 text-sm font-medium text-foreground truncate">{c.company}</span>
                   {(() => {
-                    // The count that renders is the curve's, not the
-                    // leaderboard RPC's: same employer, same window, one
-                    // population. Before the curve answers, and where it
-                    // answers with nothing, no fill claim is made at all.
-                    const g = leaderCurve[c.company_token];
-                    if (g && g.fills_90d > 0 && g.tracking_days > 0) {
-                      return <span className="text-[11px] text-success font-semibold shrink-0">{g.fills_90d} filled in {g.tracking_days}d tracked</span>;
-                    }
-                    if (curveGuardRan) return null;
-                    return c.tracking_days ? (
-                      <span className="text-[11px] text-success font-semibold shrink-0">{c.closed_90d} filled in {c.tracking_days}d tracked</span>
-                    ) : null;
+                    // THE FIGURE IS THE RATE, AND IT IS THE ONE THE LIST IS
+                    // ORDERED BY. What was here: "{{n}} filled in {{d}}d
+                    // tracked", from get_company_fill_curve's fills_90d — a
+                    // count of closure EVENTS with no posting_id dedupe, which
+                    // rendered "6406 filled in 11d tracked · 420 open now" for
+                    // an employer that would have to fill 582 roles a day for
+                    // it to be true. Ranking and rendering are one quantity
+                    // now, and the count is dropped rather than corrected: a
+                    // 90-day accumulation printed beside a single-instant open
+                    // count invites a division that is not a rate of anything.
+                    const m = leaderRate(c);
+                    if (!m || m.days === null) return null;
+                    const pct = Math.round(Math.max(0, Math.min(1, m.rate)) * 100);
+                    return (
+                      <span className="text-[11px] text-success font-semibold shrink-0">
+                        up to {pct}% came down within {FILL_HORIZON_DAYS}d, in {m.days}d tracked
+                      </span>
+                    );
                   })()}
                   <span className="text-[11px] text-muted-foreground shrink-0 w-24 text-right">{c.open_roles} open now</span>
                 </Link>
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">
-              Ranked by roles that came down and did not go back up, against how many that company has open —
-              a real fill signal with repost churn filtered out, counted over the days we've actually tracked
-              each board. Each count is re-read through the same feed-dark guard the field figures use: where a
-              board answered with a near-empty feed and we logged its whole board as removals in one second,
-              that batch is dropped rather than counted as hundreds of fills, so the number here is the one the
-              company's own page shows. Boards we cannot check that way are not ranked on a fill claim at all.
-              It is a count, not a duration: nothing here claims how fast those roles moved. The figures that do
-              make that claim are in the field table below, where a role still up is counted as unfinished
-              rather than left out.
+              Ranked by the share of each employer's own roles — dated by the employer — that came off the board
+              within {FILL_HORIZON_DAYS} days and did not come back, with a role that returns counted as a
+              re-listing rather than a fill and roles still up counted as unfinished rather than dropped. That is
+              one question over one horizon for every row, which a count of takedowns divided by roles open today
+              is not: that ratio is unbounded, has a different denominator for every company, and was putting a
+              50-day row beside an 11-day one as though their counts were comparable. Boards where fewer than{" "}
+              {Math.round(FILL_COVERAGE_QUALIFY * 100)}% of roles carry a company-stated date, or that we have
+              watched for fewer than {FILL_RATE_MIN_TRACKING_DAYS} days, or whose sample is too thin to give a
+              stable estimate, are not ranked on a fill claim at all. Each is re-read through the same feed-dark
+              guard the field figures use, so a board that answered with a near-empty feed is not credited with
+              taking its whole board down in one second. Every figure reads “up to”: our collector records only
+              the first re-listing of a title per day and discards the rest, so re-listings we never saw are
+              missing from the pool the share is computed over. It is a share, not a duration — nothing here
+              claims how fast those roles moved.
             </p>
           </div>
         )}

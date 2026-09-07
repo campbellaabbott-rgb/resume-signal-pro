@@ -4,7 +4,7 @@
 // Each card deep-links into the live board pre-filtered, so discovery flows
 // straight into the real, verified listings.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Compass went with the header pill; Flame and Sparkles went with the trending
@@ -15,6 +15,11 @@ import { LucideIcon, TrendingUp, GraduationCap, DollarSign, Activity, ArrowRight
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+// The methodology disclosure /ghost-jobs and /hiring-trends already use —
+// native <details>, in the accessibility tree, zero JS. The hiring answer's
+// method has not been cut, it has been moved one click down into the component
+// the rest of this product states its method in.
+import { HowWeMeasure } from "@/components/HowWeMeasure";
 import { supabase } from "@/integrations/supabase/client";
 // ONE BAR, ONE DECLARATION. These three numbers decide whether an employer's
 // fill rate may be published at all, and /jobs declares them. They were re-typed
@@ -22,12 +27,17 @@ import { supabase } from "@/integrations/supabase/client";
 // end up publishing and refusing the same employer: editing one file was silent
 // on the other, and the observation-window floor existed in neither. Importing
 // them is the point — a second literal is the drift.
-import { FILL_COVERAGE_MIN, FILL_RATE_MIN_TRACKING_DAYS, URGENT_FILL_MAX_DAYS } from "@/pages/Jobs";
+// canStateFillRate and coverageBand come with them, for the same reason the
+// constants do: the board's detail panel decides whether an employer's record
+// may carry a fill claim with ONE predicate, and a second surface re-spelling
+// its three terms is how /jobs and /explore end up publishing and refusing the
+// same employer. This file asks that predicate now instead of re-deriving it.
+import { canStateFillRate, coverageBand, FILL_COVERAGE_MIN, FILL_RATE_MIN_TRACKING_DAYS, URGENT_FILL_MAX_DAYS } from "@/pages/Jobs";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
-interface CompanyRow { company: string; company_token: string; open_roles?: number; p50_days_open?: number | null; dated_n?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; closed_90d?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null;
+interface CompanyRow { company: string; company_token: string; open_roles?: number; p50_days_open?: number | null; dated_n?: number; pay_pct?: number; median_usd_floor?: number | null; recent?: number; entry_roles?: number; tracking_days?: number; repost_events?: number; reposted_roles?: number; worst_title?: string; worst_count?: number; feed_total?: number | null; on_board?: number; company_total?: number | null;
   // ── MERGED IN FROM get_company_fill_curve, NOT CARRIED BY THE ROW ─────────
   // These five are never returned by get_actively_hiring_companies, and were
   // never going to be: its signature is (company, company_token, closed_90d,
@@ -39,14 +49,290 @@ interface CompanyRow { company: string; company_token: string; open_roles?: numb
   // translated for a string that had no call path. They are merged in below
   // from a second call to the curve, keyed by token, and every reader stays
   // gated so a failed or undeployed curve degrades to the plain badge.
-  fill_rate_14?: number | null; fill_rate_14_lo?: number | null; fill_rate_14_hi?: number | null;
-  dated_coverage?: number | null; sufficient?: boolean;
+  //
+  // TYPED `number | string`, WHICH IS NOT PEDANTRY. Postgres `numeric` reaches
+  // the client as a JSON number on one PostgREST build and as a STRING on
+  // another, and every gate below is a comparison — `"0.42" >= 0.3` is true by
+  // string collation for the wrong reason. Every read goes through numOr().
+  fill_rate_14?: number | string | null; fill_rate_14_lo?: number | string | null; fill_rate_14_hi?: number | string | null;
+  dated_coverage?: number | string | null; sufficient?: boolean;
   // The curve's own guarded 90-day counts, when it answered. Distinct names
   // from closed_90d/tracking_days because they are a DIFFERENT population: the
   // curve applies the retroactive feed-dark proxy to unstamped history, the
   // hiring RPC applies only the stamped `suspect` column, which is false on
   // every row written before the collector guard shipped.
-  curve_fills_90d?: number; curve_tracking_days?: number }
+  curve_fills_90d?: number; curve_tracking_days?: number;
+  /** The curve's relist count over the same window. A FLOOR. */
+  curve_relists_90d?: number;
+  // ── AND THE SAME MEASURE UNDER THE NAMES THE REWRITTEN RPC RETURNS ───────
+  //
+  // 20260907010000 rebuilt get_actively_hiring_companies to count ROLES rather
+  // than closure events, to rank on the curve's R(14), and to return the
+  // measure on the row — so the merge above is now the fallback for a cache row
+  // written before it, not the path. Names and meanings are the function's own
+  // COMMENT ON, and each one is read for exactly what it says it is:
+  //
+  //   filled_roles_ceiling  distinct roles that closed once and did not come
+  //                         back. A CEILING — the collector deletes deduped
+  //                         re-lists, so re-lists it never saw are counted here
+  //                         as fills. Renders "up to N", never "N".
+  //   relisted_roles_floor  roles that closed twice, or were superseded, or are
+  //                         serving again today. A FLOOR — renders "at least".
+  //   fill_incidence_14d    the curve's R(14), the ranking key. Also a CEILING.
+  //   dated_share           coverage; the RPC does NOT gate on it and its
+  //                         COMMENT ON says the caller must (FILL_COVERAGE_MIN).
+  //   fills_window_days     90 — the window every count above is measured over,
+  //                         returned because closed_90d was a 30-day count
+  //                         under a 90-day name.
+  //
+  // `closed_90d` is deliberately NOT read anywhere in this file. It is the
+  // legacy name, kept for four consumers that read by column name, and it is
+  // the number that put 4,331 "fills" on JLL's card.
+  filled_roles_ceiling?: number | string | null; relisted_roles_floor?: number | string | null;
+  relist_share_floor?: number | string | null; repost_events_floor?: number | string | null;
+  fill_incidence_14d?: number | string | null; fill_incidence_14d_lo?: number | string | null;
+  fill_incidence_14d_hi?: number | string | null; dated_share?: number | string | null;
+  fills_window_days?: number | string | null; at_risk_14d?: number | string | null;
+  /** When feed_total was last read. See FillClaim.feedTotalAt. */
+  feed_total_at?: string | null }
+
+/** COERCE AT THE BOUNDARY, ONCE — /jobs' own `num()`, for the same row shape.
+ *  An absent column reads as null, which is a REFUSAL rather than a zero: a
+ *  gate that cannot be evaluated must suppress the claim, not pass it. */
+const numOr = (v: unknown, fallback: number | null = null): number | null => {
+  if (v === null || v === undefined || v === "") return fallback;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+/** THE HIRING ROW AFTER THE CURVE HAS SPOKEN — or nothing at all.
+ *
+ *  Every field is a statement the row can support, and the two that qualify it
+ *  travel with it rather than in a tooltip: a fill claim without the span it
+ *  was measured over is a claim about an unknown window, and a rate over a
+ *  third of an employer's board is not a fact about that employer. */
+interface FillClaim {
+  token: string;
+  company: string;
+  /** R(14) UNROUNDED, kept because the order is decided on it.
+   *
+   *  Sorting on `pct` alone re-ranked the list the server had just ranked:
+   *  0.1841 and 0.1794 both round to 18%, so every adjacent pair inside one
+   *  percentage point became a tie and fell to the `fills` tie-break — a SIZE
+   *  ordering, inside a section whose entire purpose is to stop ranking by
+   *  size. With twelve rows drawn from a narrow band most pairs collide. */
+  rate: number;
+  /** R(14) as whole percent, for display only. A CEILING — rendered "up to". */
+  pct: number;
+  lo: number | null;
+  hi: number | null;
+  /** Roles observed off the board and not back. A CEILING — "up to N".
+   *
+   *  NULL WHENEVER THE SOURCE COUNTS EVENTS RATHER THAN ROLES, which is the
+   *  client-side curve fallback: get_company_fill_curve's fills_90d is
+   *  `sum(is_fill)` over one row per closure EVENT, and its own body says so
+   *  ("named for a window of events and stay a window of events"). Rendering
+   *  that under the word "roles" is the 4,331-fills defect wearing a different
+   *  column name — one card printed "up to 2,632 roles came down for good"
+   *  beside "164 roles open", numbers that cannot both be true. The rate is
+   *  still publishable from that source; the COUNTS are not, so they are
+   *  refused rather than relabelled. */
+  fills: number | null;
+  /** Roles observed back. A FLOOR — "at least N", or not rendered. NULL on the
+   *  event-counting source, for the same reason as `fills`, and worse there:
+   *  "at least 465 of the roles came back" from 465 events spanning maybe 80
+   *  roles overstates in the unsafe direction — it is the defamation shape
+   *  repostWarn's own comment exists to prevent. */
+  relists: number | null;
+  /** Days we have actually watched this board. */
+  windowDays: number;
+  coverage: number | null;
+  /** 0.30–0.60 coverage: the figure may be said, and must name what it covers. */
+  qualified: boolean;
+  /** Roles open ON OUR BOARD under both serving predicates — an exact count of
+   *  what /jobs/company/{token} serves, and a floor on the employer's own
+   *  opening count, which is what feedTotal carries when the feed states one. */
+  open: number | null;
+  feedTotal: number | null;
+  /** When the employer's own feed total was last read. job_board_verifications
+   *  keeps ONE ROW PER BOARD and is UPSERTed on every fetch, so it has no
+   *  history: a board that went dark holds its last advertised total forever.
+   *  Without this stamp feed_total is a number with no date basis, and the
+   *  standing rule on this product is that a published statistic names one. */
+  feedTotalAt: string | null;
+}
+
+/** The measure, from whichever of the two sources answered — the rewritten
+ *  RPC's own columns first, the client-side curve merge second. Never mixed:
+ *  a rate from one source beside a window from the other is the defect this
+ *  page spent the week removing, one field at a time. */
+const measureOf = (r: CompanyRow) => {
+  const rate = numOr(r.fill_incidence_14d);
+  if (rate !== null) {
+    return {
+      rate,
+      lo: numOr(r.fill_incidence_14d_lo), hi: numOr(r.fill_incidence_14d_hi),
+      coverage: numOr(r.dated_share),
+      fills: numOr(r.filled_roles_ceiling),
+      relists: numOr(r.relisted_roles_floor),
+      days: numOr(r.tracking_days),
+      // THE RPC RETURNS NO `sufficient` COLUMN, AND DOES NOT NEED TO. It gates
+      // on the curve's flag in its own WHERE — "an employer whose curve refuses
+      // to answer does not appear at all", with no fallback ordering — so a row
+      // carrying an incidence at all IS the server's sufficiency finding. The
+      // client half of the gate is the coverage floor, which that function's
+      // COMMENT ON explicitly leaves to the caller, and the observation window,
+      // which `sufficient` never looks at.
+      sufficient: true,
+      answered: true,
+    };
+  }
+  // THE FALLBACK CARRIES THE RATE AND REFUSES THE COUNTS.
+  //
+  // get_company_fill_curve's fills_90d / relists_90d are `sum(is_fill)` and
+  // `sum(is_relist)` over ONE ROW PER CLOSURE EVENT — its own body states it in
+  // as many words: "named for a window of events and stay a window of events".
+  // A role that closed twenty times contributes twenty. This page rendered them
+  // as "up to {{n}} roles came down for good", which is the same
+  // events-published-as-roles defect that put 4,331 fills on JLL's card, and it
+  // is the path that runs on EVERY cache row written before 20260907010000 —
+  // i.e. every row today. The rate is a share of a cohort and survives; the
+  // counts do not, and are nulled rather than relabelled, because the card has
+  // no honest sentence for "2,632 takedown events" that a reader would not read
+  // as roles anyway.
+  //
+  // The durable fix is in get_company_fill_curve — collapse f90/r90 per
+  // posting_id, which is also where /jobs/company reads them — and is not
+  // this file's to make.
+  return {
+    rate: numOr(r.fill_rate_14),
+    lo: numOr(r.fill_rate_14_lo), hi: numOr(r.fill_rate_14_hi),
+    coverage: numOr(r.dated_coverage),
+    fills: null,
+    relists: null,
+    days: numOr(r.curve_tracking_days),
+    sufficient: r.sufficient === true,
+    // Did the curve answer at all? Distinguishes "this employer publishes no
+    // posting dates" (a fact about the employer's feed) from "our measurement
+    // did not run" (a fact about us). `sufficient` is set by the merge effect
+    // on every row the curve returned, true or false, and is absent otherwise.
+    answered: r.sufficient !== undefined,
+  };
+};
+
+/** DOES THIS ROW ALREADY CARRY A MEASURE, from either source?
+ *
+ *  One predicate, asked in two places that must never disagree: the curve
+ *  effect's early-return, and the derived `measuring` flag that decides whether
+ *  the section shows placeholders or a refusal. When those two were spelled
+ *  separately, one frame rendered "No employer's record is deep enough" over
+ *  rows that were about to qualify. `sufficient` is the witness for the merged
+ *  path — it is set on every row the curve returned, true or false, and is
+ *  undefined on a row the curve has not spoken for. */
+const hasMeasure = (r: CompanyRow): boolean =>
+  numOr(r.fill_incidence_14d) !== null || numOr(r.fill_rate_14) !== null || r.sufficient !== undefined;
+
+/** Why an employer the RPC ranked does not appear. Published as counts, so a
+ *  thin record reads as a thin record and an outage of ours reads as an outage
+ *  of ours — neither as a verdict about the employer. */
+type Held = "reposter" | "unmeasured" | "undated" | "window" | "estimate";
+
+/**
+ * THE ONE GATE, AND THE ONLY PLACE A CARD IS ALLOWED INTO THIS SECTION.
+ *
+ *   reposter   — the heading promises that employers whose takedowns are mostly
+ *                re-listings appear under Serial re-posters instead, and four
+ *                cards in this section were rendering that very warning. The
+ *                RPC now disqualifies them server-side; this re-applies the
+ *                warning's own predicate client-side so a cache row written
+ *                before that migration cannot contradict the heading either.
+ *   unmeasured — the row carries no measure and the curve never answered for it
+ *                (an old cache row, a curve call that failed, a refresh that
+ *                timed out). OUR instrument, and said as such.
+ *   undated    — the curve DID answer and returned no rate. That happens for
+ *                exactly one reason: the employer's feed states no posting
+ *                dates, so there is no cohort to run lifetimes over. That is a
+ *                fact about the employer's feed, not about our instrument, and
+ *                folding it into `unmeasured` made the page apologise for an
+ *                outage it did not have.
+ *   window     — `sufficient` counts roles at risk, observed fills and interval
+ *                width: statements about the sample, none about how long we
+ *                watched. Lifetimes run from the employer's stated posted_at,
+ *                so a ten-day-deep log can satisfy it and print a fourteen-day
+ *                rate beside "10d tracked". This is that missing half.
+ *   estimate   — sufficiency and the coverage floor, through /jobs' predicate.
+ */
+const heldFor = (r: CompanyRow, serialReposters: ReadonlySet<string>): Held | null => {
+  if (serialReposters.has(r.company_token)) return "reposter";
+  const m = measureOf(r);
+  // `fills` is deliberately NOT part of this gate. The fallback source counts
+  // closure events rather than roles, so its count is refused for RENDERING —
+  // but the rate it carries is a cohort share and is publishable, and holding
+  // the employer back for a count the card will not print would delete the
+  // whole section on every pre-rewrite cache row.
+  if (m.rate === null) return m.answered ? "undated" : "unmeasured";
+  if (m.days === null) return "unmeasured";
+  if (!(m.days >= FILL_RATE_MIN_TRACKING_DAYS)) return "window";
+  if (!canStateFillRate({ sufficient: m.sufficient, dated_coverage: m.coverage ?? 0 }, m.days)) return "estimate";
+  return null;
+};
+
+/**
+ * THE SECTION'S CONTENTS AND ITS OMISSIONS, COMPUTED ONCE.
+ *
+ * ORDERED BY THE RATE, WHICH IS THE ONLY THING HERE COMPARABLE ACROSS ROWS.
+ * The previous ordering was `filled * 100 / open_roles` — closure EVENTS over a
+ * stock of open roles, which is not a rate of anything: Accenture scored
+ * 2,496%, JLL implied 394 fills a day against 220 roles open, and a 50-day row
+ * sat beside an 11-day row as though their counts were one measurement. R(14)
+ * is a share of one employer's own risk set at one fixed horizon, so every card
+ * answers the same question over the same number of days — and the days we
+ * actually watched are printed on each card rather than assumed equal.
+ *
+ * The RPC already ranks this way. Re-sorting here is not a second opinion: it
+ * keeps the order true when the payload is a cache row from before the rewrite,
+ * and it costs twelve comparisons.
+ */
+function rankedFillClaims(rows: CompanyRow[], serialReposters: ReadonlySet<string>):
+  { shown: FillClaim[]; held: Record<Held, number> } {
+  const held: Record<Held, number> = { reposter: 0, unmeasured: 0, undated: 0, window: 0, estimate: 0 };
+  const shown: FillClaim[] = [];
+  for (const r of rows) {
+    if (!r || typeof r.company_token !== "string") continue;
+    const why = heldFor(r, serialReposters);
+    if (why) { held[why] += 1; continue; }
+    const m = measureOf(r);
+    shown.push({
+      token: r.company_token,
+      company: r.company,
+      // Clamped before rounding: an interval carried across from a second
+      // estimator can land a hair outside [0,1], and 101% is a number this
+      // model cannot produce.
+      rate: Math.max(0, Math.min(1, m.rate as number)),
+      pct: Math.round(Math.max(0, Math.min(1, m.rate as number)) * 100),
+      lo: m.lo, hi: m.hi,
+      fills: m.fills,
+      relists: m.relists,
+      windowDays: m.days as number,
+      coverage: m.coverage,
+      qualified: coverageBand(m.coverage) === "qualified",
+      open: numOr(r.open_roles),
+      feedTotal: numOr(r.feed_total),
+      feedTotalAt: typeof r.feed_total_at === "string" ? r.feed_total_at : null,
+    });
+  }
+  // MIRRORS THE SERVER'S ORDER, TERM FOR TERM: `cv.fill_rate_14 DESC,
+  // (hi - lo) ASC, f.filled DESC`. On the UNROUNDED rate, because sorting on
+  // the displayed percent turns every pair inside one point into a tie and
+  // hands the order to the volume tie-break — putting the bigger, worse-
+  // evidenced employer above the tighter-interval one the server had chosen,
+  // which is precisely the size ranking this section exists to delete. The
+  // interval width sorts second, and a row missing an interval sorts last
+  // among its ties rather than first.
+  const width = (c: FillClaim) => (c.lo === null || c.hi === null ? Infinity : c.hi - c.lo);
+  shown.sort((a, b) => b.rate - a.rate || width(a) - width(b) || (b.fills ?? 0) - (a.fills ?? 0));
+  return { shown, held };
+}
 
 interface SalaryRow { category: string; currency: string; n: number; median_annual_min: number }
 interface Segment { companies: number; with_headcount?: number; open_roles: number; remote_pct: number | null; disclosed_pct?: number | null; disclosed_n?: number | null; entry_pct: number; median_usd_floor: number | null; usd_n: number | null; top: CompanyRow[] }
@@ -104,8 +390,26 @@ const CCY: Record<string, string> = { USD: "$", EUR: "€", GBP: "£" };
  *  claim-drift failure where copy went false because the thing it described
  *  lived in a different runtime than the sentence about it. */
 const SERVE_COUNT_CAP = 10_000;
+
+/** MIRRORS refresh_explore_cache's `FILTER (WHERE r.rn <= 12)`
+ *  (20260812230000) and the live fallback's `p_limit: 12` below.
+ *
+ *  It is the size of the SLICE the client can see, and the client's two extra
+ *  gates — the coverage floor and the observation window — are applied to that
+ *  slice alone. Every sentence counting cards or held-back employers is
+ *  therefore a statement about twelve rows, and says so; the only number on
+ *  this section that speaks for the whole qualifying population is
+ *  totals.hiring_n, which the server computes over all of it. */
+const HIRING_SLICE = 12;
 const fieldCount = (n: number, loc: string) =>
   n >= SERVE_COUNT_CAP ? `${SERVE_COUNT_CAP.toLocaleString(loc)}+` : n.toLocaleString(loc);
+
+/** How old the hourly cache may be before the page stops presenting it as the
+ *  current state of the board. Three hours, not one: a single missed run is
+ *  ordinary jitter, and crying stale on it would train readers to ignore the
+ *  line that matters when pg_cron actually dies — which it did, for a day,
+ *  while this page showed a fresh-looking "refreshed hourly" over frozen data. */
+const STALE_AFTER_MS = 3 * 60 * 60 * 1000;
 
 /** token -> [repost_events, reposted_roles, days_tracked]. */
 type RepostIndex = Record<string, [number, number, number] | undefined>;
@@ -192,8 +496,158 @@ function CompanyGrid({ rows, badge, intent, tone = "default", warn }: { rows: Co
   );
 }
 
-/** Twelve card-shaped placeholders, matching CompanyGrid's geometry exactly so
- *  nothing shifts when the real cards replace them.
+/**
+ * THE FILL CARD — one number, at the weight of the decision it supports.
+ *
+ * What it replaces, verbatim from one card's subtitle: "4324 filled in 50d
+ * tracked · 172 open now · up to 63% taken down for good within 14d". Three
+ * numbers of equal weight in 11px grey, the first of them wrong, and the churn
+ * caution below it in the same size and nearly the same colour as the praise.
+ * Nothing was hidden and nothing was scannable.
+ *
+ * The hierarchy, in the order a job seeker reads it:
+ *   1. WHO       — the employer.
+ *   2. WHAT      — one figure, large: how much of its board comes down inside
+ *                  the horizon and stays down.
+ *   3. HOW SURE  — the interval, the roles behind it, and the days we watched,
+ *                  in one quiet line. The window is never optional.
+ *   4. THE CATCH — re-listings, behind a rule and in the warning colour, so the
+ *                  caution cannot be read as more of the claim.
+ */
+function HiringGrid({ claims }: { claims: FillClaim[] }) {
+  const { t, i18n } = useTranslation();
+  const nf = (n: number) => n.toLocaleString(i18n.language);
+  const pctOf = (x: number | null) => (x === null ? null : Math.round(Math.max(0, Math.min(1, x)) * 100));
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {claims.map((c) => {
+        const lo = pctOf(c.lo);
+        const hi = pctOf(c.hi);
+        return (
+          <Link
+            key={c.token}
+            to={companyHref(c.token, "hiring")}
+            className="group flex flex-col rounded-xl border border-border bg-card/60 px-4 py-3.5 transition-colors hover:border-primary/50 hover:bg-card"
+          >
+            <span className="flex items-center gap-2.5">
+              <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary font-bold text-xs shrink-0">
+                {c.company.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{c.company}</span>
+              <ArrowRight className="w-4 h-4 shrink-0 text-muted-foreground/50 transition-all group-hover:text-primary group-hover:translate-x-0.5" />
+            </span>
+            {/* "UP TO" IS PART OF THE NUMBER, NOT A HEDGE BESIDE IT.
+                R(14) is an upper bound on any employer that re-lists: the
+                collector logs one superseded closure per title per 24h and
+                DELETES the rest, so re-listings it never saw are absent from
+                the risk set and the fills that remain take a larger share of a
+                smaller cohort. Both the RPC's COMMENT ON and the curve's say
+                so in as many words. Small and muted rather than dropped,
+                because the figure is what a reader acts on and the direction
+                of its error is knowable. */}
+            <span className="mt-3 flex items-baseline gap-1.5">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("explore.fillUpTo", "up to")}
+              </span>
+              <span className="text-3xl font-bold leading-none tabular-nums text-foreground">{c.pct}%</span>
+            </span>
+            {/* NOT "FILLED". What the lifecycle log observes is a posting going
+                away and not coming back, which can be a hire, a cancelled req
+                or a frozen budget — this page deleted "proven fill record" for
+                exactly that reason. R(14) additionally holds re-listings out as
+                a competing event, which is what "and stayed down" names. */}
+            <span className="mt-1.5 block text-[12px] leading-snug text-foreground/75">
+              {/* `{{h}}`, not `{{d}}`: on this card `d` is the tracking span
+                  (50 days) one line below, and the horizon (14 days) is a
+                  different number entirely. One letter for two quantities on
+                  one card is how a translator puts the wrong one in the wrong
+                  sentence. The constant is /jobs' own, imported, never a
+                  literal — a page that keeps saying "within 14 days" after the
+                  horizon moves is the drift this product has shipped before. */}
+              {t("explore.fillLabel", "of its roles came down within {{h}} days and stayed down", { h: URGENT_FILL_MAX_DAYS })}
+            </span>
+            {/* THE WINDOW TRAVELS WITH THE CLAIM, ALWAYS — and the interval is
+                labelled approximate, which is what the curve's own COMMENT ON
+                requires of anything that renders it. */}
+            <span className="mt-1.5 block text-[11px] leading-snug text-muted-foreground">
+              {[
+                lo !== null && hi !== null ? t("explore.fillInterval", "{{lo}}–{{hi}}% approx.", { lo, hi }) : "",
+                /* THE COUNT RENDERS ONLY FROM A SOURCE THAT COUNTED ROLES.
+                   `fills` is null whenever the measure came from the client
+                   curve fallback, whose 90-day figures are closure EVENTS;
+                   printing those under "roles" is the defect this section was
+                   rebuilt to remove. The window is never optional and prints
+                   either way, because a rate without its span is a claim about
+                   an unknown stretch of time.
+
+                   AND THE COUNT NAMES ITS OWN WINDOW, because it is not the
+                   same population as the open count two lines down: this
+                   accumulates over 90 days of paginated reads and can see far
+                   more distinct roles than the board ever holds at once, while
+                   "open on our board" is one instant of the slice we hold. Two
+                   counts over two boards, adjacent, invite being read as a
+                   ratio — so each says what it spans. */
+                c.fills !== null
+                  ? t("explore.fillEvidence", "up to {{n}} roles came down for good across {{d}}d of tracking", { n: nf(c.fills), d: c.windowDays })
+                  : t("explore.fillWindow", "measured across {{d}}d of tracking", { d: c.windowDays }),
+              ].filter(Boolean).join(" · ")}
+            </span>
+            {c.open !== null && (
+              /* A COUNT, AND SAYING WHOSE BOARD IT COUNTS. Both serving
+                 predicates, so it is exactly what /jobs/company/{token} shows.
+                 It is not a cap — nothing on its path applies a LIMIT — but it
+                 IS a floor on the employer's own advertised openings, because
+                 paginated vendors are read a page at a time, which is why so
+                 many of these land on multiples of twenty. Where the feed
+                 states its own total and it is larger, both numbers render. */
+              <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                {/* THE EMPLOYER'S OWN TOTAL NAMES THE DAY IT WAS READ, or it is
+                    not rendered. job_board_verifications holds one row per
+                    board and is overwritten on every fetch, so it has no
+                    history — a board whose ATS migrated three weeks ago keeps
+                    advertising its last total forever, and printed bare it
+                    reads as current. With no stamp there is no date basis, and
+                    the rule on this page is that a statistic without one is not
+                    published. Our own count beside it is an instant, so it
+                    needs no date. */}
+                {c.feedTotal !== null && c.feedTotal > c.open && c.feedTotalAt !== null
+                  ? t("explore.fillOpenBoth", "{{n}} roles open on our board · {{total}} on the employer's own feed, read {{when}}", {
+                      n: nf(c.open), total: nf(c.feedTotal),
+                      when: new Date(c.feedTotalAt).toLocaleDateString(i18n.language, { dateStyle: "medium" }),
+                    })
+                  : t("explore.fillOpen", "{{n}} roles open on our board now", { n: nf(c.open) })}
+              </span>
+            )}
+            {c.qualified && c.coverage !== null && (
+              <span className="mt-1 block text-[10px] leading-snug text-muted-foreground/80">
+                {t("explore.fillCoverage", "across the {{pct}}% of its roles that carry the company's own posting date", { pct: pctOf(c.coverage) })}
+              </span>
+            )}
+            {/* THE CAUTION, AND IT DOES NOT LOOK LIKE THE CLAIM. Behind a rule,
+                in the warning colour, carrying the same icon the Serial
+                re-posters answer uses — and stated as a FLOOR, because a
+                deduped count cannot produce an equality. */}
+            {c.relists !== null && c.relists > 0 && (
+              <span className="mt-2.5 flex items-start gap-1.5 border-t border-border/60 pt-2 text-[11px] leading-snug text-warning">
+                <Repeat className="mt-[2px] w-3 h-3 shrink-0" aria-hidden="true" />
+                <span>
+                  {t("explore.fillRelistFloor", "at least {{n}} of the roles it took down came back", { n: nf(c.relists) })}
+                </span>
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Twelve card-shaped placeholders, matching CompanyGrid's geometry — the
+ *  COMPACT card, roughly 60px tall, used by every answer except the hiring one.
+ *  HiringGrid's cards are ~200px and have their own skeleton below; standing in
+ *  for them with these produced a ~1,700px growth on a single-column phone the
+ *  moment the real cards arrived, which is the jump this component exists to
+ *  prevent.
  *
  *  aria-hidden with a polite live region beside it: a screen reader should hear
  *  "loading employers" once, not twelve empty list items. */
@@ -209,6 +663,33 @@ function GridSkeleton() {
               <div className="h-3.5 rounded bg-muted animate-pulse" style={{ width: `${55 + ((i * 7) % 35)}%` }} />
               <div className="h-2.5 rounded bg-muted/60 animate-pulse" style={{ width: `${35 + ((i * 11) % 40)}%` }} />
             </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** The hiring answer's own placeholders, at the FILL CARD's geometry: the
+ *  avatar row, the 3xl figure, the two-line label, the provenance line and the
+ *  open-roles line. Same grid gap and same padding as HiringGrid, so the twelve
+ *  boxes that stand in for the cards are the size of the cards. */
+function HiringSkeleton() {
+  return (
+    <>
+      <span className="sr-only" role="status" aria-live="polite">Measuring employers…</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" aria-hidden="true">
+        {Array.from({ length: 12 }, (_, i) => (
+          <div key={i} className="flex flex-col rounded-xl border border-border bg-card/30 px-4 py-3.5">
+            <span className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-lg bg-muted animate-pulse shrink-0" />
+              <span className="h-3.5 flex-1 rounded bg-muted animate-pulse" style={{ width: `${50 + ((i * 7) % 35)}%` }} />
+            </span>
+            <span className="mt-3 block h-7 w-20 rounded bg-muted animate-pulse" />
+            <span className="mt-1.5 block h-3 rounded bg-muted/60 animate-pulse" style={{ width: `${70 + ((i * 5) % 25)}%` }} />
+            <span className="mt-1 block h-3 rounded bg-muted/60 animate-pulse" style={{ width: `${55 + ((i * 11) % 30)}%` }} />
+            <span className="mt-1.5 block h-2.5 rounded bg-muted/50 animate-pulse" style={{ width: `${45 + ((i * 13) % 30)}%` }} />
+            <span className="mt-1 block h-2.5 rounded bg-muted/50 animate-pulse" style={{ width: `${40 + ((i * 3) % 30)}%` }} />
           </div>
         ))}
       </div>
@@ -291,6 +772,32 @@ export default function Explore() {
   // When the cached collections were computed. The cache has always carried
   // this; the page just never rendered it while claiming "computed live".
   const [computedAt, setComputedAt] = useState<string | null>(null);
+  // WHICH COLLECTIONS THE LAST REFRESH COULD NOT RECOMPUTE.
+  //
+  // refresh_explore_cache has always written stale_parts and this page has
+  // never read it: a collection whose scan timed out is served from the
+  // previous run under a "Measured <time>, refreshed hourly" line that
+  // describes neither. A statistic that could not be recomputed is a different
+  // fact from one that was, and the reader is the one who has to know.
+  const [stale, setStale] = useState<string[]>([]);
+  // THE FALLBACK MEASUREMENT IS IN FLIGHT, WHICH IS NOT THE SAME AS NOTHING
+  // QUALIFYING. Measured in a browser against the live cache: a row written
+  // before 20260907010000 carries no incidence, so every row is held as
+  // "unmeasured" for the ~600ms the curve call takes, and the section rendered
+  // "No employer's record is deep enough to publish a fill figure right now"
+  // and then replaced it with cards. A refusal that turns out to be false is
+  // worse than a wait, and this page's whole argument is that it does not say
+  // things it cannot stand behind — including for half a second.
+  //
+  // NOT useState, WHICH IS WHY IT DID NOT WORK. `setMeasuring(true)` lived in
+  // the curve effect, and an effect runs AFTER the commit that painted the rows
+  // — so React painted the refusal for one frame and only then swapped in the
+  // skeleton, which is the exact false refusal the state was added to remove.
+  // It is DERIVED below from the same predicate the effect's early-return
+  // tests, so no frame can exist in which rows are on screen, no measure is in
+  // hand and the page has already given its verdict. `curveDone` is the one
+  // genuine piece of state: whether the second call has come back.
+  const [curveDone, setCurveDone] = useState(false);
   // Per-field served counts, pool sizes, and the churn index. All three ride
   // the same cached row as the collections — no extra request, and no live
   // aggregate on the request path, which is the rule this page exists to keep.
@@ -345,6 +852,7 @@ export default function Explore() {
         // claims it cannot stand behind.
         if (c && (Array.isArray(c.hiring) || Array.isArray(c.entry) || Array.isArray(c.transparent))) {
           if (Array.isArray(c.hiring)) setHiring(c.hiring as CompanyRow[]);
+          if (Array.isArray(c.stale_parts)) setStale((c.stale_parts as unknown[]).filter((x): x is string => typeof x === "string"));
           if (Array.isArray(c.reposters)) setReposters(c.reposters as CompanyRow[]);
           if (Array.isArray(c.entry)) setEntry(c.entry as CompanyRow[]);
           if (Array.isArray(c.salary)) applySalary(c.salary as SalaryRow[]);
@@ -419,32 +927,48 @@ export default function Explore() {
   useEffect(() => {
     if (hiring.length === 0) return;
     // Already merged (a re-render, not a new list) — nothing to fetch.
-    if (hiring.some((r) => typeof r.fill_rate_14 === "number" || typeof r.curve_fills_90d === "number")) return;
+    // Already carried by the row, or already merged. The rewritten RPC returns
+    // the incidence, the counts and the window itself, so on a current cache
+    // row this fires ZERO times — which takes a 25-second grouped scan off
+    // every page view. It stays for the deploy window and for a cache row
+    // written before 20260907010000.
+    if (hiring.some(hasMeasure)) return;
     const tokens = [...new Set(hiring.map((r) => r.company_token).filter(Boolean))];
-    if (tokens.length === 0) return;
+    if (tokens.length === 0) { setCurveDone(true); return; }
     let live = true;
     void (async () => {
       const { data } = await Promise.resolve(rpc("get_company_fill_curve", { p_tokens: tokens }))
         .catch(() => ({ data: null }));
+      // Marked done on EVERY exit, including the ones that return early below:
+      // a failed curve call must fall through to the honest empty state, not
+      // leave a skeleton spinning where a sentence belongs.
+      if (live) setCurveDone(true);
       if (!live || !Array.isArray(data)) return;
       const by = new Map<string, Record<string, unknown>>();
       for (const r of data as Array<Record<string, unknown>>) {
         if (r && typeof r.company_token === "string") by.set(r.company_token, r);
       }
       if (by.size === 0) return;
-      const numOrNull = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : null);
+      // numOr, not a typeof === "number" test. `numeric` arrives as a STRING on
+      // some PostgREST builds, and a local coercion that rejected it turned
+      // every row into "unmeasured" — a silent, whole-section refusal that
+      // looks exactly like an employer having no record.
       setHiring((prev) => prev.map((r) => {
         const c = by.get(r.company_token);
         if (!c) return r;
         return {
           ...r,
-          fill_rate_14: numOrNull(c.fill_rate_14),
-          fill_rate_14_lo: numOrNull(c.fill_rate_14_lo),
-          fill_rate_14_hi: numOrNull(c.fill_rate_14_hi),
-          dated_coverage: numOrNull(c.dated_coverage),
+          fill_rate_14: numOr(c.fill_rate_14),
+          fill_rate_14_lo: numOr(c.fill_rate_14_lo),
+          fill_rate_14_hi: numOr(c.fill_rate_14_hi),
+          dated_coverage: numOr(c.dated_coverage),
           sufficient: c.sufficient === true,
-          curve_fills_90d: typeof c.fills_90d === "number" ? c.fills_90d : undefined,
-          curve_tracking_days: typeof c.tracking_days === "number" ? c.tracking_days : undefined,
+          curve_fills_90d: numOr(c.fills_90d) ?? undefined,
+          // The relist floor, from the same population as the fills beside it —
+          // the card states them in one breath, so they cannot come from two
+          // different filters.
+          curve_relists_90d: numOr(c.relists_90d) ?? undefined,
+          curve_tracking_days: numOr(c.tracking_days) ?? undefined,
         };
       }));
     })();
@@ -492,6 +1016,25 @@ export default function Explore() {
     return () => { alive = false; clearTimeout(id); };
   }, [cq]);
 
+  /** THE EMPLOYERS THE CHURN INDEX HAS ALREADY FLAGGED.
+   *
+   *  The index is the rate-gated one — 5+ re-lists per affected role on 25+
+   *  events, never a top-N by raw volume — so membership is a finding about
+   *  conduct rather than about size. The hiring answer excludes them rather
+   *  than recommending them with a warning stapled underneath, because its own
+   *  heading promises they appear under Serial re-posters instead. */
+  const serialReposters = useMemo(
+    () => new Set(Object.keys(repostIndex).filter((k) => Array.isArray(repostIndex[k]))),
+    [repostIndex],
+  );
+  /** The fill answer's contents and its omissions, computed once per payload. */
+  const fill = useMemo(() => rankedFillClaims(hiring, serialReposters), [hiring, serialReposters]);
+  /** DERIVED, NEVER SET. Rows are on screen, none of them carries a measure
+   *  yet, and the second call has not come back — the one state in which the
+   *  section must show placeholders rather than a verdict. Computed during
+   *  render, so there is no frame between the rows arriving and the skeleton. */
+  const measuring = hiring.length > 0 && !curveDone && !hiring.some(hasMeasure);
+
   const bands = segments ? orderedBands(segments) : [];
   // Default to the biggest band, but only once the payload is in hand — a band
   // key hardcoded here is how half this section vanished the last time the SQL
@@ -506,7 +1049,19 @@ export default function Explore() {
     // pass maintains independently of the hourly cron. When pg_cron died today
     // every other answer froze; this one would have kept working.
     check: true,
-    hiring: hiring.length > 0,
+    // ALWAYS OFFERED, WHICH IS A CORRECTION. It was `hiring.length > 0`, and
+    // the rewritten RPC's most likely steady state is ZERO ROWS — every gate is
+    // a hard gate now and there is no fallback ordering. In that state the chip
+    // vanished, `active` fell through to another answer, and a visitor
+    // arriving on the shared deep link /explore?i=hiring was silently shown
+    // something else: the URL said one thing and the page showed another. The
+    // honest empty state written for exactly that case was unreachable, because
+    // it lived inside the guard that had just removed the section.
+    //
+    // The section now always renders and chooses its own contents — cards,
+    // placeholders, "nothing qualifies", or "we could not measure this" — which
+    // is where that distinction belongs.
+    hiring: true,
     pay: transparent.length > 0 || salary.length > 0,
     entry: entry.length > 0,
     ghost: reposters.length > 0,
@@ -545,9 +1100,12 @@ export default function Explore() {
    *  size of the population the sentence would imply, and only a live aggregate
    *  could state the real number — the 26-seconds-per-view mistake. */
   const ACTION: Partial<Record<Intent, { to: string; label: string }>> = {
-    hiring: hiring.length
+    // THE TOKENS ON SCREEN, NOT THE TOKENS IN THE PAYLOAD. This mapped the raw
+    // rows, so the button opened a board filtered to employers this section had
+    // just refused to show.
+    hiring: fill.shown.length
       ? {
-          to: `/jobs?company=${encodeURIComponent(hiring.slice(0, 12).map((r) => r.company_token).join(","))}&from=explore`,
+          to: `/jobs?company=${encodeURIComponent(fill.shown.map((c) => c.token).join(","))}&from=explore`,
           label: t("explore.actionHiring", "Open roles at all of these employers"),
         }
       : undefined,
@@ -573,6 +1131,30 @@ export default function Explore() {
   };
 
   const nf = (n: number) => n.toLocaleString(i18n.language);
+
+  /** ONE SENTENCE ABOVE THE DATA. The rest of the method is in the disclosure
+   *  under it — the fifty-word blurb and the denominator paragraph beside it
+   *  said more than the twelve cards did, which is the wrong way round on a
+   *  page whose whole claim is that it measures things.
+   *
+   *  New key: the sentence it replaces does not merely say less, it names a
+   *  different measurement, and a locale VALUE silently overrides an inline
+   *  default — so reusing the old key would leave nine languages describing the
+   *  closure-count ranking this change exists to stop publishing. */
+  // A NEW KEY FOR THE HEADING, FOR THE REASON THE BLURB GOT ONE.
+  //
+  // "Companies that actually fill roles" is the strongest claim on the page and
+  // the only one with no evidence behind it: what the lifecycle log observes is
+  // a posting going away and not coming back, which can be a hire, a cancelled
+  // requisition or a frozen budget — this section deleted "proven fill record"
+  // for precisely that reason, and its own methodology now says so two lines
+  // under the heading. Careful cards beneath an overclaiming H2 is the worst of
+  // both. A locale VALUE overrides an inline default, so the old sentence would
+  // otherwise survive in nine languages no matter what this file says; the same
+  // reason seoTitle2, subhead2 and hiringBlurbRanked are new keys rather than
+  // edits. explore.hiringTitle retires with them.
+  const hiringTitle = t("explore.hiringTitleRanked", "Companies whose roles come down and stay down");
+  const hiringBlurb = t("explore.hiringBlurbRanked", "Ranked by how much of an employer's own board actually comes down and stays down within {{d}} days — not by how many closures we logged.", { d: URGENT_FILL_MAX_DAYS });
 
   /** The churn warning for one employer, or null — POSITIVE FORM ONLY.
    *
@@ -600,8 +1182,17 @@ export default function Explore() {
     if (!Array.isArray(hit) || hit.length < 3) return null;
     const [events, roles, days] = hit;
     if (!(typeof events === "number" && events > 0 && typeof roles === "number" && roles > 0)) return null;
+    // A FLOOR, MARKED IN THE VALUE RATHER THAN IN THE SENTENCE.
+    //
+    // The collector logs only the FIRST superseded closure per normalised title
+    // per employer per 24h and DELETES the rest, so both counts are lower
+    // bounds and neither may render as "=". The "+" goes on the interpolated
+    // number, which is this file's own floor idiom (10,000+ on the field chips,
+    // "{{n}}+×" on the capped re-post badge) — and it means all nine
+    // translations of explore.repostWarn become floors at once, instead of
+    // eight of them stating an equality until a translation pass lands.
     return t("explore.repostWarn", "Re-lists roles: {{events}} re-postings across {{roles}} roles in {{d}}d", {
-      events: nf(events), roles: nf(roles), d: days,
+      events: `${nf(events)}+`, roles: `${nf(roles)}+`, d: days,
     });
   };
 
@@ -609,8 +1200,47 @@ export default function Explore() {
    *  present — see the strip_nulls note in the migration; a missing key is a
    *  failed scan and must produce silence, not a zero. */
   const NOTE: Partial<Record<Intent, string | null>> = {
+    // NEW KEY, because the old sentence counted the wrong thing twice: "the 12"
+    // was the payload's size rather than the number of employers whose record
+    // can carry a claim, and "the strongest fill rate" described an ordering by
+    // closures-per-open-role, which is not a rate. Both halves are now the
+    // numbers actually on screen.
+    // EVERY NUMBER HERE NAMES THE POPULATION IT WAS COMPUTED OVER, because
+    // neither of these two is computed over the same one and the first draft
+    // printed them as though they were.
+    //
+    //   fill.shown / fill.held are computed over the ROWS IN THE CACHE, which
+    //   refresh_explore_cache caps at twelve (`FILTER (WHERE r.rn <= 12)`), and
+    //   the live fallback asks for twelve. The client gates behind them — the
+    //   coverage floor and the observation window — were never applied to rows
+    //   thirteen and up, because the client never saw them. So a sentence like
+    //   "One employer has a record deep enough right now" was a claim about
+    //   every employer we carry, produced by testing twelve.
+    //
+    //   totals.hiring_n is count(*) over get_actively_hiring_companies(2000),
+    //   and after 20260907010000 every row in it has ALREADY passed the
+    //   sufficiency, churn and open-roles gates server-side. Describing it as
+    //   "employers with a measurable takedown record and 100+ roles open" — the
+    //   pre-gate description — overstated the pool by about two orders of
+    //   magnitude and contradicted the sentence beside it, which said only a
+    //   few of them qualified.
+    //
+    // Both are now stated for what they are: N employers clear the server's
+    // bars, we rank the top twelve of them, and M of those twelve clear the two
+    // bars only the client can apply.
     hiring: totals.hiring_n
-      ? t("explore.noteHiring", "The 12 with the strongest fill rate, out of {{n}} employers that qualify — a measurable fill record and 100+ roles open now.", { n: nf(totals.hiring_n) })
+      ? [
+          // TWO SENTENCES AND TWO KEYS, because "The 1 employers" is what one
+          // qualifying employer produced live. i18next plurals need the key in
+          // a resource file, which this change cannot write, so the singular is
+          // its own key — and a translator gets a grammatical string to work
+          // from in both languages rather than an English fragment with a
+          // number wedged into it.
+          t("explore.noteHiringPoolGated", "{{n}} employers clear our fill-measurement bars right now; we rank the strongest {{cap}}.", { n: nf(totals.hiring_n), cap: nf(Math.min(totals.hiring_n, hiring.length || HIRING_SLICE)) }),
+          fill.shown.length === 1
+            ? t("explore.noteHiringShownOne", "One of those carries a figure here; the rest are accounted for below.")
+            : t("explore.noteHiringShown", "{{shown}} of those carry a figure here; the rest are accounted for below.", { shown: nf(fill.shown.length) }),
+        ].join(" ")
       : null,
     // TWO SENTENCES, because the second is what makes the first mean anything.
     // "41 employers state pay on 80%+ of their roles" sounds thin until you
@@ -689,6 +1319,26 @@ export default function Explore() {
                 // language than the sentence containing it.
                 time: new Date(computedAt).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
               })}
+            </p>
+          )}
+          {/* A REFRESH THAT DID NOT FINISH MUST NOT LOOK LIKE ONE THAT DID.
+              Two independent signals, because the cache fails in two ways and
+              the sentence above covers neither:
+                • stale_parts names the collections that timed out and were
+                  served from the previous run. The page has never read it.
+                • computed_at going stale is the only evidence a reader gets
+                  when the whole hourly job stops — the cron death that froze
+                  every answer on this page for a day while it looked healthy.
+              Both are stated as facts about OUR instrument, never about the
+              employers, and both are silent when there is nothing to report. */}
+          {stale.length > 0 && (
+            <p className="mt-1.5 text-xs text-warning">
+              {t("explore.staleParts", "{{parts}} could not be recomputed in the last refresh and are shown from an earlier run.", { parts: stale.join(", ") })}
+            </p>
+          )}
+          {computedAt && Date.now() - new Date(computedAt).getTime() > STALE_AFTER_MS && (
+            <p className="mt-1.5 text-xs text-warning">
+              {t("explore.staleAge", "The hourly refresh has not completed since then — everything below is from that run, not from now.")}
             </p>
           )}
         </div>
@@ -864,86 +1514,179 @@ export default function Explore() {
             sees. Rendered under the real heading and blurb, which are static —
             only the cards are unknown, so only the cards are placeholders. */}
         {loading && hiring.length === 0 && (
-          <Section icon={Activity} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurbCurve", "Companies whose roles come down and stay down — a real fill signal from our own lifecycle tracking, counted over the days we have actually watched each board. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
-            <GridSkeleton />
+          <Section icon={Activity} title={hiringTitle} blurb={hiringBlurb}>
+            <HiringSkeleton />
           </Section>
         )}
-        {hiring.length > 0 && (
-          <Section icon={Activity} note={NOTE.hiring} title={t("explore.hiringTitle", "Companies that actually fill roles")} blurb={t("explore.hiringBlurbCurve", "Companies whose roles come down and stay down — a real fill signal from our own lifecycle tracking, counted over the days we have actually watched each board. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead).")}>
-            {/* tracking_days ships with the rebuilt RPC; rows from the old cache
-                lack it — show only the open count then, never an unbacked claim. */}
-            {/* THE CLOCK, REBUILT — and it is no longer a clock.
-                It used to print p50_days_open as "half came down within Nd".
-                That median could only ever be drawn from a window of [7, 30]
-                days: the ingest ages a posting out at 30, and every fill
-                surface then required 7 before it would count a closure. A
-                median from that support lands near 15 for every employer and
-                every field on the board — eighteen categories agreed to within
-                1.4 days over ~600k closures, which is not a fact about hiring,
-                it is our own retention cap halved. Worse, the roles that
-                stayed up longest were not censored, they were simply ABSENT
-                from the sample, which is what turned censoring into truncation.
-                What replaces it is R(14) from the fill curve: the share of an
-                employer's dated roles off the board within 14 days, with roles
-                still up and roles that passed the cap counted as unfinished
-                rather than deleted. Gated on the RPC's own `sufficient` and on
-                stated-date coverage, and — like every other optional field on
-                this page — absent fields degrade to the plain badge, never to
-                a number with nothing behind it. */}
-            {/* The churn warning reaches here too, and this is the answer where
-                it matters most: an employer can hold a genuine fill record and
-                still re-list the same role forty times, and the fill record is
-                the reason a reader is about to trust it. The disqualification
-                inside the RPC only removes employers whose takedowns are
-                MOSTLY re-listings; one that fills plenty and churns plenty
-                passes it and says nothing. */}
-            <CompanyGrid rows={hiring} intent="hiring" warn={(r) => repostWarn(r.company_token, "hiring")} badge={(r) => {
-              // The count prefers the curve's, which is the same population the
-              // company page publishes; the row's own count is the fallback for
-              // as long as the curve has not answered.
-              const filled = r.curve_fills_90d ?? r.closed_90d;
-              const days = r.curve_tracking_days ?? r.tracking_days;
-              if (!days || filled == null) return t("explore.openRoles", "{{n}} open roles", { n: (r.open_roles ?? 0).toLocaleString() });
-              const core = t("explore.hiringBadge", "{{filled}} filled in {{d}}d tracked · {{open}} open now",
-                { filled, d: days, open: (r.open_roles ?? 0).toLocaleString() });
-              // R(14) IS THE FILL SHARE, NOT THE OFF-THE-BOARD SHARE. It holds
-              // same-title re-listings out as a competing event, so it is
-              // smaller than 1 − still_open_14 by exactly the relist rate. The
-              // copy says "taken down for good", which is what the number is.
-              //
-              // AND IT IS A CEILING, so the copy says "up to". The collector
-              // logs one superseded closure per title per company per 24h and
-              // drops the rest, so the re-listings it never sees leave the risk
-              // set entirely and the fills that remain take a larger share of a
-              // smaller cohort — get_company_fill_curve's own COMMENT ON says
-              // fill_rate_14 is an upper bound on any employer that re-lists.
-              // This shipped bare here while /jobs said "up to" for the same
-              // number, and the employers the bound is loosest on are exactly
-              // the ones this badge renders: the RPC's disqualifier only drops
-              // employers whose takedowns are MOSTLY re-listings, so one that
-              // fills plenty and churns plenty passes it. Same rule as the
-              // relist counts, opposite direction — a deduped count is a floor,
-              // a share computed against it is a ceiling.
-              // THE THIRD GATE IS THE ONE THAT WENT MISSING. `sufficient`
-              // counts roles at risk, observed fills and interval width — all
-              // statements about the sample, none about how long we watched.
-              // Lifetimes run from the employer's stated posted_at rather than
-              // from our first sighting, so a ten-day-deep log can satisfy it
-              // and this badge would print a fourteen-day rate beside "10d
-              // tracked". The floor is /jobs' own FILL_RATE_MIN_TRACKING_DAYS,
-              // read off the CURVE's tracking span because that is the record
-              // the rate was estimated over — the hiring row's own count is a
-              // different population and is only ever the display fallback.
-              const showRate = r.sufficient === true
-                && typeof r.fill_rate_14 === "number"
-                && typeof r.dated_coverage === "number"
-                && r.dated_coverage >= FILL_COVERAGE_MIN
-                && typeof r.curve_tracking_days === "number"
-                && r.curve_tracking_days >= FILL_RATE_MIN_TRACKING_DAYS;
-              return showRate
-                ? `${core} · ${t("explore.hiringFillRate", "up to {{pct}}% taken down for good within {{h}}d", { pct: Math.round((r.fill_rate_14 as number) * 100), h: URGENT_FILL_MAX_DAYS })}`
-                : core;
-            }} />
+        {!loading && (
+          /* THE HEADING, THE BLURB AND THE CARDS NOW AGREE, AND THE METHOD IS
+             ONE CLICK AWAY INSTEAD OF TWO PARAGRAPHS TALL.
+
+             What was here: a fifty-word blurb, a denominator sentence under it,
+             and twelve cards whose subtitle read "4324 filled in 50d tracked ·
+             172 open now · up to 63% taken down for good within 14d" — three
+             numbers of equal weight in 11px grey, the first of them a count of
+             closure events, with the churn caution beneath in the same size as
+             the praise. A reader had to parse two paragraphs to reach a
+             leaderboard whose headline number was wrong.
+
+             What is here: one sentence, the method behind a disclosure, and one
+             figure per card at the size of the decision it supports. */
+          <Section icon={Activity} note={fill.shown.length > 0 ? NOTE.hiring : null} title={hiringTitle} blurb={hiringBlurb}>
+            {/* THE METHODOLOGY, MOVED RATHER THAN DROPPED. Not one caveat was
+                cut: what counts as a fill and who is disqualified, why this is
+                a share rather than a count of roles, the three floors that
+                suppress a figure entirely, why every re-listing number carries
+                a "+", and whose board the open count describes. */}
+            <HowWeMeasure items={[
+              {
+                term: t("explore.methodFillTerm", "What counts as a fill — and who is left out"),
+                // The retained sentence. It is exactly true of the gate now
+                // that the gate enforces it, and it belongs beside the method
+                // rather than above the data.
+                method: t("explore.hiringBlurbCurve", "Companies whose roles come down and stay down — a real fill signal from our own lifecycle tracking, counted over the days we have actually watched each board. Companies whose takedowns are mostly re-listings are disqualified (they appear under Serial re-posters instead)."),
+              },
+              {
+                term: t("explore.methodRankTerm", "Why a share, and not a number of roles filled"),
+                method: t("explore.methodRankMethod", "Every card states the same quantity over the same horizon: the share of that employer's own roles, dated by the employer, that came off the board within {{d}} days and did not come back. A role that returns is counted as a re-listing rather than as a fill, and roles still up — or past our 30-day serving cap — are counted as unfinished rather than dropped. We do not rank by how many closures we logged: that count is dominated by re-listings, and dividing it by the roles an employer has open today is not a rate of anything.", { d: URGENT_FILL_MAX_DAYS }),
+              },
+              {
+                term: t("explore.methodGateTerm", "When we publish no figure at all"),
+                // The gate, published rather than merely applied — and stated
+                // from the constants /jobs enforces, so this sentence cannot
+                // drift from the code that refuses the employer.
+                method: t("explore.methodGateMethod", "Three separate bars, and a miss on any one means no figure rather than a hedged one: our estimate must be stable enough on its own terms (enough roles at risk at day {{d}}, enough observed takedowns, and an interval no wider than 15 points), we must have watched that board for at least {{days}} days, and at least {{cov}}% of the roles behind the figure must carry a posting date from the employer itself. Our own discovery date is never used as a posting age.", { d: URGENT_FILL_MAX_DAYS, days: FILL_RATE_MIN_TRACKING_DAYS, cov: Math.round(FILL_COVERAGE_MIN * 100) }),
+              },
+              {
+                term: t("explore.methodRelistTerm", "Why every re-listing number carries a “+”"),
+                method: t("explore.methodRelistMethod", "Our collector records only the first re-listing of a given job title at a given employer in any 24 hours and discards the rest, so every re-listing count here is a lower bound and none can be stated exactly. The same dedupe makes the fill figures upper bounds — the re-listings we never saw are missing from the pool the share is computed over — which is why each one reads “up to”. The interval beside it is an approximation, not an exact confidence interval."),
+              },
+              {
+                // THE LIMIT OF THE RANKING, STATED WHERE THE RANKING IS.
+                //
+                // The bound above is not uniform: the more an employer re-lists
+                // the same titles, the more of its churn the 24h dedupe throws
+                // away, and the higher its published rate goes. Every bar that
+                // could catch it — the churn share, the re-post gate, the
+                // curve's own sufficiency test — reads the same post-dedupe
+                // floor, so an employer whose re-listing we cannot see clears
+                // all three and can rank above an honest one. The repair is in
+                // the collector, which has to keep one row per deduped re-list;
+                // until it lands this is a known blind spot, and a reader is
+                // told rather than left to infer it from a "+".
+                term: t("explore.methodBlindTerm", "What this ranking cannot see"),
+                method: t("explore.methodBlindMethod", "Because we discard repeat re-listings of the same title within a day, an employer that re-lists heavily looks better here than it is, and the ones we never logged are invisible to every check on this page. A high figure means we saw those roles come down and not come back — it is not proof that they were not quietly re-posted under the same title. We would rather say that than imply a precision we do not have."),
+              },
+              {
+                term: t("explore.methodOpenTerm", "“Roles open on our board”"),
+                method: t("explore.methodOpenMethod", "An exact count of the roles we are serving for that employer right now — the same rows its company page shows. Nothing caps it. It is still a floor on the employer's own hiring: paginated job boards are read a page at a time, so we hold what we have read, and where the feed publishes its own total we show that too, with the date we last read it. Do not divide one figure on a card by another: the takedown count accumulates over 90 days of reads across the whole board, while the open count is a single instant of what we hold today. They are two different populations and their ratio is not a rate."),
+              },
+            ]} />
+
+            {fill.shown.length > 0 ? (
+              <HiringGrid claims={fill.shown} />
+            ) : measuring ? (
+              /* Rows in hand, the measure still being fetched. Twelve
+                 placeholders at the fill card's own geometry — the reader sees
+                 "coming", never a verdict we are about to contradict. */
+              <HiringSkeleton />
+            ) : hiring.length === 0 ? (
+              /* NO ROWS AT ALL, WHICH IS A DIFFERENT FACT AND MUST NOT BORROW
+                 THE SENTENCE BELOW. The ranking query either returned nothing
+                 or did not complete: refresh_explore_cache's hiring block
+                 catches QUERY_CANCELED, and until 20260907020000 it wrote an
+                 empty list with no mark. "No employer's record is deep enough"
+                 would be a verdict on 934 employers drawn from zero
+                 observations — the precise shape of claim this section was
+                 rebuilt to stop making. So this branch talks about US, and the
+                 staleness line at the top of the page names 'hiring' beside
+                 it once that migration is deployed. */
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-4">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("explore.hiringOutTitle", "We could not measure this in the last refresh")}
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {t("explore.hiringOutBody", "The fill ranking did not complete, so there is nothing to show here — that is our instrument, and it says nothing about any employer. Every other answer on this page still works.")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => chooseIntent("check")}
+                  className="mt-3 inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  {t("explore.intentCheck", "Check an employer")}
+                </button>
+              </div>
+            ) : (
+              /* THE HONEST EMPTY STATE, WHICH IS WHAT THE GATES ARE FOR.
+                 A section that cannot support a single fill claim has to say
+                 so in its own words. Before this it filled itself with whatever
+                 the closure count returned — which is how a leaderboard of
+                 churn came to sit under this heading — and a reader could not
+                 tell a thin record from a strong one.
+
+                 AND IT SPEAKS ONLY FOR THE ROWS IT TESTED. The two client-side
+                 bars behind this refusal were applied to the twelve rows the
+                 cache carries, never to the rest of the pool, so the sentence
+                 names those twelve rather than every employer we track. */
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-4">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("explore.hiringNoneRankedTitle", "None of the {{n}} employers we ranked has a record deep enough to publish a figure", { n: nf(hiring.length) })}
+                </p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  {t("explore.hiringNoneBody", "This says nothing about the employers themselves — it says our lifecycle log is not yet deep enough on any board that qualifies. Every other answer on this page still works.")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => chooseIntent("check")}
+                  className="mt-3 inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  {t("explore.intentCheck", "Check an employer")}
+                </button>
+              </div>
+            )}
+
+            {/* WHAT IS NOT ON SCREEN, AND WHY — counted, never silent.
+                An employer missing from a leaderboard is unreadable on its own:
+                it can mean a weak record, a short one, or a broken instrument
+                of ours, and those must not look alike. Each line renders only
+                when its count is non-zero, and the last one is deliberately a
+                statement about US. */}
+            {!measuring && (fill.held.reposter + fill.held.window + fill.held.estimate + fill.held.unmeasured + fill.held.undated) > 0 && (
+              <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+                {[
+                  fill.held.reposter > 0
+                    ? t("explore.hiringHeldReposter", "{{n}} ranked employers are left out for serial re-listing — they appear under “Watch out: ghost jobs”.", { n: nf(fill.held.reposter) })
+                    : "",
+                  fill.held.window > 0
+                    ? t("explore.hiringHeldWindow", "{{n}} have takedowns we can see but a board we have watched for fewer than {{d}} days, so no rate is published for them.", { n: nf(fill.held.window), d: FILL_RATE_MIN_TRACKING_DAYS })
+                    : "",
+                  fill.held.estimate > 0
+                    ? t("explore.hiringHeldEstimate", "{{n}} have a record too thin or too uneven to carry a stable figure.", { n: nf(fill.held.estimate) })
+                    : "",
+                  /* SPLIT FROM "unmeasured", BECAUSE THEY ARE OPPOSITE
+                     FACTS. A curve that answered with no rate means the
+                     employer's feed states no posting dates, so there is no
+                     cohort to measure lifetimes over — that is about their
+                     feed. A curve that did not answer at all is about our
+                     instrument. Folding the first into the second had the page
+                     apologise for an outage it was not having, and inflated the
+                     count of the sentence that IS about us. */
+                  fill.held.undated > 0
+                    ? t("explore.hiringHeldUndated", "{{n}} publish no posting dates on their own feed, so there is nothing to measure a fill against.", { n: nf(fill.held.undated) })
+                    : "",
+                  fill.held.unmeasured > 0
+                    ? t("explore.hiringHeldUnmeasured", "{{n}} could not be measured in this refresh — that is our instrument, and it says nothing about those employers.", { n: nf(fill.held.unmeasured) })
+                    : "",
+                  /* AND THE SENTENCE NAMES ITS OWN DENOMINATOR. Every count
+                     above is over the rows this page holds, which the cache
+                     caps at twelve — not over the pool the line under the
+                     heading counts. */
+                  t("explore.hiringHeldOf", "(Counted over the {{n}} employers ranked here.)", { n: nf(hiring.length) }),
+                ].filter(Boolean).join(" ")}
+              </p>
+            )}
           </Section>
         )}
         </div>
@@ -986,11 +1729,15 @@ export default function Explore() {
               const days = Math.max(1, r.tracking_days ?? 0);
               const raw = r.worst_count ?? 0;
               const capped = Math.min(raw, days);
-              const core = t(capped < raw ? "explore.repostBadgeCapped" : "explore.repostBadge",
-                capped < raw
-                  ? "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d"
-                  : "“{{title}}” re-listed {{n}}× · {{events}} total in {{d}}d",
-                { title: (r.worst_title ?? "").slice(0, 34), n: capped, events: r.repost_events ?? 0, d: r.tracking_days ?? 0 });
+              // THE FLOOR FORM IS NOW THE ONLY FORM. The uncapped branch printed
+              // "re-listed 41× · 2,242 total in 49d" — three equalities over
+              // counts the collector deduped before they were ever written.
+              // explore.repostBadge (the "=" sentence) is retired rather than
+              // reworded, because a locale VALUE overrides an inline default
+              // and nine of them carry the equality.
+              const core = t("explore.repostBadgeCapped",
+                "“{{title}}” re-listed {{n}}+× · {{events}} total in {{d}}d",
+                { title: (r.worst_title ?? "").slice(0, 34), n: capped, events: `${nf(r.repost_events ?? 0)}+`, d: r.tracking_days ?? 0 });
               // ACROSS HOW MANY ROLES — the number that turns a count into a
               // diagnosis. 581 re-lists across 3 roles is one job advertised
               // forever; 769 across 298 is a big employer with ordinary churn.
@@ -1003,7 +1750,7 @@ export default function Explore() {
               // nine locales already carry the current sentence. Editing it
               // here would leave nine translations rendering the old string.
               return r.reposted_roles
-                ? `${core} · ${t("explore.repostAcross", "across {{roles}} roles", { roles: r.reposted_roles })}`
+                ? `${core} · ${t("explore.repostAcross", "across {{roles}} roles", { roles: `${nf(r.reposted_roles)}+` })}`
                 : core;
             }} />
           </Section>

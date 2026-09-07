@@ -34,7 +34,17 @@ describe("nothing bounded the sum", () => {
     // reachable before the isolate dies.
     expect(CODE).toMatch(/const SLICE_POSTING_BUDGET = [0-9_]+;/);
     const budget = Number(CODE.match(/const SLICE_POSTING_BUDGET = ([0-9_]+);/)![1].replace(/_/g, ""));
-    expect(budget, "a budget the isolate cannot reach is not a bound").toBeLessThan(256 * 1024 / 146);
+    // .64: the ceiling this divided by was 146KB a posting, and that
+    // coefficient was fitted while the chunked pagers were LEAKING their
+    // unread page responses — heap tracked every posting the slice had ever
+    // read. `discardRest` closed it (heap p50 176MB -> 36MB; the .63 slice
+    // held 1,216 postings in 35MB), so 1,795 postings stopped being a ceiling
+    // and became a throttle. The residual cost is ~29KB a posting with the
+    // whole slice charged to postings, and what must stay true is the same
+    // property: the accumulation this budget permits has to fit inside the gate
+    // that stops a slice, or the budget is just a worse heap limit.
+    const heapGate = Number(CODE.match(/const HEAP_SOFT_LIMIT_MB = ([0-9_]+);/)![1].replace(/_/g, ""));
+    expect((budget * 29) / 1024, "a budget the isolate cannot survive is not a bound").toBeLessThan(heapGate);
   });
 
   it("stops STARTING fetches at the budget, after the dormancy skip and before the fetch", () => {

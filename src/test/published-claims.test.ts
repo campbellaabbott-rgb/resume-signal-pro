@@ -1232,7 +1232,9 @@ describe("verify-on-apply cannot destroy a live posting on one probe", () => {
     // index that caused the incident — with no type error to catch it.
     expect(fn).toMatch(/select\("id, apply_url"\)/);
     expect(fn).toMatch(/checkLive\(src, externalId, applyBy\.get\(id\) \?\? null\)/);
-    expect(fn).toMatch(/checkLive\(src, rest\.join\(":"\), applyBy\.get\(id\) \?\? null\)/);
+    // The audit passes a 4th arg (the windowed note) — the property asserted is
+    // that apply_url is still the third, not that the arity never grows.
+    expect(fn).toMatch(/checkLive\(src, rest\.join\(":"\), applyBy\.get\(id\) \?\? null[,)]/);
   });
 });
 
@@ -2220,19 +2222,59 @@ describe("no surface may opt out of the freshness claim by not being listed", ()
   // matter which file it lives in.
   const ROOT = resolve(__dirname, "../..");
   const ABS = /(nothing|anything|everything|none|no (?!dated )(?:postings?|roles?|listings?|jobs?|openings?))[^.\n]{0,40}older than 30 days/i;
+  // Second claim on the same sweep. "Re-verified within a few hours" was
+  // retracted from the app and the nine locale JSONs — but the retraction's
+  // guard checked exactly two scopes (the locales and Jobs.tsx), so the claim
+  // stayed live in public/llms.txt and in the two places prerender-seo.mjs
+  // writes it into the 17 field landers and llms-full.txt, which are the
+  // surfaces Googlebot and AI assistants actually quote. Measured 2026-09-06:
+  // board freshness p50 ~62h against the product's own CLAIM_MEDIAN_MIN of
+  // 480 min — wrong by ~7.75x while the narrow guard sat green. A claim gets
+  // retracted once, everywhere, or it is not retracted.
+  // ANCHORED ON THE VERB, because the first version was not and was therefore
+  // half dead. It read `/within a few hours|re-verifies? within/` — and
+  // `re-verifies?` is the literal "re-verifie" plus an optional "s", which
+  // matches "re-verifies" and "re-verifie" and CANNOT match "re-verified", the
+  // spelling that was actually published in both offending files. Only the
+  // literal string was really being caught, so any reword into another duration
+  // ("re-verified within six hours") walked straight past the guard that had
+  // just been widened to stop it. Verified against the measured line on
+  // GhostJobIndex ("95% of all feeds within ... hours"), which must NOT match:
+  // that is a measurement of what happened, not a promise about what will.
+  const FRESH = /\bre-verif(?:y|ies|ied)\s+within\b|within a few hours/i;
+  // THIRD CLAIM ON THE SAME SWEEP, and it was already retracted once. "about
+  // every 10-15 minutes" was measured at ~6x overstatement in 2026-07 and
+  // removed from all nine locales under an explicit rule — state NO fixed
+  // interval — but that guard reads only src/i18n/**, so the claim went on
+  // living in the two lines of scripts/prerender-seo.mjs that write the 17
+  // field landers and llms-full.txt. The ingest code annotates the figure as
+  // stale in its own comment (job-board/index.ts: the hot tier re-fetches once
+  // per PASS, ~60-90+ min). Same pattern as the locale guard, same two-part
+  // test — an interval AND a re-check word on the same line — now over the
+  // whole tree, so the surface that carries it next cannot opt out by not
+  // being listed.
+  const INTERVAL = /(\d+\s*[–-]\s*\d+|\bevery\s+\d+)\s*(minutes?|minutos?|minuto|minuten|min\b|मिनट)/i;
+  const RECHECK = /re-?check|re-?verif|revisan|vérifi|geprüft|reverific|gecheckt|जांचे|sinusuri/i;
 
   const walk = (dir: string, out: string[] = []): string[] => {
     for (const e of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
       const rel = `${dir}/${e.name}`;
       if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== "test") walk(rel, out); }
-      else if (/\.(tsx?|jsx?|mjs|json|txt|html|md)$/.test(e.name)) out.push(rel);
+      else if (/\.(tsx?|jsx?|mjs|json|txt|html|md|sql)$/.test(e.name)) out.push(rel);
     }
     return out;
   };
 
-  it("sweeps src/, public/ and scripts/ and finds no absolute freshness claim", () => {
-    const files = [...walk("src"), ...walk("public"), ...walk("scripts")];
-    expect(files.length, "the sweep found no files — the walk is broken").toBeGreaterThan(50);
+  // ONE walk, every claim. Adding a claim here costs a line; adding a file to
+  // a per-claim list is the thing that keeps failing.
+  //
+  // supabase/ IS SWEPT, because a whole runtime was opting out. The /v1 API
+  // returns a `basis` sentence describing this exact statistic to every caller
+  // (public-api/index.ts), and migrations carry published stat prose — none of
+  // it was reachable from a walk of src/public/scripts, which is the identical
+  // not-on-the-list failure this block exists to close.
+  const files = [...walk("src"), ...walk("public"), ...walk("scripts"), ...walk("supabase")];
+  const sweep = (re: RegExp): string[] => {
     const offenders: string[] = [];
     for (const f of files) {
       // Comments stripped: an explanatory comment ABOUT the false claim is not
@@ -2242,10 +2284,71 @@ describe("no surface may opt out of the freshness claim by not being listed", ()
       if (f.includes("/changelog/")) continue;
       const src = readFileSync(resolve(ROOT, f), "utf8")
         .replace(/\/\*[\s\S]*?\*\//g, "")
-        .split("\n").map((l) => l.replace(/^\s*\/\/.*$/, "")).join("\n");
-      const m = ABS.exec(src);
+        // `--` line comments too, now that .sql is swept.
+        .split("\n").map((l) => l.replace(/^\s*(?:\/\/|--).*$/, "")).join("\n");
+      const m = re.exec(src);
       if (m) offenders.push(`${f}: ${JSON.stringify(m[0])}`);
     }
+    return offenders;
+  };
+  // Two-part, per line: an interval phrase is only a re-check promise when it
+  // is talking about re-checking. "every 10 minutes" in a cron comment is not
+  // a published claim; "re-checked about every 10-15 minutes" is.
+  const sweepLines = (re: RegExp, also: RegExp): string[] => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      if (f.includes("/changelog/")) continue;
+      const lines = readFileSync(resolve(ROOT, f), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .split("\n").map((l) => l.replace(/^\s*(?:\/\/|--).*$/, ""));
+      lines.forEach((l, i) => {
+        if (re.test(l) && also.test(l)) offenders.push(`${f}:${i + 1}: ${JSON.stringify(l.trim().slice(0, 140))}`);
+      });
+    }
+    return offenders;
+  };
+
+  it("the sweep actually reaches the files — a broken walk is a green guard", () => {
+    expect(files.length, "the sweep found no files — the walk is broken").toBeGreaterThan(50);
+    // Name the two files that have each carried a retracted claim while some
+    // narrower guard was green. If a rename drops one, this fails here rather
+    // than by silently sweeping nothing.
+    for (const f of ["public/llms.txt", "scripts/prerender-seo.mjs", "supabase/functions/public-api/index.ts"]) {
+      expect(files, `${f} is not in the sweep`).toContain(f);
+    }
+  });
+
+  it("the FRESH pattern catches a reworded promise, not just the retracted literal", () => {
+    // The first widening shipped a dead alternative (`re-verifies? within`
+    // cannot match "re-verified"), so the pattern is asserted against the
+    // rewordings it exists to catch — and against the one line that must stay,
+    // which is a measurement, not a promise.
+    for (const s of [
+      "every feed re-verified within a few hours",
+      "every feed is re-verified within six hours",
+      "the whole catalog re-verified within hours",
+      "we re-verify within a day",
+      "each board re-verifies within 90 minutes",
+    ]) expect(FRESH.test(s), `FRESH misses a reworded promise: ${s}`).toBe(true);
+    for (const s of [
+      "95% of all feeds within 13.6 hours",
+      "the median feed was re-checked 41 minutes ago",
+      "last re-verified against the employer's own system",
+    ]) expect(FRESH.test(s), `FRESH false-positives on a measurement: ${s}`).toBe(false);
+  });
+
+  it("sweeps src/, public/ and scripts/ and finds no absolute freshness claim", () => {
+    const offenders = sweep(ABS);
     expect(offenders, `absolute freshness claim still published:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("...and no surface still promises re-verification 'within a few hours'", () => {
+    const offenders = sweep(FRESH);
+    expect(offenders, `retracted freshness claim still published:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
+  it("...and no surface names a fixed re-check interval", () => {
+    const offenders = sweepLines(INTERVAL, RECHECK);
+    expect(offenders, `retracted fixed-interval claim still published:\n${offenders.join("\n")}`).toEqual([]);
   });
 });

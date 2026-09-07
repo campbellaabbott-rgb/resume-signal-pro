@@ -867,10 +867,36 @@ describe("the hiring answer ranks by odds, not by size", () => {
   const fnAt = sql.indexOf("FUNCTION public.get_actively_hiring_companies");
   const body = sql.slice(fnAt, sql.indexOf("$$;", fnAt));
 
-  it("ranks on fills per open role", () => {
-    expect(body).toMatch(/ORDER BY \(f\.filled \* 100\.0 \/ o\.n\) DESC/);
+  it("ranks on a bounded rate over a common window, not on a throughput ratio", () => {
+    // THIS ASSERTION MOVED BECAUSE THE THING IT PINNED WAS WRONG, not because
+    // the property changed. `filled * 100.0 / o.n` is closure throughput over
+    // an inventory of open roles: unbounded (Accenture scored 2,496%), with a
+    // different denominator per employer, and comparing an 11-day row with a
+    // 50-day one as though their counts were one measurement. R(14) from
+    // get_company_fill_curve is a share of the employer's own risk set at one
+    // fixed horizon — bounded in [0,1], one denominator, one window.
+    expect(body).toMatch(/ORDER BY cv\.fill_rate_14 DESC/);
+    expect(body, "the throughput ratio is back — it is not a rate of anything")
+      .not.toMatch(/ORDER BY \(f\.filled \* 100\.0 \/ o\.n\)/);
     expect(body, "ranked on absolute fills again — that is a size ranking")
       .not.toMatch(/ORDER BY f\.filled DESC, o\.n DESC\s*\n\s*LIMIT/);
+    // Ties break toward the better-evidenced employer, not the bigger one.
+    expect(body).toMatch(/\(cv\.fill_rate_14_hi - cv\.fill_rate_14_lo\) ASC/);
+  });
+
+  it("the nested fill-curve call is bounded, and by something", () => {
+    // The first draft of the rewrite passed ARRAY(SELECT company_token FROM
+    // fills) — every admissible employer — into a function whose own header
+    // budgets it at ~200 tokens, with `LIMIT GREATEST(p_limit, 1)` applied in
+    // the OUTER query afterwards. refresh_explore_cache calls this with
+    // p_limit = 2000, so the outer limit bounded nothing and the 57014 this
+    // migration exists to remove was still reachable on the one path whose
+    // failure deletes the section.
+    const curve = body.slice(body.indexOf("curve AS ("), body.indexOf("SELECT f.company"));
+    expect(curve, "the curve is called with an unbounded token array")
+      .toMatch(/LIMIT \d+\)\)/);
+    expect(curve, "and the cut is ordered by evidence depth, not by board size")
+      .toMatch(/ORDER BY a\.dated_n DESC/);
   });
 
   it("no longer pre-cuts the pool before open roles are known", () => {
@@ -977,27 +1003,43 @@ describe("the hiring answer ranks by odds, not by size", () => {
     // up publishing and refusing the same employer: editing one file was
     // silent on the other. The constants are imported now, and a second
     // declaration here is the drift — so the guard forbids one.
-    const badge = CODE.slice(CODE.indexOf('intent="hiring"'), CODE.indexOf('intent="pay"'));
-    expect(badge, "the hiring badge moved — re-anchor, do not delete").not.toBe("");
-    expect(badge).toMatch(/r\.sufficient === true/);
-    expect(badge).toMatch(/typeof r\.fill_rate_14 === "number"/);
-    expect(badge).toMatch(/typeof r\.dated_coverage === "number"/);
-    expect(badge).toMatch(/r\.dated_coverage >= FILL_COVERAGE_MIN/);
-    expect(badge, "the observation-window floor is the one `sufficient` cannot supply")
-      .toMatch(/r\.curve_tracking_days >= FILL_RATE_MIN_TRACKING_DAYS/);
+    // RE-ANCHORED, AND ON A PREDICATE RATHER THAN ON A JSX PROP STRING.
+    //
+    // The old anchor sliced CODE between `intent="hiring"` and `intent="pay"`.
+    // The hiring answer no longer renders CompanyGrid, so that literal is gone,
+    // the slice came back EMPTY, and every assertion below it was passing
+    // vacuously against "" — the repo's own "guards that pin spellings pass
+    // while the code is dead" shape, inverted: red for a reason unrelated to
+    // the property, with the property itself unguarded. The gate has one home
+    // now, `heldFor`, and it is anchored there. A function body cannot be
+    // deleted without the anchor failing loudly.
+    const gate = CODE.slice(CODE.indexOf("const heldFor ="), CODE.indexOf("function rankedFillClaims"));
+    expect(gate, "the hiring gate moved — re-anchor, do not delete").not.toBe("");
+    // The two bars the SERVER cannot supply, in the one place the client
+    // applies them. `sufficient` is the server's finding and reaches this
+    // predicate through measureOf; the coverage floor and the observation
+    // window are what get_company_fill_curve's COMMENT ON leaves to the caller.
+    expect(gate).toMatch(/canStateFillRate\(\{ sufficient: m\.sufficient, dated_coverage: m\.coverage \?\? 0 \}, m\.days\)/);
+    expect(gate, "the observation-window floor is the one `sufficient` cannot supply")
+      .toMatch(/m\.days >= FILL_RATE_MIN_TRACKING_DAYS/);
+    expect(gate, "a row with no measure must be held back, never rendered as a number")
+      .toMatch(/return m\.answered \? "undated" : "unmeasured"/);
+    // And the section may only render rows this predicate cleared.
+    expect(CODE, "the grid must be fed from the gated list, not from the payload")
+      .toMatch(/<HiringGrid claims=\{fill\.shown\} \/>/);
     expect(CODE, "the bar must be imported from /jobs, not re-typed here")
       .toMatch(/import \{[^}]*FILL_COVERAGE_MIN[^}]*FILL_RATE_MIN_TRACKING_DAYS[^}]*\} from "@\/pages\/Jobs"/);
     expect(CODE, "a second declaration of the bar is the drift this guard exists to stop")
       .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE)_[A-Z_]+ =/);
-    expect(badge, "a row without the fields must degrade to the plain badge, never to a number")
-      .toMatch(/: core/);
-    expect(badge).toMatch(/explore\.hiringFillRate/);
     // The span is disclosed rather than gated, so pin that it is actually
-    // rendered — and pin the locale VALUE, because a locale value overrides
-    // the inline English default and eight of nine audiences read the value.
-    expect(badge).toMatch(/explore\.hiringBadge/);
-    const en = JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore as Record<string, string>;
-    expect(en.hiringBadge, "the tracking span must stay beside the rate").toMatch(/\{\{d\}\}d tracked/);
+    // rendered beside the figure on the card that carries it. Asserted on the
+    // inline English default, because the keys this section now uses are new
+    // and the locale pass has not landed — see PENDING_LOCALE_KEYS below.
+    const card = CODE.slice(CODE.indexOf("function HiringGrid"), CODE.indexOf("function HiringSkeleton"));
+    expect(card, "the fill card moved — re-anchor, do not delete").not.toBe("");
+    expect(card, "the tracking span must stay beside the rate")
+      .toMatch(/\{\{d\}\}d of tracking/);
+    expect(card, "the figure is a ceiling and must say so").toMatch(/explore\.fillUpTo/);
   });
 
   it("sufficient/fill_rate_14/dated_coverage are merged in from the curve, not read off the row", () => {
@@ -1092,6 +1134,53 @@ describe("the page says when it was measured", () => {
   });
 });
 
+/**
+ * PENDING TRANSLATION — AN EXEMPTION THAT IS VISIBLE RATHER THAN IMPLIED.
+ *
+ * Every key below is referenced in Explore.tsx with an inline English fallback,
+ * `t("explore.x", "English")`, and is absent from en.json. That is a real gap
+ * and it is named here rather than silently tolerated: an untranslated key
+ * renders its English default in all nine languages, which is a degradation, not
+ * a defect — the reader gets a true sentence in the wrong language rather than a
+ * raw key or a stale claim.
+ *
+ * WHY THE LIST EXISTS AT ALL. src/i18n/locales/*.json is owned by a concurrent
+ * workflow for the duration of this change, so this one cannot write the keys it
+ * introduces. The alternatives were both worse: leaving the guard red hides the
+ * NEXT key that goes missing for the real reason (repostBadgeCapped shipped
+ * referenced-but-undefined in all nine locales, on the branch that fires for the
+ * worst re-posters — that is what this guard is for), and deleting the guard
+ * removes the only check that catches it.
+ *
+ * SO THE EXEMPTION IS BOUNDED THREE WAYS. It is an explicit list, not a prefix
+ * or a pattern — a key not on it still fails. Every entry must carry an inline
+ * English default at its call site, asserted below, so nothing on this list can
+ * render as a bare key. And the list is asserted to be EXACTLY the outstanding
+ * set: once the locale pass lands these keys, this test fails until the list is
+ * emptied, so the exemption cannot outlive the reason for it.
+ *
+ * ADDED 2026-09-06 with the hiring-section rewrite. Hand this list to the locale
+ * workflow; it is the full set of strings that section needs translated.
+ */
+const PENDING_LOCALE_KEYS = [
+  // The fill card.
+  "fillUpTo", "fillLabel", "fillInterval", "fillEvidence", "fillWindow",
+  "fillOpenBoth", "fillOpen", "fillCoverage", "fillRelistFloor",
+  // The section's heading, blurb and denominator sentences.
+  "hiringTitleRanked", "hiringBlurbRanked",
+  "noteHiringPoolGated", "noteHiringShownOne", "noteHiringShown",
+  // The two staleness lines.
+  "staleParts", "staleAge",
+  // The methodology disclosure.
+  "methodFillTerm", "methodRankTerm", "methodRankMethod", "methodGateTerm",
+  "methodGateMethod", "methodRelistTerm", "methodRelistMethod",
+  "methodBlindTerm", "methodBlindMethod", "methodOpenTerm", "methodOpenMethod",
+  // The two empty states and the held-back accounting.
+  "hiringOutTitle", "hiringOutBody", "hiringNoneRankedTitle", "hiringNoneBody",
+  "hiringHeldReposter", "hiringHeldWindow", "hiringHeldEstimate",
+  "hiringHeldUndated", "hiringHeldUnmeasured", "hiringHeldOf",
+] as const;
+
 describe("every t() key the page uses exists in English", () => {
   it("has no key referenced only in code", () => {
     // explore.repostBadgeCapped shipped referenced-but-undefined in all nine
@@ -1099,8 +1188,30 @@ describe("every t() key the page uses exists in English", () => {
     const en = (JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore ?? {}) as Record<string, string>;
     const used = [...EXPLORE.matchAll(/t\("explore\.([A-Za-z0-9_]+)"/g)].map((m) => m[1]);
     expect(used.length, "no explore t() keys found — regex broken").toBeGreaterThan(10);
-    const missing = [...new Set(used)].filter((k) => !(k in en));
+    const missing = [...new Set(used)].filter((k) => !(k in en) && !(PENDING_LOCALE_KEYS as readonly string[]).includes(k));
     expect(missing, `referenced in Explore.tsx but absent from en.json: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("the pending list is exactly the outstanding set — it cannot outlive its reason", () => {
+    // A stale exemption is a hole. When the locale pass lands a key, it must
+    // come off this list in the same change, and this is what forces that.
+    const en = (JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore ?? {}) as Record<string, string>;
+    const used = new Set([...EXPLORE.matchAll(/t\("explore\.([A-Za-z0-9_]+)"/g)].map((m) => m[1]));
+    const landed = PENDING_LOCALE_KEYS.filter((k) => k in en);
+    expect(landed, `translated now — remove from PENDING_LOCALE_KEYS: ${landed.join(", ")}`).toEqual([]);
+    const orphaned = PENDING_LOCALE_KEYS.filter((k) => !used.has(k));
+    expect(orphaned, `no longer referenced — remove from PENDING_LOCALE_KEYS: ${orphaned.join(", ")}`).toEqual([]);
+  });
+
+  it("every pending key renders English rather than a raw key", () => {
+    // The exemption is only survivable because each of these has an inline
+    // default. A `t("explore.x")` with no second argument renders the KEY to a
+    // visitor, and that is the failure the guard above exists to stop — the
+    // list must not become a way to ship one.
+    for (const k of PENDING_LOCALE_KEYS) {
+      expect(EXPLORE, `explore.${k} has no inline English fallback`)
+        .toMatch(new RegExp(`t\\("explore\\.${k}",\\s*\n?\\s*"`));
+    }
   });
 });
 
@@ -1194,10 +1305,31 @@ describe("the churn warning is gated on a rate and never reads as a clean bill",
   it("reaches the answers where a reader is being persuaded to trust", () => {
     // The point of item 3: the warning is worthless under the chip that is
     // already a warning. It has to reach the cards that recommend.
-    for (const on of ["hiring", "pay", "entry", "scale", "check"]) {
+    for (const on of ["pay", "entry", "scale", "check"]) {
       expect(CODE, `no churn warning on the ${on} answer`).toMatch(
         new RegExp(`repostWarn\\((?:r\\.company_token|worstToken), "${on}"\\)`));
     }
+  });
+
+  it("the hiring answer excludes flagged employers instead of warning about them", () => {
+    // "hiring" USED TO BE IN THE LIST ABOVE, and it was the wrong remedy for
+    // that one answer. The section's own heading promises that employers whose
+    // takedowns are mostly re-listings appear under Serial re-posters INSTEAD —
+    // and four cards in this very section were rendering "Re-lists roles: 2,242
+    // re-postings across 182 roles" underneath a recommendation. A card cannot
+    // recommend an employer on its fill record and warn about its churn in the
+    // same breath; one of the two has to go, and the gate is what the heading
+    // already claimed. So the property is stated positively here rather than
+    // deleted: the flagged set is CONSULTED by the one predicate that decides
+    // what the section shows, and the exclusion is counted rather than silent.
+    const gate = CODE.slice(CODE.indexOf("const heldFor ="), CODE.indexOf("function rankedFillClaims"));
+    expect(gate, "the hiring gate moved — re-anchor, do not delete").not.toBe("");
+    expect(gate, "a flagged employer must be excluded from the hiring answer")
+      .toMatch(/serialReposters\.has\(r\.company_token\)\) return "reposter"/);
+    expect(CODE, "and the exclusion must be counted, never silent")
+      .toMatch(/explore\.hiringHeldReposter/);
+    expect(CODE, "the warning must not also render inside the section that disqualifies it")
+      .not.toMatch(/repostWarn\((?:r\.company_token|worstToken), "hiring"\)/);
   });
 
   it("checks every one of a merged employer's feeds, worst first", () => {

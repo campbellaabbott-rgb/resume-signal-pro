@@ -127,7 +127,17 @@ describe("at-cap boards need a fast lane", () => {
   it("reports whether it actually ran, not just that offsets moved", () => {
     // selected vs candidates is the split that separates "the token never
     // resolved to a JobSource" from "it was fetched and had nothing left".
-    expect(CODE).toMatch(/deepLane = \{ at: new Date\(\)\.toISOString\(\), candidates: tokens\.length, selected: deepBoards\.length, start \};/);
+    expect(CODE).toMatch(/deepLane = \{ at: new Date\(\)\.toISOString\(\), candidates: tokens\.length, selected: deepBoards\.length, visited: 0, start \};/);
+    // ...AND `visited`, because selected is not visited and the gap was the
+    // whole story. The deep lane is LAST in the composed slice, and the posting
+    // budget stops the loop around 30 boards against a queue index of 85+, so
+    // nothing in this lane has actually been fetched in a long time — while
+    // `selected: 2` went on being written every cold slice and read, by the
+    // runbook's own instruction, as the lane working. An instrumented lane that
+    // reports the wrong side of the fork it was added to resolve is worse than
+    // an uninstrumented one, because it is believed.
+    expect(CODE, "the lane counts what it SELECTED but never what it VISITED")
+      .toMatch(/if \(deepLane && deepTokens\.has\(s\.token\)\) deepLane\.visited\+\+;/);
     // Written when the lane ran EVEN IF no cursor moved — "ran and selected
     // none" is precisely the state that has to be distinguishable.
     expect(CODE).toMatch(/if \(deepCursorsDirty \|\| deepLane\) \{/);

@@ -1095,7 +1095,33 @@ const PINNED = {
   //   carries origin_basis, so a stored duration says which clock produced it
   //   instead of coalescing the employer's date with our first sighting. One
   //   version line covers both: .61 never shipped on its own.
-  buildVersion: "2026-09-06.63",
+  //
+  // .63 — the response body is bounded before it is read, and the chunked
+  //   pagers stopped abandoning the pages they never read: `discardRest`
+  //   cancels the tail of a chunk, which is what the 0.146MB-a-posting fit was
+  //   actually measuring. Heap p50 176MB -> 36MB.
+  //
+  // .64 — two things the .63 fixes made possible, and one they made necessary.
+  //   (a) checkLive answers THREE states. Its board-membership fallback — the
+  //   path fifteen of the twenty vendors take — read `ids.has(externalId)` and
+  //   never looked at `r.windowed`, so a posting displaced past a vendor's page
+  //   cap was reported to the user as "{{company}} took this one down", stamped
+  //   missing_since, and deleted with no closure row. That is a false claim
+  //   about a NAMED employer and a hole in the one log that cannot be
+  //   re-derived; ~4,348 of 44,542 boards sit on capped fetchers, and 7 of 8
+  //   sampled such "closures" were measured still live on 2026-07-21. Absent
+  //   from a WINDOWED fetch is now null, which the verify action already treats
+  //   as keep-showing, and a guard states the rule for the CLASS: no path may
+  //   turn absence into a closure without proving the fetch was exhaustive.
+  //   (b) SLICE_POSTING_BUDGET 1,200 -> 2,600 and CONCURRENCY 4 -> 5. The
+  //   budget was sized against the leaked-heap coefficient and was the ONLY one
+  //   of four bounds firing on the live .63 slice (1,216/1,200, against heap
+  //   35/150, wall 51s/120s, boards 24/80). Not the 4,000/8 first proposed: the
+  //   byte budget pays for 128MB / (4MB x 6x parse) = 5.33 workers, so six is
+  //   already over and eight is 192MB against a 128MB allotment; and at five
+  //   workers 2,600 postings is 87s of loop, ~107s with a straggler, inside the
+  //   128s every surviving slice has finished in. Expect ~2x, not 3.4x.
+  buildVersion: "2026-09-06.64",
 };
 
 /**

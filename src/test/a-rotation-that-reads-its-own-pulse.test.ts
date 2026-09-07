@@ -18,6 +18,13 @@ const BOARD = readFileSync(resolve(__dirname, "../../supabase/functions/job-boar
 const ROTATION = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/rotation.ts"), "utf8");
 const VAC = readFileSync(resolve(__dirname, "../../supabase/migrations/20260830200000_the_hot_table_was_left_on_default_autovacuum.sql"), "utf8");
 
+/** Parse one shed threshold out of the source: `const l1 = hotPhase ? A : B;`. */
+const shed = (code: string, name: "l1" | "l2", hot: boolean): number => {
+  const m = code.match(new RegExp(`const ${name} = hotPhase \\? ([0-9_]+) : ([0-9_]+);`));
+  if (!m) throw new Error(`${name} is no longer a phase-relative literal — the shed ladder moved`);
+  return Number(m[hot ? 1 : 2].replace(/_/g, ""));
+};
+
 describe("the rotation reads its own pulse and stands down", () => {
   it("derives the shed level from the EMA it already records, per phase", () => {
     // The thresholds went PHASE-RELATIVE on 2026-09-01, because one absolute
@@ -30,13 +37,34 @@ describe("the rotation reads its own pulse and stands down", () => {
     // Hot slices are expensive by design since 305 giants were given wider
     // windows; the line has to sit above deliberate work and below real
     // distress, which measured 219s with 27s page queries on 2026-08-30.
-    expect(BOARD).toMatch(/const l1 = hotPhase \? 95_000 : 45_000;/);
-    expect(BOARD).toMatch(/const l2 = hotPhase \? 150_000 : 70_000;/);
+    // .64 RE-DERIVED THE COLD PAIR, because these are not distress thresholds
+    // at all — they are absolute slice DURATIONS, and slice duration is set by
+    // SLICE_POSTING_BUDGET and CONCURRENCY as much as by the database. The old
+    // cold pair was calibrated on a 26s healthy slice and the live cold EMA was
+    // already 36.2s: the cold phase had drifted to 1.24x its own L1 with nobody
+    // choosing that, and any budget raise pushed it over — at which point the
+    // shedder cuts CONCURRENCY to 3, BELOW what the raise replaced, and latches.
+    // Pinned as parsed numbers rather than a literal, with the properties that
+    // make them right asserted underneath; the ARITHMETIC tie to the budget
+    // lives in the-isolate-was-killed-by-one-board.
+    const l1Hot = shed(BOARD, "l1", true), l1Cold = shed(BOARD, "l1", false);
+    const l2Hot = shed(BOARD, "l2", true), l2Cold = shed(BOARD, "l2", false);
     expect(BOARD).toMatch(/: shedSignal\.ms > l2 \? 2/);
     expect(BOARD).toMatch(/: shedSignal\.ms > l1 \? 1/);
+    expect(l2Cold, "L2 above L1, cold").toBeGreaterThan(l1Cold);
+    expect(l2Hot, "L2 above L1, hot").toBeGreaterThan(l1Hot);
     // Both lines must still sit under the measured catastrophe, or the shed
     // protects nothing when it is actually needed.
-    expect(150_000).toBeLessThan(219_000);
+    expect(l2Hot).toBeLessThan(219_000);
+    expect(l2Cold).toBeLessThan(219_000);
+    // AND ABOVE THE LIVE HEALTHY READING, which is the half that was missing.
+    // 2026-09-06: coldEmaMs 36,210 and hotEmaMs 100,554. A line at or under the
+    // healthy EMA is a permanent brownout, and the hot one is one today — named
+    // in the source rather than asserted here, because the fix is a hot-slice
+    // cost measurement and not a bigger number. The cold line is asserted,
+    // because .64 is the change that would have broken it.
+    expect(l1Cold, "the cold L1 line sits at or under the healthy cold EMA — a permanent brownout")
+      .toBeGreaterThan(36_210 * 1.5);
     expect(BOARD, "the phase-appropriate EMA, not a blend").toMatch(/inHotPhase \? v\.hotEmaMs : v\.coldEmaMs/);
   });
 

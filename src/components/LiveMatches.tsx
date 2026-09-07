@@ -216,7 +216,11 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
             const { data: vr } = await supabase.functions.invoke("job-board", {
               body: { action: "verify", ids: ranked.map((r) => r.id) },
             });
-            const live = (vr as { live?: Record<string, boolean> })?.live;
+            // Nullable since .64: `null` is "we could not decide" (the board
+            // pages short of its own advertised total), and `!== false` already
+            // keeps it — stated in the type so the next reader knows the third
+            // state exists rather than inferring a two-state map.
+            const live = (vr as { live?: Record<string, boolean | null> })?.live;
             if (live) shown = ranked.filter((r) => live[r.id] !== false);
           } catch { /* verify unavailable — show the fit-ranked set as-is */ }
         }

@@ -118,7 +118,12 @@ describe("a zero exact count is not an empty page", () => {
     // Without the rows term, every description-only search burned a four-probe
     // countOnly burst to offer "remove a filter" help beneath results the
     // visitor was already reading.
-    expect(JOBS).toMatch(/data\.total !== 0 \|\| jobs\.length > 0\) \{ setZeroHelp\(null\); return; \}/);
+    // The rescue now serves two dead ends — a zero result and a terminal page —
+    // so the single `zeroHelp` state became `widenHelp` and the guard reads the
+    // two targets it fires on. Same property, spelled where it now lives: rows
+    // on screen are not a zero result, and neither target means no burst.
+    expect(JOBS).toMatch(/const zeroTarget = data\.total === 0 && jobs\.length === 0;/);
+    expect(JOBS).toMatch(/if \(!zeroTarget && !endTarget\) \{ widenSigRef\.current = ""; setWidenHelp\(null\); setWidenComplete\(false\); return; \}/);
   });
 
   it("the relaxation buttons count both segments before they are filtered out", () => {
@@ -126,7 +131,11 @@ describe("a zero exact count is not an empty page", () => {
     // relaxation that surfaces 94 rows — or drop the button entirely when the
     // relaxation surfaces only description matches, which is exactly the case a
     // stuck visitor most needs offered.
-    expect(JOBS).toMatch(/count: \(r\?\.total \?\? 0\) \+ \(r\?\.relatedTotal \?\? 0\)/);
+    // Not optional-chained any more, and that is the point: a probe that came
+    // back null or errored returns BEFORE this line rather than folding into it
+    // as a zero. `r` is a real response by the time it is summed.
+    expect(JOBS).toMatch(/if \(probeError \|\| r == null\) return null;/);
+    expect(JOBS).toMatch(/count: \(r\.total \?\? 0\) \+ \(r\.relatedTotal \?\? 0\)/);
     expect(JOBS).toMatch(/relatedTotal\?: number; countCapped\?: boolean; relatedCapped\?: boolean/);
   });
 

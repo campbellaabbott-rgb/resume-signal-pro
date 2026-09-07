@@ -113,7 +113,25 @@ const json = (body: unknown, status = 200) =>
 // Matches the window the board itself serves, and keeps every page an indexed
 // range scan rather than a deep OFFSET.
 const SITEMAP_DAYS = 30;
-const BUILD_VERSION = "2026-09-06.63"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+// .64: (1) checkLive returns THREE states — a posting absent from a WINDOWED
+// (page-capped) board fetch is null/unknown, never "the employer took it down",
+// which is the same rule the refresh prune has applied at `truncatedFetch` for
+// weeks and the verify-on-apply path never had — and the third state now
+// SURVIVES THE WIRE (`live` is boolean|null) instead of being collapsed back
+// to `true`, which was making the app tell a user who correctly reported a
+// posting gone that the employer's own board still lists it; (2) the audit
+// splits its undecided bucket into unreachable vs page-capped, because the
+// Ghost Job Index was about to publish the second as the first; (3) the slice
+// is un-throttled — SLICE_POSTING_BUDGET 1,200 -> 1,500 and CONCURRENCY 4 -> 5
+// — because the budget was sized against a heap model fitted on the
+// unread-page leak that `discardRest` has since closed (heap p50 176MB ->
+// 36MB). NOT 4,000/8 (the byte budget pays for 5.33 workers at a 4MB
+// per-response cap) and NOT 2,600/5 either: the budget scales WITH concurrency
+// so slice duration is held constant, because the adaptive load shedder reads
+// slice duration in absolute milliseconds and would have read the longer
+// healthy slice as distress, cutting concurrency to 3 — below where .63 had
+// it. The cold shed lines are re-derived in the same commit.
+const BUILD_VERSION = "2026-09-06.64"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .61: A BATCH THAT WENT DARK NOW SAYS SO IN THE ROW ITSELF. `windowed` only
 // catches a TRUNCATED fetch — a feed that answers 200 with a valid, nearly
 // empty list is not windowed, so every stored posting for that board vanished
@@ -293,7 +311,61 @@ const FETCH_TIMEOUT_MS = 20_000;
 // each been measured on both sides and each refuted. The next honest step is
 // not another constant — it is the function's own logs, which say what the
 // runtime killed and why, and which nothing in this repo can reach.
-const CONCURRENCY = 4;
+// 4 -> 5, WHICH IS THE MOST THE BYTE ARITHMETIC ALLOWS. NOT 8.
+//
+// Two things changed under this constant today. First, the reason for 4 is
+// gone: every measurement above was taken while the chunked pagers were
+// LEAKING — a pager that stopped early abandoned its unread page responses
+// without cancelling them, so heap grew with every page the slice had ever
+// read, and grew faster the more workers read at once. That is why both
+// directions looked bad. Eight workers reached the ceiling in fewer boards;
+// four reached it anyway, slower, at a third of the throughput. Neither
+// reading was about concurrency; both were about the leak, multiplied by it.
+// `discardRest` closed it: heap p50 fell 176MB -> 36MB, and the .63 slice held
+// 1,216 postings in 35MB where the fitted 0.146MB-a-posting model predicts
+// ~168MB. That model described the leak.
+//
+// Second, and this is what stops the obvious answer: A WORKER IS NOT FREE, AND
+// ITS PRICE IS ALREADY WRITTEN DOWN. The byte budget below divides the
+// in-flight allotment by PEAK WORKERS:
+//
+//     ceiling 256MB - baseline ~64MB - reserve ~64MB   = 128MB in flight
+//     MAX_RESPONSE_BYTES 4MB x ~6x parse amplification =  24MB a worker
+//     128 / 24                                         = 5.33 workers
+//
+//     4 workers -> 96MB  fits        6 workers -> 144MB over
+//     5 workers -> 120MB fits        8 workers -> 192MB 50% over
+//
+// So 8 is refused here, and refused by arithmetic a guard already enforces
+// (a-body-read-before-anything-counted-it: peak workers x one body must fit
+// the allotment), not by preference. Reaching 8 would mean cutting
+// MAX_RESPONSE_BYTES to ~2.6MB, which trades a MODELLED memory risk for a
+// MEASURED coverage loss — greenhouse/gitlab is 3.6MB and ingests whole today
+// — or spending the reserve that exists because this function has been killed
+// by overshoot repeatedly. Five is the honest ceiling until the per-response
+// cost changes.
+//
+// WHAT 5 BUYS, at the .63 per-worker rate (8.5s a board, 5.96 postings/s):
+// ~30 boards in the same 51s a slice already takes, against 24 — the
+// arithmetic is at SLICE_POSTING_BUDGET, and the budget is scaled to 1,500 to
+// spend the fifth worker on MORE BOARDS rather than on a SHORTER SLICE, which
+// is worth more because the per-slice tail amortises over them. That is +25%,
+// not the ~2x an unbounded budget models and not the 3.4x an 80-board slice
+// would give: the shedder reads slice duration, so buying boards by making the
+// slice longer is borrowing from a mechanism that takes it back with interest.
+// The remaining lever is per-board latency or the per-response byte cap, NOT
+// the posting budget.
+//
+// THE HYPOTHESIS, WRITTEN DOWN SO IT CAN BE FALSIFIED. 8 was the configuration
+// running while the isolate was dying, and the claim above is that it died of
+// the leak, which concurrency multiplied, rather than of concurrency itself.
+// That is a hypothesis, not a measurement, and this raise deliberately does
+// not bet the isolate on it. IF HEAP CLIMBS BACK TOWARD HEAP_SOFT_LIMIT_MB,
+// CONCURRENCY IS THE SUSPECT, NOT THE POSTING BUDGET: the budget bounds
+// cumulative postings, and cumulative postings are exactly what stopped
+// costing memory when the leak closed. Put this back to 4 first, re-measure,
+// and only then look at the budget.
+const CONCURRENCY = 5;
 const HOT_CONCURRENCY = 2; // hot boards are giants — two multi-MB parses at once is the memory ceiling
 // desc-sweep: per-posting description backfill. 8 concurrent detail fetches
 // matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the
@@ -408,24 +480,151 @@ const HOT_SLICE = 10;
 // and each read as refuted: every one of them was tested at values that never
 // bound. A refutation only refutes the values you tried.
 //
-// 1,200 postings is ~165MB at the fitted cost, which leaves headroom under a
+// 1,200 postings WAS ~165MB at that fitted cost, which left headroom under a
 // ceiling near 256 for the row-building and upserts that follow the fetch, plus
 // one board's worth of overshoot past the check (MAX_POSTINGS_PER_VISIT x
 // 146KB ~= 58MB). The reservation logic below is what stops all eight workers
-// overshooting at once; without it this budget would not be enough.
+// overshooting at once; without it that budget would not have been enough.
 //
-// The cost is real and accepted: a slice now stops at roughly 55 cold boards
-// rather than 80. That is the wrong thing to optimise. A slice that DIES loses
-// its bookkeeping AND stops the chain, so each cron tick produced exactly one
-// slice instead of a ~17-hop chain — measured at ~960 boards/hour, a 46-hour
-// lap over 44,424 cold boards, which is the 56-hour p50 freshness observed on
-// 2026-09-06 against a 6.7-hour baseline. Completing is worth more than size.
-const SLICE_POSTING_BUDGET = 1_200;
-// THE HOT LANE MATCHES THE COLD ONE, because the fit above is drawn from mixed
-// slices and does not distinguish them: heap tracks postings held, whoever held
-// them. Hot boards ARE the giants, so if anything this bound matters more here.
-// It is written as its own constant rather than an alias so the two lanes can
-// diverge again on evidence rather than by accident.
+// The cost was real and accepted at the time: the slice stopped at roughly 55
+// cold boards rather than 80 — in practice 24. That was the right trade while
+// slices were dying, because a slice that DIES loses its bookkeeping AND stops
+// the chain, so each cron tick produced exactly one slice instead of a ~17-hop
+// chain — measured at ~960 boards/hour, a 46-hour lap over 44,424 cold boards,
+// which is the 56-hour p50 freshness observed on 2026-09-06 against a 6.7-hour
+// baseline. Completing is worth more than size. It stopped being the right
+// trade the moment the thing killing the slices was fixed:
+//
+// 1,200 -> 1,500: THE BUDGET WAS STILL THROTTLING FOR A PROBLEM THAT IS FIXED.
+//
+// The 0.146MB-a-posting fit that set 1,200 this morning was fitted on a LEAK.
+// The chunked pagers abandoned unread page responses without cancelling them,
+// so heap tracked every posting the slice had ever read — a coefficient in
+// postings, produced by a defect in pages. `discardRest` closed it; heap p50
+// fell 176MB -> 36MB. The number this budget was derived from does not
+// describe this code any more.
+//
+// MEASURED ON THE LIVE .63 SLICE, which is the reading that decides it:
+//     budgetHit    TRUE     budgetFetched 1,216 / budget 1,200
+//     heapStopped  false     35MB against HEAP_SOFT_LIMIT_MB 150
+//     wallStopped  false     51,027ms of SLICE_WALL_BUDGET_MS 120,000
+//     sizeStopped  false    ~24 boards against a boardBudget of 80
+// One of four bounds fired and the other three were not close: 23% of the heap
+// gate, 43% of the wall, 30% of the board budget. Charge that whole 35MB to
+// postings — an overstatement, since it includes the runtime and the module —
+// the cost is ~29KB a posting, against the 146KB the leak was producing. At this
+// budget the residual is ~42MB, which is why HEAP_SOFT_LIMIT_MB (150) has room
+// left over for the in-flight bodies the byte budget sizes separately. A bound that stops a slice at
+// a third of the work it was handed is not a safeguard, it is the throughput
+// ceiling — the same defect as a budget too high to ever fire, pointing the
+// other way.
+//
+// SIZED FROM THE WALL CLOCK, NOT FROM A MEMORY MODEL. Bounding memory is
+// HEAP_SOFT_LIMIT_MB's job: it measures the quantity that actually runs out, it
+// is checked before every board, and it stops a slice cleanly. What this
+// constant owes the rotation is the largest slice that still FINISHES, and at
+// the .63 per-worker rate that is arithmetic rather than a guess:
+//
+//     1,216 postings / 51.027s / 4 workers = 5.96 postings/s a worker
+//     24 boards      / 51.027s / 4 workers = 8.5s a board a worker
+//     1,216 / 24                           = 50.7 postings a board
+//
+//     at CONCURRENCY 5:  1,500 / (5 x 5.96) = 50.4s of loop
+//                        1,500 / 50.7       = ~29.6 boards
+//                        + one straggler (FETCH_TIMEOUT_MS 20s + its upsert)
+//                                           = ~70s, + the post-loop tail
+//
+// The comparison that matters is against SLICE END, not loop end: the tail
+// after `loop-done` — stampSliceWork, the cursor advance, updateBoardFailures
+// and its per-token exits, the deep-cursor and oversize writes,
+// maybeKickMaintenance, chainNextSlice, recordSliceStats — is real, scales
+// with boardsDone, and is not in the 70s above. Even charging it a generous
+// 15s the slice lands ~85s, inside the 128s in which every slice that ever
+// wrote a terminal stamp finished. In the pessimistic branch where the fifth
+// worker buys nothing (parsing is serial — see MAX_RESPONSE_BYTES) the loop is
+// 62.9s and the slice lands ~98s, still inside it.
+//
+// MEASURE THAT TAIL rather than budgeting for it: slice_stats `lastMs` minus
+// the `loop-done` breadcrumb's `elapsedMs` is the number, and both are already
+// recorded on every slice. It is the one term in this arithmetic nobody has
+// ever read, and it is what stands between the loop end and the envelope.
+//
+// 2,600 was refused: 87s of loop at C=5 (109s if parse-bound), a slice landing
+// ~122-145s against that same envelope, and — the bound that actually decides
+// it — a coldEmaMs past the load shedder's absolute cold thresholds, which
+// answers a longer healthy slice by cutting CONCURRENCY to 3. See the sizing
+// rule below. 4,000 needs 134s of loop and does not fit at five workers at all.
+// The board budget of 80 would need 4,056 postings and CANNOT be the binding
+// constraint at this concurrency — that would take 8 workers, which the byte
+// arithmetic at CONCURRENCY refuses.
+//
+// WHAT TO EXPECT, stated so it can be checked rather than believed: ~30 boards
+// a slice against ~24, in the same ~51s, so ~0.59 boards/s within a slice
+// against 0.47. That is +25%, and it is +25% in BOTH branches — if the fifth
+// worker buys nothing the slice takes 62.9s for the same 30 boards, which is
+// still +3% on throughput and never a regression. On a ~19h lap that is
+// 15-16h, NOT the 5.4h design target: 5.4h needs ~100 eighty-board slices an
+// hour, which this per-worker rate cannot produce at any budget. Saying so is
+// the point — the next lever is per-board latency or the per-response byte
+// cap, not this constant.
+//
+// RE-MEASURE THE CURSOR RATE after this deploys (deepCursor.lane and excess,
+// never maxOffset) — a lane change has cost this rotation 4x before.
+//
+// ── AND THE NUMBER IS 1,500, NOT 2,600. THE THIRD BOUND WAS NOT ON THE LIST. ──
+//
+// The brief listed five interlocks and this constant clears all five at 2,600.
+// It does not clear the sixth, which nothing had written down: THE ADAPTIVE
+// LOAD SHEDDER READS SLICE DURATION, AND SLICE DURATION IS A FUNCTION OF THIS
+// CONSTANT. `coldEmaMs` is the EMA of the WHOLE slice (recordSliceStats:
+// `Date.now() - sliceWallStart`), and the cold shed thresholds are ABSOLUTE
+// milliseconds. Raise the budget and every healthy slice gets longer; past the
+// line, the shedder reads "distress" and cuts — and at level 2 it cuts
+// CONCURRENCY to 3, BELOW the 4 this change replaced, with the bootstrap,
+// retry and deep lanes at zero. It then latches, because the shed slice is
+// still budget-bound and still long. A throughput raise that ends in a ~25%
+// throughput REGRESSION is not a throughput raise.
+//
+// THE SIZING RULE THAT AVOIDS ALL OF THAT: scale the budget WITH concurrency
+// and hold slice duration constant.
+//
+//     .63 measured:  1,216 postings · 24 boards · 51,027ms · 4 workers
+//                    -> 5.957 postings/s/worker, 50.7 postings a board
+//     .64 at C=5:    1,500 / (5.957 x 5) = 50.4s of loop
+//
+// 50.4s against .63's 51.0s — the slice takes the SAME time and does 25% more
+// work (29.6 boards against 24). coldEmaMs stays where it is (36.2s), so the
+// shed thresholds keep exactly the headroom they have today, the wall clock
+// keeps its 57s of slack, and the survival envelope is untouched. Nothing
+// downstream has to be re-derived, which is the point: the constants that
+// bound this one were calibrated against a slice of a particular size, and the
+// cheapest way to keep them true is not to change the size.
+//
+// WHAT IT COSTS: +25%, not the +117% that 2,600 modelled. The honest reason to
+// take it anyway is that 2,600's extra gain was never real — it was borrowed
+// from the shedder, which would have taken it back with interest the same hour.
+//
+// THE PESSIMISTIC BRANCH, because the 5-worker figure is an extrapolation.
+// This file's own byte-budget note says parsing is serial (one thread), so if
+// the .63 slice was parse-bound rather than I/O-bound, a fifth worker buys
+// nothing and 1,500 postings take 1,500/23.83 = 62.9s. That still leaves 57s
+// under SLICE_WALL_BUDGET_MS and still lands the slice inside the envelope; it
+// pushes coldEmaMs to ~44.6s, which is why the cold shed lines were re-derived
+// in the same commit instead of being left at a threshold calibrated for a 26s
+// slice that has not existed for weeks. At 2,600 the same branch is 109s of
+// loop — 11s from the wall, with a 20s straggler still to come.
+const SLICE_POSTING_BUDGET = 1_500;
+// THE HOT LANE NO LONGER MATCHES THE COLD ONE, and it is a separate constant
+// rather than an alias precisely so the two can diverge on evidence.
+//
+// Everything above is measured on a COLD slice. Hot boards are the giants —
+// the population every at-cap memory reading has ever come from — and they run
+// at HOT_CONCURRENCY 2, so the wall-clock argument for a bigger budget does not
+// transfer: nothing measured says the hot lane is being throttled by this
+// number. It stays where it was until a hot-slice measurement says otherwise.
+// The interlocks it must keep: HOT_POSTING_BUDGET <= SLICE_POSTING_BUDGET
+// (1,200 <= 2,600) and HOT_CONCURRENCY x MAX_POSTINGS_PER_VISIT <
+// SLICE_POSTING_BUDGET (2 x 250 = 500 < 2,600), both pinned by guards.
 const HOT_POSTING_BUDGET = 1_200;
 // WHAT ONE IN-FLIGHT BOARD CAN STILL ADD. Only a hot-phase board or a
 // deep-lane board can return the per-visit cap in one visit; a cold board
@@ -490,11 +689,39 @@ const HEAP_SOFT_LIMIT_MB = 150;
 // a wall-clock ceiling and the slice had no clock: the only time bound in the
 // whole loop was FETCH_TIMEOUT_MS on a single fetch.
 //
-// 90s to STOP TAKING new boards. A board already in flight can add at most
-// FETCH_TIMEOUT_MS (20s) plus its upsert, which lands the slice around 115s —
-// inside every duration that has ever survived, with room for the stamps and
-// the chain kick that must follow. Stopping here is clean: the boards not
-// reached are deferred, not failed, and the chain continues.
+// THE PROSE SAID 90s AND THE CONSTANT SAID 120s, FOR WEEKS. Corrected here
+// rather than quietly, because the derivation the old sentence gave is the
+// derivation that makes 120s frightening, and it was landing on a different
+// number than the code.
+//
+// 120s to STOP TAKING new boards. A board already in flight can add at most
+// FETCH_TIMEOUT_MS (20s) plus its upsert, and then the post-loop tail —
+// stampSliceWork, the cursor advance, updateBoardFailures with its per-token
+// exits and deletes, the deep-cursor and oversize meta writes,
+// maybeKickMaintenance, chainNextSlice, recordSliceStats — runs on top. A
+// slice that actually reaches this bound therefore lands somewhere around
+// 145-155s: OUTSIDE the 128s in which every slice that ever wrote a terminal
+// stamp finished, and next to the 158.3s of the one recorded death.
+//
+// SO A WALL-STOPPED SLICE IS AN ALARM, NOT A MODE OF OPERATION. `wallStopped`
+// riding true on slice_stats means the slice is expected to die: it loses its
+// bookkeeping AND stops the chain, which turns one cron tick into a single
+// slice instead of a ~17-hop chain — the ~960 boards/hour, 46-hour-lap
+// regression of 2026-09-06. The bound that is supposed to stop the loop is
+// SLICE_POSTING_BUDGET, and it is sized so that it fires with ~57s of this
+// wall unspent even if a fifth worker buys nothing (see the arithmetic there;
+// a guard pins it). This constant exists for the case where that sizing is
+// wrong about a particular draw — it is a backstop, and a backstop being
+// reached is news.
+//
+// WHY IT IS NOT SIMPLY LOWERED TO THE 90s THE OLD COMMENT CLAIMED, which would
+// land a wall-stopped slice at ~115s and inside the envelope: the HOT phase
+// shares this bound, and hotEmaMs is 100,554 today. A 90s wall would start
+// truncating hot slices that currently complete — deferring giants and
+// changing hot-cursor behaviour — to fix a case that the posting budget is
+// already sized to prevent. That trade needs the hot-slice measurement this
+// file does not yet take (see the shed thresholds), so the wall stays where it
+// is and the sentence describing it is made true instead.
 const SLICE_WALL_BUDGET_MS = 120_000;
 // AND NEITHER OF THOSE IS THE CAUSE EITHER. STOP THEORISING; BOUND WHAT IS
 // KNOWN TO SURVIVE.
@@ -587,7 +814,7 @@ const MIN_BOARDS_PER_SLICE = 80;
 const MAX_BOARDS_PER_SLICE = 80;
 const BOARDS_RAMP_STEP = 8;
 const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling"]);
-const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=8 is 10 sequential rounds — well under the edge wall-time limit. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
+const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=5 is 16 sequential rounds, and SLICE_POSTING_BUDGET stops the loop near 51 boards long before the list is exhausted — the list size is a ceiling, not a plan. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // MEASURED DOWN FROM 25 — 25 COST THE ROTATION FOUR TIMES ITS SPEED.
 //
@@ -661,8 +888,8 @@ const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VI
 // FIVE, NOT TWENTY-FIVE, and the arithmetic is the lesson from DEEP_PER_SLICE
 // three commits ago. A retry is the most expensive fetch there is when it fails
 // again: a dead feed burns the full ~20s FETCH_TIMEOUT, which is precisely the
-// cost dormancy exists to stop paying. Five at CONCURRENCY 8 is one extra
-// round, bounded at ~20s worst case on a ~75s slice. Exponential backoff then
+// cost dormancy exists to stop paying. Five at CONCURRENCY 5 is one extra
+// round, bounded at ~20s worst case on a ~87s slice. Exponential backoff then
 // keeps the pool small in steady state, so the lane is usually far under its
 // cap. RE-MEASURE the cold-cursor rate after changing this number.
 const RETRY_PER_SLICE = 5;
@@ -962,8 +1189,10 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  *    behind when CONCURRENCY became 4, where it was a 25% RAISE on the exact
  *    signal that means the database is already struggling. It is clamped at the
  *    definition now (`Math.min(CONCURRENCY, …)`), so peak workers is
- *    max(CONCURRENCY, HOT_CONCURRENCY) = 4 and the guard re-derives that from
- *    the expression rather than trusting this sentence.
+ *    max(CONCURRENCY, HOT_CONCURRENCY) = 5 and the guard re-derives that from
+ *    the expression rather than trusting this sentence. (It read 4 while
+ *    CONCURRENCY was 4; the number in a sentence is exactly what goes stale,
+ *    which is why the guard reads the expression.)
  *  - BODIES READ AT ONCE PER WORKER IS NOT ALWAYS 1. Five vendors page a board
  *    in a CHUNK: ukg/adp/workday/oracle 4 wide, icims 5. They used to
  *    `Promise.all(pages.map(… await res.json()))`, so one worker held a whole
@@ -977,16 +1206,21 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  *    in page order. Parsing was always serial (one thread); only the retention
  *    was concurrent, and that is what is gone.
  *
- *   128MB / (4 workers x 1 body) = 32MB a worker
- *   32MB / 6x parse amplification = 5.3MB of wire
+ *   128MB / (5 workers x 1 body) = 25.6MB a worker
+ *   25.6MB / 6x parse amplification = 4.3MB of wire
  *
- * Round DOWN to 4MB: four workers each at the ceiling cost 4 x 4MB x 6 = 96MB
+ * Round DOWN to 4MB: five workers each at the ceiling cost 5 x 4MB x 6 = 120MB
  * against the 128MB allotment. The unread responses of a chunk sit under
  * TransformStream backpressure (readable HWM 0) plus one transport window —
- * order 100KB each, so 4 workers x 4 unread is under 2MB, noise against the
+ * order 100KB each, so 5 workers x 4 unread is ~2MB, noise against the
  * reserve. The desc sweep runs DESC_SWEEP_CONCURRENCY wide but fetches ONE
  * posting per response — tens of KB — so the binding case is the list path,
  * which is where every giant lives.
+ *
+ * READ IN THE OTHER DIRECTION, THIS SUM IS THE CAP ON CONCURRENCY: 128 / 24 =
+ * 5.33 workers, so 4 fits, 5 fits, 6 (144MB) does not and 8 (192MB) is half as
+ * much again as the whole allotment. Going wider means cutting
+ * MAX_RESPONSE_BYTES or spending the reserve — see CONCURRENCY.
  *
  * WHERE 4MB SITS, measured 2026-09-06 against the requests this code actually
  * issues (not against stripe/zscaler: they are LIGHT_DESC_TOKENS, so listUrl
@@ -3155,9 +3389,88 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // L1 at roughly double and L2 at roughly triple. The fail-closed kinds above
   // are untouched — an unreadable or frozen signal still sheds without asking
   // what phase it is.
+  // ── .64: THE COLD LINES MOVE WITH THE SLICE, AND THAT IS NOW WRITTEN DOWN ──
+  //
+  // THESE ARE NOT DISTRESS THRESHOLDS. They are absolute slice durations, and
+  // a slice's duration is set as much by SLICE_POSTING_BUDGET and CONCURRENCY
+  // as by how the database is feeling. So every change to those two constants
+  // is a change to what these numbers mean, and nothing said so: the pair
+  // below was calibrated on "cold ~26s" and the live cold EMA is 36.2s, so the
+  // cold phase had already drifted to 1.24x its L1 line — one bad hour from a
+  // brownout — without anyone choosing that.
+  //
+  // Re-derived — and the honest part is that the healthy cost is uncertain by
+  // a factor of two, because it depends on whether a fifth worker raises the
+  // aggregate rate at all (parsing is serial; see MAX_RESPONSE_BYTES):
+  //
+  //     if concurrency scales:   loop 50.4s, coldEmaMs stays ~36.2s
+  //     if it does not:          loop 62.9s, slice ~78s with the tail
+  //
+  // "L1 at roughly double the healthy cost" therefore spans 72-156s, and the
+  // line is placed to clear the PESSIMISTIC branch rather than the flattering
+  // one — a threshold that sheds on a healthy slice is the failure this
+  // comment already records twice, and it costs a permanent brownout, while a
+  // threshold set 30s high costs one extra slice of lateness before it fires.
+  //
+  //     L1 92s · L2 125s
+  //
+  // The 2026-08-30 incident (lastMs 184,951, 27s page queries) is past both, so
+  // the thing these lines exist for is still caught. A guard pins L1 against
+  // the pessimistic slice (loop + tail) with margin, so this pair cannot be
+  // left behind by the next budget change the way the 45s line was — and pins
+  // L2 under what a wall-stopped slice reaches, because a threshold above that
+  // is a shedder that is still read, still there, and cannot fire.
+  //
+  // WHAT THIS RAISE COSTS, stated rather than buried: the cold phase now
+  // tolerates a 2.5x slowdown before shedding where it tolerated 1.24x. That is
+  // deliberate. At 45s against a 63-78s healthy slice the shedder would have
+  // fired on healthy slices FOREVER — a certain brownout — while the cost of
+  // the higher line is one extra slice of lateness at the start of a real
+  // incident, and the incident still trips L2.
+  //
+  // AND THE PAIR IS NOW UPSIDE DOWN, WHICH IS A FINDING, NOT A TYPO: cold L1
+  // (92s) has nearly caught hot L1 (95s), even though hot boards are the
+  // giants. The hot pair is what is stale — it describes a 46s hot slice that
+  // has not existed since the 305 giants were widened on 2026-08-31, and the
+  // live hotEmaMs is 100,554, ABOVE its own 95,000 L1. The hot phase is
+  // therefore shedding continuously on duration alone right now, which is the
+  // same no-incident brownout described above, reached from the other side.
+  //
+  // It is not fixed here because the fix is not a bigger number. At a ~100s
+  // healthy hot slice against a ~155s ceiling (the wall plus one straggler
+  // plus the tail), the band between "healthy" and "cannot be distinguished
+  // from healthy" is 1.55x, and no duration threshold splits that. The real
+  // choice is whether hot slices should be SMALLER, or whether the hot signal
+  // should stop being duration and become cost per posting (sliceMs / fetched,
+  // which does not move when the slice size does). Deciding needs a per-phase
+  // cost measurement this file does not take: hot boards fetched and hot slice
+  // ms, recorded separately. Three theories have been shipped and retracted on
+  // this signal already, so it is measured next, not guessed at now.
+  //
+  // AND THERE IS A CEILING ON THESE NUMBERS, WHICH IS THE OTHER HALF OF WHY
+  // 2,600 WAS REFUSED. The loop stops taking boards at SLICE_WALL_BUDGET_MS,
+  // so a slice cannot run much past 120s + one FETCH_TIMEOUT_MS straggler +
+  // the tail — call it ~150s. A duration threshold set above that can never
+  // fire: the shedder would still be here, still read, and structurally dead.
+  // L2 at 115s leaves that headroom. Push the budget until a healthy slice
+  // needs an L2 above ~150s and the choice stops being "which threshold" and
+  // becomes "shedding or throughput", which is not a trade this file gets to
+  // make quietly.
+  //
+  // THE HOT PAIR IS UNTOUCHED AND IS ALREADY WRONG. Measured today: hotEmaMs
+  // 100,554 against a hot L1 of 95,000 — the hot phase is shedding
+  // CONTINUOUSLY on duration alone, which is the same "brownout with no
+  // incident behind it" the note above describes, arrived at from the other
+  // direction. Either the 305 giants widened on 2026-08-31 ARE the new healthy
+  // hot cost and this line should move with them, or hot slices are genuinely
+  // running close enough to the survival envelope that shedding them is right.
+  // Those need a hot-slice cost measurement (hot boards fetched vs hot slice
+  // ms, which nothing records per phase today) and not another guess — three
+  // theories have already been shipped and retracted on this exact signal, so
+  // it is left alone and named instead of adjusted.
   const hotPhase = inHotPhase;
-  const l1 = hotPhase ? 95_000 : 45_000;
-  const l2 = hotPhase ? 150_000 : 70_000;
+  const l1 = hotPhase ? 95_000 : 92_000;
+  const l2 = hotPhase ? 150_000 : 125_000;
   const shedLevel = shedSignal.kind === "unreadable" ? 2
     : shedSignal.kind === "absent" ? 1
     : shedSignal.kind === "stale" ? 1
@@ -3184,6 +3497,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // ladder — and level 2 still cuts to 3. The clamp stays even though the
   // literals no longer need it: it is what makes the byte budget's denominator
   // a property of this line rather than a number a later edit can invalidate.
+  //
+  // .64: CONCURRENCY is 5, so level 2's literal 3 is a cut of two workers and
+  // the clamp is doing nothing at either level. It stays for the same reason as
+  // before — the next edit to CONCURRENCY must not be able to turn a shed into
+  // a raise, and that has already happened once.
   const effConcurrency = Math.min(CONCURRENCY, shedLevel === 2 ? 3 : CONCURRENCY);
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
@@ -3550,7 +3868,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // slice so no board is fetched twice in one pass, and capped at the size the
   // bootstrap lane already proved fits the wall-time budget.
   let deepBoards: JobSource[] = [];
-  let deepLane: { at: string; candidates: number; selected: number; start: number } | null = null;
+  let deepLane: { at: string; candidates: number; selected: number; visited: number; start: number } | null = null;
   if (!inHotPhase) {
     try {
       const tokens = Object.keys(deepCursors);
@@ -3570,7 +3888,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // split, an offset that does not move has two indistinguishable causes
         // and gets guessed at — which is how this rotation was misread three
         // times before it carried a number.
-        deepLane = { at: new Date().toISOString(), candidates: tokens.length, selected: deepBoards.length, start };
+        // `visited` is filled after the loop. SELECTED IS NOT VISITED, and the
+        // gap is the whole point: the deep lane is LAST in the composed slice
+        // (index >= COLD_SLICE + the other lanes), and the posting budget stops
+        // the loop around 30 boards, so nothing in this lane has been fetched
+        // in a very long time. `selected: 2` standing alone reported the lane
+        // as working — the wrong side of exactly the fork this instrumentation
+        // was added to resolve, and the dial the runbook tells an operator to
+        // judge rotation by. (At-cap boards still advance their own deepCursor
+        // whenever the BASE rotation reaches them, so this starves the lane, it
+        // does not stop the paging.)
+        deepLane = { at: new Date().toISOString(), candidates: tokens.length, selected: deepBoards.length, visited: 0, start };
       }
     } catch { /* accelerator only — on any error the cold rotation still reaches every board */ }
   }
@@ -3717,6 +4045,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   let heapStopped = false;
   let wallStopped = false;
   let sizeStopped = false;
+  // Also the set `deepLane.visited` is counted from below: SELECTED IS NOT
+  // VISITED, and this is the only thing that can tell them apart.
   const deepTokens = new Set(deepBoards.map((b) => b.token));
   await breadcrumb(client, "slice-start", { boards: queue.length, budget: boardBudget, phase: inHotPhase ? "hot" : "cold", elapsedMs: Date.now() - sliceWallStart });
   const budgetSkipped: string[] = [];
@@ -3839,6 +4169,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // that hid which board the slice was on when it died.
         ++boardsDone;
         await breadcrumb(client, "board-fetched", { boardsDone, token: s.token, got: r ? r.jobs.length : 0, fetched: fetchedInSlice, inFlight: inFlightReserve, elapsedMs: Date.now() - sliceWallStart });
+        // AFTER the breadcrumb, deliberately: a-slice-with-no-clock pins
+        // `++boardsDone` and the stamp as adjacent, because a board counted but
+        // not stamped is the shape a dying slice leaves behind.
+        if (deepLane && deepTokens.has(s.token)) deepLane.visited++;
         if (!r) {
           // AN OVERSIZE BODY IS A DEFERRAL, NOT A FAILURE.
           //
@@ -6691,10 +7025,26 @@ async function embedText(text: string): Promise<number[] | null> {
 // Single-posting liveness against the vendor RIGHT NOW — the moment-of-apply
 // freshness check. Uses cheap per-job endpoints where they exist (never the
 // 20-36 MB whole-board payload for the light giants); falls back to board
-// membership for vendors without one. Returns true=live, false=confirmed gone,
-// null=couldn't tell (transient) so callers don't wrongly mark a job closed.
-const liveBoardMemo = new Map<string, Set<string>>();
-async function checkLive(src: JobSource, externalId: string, applyUrl?: string | null): Promise<boolean | null> {
+// membership for vendors without one. Returns true=live, false=CONFIRMED gone,
+// null=couldn't tell so callers don't wrongly mark a job closed.
+//
+// `false` is a claim about the EMPLOYER, not about our fetch: it is only ever
+// returned when the vendor itself said gone (404 / empty detail) or when a
+// board was read EXHAUSTIVELY and the id was not in it. Absent from a WINDOWED
+// (page-capped) read is null — see the WINDOWED-ABSENCE RULE at the bottom.
+// The memo carries `windowed` alongside the id set because ABSENCE ONLY MEANS
+// ANYTHING ON AN EXHAUSTIVE FETCH — see the WINDOWED-ABSENCE RULE below.
+const liveBoardMemo = new Map<string, { ids: Set<string>; windowed: boolean }>();
+// `note` distinguishes the TWO reasons this function returns null, because the
+// published audit says a word about them and the two words are opposite:
+//   * the fetch failed / the vendor answered badly  -> genuinely UNREACHABLE
+//   * the fetch SUCCEEDED, parsed, and was page-capped short of the vendor's
+//     own advertised total -> reached, answered, and still UNDECIDABLE
+// GhostJobIndex used to print the whole null bucket as "unreachable", which
+// after .64 is false for most of it: ~4,348 of 44,542 boards sit on capped
+// fetchers, so this is the common case, not the rounding error. Callers that
+// do not care pass nothing and see the same tri-state as before.
+async function checkLive(src: JobSource, externalId: string, applyUrl?: string | null, note?: { pageCapped: boolean }): Promise<boolean | null> {
   try {
     if (src.source === "greenhouse") {
       const gh = greenhouseApi(src.token);
@@ -6780,20 +7130,60 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
       }
       return false;
     }
-    // ashby / workable / bamboohr have no cheap per-job endpoint — fetch the
-    // board once (memoized per request) and check membership.
+    // The remaining vendors have no cheap per-job endpoint — fetch the board
+    // once (memoized per request) and check membership.
     const memoKey = `${src.source}:${src.token}`;
-    let ids = liveBoardMemo.get(memoKey);
-    if (!ids) {
+    let memo = liveBoardMemo.get(memoKey);
+    if (!memo) {
       const r = await fetchBoard(src);
       if (!r) return null;
-      // Only ashby / workable / bamboohr reach here (gh/lever/SR return above).
-      ids = new Set<string>();
+      // FIFTEEN vendors reach here, not three. Only greenhouse / lever /
+      // smartrecruiters / oracle / workday return above; everything else in
+      // JobSourceKind falls through to membership — ashby, workable, bamboohr,
+      // recruitee, teamtailor, personio, breezy, pinpoint, paylocity, rippling,
+      // icims, adp, ukg, jazzhr, usajobs. The old comment here still named the
+      // original three, and that staleness is exactly what hid the missing
+      // windowed guard below: the vendors that CAN window (icims, rippling,
+      // adp, ukg, usajobs, jazzhr) all arrived after the comment was written.
+      const ids = new Set<string>();
       if (src.source === "ashby") for (const j of ((r.raw as { jobs?: Array<{ id: string }> }).jobs ?? [])) ids.add(String(j.id));
-      else for (const j of r.jobs) ids.add(j.id.split(":").slice(2).join(":")); // workable/bamboohr composite ids
-      liveBoardMemo.set(memoKey, ids);
+      else for (const j of r.jobs) ids.add(j.id.split(":").slice(2).join(":")); // `source:token:externalId` — strip our prefix
+      memo = { ids, windowed: r.windowed === true };
+      liveBoardMemo.set(memoKey, memo);
     }
-    return ids.has(externalId);
+    // ── WINDOWED-ABSENCE RULE ────────────────────────────────────────────────
+    // The SAME rule the refresh prune applies at `truncatedFetch`
+    // (`r.windowed === true`), stated here because this is the second place a
+    // posting's absence gets turned into a closure — and until now the only one
+    // that did it WITHOUT the rule.
+    //
+    // `windowed` means the vendor's OWN advertised total exceeded what we could
+    // fetch. A posting displaced past the page cap is absent from `ids` while
+    // being perfectly live on the employer's site: measured 2026-07-21, 7 of 8
+    // sampled "closures" on a windowed board were still open. ~4,348 of 44,542
+    // boards sit on capped fetchers, so this is not a corner.
+    //
+    // Reading absence as `false` here told a user "{{company}} took this one
+    // down" about a live role at a NAMED employer, stamped the posting
+    // missing_since so it vanished for everyone, and then DELETEd it with no
+    // closure row — a hole in the lifecycle log, the one asset that cannot be
+    // re-derived.
+    //
+    // Three states, and `null` is not a hedge: the verify action already treats
+    // null as "keep showing" (it is what the catch below returns for a network
+    // hiccup), and the audit counts it as `unknown` rather than scoring it
+    // against vendor accuracy. Absent + windowed is genuinely UNKNOWN.
+    // Spelled `X.windowed === true`, the SAME four tokens as the prune's
+    // `truncatedFetch` and the closure log's `partialRead`. Not a style
+    // preference: the guard asserts all three derivations are spelled
+    // identically, because three sites that mean the same thing and say it
+    // three ways are three sites that drift apart one edit at a time. The
+    // branch that turns this flag into a user-visible verdict is the LAST one
+    // that should be exempt from that rule.
+    const truncatedFetch = memo.windowed === true;
+    if (memo.ids.has(externalId)) return true;
+    if (truncatedFetch) { if (note) note.pageCapped = true; return null; }
+    return false;
   } catch {
     return null; // network hiccup — unknown, never a false "closed"
   }
@@ -10905,7 +11295,19 @@ Deno.serve(async (req) => {
       // the boards touched as a demand signal for prioritized refresh.
       const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 12) : [];
       if (ids.length === 0) return json({ live: {} });
-      const liveMap: Record<string, boolean> = {};
+      // THREE STATES ON THE WIRE, NOT TWO. checkLive returns true / false /
+      // null, and collapsing null into `true` here was the mirror image of the
+      // bug .64 fixed in checkLive itself: a user who reports a posting gone on
+      // a page-capped board got told "{{company}}'s own board still lists this
+      // role as open" (Jobs.tsx reportCheckedBody) — a confident claim about a
+      // NAMED employer, on the one path where the user has independent evidence
+      // and is probably right. We read the first page of a board whose own
+      // advertised total we could not reach; that is not a confirmation of
+      // anything. `null` ships as `null` so the client can say what is true.
+      //
+      // Pruning is unchanged and still gated on `=== false` — the only value
+      // that means the employer's own feed answered in full and did not list it.
+      const liveMap: Record<string, boolean | null> = {};
       const deadIds: string[] = [];
       const demandTokens = new Set<string>();
       liveBoardMemo.clear();
@@ -10923,7 +11325,7 @@ Deno.serve(async (req) => {
         demandTokens.add(src.token);
         const live = await checkLive(src, externalId, applyBy.get(id) ?? null);
         if (live === false) { liveMap[id] = false; deadIds.push(id); }
-        else liveMap[id] = true; // true OR null(unknown) → keep showing, never a false close
+        else liveMap[id] = live; // true = confirmed at the source; null = undecidable (page-capped feed). Both keep showing; only one is a confirmation.
       }
       // NEVER delete on a single probe. Measured 2026-07-28: checkLive reported
       // GONE for 7 of 50 randomly sampled LIVE Workday postings. That was read
@@ -11076,8 +11478,14 @@ Deno.serve(async (req) => {
         if (n === 0) continue;
         sampleIds.push(...await drawIds(v, Math.min(PER_VENDOR, n ?? PER_VENDOR)));
       }
-      let live = 0, gone = 0, unknown = 0;
-      const byVendor: Record<string, { sampled: number; live: number; gone: number; unknown: number; accuracyPct: number | null; deepened?: boolean }> = {};
+      // `unknown` is the whole undecided bucket and stays the total so nothing
+      // downstream changes meaning; `windowed` is the share of it that was
+      // fetched successfully and simply read short of the vendor's own
+      // advertised total. The page prints both, because after .64 the second
+      // is the LARGER one on capped vendors and calling it "unreachable" would
+      // be a false statement about a vendor that answered every request.
+      let live = 0, gone = 0, unknown = 0, pageCappedUnknown = 0;
+      const byVendor: Record<string, { sampled: number; live: number; gone: number; unknown: number; pageCapped: number; accuracyPct: number | null; deepened?: boolean }> = {};
       liveBoardMemo.clear();
       // `headline` distinguishes the even base draw from the follow-up draws
       // below. The published sentence says the sample was "drawn evenly across
@@ -11091,16 +11499,22 @@ Deno.serve(async (req) => {
           const results = await Promise.all(batch.map(async (id) => {
             const [source, token, ...rest] = id.split(":");
             const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
-            if (!src || rest.length === 0) return null; // deselected board — can't ground-truth
-            return await checkLive(src, rest.join(":"), applyBy.get(id) ?? null);
+            if (!src || rest.length === 0) return { v: null, capped: false }; // deselected board — can't ground-truth
+            const note = { pageCapped: false };
+            const v = await checkLive(src, rest.join(":"), applyBy.get(id) ?? null, note);
+            return { v, capped: note.pageCapped };
           }));
           results.forEach((r, j) => {
             const v = batch[j].split(":")[0];
-            const bucket = byVendor[v] ?? (byVendor[v] = { sampled: 0, live: 0, gone: 0, unknown: 0, accuracyPct: null });
+            const bucket = byVendor[v] ?? (byVendor[v] = { sampled: 0, live: 0, gone: 0, unknown: 0, pageCapped: 0, accuracyPct: null });
             bucket.sampled++;
-            if (r === true) { if (headline) live++; bucket.live++; }
-            else if (r === false) { if (headline) gone++; bucket.gone++; }
-            else { if (headline) unknown++; bucket.unknown++; }
+            if (r.v === true) { if (headline) live++; bucket.live++; }
+            else if (r.v === false) { if (headline) gone++; bucket.gone++; }
+            else {
+              if (headline) unknown++;
+              bucket.unknown++;
+              if (r.capped) { if (headline) pageCappedUnknown++; bucket.pageCapped++; }
+            }
           });
         }
       };
@@ -11235,7 +11649,13 @@ Deno.serve(async (req) => {
       // `sampled` is the EVEN draw the headline describes; `probed` is every
       // probe including the follow-up re-draws. Publishing sampleIds.length as
       // `sampled` would state a sample size the headline was not computed from.
-      const result = { at: new Date().toISOString(), sampled: headlineSampled, probed: sampleIds.length, live, gone, unknown, accuracyPct, corpus, byVendor, coverage, deepened, labelAudit };
+      // `decidedPct` is the statistic the accuracy figure's own denominator
+      // depends on and the page never used to state: accuracyPct = live/(live
+      // +gone), so every undecidable probe silently leaves the denominator. It
+      // is published beside the headline so a reader can see how much of the
+      // sample the number is actually about.
+      const decidedPct = headlineSampled > 0 ? Math.round((decided / headlineSampled) * 1000) / 10 : null;
+      const result = { at: new Date().toISOString(), sampled: headlineSampled, probed: sampleIds.length, live, gone, unknown, pageCapped: pageCappedUnknown, unreachable: unknown - pageCappedUnknown, decided, decidedPct, accuracyPct, corpus, byVendor, coverage, deepened, labelAudit };
       await client.from("job_board_meta").upsert(
         { k: "audit", v: { ...result, history: [...prevHistory, result] }, updated_at: new Date().toISOString() },
         { onConflict: "k" },

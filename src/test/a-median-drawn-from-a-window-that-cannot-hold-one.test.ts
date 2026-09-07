@@ -445,13 +445,24 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     const FLOOR_FIX = "20260906093000_the_seven_day_floor_deleted_the_fast_fills.sql";
     for (const name of [
       "get_company_hiring_health",
-      "get_actively_hiring_companies",
       "get_category_fill_speed",
       "get_employer_benchmarks",
       "roll_up_and_prune_closures",
     ]) {
       expect(LIVE.get(name)?.file, `${name} must resolve to the floor-removal migration`).toBe(FLOOR_FIX);
     }
+    // MOVED, NOT DROPPED. get_actively_hiring_companies was re-issued again in
+    // 20260907010000: removing the seven-day floor from its COUNT (correct for
+    // the median, which is what that migration was about) also removed the only
+    // thing keeping same-day relist churn out of "filled", and the successor is
+    // the closure log's own posting_id rather than a duration floor. The
+    // property this block guards is unchanged — the floor must be absent from
+    // whatever body the database actually runs — so the pin follows the
+    // function to its current definition instead of asserting a file the
+    // database has stopped running.
+    expect(LIVE.get("get_actively_hiring_companies")?.file,
+      "the hiring RPC must resolve to the closure-event rewrite").toBe(
+      "20260907010000_a_closure_event_is_not_a_filled_role.sql");
     expect(LIVE.get("get_company_fill_curve")?.file).toBe("20260906091000_censoring_is_not_truncation.sql");
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(
       "20260906092000_a_median_from_a_window_that_cannot_hold_one.sql",
@@ -685,7 +696,16 @@ describe("a median drawn from a window that cannot hold one — the three covera
     // identically on every surface that renders a duration", not a design choice,
     // and it is written here so it is visible rather than absent. The list must
     // shrink to empty; a second entry appearing is a regression this fails on.
-    const BAND_GAP = ["src/pages/Explore.tsx"];
+    // EMPTY, AND THAT IS THE POINT OF THE SENTENCE BELOW IT. /explore was the
+    // one listed gap: it rendered the rate in a compact grid badge under the
+    // suppression threshold alone, so an employer at 35% coverage got the
+    // figure with nothing beside it saying what it covered. The fill card now
+    // imports coverageBand from /jobs and prints
+    // explore.fillCoverage — "across the {{pct}}% of its roles that carry the
+    // company's own posting date" — on exactly the middle band. The list was
+    // written to shrink to empty; it has. A NEW ENTRY APPEARING HERE IS A
+    // REGRESSION, and this assertion is what catches it.
+    const BAND_GAP: string[] = [];
     const proseSurfaces = ["src/pages/Jobs.tsx", "src/pages/Account.tsx", "src/pages/GhostJobIndex.tsx"];
     for (const file of proseSurfaces) {
       const code = stripTs(read(file));
