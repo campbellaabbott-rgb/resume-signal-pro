@@ -3793,12 +3793,25 @@ export type Database = {
       get_actively_hiring_companies: {
         Args: { p_limit?: number }
         Returns: {
+          at_risk_14d: number
           closed_90d: number
           company: string
           company_token: string
           dated_n: number
+          dated_share: number
+          feed_total: number
+          feed_total_at: string
+          fill_incidence_14d: number
+          fill_incidence_14d_hi: number
+          fill_incidence_14d_lo: number
+          filled_roles_ceiling: number
+          fills_le_14d: number
+          fills_window_days: number
           open_roles: number
           p50_days_open: number
+          relist_share_floor: number
+          relisted_roles_floor: number
+          repost_events_floor: number
           tracking_days: number
         }[]
       }
