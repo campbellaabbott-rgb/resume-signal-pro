@@ -22,11 +22,24 @@
  * function stopped calling closure events "fills" in the same release its own
  * schema comment started calling a survivor count a denominator.
  *
- * The property: a sample-size column may be published beside a rate, but
- * nothing may describe it as that rate's denominator. Assertions run against
- * RAW SQL because what is being pinned IS the prose — the comment is the
- * artifact under test — and separately against the identifier list to prove
- * the columns still exist to be described.
+ * AND THE PROCESS ERROR, WHICH IS THE HALF WORTH REMEMBERING. The correction
+ * was first made by EDITING 20260907010000 — after that migration had already
+ * been applied to production. Editing an applied migration changes nothing in
+ * the database. The live COMMENT stayed wrong, the file stopped matching what
+ * ran, and THIS TEST WENT GREEN over a production falsehood, because it reads
+ * the file. A guard that reads source can only ever attest to source; when the
+ * artifact under test is a database object, the guard must follow the
+ * migration chain to the statement that actually executes.
+ *
+ * So this file pins two properties, not one:
+ *   1. no risk-set column is described as a rate's denominator, judged on the
+ *      EFFECTIVE comment — the declaring migration plus every later correction;
+ *   2. a correction to an already-applied migration arrives as a NEW migration,
+ *      never as an edit to the applied file.
+ *
+ * Assertions run against RAW SQL because what is pinned IS the prose — the
+ * comment is the artifact — and separately against the identifier list to
+ * prove the columns still exist to be described.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
@@ -50,17 +63,48 @@ const latest = (needle: string) => {
 };
 
 describe("a sample size is not a denominator", () => {
-  it("no risk-set column is described as the rate's denominator", () => {
-    const m = latest("at_risk_14d int");
-    // The whole clause, not just the word: "denominator" may legitimately
-    // appear while describing what the column is NOT.
-    const claimsDenominator =
-      /at_risk_14d[^.]*?\bthe\s+(?:common\s+)?denominator\s+the\s+rate\s+is\s+computed\s+against/is.test(prose(m.text));
-    expect(claimsDenominator, `${m.f} calls at_risk_14d the rate's denominator`).toBe(false);
+  const MISNAMING = /at_risk_14d[^.]*?\bthe\s+(?:common\s+)?denominator\s+the\s+rate\s+is\s+computed\s+against/is;
+
+  it("no risk-set column is described as the rate's denominator, once the chain has run", () => {
+    // EFFECTIVE state, not the declaring file. The declaring migration was
+    // already applied when the misnaming was found, so the correction had to
+    // arrive later in the chain; judging the declaring file alone would report
+    // a defect that a subsequent migration has already fixed — and, before
+    // this rewrite, reported a FIX that production had never received.
+    const declaring = latest("at_risk_14d int");
+    const idx = SQL.findIndex((s) => s.f === declaring.f);
+    const after = SQL.slice(idx + 1).map((s) => prose(s.text)).join("\n");
+    const stillWrong = MISNAMING.test(prose(declaring.text))
+      && !/at_risk_14d[\s\S]*?NOT THE DENOMINATOR|DIVIDING BY IT IS WRONG/i.test(after);
+    expect(
+      stillWrong,
+      `${declaring.f} calls at_risk_14d the rate's denominator and no later migration corrects it`,
+    ).toBe(false);
+  });
+
+  it("a correction to an APPLIED migration is a new migration, never an edit", () => {
+    // 20260907010000 was applied on 2026-09-07. Its bytes are therefore
+    // history: whatever it says is what the database got, and editing it
+    // silently desynchronises the file from the schema while making every
+    // source-reading guard agree with the edit rather than with production.
+    const applied = SQL.find((s) => s.f.startsWith("20260907010000_"));
+    expect(applied, "the applied migration must still exist").toBeTruthy();
+    expect(
+      MISNAMING.test(prose(applied!.text)),
+      "20260907010000 must still read exactly as it was APPLIED — corrections belong in a later migration",
+    ).toBe(true);
+    const corrector = SQL.slice(SQL.findIndex((s) => s.f === applied!.f) + 1)
+      .find((s) => /COMMENT ON FUNCTION[\s\S]*get_actively_hiring_companies|get_actively_hiring_companies[\s\S]*COMMENT ON FUNCTION/i.test(s.text));
+    expect(corrector, "no later migration corrects the comment in the database").toBeTruthy();
+    expect(
+      /NOT THE DENOMINATOR|DIVIDING BY IT IS WRONG/i.test(prose(corrector!.text)),
+      `${corrector?.f} must carry the corrected wording`,
+    ).toBe(true);
   });
 
   it("says plainly that dividing by it is wrong, since eight of fourteen live rows exceed 1", () => {
-    const m = latest("at_risk_14d int");
+    const m = SQL.filter((s) => /NOT THE DENOMINATOR|DIVIDING BY IT IS WRONG/i.test(s.text)).slice(-1)[0];
+    expect(m, "nothing carries the corrected wording").toBeTruthy();
     expect(prose(m.text), "the comment must warn against the division it invites")
       .toMatch(/NOT THE DENOMINATOR|DIVIDING BY IT IS WRONG/i);
     expect(prose(m.text), "and must say what it IS for").toMatch(/sample[- ]size gate/i);
