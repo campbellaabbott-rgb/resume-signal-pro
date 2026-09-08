@@ -37,6 +37,41 @@ const EXPLORE = readFileSync(resolve(__dirname, "../pages/Explore.tsx"), "utf8")
 const CODE = EXPLORE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const LOCALES = resolve(__dirname, "../i18n/locales");
 const MIG = resolve(__dirname, "../../supabase/migrations");
+
+/** The answers the page offers, PARSED FROM THE ARRAY IT ITERATES rather than
+ *  retyped here. Every guard below that has to enumerate the answers reads this
+ *  — a retyped list fixes the day's red and leaves the NEXT answer unguarded,
+ *  which is how `scale` stayed in three lists after its section was deleted.
+ *  Read off comment-stripped code so a removal note listing old ids cannot
+ *  satisfy it. */
+const INTENT_IDS = (): string[] => {
+  const m = CODE.match(/const INTENTS: readonly Intent\[\] = \[([^\]]+)\];/);
+  expect(m, "the INTENTS array literal moved — re-anchor, do not inline a list").toBeTruthy();
+  const ids = [...m![1].matchAll(/"(\w+)"/g)].map((x) => x[1]);
+  expect(ids.length, "no intents parsed out of INTENTS").toBeGreaterThan(3);
+  return ids;
+};
+
+/** `heldFor`'s body — the ONE predicate that decides what the duration answer
+ *  shows and what it holds back. Two tests below slice it, and both used to end
+ *  the slice at `function rankedFillClaims`, which no longer exists: indexOf
+ *  returned -1, `slice(start, -1)` handed back almost the whole file, and the
+ *  `not.toBe("")` anchor check passed on it. The exclusion could have been
+ *  deleted from heldFor and both tests would still have found the string
+ *  further down. That is the repo's own -1 defect, so the slice is BOUNDED as
+ *  well as located, and one helper serves both callers so a future rename is
+ *  one edit rather than two. */
+const gateSlice = (): string => {
+  const start = CODE.indexOf("const heldFor =");
+  expect(start, "the hiring gate moved — re-anchor, do not delete").toBeGreaterThan(-1);
+  const end = CODE.indexOf("function rankedDurationClaims", start);
+  expect(end, "the gate's end anchor is gone — re-anchor, do not widen").toBeGreaterThan(start);
+  const gate = CODE.slice(start, end);
+  expect(gate, "the hiring gate moved — re-anchor, do not delete").not.toBe("");
+  expect(gate.length, "the gate slice is implausibly long — the anchor drifted")
+    .toBeLessThan(3000);
+  return gate;
+};
 const localeFiles = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 
 /** The latest migration that DEFINES something matching `fragment`.
@@ -55,43 +90,67 @@ const latestWith = (fragment: string) => {
   return hit;
 };
 
-describe("bands come from the payload, never from a hardcoded list", () => {
-  it("does not iterate a literal band list", () => {
-    // The bug in one line. A literal here cannot be kept in step with the SQL,
-    // and when it drifts the section half-disappears in silence.
-    expect(EXPLORE).not.toMatch(/\["enterprise",\s*"mid",\s*"small"\]/);
-    expect(EXPLORE).toMatch(/orderedBands\(segments\)/);
+/**
+ * RE-HOMED, NOT DELETED. This describe used to assert that the size-band UI
+ * derived its bands from the payload — because a renamed SQL band key does not
+ * throw, it silently disables the thing gated on it, and mega+large (52% of the
+ * section) rendered nothing for weeks.
+ *
+ * There is no size-segments section left to disable. Explore.tsx has no
+ * `segments` state, no `orderedBands`, no `type Segments`, no `explore.seg*`
+ * key and no get_size_segments call on either the cache path or the live
+ * fallback; 20260908135000 drops the collection from refresh_explore_cache and
+ * REVOKEs anon EXECUTE on every overload by catalog lookup, so the wrong-shaped
+ * answer cannot even be asked for. The BANDS are gone; THE CLASS IS NOT.
+ *
+ * Its live instance is the check answer's feed column. get_company_suggest
+ * returned (name, tokens) alone until 20260908136000, so every read of
+ * `feed_total` resolved to undefined and the page told every single-board
+ * reader "we hold no dated reading of this employer's own total" — a confident
+ * falsehood about our own holdings, produced by exactly the same mechanism: an
+ * absent column read as a fact rather than as our own deploy window. So the
+ * class is asserted there, and the removal is pinned beneath it so the broken
+ * section cannot come back by accident.
+ */
+describe("an absent payload column disables a claim, it never becomes one", () => {
+  it("distinguishes a missing column from a missing reading", () => {
+    // `!== undefined`, NOT a falsy check, and that distinction is the whole
+    // guard: PostgREST sends a NULL column as a PRESENT key, so `undefined`
+    // means the deployed function does not return the column at all — a fact
+    // about our deploy, never about the employer. `!!h.feed_total` or
+    // `h.feed_total ?? …` would fold a genuine null reading into the same
+    // branch and re-create the falsehood.
+    expect(CODE, "the feed column's presence must be the discriminator")
+      .toMatch(/const hasFeedColumn = h\.feed_total !== undefined;/);
+    expect(CODE, "a falsy check cannot tell an absent column from a null reading")
+      .not.toMatch(/const hasFeedColumn = (?:!!|Boolean\(|h\.feed_total \?\?)/);
   });
 
-  it("the Segments type is open, so a renamed key still type-checks and renders", () => {
-    expect(EXPLORE).toMatch(/type Segments = Record<string, Segment \| undefined>;/);
+  it("the sentence about the employer is gated on the column being there", () => {
+    // Three outcomes, three sentences, and they must not borrow each other's:
+    // a gap we can state, a multi-board employer we may not add up, and a
+    // single-board employer we hold no dated reading for. The third is the one
+    // that shipped as a falsehood, and it is the one that has to be gated.
+    expect(CODE, "the unknown-total sentence is not gated on the column")
+      .toMatch(/\{single && !feed && hasFeedColumn && \(/);
+    for (const k of ["checkFeedGap", "checkFeedMulti", "checkFeedUnknown"]) {
+      expect(CODE, `explore.${k} is not rendered — the three-way split collapsed`)
+        .toMatch(new RegExp(`t\\("explore\\.${k}"`));
+    }
   });
 
-  it("an unrecognised band falls back to a label instead of vanishing", () => {
-    expect(EXPLORE).toMatch(/t\("explore\.segOther"/);
-  });
-
-  it("orders by roles-per-company — the dimension the bands are cut on", () => {
-    // Ordering by TOTAL open roles looks equivalent and is not: the small band
-    // holds 15,513 companies, so its aggregate outweighs mega's 212 and the
-    // headings render "200-999, Under 50, 1,000+, 50-199". Verified live
-    // before this was corrected.
-    expect(CODE).toMatch(/open_roles \?\? 0\) \/ Math\.max\(b\[1\]\.companies, 1\)/);
-  });
-
-  it("sorts biggest-band-first on the live band shape", () => {
-    // Exercised as data, not as a regex: the real payload's four bands must
-    // come back mega, large, mid, small.
-    const bands: Record<string, { companies: number; open_roles: number }> = {
-      mid:   { companies: 1724,  open_roles: 120029 },
-      mega:  { companies: 212,   open_roles: 129810 },
-      large: { companies: 724,   open_roles: 175821 },
-      small: { companies: 15513, open_roles: 157980 },
-    };
-    const order = Object.entries(bands)
-      .sort((a, b) => b[1].open_roles / Math.max(b[1].companies, 1) - a[1].open_roles / Math.max(a[1].companies, 1))
-      .map(([k]) => k);
-    expect(order).toEqual(["mega", "large", "mid", "small"]);
+  it("the size-band section stayed removed, in code and in the cache contract", () => {
+    // Not nostalgia: the bands are cut on sum(on_board) while the card printed
+    // max(on_board), so this section was WRONG rather than merely unused. The
+    // removal is the fix, and a half-restored version — state back, renderer
+    // gone — is how the silent-blanking defect returns.
+    for (const dead of [/orderedBands/, /type Segments\b/, /t\("explore\.seg[A-Za-z]/, /get_size_segments/]) {
+      expect(CODE, `the retired size-band section is back: ${dead}`).not.toMatch(dead);
+    }
+    // And a cache still carrying the collection must not raise a staleness
+    // banner about a section that does not exist.
+    expect(CODE, "the segments collection must stay on the retired list")
+      .toMatch(/RETIRED_CACHE_PARTS[\s\S]{0,200}"segments"/);
   });
 });
 
@@ -115,25 +174,25 @@ describe("no surface promises headcount the SQL never reads", () => {
     expect(sql).toMatch(/WHEN effective >= 1000 THEN 'mega'/);
   });
 
-  it("every locale's band labels describe open roles, not employees", () => {
-    const EMPLOYEE_WORD = /employee|Mitarbeitende|empleado|salari|medewerker|funcionári|empleyado|कर्मचारी/i;
+  it("no locale still ships a band label or a headcount promise at all", () => {
+    // STRENGTHENED, NOT RETIRED. These were two loops of the shape
+    // `const v = e[k]; if (!v) continue;` over keys the rebuild deleted from
+    // all nine locale files — four green tests iterating nothing, which is the
+    // "guard passes while the thing it describes is gone" shape this repo keeps
+    // being bitten by. Absence is now asserted directly, which is strictly more
+    // than the old "if it exists it must not say employees": a locale that
+    // re-adds segMega saying anything at all fails here, and the section it
+    // would label does not exist to render it.
+    //
+    // The original defect stays on the record: get_size_segments bands on a
+    // count of OPEN ROLES, the page labelled the bands by EMPLOYEE COUNT, and
+    // segBlurb promised "Every company here states its own headcount… Nothing
+    // is guessed" over a payload with no employee field in it.
     for (const f of localeFiles) {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
-      for (const k of ["segMega", "segLarge", "segMid", "segSmall"]) {
-        const v = e[k];
-        if (!v) continue;
-        expect(v, `${f} explore.${k} still labels a role-count band by employees: ${v}`)
-          .not.toMatch(EMPLOYEE_WORD);
+      for (const k of ["segMega", "segLarge", "segMid", "segSmall", "segOther", "segBlurb", "segTitle"]) {
+        expect(e[k], `${f} still ships explore.${k} for a section that no longer exists`).toBeUndefined();
       }
-    }
-  });
-
-  it("no locale still claims sourced headcounts in the blurb", () => {
-    const CLAIM = /states its own headcount|nennt seine eigene Mitarbeiterzahl|indica su propia plantilla|Nothing is guessed/i;
-    for (const f of localeFiles) {
-      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
-      if (!e.segBlurb) continue;
-      expect(e.segBlurb, `${f} explore.segBlurb still promises headcount sourcing`).not.toMatch(CLAIM);
     }
   });
 
@@ -465,18 +524,66 @@ describe("no locale ships a string the page cannot render", () => {
     }
   });
 
-  it("both counts in the segment badge are grouped the same way", () => {
+  it("every count in a shared sentence is grouped the same way", () => {
     // Rendered "3842 on our board · 12,000 company-wide" — one raw, one
-    // grouped, in one sentence, because only `total` had .toLocaleString().
+    // grouped, in one sentence, because only `total` went through a formatter.
     //
-    // EVERY onBoard interpolation, not just one: there are two call sites
-    // (segOpenBoth and segOpen), and asserting the string appears once let a
-    // mutation that un-grouped the first of them pass.
-    const sites = [...CODE.matchAll(/\bn: onBoard\b(\.toLocaleString\(\))?/g)];
-    expect(sites.length, "onBoard interpolation sites not found").toBeGreaterThanOrEqual(2);
-    for (const m of sites) {
-      expect(m[1], `an onBoard count is interpolated raw: ${m[0]}`).toBe(".toLocaleString()");
+    // RE-POINTED FROM `n: onBoard`, WHICH WENT WITH THE SIZE-BAND SECTION, AND
+    // WIDENED FROM ONE SENTENCE TO THE CLASS. The live successor is
+    // explore.openBoth on the duration card — "{{n}} roles open on our board ·
+    // {{total}} on the employer's own feed" — exactly the old shape, plus five
+    // more sentences carrying a count. Every one of them is found and every
+    // COUNT-shaped interpolation in it must go through nf(); a new two-count
+    // sentence added to this list is covered without editing the assertion.
+    //
+    // Percentages, spans and floors are deliberately not required to be
+    // grouped: `pct`, `days`, `d`, `e`, `o` are bounded small numbers where a
+    // separator would be noise, and forcing one would be a formatting opinion
+    // rather than this guard's property.
+    const COUNT_KEYS = ["openBoth", "fillOpen", "checkFeedGap", "transparentBadge",
+                        "entryBadgeShare", "repostWarn", "recycleEvidence"];
+    /** The whole `t("explore.<key>", …)` call, found by BALANCING PARENTHESES
+     *  from the call's own bracket rather than by a fixed window. A fixed
+     *  window is a guess about how long the thing being checked happens to be,
+     *  and this file has already been bitten by one — `slice(i, i + 2200)`
+     *  missed a card at offset 2352. */
+    const callsFor = (key: string): string[] => {
+      const out: string[] = [];
+      const re = new RegExp(`t\\("explore\\.${key}"`, "g");
+      for (let m = re.exec(CODE); m; m = re.exec(CODE)) {
+        const open = CODE.indexOf("(", m.index);
+        let depth = 0, i = open;
+        for (; i < CODE.length; i++) {
+          if (CODE[i] === "(") depth += 1;
+          else if (CODE[i] === ")") { depth -= 1; if (depth === 0) break; }
+        }
+        expect(depth, `explore.${key} call has no closing bracket`).toBe(0);
+        out.push(CODE.slice(m.index, i + 1));
+      }
+      return out;
+    };
+    let sites = 0;
+    for (const key of COUNT_KEYS) {
+      const calls = callsFor(key);
+      expect(calls.length, `explore.${key} is not rendered — re-point this list, do not shrink it`)
+        .toBeGreaterThan(0);
+      for (const call of calls) {
+        sites += 1;
+        // DOUBLE-QUOTED LITERALS BLANKED FIRST. The English default is prose
+        // and prose can look like an argument: explore.repostWarn opens
+        // "Re-lists roles: {{events}} …", whose `roles:` matched the argument
+        // scanner and reported the sentence itself as an ungrouped count. A
+        // guard that reads its own copy as code is the mirror of a guard
+        // satisfied by a comment.
+        const args = [...call.replace(/"(?:[^"\\]|\\.)*"/g, '""')
+          .matchAll(/\b(n|total|open|entry|events|roles):\s*([^,\n]+)/g)];
+        expect(args.length, `explore.${key} interpolates no count at all: ${call}`).toBeGreaterThan(0);
+        for (const [, name, value] of args) {
+          expect(value, `explore.${key} interpolates ${name} raw: ${value.trim()}`).toContain("nf(");
+        }
+      }
     }
+    expect(sites, "count-bearing call sites not found — the finder broke").toBeGreaterThanOrEqual(8);
   });
 });
 
@@ -510,10 +617,21 @@ describe("Explore offers a choice instead of forty screens", () => {
     // /explore is prerendered and sitemapped at priority 0.8 daily. Unmounting
     // five of six answers would drop ~90 company links out of the document for
     // crawlers and out of reach of Ctrl-F.
+    //
+    // DERIVED FROM INTENTS, NOT RETYPED. The old literal list named `scale`,
+    // which is gone, and could not have named `check` or `aged`, which are new
+    // — so retyping it would fix today's red and leave tomorrow's answer
+    // unguarded. Parsing the array the page itself iterates means a new intent
+    // added WITHOUT a hidden-gated body fails here, which is the property.
+    const intents = INTENT_IDS();
     const hides = [...CODE.matchAll(/hidden=\{active !== "(\w+)"\}/g)].map((m) => m[1]);
-    for (const i of ["hiring", "pay", "entry", "ghost", "scale", "fields"]) {
+    for (const i of intents) {
       expect(hides, `no hidden-gated body for intent "${i}"`).toContain(i);
     }
+    expect(hides, "an answer is gated on something other than the active intent")
+      .toHaveLength(intents.length);
+    expect(CODE, "an answer is conditionally unmounted rather than hidden")
+      .not.toMatch(/\{active === "\w+" && </);
   });
 
   it("the chosen answer is in the URL", () => {
@@ -523,20 +641,49 @@ describe("Explore offers a choice instead of forty screens", () => {
     expect(CODE).toMatch(/history\.replaceState/);
   });
 
-  it("never offers an answer that would open empty — once loaded", () => {
-    // "Once loaded" is load-bearing. While the fetch is in flight every
-    // collection is empty, so availability is UNKNOWN, not false. Deriving the
-    // chips from it during load rendered two chips that then jumped to seven,
-    // and pushed `active` to `check` — which hid the hiring skeleton for the
-    // whole 540ms it existed to cover. Absence of data is not evidence of
-    // absence; the rule this page applies to its numbers applies to its
-    // controls too.
-    expect(CODE).toMatch(/INTENTS\.filter\(\(i\) => available\[i\]\)/);
-    expect(CODE).toMatch(/available\[intent\] \? intent :/);
-    // Both must be gated on `loading`, or the fallback fires against data that
-    // has simply not arrived yet.
-    expect(CODE).toMatch(/const shown = loading \? INTENTS :/);
-    expect(CODE).toMatch(/const active: Intent = loading \? intent :/);
+  it("never offers an answer that would open empty, and never derives a control from data", () => {
+    // TWO PROPERTIES, AND BOTH SURVIVED THE REBUILD UNDER A DIFFERENT
+    // MECHANISM, so the assertions move to the new mechanism rather than being
+    // deleted with the old one.
+    //
+    // (a) CONTROLS ARE NOT DERIVED FROM DATA. While the fetch is in flight every
+    //     collection is empty, so availability is UNKNOWN, not false. Deriving
+    //     the chips from it during load rendered two chips that then jumped to
+    //     seven and pushed `active` to `check`, hiding the hiring skeleton for
+    //     the whole 540ms it existed to cover. The old fix gated the derivation
+    //     on `loading`; the rebuild removed the derivation, which is stronger —
+    //     there is no data term left to get wrong. Pinned in its POSITIVE form,
+    //     because "no availability record" alone would be satisfied by a page
+    //     that derived the chips some other way.
+    expect(CODE, "the chip row must not be derived from any collection")
+      .toMatch(/const shown = INTENTS;/);
+    expect(CODE, "the active answer must not be derived from any collection")
+      .toMatch(/const active: Intent = intent;/);
+    const derive = CODE.slice(CODE.indexOf("const shown = INTENTS;"),
+                              CODE.indexOf("const active: Intent = intent;") + 40);
+    expect(derive, "a data term crept back into the chip derivation")
+      .not.toMatch(/loading|available|\.length/);
+    expect(CODE, "the availability record is back — it cannot come back ungated")
+      .not.toMatch(/available\[/);
+    // (b) A CHIP MUST NEVER OPEN ONTO BLANK SPACE. Previously enforced by
+    //     hiding the chip; now enforced by every answer owning a WRITTEN
+    //     REFUSAL, so an empty collection is a sentence rather than a
+    //     disappearance and the URL→answer mapping stays total. Without this
+    //     half, the next answer added without a refusal ships a chip that opens
+    //     onto nothing and no test goes red.
+    const bodies = INTENT_IDS().map((id) => {
+      const start = CODE.indexOf(`hidden={active !== "${id}"}`);
+      expect(start, `no hidden-gated body for "${id}"`).toBeGreaterThan(-1);
+      const next = CODE.indexOf('hidden={active !== "', start + 1);
+      return [id, CODE.slice(start, next === -1 ? CODE.length : next)] as const;
+    });
+    for (const [id, body] of bodies) {
+      // `fields` is exempt and only `fields`: it is a chip row of links that
+      // always renders, with no collection behind it that can come back empty.
+      if (id === "fields") continue;
+      expect(body, `the "${id}" answer can open onto blank space — it owns no written refusal`)
+        .toMatch(/<Refusal|explore\.checkNone/);
+    }
   });
 
   it("the two provenance-flawed collections are gone from the page", () => {
@@ -550,11 +697,15 @@ describe("Explore offers a choice instead of forty screens", () => {
     expect(CODE).not.toMatch(/get_newest_companies/);
   });
 
-  it("only one size band's cards render at a time", () => {
-    // 36 of 48 cards leave the viewport while all four aggregates stay.
-    expect(CODE).toMatch(/const open = activeBand === band;/);
-    expect(CODE).toMatch(/return open \? \(/);
-  });
+  // REMOVED WITH THE THING IT MEASURED. "only one size band's cards render at a
+  // time" pinned the size-band accordion (`const open = activeBand === band`),
+  // which kept 36 of 48 cards out of the viewport while all four aggregates
+  // stayed visible. There are no bands and no accordion; every surviving answer
+  // is a flat twelve-card grid already gated by `hidden={active !== …}`, which
+  // the test above asserts for every intent. The viewport concern has no
+  // successor on this page, so there is nothing to re-home it onto — recorded
+  // here rather than deleted silently, so a future accordion knows this guard
+  // existed.
 
   it("the escape to /jobs sits with the chips, not at the bottom", () => {
     const head = CODE.slice(0, CODE.indexOf('hidden={active !== "hiring"}'));
@@ -593,9 +744,20 @@ describe("every interpolation a badge passes exists in every locale", () => {
   // inline t() default, so a key whose translation omits {{open}} renders a
   // sentence with a hole in it — silently, in eight languages nobody on the
   // team reads. This is why the reworded badges got NEW keys.
+  // RE-POINTED TO THE KEYS THE PAGE ACTUALLY RENDERS.
+  //
+  // `repostAcross` is referenced nowhere in Explore.tsx and was deleted from all
+  // nine locales; its {{roles}} denominator — the clause that separates a
+  // diagnosis from a libel — survives inside explore.repostWarn, which the
+  // REQUIRED map in the last describe covers in every locale, so the property
+  // did not lose a home.
+  //
+  // `entryBadgeRatio` was worse than stale: it is still DEFINED in all nine
+  // locales while Explore.tsx has stopped referencing it, so this guard was
+  // green over dead copy. The live badge is explore.entryBadgeShare, and it
+  // carries a third placeholder the old one did not.
   const NEW_KEYS: Record<string, string[]> = {
-    entryBadgeRatio: ["{{entry}}", "{{open}}"],
-    repostAcross: ["{{roles}}"],
+    entryBadgeShare: ["{{pct}}", "{{open}}", "{{entry}}"],
   };
   for (const [key, vars] of Object.entries(NEW_KEYS)) {
     it(`${key} keeps every placeholder in all nine locales`, () => {
@@ -610,10 +772,49 @@ describe("every interpolation a badge passes exists in every locale", () => {
   }
 
   it("every intent chip has a label in every locale", () => {
-    const keys = ["intentHiring", "intentPay", "intentEntry", "intentGhost", "intentScale", "intentFields", "searchAll"];
+    // TWO HALVES, and only one of them is currently met.
+    //
+    // The retired-claim half IS safe: intentHiring ("Will actually hire me"),
+    // intentGhost and intentScale were deleted from all nine locales in this
+    // change, so no language can still advertise a claim the page stopped
+    // making — which is exactly why the three renamed chips got NEW keys
+    // instead of being edited in place.
+    //
+    // The reader's-language half is NOT met, and this guard is red on purpose
+    // until it is: intentDuration, intentDates and intentAged exist in no
+    // locale file, including en.json, so eight languages get an English chip.
+    // All three carry inline defaults so nothing renders a raw key — a
+    // degradation, not a defect — but the chip row is the page's navigation and
+    // the exemption list below is for SENTENCES, not for controls. THE FIX IS
+    // IN THE LOCALES, not in a widened exemption here: this change already
+    // writes all nine files (it deletes ~25 retired explore keys from each), so
+    // the premise that they are owned by another workflow does not hold for it.
+    //
+    // Keys are READ OFF THE INTENT_LABEL RECORD rather than retyped, so a chip
+    // renamed again is covered without editing this list — the failure mode
+    // that put `intentScale` in this list months after its section died.
+    const at = CODE.indexOf("const INTENT_LABEL");
+    expect(at, "the INTENT_LABEL record moved — re-anchor, do not inline a list").toBeGreaterThan(-1);
+    const end = CODE.indexOf("\n  };", at);
+    expect(end, "INTENT_LABEL has no terminator").toBeGreaterThan(at);
+    const block = CODE.slice(at, end);
+    expect(block.length, "the INTENT_LABEL slice is implausibly long — the anchor drifted")
+      .toBeLessThan(1500);
+    const keys = [...block.matchAll(/t\("explore\.(\w+)"/g)].map((m) => m[1]);
+    expect(keys.length, "no chip labels parsed out of INTENT_LABEL")
+      .toBe(INTENT_IDS().length);
+    // searchAll is the escape hatch beside the chips and belongs to the same row.
     for (const f of localeFiles) {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
-      for (const k of keys) expect(e[k], `${f} is missing explore.${k}`).toBeTruthy();
+      for (const k of [...keys, "searchAll"]) expect(e[k], `${f} is missing explore.${k}`).toBeTruthy();
+    }
+    // And the retired claims must not come back through a locale value, which
+    // is the half that is already green and must stay that way.
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const k of ["intentHiring", "intentGhost", "intentScale"]) {
+        expect(e[k], `${f} still carries the retired chip label explore.${k}`).toBeUndefined();
+      }
     }
   });
 });
@@ -725,7 +926,14 @@ describe("both copies of Explore's title describe the page that exists", () => {
   })();
 
   it("the prerendered copy names no deleted collection", () => {
-    const GONE = /Trending Companies|trending boards|fastest-growing/i;
+    // WIDENED AFTER THE SECOND OCCURRENCE. This regex named only the first
+    // removal (trending/newest), so it stayed green while the prerendered
+    // /explore kept shipping "Companies that actually fill roles", "a real fill
+    // signal" and "Serial re-posters" to crawlers for a page that renders none
+    // of them — the exact "two copies, only one fixed" regression the guard was
+    // written after, one removal later. Every collection this page has deleted
+    // is named here; a future removal adds its own alternative.
+    const GONE = /Trending Companies|trending boards|fastest-growing|re-poster|Who Fills Roles|actually fill (the )?roles|real fill signal|Hiring at scale/i;
     const code = entry.replace(/^\s*\/\/.*$/gm, "");
     expect(code, `prerender-seo.mjs still advertises a removed collection`).not.toMatch(GONE);
   });
@@ -734,7 +942,7 @@ describe("both copies of Explore's title describe the page that exists", () => {
     const GONE = /Trending Companies|hiring fastest|newly added/i;
     for (const f of localeFiles) {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
-      for (const k of ["seoTitle2", "seoDescription2", "subhead2"]) {
+      for (const k of ["seoTitle2", "seoDescription2", "subhead2", "subhead3"]) {
         if (e[k]) expect(e[k], `${f} explore.${k}`).not.toMatch(GONE);
       }
     }
@@ -759,16 +967,52 @@ describe("the employer lookup covers the whole board, honestly", () => {
     // companiesFacet.count is count(*) GROUP BY company_token with NEITHER
     // serving predicate. It may rank and match; publishing it would put a
     // number on screen that the destination contradicts.
-    expect(body).toMatch(/RETURNS TABLE\(name text, tokens text\[\]\)/);
+    //
+    // RE-HOMED, NOT RELAXED. This asserted the whole RETURNS TABLE spelling
+    // `(name text, tokens text[])`, which made it a guard against the function
+    // returning ANYTHING — including the two counts the check answer states and
+    // could not render without (20260908136000). The property it exists for is
+    // narrower and is asserted directly: the facet count may rank and match, and
+    // may not be returned.
+    expect(body, "the facet count must not become a returned column")
+      .not.toMatch(/\bc\b\s+AS\s|AS\s+facet_count|'count'\)::int\s+AS\s+open_roles/);
+    expect(body, "the returned open count must apply BOTH serving predicates")
+      .toMatch(/AS open_roles/);
+    const openExpr = body.slice(body.indexOf("SELECT count(*)::int"), body.indexOf("AS open_roles"));
+    expect(openExpr, "open_roles is not counted off job_board_postings").toMatch(/FROM public\.job_board_postings/);
+    expect(openExpr, "open_roles drops the missing_since predicate").toMatch(/missing_since IS NULL/);
+    expect(openExpr, "open_roles drops the freshness predicate").toMatch(/effective_posted >= now\(\) - interval '30 days'/);
     expect(CODE, "Explore must not render a count on a lookup result")
       .not.toMatch(/h\.count|hit\.count/);
   });
 
-  it("reads the cached facets row, never an aggregate", () => {
+  it("the employer's own advertised total is never summed across boards", () => {
+    // job_board_verifications is ONE ROW PER BOARD, UPSERTed on every fetch, so
+    // it has no history: two boards' totals were read on two different days and
+    // adding them makes a number with no date basis. The SQL refuses it, and so
+    // does the page — two call sites for one rule, deliberately.
+    expect(body).toMatch(/array_length\(m\.tokens, 1\) = 1 THEN v\.feed_total/);
+    expect(body).toMatch(/array_length\(m\.tokens, 1\) = 1 THEN v\.verified_at/);
+    expect(CODE).toMatch(/const single = h\.tokens\.length === 1;/);
+    // And the stamp travels with the number, or neither is published.
+    expect(body, "feed_total_at is the date basis and cannot be dropped").toMatch(/AS feed_total_at/);
+  });
+
+  it("matches off the cached facets row, and any aggregate it adds is bounded", () => {
     // A request-path aggregate over 605k postings is the 26s-per-view mistake.
+    // The MATCH still touches one job_board_meta row and no table besides, so
+    // the typeahead's ranking cost is unchanged; the postings count runs only
+    // for the at-most-eight merged names that survive the LIMIT, keyed on
+    // job_board_postings_company_token_idx. The property is the BOUND, not the
+    // absence — asserting the absence is what would have kept the check answer
+    // permanently unable to state its own numbers.
     expect(body).toMatch(/FROM public\.job_board_meta m/);
     expect(body).toMatch(/WHERE m\.k = 'facets'/);
-    expect(body).not.toMatch(/FROM public\.job_board_postings/);
+    expect(body, "the merged-name set must be capped before anything is counted")
+      .toMatch(/GROUP BY h\.name[\s\S]*?LIMIT 8/);
+    expect(body, "an unbounded postings scan is back on the request path")
+      .not.toMatch(/FROM public\.job_board_postings p\s*(?!\s*WHERE p\.company_token = ANY)/);
+    expect(body).toMatch(/WHERE p\.company_token = ANY \(m\.tokens\)/);
   });
 
   it("merges an employer's several feeds into one row", () => {
@@ -784,8 +1028,24 @@ describe("the employer lookup covers the whole board, honestly", () => {
   it("the chip is always offered — it does not depend on the hourly cron", () => {
     // The facets row is written by the edge-function refresh pass. When pg_cron
     // died for five hours today every other answer froze; this one would not.
-    expect(CODE).toMatch(/check: true,/);
+    //
+    // `check: true,` was a member of the deleted `available` record. The
+    // property is now met MORE broadly than the guard asked — no chip depends
+    // on any collection — so the assertion moves to the construction that
+    // supplies it rather than being dropped. Dropping it is what would leave
+    // this chip one "only show the lookup when we have data" optimisation away
+    // from breaking again.
     expect(CODE).toMatch(/INTENTS: readonly Intent\[\] = \["check",/);
+    expect(CODE, "the chip row must not be derived from any collection")
+      .toMatch(/const shown = INTENTS;/);
+    // And the lookup's own body must sit outside every loading/length gate: it
+    // is the one answer that can still be right when the cron is dead.
+    const start = CODE.indexOf('hidden={active !== "check"}');
+    expect(start, "the check answer's body moved — re-anchor, do not delete").toBeGreaterThan(-1);
+    const body = CODE.slice(start, CODE.indexOf('hidden={active !== "', start + 1));
+    expect(body.length, "the check body slice is empty or unbounded").toBeGreaterThan(200);
+    expect(body, "the employer lookup was put behind the cache read")
+      .not.toMatch(/\bloading\b|hiring\.length/);
   });
 
   it("says what is true when nothing matches, instead of an empty box", () => {
@@ -820,9 +1080,26 @@ describe("the employer lookup covers the whole board, honestly", () => {
   });
 
   it("queries on keystroke only, debounced — never on page load", () => {
-    const block = CODE.slice(CODE.indexOf("const s = cq.trim();"), CODE.indexOf("const bands ="));
-    expect(block).toMatch(/if \(s\.length < 3\)/);
-    expect(block).toMatch(/setTimeout\(/);
+    // THE END ANCHOR WAS DEAD AND THIS TEST WAS GREEN OVER NOTHING. `const
+    // bands =` went with the size-segments section, so indexOf returned -1 and
+    // the slice ran from the effect's first line to the END OF THE FILE: both
+    // assertions below would have been satisfied by an `if (s.length < 3)` or a
+    // `setTimeout(` anywhere in the remaining 900 lines, with the debounce
+    // deleted. That is this repo's own "a closing bracket whose indexOf
+    // returned -1" defect, live and passing.
+    //
+    // Re-anchored inside the effect's own scope, and BOUNDED as well as
+    // non-empty, so the next dead anchor fails loudly instead of widening.
+    const start = CODE.indexOf("const s = cq.trim();");
+    expect(start, "the typeahead effect moved — re-anchor, do not delete").toBeGreaterThan(-1);
+    const end = CODE.indexOf("}, [cq]);", start);
+    expect(end, "the typeahead effect has no terminator").toBeGreaterThan(start);
+    const block = CODE.slice(start, end);
+    expect(block, "debounce block not located").not.toBe("");
+    expect(block.length, "the debounce slice is implausibly long — the anchor drifted")
+      .toBeLessThan(2000);
+    expect(block, "the 3-character floor is gone from the client").toMatch(/if \(s\.length < 3\)/);
+    expect(block, "the debounce is gone — this fires on every keystroke").toMatch(/setTimeout\(/);
   });
 });
 
@@ -1011,10 +1288,14 @@ describe("the hiring answer ranks by odds, not by size", () => {
     // vacuously against "" — the repo's own "guards that pin spellings pass
     // while the code is dead" shape, inverted: red for a reason unrelated to
     // the property, with the property itself unguarded. The gate has one home
-    // now, `heldFor`, and it is anchored there. A function body cannot be
-    // deleted without the anchor failing loudly.
-    const gate = CODE.slice(CODE.indexOf("const heldFor ="), CODE.indexOf("function rankedFillClaims"));
-    expect(gate, "the hiring gate moved — re-anchor, do not delete").not.toBe("");
+    // now, `heldFor`, and it is anchored there.
+    //
+    // AND THE END ANCHOR WAS DEAD TOO, WHICH WAS WORSE. `function
+    // rankedFillClaims` no longer exists, so indexOf returned -1 and
+    // slice(start, -1) handed back almost the entire file — the `not.toBe("")`
+    // check passed vacuously and every assertion below was scoped to everything
+    // that follows. gateSlice() now bounds the slice as well as locating it.
+    const gate = gateSlice();
     // The two bars the SERVER cannot supply, in the one place the client
     // applies them. `sufficient` is the server's finding and reaches this
     // predicate through measureOf; the coverage floor and the observation
@@ -1024,22 +1305,47 @@ describe("the hiring answer ranks by odds, not by size", () => {
       .toMatch(/m\.days >= FILL_RATE_MIN_TRACKING_DAYS/);
     expect(gate, "a row with no measure must be held back, never rendered as a number")
       .toMatch(/return m\.answered \? "undated" : "unmeasured"/);
-    // And the section may only render rows this predicate cleared.
+    // And the section may only render rows this predicate cleared. HiringGrid /
+    // fill.shown became DurationGrid / duration.shown when the section stopped
+    // leading with R(14); the property — the grid is fed the gated list, never
+    // the payload — is unchanged.
     expect(CODE, "the grid must be fed from the gated list, not from the payload")
-      .toMatch(/<HiringGrid claims=\{fill\.shown\} \/>/);
+      .toMatch(/<DurationGrid claims=\{duration\.shown\} \/>/);
     expect(CODE, "the bar must be imported from /jobs, not re-typed here")
       .toMatch(/import \{[^}]*FILL_COVERAGE_MIN[^}]*FILL_RATE_MIN_TRACKING_DAYS[^}]*\} from "@\/pages\/Jobs"/);
     expect(CODE, "a second declaration of the bar is the drift this guard exists to stop")
       .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE)_[A-Z_]+ =/);
-    // The span is disclosed rather than gated, so pin that it is actually
-    // rendered beside the figure on the card that carries it. Asserted on the
-    // inline English default, because the keys this section now uses are new
-    // and the locale pass has not landed — see PENDING_LOCALE_KEYS below.
-    const card = CODE.slice(CODE.indexOf("function HiringGrid"), CODE.indexOf("function HiringSkeleton"));
-    expect(card, "the fill card moved — re-anchor, do not delete").not.toBe("");
-    expect(card, "the tracking span must stay beside the rate")
-      .toMatch(/\{\{d\}\}d of tracking/);
-    expect(card, "the figure is a ceiling and must say so").toMatch(/explore\.fillUpTo/);
+    // THE SPAN, PINNED AS A PROPERTY RATHER THAN AS A KEY. It moved out of the
+    // badge ("{{d}}d of tracking") and into explore.durEvidence, printed on
+    // every card. Two assertions, because either one alone is escapable: the
+    // card must interpolate the EMPLOYER'S OWN span, and the claim type must
+    // make that span non-optional, so no path can build a median without one.
+    const card = CODE.slice(CODE.indexOf("function DurationGrid"), CODE.indexOf("function RecyclingGrid"));
+    expect(card, "the duration card moved — re-anchor, do not delete").not.toBe("");
+    expect(card.length, "the card slice is implausibly long — the end anchor drifted")
+      .toBeLessThan(8000);
+    expect(card, "the tracking span must stay beside the figure, on the card")
+      .toMatch(/days: c\.windowDays/);
+    const claim = CODE.slice(CODE.indexOf("interface DurationClaim"), CODE.indexOf("\n}", CODE.indexOf("interface DurationClaim")));
+    expect(claim, "the DurationClaim interface moved — re-anchor, do not delete").not.toBe("");
+    expect(claim, "the span must be required, or a median can render without one")
+      .toMatch(/\bwindowDays: number;/);
+    expect(claim, "the span became optional — a median over an unknown span is not a measurement")
+      .not.toMatch(/windowDays\?:/);
+    // THE CEILING WORD, not the key name. R(14) is an upper bound — the 24h
+    // dedupe deletes superseded closures, so the relist side is a floor and the
+    // fill share is a ceiling — and the demotion from headline to evidence line
+    // is exactly the kind of edit that drops the marker on the way. Pinned on
+    // the inline English default because explore.durRate is in no locale file,
+    // so this default is what every reader gets.
+    const rate = CODE.match(/t\("explore\.durRate",\s*"([^"]+)"/);
+    expect(rate, "explore.durRate default not found — the R(14) line moved").toBeTruthy();
+    expect(rate![1], "a ceiling published as a point estimate").toMatch(/^Up to \{\{pct\}\}%/);
+    // AND THE MEDIAN'S OWN FLOOR MARKER, which the rebuild made possible and
+    // nothing else guards. p50 is censored at FILL_SUPPORT_MAX_DAYS — roles
+    // that outlived the cap never enter it — so the median can only be longer,
+    // and the "+" is part of the number rather than a hedge beside it.
+    expect(card, "the censored median lost its floor marker").toMatch(/\{nf\(c\.p50\)\}\+/);
   });
 
   it("sufficient/fill_rate_14/dated_coverage are merged in from the curve, not read off the row", () => {
@@ -1105,11 +1411,38 @@ describe("no number is published without the sample behind it", () => {
     expect(CODE, "date still uses the browser locale").not.toMatch(/toLocaleString\(undefined/);
   });
 
-  it("the transparent median needs a sample before it prints", () => {
+  it("the transparent median needs its OWN sample before it prints", () => {
     // The SQL medians whichever roles state USD pay with no floor, so ONE USD
     // posting was enough to publish "median floor $X" for an employer whose
     // other 300 roles say nothing.
-    expect(CODE).toMatch(/r\.median_usd_floor != null && \(r\.open_roles \?\? 0\) >= 20/);
+    //
+    // RE-POINTED TO A STRICTLY STRONGER GATE. The old spelling gated on
+    // open_roles — the size of a DIFFERENT population from the median's own:
+    // total served roles, not roles carrying a pay figure our parser resolved
+    // to a US-dollar annual floor. usd_n is that median's actual sample, and it
+    // is frequently far smaller (salary_min_annual is populated on roughly a
+    // fifth of servable rows while the badge's basis is 80%+ for every employer
+    // listed here). So the assertion follows the gate to the right population
+    // rather than pinning the wrong one.
+    expect(CODE, "the median's floor must be declared once, not inlined")
+      .toMatch(/const PAY_MEDIAN_MIN_USD_N = 20;/);
+    expect(CODE, "the median is gated on the wrong population's size")
+      .toMatch(/usdN < PAY_MEDIAN_MIN_USD_N/);
+    expect(CODE, "the sample must come from the median's own column")
+      .toMatch(/const usdN = numOr\(r\.usd_n\);/);
+    // AND THE ORDERING, WHICH THE SOURCE CALLS LOAD-BEARING. The SQL now nulls
+    // the median itself below the floor, so if the null were tested first an
+    // employer with three USD postings would render NO LINE AT ALL — and a
+    // silence under this heading reads as "states no pay", the opposite of what
+    // membership in this list means. The refusal has to outlive the number it
+    // refuses.
+    expect(CODE.indexOf("usdN < PAY_MEDIAN_MIN_USD_N"),
+      "the sample must be tested before the null median, or the refusal disappears")
+      .toBeLessThan(CODE.indexOf("if (med === null)"));
+    expect(CODE.indexOf("if (med === null)"), "the null-median refusal is gone").toBeGreaterThan(-1);
+    // And the weaker, wrong-population bar cannot come back.
+    expect(CODE, "the median is gated on the board's size again")
+      .not.toMatch(/median_usd_floor != null && \(r\.open_roles/);
   });
 });
 
@@ -1159,27 +1492,24 @@ describe("the page says when it was measured", () => {
  * set: once the locale pass lands these keys, this test fails until the list is
  * emptied, so the exemption cannot outlive the reason for it.
  *
- * ADDED 2026-09-06 with the hiring-section rewrite. Hand this list to the locale
- * workflow; it is the full set of strings that section needs translated.
+ * ADDED 2026-09-06 with the hiring-section rewrite. EMPTIED 2026-09-08 with the
+ * six-section rebuild, which is the outcome this guard's third bound was
+ * written to force: the locale pass landed every key in en.json, so the
+ * exemption has outlived its reason and comes off in the same change. The list
+ * stays declared, empty, rather than being deleted — the next change that needs
+ * one has to add its keys here in the open, where the three bounds below apply.
+ *
+ * IT MAY NOT GROW ITS WAY OUT OF A RED TEST. The rebuild referenced 98 new keys
+ * at once; adding all of them here would have turned a bounded exemption into a
+ * blanket one, which is the weakening the guard exists to prevent. The cap
+ * below is what makes that argument have to be had out loud.
  */
-const PENDING_LOCALE_KEYS = [
-  // The fill card.
-  "fillUpTo", "fillLabel", "fillInterval", "fillEvidence", "fillWindow",
-  "fillOpenBoth", "fillOpen", "fillCoverage", "fillRelistFloor",
-  // The section's heading, blurb and denominator sentences.
-  "hiringTitleRanked", "hiringBlurbRanked",
-  "noteHiringPoolGated", "noteHiringShownOne", "noteHiringShown",
-  // The two staleness lines.
-  "staleParts", "staleAge",
-  // The methodology disclosure.
-  "methodFillTerm", "methodRankTerm", "methodRankMethod", "methodGateTerm",
-  "methodGateMethod", "methodRelistTerm", "methodRelistMethod",
-  "methodBlindTerm", "methodBlindMethod", "methodOpenTerm", "methodOpenMethod",
-  // The two empty states and the held-back accounting.
-  "hiringOutTitle", "hiringOutBody", "hiringNoneRankedTitle", "hiringNoneBody",
-  "hiringHeldReposter", "hiringHeldWindow", "hiringHeldEstimate",
-  "hiringHeldUndated", "hiringHeldUnmeasured", "hiringHeldOf",
-] as const;
+const PENDING_LOCALE_KEYS = [] as const as readonly string[];
+
+/** The exemption's own ceiling. It is deliberately small: a handful of keys
+ *  awaiting one locale pass is a degradation, a hundred is a page shipping in
+ *  the wrong language with a test saying that is fine. */
+const PENDING_LOCALE_CAP = 40;
 
 describe("every t() key the page uses exists in English", () => {
   it("has no key referenced only in code", () => {
@@ -1188,8 +1518,14 @@ describe("every t() key the page uses exists in English", () => {
     const en = (JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore ?? {}) as Record<string, string>;
     const used = [...EXPLORE.matchAll(/t\("explore\.([A-Za-z0-9_]+)"/g)].map((m) => m[1]);
     expect(used.length, "no explore t() keys found — regex broken").toBeGreaterThan(10);
-    const missing = [...new Set(used)].filter((k) => !(k in en) && !(PENDING_LOCALE_KEYS as readonly string[]).includes(k));
+    const missing = [...new Set(used)].filter((k) => !(k in en) && !PENDING_LOCALE_KEYS.includes(k));
     expect(missing, `referenced in Explore.tsx but absent from en.json: ${missing.join(", ")}`).toEqual([]);
+    // AND THE EXEMPTION MAY NOT SWALLOW THE FAILURE. A list that can grow to
+    // the size of the gap is not a bound, it is a mute button — this rebuild
+    // introduced 98 keys at once and the temptation was exactly that.
+    expect(PENDING_LOCALE_KEYS.length,
+      `PENDING_LOCALE_KEYS has grown past ${PENDING_LOCALE_CAP} — land the keys in en.json instead of exempting them`)
+      .toBeLessThanOrEqual(PENDING_LOCALE_CAP);
   });
 
   it("the pending list is exactly the outstanding set — it cannot outlive its reason", () => {
@@ -1203,15 +1539,18 @@ describe("every t() key the page uses exists in English", () => {
     expect(orphaned, `no longer referenced — remove from PENDING_LOCALE_KEYS: ${orphaned.join(", ")}`).toEqual([]);
   });
 
-  it("every pending key renders English rather than a raw key", () => {
-    // The exemption is only survivable because each of these has an inline
-    // default. A `t("explore.x")` with no second argument renders the KEY to a
-    // visitor, and that is the failure the guard above exists to stop — the
-    // list must not become a way to ship one.
-    for (const k of PENDING_LOCALE_KEYS) {
-      expect(EXPLORE, `explore.${k} has no inline English fallback`)
-        .toMatch(new RegExp(`t\\("explore\\.${k}",\\s*\n?\\s*"`));
-    }
+  it("every key the page uses renders English rather than a raw key", () => {
+    // GENERALISED FROM THE EXEMPTION LIST TO EVERY KEY, because the list is now
+    // empty and a loop over an empty list asserts nothing — the vacuous-guard
+    // shape this file keeps finding elsewhere. The property was never really
+    // about the exemption: a `t("explore.x")` with no second argument renders
+    // the KEY to a visitor, and eight locales are currently missing 114 of
+    // these keys, so the inline default IS what most readers see. It has to
+    // exist for all of them, not only for the ones on a list.
+    const used = [...new Set([...EXPLORE.matchAll(/t\("explore\.([A-Za-z0-9_]+)"/g)].map((m) => m[1]))];
+    expect(used.length, "no explore t() keys found — regex broken").toBeGreaterThan(10);
+    const bare = used.filter((k) => !new RegExp(`t\\("explore\\.${k}",\\s*\n?\\s*"`).test(EXPLORE));
+    expect(bare, `no inline English fallback — these render a raw key: ${bare.join(", ")}`).toEqual([]);
   });
 });
 
@@ -1304,11 +1643,30 @@ describe("the churn warning is gated on a rate and never reads as a clean bill",
 
   it("reaches the answers where a reader is being persuaded to trust", () => {
     // The point of item 3: the warning is worthless under the chip that is
-    // already a warning. It has to reach the cards that recommend.
-    for (const on of ["pay", "entry", "scale", "check"]) {
+    // already a warning. It has to reach the cards that RECOMMEND.
+    //
+    // `scale` came off the list with its section. The remaining three are the
+    // answers that name an employer approvingly, and they all still carry it.
+    for (const on of ["pay", "entry", "check"]) {
       expect(CODE, `no churn warning on the ${on} answer`).toMatch(
         new RegExp(`repostWarn\\((?:r\\.company_token|worstToken), "${on}"\\)`));
     }
+    // AND WHY THE OTHER THREE ARE EXEMPT, pinned so the list cannot silently
+    // shrink again. Two of the three exemptions were already guarded elsewhere;
+    // the third — `aged`, a NEW named-employer answer this rebuild added — was
+    // not guarded anywhere at all, and its entire safety rests on rankAged
+    // filtering through the same predicate that excludes flagged employers from
+    // the duration answer. Drop the serialReposters argument from rankAged and,
+    // without these two lines, flagged employers appear on the age-out cards
+    // with no warning and nothing goes red.
+    expect(CODE, "the age-out answer must exclude flagged employers, as the duration answer does")
+      .toMatch(/rows\.filter\(\(r\) => heldFor\(r, serialReposters\) === null\)/);
+    expect(CODE, "rankAged must be handed the flagged set, or its filter is a no-op")
+      .toMatch(/rankAged\(hiring, serialReposters\)/);
+    // `ghost` is exempt because those cards state these numbers themselves, in
+    // a better-grouped form — repeating them would read as two findings.
+    expect(CODE, "the re-listing answer must not repeat the warning it already states")
+      .toMatch(/if \(!token \|\| on === "ghost"\) return null;/);
   });
 
   it("the hiring answer excludes flagged employers instead of warning about them", () => {
@@ -1322,12 +1680,19 @@ describe("the churn warning is gated on a rate and never reads as a clean bill",
     // already claimed. So the property is stated positively here rather than
     // deleted: the flagged set is CONSULTED by the one predicate that decides
     // what the section shows, and the exclusion is counted rather than silent.
-    const gate = CODE.slice(CODE.indexOf("const heldFor ="), CODE.indexOf("function rankedFillClaims"));
-    expect(gate, "the hiring gate moved — re-anchor, do not delete").not.toBe("");
+    // Shares gateSlice() with the fill-rate test above, which is what makes the
+    // dead `function rankedFillClaims` end anchor one fix rather than two. Its
+    // -1 scoped this assertion to the rest of the file as well.
+    const gate = gateSlice();
     expect(gate, "a flagged employer must be excluded from the hiring answer")
       .toMatch(/serialReposters\.has\(r\.company_token\)\) return "reposter"/);
+    // THE FULL SPELLING. This was `explore.hiringHeldReposter`, which passes as
+    // a PREFIX of the live `hiringHeldReposter2` — so a rename that dropped the
+    // sentence's meaning while keeping its stem would not have been caught. The
+    // key was re-minted because nine locales carry the old sentence naming a
+    // section that no longer exists.
     expect(CODE, "and the exclusion must be counted, never silent")
-      .toMatch(/explore\.hiringHeldReposter/);
+      .toMatch(/explore\.hiringHeldReposter2/);
     expect(CODE, "the warning must not also render inside the section that disqualifies it")
       .not.toMatch(/repostWarn\((?:r\.company_token|worstToken), "hiring"\)/);
   });
@@ -1465,15 +1830,46 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
   });
 
   it("renders a note only when its counter arrived", () => {
-    for (const [intent, key] of [["hiring", "totals\\.hiring_n"], ["entry", "totals\\.entry_n"],
-                                 ["ghost", "totals\\.repost_pool_n"], ["fields", "totals\\.postings_n"]] as const) {
+    // A missing key is a FAILED SCAN and must produce silence, never "the 12
+    // best of 0 employers". Two of these pairs were STRENGTHENED by the
+    // rebuild, so the assertions follow them up rather than being re-pointed
+    // flat — a re-point that dropped the new conjuncts would let the
+    // strengthening be reverted with nothing going red.
+    for (const [intent, key] of [["hiring", "totals\\.hiring_n"],
+                                 ["ghost", "totals\\.relisting_pool_n"]] as const) {
       // Whitespace-tolerant: an exact-indent match would break on a reformat
       // and say the guard failed when only the layout moved.
       expect(CODE, `${intent} note is ungated`).toMatch(
-        new RegExp(`${intent}:\\s*${key}\\s*\\?\\s*(t\\(|\\[)`));
+        new RegExp(`${intent}:[\\s\\S]{0,120}?${key}\\s*\\?\\s*(t\\(|\\[)`));
     }
+    // GHOST GAINED A CARD GATE AS WELL AS A COUNTER GATE. relisting_pool_n
+    // comes off the raw RPC rows, BEFORE recyclingClaimOf applies its six
+    // refusals, so a payload whose rows all lack a window or a first-seen date
+    // yields a 1,204-employer denominator printed directly above a panel
+    // holding no cards.
+    expect(CODE, "the re-listing pool can be printed above an empty panel")
+      .toMatch(/recycled\.length === 0 \? null/);
+    // ENTRY GAINED TWO CONJUNCTS, and they are the stat-provenance rule applied
+    // exactly: entry_n exists under BOTH the deployed five-role floor and this
+    // rebuild's 10-entry/50-open pair, so its PRESENCE cannot say which one
+    // produced it — and the frontend deploys before migrations apply. Without
+    // these, entry_n degrades to a WRONG NUMBER under a sentence naming floors
+    // it was not counted under.
+    expect(CODE, "the entry pool is named without the floors it was counted under")
+      .toMatch(/entry: totals\.entry_n\s*&&\s*totals\.entry_min_entry === ENTRY_MIN_ENTRY_ROLES\s*&&\s*totals\.entry_min_open === ENTRY_MIN_OPEN_ROLES/);
     // The pay note needs BOTH halves of its fraction before it may state one.
     expect(CODE).toMatch(/pay: totals\.pay_n && totals\.pay_pool_n/);
+    // THE FIELDS NOTE IS GONE ON PURPOSE, and its removal is the assertion now.
+    // It printed get_explore_denominators' UNCAPPED count as "open across the
+    // board right now" while every chip beneath it is formatted through
+    // SERVE_COUNT_CAP — one sentence, two runtimes, two numbers, the sentence
+    // contradicting the eighteen numbers under it and the page each chip opens.
+    expect(CODE, "the uncapped board-wide count is back above the capped chips")
+      .not.toMatch(/fields:\s*totals\.postings_n/);
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      expect(e.noteFields, `${f} still ships explore.noteFields`).toBeUndefined();
+    }
   });
 
   it("the new cache keys are read as objects, never trusted from null", () => {
@@ -1497,21 +1893,49 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     //
     // Checked against EVERY locale that defines the key, so a translation
     // landing later is held to the same rule as today's English.
+    // RE-POINTED TO THE LIVE SENTENCES. Four of the eight keys here
+    // (noteHiring, noteEntry, noteGhost, noteFields) are retired and were
+    // deleted from all nine locales in this change; a fifth, noteGhostFlagged,
+    // was GREEN OVER DEAD COPY — still defined in all nine locales while
+    // Explore.tsx had moved to noteRecycleFlagged. The property is unchanged
+    // and the list is longer, not shorter.
     const REQUIRED: Record<string, string[]> = {
       repostWarn: ["{{events}}", "{{roles}}"],
-      noteHiring: ["{{n}}"],
+      noteDurationPool: ["{{n}}", "{{cap}}"],
+      noteDurationShown: ["{{shown}}"],
+      noteRecyclePool: ["{{n}}", "{{cap}}"],
+      noteRecycleFlagged: ["{{n}}"],
+      noteAged: ["{{n}}"],
+      noteEntryShare: ["{{n}}", "{{e}}", "{{o}}"],
       notePay: ["{{n}}", "{{pool}}"],
       notePayBoard: ["{{pct}}"],
-      noteEntry: ["{{n}}"],
-      noteGhost: ["{{n}}"],
-      noteGhostFlagged: ["{{n}}"],
-      noteFields: ["{{n}}"],
     };
-    // English must carry all of them — the page's own key-exists guard above
-    // requires it, and this pins the shape as well as the presence.
+    // THE ENGLISH CLAUSE, RESHAPED RATHER THAN DELETED. `typeof en[key] ===
+    // "string"` is unsatisfiable for any key still on PENDING_LOCALE_KEYS, and
+    // a guard left red for the length of a locale window is how someone
+    // eventually deletes it. The obligation is the same either way — SOME
+    // English string carries every placeholder — so it is asserted against
+    // en.json where the key has landed and against the INLINE DEFAULT where it
+    // has not. There is no state in which nothing is checked.
     const en = (JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).explore ?? {}) as Record<string, string>;
-    for (const key of Object.keys(REQUIRED)) {
-      expect(typeof en[key], `en.json is missing explore.${key}`).toBe("string");
+    for (const [key, placeholders] of Object.entries(REQUIRED)) {
+      let english = en[key];
+      if (typeof english !== "string") {
+        const m = CODE.match(new RegExp(`t\\("explore\\.${key}",\\s*"([^"]+)"`));
+        expect(m, `explore.${key} is in neither en.json nor an inline default`).toBeTruthy();
+        english = m![1];
+      }
+      for (const ph of placeholders) {
+        expect(english, `the English text for explore.${key} drops ${ph}: ${english}`).toContain(ph);
+      }
+    }
+    // And the retired sentences must not linger in any locale, where a value
+    // would override an inline default the page no longer has a call site for.
+    for (const f of localeFiles) {
+      const ex = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const dead of ["noteHiring", "noteEntry", "noteGhost", "noteGhostFlagged", "noteFields"]) {
+        expect(ex[dead], `${f} still ships the retired explore.${dead}`).toBeUndefined();
+      }
     }
     for (const f of localeFiles) {
       const ex = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;

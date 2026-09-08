@@ -99,7 +99,11 @@ const row = (over: Record<string, unknown> = {}) => ({
 const mount = (cache: Record<string, unknown>) => {
   rpc.mockImplementation(async (fn: string) => {
     if (fn === "get_explore_cache") {
-      return { data: { hiring: [], reposters: [], entry: [], salary: [], transparent: [], segments: {}, fields: {}, totals: { hiring_n: 31 }, repost_index: {}, stale_parts: [], computed_at: new Date().toISOString(), ...cache } };
+      // `relisting` is the collection the re-listing answer reads since
+      // 20260908131000; `reposters` and `segments` are in RETIRED_CACHE_PARTS
+      // and are deliberately absent here so a fixture cannot keep a retired
+      // shape alive after the page stopped reading it.
+      return { data: { hiring: [], relisting: [], entry: [], salary: [], transparent: [], fields: {}, totals: { hiring_n: 31 }, repost_index: {}, stale_parts: [], computed_at: new Date().toISOString(), ...cache } };
     }
     return { data: [] };
   });
@@ -114,9 +118,18 @@ const pageText = () => document.body.textContent ?? "";
 /** Every percentage on screen that could only have come from a fill measure.
  *  Two shapes are legitimate copy and are excluded: the interval "48–71%
  *  approx." and the coverage qualifier, both of which only ever appear beside
- *  an already-gated figure. */
+ *  an already-gated figure.
+ *
+ *  CASE-INSENSITIVE, AND THAT IS THE WHOLE POINT OF THE FLAG. R(14) used to be
+ *  a lowercase badge ("up to 62%") prefixed to the figure; the rebuild demoted
+ *  it to the evidence line, where it opens a sentence and renders "Up to 62%".
+ *  A case-sensitive scanner returns [] for every page — INCLUDING A LEAKING ONE
+ *  — so the three gate tests below would have gone green over a live falsehood,
+ *  which is the exact shape this repo has been bitten by. The method drawer
+ *  contains the words 'reads "up to"' with no digits after them, so /i cannot
+ *  create a false positive here. */
 const fillPercents = (txt: string): string[] =>
-  [...txt.matchAll(/up to\s*(\d{1,3})%/g)].map((m) => m[1]);
+  [...txt.matchAll(/up to\s*(\d{1,3})%/gi)].map((m) => m[1]);
 
 /** The card a company's name sits in — the anchor the grid renders per row. */
 const cardFor = (name: string): HTMLElement | null => {
@@ -134,11 +147,24 @@ describe("a fill claim without its window", () => {
     // The claim…
     expect(card, "the fill figure is not on the card").toMatch(/62%/);
     // …as a ceiling, because the deduped relists it never saw are absent from
-    // the cohort the share is computed over.
-    expect(card, "a ceiling rendered as a point estimate").toMatch(/up to\s*62%/);
+    // the cohort the share is computed over. THE PROPERTY IS THE MARKER, NOT
+    // THE PHRASE: R(14) moved from a lowercase badge beside the figure to the
+    // opening of the evidence sentence ("Up to 62% of its roles came down
+    // within 14 days and stayed down"), so the case is the page's business and
+    // the marker is ours. Both halves are asserted — the marker is present, AND
+    // the figure never appears without it — so a rewording that demotes the
+    // ceiling to a point estimate fails here even if the words "up to" survive
+    // somewhere else on the card.
+    expect(card, "a ceiling rendered as a point estimate").toMatch(/up to\s*62%/i);
+    expect(card, "the fill share appears somewhere without its ceiling marker")
+      .not.toMatch(/(?<!up to\s*)\b62%/i);
     // …with the span it was measured over, in the same card. THIS is the half
-    // that was optional and must never be again.
-    expect(card, "a fill figure with no window beside it").toMatch(/34d/);
+    // that was optional and must never be again. The compact "34d" became
+    // "across the 34 days we have watched this board"; either spelling is a
+    // window, and a card with neither is a number over an unknown stretch of
+    // time. Asserted against the CARD, never the page, so "in the same card"
+    // stays the thing being tested.
+    expect(card, "a fill figure with no window beside it").toMatch(/\b34\s*(?:d\b|days\b)/);
     // …and the horizon it is quoted at, so "62%" cannot be read as "of all
     // its roles, ever".
     expect(card, "the 14-day horizon is not stated").toMatch(/14 days/);
@@ -189,10 +215,19 @@ describe("a fill claim without its window", () => {
     // One card of two rows. The sentence must count what is on screen, not the
     // size of the payload — and it must be grammatical at one, which "The 1
     // employers" was not when this rendered live.
+    // The section now leads with a MEDIAN rather than a fill rate, so "carries
+    // a figure" became "carries a median" and "fill-measurement bars" became
+    // "measurement bars". The counted quantity is unchanged: duration.shown,
+    // the cards, not `hiring`, the payload.
     expect(pageText(), "the note still claims the size of the payload")
-      .toMatch(/One of those carries a figure here/);
+      .toMatch(/One of those carries a median here/);
+    // And the payload size must not appear as the card count at all — the
+    // singular branch exists because "The 1 employers" shipped live, and this
+    // is the negative that pins which of the two numbers it is counting.
+    expect(pageText(), "the note counted the payload rather than the cards")
+      .not.toMatch(/\b2 of those carry/);
     expect(pageText(), "the pool it was drawn from is gone")
-      .toMatch(/31 employers clear our fill-measurement bars/);
+      .toMatch(/31 employers clear our measurement bars/);
   });
 
   it("no sentence about the pool is computed from the slice", async () => {
@@ -240,8 +275,20 @@ describe("a fill claim without its window", () => {
       .toMatch(/that is our instrument/);
     expect(pageText(), "a section that could not run must not refuse on the employers' behalf")
       .not.toMatch(/None of the .* employers we ranked/);
-    // The chip is still offered, so the deep link still lands where it says.
-    expect(pageText()).toMatch(/Will actually hire me|hire me/i);
+    // THE CHIP ROW IS TOTAL, so the deep link still lands where it says. The
+    // label changed — "Will actually hire me" was a claim the section stopped
+    // making, and reusing its key would have left eight locales advertising it
+    // — but the intent id `hiring` did not, which is what makes ?i=hiring land
+    // here. Asserting EVERY label rather than this one is what gives this
+    // teeth: a future section that re-couples its chip to its row count fails
+    // here, because that section's chip is missing from an empty payload.
+    for (const label of [
+      "Check an employer", "How long do I have", "Watch out: recycled dates",
+      "Still up at day 30", "States the pay", "Early career", "By field",
+    ]) {
+      expect(pageText(), `the chip "${label}" is not offered on an empty payload`)
+        .toMatch(label);
+    }
   });
 
   it("no employer carrying the re-post warning appears under a heading that disqualifies it", async () => {
@@ -286,22 +333,49 @@ describe("a relist figure never renders as an equality", () => {
   });
 
   it("no rendered re-listing count anywhere on the page lacks its floor marker", async () => {
-    // The class, not the instance: every number this page prints beside the
+    // The class, not the instance: every COUNT this page prints beside the
     // word "re-list" comes from the same 24h-deduped log.
+    //
+    // The fixture is the shipped payload, not the pre-migration one: the
+    // section reads `relisting` (`reposters` is in RETIRED_CACHE_PARTS), and
+    // recyclingClaimOf refuses a row that does not carry its own ranking key,
+    // window and first-seen date. Both refusals are respected in the numbers
+    // chosen — perRole (12.3) <= events (2,242), and events <= titles x worst
+    // title (182 x 41 = 7,462) — so the card renders and the markers on it are
+    // what is under test rather than the builder's gates.
     mount({
       hiring: [row()],
-      reposters: [{ company: "Repeat Ltd", company_token: "rep", worst_title: "Nurse", worst_count: 41, repost_events: 2242, reposted_roles: 182, tracking_days: 49 }],
+      relisting: [{
+        company: "Repeat Ltd", company_token: "rep",
+        relist_events_floor: 2242, relisted_titles: 182, events_per_title: 12.3,
+        worst_title: "Nurse", worst_title_events_floor: 41,
+        first_relisted_at: "2026-07-14T00:00:00Z", window_days: 49,
+        board_median_per_title: 2.7, board_p90_per_title: 6.1, board_pool_n: 900,
+      }],
       entry: [{ company: "Churny Co", company_token: "chr", entry_roles: 40, open_roles: 60 }],
       repost_index: { chr: [2242, 182, 49] },
-      totals: { hiring_n: 31, repost_pool_n: 900 },
+      totals: { hiring_n: 31, relisting_pool_n: 900 },
     });
     await waitFor(() => expect(pageText()).toMatch(/Repeat Ltd/));
     const txt = pageText();
-    for (const bare of [/re-listed 41× /, /2,242 total/, /across 182 roles/]) {
+    // THE EQUALITIES, which is the half with teeth: each count rendered with
+    // its "+" stripped is a number the deduped log could not have produced.
+    for (const bare of [/2,242 re-listings/, /across 182 titles/, /— 41 times/]) {
       expect(txt, `an equality survived: ${bare}`).not.toMatch(bare);
     }
-    expect(txt).toMatch(/re-listed 41\+×/);
-    expect(txt).toMatch(/2,242\+ total/);
+    expect(txt, "the re-listing event count lost its floor marker").toMatch(/2,242\+ re-listings/);
+    // The affected-title count carries a "+" it did not carry before the
+    // rebuild — the same dedupe can delete a title's only logged event.
+    expect(txt, "the affected-title count lost its floor marker").toMatch(/182\+ titles/);
+    expect(txt, "the worst title's count lost its floor marker").toMatch(/41\+ times/);
+    // THE ONE DELIBERATE EXCEPTION, pinned as a positive so it cannot drift
+    // into an unmarked count by accident and cannot acquire a marker either.
+    // events_per_title is a RATIO OF TWO FLOORS deflated by the same feed-dark
+    // batch drops, so it has no known direction; a "+" on it would be a
+    // direction claim on the one number this section ranks conduct by.
+    expect(txt, "the ranking ratio did not render").toMatch(/12\.3×/);
+    expect(txt, "a ratio of two floors was given a direction it does not have")
+      .not.toMatch(/12\.3\+/);
   });
 });
 
@@ -332,9 +406,18 @@ describe("the gate is the board's, not a second copy of it", () => {
   });
 
   it("the cards the section shows are the cards its button opens", () => {
-    expect(CODE).toMatch(/<HiringGrid claims=\{fill\.shown\} \/>/);
+    // HiringGrid/fill.shown became DurationGrid/duration.shown when the section
+    // stopped leading with R(14) and started leading with the median. The
+    // property is unchanged and is the reason this test exists: the button once
+    // mapped the RAW payload, so it opened a board filtered to employers the
+    // section had just refused to show. ONE LIST, two consumers.
+    expect(CODE).toMatch(/<DurationGrid claims=\{duration\.shown\} \/>/);
     expect(CODE, "the action button re-derives its own list from the raw payload")
-      .toMatch(/fill\.shown\.map\(\(c\) => c\.token\)/);
+      .toMatch(/duration\.shown\.map\(\(c\) => c\.token\)/);
+    // And the grid is fed from nothing else. `hiring` is the raw payload; a
+    // grid handed it directly is the defect above, wearing a new component name.
+    expect(CODE, "the duration grid was handed the raw payload")
+      .not.toMatch(/<DurationGrid claims=\{(?!duration\.shown\})/);
   });
 });
 
@@ -344,10 +427,29 @@ describe("the gate is the board's, not a second copy of it", () => {
  */
 describe("teeth", () => {
   it("the window checker fails on a card with no span beside its figure", () => {
-    const shipped = "4324 filled in 50d tracked · 172 open now · up to 63% taken down for good within 14d";
-    const noWindow = "up to 63% taken down for good within 14d";
-    expect(/34d|50d/.test(noWindow), "the checker passes a figure with no window").toBe(false);
-    expect(/50d/.test(shipped)).toBe(true);
+    // Both spellings of the span, against the widened checker: the old compact
+    // "50d" and the shipped "across the 34 days we have watched this board".
+    const shipped = "median over 190 roles · across the 34 days we have watched this board";
+    const legacy = "4324 filled in 50d tracked · 172 open now";
+    const noWindow = "Up to 63% of its roles came down within 14 days and stayed down";
+    const win = /\b(?:34|50)\s*(?:d\b|days\b)/;
+    expect(win.test(noWindow), "the checker passes a figure with no window").toBe(false);
+    expect(win.test(shipped)).toBe(true);
+    expect(win.test(legacy)).toBe(true);
+  });
+
+  it("the ceiling checker fails on a share published as a point estimate", () => {
+    // The honesty breach this guards, in the shape the rebuild could have
+    // produced: the figure demoted into a sentence with the marker dropped.
+    const marked = "Up to 62% of its roles came down within 14 days and stayed down";
+    const bare = "62% of its roles came down within 14 days and stayed down";
+    expect(/up to\s*62%/i.test(bare), "the ceiling checker passes a point estimate").toBe(false);
+    expect(/up to\s*62%/i.test(marked)).toBe(true);
+    // …and the negative half, which is what catches a marker that survived
+    // somewhere else on the card while the figure itself went bare.
+    const both = "It reads “up to” · 62% of its roles came down";
+    expect(/(?<!up to\s*)\b62%/i.test(both), "the bare-figure checker was satisfied by a stray marker").toBe(true);
+    expect(/(?<!up to\s*)\b62%/i.test(marked)).toBe(false);
   });
 
   it("the equality checker fails on the sentence that shipped", () => {
@@ -357,9 +459,17 @@ describe("teeth", () => {
   });
 
   it("the fill-percent scanner would have caught a rate published over a short log", () => {
-    // The exact shape the old badge produced when curve_tracking_days was
-    // ignored: a fourteen-day rate beside an eleven-day record.
+    // THE SHIPPED SPELLING, not a hand-written lowercase one. The three gate
+    // tests above prove nothing unless the scanner can see the sentence the
+    // page actually renders, and it renders the marker capitalised because
+    // R(14) now opens the evidence sentence instead of sitting in a badge.
+    expect(fillPercents("median over 190 roles · Up to 63% of its roles came down within 14 days and stayed down")).toEqual(["63"]);
+    // The old badge's lowercase form still has to be caught — the scanner is
+    // for any leak, not for one section's current wording.
     expect(fillPercents("4324 filled in 11d tracked · up to 63% taken down for good within 14d")).toEqual(["63"]);
     expect(fillPercents("4324 filled in 11d tracked · 172 open now")).toEqual([]);
+    // And the method drawer's prose, which contains the marker with no figure
+    // after it, must not register as a published rate.
+    expect(fillPercents("which is why it reads “up to”. The interval beside it is an approximation")).toEqual([]);
   });
 });

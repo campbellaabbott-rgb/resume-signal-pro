@@ -370,7 +370,13 @@ const URGENT_FILL_RATE_MIN = 0.5;
 // median that has not been reached by here is reported as "more than 30 days"
 // and NEVER as a number — extrapolating past the support is the defect this
 // whole change exists to remove.
-const FILL_SUPPORT_MAX_DAYS = 30;
+//
+// EXPORTED FOR THE SAME REASON THE THREE CONSTANTS BELOW ARE. /explore prints
+// this cap in two places — the "+" on every median lifetime, which is censored
+// here, and the age-out answer, which is entirely about roles that reached it —
+// and a second literal spelling of 30 on that page is how one surface keeps
+// saying "day 30" after the cap moves.
+export const FILL_SUPPORT_MAX_DAYS = 30;
 
 // ── HOW DEEP THE LOG MUST BE BEFORE ANY OF THIS MAY BE SAID ──────────────────
 //

@@ -463,7 +463,17 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     expect(LIVE.get("get_actively_hiring_companies")?.file,
       "the hiring RPC must resolve to the closure-event rewrite").toBe(
       "20260907010000_a_closure_event_is_not_a_filled_role.sql");
-    expect(LIVE.get("get_company_fill_curve")?.file).toBe("20260906091000_censoring_is_not_truncation.sql");
+    // MOVED, NOT DROPPED — the same rule this block already applies to
+    // get_actively_hiring_companies one line above. get_company_fill_curve was
+    // re-issued in 20260908137000: its age-out arm was the one count in the
+    // function outside the feed-dark policy the other two are under, so
+    // ageouts_90d was an uncensored numerator over a partly censored
+    // denominator and /explore's age-out share erred toward the accusation. The
+    // property this block guards — the seven-day floor absent from the body the
+    // DATABASE RUNS — is unchanged, so the pin follows the function to its
+    // current definition rather than asserting a file that has stopped running.
+    expect(LIVE.get("get_company_fill_curve")?.file).toBe(
+      "20260908137000_the_ageout_arm_never_heard_the_feed_go_dark.sql");
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(
       "20260906092000_a_median_from_a_window_that_cannot_hold_one.sql",
     );
@@ -473,12 +483,43 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // The floor also existed as a SENTENCE: /explore promised "roles that stayed
     // posted at least a week and then came down — a real fill signal". Deleting
     // the predicate and leaving the sentence is how copy goes false when the
-    // thing it describes moves. Asserted against RAW, because this is a claim
-    // made to a reader rather than a computation.
-    const explore = read("src/pages/Explore.tsx");
-    expect(explore, "the sentence describing the seven-day floor must not be rendered")
+    // thing it describes moves.
+    //
+    // BOTH HALVES, AND THE SECOND IS WHY THIS IS NOT JUST A `not.toMatch`. The
+    // negative alone is satisfiable by deleting the sentence and saying
+    // nothing; the positive forces a replacement that names the window we
+    // ACTUALLY watched each board instead of a fixed span.
+    //
+    // MOVED, NOT DROPPED — the same rule this file applies to
+    // get_actively_hiring_companies and get_company_fill_curve above.
+    // explore.hiringBlurbCurve was a HowWeMeasure item inside the "Hiring at
+    // scale" / fill-leaderboard section, which the rebuild removed on purpose;
+    // the obligation moved onto the duration card as explore.durEvidence, where
+    // it is printed on EVERY card rather than inside a disclosure. So the pin
+    // follows the obligation to where the page now carries it, rather than
+    // asserting a key the page has stopped rendering.
+    const raw = read("src/pages/Explore.tsx");
+    const code = stripTs(raw);
+    // (a) THE SENTENCE, as prose and spelling-independent. RAW, because this is
+    //     a claim made to a reader. Deliberately NOT widened to /a week/:
+    //     explore.durBlurb legitimately reads "where you have a week from one
+    //     where you have a month".
+    expect(raw, "no copy may still describe the floor as a feature")
+      .not.toMatch(/at least a week|stayed posted at least/i);
+    // (b) THE KEY THAT CARRIED IT, as CODE. Comment-stripped so that a comment
+    //     naming the retired key neither fails this nor satisfies (c) — the
+    //     trap this repo has hit repeatedly.
+    expect(code, "the sentence describing the seven-day floor must not be rendered")
       .not.toMatch(/"explore\.hiringBlurb"/);
-    expect(explore, "its replacement names the tracked window instead").toMatch(/"explore\.hiringBlurbCurve"/);
+    // (c) ITS REPLACEMENT, pinned as a PROPERTY rather than as a key name: the
+    //     evidence line beside each median names the window we watched THAT
+    //     board, and takes it from the row rather than printing a constant.
+    const at = code.indexOf('t("explore.durEvidence"');
+    expect(at, "the median's evidence line must be rendered").toBeGreaterThanOrEqual(0);
+    const call = code.slice(at, at + 400);
+    expect(call, "it names the tracked window").toMatch(/days we have watched this board/);
+    expect(call, "the span is interpolated, never a literal").toMatch(/\{\{days\}\}/);
+    expect(call, "and comes from that employer's own record").toMatch(/days:\s*c\.windowDays/);
   });
 });
 

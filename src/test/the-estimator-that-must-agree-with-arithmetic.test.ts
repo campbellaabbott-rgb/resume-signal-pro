@@ -651,7 +651,13 @@ describe("the sufficiency gate at its exact boundaries", () => {
 // ---------------------------------------------------------------------------
 
 const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
-const COMPANY_SQL = "20260906091000_censoring_is_not_truncation.sql";
+// FOLLOWS THE FUNCTION, NOT THE FILE THAT FIRST SPELLED IT. This mirror is
+// only worth anything against the body the database actually runs;
+// get_company_fill_curve was re-issued in 20260908137000 (its age-out arm
+// was the one count outside the feed-dark policy the other two are under),
+// and pinning the estimator checks to the superseded file would leave them
+// asserting dead text — the failure mode this whole tree keeps re-learning.
+const COMPANY_SQL = "20260908137000_the_ageout_arm_never_heard_the_feed_go_dark.sql";
 const CATEGORY_SQL = "20260906092000_a_median_from_a_window_that_cannot_hold_one.sql";
 
 const readRaw = (f: string) => readFileSync(resolve(MIGRATIONS, f), "utf8");

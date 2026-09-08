@@ -1604,29 +1604,34 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 
     write({
       path: "/explore",
-      // THE PAGE'S TITLE LIVES IN TWO PLACES AND ONLY ONE WAS FIXED.
+      // THE PAGE'S TITLE AND BODY LIVE IN TWO PLACES AND ONLY ONE GETS FIXED.
       //
       // Explore.tsx has its own <SEO title=…> for the client render; this
-      // object is what CRAWLERS receive. When the trending and newest
-      // collections were deleted, the React copy was corrected and this was
-      // not — so the served HTML kept advertising "Trending Companies" and
-      // "fastest-growing employers" for sections the page no longer contains,
-      // while the live page said something else entirely. Verified after
-      // deploy: document.title read the new sentence and the prerendered
-      // <title> read the old one.
+      // object is what CRAWLERS and JS-disabled readers receive. It has now
+      // gone stale TWICE. When trending and newest were deleted, the React copy
+      // was corrected and this was not, so the served HTML kept advertising
+      // "Trending Companies". When the page was rebuilt into six answers, this
+      // still advertised "Companies that actually fill roles" (a ranking the
+      // page stopped publishing, over a sentence asserting that a role which
+      // stayed up a week and then came down IS a fill — the one claim the page
+      // is most explicit it cannot make) and "Serial re-posters" (replaced by a
+      // section that groups on the collector's own title normalisation).
       //
-      // Whatever this says must remain true of what /explore actually renders.
-      title: "Explore Employers — Who Fills Roles, Who States Pay, Who Re-posts",
-      description: "Pick what you're looking for: employers that actually fill the roles they post, companies that state pay up front, entry-level friendly boards, serial re-posters to avoid, and the highest-paying fields — measured from our own daily tracking.",
+      // The guard for this is explore-claims.test.ts, and its GONE regex named
+      // only the FIRST removal, so it stayed green over the second. It now
+      // names both.
+      //
+      // Whatever this says must remain true of what /explore actually renders:
+      // mirror seoTitle3 / seoDescription3 in Explore.tsx.
+      title: "Explore Employers — How Long Roles Stay Up, Who Recycles Dates, Who States Pay",
+      description: "Pick what you're looking for: how long an employer's roles actually stay up, which boards re-list the same title under a fresh date, which roles were still advertised when they passed our 30-day cap, who states pay you can compare, and where a beginner has a real chance — all measured from companies' own job boards and our own daily tracking.",
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
         {
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Explore employers",
-          // Same correction as the title above: "trending boards" names a
-          // collection that no longer exists.
-          description: "Employer collections computed from the board's own daily tracking: real fill signals, pay transparency, entry-level friendly boards, re-poster flags, and salary-by-field.",
+          description: "Six answers computed from the board's own daily tracking of every posting: how long roles stay up, which employers re-list the same title under a new date, which roles were still advertised at our 30-day cap, who states pay, where a beginner has a real chance, and salary by field.",
           url: `${SITE}/explore`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         },
@@ -1634,12 +1639,14 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Explore" }])}
         <h1 class="text-3xl font-bold mb-3">Explore the board by measured signal</h1>
-        <p class="text-muted-foreground mb-8">Every collection below is computed from our own daily tracking of companies' official job boards — never bought, never guessed. The live lists load when the page opens in a browser.</p>
+        <p class="text-muted-foreground mb-8">Every answer below is computed from our own daily tracking of companies' official job boards — never bought, never guessed. Where a number is the employer's own we say so and give the day we read it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live lists load when the page opens in a browser.</p>
         <div class="space-y-3 mb-8">
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Companies that actually fill roles</h2><p class="text-xs text-muted-foreground">Roles that stayed posted at least a week and then came down — a real fill signal from lifecycle tracking. Serial re-listers are disqualified.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Entry-level friendly</h2><p class="text-xs text-muted-foreground">Employers ranked by what share of their open roles are open to people early in their careers — not by raw count.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Transparent about pay</h2><p class="text-xs text-muted-foreground">Companies stating pay on at least 80% of their open roles — a badge no one can buy.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Serial re-posters</h2><p class="text-xs text-muted-foreground">Companies that take roles down and re-list them again and again, making stale openings look brand-new.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Check an employer</h2><p class="text-xs text-muted-foreground">Any board we carry: how many of its roles we hold, and — where its own feed states a total — how much of its hiring is not on this page, with the day we read it.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">How long do I have</h2><p class="text-xs text-muted-foreground">The median time an employer's roles stayed up, measured from the date the employer itself put on them, with the sample and the span we watched beside it.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The dates here are not what they look like</h2><p class="text-xs text-muted-foreground">Employers that take a role down and put the same title back up, ranked by re-listings per affected title rather than by volume. Each return resets the posted date.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Still advertised when it crossed day 30</h2><p class="text-xs text-muted-foreground">Roles that never came down — we stopped serving them at our own 30-day cap while the employer was still advertising them.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Who states pay</h2><p class="text-xs text-muted-foreground">Employers stating pay on at least 80% of a board of 20 or more — a badge no one can buy — and, where enough of those parse to a US-dollar annual floor, a median you can compare.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Where a beginner actually has a chance</h2><p class="text-xs text-muted-foreground">Ranked by the share of an employer's open roles that are open early in a career, not by how many it has. "Entry-level" is our own classifier reading the posting, never the employer's word.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Where the pay is</h2><p class="text-xs text-muted-foreground">Fields ranked by median advertised salary floor, from postings that state pay — never converted, never mixed across currencies.</p></div>
         </div>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">Browse by field</h2>

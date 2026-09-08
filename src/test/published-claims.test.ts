@@ -164,20 +164,80 @@ describe("windows, denominators and units are never asserted by hand", () => {
     expect(code).not.toMatch(/\b(sampled?|drew|draws?)\s+[^.]{0,40}?\brandom\b(?!\s*,)/i);
   });
 
-  it("Explore states the denominator behind its remote share", () => {
+  // 87.3% of postings state no work mode; dividing by all of them turned a
+  // ~60% remote segment into ~8% and read as a fact about the employers, and a
+  // band where nobody disclosed rendered "0% remote" rather than nothing.
+  //
+  // REMOVED, NOT MOVED — and that is the opposite of the R(14) case, where a
+  // figure was demoted to a smaller line and had to keep its ceiling marker
+  // with it. /explore publishes no work-mode share at all any more: the only
+  // one it had was the size-band line inside "Hiring at scale", and that whole
+  // section went. Removing a claim cannot publish a false one, so nothing
+  // honest was lost here.
+  //
+  // TWO ARMS RATHER THAN A DELETION, because a guard that is simply removed
+  // lets the share come back unqualified the day someone re-adds a band line.
+  // If the page prints one again, the denominator clause is required exactly as
+  // it was before.
+  it("Explore publishes no work-mode share, or states the denominator behind it", () => {
     const src = read("src/pages/Explore.tsx");
-    // 87.3% of postings state no work mode; dividing by all of them turned a
-    // ~60% remote segment into ~8% and read as a fact about the employers.
-    expect(src).toMatch(/state a work mode/);
-    expect(src).toMatch(/s\.remote_pct != null/);
+    // CODE, not raw. The only two mentions of the retired aggregate left in
+    // this file are the comments recording its deletion, and a guard satisfied
+    // by an obituary is precisely the trap this file's header describes.
+    const code = strip(src);
+    const publishes = /remote_pct|remote_n|get_size_segments/.test(code);
+    if (publishes) {
+      expect(code, "a remote share must be divided by the rows that state a work mode")
+        .toMatch(/disclosed/);
+      expect(code, "a band where nobody disclosed must render nothing, never 0%")
+        .toMatch(/remote_pct != null/);
+      expect(src, "the denominator must be named to the reader").toMatch(/state a work mode/);
+    } else {
+      // Nothing rendered, and nothing left half-alive either: no work-mode word
+      // survives in the code at all, so there is no path on which a share is
+      // being computed under another column name.
+      expect(code, "a work-mode figure is being computed with no denominator clause")
+        .not.toMatch(/remote/i);
+    }
+    // AND THE CONSTRUCTION THAT KEEPS IT RETIRED, which is what makes the
+    // failure mode impossible rather than merely absent: the collection is on
+    // the page's retired list, so a cache row still carrying `segments` cannot
+    // even raise a staleness banner about a section that does not exist.
+    expect(code, "the segments collection must stay retired")
+      .toMatch(/RETIRED_CACHE_PARTS[\s\S]{0,200}"segments"/);
   });
 
-  it("the segments RPC divides remote by disclosed rows only", () => {
-    const sql = read("supabase/migrations/20260727180000_published_counts_and_audit_access.sql");
+  it("the segments RPC divides remote by disclosed rows only — in the definition the database runs, and it is no longer reachable", () => {
+    // RE-AIMED. This read a frozen 2026-07-27 migration by name: a file that
+    // can never change, so the assertion was permanently green while
+    // 20260811160307 redefined the function underneath it. Redefinition by a
+    // later migration is this repo's norm, so the file is now FOUND rather than
+    // typed — the property is unchanged, the text it is asserted against is the
+    // one the database actually runs.
+    const migDir = resolve(root, "supabase/migrations");
+    const files = readdirSync(migDir).filter((f) => f.endsWith(".sql")).sort();
+    const defs = files.filter((f) =>
+      /CREATE OR REPLACE FUNCTION public\.get_size_segments/.test(readFileSync(resolve(migDir, f), "utf8")));
+    expect(defs.length, "no migration defines the segment aggregate").toBeGreaterThan(0);
+    const sql = readFileSync(resolve(migDir, defs[defs.length - 1]), "utf8");
     expect(sql).toMatch(/work_mode IS NOT NULL\)::int AS disclosed_n/);
     expect(sql).toMatch(/sum\(remote_n\) \/ sum\(disclosed_n\)/);
     // A band where nobody disclosed must be null, never 0.
     expect(sql).toMatch(/CASE WHEN sum\(disclosed_n\) > 0/);
+    // AND THE THING THAT NOW ACTUALLY HOLDS THE PROPERTY. Dropping the
+    // collection from the hourly refresh only removes the page's primary path;
+    // /explore's anon live fallback could still start the aggregate, and an
+    // answer anyone can still ask for is not retracted, it is unrendered. The
+    // revoke closes that door — by CATALOG LOOKUP rather than by a hand-typed
+    // signature, because this database carries overloads the migrations do not
+    // describe and a named REVOKE can miss one.
+    const revoked = files.filter((f) => {
+      const s = readFileSync(resolve(migDir, f), "utf8");
+      return /proname = 'get_size_segments'/.test(s)
+        && /REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated/.test(s);
+    });
+    expect(revoked.length, "anon EXECUTE on the segment aggregate is still granted")
+      .toBeGreaterThan(0);
   });
 });
 
