@@ -164,19 +164,44 @@ describe("a relist figure never renders as an equality", () => {
 });
 
 describe("the gate is the board's, not a second copy of it", () => {
-  it("Explore asks /jobs' predicate rather than re-deriving its terms", () => {
-    // ONE BAR, ONE DECLARATION. These floors were once re-typed here under
-    // different names, which is how two surfaces published and refused the same
-    // employer: editing one file was silent on the other.
-    expect(CODE).toMatch(/import \{[^}]*canStateFillRate[^}]*\} from "@\/pages\/Jobs"/);
-    expect(CODE).toMatch(/import \{[^}]*FILL_COVERAGE_MIN[^}]*FILL_RATE_MIN_TRACKING_DAYS[^}]*\} from "@\/pages\/Jobs"/);
+  // WHERE THE BAR WENT, AND WHY THIS CHECK INVERTED.
+  //
+  // It existed because /explore PUBLISHED A FILL-RATE FIGURE: a field-grain
+  // lifecycle line under every tile. Two surfaces publishing one statistic
+  // under two copies of one gate is how a page comes to publish and refuse the
+  // same record, so /explore was made to import /jobs' predicate and /jobs'
+  // floors rather than re-type them.
+  //
+  // /explore no longer makes that claim. The line was flat by measurement —
+  // R(14) 0.128-0.243 across eighteen fields, rendering as four distinct
+  // strings, and medians of 27/28/29/30 pinned against the estimator's own
+  // censoring cap — so it separated nothing; and its input was about to stop
+  // being admissible besides, because get_category_fill_curve does not filter
+  // absence_basis and a lap_backfill closure carries a closed_at that column's
+  // own comment bars from any duration statistic.
+  //
+  // WITH NO CLAIM THERE IS NOTHING TO GATE, so requiring the import would pin a
+  // spelling over dead code — the failure this repository has hit four times.
+  // The honest successor is the inverse: the RETURN of any part of the bar to
+  // /explore is the signal that a fill claim came back, and it must come back
+  // through /jobs' single declaration or not at all.
+  it("Explore makes no fill-rate claim, so it holds no copy of the bar", () => {
+    expect(CODE, "a fill claim has returned to /explore — it must import the bar from /jobs")
+      .not.toMatch(/\bcanStateFillRate\b/);
     expect(CODE, "Explore declared its own copy of the bar again")
-      .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE)_[A-Z_]+\s*=/);
-    expect(CODE, "the observation-window floor is the half `sufficient` cannot supply")
-      .toMatch(/>= FILL_RATE_MIN_TRACKING_DAYS/);
-    // The middle coverage band is named rather than silently passed, which is
-    // the gap docs/hiring-health-model.md §5 recorded against this surface.
-    expect(CODE).toMatch(/coverageBand\(/);
+      .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE|SUPPORT)_[A-Z_]+\s*=/);
+    for (const name of ["FILL_COVERAGE_MIN", "FILL_RATE_MIN_TRACKING_DAYS",
+      "FILL_SUPPORT_MAX_DAYS", "URGENT_FILL_MAX_DAYS", "coverageBand"]) {
+      expect(CODE, `${name} is read on /explore again — a fill claim came back with it`)
+        .not.toMatch(new RegExp(`\\b${name}\\b`));
+    }
+    // AND THE BAR ITSELF IS UNTOUCHED. Removing a claim from one page is not
+    // permission to loosen the gate on the page that still makes it.
+    const jobs = read("src/pages/Jobs.tsx");
+    expect(jobs, "canStateFillRate is gone — the shared predicate is the property here")
+      .toMatch(/export function canStateFillRate/);
+    expect(jobs).toMatch(/const FILL_RATE_MIN_TRACKING_DAYS = 21;/);
+    expect(jobs).toMatch(/const FILL_COVERAGE_MIN = 0\.3;/);
   });
 
   it("the legacy closure count is not read anywhere in the page", () => {
@@ -190,16 +215,28 @@ describe("the gate is the board's, not a second copy of it", () => {
       .not.toMatch(/filled_roles_ceiling/);
   });
 
-  it("the sample gate is applied to the field curve rather than re-derived from its counts", () => {
-    // WHERE PROPERTY 1 LIVES NOW. get_category_fill_curve returns `sufficient`
-    // and the page must HONOUR it — not rebuild the three thresholds out of
-    // n_at_risk_14 and fills_le_14, which is how two surfaces come to publish
-    // and refuse the same record.
-    expect(CODE).toMatch(/canStateFillRate\(\{\s*sufficient:\s*row\.sufficient === true/);
-    expect(CODE, "the page re-derived the estimator's own thresholds")
-      .not.toMatch(/n_at_risk_14\s*[<>]=/);
-    expect(CODE, "the page re-derived the estimator's own thresholds")
-      .not.toMatch(/fills_le_14\s*[<>]=/);
+  it("the field curve is fetched by the surface that still publishes it, and by no other", () => {
+    // WHERE PROPERTY 1 LIVES NOW. /jobs' field lander reads
+    // get_category_fill_curve, honours the RPC's own `sufficient`, and does not
+    // rebuild the three thresholds out of n_at_risk_14 and fills_le_14 — which
+    // is how two surfaces come to publish and refuse the same record.
+    const jobs = read("src/pages/Jobs.tsx")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .split("\n").map((l) => l.replace(/(^|[^:])\/\/.*$/, "$1")).join("\n");
+    expect(jobs).toMatch(/rpc\("get_category_fill_curve"\)/);
+    const gate = /export function canStateFillRate\([\s\S]*?\n\}/.exec(jobs)?.[0] ?? "";
+    expect(gate, "the gate must read the RPC's own sufficiency finding").toMatch(/\.sufficient\b/);
+    for (const code of [jobs, CODE]) {
+      expect(code, "the estimator's own thresholds are being re-derived")
+        .not.toMatch(/n_at_risk_14\s*[<>]=/);
+      expect(code, "the estimator's own thresholds are being re-derived")
+        .not.toMatch(/fills_le_14\s*[<>]=/);
+    }
+    // …and /explore does not ask for the curve at all any more, which is the
+    // whole reason it holds no gate: it was paying for a 44-second scan to
+    // print one sentence twelve times.
+    expect(CODE, "/explore is fetching the field curve again")
+      .not.toMatch(/get_category_fill_curve/);
   });
 });
 

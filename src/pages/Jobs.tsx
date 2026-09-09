@@ -4622,6 +4622,44 @@ export default function Jobs() {
   // A correct version needs a serving-rule-filtered per-category count, which is
   // a DB change, not a frontend one — worth doing, not worth faking meanwhile.
 
+  /** THE CATEGORY THE COUNT LINE MAY SPEAK FOR, whether or not a route param
+   *  produced it.
+   *
+   *  Keying the exact count on `landerCategory` alone left one destination
+   *  printing the board-wide total over a filtered list — the very defect the
+   *  field landers were built to remove, surviving in the one bucket that has
+   *  no lander. /explore's uncategorised tile links to /jobs?category=other
+   *  (deliberately: `other` is not in BOARD_CATEGORY_SLUGS, so /jobs/field/other
+   *  would fall through to the generic board). That URL has no route param, so
+   *  landerCategory stayed undefined, the category arm was skipped, and the
+   *  hero read "815,909 live openings from 24,931 company feeds" above a list
+   *  containing only the 174,535 uncategorised roles — 21% of the board, the
+   *  largest single bucket, and the one page where the number was most wrong.
+   *
+   *  THE CONDITIONS ARE THE ONES THAT MAKE THE FACET THE SAME QUESTION AS THE
+   *  RESULTS, and they are narrower than "a category is set". `data.categories`
+   *  is the serving-rule facet the response already carries (visibleCategories
+   *  hands back the single active entry on a filtered request), and it counts a
+   *  category across the whole board — so the moment a SECOND filter narrows the
+   *  page, that count describes more roles than the list does. Hence: exactly
+   *  one applied filter, exactly one category slug in it, and no free-text or
+   *  location term (both excluded from activeFilterCount by design).
+   *
+   *  This is NOT the exactCategoryTotal that was added and reverted on
+   *  2026-08-xx above. That one read get_job_board_facets, which counts the
+   *  whole table with no serving-rule predicate and therefore included postings
+   *  the board refuses to show. This reads the facet the LIST RESPONSE carries,
+   *  computed over the serving population — the same integer the field landers
+   *  have been printing since, and the same one /explore's tiles print. */
+  const countCategory = useMemo(() => {
+    if (landerCategory) return landerCategory;
+    const cats = category.split(",").filter(Boolean);
+    if (cats.length !== 1) return undefined;
+    if (activeFilterCount !== 1) return undefined;
+    if (q.trim() || location.trim()) return undefined;
+    return cats[0];
+  }, [landerCategory, category, activeFilterCount, q, location]);
+
   // Removable chips for every active filter — what's narrowing your results
   // should be visible and one click to undo, not buried in the controls.
   const activeFilters = useMemo(() => {
@@ -6274,17 +6312,36 @@ export default function Jobs() {
               //
               // Capped counts render "10,000+", never as an exact figure —
               // same honesty rule the company lander above already follows.
-              : landerCategory && ((data?.categories?.[landerCategory] ?? 0) > 0 || (data?.total ?? 0) > 0)
+              // countCategory, NOT landerCategory. The facet arm is what makes
+              // the destination print the same integer the tile that sent the
+              // reader here printed; keying it on the route param alone left
+              // /jobs?category=other (the uncategorised tile's destination,
+              // which HAS no lander route) falling through to the board-wide
+              // total below. The `data.total` fallback is still gated on
+              // landerCategory: on a lander the category IS the whole filter so
+              // `total` is category-scoped, whereas countCategory's other case
+              // reaches here only via the facet, which is exact.
+              // THE UNCATEGORISED BUCKET GETS ITS OWN SENTENCE, because
+              // "174,535 live Other openings" names a field that does not
+              // exist. It is not a field: it is the roles whose field we could
+              // not read from the title, and /explore's tile, its method panel
+              // and the prerendered document all already say exactly that. The
+              // number is the same facet integer the branch below prints.
+              : countCategory === "other" && (data?.categories?.other ?? 0) > 0
+              ? t("jobsPage.uncatCountLine", "{{total}} live openings whose field we could not read from the title — every one straight from the company's own hiring system.", {
+                  total: (data?.categories?.other ?? 0).toLocaleString(),
+                })
+              : countCategory && ((data?.categories?.[countCategory] ?? 0) > 0 || (landerCategory && (data?.total ?? 0) > 0))
               ? t("jobsPage.landerCountLine", "{{total}} live {{category}} openings — every one straight from the company's own hiring system.", {
                   total: (() => {
-                    const facet = data?.categories?.[landerCategory] ?? 0;
+                    const facet = data?.categories?.[countCategory] ?? 0;
                     if (facet > 0) return facet.toLocaleString();
                     const tot = data?.total ?? 0;
                     return data?.countCapped ? `${tot.toLocaleString()}+` : tot.toLocaleString();
                   })(),
-                  category: t(`jobsPage.categories.${landerCategory}`, landerCategory),
+                  category: t(`jobsPage.categories.${countCategory}`, countCategory),
                 })
-              : !landerCategory && data?.totalAllCompanies
+              : !countCategory && data?.totalAllCompanies
               ? t("jobsPage.countLine", "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.", {
                   total: data.totalAllCompanies.toLocaleString(),
                   companyFeeds: (data.companiesCount ?? companies.length).toLocaleString(),
@@ -7633,7 +7690,12 @@ export default function Jobs() {
                   {t("jobsPage.orientBrowse", "Browse newest openings →")}
                 </button>
                 <Link to="/explore" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-                  {t("jobsPage.orientExplore", "Or explore by signal — who's hiring, who fills, where the pay is")}
+                  {/* orientExplore2: the old key's nine locale VALUES all advertised "how
+                      long its roles last", which /explore no longer publishes, and the
+                      locale value is what rendered -- the inline default here had already
+                      drifted away from it. New key, new sentence, and the default below
+                      says the same thing as the values so the two cannot drift again. */}
+                  {t("jobsPage.orientExplore2", "Or start from a field — every field on the board, with an exact live count and the roles inside it")}
                 </Link>
               </div>
             </div>

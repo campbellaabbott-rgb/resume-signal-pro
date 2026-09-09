@@ -657,8 +657,19 @@ const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
 // was the one count outside the feed-dark policy the other two are under),
 // and pinning the estimator checks to the superseded file would leave them
 // asserting dead text — the failure mode this whole tree keeps re-learning.
-const COMPANY_SQL = "20260908137000_the_ageout_arm_never_heard_the_feed_go_dark.sql";
-const CATEGORY_SQL = "20260906092000_a_median_from_a_window_that_cannot_hold_one.sql";
+//
+// RE-PINNED 2026-09-09. Both curves were re-issued together in
+// 20260909200000: every function that reads job_board_closures.closed_at now
+// excludes 'lap_backfill', whose closed_at is the day a big board's first
+// observable lap could finally see the takedown and is late by up to the
+// freshness window. Both constants therefore name ONE file, and that file
+// holds the two curves ALONE — its own header explains why the other fourteen
+// functions went into a sibling migration rather than in beside them: one of
+// them carries the schema's single sanctioned COALESCE(posted_at, first_seen),
+// which mirrorViolations reads file-wide and would have reported as the
+// estimator growing a coalesced origin.
+const COMPANY_SQL = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
+const CATEGORY_SQL = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
 
 const readRaw = (f: string) => readFileSync(resolve(MIGRATIONS, f), "utf8");
 const stripComments = (raw: string) =>

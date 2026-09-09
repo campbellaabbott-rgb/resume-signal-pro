@@ -81,6 +81,12 @@ interface Application {
   // Measured lifecycle (get_application_lifecycle), not inferred from a visit.
   lifecycle_outcome?: string | null;
   days_standing?: number | null;
+  /** TRUE when posting_closed_at is the day we could finally SEE the posting
+   *  was gone rather than the day it went (a lap_backfill closure: a big
+   *  board's first observable lap, late by an unknown amount up to the
+   *  freshness window). Session-scoped and never persisted -- see the loader,
+   *  which deliberately does not write such a date to the database at all. */
+  posting_closed_at_is_observation?: boolean;
   posting_checked_at?: string | null;
   kit?: unknown;
   /** Stamped on every stage change; older rows fall back to applied_at (the user's own stated date). */
@@ -478,7 +484,7 @@ export default function Account() {
         rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
       }).rpc("get_application_lifecycle", { p_job_ids: toCheck });
       if (!Array.isArray(lc)) return;
-      const rows = lc as Array<{ job_id: string; outcome: string; closed_at: string | null; days_standing: number | null; relisted: boolean }>;
+      const rows = lc as Array<{ job_id: string; outcome: string; closed_at: string | null; days_standing: number | null; relisted: boolean; closed_at_is_observation?: boolean }>;
       const byId = new Map(rows.map((r) => [r.job_id, r]));
       setApplications((prev) => prev.map((a) => {
         const r = a.job_id ? byId.get(a.job_id) : undefined;
@@ -489,14 +495,27 @@ export default function Account() {
           posting_checked_at: new Date().toISOString(),
           lifecycle_outcome: r.outcome,
           days_standing: r.days_standing,
+          posting_closed_at_is_observation: r.closed_at_is_observation === true,
         };
       }));
       // Persist ONLY measured closures (RLS restricts to the owner's rows).
       // 'not_observed' is never written: a posting we can't account for must
       // not acquire a closure date just because someone loaded the page.
+      //
+      // AND NOT A DATE WE ALREADY KNOW IS LATE. closed_at_is_observation marks
+      // a lap_backfill closure -- the day a big board's first observable lap
+      // could finally see the takedown, late by an unknown amount up to the
+      // freshness window. This write is IRREVERSIBLE by design: it is gated on
+      // `.is("posting_closed_at", null)` precisely so a posting is never
+      // un-closed, which means a wrong date written here is wrong forever and
+      // no later, better observation can correct it. The screen can render
+      // such a closure as a ceiling because it holds the flag; the column
+      // cannot, because the flag is not stored beside it. So the row keeps its
+      // outcome in this session and acquires no permanent date.
       const appsTable = (supabase as unknown as { from: (t: string) => { update: (v: Record<string, unknown>) => { eq: (c: string, v: string) => { is: (c: string, v: null) => Promise<unknown> } } } }).from("user_applications");
       for (const r of rows) {
         if (!r.closed_at) continue;
+        if (r.closed_at_is_observation === true) continue;
         await appsTable.update({ posting_closed_at: r.closed_at, posting_checked_at: new Date().toISOString() })
           .eq("job_id", r.job_id).is("posting_closed_at", null);
       }
@@ -1426,6 +1445,45 @@ export default function Account() {
                       // honest rendering is the floor, said as a floor.
                       const days = typeof a.days_standing === "number" ? Math.round(a.days_standing) : null;
                       const when = a.posting_closed_at ? new Date(a.posting_closed_at).toLocaleDateString() : null;
+                      // THE DATE IS A CEILING TOO, ON THE ROWS WHERE IT IS ONE.
+                      //
+                      // The floor wording above covers days_standing and the
+                      // first version of this fix stopped there -- the RPC
+                      // nulled days_standing for a lap_backfill closure and
+                      // returned its closed_at unchanged, so the page went on
+                      // printing "Came down on 9/20/2026" for a role that came
+                      // down around 25 August. The date is the more prominent
+                      // half of that sentence and it was the half we could not
+                      // know. closed_at_is_observation says which rows those
+                      // are: the day we could finally SEE the takedown, late by
+                      // an unknown amount up to the freshness window and never
+                      // early, so "on or before" is exactly true.
+                      const lateDate = a.posting_closed_at_is_observation === true;
+                      if (outcome === "came_down_relisted" && when && lateDate) {
+                        return (
+                          <p className="text-[11px] text-warning/90 mt-0.5">
+                            {t("accountPage.lifecycleRelistedLate", "⟳ Came down on or before {{when}} — the board it is on is only re-read in full every so often, so we saw it late. The same role went back up since.", { when })}
+                          </p>
+                        );
+                      }
+                      if (outcome === "came_down" && when && lateDate) {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            {t("accountPage.lifecycleCameDownLate", "⚠ Came down on or before {{when}} — the board it is on is only re-read in full every so often, so we saw it late and cannot date it more closely. It has not reappeared.", { when })}
+                          </p>
+                        );
+                      }
+                      // A closure we measured but deliberately did not persist
+                      // (the loader refuses to write a late date to a column it
+                      // can never rewrite), reloaded in a later session. The
+                      // outcome is still true; only the date is gone.
+                      if ((outcome === "came_down" || outcome === "came_down_relisted") && !when) {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                            {t("accountPage.lifecycleCameDownUndated", "⚠ This posting came down. We saw it late enough that we will not put a date on it.")}
+                          </p>
+                        );
+                      }
                       if (outcome === "came_down_relisted" && when) {
                         return (
                           <p className="text-[11px] text-warning/90 mt-0.5">

@@ -450,15 +450,31 @@ describe("a posting age with nothing to measure it against", () => {
     expect(body, "the coverage band decides whether the number may be said at all").toMatch(/coverageBand\(c\.dated_coverage\)/);
     expect(body, "the observation-window floor is the half `sufficient` cannot supply")
       .toMatch(/FILL_RATE_MIN_TRACKING_DAYS/);
-    // ONE DECLARATION. Explore must consume these names rather than re-type
-    // their values; a second literal is the drift this guard is really about.
-    expect(EXPLORE, "Explore must import the bar from /jobs")
-      .toMatch(/import \{[^}]*FILL_COVERAGE_MIN[^}]*\} from "@\/pages\/Jobs"/);
-    expect(EXPLORE).toMatch(/import \{[^}]*FILL_RATE_MIN_TRACKING_DAYS[^}]*\} from "@\/pages\/Jobs"/);
+    // ONE DECLARATION, AND ONE SURFACE LEFT TO DECLARE IT FOR.
+    //
+    // This half of the guard read "Explore must import the bar from /jobs",
+    // because /explore published a field-grain fill-rate line and two copies of
+    // one gate is how two surfaces come to publish and refuse the same record.
+    // /explore has stopped making that claim — the line was identical across
+    // most of its eighteen tiles, and its input (get_category_fill_curve, which
+    // does not filter absence_basis) was about to start pooling lap_backfill
+    // closures the column's own comment bars from every duration statistic.
+    //
+    // An import requirement over a page that makes no claim would be a spelling
+    // pinned over dead code, which is the trap this file's header names. So the
+    // obligation inverts: /explore must hold NO part of the bar, and the return
+    // of any part of it is the signal that a fill claim came back — at which
+    // point it must come back through this declaration, not around it.
+    expect(EXPLORE, "a fill claim has returned to /explore without /jobs' bar")
+      .not.toMatch(/\bcanStateFillRate\b/);
     expect(EXPLORE, "Explore has declared its own copy of the bar again")
-      .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE)_[A-Z_]+\s*=/);
-    // And it actually applies the window floor, which it did not before.
-    expect(EXPLORE).toMatch(/>= FILL_RATE_MIN_TRACKING_DAYS/);
+      .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE|SUPPORT)_[A-Z_]+\s*=/);
+    for (const name of ["FILL_COVERAGE_MIN", "FILL_RATE_MIN_TRACKING_DAYS", "coverageBand"]) {
+      expect(EXPLORE, `${name} is read on /explore again — a fill claim came back with it`)
+        .not.toMatch(new RegExp(`\\b${name}\\b`));
+    }
+    // The window floor is still APPLIED, on the page that still makes the claim.
+    expect(JOBS).toMatch(/>= FILL_RATE_MIN_TRACKING_DAYS/);
   });
 
   it("the whole lander fetch is derived from the shared map, not a second request", () => {

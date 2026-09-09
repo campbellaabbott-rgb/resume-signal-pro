@@ -131,7 +131,16 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.66"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.67"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+// .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
+// counts off the SAME refresh_head row the field landers print from without
+// (a) writing a synthetic zero-query browse into job_board_search_events on
+// every page view — a prerendered, daily-sitemapped page biasing the very
+// denominator that table exists to produce — (b) paying page_query and
+// attachRecheckedAt for a one-row page it discards, and (c) losing the
+// facetsCarried marker, which rides refresh_head but appeared in no list
+// response, so carried counts served under a fresh refreshedAt stamp were
+// indistinguishable from freshly scanned ones.
 // .65: A BOARD OVER THE PAGE CAP CAN PRODUCE A CLOSURE AGAIN, WITHOUT EVER
 // LOGGING A DISPLACED POSTING AS A TAKEDOWN. MAX_POSTINGS_PER_VISIT is 250, so
 // every board whose feed advertises more is permanently `windowed`, and the
@@ -11010,6 +11019,62 @@ Deno.serve(async (req) => {
         : MIN_BOARDS_PER_SLICE;
       const r = await runRefresh(client, force, force ? hop : 0, force ? boards : MIN_BOARDS_PER_SLICE);
       return json(r, r.ok ? 200 : 502);
+    }
+
+    /* THE FIELD-COUNT READ, WITHOUT THE BROWSE IT WAS PRETENDING TO BE.
+     *
+     * /explore renders eighteen tiles whose numbers must come from the SAME
+     * stored row the destination prints, so it read them the only way one could
+     * be reached: {action:"list", limit:1, includeFacets:false}, taking
+     * `categories` off an otherwise-discarded list reply. Three costs came with
+     * that, and this exit removes all three.
+     *
+     *   1. IT LOGGED A SEARCH NOBODY PERFORMED. An unfiltered, q-less list
+     *      falls to the recency exit, which calls logSearch immediately before
+     *      returning -- inserting a job_board_search_events row with q:"",
+     *      empty filters, offset_n:0, results:1 and a shown-set of the one job
+     *      it served, under the column's 'web' default. /explore is
+     *      prerendered, sitemapped daily at 0.8 and the default landing intent,
+     *      so every view of it appended one synthetic zero-query browse to the
+     *      table whose stated purpose (see the comment at the recency exit) is
+     *      an unbiased browse denominator. The zero-result rate, the
+     *      results-per-search distribution and the shown-set click attribution
+     *      were all skewed by /explore's traffic, with no field in the row that
+     *      could filter it back out.
+     *
+     *   2. IT PAID FOR A PAGE IT THREW AWAY. serveList runs page_query and
+     *      attachRecheckedAt before it can return anything; a {limit:1} list
+     *      call was measured at 30,728ms during the 2026-08-30 saturation
+     *      incident. Eighteen tiles render no numbers until this resolves.
+     *
+     *   3. IT COULD NOT SAY THE COUNTS WERE CARRIED. facetsCarried rides the
+     *      refresh_head row but was in no list response, so when
+     *      refresh_job_board_facets fails the page stamped hours-old integers
+     *      with the current pass time and told the reader they were "counted
+     *      {{time}} in the board's own scan". Measured failure mode: facets
+     *      timed out for 4+ hours on 2026-08-29.
+     *
+     * IT IS THE SAME ROW AND THE SAME RULE, which is the property that must not
+     * be lost. It reads job_board_meta k='refresh_head' -- the row serveList
+     * serves from -- and hands the facet through visibleCategories with
+     * unfiltered=true, exactly as the list exits do. It is NOT rpc(
+     * "get_job_board_facets"): that reads k='facets', a DIFFERENT row, and
+     * would reintroduce the two-scans-for-one-quantity failure this whole pass
+     * removed. */
+    if (action === "facets") {
+      const { data: fRow } = await client
+        .from("job_board_meta").select("v").eq("k", "refresh_head").maybeSingle();
+      const fv = ((fRow?.v ?? null) as Record<string, unknown> | null);
+      if (!fv) return json({ categories: undefined, refreshedAt: null }, 200);
+      return json({
+        categories: visibleCategories(fv.categoriesFacet as Record<string, number> | undefined, true, null),
+        refreshedAt: (fv.refreshedAt as string) ?? null,
+        // Present ONLY when the counts are last pass's, carried through a
+        // failed aggregate. Absence is the healthy state, so a normal reply
+        // publishes nothing -- the same shape rankedFellBack uses.
+        ...(fv.facetsCarried ? { facetsCarried: true, facetsCarriedAt: (fv.facetsCarriedAt as string) ?? null } : {}),
+        totalAllCompanies: ((fv.coverage as { open?: number } | undefined)?.open ?? null),
+      }, 200);
     }
 
     if (action === "list") {

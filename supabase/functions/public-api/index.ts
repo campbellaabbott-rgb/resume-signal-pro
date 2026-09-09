@@ -38,7 +38,15 @@ import { searchCallerHeader } from "../_shared/search-caller.ts";
 // stops being type-only.
 import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
 
-const API_VERSION = "2026-09-03.1";
+// BUMPED FOR AN ADDITIVE FIELD, deliberately. /v1/changes closed[] rows now
+// carry closedAtIsObservation, which tells a consumer whether closed_at is an
+// event date or the date we could first see the event -- the distinction D1
+// applied to every SQL statistic reading job_board_closures. A customer who
+// pinned the old version is not broken by a new key, but a customer deriving
+// time-to-close needs to know the field exists, and the version string is the
+// only thing they can diff. scripts/api-contract-probe.mjs pins this literal
+// and moves with it.
+const API_VERSION = "2026-09-09.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -1173,8 +1181,27 @@ async function changes(
     openedQ = openedQ.or(`first_seen.gt.${openedAfter.ep},and(first_seen.eq.${openedAfter.ep},id.gt.${openedAfter.id})`);
   }
 
+  // absence_basis IS SELECTED, and that is the point of this line.
+  //
+  // D1 filtered every SQL duration/rate statistic that reads job_board_closures
+  // to exclude absence_basis='lap_backfill', because that column's own COMMENT
+  // says such a row's closed_at is "KNOWN TO BE LATE, by an unknown amount up
+  // to the freshness window". This endpoint is the one closure surface the
+  // sweep did not reach: it is a PAID, cursor-paged feed keyed on exactly that
+  // timestamp, and it was selecting closed_at without selecting the column that
+  // says whether the date means what it looks like.
+  //
+  // THE ROW IS NAMED, NOT DROPPED -- the same choice `superseded` gets three
+  // lines below, and the same doctrine 20260909200000 states as "A BAD BATCH IS
+  // CENSORED, NOT DELETED". Filtering these out would mean a customer never
+  // learns the posting closed at all: it would simply stop appearing in
+  // /v1/jobs with no event to explain it. Named, the feed stays complete AND
+  // reconcilable -- a consumer who drops the flagged rows gets exactly the
+  // figure get_takedowns_today() and get_board_flow() now report for that day,
+  // which is the disagreement between our own published surfaces that an
+  // unflagged feed would have made impossible to resolve.
   let closedQ = client.from("job_board_closures")
-    .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded")
+    .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis")
     .gte("closed_at", sinceIso);
   if (closedAfter) {
     closedQ = closedQ.or(`closed_at.gt.${closedAfter.ep},and(closed_at.eq.${closedAfter.ep},event_id.gt.${closedAfter.id})`);
@@ -1209,6 +1236,14 @@ async function changes(
       // re-listed under a new id rather than genuinely closing, and a consumer
       // counting "roles filled" must not count those.
       outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
+      // TRUE means closed_at is the date WE COULD FINALLY SEE the posting was
+      // gone, not the date it went. It is set on boards over the page cap whose
+      // first complete pass backfilled a window of takedowns at once, so the
+      // error is one-directional (always late) and bounded by the freshness
+      // window rather than unbounded. A consumer computing time-to-close or a
+      // daily-takedown series must exclude these; a consumer asking "is this
+      // role still open?" can use them exactly as they are.
+      closedAtIsObservation: (c as { absence_basis?: string }).absence_basis === "lap_backfill",
     })),
     page: {
       limit,
@@ -1228,7 +1263,7 @@ async function changes(
       },
     },
     closureHistoryDays: maxDays,
-    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series, and the remainder matches our own published daily figures. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
   }, 200, headers);
 }
 

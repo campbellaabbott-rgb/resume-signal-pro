@@ -442,14 +442,26 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // Without this the test above is satisfiable by a migration that never
     // landed: if an OLDER definition were last, the clean bodies asserted above
     // would be dead text. Pins which file each name resolves to.
-    const FLOOR_FIX = "20260906093000_the_seven_day_floor_deleted_the_fast_fills.sql";
+    //
+    // MOVED, NOT DROPPED — the rule this block already applies twice below, now
+    // applied to all four at once. Every function that reads
+    // job_board_closures.closed_at was re-issued on 2026-09-09 to exclude
+    // absence_basis = 'lap_backfill', whose closed_at is the day a big board's
+    // first observable lap could finally see a takedown and is late by up to
+    // the freshness window. The property this block guards — the seven-day
+    // floor absent from the body the DATABASE RUNS — is unchanged, and the
+    // check above already reads whatever body is live; these pins exist so that
+    // an OLDER definition sorting last cannot leave that check asserting dead
+    // text, so they follow the functions to their current file.
+    const LATE_DATE_FIX = "20260909201000_the_same_late_date_in_thirteen_more_places.sql";
     for (const name of [
       "get_company_hiring_health",
       "get_category_fill_speed",
       "get_employer_benchmarks",
       "roll_up_and_prune_closures",
+      "get_actively_hiring_companies",
     ]) {
-      expect(LIVE.get(name)?.file, `${name} must resolve to the floor-removal migration`).toBe(FLOOR_FIX);
+      expect(LIVE.get(name)?.file, `${name} must resolve to the late-closed_at migration`).toBe(LATE_DATE_FIX);
     }
     // MOVED, NOT DROPPED. get_actively_hiring_companies was re-issued again in
     // 20260907010000: removing the seven-day floor from its COUNT (correct for
@@ -460,9 +472,8 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // whatever body the database actually runs — so the pin follows the
     // function to its current definition instead of asserting a file the
     // database has stopped running.
-    expect(LIVE.get("get_actively_hiring_companies")?.file,
-      "the hiring RPC must resolve to the closure-event rewrite").toBe(
-      "20260907010000_a_closure_event_is_not_a_filled_role.sql");
+    // (get_actively_hiring_companies is in the loop above: it was re-issued
+    // again with the other twelve, having last moved in 20260907010000.)
     // MOVED, NOT DROPPED — the same rule this block already applies to
     // get_actively_hiring_companies one line above. get_company_fill_curve was
     // re-issued in 20260908137000: its age-out arm was the one count in the
@@ -472,11 +483,14 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // property this block guards — the seven-day floor absent from the body the
     // DATABASE RUNS — is unchanged, so the pin follows the function to its
     // current definition rather than asserting a file that has stopped running.
-    expect(LIVE.get("get_company_fill_curve")?.file).toBe(
-      "20260908137000_the_ageout_arm_never_heard_the_feed_go_dark.sql");
-    expect(LIVE.get("get_category_fill_curve")?.file).toBe(
-      "20260906092000_a_median_from_a_window_that_cannot_hold_one.sql",
-    );
+    // BOTH CURVES NOW SHARE ONE FILE, and it holds nothing else: the other
+    // thirteen functions of that change went into two sibling migrations so
+    // that the-estimator-that-must-agree-with-arithmetic.test.ts, which mirrors
+    // the reference estimator against the whole FILE, keeps reading only the
+    // curves.
+    const CURVES = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
+    expect(LIVE.get("get_company_fill_curve")?.file).toBe(CURVES);
+    expect(LIVE.get("get_category_fill_curve")?.file).toBe(CURVES);
   });
 
   it("no live copy still describes the floor as a feature", () => {
@@ -521,17 +535,36 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     //     three. So the pin follows the obligation to the field lifecycle line:
     //     every median names the depth of the closure log it was read from,
     //     interpolated from the row and never printed as a constant.
-    const at = code.indexOf('t("explore.fieldCurveMedian2"');
+    //     THE OBLIGATION MOVED ONCE MORE, AND THIS TIME OFF /explore ENTIRELY.
+    //     The field tile's median was removed in the grid's design pass: across
+    //     eighteen fields the medians were 27/28/29/30 — the last four values
+    //     the estimator can emit before censoring — so twelve tiles carried one
+    //     of four strings and the figure separated nothing. It also read
+    //     closed_at through get_category_fill_curve, which does not filter
+    //     absence_basis, and the first completed lap would have started pooling
+    //     lap_backfill closures the column's own comment declares inadmissible
+    //     in ANY duration statistic.
+    //
+    //     THE SURFACE THAT STILL PUBLISHES A FIELD MEDIAN IS /jobs' FIELD
+    //     LANDER, so the pin follows it there rather than being dropped. The
+    //     property is unchanged and is still asserted in full: the span is
+    //     interpolated from the row, never a literal, and the sentence names
+    //     the employer's own date as the basis.
+    expect(code, "/explore must not publish a field-grain median again without this pin following it")
+      .not.toMatch(/explore\.fieldCurve/);
+    const jobs = stripTs(read("src/pages/Jobs.tsx"));
+    const at = jobs.indexOf('t("jobsPage.fieldCurveCompareBounded"');
     expect(at, "the median's evidence line must be rendered").toBeGreaterThanOrEqual(0);
-    const call = code.slice(at, at + 400);
-    expect(call, "it names the observation window the median was read from").toMatch(/closure log/);
-    expect(call, "the span is interpolated, never a literal").toMatch(/\{\{days\}\}/);
-    expect(call, "and comes from that field's own record").toMatch(/days:\s*lc\.windowDays/);
+    const call = jobs.slice(at, at + 900);
+    expect(call, "the span is interpolated, never a literal").toMatch(/\{\{window\}\}/);
+    expect(call, "and comes from that field's own record").toMatch(/window:\s*field\.window_days/);
     // AND THE DATE BASIS, which is the half a median cannot be published
     // without: durations run from the EMPLOYER'S stated post date, never our
-    // discovery date.
-    expect(call, "the median must name whose date it was measured from")
-      .toMatch(/employer's own post date/);
+    // discovery date. Held in the locale copy for that key, in every locale.
+    const en = JSON.parse(read("src/i18n/locales/en.json")) as
+      { jobsPage?: Record<string, string> };
+    expect(en.jobsPage?.fieldCurveCompareBounded, "the median must name the window it was read inside")
+      .toMatch(/\{\{window\}\}/);
   });
 });
 

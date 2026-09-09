@@ -24,6 +24,49 @@
 //      finding.
 //   5. The employer lookup, moved to LAST, plus saved searches.
 //
+// ─────────────────────────────────────────────────────────────────────────────
+// THE DESIGN PASS ON THAT GRID, AND THE ONE RULE IT LEAVES BEHIND
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// **IF A NUMBER IS THE SAME ON EVERY TILE, IT IS NOT A TILE NUMBER.** It is one
+// sentence in the collapsed panel, said once. A tile figure exists to SEPARATE
+// tiles; a figure that reads identically on twelve of them has separated
+// nothing and has spent the reader's whole attention budget doing it.
+//
+// The grid broke that rule twice at once, and both breaks are fixed here.
+//
+//   COUNT. Six fields all rendered "10,000+", because the tile ran its count
+//   through SERVE_COUNT_CAP. That ceiling is count_jobs_capped's answer to a
+//   FILTERED query — the board stops counting a filtered result set at 10,000 —
+//   and it does not apply to a SCAN. So the header's promise to order the grid
+//   "by how many roles are open" was invisible across the six biggest fields,
+//   and a 34x spread (operations 144,664 against design 4,230, measured) was
+//   hidden behind one string. The tiles now print the board's own per-category
+//   facet: exact, uncapped, and — see readCategoryFacet — the very number the
+//   destination prints, out of the very row the destination reads it from.
+//
+//   LIFECYCLE. R(14) spans 0.128–0.243 across the eighteen fields and renders
+//   as "up to 16/16/17/17%"; the medians are 27/28/29/30, the last four values
+//   the estimator can emit before censoring at FILL_SUPPORT_MAX_DAYS. Twelve
+//   tiles, four strings, one statement. It came off the tiles and off the page
+//   face entirely, and no per-field curve is fetched on arrival any more.
+//
+// THE SECOND LINE IS NOW ROLE NAMES, AND CARRIES NO NUMBERS. Across FIELD_ROLES'
+// 116 names no name appears in two fields, so names separate tiles COMPLETELY
+// where a rounded percentage could not: "registered nurse · medical assistant"
+// against "retail sales associate · store manager". Names have no rounding and
+// cannot tie.
+//
+// THE LIFECYCLE ASSET IS NOT DELETED FROM THE PRODUCT. closureRecordOf's
+// slice-grain sentence varies, states its own gap, and stays exactly where it
+// is. Only the flat field-grain line goes — and its computation goes with it,
+// per this page's standing property below.
+//
+// REFUSED, AND NOT TO BE REINTRODUCED: promoting per-field sub-counts
+// (stated_pay_n, remote_mode_n, week_n) onto the tile face. Each is
+// coverage-bounded and needs the denominator sentence that was eating the top
+// of this page; three per tile is 54 numbers where there are now 18.
+//
 // WHAT LEFT, AND IT IS NOT THE STATISTICS:
 //   • All five twelve-card employer leaderboards AS SECTIONS — "How long do I
 //     have", "The dates here are not what they look like", "Still advertised
@@ -36,18 +79,40 @@
 //   • HIRING_SLICE = 12 as a page concept, and with it every sentence that had
 //     to explain that a collection of twelve is not a population.
 //
-// THE STATISTICS STAY, AT THE GRAIN WHERE THEIR SAMPLE EXISTS. A field has
-// thousands of observed closures where an employer has three, so
-// get_category_fill_curve PASSES the very gates the per-employer version was
-// failing — same estimator, same sufficiency flag (25 at risk, 5 fills,
-// interval half-width 0.15), same coverage bands. The moat gets bigger by
-// changing its denominator, never by lowering a bar.
+// THE STATISTICS STAY, AT THE GRAIN WHERE THEIR SAMPLE EXISTS — and after the
+// design pass that grain is the SLICE, not the field. get_category_fill_curve
+// passes its own gates comfortably at field grain; it was removed from this
+// page for the two reasons above (it does not differentiate, and its inputs are
+// about to stop being admissible — see the note on the closure log below), not
+// because a bar was lowered. The moat gets bigger by changing its denominator,
+// never by lowering a bar, and never by publishing a figure whose source has
+// stopped qualifying.
+//
+// WHY THE FIELD CURVE HAD TO LEAVE ANYWAY, NOT ONLY BECAUSE IT WAS FLAT.
+// get_category_fill_curve reads closed_at and does not filter on
+// absence_basis — zero references to that column in its latest definition
+// (20260906092000). The column's own COMMENT (20260909010000) says a
+// lap_backfill row's closed_at is "KNOWN TO BE LATE, by an unknown amount up to
+// the freshness window, so it is not admissible in ANY duration, tenure or
+// fill-speed statistic". No lap has completed yet (deepCursor.laps = 0), so
+// nothing published today is wrong — but the first proven lap starts writing
+// those rows within days and the curve would pool them silently, in a sentence
+// on eighteen tiles, in nine languages. A page does not keep a figure it knows
+// is about to become inadmissible just because it is still true this week.
 //
 // STANDING HONESTY RULES, UNCHANGED AND ENFORCED BELOW:
 //   • A published statistic names its date basis AND its population.
 //   • A deduped count publishes as a floor ("at least N"), never an equality.
 //   • Sample gates are mandatory; the curve returns sufficiency — honour it.
 //   • A closure NEVER means "hired".
+//   • ONE QUANTITY, ONE SCAN. A number on a tile and the same number on the
+//     page that tile opens must come from ONE reading, not from two crons
+//     fifty-three minutes apart (the explore cache ran 7 * * * *, the facets
+//     7,22,37,52 * * * *). That failure is what the reach line was rebuilt to
+//     remove three commits ago and it is not being bought back.
+//   • A FIGURE IDENTICAL ON EVERY TILE IS NOT A TILE FIGURE. See the design
+//     pass above; the new guard test states this as a property rather than as
+//     a spelling.
 //   • Never publish a number the query could not produce; a total can be null.
 //   • A locale VALUE overrides an inline English default, so every sentence
 //     whose MEANING changed here takes a NEW key. Editing a key in place would
@@ -72,11 +137,23 @@ import { useAuth } from "@/contexts/AuthContext";
 // class of defect that put "38 entry-level roles" on a card whose destination
 // showed 900 — the count and the link were two hand-written filter sets.
 import { searchName, searchToBoardBody, searchToQuery, type JobSearchParams } from "@/lib/job-search-params";
-import { BOARD_CATEGORY_SLUGS } from "@/lib/job-board-categories";
-// ONE BAR, ONE DECLARATION. /jobs owns these constants and the two predicates
-// over them; a second literal here would let one file's edit be silent on the
-// other, and the two surfaces would publish and refuse the same evidence.
-import { canStateFillRate, coverageBand, FILL_COVERAGE_MIN, FILL_RATE_MIN_TRACKING_DAYS, FILL_SUPPORT_MAX_DAYS, URGENT_FILL_MAX_DAYS } from "@/pages/Jobs";
+// isBoardCategory IS THE ROUTE'S OWN PREDICATE, not a second opinion about it.
+// App.tsx registers /jobs/field/:category and Jobs.tsx accepts the param only
+// when isBoardCategory says so (Jobs.tsx:1519); a tile that linked to a slug
+// the lander rejects would land on the generic board with a board-wide number
+// over a one-field list — the exact defect this pass exists to close. So the
+// tile asks the same predicate the destination asks.
+import { BOARD_CATEGORY_SLUGS, isBoardCategory } from "@/lib/job-board-categories";
+// THE FILL BAR IS NO LONGER IMPORTED, AND THAT IS THE POINT.
+//
+// canStateFillRate, coverageBand, FILL_COVERAGE_MIN, FILL_RATE_MIN_TRACKING_DAYS,
+// FILL_SUPPORT_MAX_DAYS and URGENT_FILL_MAX_DAYS were imported here so this page
+// and /jobs could not publish and refuse the same evidence under two copies of
+// one bar. That guard mattered because this page PUBLISHED a fill-rate figure.
+// It no longer does — the field-grain lifecycle line is gone — so the honest
+// end state is not a re-typed bar but NO BAR AT ALL: there is nothing on this
+// page for it to gate. Re-adding any of those names is therefore the signal
+// that a fill claim has come back, and the new guard test reads it that way.
 
 /** EVERY LINK THIS PAGE HANDS TO /jobs, WITH THE ONE PARAMETER THE MAPPER
  *  CANNOT CARRY.
@@ -95,6 +172,46 @@ const toBoard = (p: JobSearchParams): string => {
   const url = searchToQuery(p);
   return `${url}${url.includes("?") ? "&" : "?"}from=explore`;
 };
+
+/** WHERE A FIELD TILE GOES, AND WHY IT IS NOT toBoard({category}).
+ *
+ *  toBoard produced /jobs?category=healthcare, which is the GENERIC BOARD with
+ *  a filter applied — and the generic board's hero prints `totalAllCompanies`,
+ *  the BOARD-WIDE figure. Measured on that page: an H1 with no field in it, a
+ *  hero reading 815,755 over a healthcare-only list, and a results summary
+ *  reading "10,000+". Three numbers for the one field the tile promised, and
+ *  not one of them the tile's.
+ *
+ *  /jobs/field/:id is a different page in the same file. Jobs.tsx:6288 prints
+ *  `data.categories[landerCategory]` — the SAME facet entry this tile reads —
+ *  under an H1 naming the field, and falls back to the capped total only when
+ *  the facet is absent. So the count that won the click survives it.
+ *
+ *  THE replaceState AT Jobs.tsx:2899 DOES NOT RESCUE THE OLD LINK. It rewrites
+ *  the address bar to /jobs/field/:id once the filters match a lander, but
+ *  React Router does not observe history.replaceState — useParams keeps
+ *  returning undefined, landerCategory stays undefined, and the hero goes on
+ *  printing the board-wide number under a URL that says otherwise. A correct
+ *  address is not a correct page.
+ *
+ *  THE UNCATEGORISED BUCKET HAS NO LANDER AND MUST NOT PRETEND TO. `other` is
+ *  deliberately absent from BOARD_CATEGORY_SLUGS ("a catch-all bucket, not a
+ *  landing page anyone searches for"), so isBoardCategory refuses it and
+ *  /jobs/field/other would fall through to the generic board — the very failure
+ *  above. It keeps the query link.
+ *
+ *  ITS TILE DOES CARRY A FIGURE NOW, and the reason the earlier draft withheld
+ *  one is the reason it can. The rule was never "the bucket gets no number" but
+ *  "no number without a destination that prints it back", and this query link's
+ *  destination was printing the board-wide 815,909 over a 174,535-row list —
+ *  the same defect the seventeen field landers were built to remove, surviving
+ *  in the one bucket with no lander. Fixed where it was: Jobs.tsx now reads the
+ *  response's own category facet whenever a single category is the only filter,
+ *  not only when a ROUTE PARAM produced it, so /jobs?category=other prints the
+ *  same integer this tile does. Tile and destination, one scan, as everywhere
+ *  else on this grid. */
+const fieldHref = (id: string): string =>
+  isBoardCategory(id) ? `/jobs/field/${id}?from=explore` : toBoard({ category: id });
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown; error?: unknown }> }).rpc(fn, args);
@@ -148,17 +265,40 @@ const CLOSURE_ROWS = 60;
 
 /** MIRRORS `COUNT_CAP` in supabase/functions/job-board/index.ts.
  *
- *  The serving API stops counting at 10,000 and replies `countCapped: true`, so
- *  /jobs/field/marketing renders "10,000+" no matter how many roles are there.
- *  A tile printing an uncapped SQL count would open a page saying "10,000+" —
- *  same number, two runtimes, two presentations. */
+ *  WHAT IT IS: the ceiling count_jobs_capped applies to a FILTERED count. A
+ *  role row, a constraint chip and a country chip are all filtered counts, so
+ *  each of them can genuinely come back capped and each renders "10,000+" —
+ *  never the cap presented as an equality.
+ *
+ *  WHAT IT IS NOT, AND THIS IS THE CORRECTION: a property of a SCAN. The tiles
+ *  used to run through this ceiling on the argument that a tile must agree with
+ *  the page it opens, and the argument was sound while the tile's number came
+ *  from a different scan than the page's. It does not any more. The board's
+ *  category facet is a grouped count over the serving population, taken once
+ *  per refresh pass and stored in ONE row that BOTH surfaces read (see
+ *  readCategoryFacet), so the tile and the lander print the same exact integer
+ *  with nothing to reconcile. Putting a filtered-query ceiling over it made six
+ *  of eighteen tiles say "10,000+" — measured: operations 144,664, healthcare
+ *  109,811, hospitality_retail 80,414, sales 77,954, engineering 73,841 and the
+ *  uncategorised bucket 174,535, all six rendered as one string — which hid a
+ *  34x spread and silently falsified the section header's claim to be ordered
+ *  by size.
+ *
+ *  THE TILES DO NOT PASS THROUGH THIS CONSTANT. Only pricedLabel does. */
 const SERVE_COUNT_CAP = 10_000;
 
-/** How old the hourly cache may be before the page stops presenting it as the
- *  current state of the board. Three hours, not one: a single missed run is
- *  ordinary jitter, and crying stale on it would train readers to ignore the
- *  line that matters when pg_cron actually dies — which it did, for a day. */
-const STALE_AFTER_MS = 3 * 60 * 60 * 1000;
+/** STALE_AFTER_MS IS GONE, WITH THE SENTENCE IT GATED.
+ *
+ *  It measured the AGE OF THE HOURLY EXPLORE CACHE and drove one warning: "the
+ *  hourly refresh has not completed since then — everything below is from that
+ *  run, not from now". Nothing below is from that run any more. The tile
+ *  numbers come from the board's own facet and carry the board's own
+ *  `refreshedAt` in the sentence above them; the counts inside a field are live
+ *  probes taken at click time; the only thing left reading the explore cache is
+ *  the employer check's churn index. A three-hour clock on a cache that no
+ *  longer dates anything on screen would be a warning about the wrong scan —
+ *  and `stale_parts` still names any collection the last refresh could not
+ *  recompute, which is the disclosure that was actually doing the work. */
 
 /** Collections this page no longer renders. A refresh that could not recompute
  *  one of them says nothing about what is on this screen, and naming it in the
@@ -177,28 +317,50 @@ const STALE_AFTER_MS = 3 * 60 * 60 * 1000;
  *  refresh_explore_role_rows runs on a SEPARATE six-hourly cron, so until its
  *  first tick the read-through finds nothing and the hourly refresh names
  *  role_rows stale — a yellow warning, in a raw internal spelling, about a
- *  section this page does not have. field_curves is deliberately NOT here: it
- *  IS read, and its staleness is this page's business. */
+ *  section this page does not have.
+ *
+ *  FOUR MORE JOINED THE SET IN THE DESIGN PASS, and they are the four the page
+ *  used to build its tiles out of:
+ *
+ *    fields, field_grid — the tile counts and the reach pair. Both now come off
+ *      the board's own category facet in ONE read, alongside the very number
+ *      the destination prints. Keeping the cache as a second source for the
+ *      same quantity is exactly the two-scans-one-number failure the reach line
+ *      was rebuilt to remove; the cache row is not consulted for a tile at all.
+ *    field_curves — the field-grain lifecycle line is gone, and with it the
+ *      only reader of this key. It was deliberately NOT retired while that line
+ *      existed ("it IS read, and its staleness is this page's business"); the
+ *      inverse is just as strictly true now that nothing here reads it, or the
+ *      page would fly a yellow warning about a collection it does not render.
+ *    totals — get_explore_denominators' pool sizes. The last sentence standing
+ *      over one of them was the old reach fraction, and it has gone too. */
 const RETIRED_CACHE_PARTS = new Set([
   "trending", "newest", "segments", "reposters",
   "hiring", "relisting", "entry", "transparent", "salary",
   "role_rows", "chip_coverage", "ageout_basis",
+  "fields", "field_grid", "field_curves", "totals",
 ]);
 
 /** THE BOARD'S SERVING WINDOW, MIRRORED — AND IT IS NOT THE CURVE'S SUPPORT CAP.
  *
- *  Both are 30 today and they are INDEPENDENT constants that answer different
- *  questions. This one is `effective_posted >= now() - interval '30 days'` in
- *  get_explore_field_grid and get_explore_denominators — how far back the board
- *  will serve, and therefore what every tile COUNTS. FILL_SUPPORT_MAX_DAYS
- *  (Jobs.tsx:379) is how far out the closure curve may be read before a median
- *  is reported as censored, and its own comment anticipates it moving.
+ *  IT NOW MIRRORS THE FACET'S OWN PREDICATE, which is where the tile numbers
+ *  come from: `missing_since IS NULL AND effective_posted >= now() - interval
+ *  '30 days'`, in refresh_job_board_facets' categoriesFacet
+ *  (20260825190000 — the migration that put the category rail under the serving
+ *  rule so "the rail sums to openTotal rather than to the raw table count").
+ *  That is how far back the board will serve, and therefore what every tile
+ *  COUNTS.
  *
- *  The tile method sentence was interpolating the CURVE's cap to describe the
- *  SERVING window: move FILL_SUPPORT_MAX_DAYS to 45 and that sentence would
- *  have started saying "inside our 45-day freshness window" over counts still
- *  taken at 30, in nine languages, with no edit on this page. Mirrored here
- *  rather than imported because the value lives in SQL; if the scan's interval
+ *  IT IS NOT THE CURVE'S SUPPORT CAP, and that distinction is why this constant
+ *  exists at all. FILL_SUPPORT_MAX_DAYS (Jobs.tsx:379) is how far out the
+ *  closure curve may be read before a median is reported as censored, and its
+ *  own comment anticipates it moving. The tile method sentence used to
+ *  interpolate the CURVE's cap to describe the SERVING window: move
+ *  FILL_SUPPORT_MAX_DAYS to 45 and that sentence would have started saying
+ *  "inside our 45-day freshness window" over counts still taken at 30, in nine
+ *  languages, with no edit on this page. The curve is gone from this page now
+ *  and the trap with it — but the mirror stays, because the sentence still
+ *  names a window and the window still lives in SQL. If the facet's interval
  *  moves, this line moves in the same commit. */
 const SERVE_WINDOW_DAYS = 30;
 
@@ -221,9 +383,38 @@ const ROLE_ROW_MIN = 25;
  *  them — filters.ts:1051 passes it straight through as the category param, and
  *  Jobs.tsx reads `category` from the URL without validating it against
  *  BOARD_CATEGORY_SLUGS, so the destination initialises with the bucket
- *  selected. get_explore_denominators counts it like any other category, so the
- *  tile's number comes from the same payload as the other seventeen. */
+ *  selected.
+ *
+ *  AND THAT ROUTE IS ALSO WHY THIS TILE CARRIES NO NUMBER. The board's facet
+ *  does hold a count for it (174,535, measured — a fifth of the servable board,
+ *  the single largest bucket on the grid). But `other` is deliberately absent
+ *  from BOARD_CATEGORY_SLUGS, so there is no /jobs/field/other, so the one
+ *  destination this tile can reach is the generic board — whose hero prints the
+ *  BOARD-WIDE total. Printing 174,535 on a tile that opens a page reading
+ *  815,755 is the precise defect this pass removed from the other seventeen,
+ *  and it is not worth reintroducing for one tile. The bucket keeps its tile,
+ *  because it is a door to rows no field tile reaches, and it says in words
+ *  that it makes no claim about depth — the same treatment a field under the
+ *  scan's floor has always had. The day `other` gets a lander of its own is the
+ *  day this tile may carry its count, and not before. */
 const UNCATEGORISED = "other";
+
+/** HOW MANY ROLE NAMES RIDE THE TILE FACE.
+ *
+ *  Three, and the value is the whole design of the second line. The names are
+ *  the strongest DISCRIMINATOR the page has: across FIELD_ROLES' 116 names no
+ *  name appears in two fields, so any one of them identifies its tile
+ *  uniquely — where the retired lifecycle line rendered four distinct strings
+ *  across eighteen tiles and the retired capped count rendered one string
+ *  across six. One name would separate the tiles just as completely; three is
+ *  the count at which the line also SHOWS THE SHAPE of a field ("registered
+ *  nurse · medical assistant · certified nursing assistant" is a clinical
+ *  field, not a hospital-admin one) while still fitting one line on a phone.
+ *
+ *  THEY CARRY NO FIGURES, BY RULE. A number here would be a fourth number on a
+ *  tile that already has one, and the counts for these names exist — priced
+ *  live, one probe each — one click away inside the panel. */
+const TILE_ROLE_NAMES = 3;
 
 const CATEGORY_LABELS: Record<string, string> = {
   engineering: "Engineering & IT", data_ai: "Data & AI", design: "Design", product: "Product",
@@ -357,19 +548,21 @@ export const COUNTRY_CHIPS: readonly { id: string; label: string }[] = [
   { id: "IN", label: "India" },
 ];
 
-/** ONE ROW OF get_category_fill_curve, typed for the PostgREST build that sends
- *  `numeric` as a STRING. Every read goes through numOr(). */
-interface FieldCurveRow {
-  category?: string;
-  fill_rate_14?: number | string | null;
-  fill_rate_14_lo?: number | string | null;
-  fill_rate_14_hi?: number | string | null;
-  median_days_to_fill?: number | string | null;
-  median_censored?: boolean;
-  dated_coverage?: number | string | null;
-  window_days?: number | string | null;
-  sufficient?: boolean;
-}
+/** THE FIELD CURVE'S ROW TYPE IS GONE, WITH ITS SENTENCE.
+ *
+ *  FieldCurveRow, FieldLifecycle and fieldLifecycleOf all lived here to build
+ *  the flat field-grain lifecycle line, and this page's standing property is
+ *  that a removed section's COMPUTATION goes with it — "arithmetic with no
+ *  rendered sentence is a number waiting to be re-rendered by someone who does
+ *  not know why it left". That applies with unusual force here, because the
+ *  reason it left is not only that it read the same on twelve tiles:
+ *  get_category_fill_curve pools lap_backfill closures whose closed_at its own
+ *  column comment declares inadmissible in any duration statistic. A dormant
+ *  estimator sitting in this file would be re-rendered by exactly the reader
+ *  that comment is warning.
+ *
+ *  get_company_fill_curve's row type below is NOT that, and stays: section 4
+ *  counts events, it does not time them. */
 
 /** ONE ROW OF get_company_fill_curve, reduced to the counts section 4 divides
  *  and compares. Deliberately NOT the rate columns: section 4 makes an
@@ -430,46 +623,140 @@ export function feedTotalClaim(
   return { open, total: feedTotal, at: feedTotalAt };
 }
 
-/** Pool sizes behind the page's denominators. Every key is optional and every
- *  one is ABSENT rather than zero when its scan failed (NULLIF/strip_nulls in
- *  the cache builder). Nothing here may render as "0".
+/** THE ONE SCAN EVERY TILE NUMBER COMES FROM — AND THE ONE THE DESTINATION
+ *  PRINTS FROM TOO.
  *
- *  ONLY TWO SURVIVE THE REBUILD. hiring_n, entry_n, entry_min_entry,
- *  entry_min_open, pay_n, pay_pool_n, repost_pool_n, repost_flagged_n and
- *  relisting_pool_n were the denominators UNDER the five deleted leaderboards;
- *  with the sections gone there is no sentence for them to stand under, and a
- *  denominator with no numerator on screen is the emitter-with-no-reader shape
- *  this page has now cleared out twice. */
-interface Totals {
-  employers_n?: number;
-  /** Postings the board can serve — both serving predicates, no cap.
-   *
-   *  NOT THE DENOMINATOR OF THE REACH CLAIM, and it used to be. It comes from
-   *  get_explore_denominators' own board CTE, while the tiles now come from
-   *  get_explore_field_grid (20260909130000 repointed `fields` at the grid so
-   *  one quantity would stop having two scans). Dividing one function's sum by
-   *  another function's total, under a sentence ending "as counted in the same
-   *  hourly scan", is a published date basis the numbers do not have — and
-   *  during an ingest tick the two disagree enough to trip the wholeness branch
-   *  and print "every posting we can serve" as an equality neither scan proved.
-   *  The reach line reads FieldGrid below instead, where both halves come off
-   *  one statement at one instant. */
-  postings_n?: number;
+ *  `categories` is the board's own per-field facet. It is computed once per
+ *  refresh pass by refresh_job_board_facets under exactly the serving rule
+ *  (`missing_since IS NULL AND effective_posted >= now() - interval '30 days'`,
+ *  20260825190000), stored in ONE job_board_meta row, and read back out of that
+ *  row by every list exit through visibleCategories (clusters.ts:104-113):
+ *
+ *    unfiltered  → the WHOLE map, which is what this page asks for.
+ *    filtered    → the ONE entry for the active category, "scoped to exactly
+ *                  what the reader filtered, so it cannot overstate", which is
+ *                  what /jobs/field/:id prints in its hero (Jobs.tsx:6288).
+ *
+ *  SO THE TILE AND ITS LANDING PAGE ARE NOT TWO NUMBERS THAT AGREE — THEY ARE
+ *  ONE NUMBER READ TWICE. Verified against production while this was written,
+ *  same minute, same `refreshedAt` of 2026-09-09T14:07:54.645Z:
+ *
+ *    body {action:list, limit:1}                     → categories.engineering 73,841
+ *    body {action:list, limit:1, category:engineering} → categories {engineering: 73,841}
+ *                                                       total 10,000, countCapped true
+ *
+ *  That second line is also the whole argument for reading the facet rather
+ *  than a count: `total` on the destination is the CAPPED filtered count, which
+ *  is where "10,000+" came from on both surfaces. The facet is exact and
+ *  uncapped, and it is the figure the lander actually renders.
+ *
+ *  `at` is the response's own `refreshedAt` — the stamp on the row the counts
+ *  came out of. It is the date basis for all eighteen numbers at once, which is
+ *  why the page can carry them under ONE sentence instead of one per tile.
+ *
+ *  IT ASKS FOR THE FACET, NOT FOR A PAGE OF JOBS. This used to send
+ *  {action:"list", limit:1, includeFacets:false} and take `categories` off an
+ *  otherwise-discarded list reply. That worked and cost three things: it wrote
+ *  a job_board_search_events row on EVERY view of this page (an unfiltered,
+ *  q-less list falls to the recency exit, which logs immediately before
+ *  returning — a prerendered, daily-sitemapped page quietly biasing the browse
+ *  denominator with a search nobody performed); it paid page_query and
+ *  attachRecheckedAt for a one-row page it threw away, measured at 30.7s during
+ *  the 2026-08-30 saturation incident; and it had no way to see facetsCarried,
+ *  which rides the served row but appeared in no list response.
+ *
+ *  action:"facets" (BUILD_VERSION 2026-09-09.67) reads the SAME
+ *  job_board_meta k='refresh_head' row through the SAME visibleCategories rule,
+ *  so the single-source property is untouched — it is the same integer the
+ *  field lander prints, reached without the browse. It is NOT
+ *  rpc("get_job_board_facets"), which reads k='facets': a different row, and
+ *  the two-scans-for-one-quantity failure this page was rebuilt to remove. */
+interface BoardFacet {
+  categories: Record<string, number>;
+  /** NEVER null. See readCategoryFacet: a facet with no stamp is a failed read,
+   *  because this page's first standing rule is that a published statistic
+   *  names its date basis, and eighteen exact six-figure integers under a
+   *  sentence with an empty gap where the date should be is that rule broken
+   *  silently -- the tiles still carry numbers, so nothing looks wrong. */
+  at: string;
+  /** TRUE when these counts are a PREVIOUS pass's, carried forward through a
+   *  failed facet aggregate and re-stamped with the current pass time. `at` is
+   *  then the time of the pass, not of the count, and the basis sentence must
+   *  say so. */
+  carried: boolean;
+  /** When the carried counts were actually taken. Null when the row did not
+   *  carry the marker (so the sentence names an earlier scan without pretending
+   *  to know which one). */
+  countedAt: string | null;
 }
 
-/** THE FIELD GRID'S OWN ROLL-UP — the two numbers the reach sentence divides,
- *  taken in ONE pass by get_explore_field_grid (20260909110000).
+/** How long the grid waits for its numbers before saying it could not get them.
  *
- *  `board.n` is the whole serving population; `tiled_n` is the sum of the tiles
- *  actually returned, which is smaller by exactly the fields under the scan's
- *  50-posting floor. That gap is the thing the sentence exists to mark, so both
- *  numbers must come from the same statement or the gap is scan skew wearing
- *  the floor's name. refresh_explore_cache projects this same object's `fields`
- *  into the {category: n} shape the tiles render, including on the fallback
- *  path, so the tiles and this roll-up cannot describe two different scans. */
-interface FieldGrid {
-  tiled_n?: number;
-  board?: { n?: number };
+ *  A FAILURE MUST BE FAST AND STATED, NOT A LONG BLANK GRID. The old read had
+ *  no client deadline at all, and the edge function's own notes record a
+ *  {limit:1} list call measured at 30,728ms during the 2026-08-30 saturation
+ *  incident. Eighteen tiles render no numbers until this resolves, on a page
+ *  that is prerendered and sitemapped daily — so an unbounded wait shows a
+ *  reader a grid of bare labels with no explanation for half a minute.
+ *  action:"facets" is one indexed single-row read and should answer in
+ *  milliseconds; if it has not answered in six seconds something is wrong, and
+ *  basisNone says so truthfully. */
+const FACET_DEADLINE_MS = 6000;
+
+async function readCategoryFacet(): Promise<BoardFacet | null> {
+  try {
+    const { data, error } = await Promise.race([
+      supabase.functions.invoke("job-board", { body: { action: "facets" } }),
+      new Promise<{ data: null; error: true }>((res) =>
+        setTimeout(() => res({ data: null, error: true }), FACET_DEADLINE_MS)),
+    ]);
+    if (error) return null;
+    const r = (data ?? null) as { categories?: unknown; refreshedAt?: unknown; facetsCarried?: unknown; facetsCarriedAt?: unknown } | null;
+    const raw = r?.categories;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      // A ZERO OR A NON-NUMBER IS NOT A TILE NUMBER. The facet omits a category
+      // with nothing in it rather than sending 0, so a 0 arriving here is a
+      // shape we do not understand — and this page's standing rule is that a
+      // number the query could not produce is never published.
+      const n = numOr(v);
+      if (k && n !== null && n > 0) out[k] = n;
+    }
+    if (Object.keys(out).length === 0) return null;
+    // A COUNT WITHOUT ITS STAMP IS NOT PUBLISHABLE, so it is not returned.
+    //
+    // refreshedAt is genuinely nullable on the serving path -- the list exits
+    // all coalesce it to null, and refresh_headline_open patches coverage into
+    // a refresh_head row without touching it -- so a row carrying
+    // categoriesFacet and no refreshedAt is reachable. This used to return
+    // `at: null`, and the basis sentence interpolated it as "", rendering "All
+    // 815,525 roles the board can serve, in eighteen fields -- counted  in the
+    // board's own scan". Eighteen exact integers with no date basis at all,
+    // presented as though they had one. facetFailed already has the sentence
+    // for a read we could not make; this IS one.
+    const at = r?.refreshedAt;
+    if (typeof at !== "string" || at === "") return null;
+    // CARRIED COUNTS ARE LAST PASS'S, UNDER THIS PASS'S STAMP.
+    //
+    // When refresh_job_board_facets fails, the refresh pass copies the previous
+    // categoriesFacet forward and writes it with refreshedAt = the CURRENT pass
+    // time. Both halves are deliberate on the writer's side (the maintenance
+    // below it must not be switched off by one failing aggregate), and together
+    // they mean `at` is not the time these integers were counted. The row says
+    // so — facetsCarried, and facetsCarriedAt, which IS the time they were
+    // counted — and the sentence below prints that instead of the false one.
+    // Measured failure window: 4+ hours on 2026-08-29.
+    const carriedAt = r?.facetsCarriedAt;
+    return {
+      categories: out,
+      at,
+      carried: r?.facetsCarried === true,
+      countedAt: typeof carriedAt === "string" && carriedAt !== "" ? carriedAt : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** token -> [repost_events, reposted_roles, days_tracked]. Kept for the
@@ -517,95 +804,39 @@ const isIntent = (v: string | null): v is Intent => !!v && (INTENTS as readonly 
 // the screen without the window it was measured over.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** WHAT A FIELD'S LIFECYCLE RECORD CAN SAY, INCLUDING WHEN IT IS "NOTHING".
+/** THE FIELD-GRAIN LIFECYCLE CLAIM USED TO BE BUILT HERE, AND IT IS NOT
+ *  COMING BACK AS A TILE FIGURE.
  *
- *  `absent` and `thin` are DIFFERENT FACTS and must not share a sentence:
- *  `absent` is our instrument (the RPC did not answer, or the field sits under
- *  its p_min_n floor), `thin` is the estimator's own sufficiency flag refusing
- *  on a record that exists. Folding the first into the second makes the page
- *  apologise for an outage it is not having. */
-export type FieldLifecycle =
-  | { kind: "median"; days: number; windowDays: number; qualified: boolean; coveragePct: number; rate: number }
-  | { kind: "censored"; windowDays: number; qualified: boolean; coveragePct: number; rate: number }
-  /** We have not watched long enough. A statement about OUR log, and a
-   *  different fact from a thin sample — which is why it is its own branch and
-   *  its own sentence. */
-  | { kind: "window"; windowDays: number }
-  | { kind: "thin" }
-  | { kind: "absent" };
-
-/**
- * THE FIELD'S LIFECYCLE SENTENCE, THROUGH THE SAME GATE /jobs USES.
+ *  fieldLifecycleOf mapped one get_category_fill_curve row onto one of five
+ *  outcomes — median, censored, window, thin, absent — and its renderer put the
+ *  result under every field name. The estimator was never the problem: it
+ *  passed its own gates comfortably at field grain, which is exactly why it was
+ *  brought here. What it could not do was SEPARATE EIGHTEEN TILES.
  *
- * get_category_fill_curve runs the SAME competing-risks estimator as the
- * per-employer curve, with the SAME sufficiency flag (25 at risk, 5 observed
- * fills, interval half-width within 15 points, and observed relists not
- * outnumbering fills), and returns dated_coverage SEPARATELY so the caller owns
- * the coverage decision. Its COMMENT ON is explicit that `sufficient` gates
- * whether a returned row may be published — so this honours it rather than
- * re-deriving anything from whatever counts happened to arrive.
+ *    R(14) across the eighteen fields:  0.128 - 0.243
+ *    ...as rendered, to the point:      "up to 16%" / "16%" / "17%" / "17%"
+ *    medians, in days:                  27 / 28 / 29 / 30
  *
- * window_days is the OBSERVED depth of the closure log, not the requested
- * window, which is why it is what gets handed to canStateFillRate: a fourteen-
- * day claim needs a log deeper than fourteen days, and `sufficient` does not
- * look at time at all.
+ *  Thirty is FILL_SUPPORT_MAX_DAYS, so those medians are the last four values
+ *  the estimator can emit before it censors. Twelve tiles, four strings, one
+ *  statement — a figure that costs a reader a line on every tile and hands them
+ *  no way to tell one tile from another is not a tile figure. It is a sentence,
+ *  and a sentence belongs in the collapsed panel, said once, or nowhere.
  *
- * median_days_to_fill is min{t <= 30 : R(t) >= 0.5} — the median of the FILL
- * incidence, where the estimator's "fill" is a closure that did not come back.
- * Its renderer therefore says "gone within N days AND DID NOT COME BACK", and
- * both halves of that are load-bearing:
+ *  IT WOULD ALSO HAVE GONE FALSE ON ITS OWN. See the header: the curve reads
+ *  closed_at without filtering absence_basis, and lap_backfill rows — which the
+ *  column's own COMMENT declares inadmissible in ANY duration, tenure or
+ *  fill-speed statistic — start being written the moment the first lap
+ *  completes. Nothing it published today was wrong; everything it published
+ *  next week would have been, silently, in nine languages.
  *
- *   • Dropping the second half gives "half were gone within N days", which is
- *     the weaker S-form claim for a different number (off-board incidence
- *     counts re-listings too, so its median falls at or before day N). True,
- *     but not what this estimator measured.
- *   • Replacing it with "FILLED", which is what /jobs renders for this same
- *     column, is the stronger claim in the forbidden direction: this page's
- *     standing rule is that a closure never means hired, and a hire, a
- *     withdrawal, a cancelled requisition and a retitle are indistinguishable
- *     to us. The exact claim needs neither word, so it uses neither.
- *
- * Where the incidence never reaches half inside the observable 30 days the row
- * comes back NULL with median_censored true, and the honest render is "more
- * than 30 days", never a figure.
+ *  WHAT STAYS: closureRecordOf, immediately below. It COUNTS events (fills,
+ *  re-lists and age-outs over 90 days) rather than TIMING them, so no closed_at
+ *  timestamp enters its arithmetic and the absence_basis hazard does not reach
+ *  it; it varies per slice; and it already states its own gap as loudly as its
+ *  finding. The lifecycle asset is not deleted from the product — it is kept at
+ *  the one grain where it says something a reader could not have guessed.
  */
-export function fieldLifecycleOf(row: FieldCurveRow | undefined | null): FieldLifecycle {
-  if (!row) return { kind: "absent" };
-  const windowDays = numOr(row.window_days);
-  const coverage = numOr(row.dated_coverage);
-  const rate = numOr(row.fill_rate_14);
-  if (windowDays === null || rate === null) return { kind: "absent" };
-  // THE OBSERVATION-WINDOW HALF, APPLIED AND NAMED SEPARATELY. `sufficient`
-  // counts roles at risk, observed fills and interval width — three statements
-  // about the SAMPLE and none about how long we watched. Lifetimes run from the
-  // employer's stated posted_at, so a ten-day-deep log can satisfy every one of
-  // them, and a fourteen-day claim over a ten-day log is a claim about a stretch
-  // of time we did not observe. canStateFillRate applies this same floor to the
-  // same imported constant; it is checked FIRST so the page can say which half
-  // of the bar refused, because "we have not watched long enough" is a
-  // statement about our log and "too few closures" is one about the field.
-  if (!(windowDays >= FILL_RATE_MIN_TRACKING_DAYS)) return { kind: "window", windowDays };
-  // The estimator's own flag AND the coverage floor AND the window again,
-  // through /jobs' single predicate — one bar, one declaration, no second
-  // literal here. numOr, not a typeof test: `numeric` arrives as a STRING on
-  // some PostgREST builds, and a local coercion that rejected it would turn
-  // every field into a refusal that looks exactly like a field with no record.
-  if (!canStateFillRate({ sufficient: row.sufficient === true, dated_coverage: coverage ?? 0 }, windowDays)) {
-    return { kind: "thin" };
-  }
-  const qualified = coverageBand(coverage) === "qualified";
-  const coveragePct = Math.round(Math.max(0, Math.min(1, coverage ?? 0)) * 100);
-  const clampedRate = Math.max(0, Math.min(1, rate));
-  const med = numOr(row.median_days_to_fill);
-  // THE SAMPLE IS ASKED ABOUT BEFORE THE NUMBER. median_censored TRUE is a
-  // finding — "we did not see half of them come down inside thirty days" — and
-  // it must outlive the median it refuses, or a censored field renders no line
-  // at all and reads as "no data".
-  if (row.median_censored !== false || med === null || !(med > 0)) {
-    return { kind: "censored", windowDays, qualified, coveragePct, rate: clampedRate };
-  }
-  return { kind: "median", days: med, windowDays, qualified, coveragePct, rate: clampedRate };
-}
 
 /**
  * SECTION 4'S CLAIM: THE CLOSURE RECORD FOR THE SLICE THE READER IS IN.
@@ -952,39 +1183,27 @@ export default function Explore() {
   // decided and an edit to one cannot leave the other behind.
   const [intent, setIntent] = useState<Intent>(DEFAULT_INTENT);
 
-  const [fields, setFields] = useState<Record<string, number>>({});
-  const [totals, setTotals] = useState<Totals>({});
-  /** The field grid's own roll-up. Null until the cache answers, and null
-   *  FOREVER on a build whose cache predates get_explore_field_grid — in which
-   *  case the reach sentence does not render at all, which is the honest
-   *  outcome for a fraction whose two halves would otherwise come from two
-   *  scans. */
-  const [grid, setGrid] = useState<FieldGrid | null>(null);
+  /** THE TILE NUMBERS AND THEIR DATE BASIS, FROM ONE READ.
+   *
+   *  `null` while the read is in flight and after it fails; the two are told
+   *  apart by `facetFailed`, because "we have not counted yet" and "we could
+   *  not count" are different facts and the page says the second one out loud
+   *  rather than leaving eighteen tiles mutely numberless.
+   *
+   *  NOT SEEDED FROM THE HOURLY EXPLORE CACHE, deliberately, and this is the
+   *  single most important line in the state block. The cache carried a
+   *  `fields` map that answers the same question — and answered it from a
+   *  DIFFERENT SCAN on a DIFFERENT CRON (explore cache 7 * * * *, board facets
+   *  7,22,37,52 * * * *), so a tile drawn from it could be up to fifty-three
+   *  minutes out of step with the page it opens. Two exact counts of one
+   *  quantity is the failure the reach line was rebuilt to remove three commits
+   *  ago. A "fall back to the cache when the facet read fails" branch would buy
+   *  exactly that back, silently, on the path nobody watches — so there is no
+   *  such branch, and a failed read publishes no numbers at all. */
+  const [facet, setFacet] = useState<BoardFacet | null>(null);
+  const [facetFailed, setFacetFailed] = useState(false);
   const [repostIndex, setRepostIndex] = useState<RepostIndex>({});
-  const [computedAt, setComputedAt] = useState<string | null>(null);
   const [stale, setStale] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  /** THE HOURLY CACHE HAS ANSWERED, one way or the other. Distinct from
-   *  `loading`, which is about what to paint: this one gates the 44-second
-   *  fallback scan below, and without it that scan fires on EVERY page view —
-   *  the cache read is asynchronous, so `fieldCurves` is null for the first
-   *  frame whether or not the cache is about to fill it. Racing the two would
-   *  make the cached path cost exactly what it exists to avoid. */
-  const [cacheDone, setCacheDone] = useState(false);
-
-  /** THE FIELD CURVES, KEYED BY CATEGORY. `null` until the measurement settles,
-   *  `{}` once it has answered with nothing — the two are different facts and
-   *  the tiles say so separately. */
-  const [fieldCurves, setFieldCurves] = useState<Record<string, FieldCurveRow> | null>(null);
-  /** The live RPC is the FALLBACK, and it is slow enough that a reader must be
-   *  told rather than left watching a placeholder. See the effect below. */
-  const [curveLive, setCurveLive] = useState(false);
-  /** A READER HAS OPENED A FIELD, so the 44-second scan is something they asked
-   *  for rather than something a page view charged them. Latched: it never goes
-   *  back to false. Until it is set, an uncached lifecycle record is neither
-   *  fetched nor described as loading — the tile says plainly that it has not
-   *  been read yet, which is the one true statement available. */
-  const [curveWanted, setCurveWanted] = useState(false);
 
   // The reader's slice: a field, then optionally a role inside it, then
   // optionally one constraint and one country. Every one of those is a real
@@ -1024,124 +1243,59 @@ export default function Explore() {
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "exists" | "failed">("idle");
 
-  // ── THE HOURLY CACHE, FOR THE THREE THINGS THIS PAGE STILL READS FROM IT ──
-  // fields (per-field served counts), totals (the board denominator), and the
-  // churn index the employer check carries. The five collections that fed the
-  // deleted leaderboards are not requested and not read; RETIRED_CACHE_PARTS
-  // keeps their names out of the staleness warning, because a collection this
-  // page does not render cannot make this page stale.
+  // ── THE ONE READ THE TILES COME FROM ────────────────────────────────────
+  //
+  // ONE REQUEST, EIGHTEEN NUMBERS, ONE DATE BASIS. The board's category facet
+  // is a stored row, not an aggregate on the request path — measured against
+  // production while this was written, this exact body answered in well under a
+  // second with all eighteen categories and a refreshedAt stamp — so unlike the
+  // 44-second closure scan this replaces on the arrival path, it is something a
+  // page view may honestly pay for.
+  //
+  // AND IT IS THE READ THE DESTINATION MAKES. /jobs/field/:id sends the same
+  // action to the same function and prints the same facet entry. There is no
+  // second scan to reconcile, which is why the tiles can now print exact
+  // integers instead of a shared "10,000+".
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const f = await readCategoryFacet();
+      if (!live) return;
+      // A FAILED READ PUBLISHES NO NUMBERS. Not a cached fallback, not a zero,
+      // not a stale map from an earlier session — see the note on `facet`.
+      if (!f) { setFacetFailed(true); return; }
+      setFacet(f);
+    })();
+    return () => { live = false; };
+  }, []);
+
+  // ── THE HOURLY CACHE, FOR THE ONE THING THIS PAGE STILL READS FROM IT ─────
+  //
+  // The churn index the employer check carries, and nothing else. `fields`,
+  // `field_grid`, `field_curves` and `totals` are no longer read — the first
+  // two because the tiles now come off the board's own facet in one read with
+  // their destination, the third because the field-grain lifecycle line is
+  // gone, the fourth because the sentence that stood over it went with the old
+  // reach fraction. All four are in RETIRED_CACHE_PARTS, because a collection
+  // this page does not render cannot make this page stale, and a yellow warning
+  // naming a key in a raw internal spelling is worse than no warning at all.
   useEffect(() => {
     (async () => {
       try {
         const { data: cache } = await Promise.resolve(rpc("get_explore_cache")).catch(() => ({ data: null }));
         const c = cache as Record<string, unknown> | null;
         const obj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
-        if (c && (obj(c.fields) || obj(c.totals))) {
-          if (obj(c.fields)) setFields(c.fields as Record<string, number>);
-          // THE CACHED FIELD CURVES, WRITTEN HOURLY BY refresh_explore_cache
-          // SINCE 20260909130000. See the fallback effect below for why this key is the
-          // one that matters: the live RPC is a 44-second scan and the cache is
-          // where a 44-second scan belongs. Shaped as {category: row} in the
-          // RPC's own column names, so the reader here is the same reader the
-          // fallback feeds and neither can drift from the other.
-          if (obj(c.field_curves)) setFieldCurves(c.field_curves as Record<string, FieldCurveRow>);
-          // THE REACH SENTENCE'S ONE PASS. `fields` above is a PROJECTION of
-          // this same object (refresh_explore_cache), so tiled_n and board.n
-          // describe exactly the rows the tiles are drawn from — which is the
-          // property the sentence's "same hourly scan" asserts.
-          if (obj(c.field_grid)) setGrid(c.field_grid as FieldGrid);
-          if (obj(c.totals)) setTotals(c.totals as Totals);
+        if (c) {
           if (obj(c.repost_index)) setRepostIndex(c.repost_index as RepostIndex);
-          if (typeof c.computed_at === "string") setComputedAt(c.computed_at);
           if (Array.isArray(c.stale_parts)) {
             setStale((c.stale_parts as unknown[])
               .filter((x): x is string => typeof x === "string")
               .filter((x) => !RETIRED_CACHE_PARTS.has(x)));
           }
         }
-      } catch { /* the tiles still render, without counts */ }
-      setCacheDone(true);
-      setLoading(false);
+      } catch { /* the employer check still works, without the churn warning */ }
     })();
   }, []);
-
-  // ── THE FIELD LIFECYCLE CURVES, CACHE FIRST AND LIVE ONLY AS A FALLBACK ───
-  //
-  // get_category_fill_curve already existed (20260906092000:110), is already
-  // anon-granted (:505), already runs the same estimator under the same
-  // sufficiency flag (:445), and is already fetched per mount by /jobs. This
-  // page referenced it ZERO times, which is what this rebuild fixes.
-  //
-  // BUT IT IS A 44-SECOND SCAN. Measured live against production while this was
-  // written: 44.3s, HTTP 200, eighteen rows, n_at_risk_14 in the ten thousands
-  // and `sufficient` true — the estimator passes comfortably at field grain,
-  // exactly as intended, and the query is simply expensive (three scans, a 60s
-  // statement timeout). Putting that on the DEFAULT view of every visitor is
-  // the same mistake this page already made once with get_transparent_employers,
-  // where "every visitor paid 26s of database time for a section that had never
-  // rendered". So:
-  //
-  //   • The hourly cache is the right home for it, under `field_curves`, read
-  //     above. 20260909130000 now writes that block in refresh_explore_cache,
-  //     so the steady state is a cached read costing nothing.
-  //   • THE FALLBACK IS GATED ON AN EXPLICIT CLICK, NOT ON THE CACHE MISSING.
-  //     This is the correction that matters, and it was shipped the other way
-  //     round: the gate was `cache did not carry it`, and NOTHING wrote that
-  //     key — no migration in the tree, which the SQL half confirms in words.
-  //     A condition that is permanently true is not a fallback, it is the only
-  //     path, so every visitor to the site's new DEFAULT view was going to pay
-  //     44 seconds of database time against a 60-second statement timeout, on a
-  //     page that is prerendered and sitemapped daily. That is precisely the
-  //     get_transparent_employers failure quoted above, on far more traffic,
-  //     with its own stated mitigation unshipped. The frontend deploys before
-  //     migrations here, so "the migration will land" is not a defence: the
-  //     unwritten key is the steady state for the whole of that window.
-  //     So the scan fires only once a reader has OPENED a field — the same
-  //     explicit-click rule sections 2-4 already follow — and never on a page
-  //     view, a crawl, or a reader who came for the employer check.
-  //   • It never blocks anything: the count on every tile, its link and the
-  //     whole of sections 2-4 are usable while it is in flight.
-  //   • And the placeholder SAYS HOW LONG, because a spinner with no stated
-  //     cost is indistinguishable from one that is never going to finish.
-  //
-  // A RESOLVED ERROR IS STILL AN ERROR: supabase-js hands PostgREST failures
-  // back through `error` and never by throwing, so the deploy window in which
-  // the function is absent — and the 57014 a statement timeout produces — have
-  // to be read explicitly, or every field would show the "record too thin"
-  // refusal, which is a statement about the fields made out of an outage of
-  // ours.
-  useEffect(() => {
-    // THREE CONDITIONS, AND THE THIRD IS THE ONE THAT KEEPS THIS OFF A PAGE
-    // VIEW. Wait for the cache (`fieldCurves` is null on the first frame
-    // regardless, so firing on it alone would run the 44-second query even
-    // where the cache was about to answer); stop once we have an answer; and
-    // never start at all until a reader has opened a field.
-    if (!cacheDone || fieldCurves !== null || !curveWanted) return;
-    let live = true;
-    setCurveLive(true);
-    void (async () => {
-      const { data, error } = await Promise.resolve(rpc("get_category_fill_curve"))
-        .then((r) => r as { data: unknown; error?: unknown })
-        .catch(() => ({ data: null, error: true }));
-      if (!live) return;
-      if (error || !Array.isArray(data)) { setFieldCurves({}); return; }
-      const map: Record<string, FieldCurveRow> = {};
-      for (const r of data as FieldCurveRow[]) {
-        if (r && typeof r.category === "string" && r.category) map[r.category] = r;
-      }
-      setFieldCurves(map);
-    })();
-    return () => { live = false; };
-    // `fieldCurves` is both the dependency and the early return, so a cache row
-    // that already carried the curves stops this from ever being asked, and a
-    // completed fallback cannot re-trigger itself.
-  }, [cacheDone, fieldCurves, curveWanted]);
-
-  // THE CLICK THAT BUYS THE SCAN. Latched rather than tracked: once a reader
-  // has opened any field they have asked for the lifecycle sentences, and
-  // closing that field again must not cancel a query already in flight or
-  // re-arm it on the next open.
-  useEffect(() => { if (openField) setCurveWanted(true); }, [openField]);
 
   // The chosen answer lives in the URL, so it is shareable, survives Back, and
   // a crawler following ?i=check sees the employer check. A RETIRED id — the
@@ -1185,17 +1339,15 @@ export default function Explore() {
   const nf = useCallback((n: number) => n.toLocaleString(i18n.language), [i18n.language]);
   const dateOf = (iso: string) => new Date(iso).toLocaleDateString(i18n.language, { dateStyle: "medium" });
 
-  /** THE COUNT ON A TILE, FORMATTED THROUGH THE SERVING CAP, so the number on
-   *  the tile and the number on the page it opens are the same number in the
-   *  same presentation. */
-  const tileCount = useCallback(
-    (n: number) => (n >= SERVE_COUNT_CAP ? `${SERVE_COUNT_CAP.toLocaleString(i18n.language)}+` : nf(n)),
-    [i18n.language, nf],
-  );
-
   /** A PRICED NUMBER, WITH ITS FLOOR MARKED IN THE VALUE. Returns null when the
    *  query could not produce a number at all, and every caller renders nothing
-   *  in that case rather than a zero. */
+   *  in that case rather than a zero.
+   *
+   *  THIS IS THE ONLY THING ON THE PAGE THAT STILL PASSES THROUGH
+   *  SERVE_COUNT_CAP, and correctly so: a role row, a constraint chip and a
+   *  country chip are all FILTERED counts, which is exactly what
+   *  count_jobs_capped stops at 10,000. The tiles are not filtered counts and
+   *  no longer go anywhere near it. */
   const pricedLabel = useCallback((p: Priced | undefined): string | null => {
     if (!p || p.failed) return null;
     if (p.capped) return `${SERVE_COUNT_CAP.toLocaleString(i18n.language)}+`;
@@ -1203,62 +1355,65 @@ export default function Explore() {
     return nf(p.total);
   }, [i18n.language, nf]);
 
-  /** THE EIGHTEEN TILES, ORDERED BY LIVE COUNT, WITH THE UNCATEGORISED BUCKET
-   *  ALWAYS LAST.
+  /** THE EIGHTEEN TILES, ORDERED BY THE FACET'S OWN COUNT, WITH THE
+   *  UNCATEGORISED BUCKET ALWAYS LAST.
    *
    *  Seventeen fields plus the bucket. The bucket does not compete for position
    *  by size — it is not a field, it is the rows whose field could not be read
    *  from the title, and sorting it into the middle of a list of fields would
-   *  present it as one. */
+   *  present it as one. It is also the one tile that carries no number (see
+   *  UNCATEGORISED), so it could not be ranked against the others honestly even
+   *  if it were a field.
+   *
+   *  `n` IS null, NEVER 0, FOR A FIELD THE FACET DOES NOT MENTION. The facet
+   *  omits an empty category rather than sending a zero, and a tile with no
+   *  reading must make no claim about depth rather than claim there is none. */
   const tiles = useMemo(() => {
-    const named = BOARD_CATEGORY_SLUGS.map((id) => ({ id, n: fields[id] }))
+    const cats = facet?.categories ?? {};
+    const named = BOARD_CATEGORY_SLUGS
+      .map((id) => ({ id, n: cats[id] ?? null }))
       .sort((a, b) => (b.n ?? 0) - (a.n ?? 0));
-    return [...named, { id: UNCATEGORISED, n: fields[UNCATEGORISED] }];
-  }, [fields]);
+    return [...named, { id: UNCATEGORISED, n: cats[UNCATEGORISED] ?? null }];
+  }, [facet]);
 
-  /** THE ONE REACH CLAIM ON THE PAGE, FROM ONE SCAN, AND WHY IT DOES NOT MATCH
-   *  THE TILES.
+  /** THE PAGE'S ONE AGGREGATE, AND IT IS ONE SENTENCE RATHER THAN A FRACTION.
    *
-   *  The tiles are formatted through SERVE_COUNT_CAP so each one agrees with
-   *  the page it opens; this line is the UNCAPPED pair from the same hourly
-   *  scan. The two therefore do not add up, and the sentence beneath says so IN
-   *  WORDS rather than leaving a reader to discover it.
+   *  WHY THERE IS NO PERCENTAGE ANY MORE. The old reach line divided a sum of
+   *  tiles by a board total and published "about {{pct}}%". Both halves came
+   *  off get_explore_field_grid, which was the fix for an earlier version whose
+   *  halves came off two different functions — but the whole quantity was only
+   *  ever interesting because the scan had a 50-posting floor that could drop a
+   *  small field out of the grid entirely. The board's category facet has no
+   *  floor: it is `GROUP BY category` over the serving population, so every
+   *  servable posting is in exactly one bucket and the eighteen tiles PARTITION
+   *  the board by construction. A fraction of a partition is 100%, and
+   *  publishing a number that can only be 100 tells a reader nothing.
    *
-   *  BOTH HALVES COME OFF get_explore_field_grid, AND THAT IS THE FIX RATHER
-   *  THAN A DETAIL. This used to sum the rendered tiles and divide by
-   *  totals.postings_n — a number from get_explore_denominators, a different
-   *  function on a different scan at a different instant — under a sentence
-   *  ending "as counted in the same hourly scan". During an ingest tick that
-   *  pair can come out either way: covered above board tripped the wholeness
-   *  branch and published "every posting we can serve — all N of them" as an
-   *  equality neither statement proved, and covered below board published a
-   *  fraction whose whole shortfall was scan skew, hiding the one thing the
-   *  sentence is for (the fields the scan's 50-posting floor dropped).
-   *  get_explore_field_grid already publishes `tiled_n` and `board.n` over one
-   *  pass for exactly this fraction.
+   *  SO THE SENTENCE STATES THE POPULATION INSTEAD: how many roles the tiles
+   *  reach, from the same map every tile number came from, under the same
+   *  stamp. One number, one scan, said once — which is what the rule at the top
+   *  of this file requires of a figure that would otherwise be identical on
+   *  every tile.
    *
-   *  Absent whenever either half is absent — including the whole deploy window
-   *  before the grid is in the cache. A reach fraction with a missing half is
-   *  not a smaller claim, it is a different one, and no sentence is the honest
-   *  render of it. */
+   *  `untiled` IS THE ONE THING THAT COULD MAKE IT NOT A PARTITION: a category
+   *  VALUE the board starts emitting that this page has no tile for. It is zero
+   *  today (measured: the facet's eighteen keys are exactly
+   *  BOARD_CATEGORY_SLUGS plus `other`), and if it ever is not, the sentence
+   *  names the remainder rather than quietly absorbing it into "every posting
+   *  we can serve". Derived from the SAME map, so it cannot be scan skew
+   *  wearing a floor's name. */
   const reach = useMemo(() => {
-    const board = grid?.board?.n;
-    const tiled = grid?.tiled_n;
-    if (typeof board !== "number" || board <= 0) return null;
-    if (typeof tiled !== "number" || tiled <= 0) return null;
-    // WHOLE, WHEN ONE STATEMENT SAYS IT IS WHOLE. Measured live while this was
-    // written, the two halves are the SAME NUMBER — every servable posting
-    // carries a category and every category cleared the floor, so the eighteen
-    // tiles partition the board rather than sampling it. "At least 805,927 of
-    // the 805,927 postings — about 100%" is a true sentence that reads like a
-    // rounding artefact, and dividing a number by itself publishes a fraction
-    // carrying no information. The stronger claim is also the simpler one.
-    //
-    // tiled_n is a subset sum of board.n BY CONSTRUCTION now, so it can never
-    // exceed it and there is no over-100% case left to report around.
-    if (tiled >= board) return { covered: board, board, pct: 100, whole: true };
-    return { covered: tiled, board, pct: Math.round((tiled / board) * 1000) / 10, whole: false };
-  }, [grid]);
+    if (!facet) return null;
+    const tiledIds = new Set<string>([...BOARD_CATEGORY_SLUGS, UNCATEGORISED]);
+    let all = 0;
+    let tiled = 0;
+    for (const [k, n] of Object.entries(facet.categories)) {
+      all += n;
+      if (tiledIds.has(k)) tiled += n;
+    }
+    if (all <= 0 || tiled <= 0) return null;
+    return { all, tiled, untiled: all - tiled };
+  }, [facet]);
 
   /** THE SLICE, AS ONE OBJECT. Everything on this page that shows a number or
    *  opens a page is built from this, mapped twice — searchToBoardBody for the
@@ -1409,72 +1564,29 @@ export default function Explore() {
     });
   };
 
-  /** THE SENTENCE UNDER A FIELD TILE. One of four, and three of them are
-   *  refusals that say which side of the line the gap is on. */
-  const lifecycleLine = (id: string): { text: string; muted: boolean } => {
-    if (fieldCurves === null) {
-      // NOT LOADING, AND NOT ABSENT. When the hourly cache did not carry the
-      // curves and nobody has opened a field yet, we have not asked and are not
-      // going to on a page view — so neither "reading…" (which promises an
-      // answer that is not coming) nor fieldCurveAbsent (which is a claim about
-      // the closure record) may render. The third sentence is about US.
-      if (!curveWanted && cacheDone) {
-        return { text: t("explore.fieldCurveDeferred", "open a field to read its closure record — that scan takes up to a minute, so we do not run it on arrival"), muted: true };
-      }
-      return {
-        // THE COST, STATED. This scan runs for the better part of a minute when
-        // it is not cached, and eighteen tiles all saying "reading…" with no
-        // end in sight reads as a page that is broken rather than one that is
-        // working. Everything else on the tile — the count, the link, the whole
-        // panel behind it — is usable now.
-        text: curveLive
-          ? t("explore.fieldCurveSlow", "reading the closure record — this scan takes up to a minute")
-          : t("explore.fieldCurveLoading", "reading the closure record…"),
-        muted: true,
-      };
-    }
-    const lc = fieldLifecycleOf(fieldCurves[id]);
-    if (lc.kind === "absent") {
-      return { text: t("explore.fieldCurveAbsent", "no closure record we can read for this field yet"), muted: true };
-    }
-    if (lc.kind === "window") {
-      return { text: t("explore.fieldCurveWindow", "we have only watched this field for {{days}} days — not long enough to publish a figure", { days: lc.windowDays }), muted: true };
-    }
-    if (lc.kind === "thin") {
-      return { text: t("explore.fieldCurveThin", "too few closures with a stated post date to publish a figure"), muted: true };
-    }
-    // NOT "TO FILL", AND NEVER "HIRED". What the lifecycle log observes is a
-    // posting going away and not coming back, which can be a hire, a
-    // withdrawal, a cancelled requisition or a retitle — those four are
-    // indistinguishable to us and this page never picks one.
-    // "GONE AND DID NOT COME BACK", WHICH IS EXACTLY WHAT THE MEDIAN IS OF.
-    // median_days_to_fill is min{t : R(t) >= 0.5} over the FILL incidence, and
-    // the estimator's "fill" is a closure that never returned. The first
-    // spelling said only "were gone", which is TRUE but weaker than the number
-    // supports — off-board incidence includes re-listings, so its median is at
-    // or before this day — and the contract comment above rightly forbade the
-    // weak S-form claim. It does NOT follow that the word to use is /jobs'
-    // "filled": this page's standing rule is that a closure never means hired,
-    // and a hire, a withdrawal, a cancelled requisition and a retitle are
-    // indistinguishable to us. The exact claim needs neither word.
-    const base = lc.kind === "median"
-      ? t("explore.fieldCurveMedian2", "half of these roles were gone within {{n}} days of the employer's own post date and did not come back · {{days}}-day closure log", { n: nf(lc.days), days: lc.windowDays })
-      // R(14) IS THE FALLBACK FIGURE, NOT A SECOND ONE. Where the incidence
-      // never reaches half inside the thirty days we can observe there is no
-      // median to print, and the day-14 incidence is the only thing the same
-      // estimator can still say — so it appears HERE and nowhere else, rather
-      // than riding alongside a median as a second number for the same
-      // question. It is a CEILING and is rendered "up to": the collector logs
-      // one superseded closure per title per 24h and DELETES the rest, so
-      // re-listings it never saw are absent from the risk set and the closures
-      // that remain take a larger share of a smaller cohort.
-      : t("explore.fieldCurveCensored2", "we did not see half of these roles come down inside {{cap}} days · up to {{pct}}% were gone within {{h}} days and stayed gone · {{days}}-day closure log", {
-          cap: FILL_SUPPORT_MAX_DAYS, pct: Math.round(lc.rate * 100), h: URGENT_FILL_MAX_DAYS, days: lc.windowDays,
-        });
-    const qualifier = lc.qualified
-      ? ` · ${t("explore.fieldCurveCoverage", "across the {{pct}}% carrying the employer's own date", { pct: lc.coveragePct })}`
-      : "";
-    return { text: base + qualifier, muted: false };
+  /** THE SECOND LINE ON A FIELD TILE: THE ROLES INSIDE IT, BY NAME.
+   *
+   *  WHAT REPLACED WHAT. This slot held the field's lifecycle sentence, which
+   *  rendered as one of four strings across eighteen tiles. It now holds the
+   *  first TILE_ROLE_NAMES names of that field's own vocabulary, and across all
+   *  116 names in FIELD_ROLES no name appears in two fields — so every tile's
+   *  second line is unique to it, with no rounding and no possibility of a tie.
+   *  "registered nurse · medical assistant · certified nursing assistant" and
+   *  "retail sales associate · store manager · server" tell a reader which tile
+   *  they are looking at; "up to 17% · 30-day closure log" on both did not.
+   *
+   *  IT CARRIES NO NUMBERS, AND THAT IS THE RULE, NOT A SHORTAGE. Every one of
+   *  these names is priced — a live count for exactly the query its row opens —
+   *  one click away, inside the field's own panel. Putting those counts on the
+   *  face would be three more figures per tile, 54 in all, each needing the
+   *  coverage sentence that used to eat the top of this page.
+   *
+   *  NULL FOR THE UNCATEGORISED BUCKET, which has no vocabulary because it is
+   *  not a field. Its tile says so in words instead. */
+  const tileRoles = (id: string): string | null => {
+    const names = FIELD_ROLES[id];
+    if (!names || names.length === 0) return null;
+    return names.slice(0, TILE_ROLE_NAMES).join(" · ");
   };
 
   /** SAVE THE SLICE THE READER ASSEMBLED.
@@ -1513,49 +1625,125 @@ export default function Explore() {
           employer rankings this page no longer contains — and a crawler
           following that description would land on a field grid. */}
       <SEO
-        title={t("explore.seoTitle4", "Explore Every Field on the Board — Live Counts, Real Role Sizes, and How Long Roles Last")}
+        title={/* seoTitle5, NOT seoTitle4. The standing rule at the top of this
+            file is that every sentence whose MEANING changed here takes a NEW
+            key; the title's meaning changed when the field-grain lifecycle line
+            came off the page and its key did not, so it went on promising "How
+            Long Roles Last" in nine languages over a grid that publishes no
+            duration at any field grain. seoTitle4 is DELETED from all nine
+            locale files rather than merely unreferenced -- a locale VALUE
+            overrides an inline English default, so an orphaned key is one
+            careless t() away from rendering the retired claim again. Mirrored
+            in scripts/prerender-seo.mjs, the document crawlers receive. */
+          t("explore.seoTitle5", "Explore Every Field on the Board — An Exact Live Count and the Roles Inside Each One")}
         description={t("explore.seoDescription4", "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of the board each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.")}
         path="/explore"
       />
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-10">
+        {/* ABOVE THE FOLD: AN H1 AND ONE SENTENCE.
+            197 words became 39. What was here explained what a filter over a
+            column employers often leave blank does to a result set, and how a
+            coverage percentage differs from a live count, BEFORE the reader had
+            seen a single job. All of it was true and none of it was needed
+            yet — it is the answer to a question the reader has not asked until
+            they have opened a field, and it now lives in that field's own
+            "How we measure" panel, one scroll further down, where the chips it
+            describes actually are.
+
+            THE ONE SENTENCE CARRIES THE DATE BASIS FOR ALL EIGHTEEN NUMBERS AT
+            ONCE, which is the only reason eighteen tiles can be bare integers.
+            Every one of them comes out of a single stored row with a single
+            stamp, so the basis is a property of the GRID, not of a tile — and a
+            property of the grid is one sentence, said once. */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mb-2">
             {t("explore.headline2", "Start with your field. Land on a list you can actually read.")}
           </h1>
-          <p className="text-base text-muted-foreground max-w-2xl">
-            {t("explore.subhead4", "Every field on the board, ordered by how many roles are open in it right now. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there.")}
-          </p>
-          {computedAt && (
-            <p className="text-xs text-muted-foreground/80 mt-2">
-              {/* NARROWED, AND THE NARROWING IS THE POINT. "Everything you
-                  open below is counted live" was false of one thing on the
-                  page: a chip's COVERAGE percentage. The counts really are
-                  live probes, but the percentage beside them comes from
-                  coverageDisclosure, which reads the board's own cached
-                  coverage block and falls back to pinned constants measured
-                  2026-08-25 for four keys (hasStatedPay among them) on a pass
-                  written before get_filter_coverage existed. This page cannot
-                  tell a live figure from that fallback, so it must not claim
-                  the figure is live — the sentence now covers the counts,
-                  which are, and names the coverage figures' actual basis. */}
-              {t("explore.asOfCounts2", "Field counts measured {{time}}, refreshed hourly. Every COUNT you open below is taken live, at the moment you click it. The coverage percentage beside a narrowing is not: it comes from the board's own hourly coverage scan of the whole board, not from your click.", {
-                // i18n.language, not undefined. `undefined` resolves to the
-                // BROWSER's locale, which is independent of the language the
-                // reader picked — so a German page rendered its one visible
-                // date in English.
-                time: new Date(computedAt).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
-              })}
+          {/* `facet &&` is redundant at runtime -- reach is null whenever facet
+              is -- and is written anyway so the compiler can see that facet.at,
+              which is now a plain string rather than a nullable one, exists
+              here. The redundancy is the point: it makes the stamp's presence a
+              type-level fact on the one sentence that must carry it. */}
+          {reach && facet && (
+            <p className="text-base text-muted-foreground max-w-2xl">
+              {/* basisWhole2 / basisPartial2, AND THE OLD PAIR IS DELETED FROM
+                  ALL NINE LOCALES. Two claims in the retired wording were
+                  wrong in ways only a reader could see.
+
+                  "in eighteen fields" COUNTED THE BUCKET AS A FIELD, which the
+                  method panel two scrolls below explicitly denies ("It is not a
+                  field, it does not compete with the others for position"), the
+                  tiles memo relies on, and the prerendered document contradicts
+                  in so many words ("Seventeen fields plus the roles whose field
+                  we could not read"). The page made three different claims
+                  about the same tile. Worse, "eighteen" was a hardcoded word
+                  inside translated prose in nine files, so adding a slug to
+                  BOARD_CATEGORY_SLUGS would render nineteen tiles under nine
+                  sentences still saying eighteen, with every guard green. It is
+                  interpolated from BOARD_CATEGORY_SLUGS.length now and cannot
+                  drift in any language.
+
+                  "All N roles the board can serve" WAS A SECOND TOTAL FOR A
+                  QUANTITY /jobs ALREADY PUBLISHES. reach.all sums this facet;
+                  /jobs' hero prints totalAllCompanies (coverage.open), which
+                  refresh_headline_open patches BETWEEN facet passes while
+                  categoriesFacet is not patched. Two exact six-figure totals for
+                  one quantity on two adjacent pages is the defect this whole
+                  pass exists to close, one level up from the tile. The sentence
+                  now claims only what the facet proves: how many roles these
+                  tiles hold, as of the stamp on the row they came from. */}
+              {/* A CARRIED COUNT NAMES THE SCAN THAT PRODUCED IT, not the pass
+                  that copied it forward. Without this the page said "counted
+                  Sep 9, 2026, 2:07 PM in the board's own scan" over eighteen
+                  integers that were hours old and had been counted at no such
+                  time — a published statistic naming a FALSE date basis, with
+                  no failure state entered and nothing on screen looking wrong.
+                  The stale_parts line below already treats a carried-forward
+                  aggregate this way; the tile counts now get the same
+                  treatment, one level up. */}
+              {facet.carried
+                ? t("explore.basisCarried", "{{n}} roles across {{fields}} fields plus the roles whose field we could not read from the title. The board's latest count did not complete, so these are the last ones that did{{when}} — each field's number is still the same one that field's page prints.", {
+                    n: nf(reach.all),
+                    fields: BOARD_CATEGORY_SLUGS.length,
+                    when: facet.countedAt
+                      ? t("explore.basisCarriedWhen", ", taken {{time}}", {
+                          time: new Date(facet.countedAt).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
+                        })
+                      : "",
+                  })
+                : reach.untiled <= 0
+                ? t("explore.basisWhole2", "{{n}} roles across {{fields}} fields plus the roles whose field we could not read from the title — counted {{time}} in the board's own scan, and each field's number is the same one that field's page prints.", {
+                    n: nf(reach.all),
+                    fields: BOARD_CATEGORY_SLUGS.length,
+                    // i18n.language, not undefined. `undefined` resolves to the
+                    // BROWSER's locale, which is independent of the language the
+                    // reader picked — so a German page rendered its one visible
+                    // date in English.
+                    time: new Date(facet.at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
+                  })
+                // THE REMAINDER IS NAMED, NEVER ABSORBED. If the board ever
+                // emits a category this page has no tile for, the sentence says
+                // how many roles sit in it rather than going on calling the
+                // grid whole. Both numbers come from the one map.
+                : t("explore.basisPartial2", "{{tiled}} of {{all}} roles, across {{fields}} fields plus the roles whose field we could not read from the title — counted {{time}} in the board's own scan. The other {{untiled}} sit in a field this page has no tile for.", {
+                    tiled: nf(reach.tiled), all: nf(reach.all), untiled: nf(reach.untiled),
+                    fields: BOARD_CATEGORY_SLUGS.length,
+                    time: new Date(facet.at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
+                  })}
+            </p>
+          )}
+          {/* A FAILED READ IS SAID, NOT MIMED. Eighteen tiles with no numbers
+              and no explanation reads as a broken page; the links all still
+              work, and the sentence says both halves of that. */}
+          {facetFailed && (
+            <p className="text-base text-muted-foreground max-w-2xl">
+              {t("explore.basisNone", "We could not read the board's field counts just now, so these tiles carry no numbers. That is our measurement failing, not the board emptying — every tile still opens its field.")}
             </p>
           )}
           {stale.length > 0 && (
             <p className="mt-1.5 text-xs text-warning">
               {t("explore.staleParts", "{{parts}} could not be recomputed in the last refresh and are shown from an earlier run.", { parts: stale.join(", ") })}
-            </p>
-          )}
-          {computedAt && Date.now() - new Date(computedAt).getTime() > STALE_AFTER_MS && (
-            <p className="mt-1.5 text-xs text-warning">
-              {t("explore.staleAge", "The hourly refresh has not completed since then — everything below is from that run, not from now.")}
             </p>
           )}
         </div>
@@ -1606,40 +1794,75 @@ export default function Explore() {
         </div>
 
         {/* ── 1. THE FIELD GRID — THE DEFAULT VIEW ──────────────────────────
-            Eighteen tiles, ordered by live count, two lines each: the count,
-            then the field's own lifecycle sentence. The eighteenth is the
-            uncategorised bucket, which no field tile can reach. */}
+            Eighteen tiles, ordered by the board's own count, two lines each:
+            the count, then the names of the roles inside that field. The
+            eighteenth is the uncategorised bucket, which no field tile can
+            reach and which carries no count, because no page of ours prints
+            one for it. */}
         <div hidden={intent !== "fields"}>
           <Section
             icon={Layers}
             title={t("explore.fieldsTitle2", "Every field on the board")}
-            blurb={t("explore.fieldsBlurb2", "Ordered by how many roles are open right now. Each one also says what our closure record can — and cannot — tell you about how long roles in that field last.")}
-            note={reach
-              ? (reach.whole
-                ? t("explore.fieldsReachWhole", "Between them these tiles reach every posting we can serve — all {{board}} of them, as counted in the same hourly scan.", { board: nf(reach.board) })
-                : t("explore.fieldsReach", "These tiles reach at least {{n}} of the {{board}} postings we can serve — about {{pct}}% — as counted in the same hourly scan.", { n: nf(reach.covered), board: nf(reach.board), pct: reach.pct }))
-              : null}
+            // THE ORDERING CLAUSE IS GATED ON THE THING THAT CREATES THE
+            // ORDERING. `tiles` sorts on (b.n ?? 0) - (a.n ?? 0) over
+            // facet?.categories ?? {}, so on a failed read every n is null, the
+            // sort is a no-op and the grid renders in BOARD_CATEGORY_SLUGS'
+            // declaration order — engineering, data_ai, design, product, with
+            // operations eleventh. Measured, that puts design (4,230) third and
+            // operations (144,664) eleventh: a 34x inversion, presented under a
+            // sentence calling it an ordering by open roles. basisNone already
+            // retracts the numbers and said nothing about the order, which is
+            // the half a reader can still see.
+            blurb={facet
+              ? t("explore.fieldsBlurb3", "Ordered by how many roles are open right now, with the roles you would find inside each one. Open a field to see every role in it counted, then narrow it.")
+              : t("explore.fieldsBlurb4", "The roles you would find inside each field. We could not read the board's counts just now, so these tiles are not ordered by size — open a field to see every role in it counted, then narrow it.")}
+            // NO NOTE. The reach claim used to live here as a second aggregate
+            // under the section header, on top of the one above the fold; both
+            // described the same eighteen tiles, and one of them had to go. The
+            // one that survived is the one carrying the date basis, because a
+            // reader who reads nothing else must still get that.
+            note={null}
           >
             <HowWeMeasure items={[
               {
                 // {{cap}} IS THE SERVING WINDOW, NOT THE CURVE'S SUPPORT CAP.
-                // See SERVE_WINDOW_DAYS: the two constants are both 30 and
-                // move independently, and this sentence is about what the tile
-                // COUNTS. The lifecycle sentences below are where
-                // FILL_SUPPORT_MAX_DAYS belongs.
+                // See SERVE_WINDOW_DAYS. There is no lifecycle sentence on this
+                // page any more to confuse it with, but the mirror stays and so
+                // does this note: the window lives in SQL and this sentence
+                // names it.
                 term: t("explore.methodTileTerm", "The number on a tile"),
-                method: t("explore.methodTileMethod", "An exact count of the postings we can serve in that field — open, and inside our {{cap}}-day freshness window — taken in the hourly scan whose time is printed at the top of this page. It is shown through the same {{n}} ceiling the serving API applies, so a tile reading “{{n}}+” opens a page that also reads “{{n}}+”. That ceiling is also why the tiles do not add up to the reach line above them: the reach line is the uncapped sum from the same scan, and the two are the same rows counted under two presentations.", { cap: SERVE_WINDOW_DAYS, n: SERVE_COUNT_CAP.toLocaleString(i18n.language) }),
+                method: t("explore.methodTileMethod3", "An exact count, not a ceiling. It is the board's own per-field count — every posting open and inside our {{cap}}-day freshness window — grouped once per refresh and stored in one row, and it is the SAME row and the SAME number the field's own page prints in its heading when you click through. Nothing rounds it and nothing caps it: the “{{n}}+” these tiles used to show was the ceiling the serving API puts on a FILTERED count, which is not what a grouped scan produces, and it made the six biggest fields on the board look identical.", { cap: SERVE_WINDOW_DAYS, n: SERVE_COUNT_CAP.toLocaleString(i18n.language) }),
               },
               {
-                term: t("explore.methodLifecycleTerm", "The lifecycle line, and when it refuses"),
-                method: t("explore.methodLifecycleMethod", "Half the roles we watched come down and stay down in that field were gone within this many days of the date the EMPLOYER put on the posting — never our own discovery date. It renders only when the field's own record clears the estimator's bar (at least 25 roles at risk, at least 5 observed closures, and an interval no wider than 15 points) AND at least {{cov}}% of the field's roles carry the employer's own date AND we have watched for at least {{days}} days. Below any of those we say so instead of showing a number. A closure is a posting going away and not coming back — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable to us, and none of them is claimed here.", { cov: Math.round(FILL_COVERAGE_MIN * 100), days: FILL_RATE_MIN_TRACKING_DAYS }),
+                term: t("explore.methodNamesTerm", "The role names under a field"),
+                // THEY ARE UNTRANSLATED, AND THE PANEL SAYS SO RATHER THAN
+                // LEAVING IT TO LOOK LIKE AN OVERSIGHT. tileRoles joins raw
+                // FIELD_ROLES entries, which are English literals, so a German
+                // reader sees "Gesundheitswesen & Klinik" over "registered
+                // nurse · medical assistant". That is deliberate: each name is
+                // the literal `q` this page sends the board, and the board
+                // matches posting TITLES, which are written in the language the
+                // employer posted in — overwhelmingly English on the ATS feeds
+                // we carry. Translating the label would break the link between
+                // the name a reader sees and the search it runs, and would
+                // price a query nobody can run. Naming it here is the honest
+                // resolution; silently showing English is not.
+                method: t("explore.methodNamesMethod2", "Ours, not the board's: the first few names from the list we wrote for that field, so you can tell one tile from another at a glance. They are not a measurement and they carry no numbers. They stay in English in every language, because each one is the exact search term we send the board and postings are titled in the language the employer wrote them in. Open the field and every one of them is counted for real — a live count of exactly the search that row opens, taken at the moment you click, with any name that matches too little left out rather than shown as a zero."),
               },
               {
                 term: t("explore.methodUncatTerm", "The last tile — the roles with no field"),
-                method: t("explore.methodUncatMethod", "Where a posting lands when its field could not be read from its title. It is not a field and does not compete with the others for position, but it is a large part of the board and no field tile can reach it, so it gets a tile of its own."),
+                method: t("explore.methodUncatMethod3", "Where a posting lands when its field could not be read from its title. It is not a field and it does not compete with the others for position — it is always last, because sorting it by size into a list of fields would present it as one. Its count comes from the same scan and the same row as every other tile's, and the page it opens counts exactly these roles, so the number on it means what the others mean. It is a large part of the board and no field tile reaches it, which is why it has a tile at all."),
+              },
+              {
+                // THIS IS THE PARAGRAPH THAT USED TO BE ABOVE THE FOLD. It
+                // answers a question a reader does not have until they have
+                // opened a field and seen a percentage on a chip, so it waits
+                // here until they do.
+                term: t("explore.methodLiveTerm", "The counts and percentages inside a field"),
+                method: t("explore.methodLiveMethod", "Every COUNT inside a field — on a role, on a narrowing, on a country — is taken live, at the moment you click it, for exactly the search that link runs. The PERCENTAGE beside a narrowing is not: it is how much of the board states that thing at all, from the board's own coverage scan rather than from your click. It matters because a filter can only search what employers published, so a narrowing hides the roles that did not say — it does not prove they are not there. Where we hold no coverage reading for a filter, the chip shows its count and no percentage rather than a number we would have had to invent."),
               },
             ]} />
-            {loading && Object.keys(fields).length === 0 ? (
+            {!facet && !facetFailed ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" aria-hidden="true">
                 <span className="sr-only" role="status" aria-live="polite">Loading fields…</span>
                 {Array.from({ length: 12 }, (_, i) => (
@@ -1654,7 +1877,7 @@ export default function Explore() {
                 {tiles.map(({ id, n }) => {
                   const label = t(`jobsPage.categories.${id}`, CATEGORY_LABELS[id] ?? id);
                   const uncat = id === UNCATEGORISED;
-                  const life = uncat ? null : lifecycleLine(id);
+                  const roles = uncat ? null : tileRoles(id);
                   const open = openField === id;
                   return (
                     <li key={id} className={`rounded-xl border transition-colors ${open ? "border-primary/60 bg-card sm:col-span-2" : "border-border bg-card/60 hover:border-primary/50"}`}>
@@ -1667,24 +1890,39 @@ export default function Explore() {
                         >
                           <span className="flex items-baseline gap-2">
                             <span className="text-sm font-semibold text-foreground">{label}</span>
-                            {/* A field below the hourly scan's 50-posting floor
-                                is absent from the payload entirely and renders
-                                with NO number — the tile still works, it simply
-                                makes no claim about depth. A thin field must
-                                never render "0". */}
+                            {/* EXACT, UNCAPPED, AND ABSENT RATHER THAN ZERO.
+                                The facet omits a category with nothing in it,
+                                so a tile with no reading makes no claim about
+                                depth: it must never render "0", and it must
+                                never render a ceiling.
+
+                                THE UNCATEGORISED TILE NOW CARRIES ITS NUMBER
+                                TOO. It was withheld for one reason and it was a
+                                good one — no destination of ours printed the
+                                figure back, so the tile would have made a claim
+                                its own link contradicted, and /jobs?category=other
+                                was in fact printing the board-wide 815,909 over
+                                a 174,535-row list. That is fixed at the
+                                destination (Jobs.tsx countCategory), not papered
+                                over here: the count line on that page now reads
+                                the same facet entry, so the tile and the page it
+                                opens are one integer read twice, exactly like
+                                the other seventeen. The rule was never "the
+                                bucket gets no number" — it was "no number
+                                without a destination that prints it". */}
                             {typeof n === "number" && n > 0 && (
-                              <span className="text-[12px] tabular-nums text-muted-foreground">{tileCount(n)}</span>
+                              <span className="text-[12px] tabular-nums text-muted-foreground">{nf(n)}</span>
                             )}
                           </span>
                           {uncat ? (
                             <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/80 italic">
-                              {t("explore.uncatLine", "Roles whose field we could not read from the title — no field tile reaches these.")}
+                              {t("explore.uncatLine3", "Roles whose field we could not read from the title. No field tile reaches these, and they have no role list of their own — but the page this opens counts exactly these roles.")}
                             </span>
-                          ) : (
-                            <span className={`mt-0.5 block text-[11px] leading-snug ${life!.muted ? "text-muted-foreground/70 italic" : "text-muted-foreground"}`}>
-                              {life!.text}
+                          ) : roles ? (
+                            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                              {roles}
                             </span>
-                          )}
+                          ) : null}
                         </button>
                         {/* THE WAY STRAIGHT IN, kept beside the expander rather
                             than behind it: a reader who already knows their
@@ -1693,7 +1931,7 @@ export default function Explore() {
                             everything else, so the link and any count of this
                             slice describe one query. */}
                         <Link
-                          to={toBoard({ category: id })}
+                          to={fieldHref(id)}
                           aria-label={t("explore.tileOpen", "Open {{field}} on the board", { field: label })}
                           className="flex items-center px-3 border-l border-border/60 text-muted-foreground/60 hover:text-primary transition-colors"
                         >

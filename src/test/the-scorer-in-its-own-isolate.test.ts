@@ -87,8 +87,17 @@ describe("the scorer in its own isolate", () => {
     expect(fn).toMatch(/fail\(402, "upgrade_required"/);
     expect(fn).toMatch(/\/functions\/v1\/job-fit`/);
     expect(API).toMatch(/"POST \/v1\/fit"/);
-    expect(API, "a new endpoint is a new API version").toMatch(/"2026-09-03\.1"/);
-    expect(API).not.toMatch(/"2026-08-26\.1"/);
+    // RE-POINTED, NOT SHRUNK. This pins the CURRENT version and forbids the
+    // ones it has moved past, so the list grows every time the contract does.
+    // 2026-09-09.1 adds closedAtIsObservation to /v1/changes' closed[] rows —
+    // whether closed_at is an event date or the date we could first see the
+    // event, the distinction D1 applied to every SQL statistic reading
+    // job_board_closures and this endpoint alone had missed.
+    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-09\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1"]) {
+      expect(API, `the API still reports the superseded version ${old}`)
+        .not.toMatch(new RegExp(`"${old}"`));
+    }
   });
 
   it("(6) lastUpsertError rides the slice note onto slice_stats; chainKick exposes at", () => {

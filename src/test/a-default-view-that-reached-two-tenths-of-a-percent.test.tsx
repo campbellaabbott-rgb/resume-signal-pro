@@ -85,7 +85,7 @@ function stubTable() {
 
 import Explore, {
   CONSTRAINT_CHIPS, COUNTRY_CHIPS, DEFAULT_INTENT, FIELD_ROLES, INTENTS,
-  closureRecordOf, feedTotalClaim, fieldLifecycleOf, numOr,
+  closureRecordOf, feedTotalClaim, numOr,
 } from "../pages/Explore";
 import { BOARD_CATEGORY_SLUGS } from "../lib/job-board-categories";
 
@@ -184,16 +184,46 @@ const cacheRow = (over: Record<string, unknown> = {}) => ({
  *  uncached lifecycle scan was gated on it too, so does the live curve call. */
 const openField = (name: RegExp) => (screen.getAllByRole("button", { name })[0]).click();
 
-const mount = (over: Record<string, unknown> = {}) => {
+/** THE TILE COUNTS' ONLY SOURCE, AND THE PAGE'S ONLY DATE BASIS.
+ *
+ *  They come off the board's own category facet: one unfiltered list request,
+ *  the whole {category: n} map, out of the same stored row (and under the same
+ *  `refreshedAt`) that /jobs/field/:id reads its own single entry from. The
+ *  hourly explore cache still carries a `fields` map answering the same
+ *  question from a different cron — that is exactly why the page must not read
+ *  it, and several assertions below feed a CONFLICTING one to prove it does
+ *  not. */
+const facetReply = (categories: Record<string, number> = { ...FIELD_COUNTS, other: UNCAT }) => ({
+  data: { jobs: [], categories, refreshedAt: "2026-09-09T14:07:54.645Z" },
+  error: null,
+});
+
+const mount = (over: Record<string, unknown> = {}, facet?: Record<string, number> | null) => {
+  invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
+    const b = (opts?.body ?? {}) as Record<string, unknown>;
+      // action:"facets", not a {limit:1} list. The facet exit reads the SAME
+      // job_board_meta k='refresh_head' row through the SAME visibleCategories
+      // rule, so nothing about the single-source property changed -- what it
+      // drops is the browse the list exit performed on its way there, which
+      // logged a job_board_search_events row on every /explore view.
+      if (b.action === "facets") {
+      return facet === null ? { data: null, error: { message: "down" } } : facetReply(facet);
+    }
+    return { data: { jobs: [], total: 0 }, error: null };
+  });
   rpc.mockImplementation(async (fn: string) => {
     if (fn === "get_explore_cache") return { data: cacheRow(over) };
-    if (fn === "get_category_fill_curve") {
-      return { data: BOARD_CATEGORY_SLUGS.map((c) => curveRow(c)), error: null };
-    }
     return { data: [], error: null };
   });
   return render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
 };
+
+/** The board requests that are NOT the facet read — the priced probes a click
+ *  buys. The facet read is one request every page view now makes on purpose,
+ *  so "nothing is probed on a page view" has to be able to see past it. */
+const pricedProbes = () => invoke.mock.calls
+  .map((c) => (c[1]?.body ?? {}) as Record<string, unknown>)
+  .filter((b) => "category" in b || "q" in b);
 
 /** The supabase mock forwards (fn, args), so `args` is present-and-undefined on
  *  a no-argument call. toHaveBeenCalledWith("x") demands exactly one argument
@@ -270,96 +300,122 @@ describe("2. what the default view actually renders, read off the DOM", () => {
 
   it("the default view's population is the board's own posting count, in hundreds of thousands", async () => {
     mount();
-    await waitFor(() => expect(visibleText()).toContain("These tiles reach at least"));
+    // ONE SENTENCE, ONE SCAN, AND NO FRACTION. The eighteen tiles are a
+    // PARTITION of the facet — it is `GROUP BY category` over the serving
+    // population, with no floor — so every servable posting is in exactly one
+    // bucket and a "reach" percentage could only ever read 100. The honest form
+    // of a fraction that cannot vary is the population itself, said once, above
+    // the fold, carrying the date basis for all eighteen numbers with it.
+    await waitFor(() => expect(visibleText()).toContain(COVERED.toLocaleString("en-US")));
     const text = visibleText();
-    // THE REACH SENTENCE, AND BOTH OF ITS TERMS. Covered and board total, with
-    // the covered half marked as a FLOOR ("at least") because a field under the
-    // scan's 50-posting floor is absent from the tiles entirely.
-    expect(text).toContain(COVERED.toLocaleString("en-US"));
-    expect(text).toContain(BOARD_TOTAL.toLocaleString("en-US"));
-    expect(text).toMatch(/at least/i);
+    expect(text, "the sentence must carry the date basis for every tile number").toMatch(/2026/);
+    expect(text, "a fraction of a partition is 100% and carries no information")
+      .not.toMatch(/about \d+(\.\d)?%/);
     // Hundreds of thousands, not twelve cards' worth. The literal thousand-fold
     // difference this guard exists for: the deleted default reached 1,812.
     expect(COVERED).toBeGreaterThan(100_000);
     expect(text).not.toContain("1,812");
   });
 
-  it("the reach fraction comes off ONE scan, and vanishes rather than divide two", async () => {
-    // "AS COUNTED IN THE SAME HOURLY SCAN" IS A DATE BASIS, AND IT HAS TO BE
-    // TRUE. This sentence used to sum the rendered tiles and divide by
-    // totals.postings_n — get_explore_denominators' own board CTE, a different
-    // function on a different scan. get_explore_field_grid publishes tiled_n
-    // and board.n over one pass for exactly this fraction, and the page reads
-    // that pair or says nothing.
-    //
-    // A denominators total that DISAGREES must move nothing: here it is 40,000
-    // short of the grid's, which under the old arithmetic tripped the wholeness
-    // branch and published "every posting we can serve — all N of them" as an
-    // equality neither statement proved.
-    mount({ totals: { postings_n: COVERED - 40_000, employers_n: 41_802 } });
-    await waitFor(() => expect(visibleText()).toContain("These tiles reach at least"));
-    expect(visibleText()).toContain(BOARD_TOTAL.toLocaleString("en-US"));
-    expect(visibleText()).not.toContain((COVERED - 40_000).toLocaleString("en-US"));
-    expect(visibleText()).not.toContain("reach every posting we can serve");
+  it("every tile number and the population sentence come off ONE map, and the cache cannot move them", async () => {
+    // "AS COUNTED IN THE SAME SCAN" IS A DATE BASIS, AND IT HAS TO BE TRUE.
+    // The tiles were drawn from the hourly explore cache (`7 * * * *`) while
+    // the page they open reads the board's facet row (`7,22,37,52 * * * *`), so
+    // one quantity had two scans up to fifty-three minutes apart. Now both
+    // surfaces read the facet, and the cache — which still carries `fields` —
+    // must move nothing on this page at all.
+    mount({ fields: { engineering: 11, design: 22 }, field_grid: { tiled_n: 33, board: { n: 44 } } });
+    await waitFor(() => expect(visibleText()).toContain(COVERED.toLocaleString("en-US")));
+    const text = visibleText();
+    expect(text, "a tile is reading the explore cache again").not.toMatch(/\b11\b/);
+    expect(text, "the population sentence is reading the explore cache again").not.toMatch(/\b44\b/);
+    expect(text).toContain(FIELD_COUNTS.engineering.toLocaleString("en-US"));
 
-    // AND NO GRID, NO SENTENCE. In the deploy window before the cache carries
-    // field_grid there is no pair from one scan, and a reach fraction with a
-    // missing half is a different claim rather than a smaller one.
+    // AND NO FACET, NO NUMBERS — never a fallback to the cache, which is how a
+    // second source gets in on the path nobody watches. A failed read is our
+    // instrument failing and is said out loud.
     document.body.innerHTML = "";
     rpc.mockReset();
-    rpc.mockImplementation(async (fn: string) => {
-      if (fn === "get_explore_cache") {
-        const row = cacheRow() as Record<string, unknown>;
-        delete row.field_grid;
-        return { data: row };
-      }
-      return { data: [], error: null };
-    });
-    render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
+    invoke.mockReset();
+    mount({}, null);
     await waitFor(() => expect(visibleText()).toContain("Engineering"));
-    expect(visibleText()).not.toContain("These tiles reach at least");
-    expect(visibleText()).not.toContain("reach every posting we can serve");
+    expect(visibleText()).toContain("could not read the board's field counts");
+    expect(visibleText(), "the tiles fell back to the hourly cache").not.toContain(
+      FIELD_COUNTS.engineering.toLocaleString("en-US"));
   });
 
-  it("when the tiles reach the whole board they say so, and no fraction of a number by itself is published", async () => {
-    // MEASURED LIVE while this was written: every servable posting carries a
-    // category, so tiled_n and board.n are the SAME NUMBER and the eighteen
-    // tiles partition the board rather than sampling it. "At least 805,927 of
-    // the 805,927 postings — about 100%" is a true sentence that reads as a
-    // rounding artefact, and a number divided by itself is a fraction carrying
-    // no information.
-    mount({ field_grid: { tiled_n: BOARD_TOTAL, board: { n: BOARD_TOTAL } } });
-    await waitFor(() => expect(visibleText()).toContain("reach every posting we can serve"));
-    expect(visibleText()).toContain(`all ${BOARD_TOTAL.toLocaleString("en-US")} of them`);
-    expect(visibleText()).not.toContain("about 100%");
+  it("a category with no tile is NAMED rather than absorbed into \"every posting we can serve\"", async () => {
+    // THE ONE THING THAT COULD MAKE THE GRID NOT A PARTITION: a category VALUE
+    // the board starts emitting that this page has no tile for. It is zero
+    // today — the facet's eighteen keys are exactly BOARD_CATEGORY_SLUGS plus
+    // `other` — and if it ever is not, the remainder is stated rather than
+    // quietly rolled into the whole. Both halves come off the SAME map, so the
+    // gap can never be scan skew wearing a floor's name.
+    mount({}, { ...FIELD_COUNTS, other: UNCAT, quantum_basketry: 4_100 });
+    await waitFor(() => expect(visibleText()).toContain("no tile for"));
+    expect(visibleText()).toContain((COVERED + 4_100).toLocaleString("en-US"));
+    expect(visibleText()).toContain("4,100");
+
+    // …and with nothing left over, the page says so as a whole rather than
+    // dividing a number by itself.
+    document.body.innerHTML = "";
+    rpc.mockReset();
+    invoke.mockReset();
+    mount();
+    await waitFor(() => expect(visibleText()).toContain(COVERED.toLocaleString("en-US")));
+    expect(visibleText()).not.toContain("no tile for");
     expect(visibleText()).not.toMatch(/\b1[0-9][0-9](\.[0-9])?%/);
   });
 
-  it("the field lifecycle scan is read from the hourly cache when the cache carries it", async () => {
-    // A 44-SECOND SCAN BELONGS IN THE HOURLY CACHE, NOT ON A PAGE VIEW. This
-    // page already made the opposite mistake once, with a 26-second aggregate
-    // every visitor paid for on a section that had never rendered.
-    mount({ field_curves: { engineering: curveRow("engineering", { median_days_to_fill: 17 }) } });
-    await waitFor(() => expect(visibleText()).toContain("17 days"));
-    // The live fallback is not asked when the cache answered.
+  it("no lifecycle line, and no lifecycle scan, on arrival or on a click", async () => {
+    // WHAT THE SECOND LINE HELD, AND WHY IT LEFT. It was the field's own
+    // lifecycle sentence, drawn from get_category_fill_curve. Two independent
+    // reasons removed it:
+    //
+    //   IT DID NOT DIFFERENTIATE. R(14) spans 0.128-0.243 across eighteen
+    //   fields and printed as four distinct strings; the medians were
+    //   27/28/29/30, the last four values the estimator can emit before
+    //   censoring. Twelve tiles, four strings, one statement.
+    //
+    //   ITS INPUT WAS ABOUT TO STOP BEING ADMISSIBLE. That RPC reads closed_at
+    //   and does not filter absence_basis, and a lap_backfill row's closed_at
+    //   is barred by that column's own COMMENT from any duration statistic.
+    //
+    // The 44-second scan goes with the sentence: not on a page view, and not on
+    // a click either, which is the half that used to be bought explicitly.
+    mount({ field_curves: CURVES });
+    await waitFor(() => expect(visibleText()).toContain("Data & AI"));
     expect(calledRpc("get_category_fill_curve")).toBe(false);
+    openField(/Data & AI/);
+    await waitFor(() => expect(visibleText()).toContain("Narrow"));
+    expect(calledRpc("get_category_fill_curve"), "a click is buying the 44-second scan again").toBe(false);
+    for (const gone of ["22 days", "closure log", "this scan takes up to a minute",
+      "open a field to read its closure record", "too few closures with a stated post date"]) {
+      expect(visibleText(), `the retired lifecycle copy rendered: ${gone}`).not.toContain(gone);
+    }
+    // …and the slice-grain closure record, which counts events rather than
+    // timing them, is still there. The asset was kept at the grain where it
+    // says something a reader could not have guessed.
+    expect(visibleText()).toContain("What our closure record says about the employers here");
   });
 
-  it("while the uncached scan runs, the placeholder says what it costs", async () => {
-    // A spinner with no stated cost is indistinguishable from one that is never
-    // going to finish, and eighteen of them read as a broken page.
-    rpc.mockImplementation(async (fn: string) => {
-      if (fn === "get_explore_cache") return { data: cacheRow() };
-      if (fn === "get_category_fill_curve") return new Promise(() => { /* still running */ });
-      return { data: [], error: null };
-    });
-    render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
-    await waitFor(() => expect(visibleText()).toContain("Data & AI"));
-    openField(/Data & AI/);
-    await waitFor(() => expect(visibleText()).toContain("this scan takes up to a minute"));
-    // ...and everything else on the tile is usable while it runs.
-    expect(visibleText()).toContain("10,000+");
-    expect(visibleLinks().some((h) => h.includes("category=engineering"))).toBe(true);
+  it("the second line separates the tiles, and carries no figure at all", async () => {
+    // WHAT REPLACED IT. Across FIELD_ROLES' 116 names no name appears in two
+    // fields, so a tile's second line is unique to that tile — where the
+    // retired sentence read the same on most of the grid.
+    mount();
+    await waitFor(() => expect(visibleText()).toContain("registered nurse"));
+    const lines = [...document.querySelectorAll("li")]
+      .filter((li) => li.querySelector("button[aria-expanded]"))
+      .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "");
+    expect(lines.length).toBe(BOARD_CATEGORY_SLUGS.length + 1);
+    for (const [id, names] of Object.entries(FIELD_ROLES)) {
+      const line = lines.find((l) => l.includes(names[0]));
+      expect(line, `${id}'s tile does not name the roles inside it`).toBeTruthy();
+    }
+    // Every distinct second line — no two tiles may read alike.
+    const seconds = lines.map((l) => l.replace(/[\d,]+/g, "").trim());
+    expect(new Set(seconds).size, "two tiles render the same second line").toBe(seconds.length);
   });
 
   it("not one company card is on the entry point", async () => {
@@ -373,29 +429,40 @@ describe("2. what the default view actually renders, read off the DOM", () => {
     expect(visibleLinks().filter((h) => h.startsWith("/jobs")).length).toBeGreaterThan(12);
   });
 
-  it("a tile's count is capped exactly as the page it opens is, and the page says why the two do not add up", async () => {
+  it("a tile's count is EXACT and uncapped, and the tile with no destination carries none", async () => {
     mount();
     await waitFor(() => expect(visibleText()).toContain("Every field on the board"));
-    const text = visibleText();
-    // A FIELD OVER THE CAP MUST READ "10,000+" AND NEVER ITS RAW COUNT, or the
-    // tile and the page it opens print two different figures for the same rows
-    // in two runtimes — the exact shape of the note line the previous rebuild
-    // had to delete.
-    expect(text).toContain("10,000+");
+    const tiles = [...document.querySelectorAll("li")]
+      .filter((li) => li.querySelector("button[aria-expanded]"))
+      .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "");
+    const faces = tiles.join(" | ");
+    // THIS ASSERTION INVERTED, AND THE INVERSION IS THE FIX. It used to require
+    // the tile to format through the serving API's ceiling, on the argument
+    // that a tile must agree with the page it opens. That was sound only while
+    // the two numbers came from two scans; they come from one stored row now.
+    // The ceiling is COUNT_CAP — the limit on a FILTERED count, not on a
+    // grouped scan — and it made the six biggest fields on the board render as
+    // one identical string under a header promising an ordering by size.
+    expect(faces, "the tile is capping again — the biggest fields will read alike")
+      .not.toContain("10,000+");
     for (const slug of Object.keys(FIELD_COUNTS)) {
-      const n = FIELD_COUNTS[slug];
-      if (n >= 10_000) {
-        expect(text, `${slug} is over the cap and must not print its raw count`)
-          .not.toContain(n.toLocaleString("en-US"));
-      } else {
-        // ...and a field UNDER the cap prints its exact number, so the rule is
-        // a formatter and not a blanket suppression.
-        expect(text, `${slug} is under the cap and must print exactly`)
-          .toContain(n.toLocaleString("en-US"));
-      }
+      expect(faces, `${slug} must print its exact count`)
+        .toContain(FIELD_COUNTS[slug].toLocaleString("en-US"));
     }
-    // The uncategorised bucket is far over the cap too, and gets no exemption.
-    expect(text).not.toContain(UNCAT.toLocaleString("en-US"));
+    // …AND THE TILE WITH NO LANDER, WHICH NOW CARRIES ITS NUMBER TOO.
+    //
+    // `other` is still deliberately absent from BOARD_CATEGORY_SLUGS, so there
+    // is still no /jobs/field/other and the tile still links to the query form.
+    // What changed is the DESTINATION: /jobs?category=other was printing the
+    // board-wide total over a filtered list — the exact defect this pass
+    // removed from the other seventeen, surviving in the one bucket without a
+    // lander — and Jobs.tsx now reads the response's own facet entry whenever a
+    // single category is the only filter, route param or not. The rule was
+    // never "the bucket gets no number"; it was "no number without a
+    // destination that prints it", and that condition is met now.
+    expect(faces, "the uncategorised tile lost the count its destination prints")
+      .toContain(UNCAT.toLocaleString("en-US"));
+    expect(visibleText()).toContain("no role list of their own");
   });
 });
 
@@ -463,14 +530,25 @@ describe("3. no fixed slice of twelve is the entry point — as code, and as ren
     expect(pageText()).not.toContain("could not be recomputed");
   });
 
-  it("field_curves is NOT retired — its staleness is this page's business", async () => {
-    // The mirror of the test above, and the reason that set is a deny-list
-    // rather than a blanket. The lifecycle sentence under every tile is drawn
-    // from this key; a refresh that could not recompute it is a fact about what
-    // is on this screen.
-    mount({ stale_parts: ["field_curves"] });
+  it("field_curves IS retired now, and the key that still backs this page is not", async () => {
+    // THE MIRROR OF THE TEST ABOVE, AND IT FLIPPED WITH THE SECTION IT GUARDED.
+    // While the lifecycle sentence existed, `field_curves` backed something on
+    // screen and its staleness was this page's business. Nothing here reads it
+    // any more — nor `fields`, `field_grid` or `totals`, the three keys the
+    // tiles used to be built from — so a warning naming any of them would be a
+    // false alarm about a collection this page does not render, in a raw
+    // internal spelling.
+    mount({ stale_parts: ["field_curves", "fields", "field_grid", "totals"] });
+    await waitFor(() => expect(pageText()).toContain("Every field on the board"));
+    expect(pageText()).not.toContain("could not be recomputed");
+
+    // …and the one collection this page still reads DOES raise the line.
+    document.body.innerHTML = "";
+    rpc.mockReset();
+    invoke.mockReset();
+    mount({ stale_parts: ["repost_index"] });
     await waitFor(() => expect(pageText()).toContain("could not be recomputed"));
-    expect(pageText()).toContain("field_curves");
+    expect(pageText()).toContain("repost_index");
   });
 
   it("an unknown stale part is still reported", async () => {
@@ -484,111 +562,81 @@ describe("3. no fixed slice of twelve is the entry point — as code, and as ren
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe("4. the statistics stayed, at the grain where their sample exists", () => {
-  it("the 44-second lifecycle scan is never paid for by a page view, and is paid once by a click", async () => {
-    // THE BLOCKER THIS GUARD EXISTS FOR. get_category_fill_curve is
+  it("the one read a page view pays for is the facet, and it is not a scan", async () => {
+    // THE BLOCKER THIS GUARD WAS WRITTEN FOR. get_category_fill_curve is
     // anon-granted and measured at 44.3s against a 60s statement timeout, and
-    // /explore's default view reads it under every tile. Shipped with the
-    // fallback gated only on "the cache did not carry it" — a condition nothing
-    // in the tree could make false — it was one 44-second scan per page view on
-    // a prerendered, daily-sitemapped page. That is the get_transparent_employers
-    // bill this page has already paid ("every visitor paid 26s of database time
-    // for a section that had never rendered"), on far more traffic.
-    //
-    // 20260909130000 now writes the `field_curves` cache key, so the steady
-    // state is free; this half of the guard is about the path that remains when
-    // the cache has not answered, on the deploy window where the frontend ships
-    // first.
+    // /explore's default view once read it under every tile. The sentence it
+    // fed is gone, so the scan is gone with it — not deferred behind a click,
+    // gone. What a page view does now pay for is ONE stored-row read: the
+    // board's category facet, which is a lookup rather than an aggregate.
     mount();
     await waitFor(() => expect(visibleText()).toContain("Data & AI"));
-    // The whole page has settled and nothing has been scanned.
     expect(calledRpc("get_category_fill_curve")).toBe(false);
-    // And the tiles say why, rather than spinning on an answer that is not
-    // coming or asserting a fact about the closure record.
-    expect(visibleText()).toContain("open a field to read its closure record");
-    expect(visibleText()).not.toContain("no closure record we can read for this field yet");
-
-    // An explicit click buys it, once.
-    openField(/Data & AI/);
-    await waitFor(() => expect(calledRpc("get_category_fill_curve")).toBe(true));
-    expect(rpcCalls().filter((f) => f === "get_category_fill_curve").length).toBe(1);
-    // ONE ARITY, FOR EVER. Both of that function's parameters have defaults, so
-    // a second overload makes every no-argument call an ambiguous PGRST203 —
-    // which is how the old fill-speed RPC went dark on eighteen landing pages.
-    // The call site passes nothing, which is what keeps that arity single.
-    expect(CODE).toMatch(/rpc\("get_category_fill_curve"\)/);
+    const facetReads = invoke.mock.calls
+      .map((c) => (c[1]?.body ?? {}) as Record<string, unknown>)
+      .filter((b) => b.action === "facets");
+    expect(facetReads.length, "the facet is read more than once per view").toBe(1);
+    // MECHANICAL, NOT A NAMED DENYLIST: the facet exit hands its map through
+    // visibleCategories with unfiltered=true, so the request must carry nothing
+    // that could be read as a filter — `action` and nothing else.
+    expect(Object.keys(facetReads[0]).filter((k) => k !== "action")).toEqual([]);
+    // …and it must not be a browse. A list call from this page is the shape
+    // that wrote a synthetic zero-query search event per page view.
+    expect(
+      invoke.mock.calls.map((c) => (c[1]?.body ?? {}) as Record<string, unknown>)
+        .filter((b) => b.action === "list" && !("category" in b) && !("q" in b)).length,
+      "the tile numbers are being read through a browse again",
+    ).toBe(0);
+    // And no page of this codebase may reacquire that scan by accident.
+    expect(CODE, "/explore is fetching the field curve again").not.toMatch(/get_category_fill_curve/);
   });
 
-  it("a field's median renders with its window, its date basis and no word we cannot support", async () => {
-    mount({ field_curves: CURVES });
-    await waitFor(() => expect(visibleText()).toContain("22 days"));
-    // FIGURE, WINDOW, DATE BASIS, in the same line as the number.
-    expect(visibleText()).toContain("employer's own post date");
-    expect(visibleText()).toContain("56-day closure log");
-    // AND THE EXACT EVENT. median_days_to_fill is the median of the FILL
-    // incidence, and the estimator's "fill" is a closure that did not come
-    // back — so "gone within N days" alone is the weaker off-board claim for a
-    // different number, and "filled" is the stronger claim this page's standing
-    // rule forbids, a closure being indistinguishable from a withdrawal, a
-    // cancelled requisition or a retitle.
-    expect(visibleText()).toContain("did not come back");
-    expect(visibleText()).not.toMatch(/half of these roles were filled/i);
-  });
-
-  it("a field whose record fails the estimator's own gate says so instead of showing a number", async () => {
-    rpc.mockImplementation(async (fn: string) => {
-      if (fn === "get_explore_cache") return { data: cacheRow() };
-      if (fn === "get_category_fill_curve") {
-        return {
-          data: [
-            // sufficient FALSE: the estimator refusing on a record that exists.
-            curveRow("engineering", { sufficient: false, median_days_to_fill: 7 }),
-            // Coverage under the floor: the record exists and the estimator is
-            // satisfied, but too few of the field's roles carry the employer's
-            // own date for a duration to mean anything.
-            curveRow("sales", { dated_coverage: 0.11, median_days_to_fill: 5 }),
-          ],
-          error: null,
-        };
-      }
-      return { data: [], error: null };
-    });
-    render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
+  it("the closure record that stayed is the one that counts events rather than timing them", async () => {
+    // WHAT SURVIVED, AND WHY IT IS A DIFFERENT KIND OF CLAIM. closureRecordOf
+    // divides counts — fills, re-lists and age-outs over 90 days — and never
+    // reads a closed_at timestamp, so the absence_basis hazard that retired the
+    // field curve does not reach it. It also VARIES per slice and states its
+    // own gap as loudly as its finding, which is exactly what a tile's flat
+    // lifecycle line could not do.
+    mount();
     await waitFor(() => expect(visibleText()).toContain("Data & AI"));
     openField(/Data & AI/);
-    await waitFor(() => expect(visibleText()).toContain("too few closures with a stated post date"));
-    // Neither refused median leaks.
-    expect(visibleText()).not.toContain("7 days");
-    expect(visibleText()).not.toContain("5 days");
-    // And a field the RPC did not return at all is a DIFFERENT sentence: our
-    // instrument, not a finding about the field.
-    expect(visibleText()).toContain("no closure record we can read for this field yet");
+    await waitFor(() => expect(visibleText()).toContain("What our closure record says about the employers here"));
+    // The estimator's own vocabulary must not come back with it.
+    for (const gone of ["days of the employer's own post date", "closure log",
+      "too few closures with a stated post date", "not long enough to publish a figure"]) {
+      expect(visibleText(), `retired lifecycle copy rendered: ${gone}`).not.toContain(gone);
+    }
   });
 
-  it("a failed lifecycle call reads as our outage, never as every field being thin", async () => {
-    rpc.mockImplementation(async (fn: string) => {
-      if (fn === "get_explore_cache") return { data: cacheRow() };
-      // A RESOLVED PostgREST ERROR. supabase-js does not throw one, which is
-      // how a deploy window in which the function is absent turned into a page
-      // of confident refusals about eighteen fields.
-      if (fn === "get_category_fill_curve") return { data: null, error: { code: "PGRST202" } };
-      return { data: [], error: null };
-    });
-    render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
-    await waitFor(() => expect(visibleText()).toContain("Data & AI"));
-    openField(/Data & AI/);
-    await waitFor(() => expect(visibleText()).toContain("no closure record we can read"));
-    expect(visibleText()).not.toContain("too few closures with a stated post date");
+  it("a failed FACET read is our outage, never eighteen empty fields", async () => {
+    // THE PROPERTY MOVED WITH THE SOURCE. It used to be about a resolved
+    // PostgREST error from the curve RPC being rendered as eighteen confident
+    // refusals about eighteen fields. The same hazard now belongs to the facet
+    // read: a broken instrument must never render as a fact about the board.
+    mount({}, null);
+    await waitFor(() => expect(visibleText()).toContain("Engineering"));
+    expect(visibleText()).toContain("could not read the board's field counts");
+    expect(visibleText(), "our outage was published as an empty board").not.toMatch(/\b0\b/);
+    // …and every tile still opens its field, which the sentence also promises.
+    expect(visibleLinks().some((h) => h.startsWith("/jobs/field/engineering"))).toBe(true);
   });
+
+
+
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe("5. every priced thing is priced by the query its own link runs", () => {
-  it("nothing is probed on a default page view", async () => {
+  it("nothing is PRICED on a default page view", async () => {
     mount();
     await waitFor(() => expect(visibleText()).toContain("Every field on the board"));
     // Twenty-two counts per field is a real cost, and it is paid on an explicit
-    // click rather than by every visitor who loads the page.
-    expect(invoke).not.toHaveBeenCalled();
+    // click rather than by every visitor who loads the page. The facet read is
+    // deliberately excluded: it is ONE stored-row lookup that every tile
+    // number and the page's only date basis come out of, and it is the read
+    // that lets those numbers be exact instead of six of them saying "10,000+".
+    expect(pricedProbes()).toEqual([]);
   });
 
   it("the count and the link are built from ONE params object through the two mappers", () => {
@@ -647,7 +695,9 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     expect(CODE, "companiesCount is board-wide and answers a different question")
       .not.toMatch(/\bcompaniesCount\b/);
     // The closure probe must ask for a page of the slice's own results, and
-    // must not ask for facets at all.
+    // must not ask for facets at all. (The tile numbers no longer come through
+    // a list call at all — they come from action:"facets" — so `false` is now
+    // asserted only on the probe that remains.)
     expect(CODE).toMatch(/includeFacets:\s*false/);
     expect(CODE, "no call on this page asks for the board-wide facet")
       .not.toMatch(/includeFacets:\s*true/);
@@ -690,30 +740,26 @@ describe("teeth — the builders refuse what they are supposed to refuse", () =>
     expect(numOr("not a number")).toBeNull();
   });
 
-  it("fieldLifecycleOf honours sufficiency, coverage and the observation window separately", () => {
-    const ok = fieldLifecycleOf(curveRow("engineering"));
-    expect(ok.kind).toBe("median");
-    // The estimator's own flag.
-    expect(fieldLifecycleOf(curveRow("engineering", { sufficient: false })).kind).toBe("thin");
-    // The coverage floor, which `sufficient` deliberately does not include.
-    expect(fieldLifecycleOf(curveRow("engineering", { dated_coverage: 0.05 })).kind).toBe("thin");
-    // The observation window, which `sufficient` does not look at at all: a
-    // fourteen-day claim needs a log deeper than fourteen days. It is its OWN
-    // refusal, not folded into the thin-sample one — "we have not watched long
-    // enough" is a statement about our log and "too few closures" is one about
-    // the field, and a page that says the second when the first is true passes
-    // a verdict on a field it never measured.
-    expect(fieldLifecycleOf(curveRow("engineering", { window_days: 9 })).kind).toBe("window");
-    // A censored median is a FINDING and must outlive the number it refuses —
-    // returning "absent" here would render as "no data" for a field we measured.
-    expect(fieldLifecycleOf(curveRow("engineering", { median_censored: true, median_days_to_fill: null })).kind)
-      .toBe("censored");
-    // No row at all is OUR instrument, and a different sentence.
-    expect(fieldLifecycleOf(undefined).kind).toBe("absent");
-    expect(fieldLifecycleOf(curveRow("engineering", { window_days: null })).kind).toBe("absent");
-    // PostgREST's numeric-as-string build must not silently become a refusal.
-    expect(fieldLifecycleOf(curveRow("engineering", { dated_coverage: "0.71", fill_rate_14: "0.31", median_days_to_fill: "22" })).kind)
-      .toBe("median");
+  it("the field-grain estimator is gone from this page, computation and all", () => {
+    // THESE TEETH USED TO DRIVE fieldLifecycleOf through each refusal in turn.
+    // The claim it built is retired — it read the same across most of the grid,
+    // and get_category_fill_curve pools lap_backfill closures whose closed_at
+    // that column's own COMMENT bars from any duration statistic — so the teeth
+    // follow the claim rather than pinning a function with no sentence to serve.
+    //
+    // A REMOVED SECTION'S COMPUTATION GOES WITH IT is this page's standing
+    // property, and it matters most for an estimator whose input carries a
+    // warning: arithmetic with no rendered sentence is a number waiting to be
+    // re-rendered by someone who does not know why it left.
+    for (const name of ["fieldLifecycleOf", "FieldCurveRow", "get_category_fill_curve",
+      "median_censored", "dated_coverage", "canStateFillRate", "coverageBand"]) {
+      expect(CODE, `${name} is back — the field-grain fill claim returned with it`)
+        .not.toMatch(new RegExp(`\\b${name}\\b`));
+    }
+    // The claim builders that STAYED still refuse what they are supposed to.
+    expect(closureRecordOf(null, 60, ["a"], [{ company_token: "a", fills_90d: 0, relists_90d: 0, ageouts_90d: 0 }])?.readable).toBe(0);
+    expect(feedTotalClaim(678, 400, "2026-09-01")).toBeNull();
+    expect(numOr("0.42")).toBe(0.42);
   });
 
   it("closureRecordOf keeps asked, readable and closers as three different numbers", () => {
@@ -794,6 +840,12 @@ describe("6. opening a field prices what is inside it, from the query each link 
   const wireBoard = () => {
     invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
       const body = ((opts ?? {}) as { body?: Record<string, unknown> }).body ?? {};
+      // THE FACET READ, which every page view makes and which is the source of
+      // all eighteen tile numbers. Answered here so this fixture drives the
+      // same page a visitor sees.
+      if (body.action === "facets") {
+        return facetReply();
+      }
       // THE CLOSURE PROBE READS A PAGE OF THE SLICE'S OWN RESULTS. It carries
       // the board-wide `companies` facet too, precisely so a regression that
       // went back to reading it shows up here as the wrong denominator rather
@@ -856,6 +908,10 @@ describe("6. opening a field prices what is inside it, from the query each link 
       .map((c) => ((c[1] ?? {}) as { body?: Record<string, unknown> }).body ?? {});
     expect(bodies.length).toBeGreaterThan(0);
     for (const b of bodies) {
+      // The facet read is not a probe: it is action:"facets", a single stored-row
+      // lookup that returns no jobs and takes no limit. Skipping it here keeps
+      // this assertion about the two shapes that DO price a slice.
+      if (b.action === "facets") continue;
       expect(b.countOnly, "the countOnly exit drops filterCoverage and ignoredFilters").toBeUndefined();
       // Two probe shapes and no third: one row to price a slice, one page to
       // find the employers in it.
@@ -890,8 +946,9 @@ describe("6. opening a field prices what is inside it, from the query each link 
     render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
     await waitFor(() => expect(visibleText()).toContain("Data & AI"));
 
-    // Open the field. Nothing was probed before this click.
-    expect(invoke).not.toHaveBeenCalled();
+    // Open the field. Nothing was PRICED before this click — the one board
+    // request a page view makes is the facet read the tiles are drawn from.
+    expect(pricedProbes()).toEqual([]);
     (screen.getAllByRole("button", { name: /Data & AI/ })[0]).click();
 
     // 2. PRICED ROLE ROWS — the count beside a role is the count for that

@@ -228,8 +228,36 @@ describe("the page does not fire a query that cannot finish", () => {
     // `field_curves` and fell back to the live RPC when the key was absent, and
     // no migration wrote the key — a fallback whose condition is permanently
     // true is not a fallback, it is the only path.
-    expect(EXPLORE).toMatch(/obj\(c\.field_curves\)/);
-    expect(EXPLORE).toMatch(/obj\(c\.field_grid\)/);
+    // BOTH HALVES INVERTED IN THE GRID'S DESIGN PASS, and for opposite reasons.
+    //
+    //   field_curves — the field-grain lifecycle sentence it fed is gone. It
+    //     read the same on most of the eighteen tiles (R(14) 0.128-0.243 as
+    //     four strings; medians 27/28/29/30, the last four values before the
+    //     estimator censors), and get_category_fill_curve does not filter
+    //     absence_basis, so the first completed lap would have started pooling
+    //     closures whose closed_at that column's COMMENT bars from any duration
+    //     statistic. With no reader, this page must not even name the key.
+    //
+    //   field_grid, fields — the tile counts and their roll-up now come off the
+    //     board's own category facet, in ONE read, out of the row the
+    //     destination prints its own entry from. Reading the cache as well
+    //     would restore the very defect the reach line was rebuilt to remove:
+    //     one quantity, two crons, up to fifty-three minutes apart.
+    //
+    // The property that survives is the one this guard was really about — NO
+    // 44-SECOND SCAN ON A PAGE VIEW — and it is now absolute rather than
+    // deferred: the page does not run that query at all.
+    // COMMENT-STRIPPED, because every removal on that page is documented in
+    // prose that NAMES what it removed — a raw read would fail these on the
+    // explanation rather than on the code, the mirror of the trap this file's
+    // header describes.
+    expect(CODE, "the 44-second scan is back on /explore").not.toMatch(/get_category_fill_curve/);
+    expect(CODE, "the tiles are reading the explore cache again").not.toMatch(/obj\(c\.field_curves\)/);
+    expect(CODE, "the tiles are reading the explore cache again").not.toMatch(/obj\(c\.field_grid\)/);
+    expect(CODE, "the tiles are reading the explore cache again").not.toMatch(/obj\(c\.fields\)/);
+    // …and the four keys that lost their reader must not raise a staleness
+    // banner about a collection this page does not render.
+    expect(EXPLORE).toMatch(/"fields", "field_grid", "field_curves", "totals"/);
     // COMMENT-STRIPPED, and the whole reason is in this file's own history: a
     // guard satisfied by prose describing what the code no longer does is the
     // failure this repo has shipped repeatedly. The header of that migration
@@ -595,7 +623,18 @@ describe("no locale ships a string the page cannot render", () => {
     // entryBadgeShare and recycleEvidence belonged to the deleted employer
     // leaderboards; the sentences that carry counts now are the reach line, the
     // closure record's three denominators and the two employer-check numbers.
-    const COUNT_KEYS = ["fieldsReach", "fieldsReachWhole", "closureBasis2",
+    // RE-POINTED AGAIN, AND AGAIN NOT SHRUNK. fieldsReach and fieldsReachWhole
+    // were the reach fraction under the section header; the grid is a partition
+    // of the board's own facet now, so a fraction of it could only read 100%.
+    // The population sentence above the fold replaced both, and it carries the
+    // same six-figure counts — basisWhole one, basisPartial three.
+    // RE-POINTED ONCE MORE, STILL NOT SHRUNK: basisWhole/basisPartial took new
+    // keys when the sentence stopped counting the uncategorised bucket as a
+    // field (it interpolates BOARD_CATEGORY_SLUGS.length now) and stopped
+    // claiming a board total /jobs publishes differently. basisCarried is the
+    // third form of the same sentence, for counts carried through a failed
+    // facet pass, and it carries {{n}} exactly as the other two do.
+    const COUNT_KEYS = ["basisWhole2", "basisPartial2", "basisCarried", "closureBasis2",
                         "closureBasisNoTotal2", "closureFinding", "closureOpen",
                         "closureOpenCapped", "fillOpen", "checkFeedGap2", "repostWarn"];
     /** The whole `t("explore.<key>", …)` call, found by BALANCING PARENTHESES
@@ -638,7 +677,11 @@ describe("no locale ships a string the page cannot render", () => {
           // none of those existed when this list was written, so leaving it
           // alone would have watched the six-figure numbers on the page go
           // ungrouped while the list still read as though it covered them.
-          .matchAll(/\b(n|total|open|entry|events|roles|rows|asked|readable|closers|inSlice|board):\s*([^,\n]+)/g)];
+          // AND WIDENED AGAIN with the population sentence's own names. The
+          // reach fraction's `board` gave way to `all`, `tiled` and `untiled`
+          // when the grid became a partition of the board's category facet and
+          // a fraction of it could only ever read 100%.
+          .matchAll(/\b(n|total|open|entry|events|roles|rows|asked|readable|closers|inSlice|board|all|tiled|untiled):\s*([^,\n]+)/g)];
         expect(args.length, `explore.${key} interpolates no count at all: ${call}`).toBeGreaterThan(0);
         for (const [, name, value] of args) {
           expect(value, `explore.${key} interpolates ${name} raw: ${value.trim()}`).toContain("nf(");
@@ -820,10 +863,22 @@ describe("a card's number and the page it opens agree", () => {
     // should not, being shared with /jobs itself — dropped it from every link
     // on the page. One wrapper owns the spelling.
     expect(CODE).toMatch(/return `\$\{url\}\$\{url\.includes\("\?"\) \? "&" : "\?"\}from=explore`;/);
-    const uses = [...CODE.matchAll(/to=\{toBoard\(/g)];
+    const uses = [...CODE.matchAll(/to=\{(?:toBoard|fieldHref)\(/g)];
     expect(uses.length, "the wrapper exists but nothing routes through it").toBeGreaterThanOrEqual(4);
     expect(CODE, "a board link bypassed the wrapper that adds from=explore")
       .not.toMatch(/to=\{searchToQuery\(/);
+    // A SECOND SPELLING NOW EXISTS, AND IT IS DELIBERATE. A field tile links to
+    // /jobs/field/:id rather than /jobs?category=id, because only the lander
+    // prints the field's own count — the generic board's hero prints the
+    // BOARD-WIDE total over a one-field list. fieldHref is the ONE place that
+    // route is spelled, it asks the destination's own predicate before using
+    // it, and it falls back to the mapper for the uncategorised bucket, which
+    // has no lander. Both halves carry from=explore.
+    const fh = /const fieldHref = [\s\S]{0,240}?;\n/.exec(CODE)?.[0] ?? "";
+    expect(fh, "the field route is not spelled in one place").toBeTruthy();
+    expect(fh, "the tile does not ask the lander's own predicate").toMatch(/isBoardCategory\(id\)/);
+    expect(fh).toMatch(/\/jobs\/field\/\$\{id\}\?from=explore/);
+    expect(fh, "the bucket with no lander must fall back to the mapper").toMatch(/toBoard\(\{ category: id \}\)/);
   });
 
   it("appends no filter Jobs.tsx does not read", () => {
@@ -869,10 +924,27 @@ describe("every interpolation a badge passes exists in every locale", () => {
     // beginner leaderboard; the sentences carrying interpolations now are the
     // reach line, the closure record's basis and finding, the lifecycle line
     // under a tile and the two employer-check numbers.
-    fieldsReach: ["{{n}}", "{{board}}", "{{pct}}"],
+    // RE-POINTED AGAIN. fieldsReach was the reach fraction and fieldCurveMedian2
+    // the field-grain lifecycle sentence; both are retired with the design pass
+    // on the grid (a partition has no fraction to publish, and the lifecycle
+    // line read alike on most of the eighteen tiles besides being about to pool
+    // inadmissible lap_backfill closures). What carries interpolations in their
+    // place is the one population sentence above the fold.
+    // RE-POINTED, NOT SHRUNK. The pair took new keys when the sentence changed
+    // meaning twice over: it interpolates the field count from
+    // BOARD_CATEGORY_SLUGS.length instead of spelling "eighteen" (which also
+    // counted the bucket the method panel says is not a field), and it claims
+    // only what the facet proves rather than a board total /jobs publishes from
+    // a different, separately-patched field. basisCarried is the same sentence
+    // for counts carried through a failed facet pass -- it has no {{time}},
+    // because the whole point of it is that the pass stamp is NOT when these
+    // were counted; the time it does have rides basisCarriedWhen.
+    basisWhole2: ["{{n}}", "{{fields}}", "{{time}}"],
+    basisPartial2: ["{{tiled}}", "{{all}}", "{{untiled}}", "{{fields}}", "{{time}}"],
+    basisCarried: ["{{n}}", "{{fields}}", "{{when}}"],
+    basisCarriedWhen: ["{{time}}"],
     closureBasisNoTotal2: ["{{rows}}", "{{asked}}", "{{readable}}"],
     closureFinding: ["{{closers}}", "{{readable}}", "{{min}}"],
-    fieldCurveMedian2: ["{{n}}", "{{days}}"],
     checkFeedGap2: ["{{total}}", "{{when}}", "{{gap}}"],
   };
   for (const [key, vars] of Object.entries(NEW_KEYS)) {
@@ -1087,6 +1159,19 @@ describe("both copies of Explore's title describe the page that exists", () => {
       "Who states pay", "beginner (actually )?has a( real)? chance",
       "Where the pay is", "not what they look like", "Six answers",
       "recycles dates", "Explore Employers",
+      // round four — the FIELD-GRAIN lifecycle line, deleted 2026-09-09 from
+      // every tile and from the page face, because R(14) spanned 0.128-0.243
+      // across eighteen fields and rendered as four strings, and because the
+      // estimator was about to start pooling lap_backfill closures whose
+      // closed_at the column's own COMMENT calls inadmissible. The slice-grain
+      // closureRecordOf sentence STAYS and is deliberately not named here.
+      "How [Ll]ong [Rr]oles [Ll]ast", "how long (its |these |the )?roles last",
+      "clears the estimator's bar", "Half the roles we watched",
+      "gone within (this many|N) days",
+      // ...and the cadence claim that died with the same commit: the tiles
+      // stopped coming off the hourly explore cache and now come off
+      // refresh_job_board_facets (cron 7,22,37,52 * * * *).
+      "measured in an hourly scan", "refreshed hourly",
     ].join("|"), "i");
     const code = entry.replace(/^\s*\/\/.*$/gm, "");
     expect(code, `prerender-seo.mjs still advertises a removed collection`).not.toMatch(GONE);
@@ -1111,6 +1196,65 @@ describe("both copies of Explore's title describe the page that exists", () => {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
       for (const k of ["seoTitle2", "seoDescription2", "subhead2", "subhead3"]) {
         if (e[k]) expect(e[k], `${f} explore.${k}`).not.toMatch(GONE);
+      }
+    }
+  });
+
+  /* A REGEX OVER ENGLISH CANNOT GUARD NINE LANGUAGES.
+   *
+   * Every prose pattern above is English, so it reads exactly one of the nine
+   * locale files and is blind to the eight that carry the same claim in their
+   * own words -- which is how "und wie lange Stellen bestehen" and "cuánto
+   * duran las vacantes" would have survived a green round-four sweep of the
+   * English copy.
+   *
+   * The language-independent fact is the KEY. A retired sentence takes a new
+   * key (the standing rule at the top of Explore.tsx), and the old key must
+   * then be DELETED from every locale rather than left orphaned: a locale
+   * VALUE overrides an inline English default, so an orphaned key keeps the
+   * retired claim one careless t() away from rendering in seven languages.
+   * This assertion is mechanical, needs no translator, and cannot go stale. */
+  /* THE FIELD COUNT IS INTERPOLATED, NOT SPELLED, IN EVERY LANGUAGE.
+   *
+   * "eighteen fields" was a hardcoded English word inside translated prose in
+   * nine files, and it was wrong twice over: it counted the uncategorised
+   * bucket as a field, which the page's own method panel denies in so many
+   * words ("It is not a field") and the prerendered document contradicts
+   * ("Seventeen fields plus the roles whose field we could not read"); and it
+   * could not move. Adding a slug to BOARD_CATEGORY_SLUGS would have rendered
+   * nineteen tiles under nine sentences still saying eighteen, with typecheck
+   * and every other guard green, because the number lived only inside prose.
+   *
+   * The count now comes from BOARD_CATEGORY_SLUGS.length at render time. This
+   * asserts the placeholder is present and no spelled-out count has crept back
+   * -- which is a check a regex over English CAN make, because {{fields}} is
+   * the same token in all nine files. */
+  it("the field count in the basis sentence is interpolated, never spelled", () => {
+    const SPELLED = /\b(sixteen|seventeen|eighteen|nineteen|twenty)\b/i;
+    for (const f of localeFiles) {
+      const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
+      for (const k of ["basisWhole2", "basisPartial2", "basisCarried"]) {
+        expect(e[k], `${f} explore.${k} is missing`).toBeTruthy();
+        expect(e[k], `${f} explore.${k} must interpolate {{fields}}`).toContain("{{fields}}");
+        // English spellings only -- the point is that nobody re-introduces the
+        // literal in the source language and translates it outward again.
+        if (f.startsWith("en")) {
+          expect(e[k], `${f} explore.${k} spells a field count`).not.toMatch(SPELLED);
+        }
+      }
+    }
+  });
+
+  it("a retired copy key survives in no locale, in any language", () => {
+    const RETIRED: Array<[string, string]> = [
+      // round four, 2026-09-09: the field-grain lifecycle claim
+      ["explore", "seoTitle4"],      // "...and How Long Roles Last"
+      ["jobsPage", "orientExplore"], // "...and how long its roles last"
+    ];
+    for (const f of localeFiles) {
+      const doc = JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")) as Record<string, Record<string, unknown>>;
+      for (const [ns, key] of RETIRED) {
+        expect(doc[ns]?.[key], `${f} still carries the retired key ${ns}.${key}`).toBeUndefined();
       }
     }
   });
@@ -1408,53 +1552,35 @@ describe("the hiring answer ranks by odds, not by size", () => {
       .not.toMatch(/FROM public\.job_board_closures\s*\n\s*\),/);
   });
 
-  it("the lifecycle line renders only on a sample the estimator admits", () => {
-    // THE SAME GATE, MOVED DOWN A GRAIN WITH ITS SECTION. The employer version
-    // of this claim was deleted with the twelve-card leaderboards; the
-    // statistic did not go with it, because get_category_fill_curve runs the
-    // SAME competing-risks estimator under the SAME sufficiency flag
-    // (n_at_risk_14 >= 25 AND fills_le_14 >= 5 AND CI half-width <= 0.15 AND
-    // relists <= fills) and PASSES it comfortably at field grain — a field has
-    // thousands of observed closures where an employer had three. That is the
-    // whole argument of the rebuild: the denominator was the defect, not the
-    // rigour. The three SQL thresholds are pinned with their boundary proofs in
-    // src/test/the-estimator-that-must-agree-with-arithmetic.test.ts; this
-    // guard owns the client half.
+  it("the field-grain lifecycle line is gone, and no client here re-derives the estimator", () => {
+    // THE GATE MOVED DOWN A GRAIN WITH ITS SECTION, AND THEN THE SECTION LEFT.
+    // The field-grain lifecycle line was retired in the grid's design pass, for
+    // two independent reasons:
     //
-    // THE SERVER'S FLAG IS HONOURED, NEVER RE-DERIVED. A client that rebuilt
-    // the thresholds out of n_at_risk_14 and fills_le_14 is how two surfaces
-    // come to publish and refuse the same record.
-    expect(CODE).toMatch(/canStateFillRate\(\{\s*sufficient: row\.sufficient === true, dated_coverage: coverage \?\? 0 \}, windowDays\)/);
+    //   IT DID NOT SEPARATE THE TILES. R(14) spans 0.128-0.243 across the
+    //   eighteen fields and rendered as four distinct strings; the medians were
+    //   27/28/29/30 — the last four values the estimator can emit before it
+    //   censors at the support cap. Twelve tiles, four strings, one statement.
+    //
+    //   ITS INPUT WAS ABOUT TO STOP BEING ADMISSIBLE. get_category_fill_curve
+    //   reads closed_at and does not filter absence_basis; a lap_backfill row's
+    //   closed_at is barred by that column's own COMMENT from any duration,
+    //   tenure or fill-speed statistic, and the first completed lap starts
+    //   writing them.
+    //
+    // The estimator's thresholds are still pinned with their boundary proofs in
+    // src/test/the-estimator-that-must-agree-with-arithmetic.test.ts, and the
+    // client half of the gate now belongs to /jobs, which still publishes the
+    // claim. What this file owns is the absence: no gate, because no claim.
+    expect(CODE, "a fill claim has returned to /explore").not.toMatch(/\bcanStateFillRate\b/);
     expect(CODE, "the estimator's own thresholds were re-derived on the client")
       .not.toMatch(/n_at_risk_14\s*[<>]=|fills_le_14\s*[<>]=/);
-    // AND THE OBSERVATION WINDOW, which `sufficient` never looks at: lifetimes
-    // run from the employer's stated posted_at, so a ten-day-deep log can put
-    // 25 roles at risk at day 14 and pass every server term. It is checked
-    // FIRST and returns its OWN refusal, because "we have not watched long
-    // enough" is a statement about our log and "too few closures" is one about
-    // the field — a page that says the second when the first is true passes a
-    // verdict on a field it never measured.
-    expect(CODE).toMatch(/if \(!\(windowDays >= FILL_RATE_MIN_TRACKING_DAYS\)\) return \{ kind: "window", windowDays \};/);
-    expect(CODE.indexOf("kind: \"window\""), "the window refusal must be reachable before the sample one")
-      .toBeLessThan(CODE.indexOf("return { kind: \"thin\" }"));
-    // ONE BAR, ONE DECLARATION. Explore used to re-type this bar as its own
-    // FILL_COVERAGE_QUALIFY / FILL_HORIZON_DAYS, which is how two surfaces end
-    // up publishing and refusing the same record: editing one file was silent
-    // on the other.
-    expect(CODE, "the bar must be imported from /jobs, not re-typed here")
-      .toMatch(/import \{[^}]*FILL_COVERAGE_MIN[^}]*FILL_RATE_MIN_TRACKING_DAYS[^}]*\} from "@\/pages\/Jobs"/);
-    expect(CODE, "a second declaration of the bar is the drift this guard exists to stop")
-      .not.toMatch(/const FILL_(?:COVERAGE|HORIZON|RATE)_[A-Z_]+ =/);
-    // THE SPAN, PINNED AS A PROPERTY RATHER THAN AS A KEY: every rendered
-    // median interpolates the depth of the log it was read from, taken off the
-    // row rather than printed as a constant, and names whose date it was
-    // measured from.
-    const at = CODE.indexOf('t("explore.fieldCurveMedian2"');
-    expect(at, "the lifecycle line moved — re-anchor, do not delete").toBeGreaterThan(-1);
-    const line = CODE.slice(at, at + 400);
-    expect(line).toMatch(/\{\{days\}\}-day closure log/);
-    expect(line).toMatch(/days: lc\.windowDays/);
-    expect(line).toMatch(/employer's own post date/);
+    expect(CODE, "the field curve is being fetched again").not.toMatch(/get_category_fill_curve/);
+    // /jobs still owns and applies the single predicate. Removing a claim from
+    // one surface is not permission to loosen the gate on the other.
+    const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+    expect(jobs).toMatch(/export function canStateFillRate/);
+    expect(jobs).toMatch(/rpc\("get_category_fill_curve"\)/);
   });
 });
 
@@ -1465,28 +1591,38 @@ describe("the page behaves while it is still loading, and for keyboard users", (
     // broken, and this page has earned that reading elsewhere. The grid the
     // skeleton stands in for changed from twelve employer cards to eighteen
     // field tiles; the property did not.
-    expect(CODE).toMatch(/\{loading && Object\.keys\(fields\)\.length === 0 \? \(/);
+    // RE-ANCHORED WITH THE SOURCE, NOT DELETED. The grid's counts moved from
+    // the hourly explore cache to the board's own category facet, so the thing
+    // being waited on changed name; the property — tile-shaped placeholders
+    // rather than empty space — did not. The condition also has to distinguish
+    // "not read yet" from "read and failed", or a failed read would leave the
+    // skeleton up for ever.
+    expect(CODE).toMatch(/\{!facet && !facetFailed \? \(/);
     expect(CODE, "the placeholder must be tile-shaped, not a spinner")
       .toMatch(/animate-pulse/);
   });
 
   it("the skeleton is announced once, not as eighteen empty rows", () => {
-    const at = CODE.indexOf("{loading && Object.keys(fields).length === 0 ? (");
+    const at = CODE.indexOf("{!facet && !facetFailed ? (");
     expect(at, "the skeleton moved — re-anchor, do not delete").toBeGreaterThan(-1);
     const sk = CODE.slice(at, at + 900);
     expect(sk).toMatch(/role="status" aria-live="polite"/);
     expect(sk).toMatch(/aria-hidden="true"/);
   });
 
-  it("loading clears however the cache answered", () => {
-    // The read is wrapped in try/catch and the clear sits AFTER the catch, so
-    // a throw cannot leave the skeleton up forever — which a `setLoading` in
-    // the success branch alone would.
-    expect((CODE.match(/setLoading\(false\)/g) ?? []).length).toBeGreaterThanOrEqual(1);
-    const at = CODE.indexOf("setLoading(false)");
-    const before = CODE.slice(Math.max(0, at - 400), at);
-    expect(before, "loading is cleared inside the branch that can be skipped")
-      .toMatch(/\} catch \{[\s\S]*?\}/);
+  it("the skeleton clears however the facet read answered", () => {
+    // A LOADING FLAG THAT ONLY CLEARS ON SUCCESS LEAVES THE SKELETON UP FOR
+    // EVER on the failure path. The state is now the ANSWER rather than a flag:
+    // `facet` on success, `facetFailed` on failure, and the skeleton's
+    // condition requires both to be empty — so there is no branch in which
+    // neither is set once the read has resolved. readCategoryFacet itself
+    // catches, so a throw resolves to null and takes the failure path.
+    expect(CODE).toMatch(/if \(!f\) \{ setFacetFailed\(true\); return; \}/);
+    expect(CODE).toMatch(/setFacet\(f\);/);
+    const fn = /async function readCategoryFacet[\s\S]*?\n\}/.exec(CODE)?.[0] ?? "";
+    expect(fn, "the facet reader is gone").toBeTruthy();
+    expect(fn, "a throw must resolve to the failure path, not escape it")
+      .toMatch(/\} catch \{\s*return null;\s*\}/);
   });
 
   it("role=tablist comes with the arrow keys it promises", () => {
@@ -1536,23 +1672,51 @@ describe("no number is published without the sample behind it", () => {
 });
 
 describe("the page says when it was measured", () => {
-  it("renders the cache's own computed_at", () => {
-    expect(EXPLORE).toMatch(/setComputedAt\(c\.computed_at\)/);
-    // asOfCounts2, NOT asOf and NOT asOfCounts. The key was re-minted twice
-    // because its MEANING changed twice: first from "these lists" to "these
-    // field counts", then again when it turned out one thing below it is not
-    // counted live at all — a chip's coverage percentage comes from the board's
-    // own hourly coverage scan, and on a cold pass from a constant measured
-    // 2026-08-25. A locale VALUE beats an inline default, so editing either
-    // older key in place would have left seven languages asserting the claim
-    // this page retracted.
-    expect(EXPLORE).toMatch(/t\("explore\.asOfCounts2"/);
-    expect(EXPLORE, "the retracted live-coverage claim must not be called again")
-      .not.toMatch(/t\("explore\.asOfCounts"/);
+  it("renders the stamp on the row the counts came out of", () => {
+    // THE DATE BASIS FOLLOWED THE NUMBERS. It used to be the hourly explore
+    // cache's `computed_at`, because the tiles were drawn from that cache. They
+    // are drawn from the board's own category facet now, and the honest stamp
+    // is that reply's `refreshedAt` — the row the eighteen counts were grouped
+    // into. Keeping the cache's timestamp over facet counts would have been a
+    // date basis belonging to a different scan, which is the exact failure the
+    // reach line was rebuilt to remove.
+    expect(CODE, "the page dates its counts from a scan they did not come from")
+      .not.toMatch(/setComputedAt\(c\.computed_at\)/);
+    expect(CODE).toMatch(/refreshedAt/);
+    // `facet.at`, no longer `facet?.at`. The optional chain was the shape of
+    // the bug beside it: `at` used to be nullable and the sentence interpolated
+    // it as "" when absent, publishing eighteen exact six-figure integers under
+    // "counted  in the board's own scan". readCategoryFacet now refuses a
+    // stamp-less row outright, so `at` is a plain string and the sentence
+    // cannot render without one.
+    expect(CODE).toMatch(/facet\.at/);
+    expect(CODE, "a missing stamp must fail the read, not render an empty date")
+      .not.toMatch(/facet\?\.at \? new Date/);
+    // basisWhole2 / basisPartial2 / basisCarried, NOT asOfCounts2 and NOT
+    // asOfCounts. The keys are re-minted whenever the sentence's MEANING
+    // changes -- it no longer dates an hourly cache, it carries the population,
+    // it interpolates the field count rather than spelling it, and it has a
+    // third form for counts carried through a failed facet pass. A locale VALUE
+    // beats an inline default, so editing an older key in place would have left
+    // eight languages asserting a basis this page stopped having.
+    expect(CODE).toMatch(/t\("explore\.basis(?:Whole2|Partial2|Carried)"/);
+    for (const dead of ["asOfCounts", "asOfCounts2", "basisWhole", "basisPartial"]) {
+      expect(CODE, `the retracted ${dead} sentence is being called again`)
+        .not.toMatch(new RegExp(`t\\("explore\\.${dead}"`));
+    }
   });
 
-  it("only with a real timestamp — no timestamp, no claim", () => {
-    expect(EXPLORE).toMatch(/\{computedAt && \(/);
+  it("only with a real reading — no facet, no claim", () => {
+    // The sentence renders only when the facet answered, and a failed read gets
+    // its OWN sentence rather than silence: eighteen tiles with no numbers and
+    // no explanation reads as a broken page, and the links all still work.
+    // `reach && facet &&`. The second conjunct is redundant at runtime (reach is
+    // null whenever facet is) and is written so the compiler can see that
+    // facet.at exists on this branch -- which makes the stamp's presence a
+    // type-level fact on the one sentence obliged to carry it.
+    expect(CODE).toMatch(/\{reach && facet && \(/);
+    expect(CODE).toMatch(/\{facetFailed && \(/);
+    expect(CODE).toMatch(/t\("explore\.basisNone"/);
   });
 
   it("no surface still says the lists are computed live", () => {
@@ -1926,22 +2090,39 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // either way: covered above board tripped the wholeness branch and
     // published "every posting we can serve — all N of them" as an equality
     // neither statement proved.
-    expect(CODE).toMatch(/const board = grid\?\.board\?\.n;/);
-    expect(CODE).toMatch(/const tiled = grid\?\.tiled_n;/);
-    expect(CODE, "a missing half must produce no sentence, not a smaller claim")
-      .toMatch(/if \(typeof board !== "number" \|\| board <= 0\) return null;/);
-    expect(CODE).toMatch(/if \(typeof tiled !== "number" \|\| tiled <= 0\) return null;/);
-    expect(CODE, "the reach fraction went back to dividing two different scans")
+    // BOTH TERMS FROM ONE MAP, OR NO SENTENCE — and now they cannot be
+    // anything else. The grid is a partition of the board's own category facet
+    // (`GROUP BY category` over the serving population, no floor), so the
+    // population and the tiled total are two sums over ONE object with ONE
+    // `refreshedAt`. There is no second scan left to divide by, which is why
+    // the fraction became a population and the percentage disappeared.
+    expect(CODE).toMatch(/const reach = useMemo\(\(\) => \{\s*\n\s*if \(!facet\) return null;/);
+    expect(CODE, "a missing reading must produce no sentence, not a smaller claim")
+      .toMatch(/if \(all <= 0 \|\| tiled <= 0\) return null;/);
+    expect(CODE, "the population is being read from a second scan")
       .not.toMatch(/totals\.postings_n\s*[;),]/);
+    // A chip's coverage percentage is a different thing and stays: it is the
+    // share of the board that STATES the column a filter binds, which varies
+    // per filter and is not a fraction of a partition.
+    expect(CODE, "a fraction of a partition can only read 100% — it must not be published")
+      .not.toMatch(/pct:\s*reach\./);
+    expect(CODE, "the reach percentage came back").not.toMatch(/\* 1000\) \/ 10/);
     // AND THE UNCAPPED BOARD COUNT MUST NOT RETURN AS A TILE-LEVEL SENTENCE.
     // It printed get_explore_denominators' uncapped count as "open across the
     // board right now" while every tile beneath it is formatted through
     // SERVE_COUNT_CAP — one sentence contradicting the eighteen numbers under
     // it and the page each one opens. The reach line states the mismatch in
     // words instead.
-    expect(CODE, "the uncapped board-wide count is back above the capped tiles")
+    expect(CODE, "a board-wide count is back above the tiles")
       .not.toMatch(/fields:\s*totals\.postings_n/);
-    expect(CODE).toMatch(/tileCount = useCallback\(\s*\n?\s*\(n: number\) => \(n >= SERVE_COUNT_CAP/);
+    // AND THE CAP IS OFF THE TILES. It is COUNT_CAP — the ceiling on a FILTERED
+    // count — and a grouped facet is not a filtered count. Running the tiles
+    // through it made six of eighteen render "10,000+" under a header
+    // promising an ordering by size. It survives for the priced role rows and
+    // chips, which really are filtered counts, and there alone.
+    expect(CODE, "the tiles are being formatted through the serving cap again")
+      .not.toMatch(/tileCount/);
+    expect(CODE).toMatch(/pricedLabel = useCallback[\s\S]{0,320}SERVE_COUNT_CAP/);
     for (const f of localeFiles) {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
       expect(e.noteFields, `${f} still ships explore.noteFields`).toBeUndefined();
@@ -1953,8 +2134,15 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // throw on the first read. Each is required to be a non-null, non-array
     // object before it is trusted.
     expect(CODE).toMatch(/const obj = \(v: unknown\) => !!v && typeof v === "object" && !Array\.isArray\(v\);/);
-    for (const k of ["c.fields", "c.totals", "c.repost_index"]) {
+    // NARROWED TO WHAT THE PAGE STILL READS. `fields` and `totals` were the
+    // tile counts and their denominator; both now come off the board's own
+    // category facet in one read with the page a tile opens, so the cache is
+    // consulted for the churn index alone.
+    for (const k of ["c.repost_index"]) {
       expect(CODE).toContain(`obj(${k})`);
+    }
+    for (const k of ["c.fields", "c.totals", "c.field_grid", "c.field_curves"]) {
+      expect(CODE, `${k} is being read again — one quantity, two scans`).not.toContain(`obj(${k})`);
     }
   });
 
@@ -1982,12 +2170,20 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // employer-check numbers and the two role-row refusals.
     const REQUIRED: Record<string, string[]> = {
       repostWarn: ["{{events}}", "{{roles}}"],
-      fieldsReach: ["{{n}}", "{{board}}", "{{pct}}"],
-      fieldsReachWhole: ["{{board}}"],
-      fieldCurveMedian2: ["{{n}}", "{{days}}"],
-      fieldCurveCensored2: ["{{cap}}", "{{pct}}", "{{h}}", "{{days}}"],
-      fieldCurveWindow: ["{{days}}"],
-      fieldCurveCoverage: ["{{pct}}"],
+    // RE-POINTED, NOT SHRUNK. The pair took new keys when the sentence changed
+    // meaning twice over: it interpolates the field count from
+    // BOARD_CATEGORY_SLUGS.length instead of spelling "eighteen" (which also
+    // counted the bucket the method panel says is not a field), and it claims
+    // only what the facet proves rather than a board total /jobs publishes from
+    // a different, separately-patched field. basisCarried is the same sentence
+    // for counts carried through a failed facet pass -- it has no {{time}},
+    // because the whole point of it is that the pass stamp is NOT when these
+    // were counted; the time it does have rides basisCarriedWhen.
+      basisWhole2: ["{{n}}", "{{fields}}", "{{time}}"],
+      basisPartial2: ["{{tiled}}", "{{all}}", "{{untiled}}", "{{fields}}", "{{time}}"],
+      basisCarried: ["{{n}}", "{{fields}}", "{{when}}"],
+      basisCarriedWhen: ["{{time}}"],
+      methodTileMethod3: ["{{cap}}", "{{n}}"],
       closureBasis2: ["{{inSlice}}", "{{asked}}", "{{readable}}"],
       closureBasisNoTotal2: ["{{rows}}", "{{asked}}", "{{readable}}"],
       closureFinding: ["{{closers}}", "{{readable}}", "{{min}}"],
@@ -1999,7 +2195,6 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
       fillOpen: ["{{n}}"],
       checkFeedGap2: ["{{total}}", "{{when}}", "{{gap}}"],
       checkFeedMulti: ["{{n}}"],
-      asOfCounts2: ["{{time}}"],
       staleParts: ["{{parts}}"],
     };
     // THE ENGLISH CLAUSE, RESHAPED RATHER THAN DELETED. `typeof en[key] ===

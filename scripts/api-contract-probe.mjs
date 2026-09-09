@@ -290,7 +290,7 @@ console.log("\n[/v1] MCP-parity filters");
 console.log("\n[/v1] 2026-09-03 upgrades");
 {
   const root = await api("/v1");
-  ok(root.body?.apiVersion === "2026-09-03.1", "apiVersion is 2026-09-03.1", root.body?.apiVersion ?? "none");
+  ok(root.body?.apiVersion === "2026-09-09.1", "apiVersion is 2026-09-09.1", root.body?.apiVersion ?? "none");
   ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
   const loc = await api("/v1/jobs?location=London&limit=10");
   ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);

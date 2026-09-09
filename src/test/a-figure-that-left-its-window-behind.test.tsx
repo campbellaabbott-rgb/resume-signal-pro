@@ -55,9 +55,16 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const rpc = vi.fn();
+/** THE TILE COUNTS' ONLY SOURCE. They come off the board's own category facet
+ *  now — one list request, the whole map, the same row the field lander reads
+ *  its own entry from — not off the hourly explore cache, which could be
+ *  fifty-three minutes out of step with the page a tile opens. */
+const invoke = vi.fn(
+  async (_fn: string, _opts?: { body?: Record<string, unknown> }) => ({ data: null, error: null } as unknown),
+);
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    functions: { invoke: async () => ({ data: null, error: null }) },
+    functions: { invoke: (...a: unknown[]) => invoke(...(a as Parameters<typeof invoke>)) },
     from: () => stubTable(),
     rpc: (...a: unknown[]) => rpc(...a),
   },
@@ -72,7 +79,7 @@ function stubTable() {
   th.then = (ok: (v: unknown) => void) => Promise.resolve({ data: [], error: null }).then(ok);
   return th;
 }
-import Explore, { feedTotalClaim, fieldLifecycleOf } from "../pages/Explore";
+import Explore, { feedTotalClaim } from "../pages/Explore";
 
 const ROOT = resolve(__dirname, "../..");
 /** Comments stripped: an assertion about what the code DOES must not be
@@ -96,7 +103,24 @@ const curveRow = (category: string, over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+/** The facet reply for an UNFILTERED list request: the whole category map plus
+ *  the stamp on the stored row it came out of. Two fields, one above the
+ *  serving API's filtered-count ceiling and one below it, so an assertion that
+ *  the tiles no longer pass through that ceiling has something to bite on. */
+const FACET = { engineering: 38_412, design: 900 };
 const mount = (cache: Record<string, unknown> = {}, at = "/explore") => {
+  invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
+    const b = (opts?.body ?? {}) as Record<string, unknown>;
+      // action:"facets", not a {limit:1} list. The facet exit reads the SAME
+      // job_board_meta k='refresh_head' row through the SAME visibleCategories
+      // rule, so nothing about the single-source property changed -- what it
+      // drops is the browse the list exit performed on its way there, which
+      // logged a job_board_search_events row on every /explore view.
+      if (b.action === "facets") {
+      return { data: { jobs: [], categories: { ...FACET }, refreshedAt: "2026-09-09T14:07:54.645Z" }, error: null };
+    }
+    return { data: { jobs: [], total: 0 }, error: null };
+  });
   rpc.mockImplementation(async (fn: string) => {
     if (fn === "get_explore_cache") {
       return {
@@ -126,7 +150,7 @@ const typeCompany = async (q: string) => {
   fireEvent.change(input, { target: { value: q } });
 };
 
-beforeEach(() => { rpc.mockReset(); document.body.innerHTML = ""; });
+beforeEach(() => { rpc.mockReset(); invoke.mockReset(); document.body.innerHTML = ""; });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. WHAT WE HOLD AND WHAT THEY ADVERTISE ARE TWO NUMBERS, NEVER A RATIO
@@ -222,15 +246,30 @@ describe("the removals are removals, not hidden sections", () => {
     }
   });
 
-  it("the field tiles carry counts, and the note that contradicted them is gone", async () => {
+  it("the field tiles carry EXACT counts, and the note that contradicted them is gone", async () => {
     mount();
     await waitFor(() => expect(pageText()).toMatch(/Every field on the board/));
-    // The tile formats through the serving API's own cap, so the number on it
-    // and the number on the page it opens are one number in one presentation.
-    expect(pageText(), "the tile stopped capping").toContain("10,000+");
-    // ...and a field under the cap prints exactly, so the rule is a formatter
-    // rather than a blanket suppression.
-    expect(pageText()).toContain("900");
+    // THIS ASSERTION INVERTED, AND THE INVERSION IS THE FIX. It used to require
+    // the tile to format through the serving API's ceiling, on the argument
+    // that a tile must agree with the page it opens. That argument was sound
+    // only while the two numbers came from two scans. They come from one row
+    // now — the board's category facet, read whole here and read one entry at a
+    // time by /jobs/field/:id — so there is nothing to reconcile, and the
+    // ceiling did real damage: it is COUNT_CAP, the limit on a FILTERED count,
+    // and it made operations (144,664), healthcare (109,811), the uncategorised
+    // bucket (174,535), hospitality_retail, sales and engineering render as one
+    // identical string under a header promising an ordering by size.
+    // SCOPED TO THE TILES. The collapsed "How we measure" panel still explains
+    // what the retired ceiling was, once, in prose — that is a sentence about
+    // the grid and is exactly where the page's own rule says such a thing
+    // belongs. What must never come back is the ceiling ON A TILE FACE.
+    const tiles = [...document.querySelectorAll("li")]
+      .filter((li) => li.querySelector("button[aria-expanded]"))
+      .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "")
+      .join(" | ");
+    expect(tiles, "the tile is capping again — six fields will read alike").not.toContain("10,000+");
+    expect(tiles, "the tile above the old ceiling must print exactly").toContain("38,412");
+    expect(tiles, "and so must the one below it").toContain("900");
     // The note printed the UNCAPPED count as a board-wide total directly above
     // chips that cap — one sentence contradicting the eighteen numbers under it.
     expect(pageText(), "the uncapped denominator sentence came back")
@@ -274,17 +313,27 @@ describe("the removals are removals, not hidden sections", () => {
     // six-hourly cron, so the hourly refresh names it stale until that cron's
     // first tick — a yellow warning, in a raw internal spelling, about a
     // section this page does not render.
-    mount({ stale_parts: ["trending", "segments", "hiring", "salary", "transparent", "role_rows", "chip_coverage", "ageout_basis"] });
+    // FOUR MORE NAMES JOINED THAT SET IN THE GRID'S DESIGN PASS, and they are
+    // the four the tiles used to be built from: `fields` and `field_grid`,
+    // because the counts and their roll-up now come off the board's own facet
+    // in one read with their destination; `field_curves`, because the
+    // field-grain lifecycle line it fed is gone; and `totals`, because the
+    // sentence that stood over it went with the old reach fraction. A yellow
+    // warning about a collection this page does not render is a false alarm in
+    // a raw internal spelling.
+    mount({ stale_parts: ["trending", "segments", "hiring", "salary", "transparent", "role_rows", "chip_coverage", "ageout_basis", "fields", "field_grid", "field_curves", "totals"] });
     await waitFor(() => expect(pageText()).toMatch(/Every field on the board/));
     expect(pageText(), "the staleness line named a collection nothing here renders")
       .not.toMatch(/could not be recomputed/);
-    // …but a part that DOES back this page still raises the line. field_curves
-    // is the lifecycle sentence under every tile.
+    // …but a part that DOES back this page still raises the line. repost_index
+    // is the churn warning on the employer check, and it is what the cache is
+    // still read for.
     document.body.innerHTML = "";
     rpc.mockReset();
-    mount({ stale_parts: ["trending", "field_curves"] });
-    await waitFor(() => expect(pageText()).toMatch(/field_curves could not be recomputed/));
-    expect(pageText()).not.toMatch(/trending, field_curves/);
+    invoke.mockReset();
+    mount({ stale_parts: ["trending", "repost_index"] });
+    await waitFor(() => expect(pageText()).toMatch(/repost_index could not be recomputed/));
+    expect(pageText()).not.toMatch(/trending, repost_index/);
   });
 });
 
@@ -383,42 +432,47 @@ describe("copy that changed meaning changed key", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("teeth: the checkers fail against the behaviour they exist to stop", () => {
-  it("the window gate is what refuses a short record, not luck", () => {
-    // THE SAME GATE, ONE GRAIN DOWN. `sufficient` counts roles at risk,
-    // observed fills and interval width — three statements about the SAMPLE and
-    // none about how long we watched. A fourteen-day claim over a ten-day log
-    // is a claim about a stretch of time we did not observe, so the observation
-    // window is its own refusal and it is checked FIRST, because "we have not
-    // watched long enough" is a statement about our log and "too few closures"
-    // is one about the field.
-    const ok = fieldLifecycleOf(curveRow("engineering"));
-    expect(ok.kind).toBe("median");
-    expect(ok.kind === "median" && ok.windowDays, "the window travelled separately from the figure").toBe(56);
-    const short = fieldLifecycleOf(curveRow("engineering", { window_days: 9 }));
-    expect(short.kind, "a fourteen-day figure was published over a nine-day log").toBe("window");
-    // And a sufficient-but-short record still refuses on the window, not on the
-    // sample — the two sentences are different facts.
-    expect(fieldLifecycleOf(curveRow("engineering", { window_days: 9, sufficient: true })).kind).toBe("window");
-  });
-
-  it("a numeric that arrives as a string is coerced, not compared as text", () => {
-    // `"0.42" >= 0.3` is true by string collation for the wrong reason, and
-    // `"0.12" >= 0.3` is false for the right one by accident. Both gates must
-    // run on numbers.
-    const asText = fieldLifecycleOf(curveRow("engineering", { dated_coverage: "0.12", fill_rate_14: "0.31" }));
-    expect(asText.kind, "a 12% coverage record was published").toBe("thin");
-    const fine = fieldLifecycleOf(curveRow("engineering", { dated_coverage: "0.80", fill_rate_14: "0.31", median_days_to_fill: "22", window_days: "56" }));
-    expect(fine.kind, "a string-typed numeric refused a good record").toBe("median");
-  });
-
-  it("a censored median is a finding, and an absent row is our instrument", () => {
-    // Folding the first into the second renders a measured field as "no data";
-    // folding the second into "thin" makes the page apologise for an outage it
-    // is not having.
-    expect(fieldLifecycleOf(curveRow("engineering", { median_censored: true, median_days_to_fill: null })).kind).toBe("censored");
-    expect(fieldLifecycleOf(undefined).kind).toBe("absent");
-    expect(fieldLifecycleOf(curveRow("engineering", { window_days: null })).kind).toBe("absent");
-    expect(fieldLifecycleOf(curveRow("engineering", { sufficient: false })).kind).toBe("thin");
+  it("the field-grain lifecycle claim is gone, and its estimator went with it", () => {
+    // THESE TEETH USED TO DRIVE fieldLifecycleOf — this page's mapper from one
+    // get_category_fill_curve row onto median / censored / window / thin /
+    // absent — through each refusal in turn. The claim it built is retired, for
+    // two independent reasons, and so the teeth follow it rather than pinning a
+    // function that no longer has a sentence to serve:
+    //
+    //   IT DID NOT DIFFERENTIATE. R(14) spans 0.128-0.243 across the eighteen
+    //   fields and printed as four distinct strings; the medians were
+    //   27/28/29/30, the last four values the estimator can emit before it
+    //   censors. Twelve tiles, four strings, one statement.
+    //
+    //   ITS INPUT WAS ABOUT TO STOP BEING ADMISSIBLE. get_category_fill_curve
+    //   reads closed_at and does not filter absence_basis; a lap_backfill row's
+    //   closed_at is, by that column's own COMMENT, "not admissible in ANY
+    //   duration, tenure or fill-speed statistic". Nothing published today was
+    //   wrong — no lap had completed — but the first one would have made it so
+    //   silently, on eighteen tiles, in nine languages.
+    //
+    // THIS PAGE'S STANDING PROPERTY IS THAT A REMOVED SECTION'S COMPUTATION
+    // GOES WITH IT: "arithmetic with no rendered sentence is a number waiting
+    // to be re-rendered by someone who does not know why it left." That applies
+    // with unusual force to an estimator whose input a column comment warns
+    // about, so the absence is asserted rather than assumed.
+    for (const name of ["fieldLifecycleOf", "get_category_fill_curve", "FieldCurveRow",
+      "median_censored", "dated_coverage", "canStateFillRate"]) {
+      expect(CODE, `${name} is back on /explore — the field-grain fill claim returned with it`)
+        .not.toMatch(new RegExp(`\\b${name}\\b`));
+    }
+    // AND THE REFUSALS THEMSELVES ARE NOT WEAKENED, only relocated: /jobs still
+    // owns the single predicate every surface that publishes a fill rate must
+    // pass through, and it still reads the RPC's own sufficiency finding rather
+    // than re-deriving it from counts.
+    const jobs = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, " ")
+      .split("\n").map((l) => l.replace(/(^|[^:])\/\/.*$/, "$1")).join("\n");
+    const gate = /export function canStateFillRate\([\s\S]*?\n\}/.exec(jobs)?.[0] ?? "";
+    expect(gate, "the shared predicate is gone").toBeTruthy();
+    expect(gate, "the gate must read the RPC's own sufficiency finding").toMatch(/\.sufficient\b/);
+    expect(gate, "the observation-window floor is the half `sufficient` cannot supply")
+      .toMatch(/FILL_RATE_MIN_TRACKING_DAYS/);
   });
 });
 

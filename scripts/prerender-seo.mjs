@@ -1623,11 +1623,22 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       // one. It now names all three rounds of removals, including the five
       // headings deleted here.
       //
+      // ROUND FOUR, and it is the round the guard was widened for. The
+      // field-grain lifecycle line came off every tile and off the page face
+      // (R(14) spanned 0.128-0.243 across eighteen fields and rendered as four
+      // strings; the estimator was also about to start pooling lap_backfill
+      // closures whose closed_at is inadmissible). This document went on
+      // serving crawlers a card headed "How long roles last in that field" and
+      // a title ending "and How Long Roles Last" over a page that computes no
+      // duration at any field grain. It also said field counts were "measured
+      // in an hourly scan" after they moved off the hourly explore cache onto
+      // refresh_job_board_facets (:07/:22/:37/:52).
+      //
       // Whatever this says must remain true of what /explore actually renders:
-      // mirror seoTitle4 / seoDescription4 in Explore.tsx. Audit it by curling
+      // mirror seoTitle5 / seoDescription4 in Explore.tsx. Audit it by curling
       // this path with a Googlebot UA, never in a browser -- a browser runs the
       // React render and cannot see this document at all.
-      title: "Explore Every Field on the Board — Live Counts, Real Role Sizes, and How Long Roles Last",
+      title: "Explore Every Field on the Board — An Exact Live Count and the Roles Inside Each One",
       description: "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of the board each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.",
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
@@ -1643,7 +1654,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Explore" }])}
         <h1 class="text-3xl font-bold mb-3">Start with your field. Land on a list you can actually read.</h1>
-        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there. Counts are measured in an hourly scan of what we serve; everything you open is counted live at the moment you click it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
+        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there. A field's count is the board's own facet sweep, which runs four times an hour and stamps the page with the time it was taken; everything you open is counted live at the moment you click it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">Every field on the board</h2>
           <div class="flex flex-wrap gap-2 text-xs">${CATEGORY_LANDERS.map(([slug, l]) => pill(`/jobs/field/${slug}`, `${l} jobs →`)).join("")}${pill("/jobs?category=other", "Roles with no field we could read →")}</div>
           <p class="text-xs text-muted-foreground mt-3">Seventeen fields plus the roles whose field we could not read from the title. Every posting we serve carries exactly one of these, so between them they reach the whole board — the last one is not a residue, it is a large part of the inventory that no field tile can see.</p>
@@ -1651,7 +1662,6 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         <div class="space-y-3 mb-8">
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The roles inside a field, priced</h2><p class="text-xs text-muted-foreground">Role names are ours, not the board's. The number beside one is a live count of exactly the search that row opens, so a role we named that matches nothing is left out rather than shown as zero.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Narrowings that state what they hide</h2><p class="text-xs text-muted-foreground">Remote, on-site, states the pay, a pay floor, open to beginners, full-time, posted this week, one-click apply — each with its live count and how much of the board states that thing at all. A filter can only search what employers published.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">How long roles last in that field</h2><p class="text-xs text-muted-foreground">Half the roles we watched come down and stay down were gone within this many days of the date the EMPLOYER put on the posting. It prints only when the field's own record clears the estimator's bar and enough of it carries the employer's own date; below that we say so instead of showing a number.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">What our closure record says about the employers in a slice</h2><p class="text-xs text-muted-foreground">Not a ranking. For the slice you assembled, how many employers we found, how many of those we hold any closure record for, and how many of those have taken roles down and not put them back up — with the gap in our record stated as plainly as the finding.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Check an employer</h2><p class="text-xs text-muted-foreground">Any board we carry: how many of its roles we hold, and — where its own feed states a total — how much of its hiring is not on this page, with the day we read it.</p></div>
         </div>

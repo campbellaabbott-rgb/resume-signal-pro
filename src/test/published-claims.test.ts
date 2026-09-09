@@ -1101,13 +1101,25 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
     const horizonIsNamedAndFourteen = (code: string) =>
       /const FILL_HORIZON_DAYS = 14/.test(code)
       || /import \{[^}]*URGENT_FILL_MAX_DAYS[^}]*\} from "@\/pages\/Jobs"/.test(code);
-    for (const [name, code] of [["Account", accountCODE], ["GhostJobIndex", ghostCODE], ["Explore", exploreCODE]] as const) {
+    for (const [name, code] of [["Account", accountCODE], ["GhostJobIndex", ghostCODE]] as const) {
       expect(horizonIsNamedAndFourteen(code), `${name} must publish the same 14-day horizon by name, not a literal of its own`).toBe(true);
     }
     expect(accountCODE, "the reply-window copy must be handed the constant, not a number")
       .toMatch(/h: FILL_HORIZON_DAYS/);
     expect(ghostCODE).toMatch(/\{FILL_HORIZON_DAYS\} days/);
-    expect(exploreCODE).toMatch(/h: URGENT_FILL_MAX_DAYS/);
+    // EXPLORE PUBLISHES NO HORIZON AT ALL ANY MORE, so it is asked for the
+    // absence rather than for the name. Its field-grain lifecycle line — the
+    // only sentence on that page that ever quoted the 14-day incidence — was
+    // removed: it rendered as four distinct strings across eighteen tiles, and
+    // get_category_fill_curve, which fed it, does not filter absence_basis and
+    // was about to start pooling lap_backfill closures whose closed_at is
+    // inadmissible in any duration statistic.
+    //
+    // The obligation therefore inverts, and it must, or dropping the page from
+    // the list above would quietly permit a re-typed 14 beside a new sentence.
+    expect(exploreCODE, "a horizon constant is back on /explore — it must be named, not re-typed")
+      .not.toMatch(/\bURGENT_FILL_MAX_DAYS\b|\bFILL_HORIZON_DAYS\b|\bFILL_SUPPORT_MAX_DAYS\b/);
+    expect(exploreCODE, "/explore is interpolating a fill horizon again").not.toMatch(/\bh:\s/);
     // The inline English defaults too: a missing translation must not fall back
     // to an unqualified sentence. Asserted against COMMENT-STRIPPED source —
     // Jobs.tsx carries "30 days" twelve times raw and four times in code, and
