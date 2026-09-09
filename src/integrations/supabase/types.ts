@@ -3462,6 +3462,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _mig_exec: { Args: { p_sql: string }; Returns: undefined }
       acquire_scan_slot: {
         Args: { p_max: number; p_ttl_seconds: number }
         Returns: string
