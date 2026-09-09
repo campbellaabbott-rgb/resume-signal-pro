@@ -375,6 +375,24 @@ describe("the field-grain lifecycle claim left the page, and its computation wit
       // the role names stay in English on purpose.
       "basisWhole", "basisPartial", "uncatLine2", "methodUncatMethod2",
       "methodNamesMethod",
+      // …and the 2026-09-09 round, now that the locale pass has landed in all
+      // nine. Every one lost its call site because its MEANING changed, not its
+      // wording: the three basis sentences, the bucket's row note, its role-list
+      // refusal and its method entry all said the bucket held "the roles whose
+      // field we could not read from the title" (or a variant), which blames the
+      // employer's title for a coverage gap in OUR OWN rule set — categorize()
+      // returns "other" when no regex of ours matched, and that vocabulary is
+      // frozen at v9 by design. methodTileTerm went with the grid it named.
+      "basisWhole2", "basisPartial2", "basisCarried", "uncatLine3", "rolesUncat",
+      "methodUncatTerm", "methodUncatMethod3", "methodTileTerm",
+      // …and the two the review round split or corrected. barBasis named the
+      // largest BUCKET's count and the smallest field's and then printed a
+      // ratio computed from neither pair together, so the arithmetic in front
+      // of the reader did not reach the number beside it; it is now two keys,
+      // each naming its own terms. methodNamesMethod2 said the role counts were
+      // "taken at the moment you click", which the per-field price cache made
+      // false for every reopen inside its window.
+      "barBasis", "methodNamesMethod2",
     ];
     const LOCALES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"];
     for (const loc of LOCALES) {
@@ -386,10 +404,20 @@ describe("the field-grain lifecycle claim left the page, and its computation wit
       }
       // …and every sentence the redesign DOES say exists in that locale, or
       // seven languages fall back to English for the page's only date basis.
-      for (const k of ["basisWhole2", "basisPartial2", "basisCarried", "basisCarriedWhen",
-        "basisNone", "fieldsBlurb3", "fieldsBlurb4",
-        "uncatLine3", "methodTileMethod3", "methodNamesTerm", "methodNamesMethod2",
-        "methodUncatMethod3", "methodLiveTerm", "methodLiveMethod"]) {
+      for (const k of ["basisCarriedWhen", "basisNone", "fieldsBlurb3", "fieldsBlurb4",
+        "methodTileMethod3", "methodNamesTerm", "methodNamesMethod3",
+        "methodLiveTerm", "methodLiveMethod"]) {
+        expect(ex, `${loc}.json is missing explore.${k}`).toHaveProperty(k);
+      }
+      // …and the sentences the row rewrite minted, in ALL NINE. They were held
+      // to en/en-GB for the length of the translation window; the window is
+      // closed, and a guard left at that strength could never report the next
+      // missing key — delete barBasisAnchor from de.json and a file whose whole
+      // subject is a figure that does not vary would have stayed green.
+      for (const k of ["basisWhole3", "basisPartial3", "basisCarried2",
+        "barBasisAnchor", "barBasisSpread",
+        "barsNone", "halfLine", "otherRowNote", "rolesUncat2", "methodBarTerm",
+        "methodBarMethod", "methodRowTerm", "methodUncatTerm2", "methodUncatMethod4"]) {
         expect(ex, `${loc}.json is missing explore.${k}`).toHaveProperty(k);
       }
     }

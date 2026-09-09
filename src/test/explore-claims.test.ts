@@ -634,7 +634,20 @@ describe("no locale ships a string the page cannot render", () => {
     // claiming a board total /jobs publishes differently. basisCarried is the
     // third form of the same sentence, for counts carried through a failed
     // facet pass, and it carries {{n}} exactly as the other two do.
-    const COUNT_KEYS = ["basisWhole2", "basisPartial2", "basisCarried", "closureBasis2",
+    // RE-POINTED ONCE MORE, AND AGAIN NOT SHRUNK. basisWhole2/basisPartial2/
+    // basisCarried took THIRD keys when their mechanism clause changed meaning:
+    // they said the bucket held "the roles whose field we could not read from
+    // the title", which blames the employer's title for a coverage gap in OUR
+    // OWN frozen rule set. And the grid became a list of rows with a bar on
+    // each, which added three count-bearing sentences — barBasisAnchor (the
+    // bucket the bars are measured against), barBasisSpread (the largest field
+    // against the smallest, which is what the ratio actually divides) and
+    // halfLine (where the cumulative count over the seventeen fields passes
+    // half). All are covered here for the same reason as the
+    // rest: a six-figure count rendered ungrouped is "639424" in a sentence.
+    const COUNT_KEYS = ["basisWhole3", "basisPartial3", "basisCarried2",
+                        "barBasisAnchor", "barBasisSpread",
+                        "halfLine", "closureBasis2",
                         "closureBasisNoTotal2", "closureFinding", "closureOpen",
                         "closureOpenCapped", "fillOpen", "checkFeedGap2", "repostWarn"];
     /** The whole `t("explore.<key>", …)` call, found by BALANCING PARENTHESES
@@ -681,7 +694,15 @@ describe("no locale ships a string the page cannot render", () => {
           // reach fraction's `board` gave way to `all`, `tiled` and `untiled`
           // when the grid became a partition of the board's category facet and
           // a fraction of it could only ever read 100%.
-          .matchAll(/\b(n|total|open|entry|events|roles|rows|asked|readable|closers|inSlice|board|all|tiled|untiled):\s*([^,\n]+)/g)];
+          // AND WIDENED AGAIN with the bar sentences' own argument names.
+          // barBasisAnchor carries topN, barBasisSpread carries smallN and
+          // biggestN, halfLine carries above, fieldsTotal and below — six more
+          // six-figure counts, every one of which would render ungrouped
+          // without this. `ratio`, `k` and `rest`
+          // are deliberately absent: they are bounded small numbers (34, 3, 14)
+          // where a thousands separator would be noise, exactly like `pct` and
+          // `days` above.
+          .matchAll(/\b(n|total|open|entry|events|roles|rows|asked|readable|closers|inSlice|board|all|tiled|untiled|topN|smallN|biggestN|above|below|fieldsTotal):\s*([^,\n]+)/g)];
         expect(args.length, `explore.${key} interpolates no count at all: ${call}`).toBeGreaterThan(0);
         for (const [, name, value] of args) {
           expect(value, `explore.${key} interpolates ${name} raw: ${value.trim()}`).toContain("nf(");
@@ -841,8 +862,13 @@ describe("a card's number and the page it opens agree", () => {
     // searchToBoardBody for the count, searchToQuery for the href — which is
     // the property that made the count and the destination one query.
     expect(CODE).toMatch(/import \{ searchName, searchToBoardBody, searchToQuery, type JobSearchParams \}/);
+    // The wrapper takes a SECOND argument now — `back`, the address of the
+    // slice the reader is leaving, so /jobs' Back-to-Explore returns them to
+    // the panel rather than to a cold grid. It is not filter state and does not
+    // touch the mapper; the property this guard is for is that the FILTERS
+    // still arrive as one JobSearchParams object.
     expect(CODE, "the count and the link must come from one params object")
-      .toMatch(/const toBoard = \(p: JobSearchParams\): string =>/);
+      .toMatch(/const toBoard = \(p: JobSearchParams, back\?: string\): string =>/);
     expect(CODE).toMatch(/searchToQuery\(p\)/);
     // NOT ONE HAND-BUILT BOARD URL. Template-literal /jobs hrefs are what this
     // guard exists to stop; the one exception is the closure link, which builds
@@ -862,7 +888,17 @@ describe("a card's number and the page it opens agree", () => {
     // through the shared saved-search mapper — which does not emit it, and
     // should not, being shared with /jobs itself — dropped it from every link
     // on the page. One wrapper owns the spelling.
-    expect(CODE).toMatch(/return `\$\{url\}\$\{url\.includes\("\?"\) \? "&" : "\?"\}from=explore`;/);
+    // THE SPELLING MOVED INSIDE THE WRAPPER; THE PROPERTY DID NOT. toBoard now
+    // also carries `back` — the address of the exact slice the reader left, so
+    // /jobs' Back-to-Explore returns them to the panel rather than to a cold
+    // grid — so the tail is built with URLSearchParams instead of being
+    // concatenated. What this guard is for is that ONE function owns the
+    // spelling of from=explore and nothing bypasses it, which is asserted
+    // directly below rather than by pinning a template literal.
+    const tb = /const toBoard = [\s\S]{0,400}?\n\};\n/.exec(CODE)?.[0] ?? "";
+    expect(tb, "the from=explore wrapper is gone").toBeTruthy();
+    expect(tb, "the wrapper stopped emitting from=explore").toMatch(/from: "explore"/);
+    expect(tb, "the wrapper stopped routing through the shared mapper").toMatch(/searchToQuery\(p\)/);
     const uses = [...CODE.matchAll(/to=\{(?:toBoard|fieldHref)\(/g)];
     expect(uses.length, "the wrapper exists but nothing routes through it").toBeGreaterThanOrEqual(4);
     expect(CODE, "a board link bypassed the wrapper that adds from=explore")
@@ -874,11 +910,12 @@ describe("a card's number and the page it opens agree", () => {
     // route is spelled, it asks the destination's own predicate before using
     // it, and it falls back to the mapper for the uncategorised bucket, which
     // has no lander. Both halves carry from=explore.
-    const fh = /const fieldHref = [\s\S]{0,240}?;\n/.exec(CODE)?.[0] ?? "";
+    const fh = /const fieldHref = [\s\S]{0,400}?\n\};\n/.exec(CODE)?.[0] ?? "";
     expect(fh, "the field route is not spelled in one place").toBeTruthy();
-    expect(fh, "the tile does not ask the lander's own predicate").toMatch(/isBoardCategory\(id\)/);
-    expect(fh).toMatch(/\/jobs\/field\/\$\{id\}\?from=explore/);
-    expect(fh, "the bucket with no lander must fall back to the mapper").toMatch(/toBoard\(\{ category: id \}\)/);
+    expect(fh, "the row does not ask the lander's own predicate").toMatch(/isBoardCategory\(id\)/);
+    expect(fh).toMatch(/\/jobs\/field\/\$\{id\}\?\$\{tail\.toString\(\)\}/);
+    expect(fh, "the lander branch stopped emitting from=explore").toMatch(/from: "explore"/);
+    expect(fh, "the bucket with no lander must fall back to the mapper").toMatch(/toBoard\(\{ category: id \}, back\)/);
   });
 
   it("appends no filter Jobs.tsx does not read", () => {
@@ -939,10 +976,19 @@ describe("every interpolation a badge passes exists in every locale", () => {
     // for counts carried through a failed facet pass -- it has no {{time}},
     // because the whole point of it is that the pass stamp is NOT when these
     // were counted; the time it does have rides basisCarriedWhen.
-    basisWhole2: ["{{n}}", "{{fields}}", "{{time}}"],
-    basisPartial2: ["{{tiled}}", "{{all}}", "{{untiled}}", "{{fields}}", "{{time}}"],
-    basisCarried: ["{{n}}", "{{fields}}", "{{when}}"],
+    // RE-POINTED A THIRD TIME. The three basis sentences took THIRD keys when
+    // the clause describing the bucket changed meaning -- "the roles whose
+    // field we could not read from the title" blames the employer's title for
+    // a coverage gap in OUR OWN rule set, which categorize() has frozen at v9
+    // by design -- and the grid became a list of rows with a bar on each, which
+    // added the two sentences that explain what a bar's length means.
+    basisWhole3: ["{{n}}", "{{fields}}", "{{time}}"],
+    basisPartial3: ["{{tiled}}", "{{all}}", "{{untiled}}", "{{fields}}", "{{time}}"],
+    basisCarried2: ["{{n}}", "{{fields}}", "{{when}}"],
     basisCarriedWhen: ["{{time}}"],
+    barBasisAnchor: ["{{topLabel}}", "{{topN}}"],
+    barBasisSpread: ["{{smallLabel}}", "{{smallN}}", "{{biggestLabel}}", "{{biggestN}}", "{{ratio}}"],
+    halfLine: ["{{k}}", "{{above}}", "{{fieldsTotal}}", "{{rest}}", "{{below}}"],
     closureBasisNoTotal2: ["{{rows}}", "{{asked}}", "{{readable}}"],
     closureFinding: ["{{closers}}", "{{readable}}", "{{min}}"],
     checkFeedGap2: ["{{total}}", "{{when}}", "{{gap}}"],
@@ -1046,8 +1092,21 @@ describe("every per-answer action lands on a filter Jobs actually applies", () =
     // closure link, and its keys are pinned here by name.
     const patchKeys = new Set([
       ...[...CODE.matchAll(/patch: \{ (\w+):/g)].map((m) => m[1]),
-      ...[...CODE.matchAll(/toBoard\(\{ ([^}]*)\}/g)].flatMap((m) =>
-        [...m[1].matchAll(/(?:^|[\s,])(\w+):/g)].map((x) => x[1])),
+      // `[^}]*` stops at the FIRST brace, which is the spread's own closer in
+      // `toBoard({ category: id, ...(role ? { q: role } : {}), ... })` — so the
+      // keys after a conditional spread were never being read. Balanced from
+      // the call's own bracket instead, and the trailing `back` argument (an
+      // address, not a filter) is cut off with it.
+      ...[...CODE.matchAll(/toBoard\(\{/g)].flatMap((m) => {
+        const open = CODE.indexOf("{", m.index!);
+        let depth = 0;
+        let i = open;
+        for (; i < CODE.length; i++) {
+          if (CODE[i] === "{") depth += 1;
+          else if (CODE[i] === "}") { depth -= 1; if (depth === 0) break; }
+        }
+        return [...CODE.slice(open + 1, i).matchAll(/(?:^|[\s,])(\w+):/g)].map((x) => x[1]);
+      }),
     ]);
     expect(patchKeys.size, "no board-link params found — the finder broke").toBeGreaterThan(3);
     const READ_BY_JOBS = ["q", "location", "remote", "workMode", "company", "category",
@@ -1058,9 +1117,22 @@ describe("every per-answer action lands on a filter Jobs actually applies", () =
       expect(READ_BY_JOBS, `Explore sends ${k} — confirm job-search-params maps it`).toContain(k);
     }
     // The one hand-built URL, and every key on it is a param Jobs round-trips.
-    const closure = CODE.slice(CODE.indexOf("new URLSearchParams({"), CODE.indexOf("}).toString()"));
+    // ANCHORED BACKWARDS FROM THE LINK'S OWN TERMINATOR. Searching forwards for
+    // the FIRST `new URLSearchParams({` in the file stopped being the closure
+    // link the moment another one appeared above it (the /explore address this
+    // page hands the board so the board can hand it back), and the slice then
+    // spanned a thousand lines of unrelated object literals — every `word:` in
+    // them read as a param this link sends.
+    const closureEnd = CODE.indexOf("}).toString()");
+    expect(closureEnd, "the hand-built closure link moved — re-anchor, do not widen").toBeGreaterThan(-1);
+    const closure = CODE.slice(CODE.lastIndexOf("new URLSearchParams({", closureEnd), closureEnd);
+    expect(closure.length, "the closure-link slice is implausibly long — the anchor drifted")
+      .toBeLessThan(600);
     for (const k of [...closure.matchAll(/(\w+):/g)].map((m) => m[1])) {
-      expect(["q", "category", "company", "from"], `the closure link sends ?${k}=`).toContain(k);
+      // `back` joins the allow-list: it is the /explore address the reader came
+      // from, round-tripped by Jobs.tsx's lander rewrite and validated there as
+      // a path on this site before it reaches an href.
+      expect(["q", "category", "company", "from", "back"], `the closure link sends ?${k}=`).toContain(k);
     }
   });
 
@@ -1233,7 +1305,13 @@ describe("both copies of Explore's title describe the page that exists", () => {
     const SPELLED = /\b(sixteen|seventeen|eighteen|nineteen|twenty)\b/i;
     for (const f of localeFiles) {
       const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
-      for (const k of ["basisWhole2", "basisPartial2", "basisCarried"]) {
+      // THIRD KEYS, same property. The clause naming the bucket changed
+      // meaning (see the note on the mechanism clause), so the sentences were
+      // re-minted rather than edited; the spelled-count ban follows them.
+      // REQUIRED IN ALL NINE, not merely checked where defined: a "skip the
+      // locales that lack it" clause makes the guard unable to notice the very
+      // thing it exists for, and the locale pass has landed.
+      for (const k of ["basisWhole3", "basisPartial3", "basisCarried2"]) {
         expect(e[k], `${f} explore.${k} is missing`).toBeTruthy();
         expect(e[k], `${f} explore.${k} must interpolate {{fields}}`).toContain("{{fields}}");
         // English spellings only -- the point is that nobody re-introduces the
@@ -1699,8 +1777,12 @@ describe("the page says when it was measured", () => {
     // third form for counts carried through a failed facet pass. A locale VALUE
     // beats an inline default, so editing an older key in place would have left
     // eight languages asserting a basis this page stopped having.
-    expect(CODE).toMatch(/t\("explore\.basis(?:Whole2|Partial2|Carried)"/);
-    for (const dead of ["asOfCounts", "asOfCounts2", "basisWhole", "basisPartial"]) {
+    expect(CODE).toMatch(/t\("explore\.basis(?:Whole3|Partial3|Carried2)"/);
+    // basisWhole2/basisPartial2/basisCarried join the dead list: their
+    // mechanism clause blamed the employer's title for a coverage gap in our
+    // own frozen rule set, so they were re-minted rather than edited in place.
+    for (const dead of ["asOfCounts", "asOfCounts2", "basisWhole", "basisPartial",
+                        "basisWhole2", "basisPartial2", "basisCarried"]) {
       expect(CODE, `the retracted ${dead} sentence is being called again`)
         .not.toMatch(new RegExp(`t\\("explore\\.${dead}"`));
     }
@@ -2188,10 +2270,34 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // for counts carried through a failed facet pass -- it has no {{time}},
     // because the whole point of it is that the pass stamp is NOT when these
     // were counted; the time it does have rides basisCarriedWhen.
-      basisWhole2: ["{{n}}", "{{fields}}", "{{time}}"],
-      basisPartial2: ["{{tiled}}", "{{all}}", "{{untiled}}", "{{fields}}", "{{time}}"],
-      basisCarried: ["{{n}}", "{{fields}}", "{{when}}"],
+    // AND RE-POINTED A THIRD TIME, to basisWhole3/basisPartial3/basisCarried2.
+    // The three took new keys again when the clause describing the bucket
+    // changed MEANING: "the roles whose field we could not read from the title"
+    // says the employer's title was unreadable, when categorize() returns
+    // "other" because no regex in OUR OWN rule set matched — a coverage gap in
+    // a vocabulary frozen at v9 by design. Editing them in place would have
+    // left every other language telling readers the employers' data was bad.
+      basisWhole3: ["{{n}}", "{{fields}}", "{{time}}"],
+      basisPartial3: ["{{tiled}}", "{{all}}", "{{untiled}}", "{{fields}}", "{{time}}"],
+      basisCarried2: ["{{n}}", "{{fields}}", "{{when}}"],
       basisCarriedWhen: ["{{time}}"],
+      // The grid became a list of rows with a bar on each, and both sentences
+      // that explain the bars carry counts that must survive translation. A
+      // barBasisAnchor that lost {{topN}} would say a bar is measured "against the
+      // largest bucket on the board" and never say how big that is, which is
+      // the anchorless-bar defect the sentence exists to close; a halfLine that
+      // lost {{k}} would claim "these fields hold more than half" of a board
+      // without saying how many fields.
+      barBasisAnchor: ["{{topLabel}}", "{{topN}}"],
+      // AND THE RATIO CARRIES ITS OWN TWO TERMS. The spread sentence divides
+      // the largest FIELD by the smallest field; it used to print the largest
+      // BUCKET's count beside the smallest field's and then a ratio computed
+      // from neither pair, so a reader dividing the two numbers in front of
+      // them got a different answer from the one on the page. {{biggestN}} is
+      // the term that makes the arithmetic followable and it must survive
+      // translation like the rest.
+      barBasisSpread: ["{{smallLabel}}", "{{smallN}}", "{{biggestLabel}}", "{{biggestN}}", "{{ratio}}"],
+      halfLine: ["{{k}}", "{{above}}", "{{fieldsTotal}}", "{{rest}}", "{{below}}"],
       methodTileMethod3: ["{{cap}}", "{{n}}"],
       closureBasis2: ["{{inSlice}}", "{{asked}}", "{{readable}}"],
       closureBasisNoTotal2: ["{{rows}}", "{{asked}}", "{{readable}}"],

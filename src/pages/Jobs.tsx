@@ -61,6 +61,7 @@ import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
 import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
+import { honourPendingSkipLink } from "@/lib/skip-link";
 
 // user_applications gained board columns after the last typegen — untyped
 // access until Lovable regenerates types.ts.
@@ -124,27 +125,20 @@ export function opensInNewContext(e: {
   return !!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) || (e.button ?? 0) !== 0;
 }
 
-/**
- * THE SKIP LINK IS DEAD ON ARRIVAL, AND THE PRESS IS NOT RECOVERABLE LATER.
+/** THE SKIP LINK'S RECOVERY, RE-HOMED TO src/lib/skip-link.ts AND RE-EXPORTED.
  *
- * index.html ships `<a href="#main-content">` as the first focusable element of
- * every page, but the id is added by React: the prerendered shell emits a bare
- * `<main class="pt-10 pb-20">` (verified live 2026-08-25 — "main-content"
- * occurs exactly ONCE in the served /jobs HTML, in the link's own href), so for
- * the whole 1.0-2.7s hydration window the first key a keyboard user presses
- * moves nothing. The browser still writes the fragment to the URL, so the press
- * leaves a trace: when the page mounts and the target finally exists, honour it.
+ *  /explore needs the same behaviour — it is prerendered and sitemapped daily
+ *  and its <main> carried no id at all, so a keyboard user's first keystroke
+ *  moved nothing there permanently, not merely for the hydration window. It
+ *  could not import this from here: that would pull this entire module into
+ *  /explore's chunk to reach nine lines. The behaviour moved to a lib module
+ *  and both pages import it; this re-export keeps every existing importer and
+ *  guard pointed where they already are.
  *
- * The real repair is in the prerender shell (see the report on
- * scripts/prerender-seo.mjs) — this is the half that belongs to this page.
- */
-export function honourPendingSkipLink(hash: string, doc: Document = document): boolean {
-  if (hash !== "#main-content") return false;
-  const el = doc.getElementById("main-content") as HTMLElement | null;
-  if (!el) return false;
-  el.focus();
-  return doc.activeElement === el;
-}
+ *  The full note on WHY the press has to be recovered at all — the served shell
+ *  emits a bare <main>, the browser writes the fragment anyway — lives with the
+ *  function. */
+export { honourPendingSkipLink } from "@/lib/skip-link";
 
 interface BoardJob {
   id: string;
@@ -1793,6 +1787,26 @@ export default function Jobs() {
   // strips unknown params), so we can offer a "Back to Explore" link instead
   // of leaving the user on a filtered board with no way back.
   const [cameFromExplore] = useState(() => initial.get("from") === "explore");
+  /** THE EXACT SLICE THE READER LEFT, IF THEY HANDED US ONE.
+   *
+   *  `from=explore` says only THAT they came from Explore, so the way back
+   *  landed them on a cold grid with the field they had opened closed again and
+   *  every count in that panel re-fetched from scratch. Explore now writes the
+   *  slice it built into its own address (?i=fields&f=<field>&r=<role>) and
+   *  passes that address here as `back`, so one click returns to the panel
+   *  rather than to the page it was on.
+   *
+   *  VALIDATED AS A PATH ON THIS SITE, NEVER FOLLOWED AS GIVEN. This value
+   *  arrives in a URL a stranger can compose, and it ends up in an href: a bare
+   *  passthrough is an open redirect, and "//evil.example" is a
+   *  PROTOCOL-RELATIVE URL that a browser treats as another origin even though
+   *  it starts with a slash. So it must begin "/explore" and must not begin
+   *  "//" — anything else falls back to the derived address below and no link
+   *  we render can leave this site. */
+  const [backToExplore] = useState(() => {
+    const v = initial.get("back");
+    return v && v.startsWith("/explore") && !v.startsWith("//") ? v : null;
+  });
   // MULTI-SELECT, comma-joined, exactly like category and country. The server
   // has always taken a list here — filters.ts `asBands` accepts both an array
   // and a comma string, and names any member it could not use — while this
@@ -3092,6 +3106,14 @@ export default function Jobs() {
     // took the Back-to-Explore affordance with it.
     const fromParam = new URLSearchParams(window.location.search).get("from");
     if (fromParam) p.set("from", fromParam);
+    // `back` is the same shape of parameter as `from` and dies the same way:
+    // read once at mount, never filter state, and deleted by this rewrite
+    // unless it is re-added BY NAME — on both the query form here and the
+    // lander form below. It carries the slice Explore built, so losing it
+    // silently downgrades "back to the panel you left" to "back to a cold
+    // grid" on reload and on every shared link.
+    const backParam = new URLSearchParams(window.location.search).get("back");
+    if (backParam) p.set("back", backParam);
     const qs = p.toString();
     // THE LANDER FORM IS A REWRITE, NOT A PASSTHROUGH. Both lander branches
     // below build their URL by hand and `return` before `qs` is ever used, so
@@ -3118,6 +3140,10 @@ export default function Jobs() {
     const landerKeep = new URLSearchParams();
     if (jobParam) landerKeep.set("job", jobParam);
     if (fromParam) landerKeep.set("from", fromParam);
+    // ONE PLACE, BY NAME. cbb3f18a collapsed the two lander branches onto this
+    // single params object precisely so the next non-filter parameter would be
+    // one line rather than two hand-built strings — `back` is that parameter.
+    if (backParam) landerKeep.set("back", backParam);
     const landerQs = landerKeep.toString();
     // !workMode belongs in both gates: without it, picking Hybrid on a lander
     // kept the bare lander URL and reload/share silently dropped the filter.
@@ -6607,9 +6633,19 @@ export default function Jobs() {
         </p>
         <div className="container max-w-4xl lg:max-w-[1400px]">
           {/* Back to Explore: when the user arrived from a discovery collection,
-              give them a clear way back so the board isn't a one-way dead end. */}
+              give them a clear way back so the board isn't a one-way dead end.
+
+              AND BACK TO WHAT THEY LEFT, NOT TO THE PAGE IT WAS ON. A bare
+              /explore reopened the grid with the field closed, which threw away
+              the panel the reader had assembled and made Explore re-fire ~22
+              probes when they rebuilt it. `back` carries the exact slice when
+              Explore sent one (validated at mount — see backToExplore); on a
+              field lander with no `back`, the field IS the slice, so it is
+              derived here rather than guessed. */}
           {cameFromExplore && (
-            <Link to="/explore" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-2 -mt-2">
+            <Link
+              to={backToExplore ?? (landerCategory ? `/explore?i=fields&f=${encodeURIComponent(landerCategory)}` : "/explore")}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-2 -mt-2">
               <ChevronDown className="w-3.5 h-3.5 rotate-90" />
               {t("jobsPage.backToExplore", "Back to Explore")}
             </Link>
@@ -6701,14 +6737,27 @@ export default function Jobs() {
               // landerCategory: on a lander the category IS the whole filter so
               // `total` is category-scoped, whereas countCategory's other case
               // reaches here only via the facet, which is exact.
-              // THE UNCATEGORISED BUCKET GETS ITS OWN SENTENCE, because
-              // "174,535 live Other openings" names a field that does not
-              // exist. It is not a field: it is the roles whose field we could
-              // not read from the title, and /explore's tile, its method panel
-              // and the prerendered document all already say exactly that. The
-              // number is the same facet integer the branch below prints.
+              // THE UNCATEGORISED BUCKET GETS ITS OWN SENTENCE, because "N live
+              // Other openings" names a field that does not exist. It is not a
+              // field, and /explore's rows, its method panel and the
+              // prerendered document all already say exactly that. The number
+              // is the same facet integer the branch below prints.
+              //
+              // AND THE MECHANISM CLAUSE IS FIXED HERE TOO. It said "whose
+              // field we could not read from the title", which describes a
+              // failure to READ the employer's data. categorize() returns
+              // "other" when no regex in OUR OWN rule set matched the
+              // department or the title — a coverage gap in a vocabulary
+              // frozen at v9 by design, not a defect in what the employer
+              // published. The reader was being told the employers' data was
+              // bad when it was ours, and never learned that ordinary
+              // healthcare and engineering roles sit in the bucket their field
+              // filter just excluded. inclUncatTip forty lines down has said
+              // "can't be sorted into a field" the whole time; this line now
+              // agrees with it. NEW KEY, because the meaning changed and a
+              // locale VALUE beats an inline default.
               : countCategory === "other" && (data?.categories?.other ?? 0) > 0
-              ? t("jobsPage.uncatCountLine", "{{total}} live openings whose field we could not read from the title — every one straight from the company's own hiring system.", {
+              ? t("jobsPage.uncatCountLine2", "{{total}} live openings we could not sort into a field — ordinary roles our own field rules do not recognise, every one straight from the company's own hiring system.", {
                   total: (data?.categories?.other ?? 0).toLocaleString(),
                 })
               : countCategory && ((data?.categories?.[countCategory] ?? 0) > 0 || (landerCategory && (data?.total ?? 0) > 0))

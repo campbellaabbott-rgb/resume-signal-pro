@@ -66,6 +66,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
   // whole point of which was to stop being stale silently goes stale in the
   // other direction. Live read or no rewrite.
   let facetsSource = null;
+  // THE DAY THE COUNTS THIS BAKE PRINTS WERE TAKEN. A live read is today's; a
+  // snapshot-fed build is the day that snapshot was written, and the /explore
+  // document says which — a count printed to a crawler with no date basis is
+  // the same defect as one printed to a reader with none.
+  let facetsSavedAt = null;
   try {
     // Local builds read .env; CI/hosted builders inject process.env instead.
     let envText = "";
@@ -178,6 +183,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       if (snap && typeof snap.total === "number" && Array.isArray(snap.companiesFacet) && snap.companiesFacet.length > 100) {
         boardFacets = snap;
         facetsSource = "snapshot";
+        facetsSavedAt = typeof snap.savedAt === "string" ? snap.savedAt : null;
         console.log(`[prerender-seo] live facets unreachable — committed snapshot from ${snap.savedAt} (counts are that bake's measurements)`);
       }
     } catch { /* no snapshot yet — pages fall back to countless copy, sitemap ratchet guards */ }
@@ -1803,7 +1809,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Explore every field on the board",
-          description: "Every field on the board, ordered by how many roles are open in it right now, plus the bucket whose field could not be read from the title. Open a field for the roles inside it priced by live counts, the narrowings that say how much of the board each one can even see, and what our own closure record does and does not say about the employers hiring in that slice.",
+          description: "Every field on the board, ordered by how many roles are open in it right now and each printed with its count, plus the bucket of roles our own field rules could not sort. Open a field for the roles inside it priced by live counts, the narrowings that say how much of the board each one can even see, and what our own closure record does and does not say about the employers hiring in that slice.",
           url: `${SITE}/explore`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         },
@@ -1811,10 +1817,48 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Explore" }])}
         <h1 class="text-3xl font-bold mb-3">Start with your field. Land on a list you can actually read.</h1>
-        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there. A field's count is the board's own facet sweep, which runs four times an hour and stamps the page with the time it was taken; everything you open is counted live at the moment you click it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
+        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now and drawn to scale against the largest bucket on the board, so the spread between the deepest field and the shallowest is visible rather than asserted. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there. A field's count is the board's own facet sweep, which runs four times an hour and stamps the page with the time it was taken; everything you open is counted live at the moment you click it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">Every field on the board</h2>
-          <div class="flex flex-wrap gap-2 text-xs">${CATEGORY_LANDERS.map(([slug, l]) => pill(`/jobs/field/${slug}`, `${l} jobs →`)).join("")}${pill("/jobs?category=other", "Roles with no field we could read →")}</div>
-          <p class="text-xs text-muted-foreground mt-3">Seventeen fields plus the roles whose field we could not read from the title. Every posting we serve carries exactly one of these, so between them they reach the whole board — the last one is not a residue, it is a large part of the inventory that no field tile can see.</p>
+          ${(() => {
+            // THE DOCUMENT SAID THE FIELDS WERE "ordered by how many roles are
+            // open in it right now" AND THEN RENDERED THEM IN HAND-DECLARATION
+            // ORDER, with no counts at all: design third at ~4,236 and
+            // operations eleventh at ~143,092, a 34x inversion under a sentence
+            // claiming the opposite. It was invisible because the ordering
+            // claim and the ordering lived in two places and only one of them
+            // was data. boardFacets.categoriesFacet is already fetched at build
+            // time and already consumed by the field landers below, so the
+            // ordering claim now comes off the same numbers it describes — and
+            // each pill PRINTS its integer, which is what makes the claim
+            // checkable by the reader rather than only by us.
+            const cat = boardFacets?.categoriesFacet ?? {};
+            const nOf = (slug) => (typeof cat[slug] === "number" && cat[slug] > 0 ? cat[slug] : null);
+            const ordered = [...CATEGORY_LANDERS].sort((a, b) => (nOf(b[0]) ?? 0) - (nOf(a[0]) ?? 0));
+            const fmtN = (n) => n.toLocaleString("en-US");
+            const fieldPills = ordered
+              .map(([slug, l]) => pill(`/jobs/field/${slug}`, nOf(slug) ? `${l} — ${fmtN(nOf(slug))} →` : `${l} jobs →`))
+              .join("");
+            // 'other' IS PINNED LAST AND IS NOT SORTED WITH THE FIELDS. It is
+            // the largest bucket on the board, so sorting it by size would put
+            // our own vocabulary's coverage gap at the head of a list of
+            // fields and present it as the biggest one.
+            const otherN = nOf("other");
+            const otherPill = pill("/jobs?category=other", otherN
+              ? `Roles we could not sort into a field — ${fmtN(otherN)} →`
+              : "Roles we could not sort into a field →");
+            // AND THE ORDERING CLAIM IS GATED ON THE DATA THAT CREATES IT. A
+            // build that could reach no facet renders the same pills in
+            // declaration order, and must not go on calling that an ordering.
+            const anyCount = ordered.some(([slug]) => nOf(slug) !== null);
+            const asOf = facetsSource === "snapshot"
+              ? (facetsSavedAt ? ` Counts as at ${facetsSavedAt}, from the last build that could reach the board.` : " Counts are from the last build that could reach the board; we hold no date for them.")
+              : ` Counts as at ${new Date().toISOString().slice(0, 10)}, read from the board's own field scan when this page was built.`;
+            const basis = anyCount
+              ? `Ordered by how many roles are open in each one, largest first.${asOf} The live page re-reads these when it opens in a browser.`
+              : "We could not read the board's field counts when this page was built, so these are in no particular order and carry no numbers.";
+            return `<div class="flex flex-wrap gap-2 text-xs">${fieldPills}${otherPill}</div>
+          <p class="text-xs text-muted-foreground mt-3">${basis} Seventeen fields plus the roles we could not sort into a field: a posting lands in that last bucket when no rule of ours matched its department or its title, which is a gap in our own vocabulary rather than something missing from what the employer published. Every posting we serve carries exactly one of these, so between them they reach the whole board — and the last one is not a residue, it is a large part of the inventory that no field page can see.</p>`;
+          })()}
         </section>
         <div class="space-y-3 mb-8">
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The roles inside a field, priced</h2><p class="text-xs text-muted-foreground">Role names are ours, not the board's. The number beside one is a live count of exactly the search that row opens, so a role we named that matches nothing is left out rather than shown as zero.</p></div>

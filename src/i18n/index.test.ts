@@ -85,13 +85,84 @@ describe("locale files", () => {
 
   const enKeys = new Set(flattenKeys(JSON.parse(readFileSync(join(localesDir, "en.json"), "utf8"))));
 
+  /* A COPY CHANGE THAT LANDS IN ENGLISH BEFORE ITS TRANSLATION, DECLARED
+   * RATHER THAN TOLERATED.
+   *
+   * A change whose ENGLISH half is owned by one workflow and whose seven other
+   * locales are written by a later pass leaves this guard red for the length of
+   * the window between them — and a guard left red is a guard someone
+   * eventually deletes, taking the check for the NEXT missing key with it. So
+   * the window is declared here instead, and it is bounded exactly the three
+   * ways this repository already bounds the same exemption in
+   * explore-claims.test.ts:
+   *
+   *   1. It is an EXPLICIT LIST of keys, not a prefix or a pattern. A key that
+   *      is not on it still fails, in every locale.
+   *   2. It is CAPPED. A list that can grow to the size of the gap is not a
+   *      bound, it is a mute button.
+   *   3. It CANNOT OUTLIVE ITS REASON: once the locale pass lands a key
+   *      everywhere (or removes a retired one everywhere), the entry has to
+   *      come off or the assertion below goes red. The exemption expires on its
+   *      own rather than being remembered.
+   *
+   * A key on PENDING_TRANSLATION renders its inline English default in the
+   * languages that lack it: a true sentence in the wrong language, which is a
+   * degradation, not a raw key and not a stale claim. A key on RETIRED_PENDING
+   * is the opposite direction — deleted from en.json, still orphaned in the
+   * other files, called by nothing, so it renders nowhere.
+   *
+   * ── 2026-09-09, the /explore field rows — WINDOW CLOSED ──────────────────
+   * The grid became a list of rows with a bar on each (new copy for the bar's
+   * scale and for the point where the cumulative count passes half), and the
+   * clause describing the uncategorised bucket changed MEANING: it said those
+   * were "the roles whose field we could not read from the title", which blames
+   * the employer's title for a coverage gap in OUR OWN rule set — categorize()
+   * returns "other" when no regex of ours matched, and that vocabulary is
+   * frozen at v9 by design. Every affected sentence took a NEW key, because a
+   * locale VALUE beats an inline English default and editing one in place would
+   * have left seven languages making the claim the page stopped making.
+   *
+   * That window is CLOSED: all fourteen new keys landed in all nine locales and
+   * all nine retired keys came out of all nine, so both lists are empty and the
+   * parity check below is back at full strength — no key is exempt. The lists
+   * stay declared, empty, because the mechanism is the part worth keeping: the
+   * next English-first change declares its window here instead of leaving this
+   * file red, and the assertion above is what forces it back to empty again.
+   */
+  const PENDING_TRANSLATION: string[] = [];
+  const RETIRED_PENDING: string[] = [];
+  const PARITY_EXEMPTION_CAP = 40;
+
+  it("the translation window is bounded and cannot outlive its reason", () => {
+    expect(PENDING_TRANSLATION.length + RETIRED_PENDING.length,
+      `the parity exemption has grown past ${PARITY_EXEMPTION_CAP} keys — run the locale pass instead of widening this`)
+      .toBeLessThanOrEqual(PARITY_EXEMPTION_CAP);
+    // English is the source of every inline default: a key exempted from the
+    // OTHER locales must still exist here, or the exemption would be hiding a
+    // key that exists nowhere at all.
+    for (const k of PENDING_TRANSLATION) {
+      expect(enKeys.has(k), `${k} is exempted from translation but is not in en.json either`).toBe(true);
+    }
+    for (const k of RETIRED_PENDING) {
+      expect(enKeys.has(k), `${k} is listed as retired but is still in en.json`).toBe(false);
+    }
+    // …and once the pass has landed, the entry has to come off.
+    const others = localeFiles.filter((f) => f !== "en.json");
+    const landed = PENDING_TRANSLATION.filter((k) => others.every((f) =>
+      new Set(flattenKeys(JSON.parse(readFileSync(join(localesDir, f), "utf8")))).has(k)));
+    expect(landed, `translated everywhere now — remove from PENDING_TRANSLATION: ${landed.join(", ")}`).toEqual([]);
+    const cleared = RETIRED_PENDING.filter((k) => others.every((f) =>
+      !new Set(flattenKeys(JSON.parse(readFileSync(join(localesDir, f), "utf8")))).has(k)));
+    expect(cleared, `removed everywhere now — remove from RETIRED_PENDING: ${cleared.join(", ")}`).toEqual([]);
+  });
+
   for (const file of localeFiles) {
     if (file === "en.json") continue;
 
     it(`${file} has the same translation keys as en.json (no missing, no extra)`, () => {
       const keys = new Set(flattenKeys(JSON.parse(readFileSync(join(localesDir, file), "utf8"))));
-      const missing = [...enKeys].filter((k) => !keys.has(k));
-      const extra = [...keys].filter((k) => !enKeys.has(k));
+      const missing = [...enKeys].filter((k) => !keys.has(k) && !PENDING_TRANSLATION.includes(k));
+      const extra = [...keys].filter((k) => !enKeys.has(k) && !RETIRED_PENDING.includes(k));
       expect(missing, `${file} is missing keys present in en.json (will silently fall back to English text)`).toEqual([]);
       expect(extra, `${file} has keys not present in en.json (likely a typo, or en.json itself is missing this key)`).toEqual([]);
     });

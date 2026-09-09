@@ -129,6 +129,12 @@ import { Footer } from "@/components/Footer";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { supabase } from "@/integrations/supabase/client";
+// THE SKIP-LINK RECOVERY, FROM src/lib RATHER THAN FROM Jobs.tsx. It was
+// declared in Jobs.tsx and importing it from there would pull that 10.6k-line
+// board page — every control, the detail panel, the fit scorer — into this
+// page's chunk to reach nine lines. It is a shared behaviour with two callers,
+// so it is a lib module; Jobs.tsx re-exports it for its own importers.
+import { honourPendingSkipLink } from "@/lib/skip-link";
 import { useAuth } from "@/contexts/AuthContext";
 // ONE MAPPER, TWO CONSUMERS, SO A NUMBER AND ITS DESTINATION CANNOT DRIFT.
 // Every priced thing on this page is a JobSearchParams object that is mapped
@@ -168,9 +174,10 @@ import { BOARD_CATEGORY_SLUGS, isBoardCategory } from "@/lib/job-board-categorie
  *
  *  Wrapped rather than added to the mapper so ONE spelling of `from=explore`
  *  exists on this page and a call site cannot quietly omit it. */
-const toBoard = (p: JobSearchParams): string => {
+const toBoard = (p: JobSearchParams, back?: string): string => {
   const url = searchToQuery(p);
-  return `${url}${url.includes("?") ? "&" : "?"}from=explore`;
+  const tail = new URLSearchParams({ from: "explore", ...(back ? { back } : {}) });
+  return `${url}${url.includes("?") ? "&" : "?"}${tail.toString()}`;
 };
 
 /** WHERE A FIELD TILE GOES, AND WHY IT IS NOT toBoard({category}).
@@ -210,8 +217,10 @@ const toBoard = (p: JobSearchParams): string => {
  *  not only when a ROUTE PARAM produced it, so /jobs?category=other prints the
  *  same integer this tile does. Tile and destination, one scan, as everywhere
  *  else on this grid. */
-const fieldHref = (id: string): string =>
-  isBoardCategory(id) ? `/jobs/field/${id}?from=explore` : toBoard({ category: id });
+const fieldHref = (id: string, back?: string): string => {
+  const tail = new URLSearchParams({ from: "explore", ...(back ? { back } : {}) });
+  return isBoardCategory(id) ? `/jobs/field/${id}?${tail.toString()}` : toBoard({ category: id }, back);
+};
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown; error?: unknown }> }).rpc(fn, args);
@@ -385,18 +394,34 @@ const ROLE_ROW_MIN = 25;
  *  BOARD_CATEGORY_SLUGS, so the destination initialises with the bucket
  *  selected.
  *
- *  AND THAT ROUTE IS ALSO WHY THIS TILE CARRIES NO NUMBER. The board's facet
- *  does hold a count for it (174,535, measured — a fifth of the servable board,
- *  the single largest bucket on the grid). But `other` is deliberately absent
- *  from BOARD_CATEGORY_SLUGS, so there is no /jobs/field/other, so the one
- *  destination this tile can reach is the generic board — whose hero prints the
- *  BOARD-WIDE total. Printing 174,535 on a tile that opens a page reading
- *  815,755 is the precise defect this pass removed from the other seventeen,
- *  and it is not worth reintroducing for one tile. The bucket keeps its tile,
- *  because it is a door to rows no field tile reaches, and it says in words
- *  that it makes no claim about depth — the same treatment a field under the
- *  scan's floor has always had. The day `other` gets a lander of its own is the
- *  day this tile may carry its count, and not before. */
+ *  WHAT THIS BUCKET IS, AND THE SENTENCE THAT GOT IT WRONG FOR MONTHS.
+ *  categorize() returns "other" when NO REGEX IN OUR OWN RULE SET matched the
+ *  posting's department or its title. That is a coverage gap in a vocabulary
+ *  this repository froze at v9 BY DESIGN — it is not a failure to read anything
+ *  the employer wrote. Five strings across nine locales and the prerendered
+ *  document all said "the roles whose field we could not READ FROM THE TITLE",
+ *  which tells a reader the employers' data was bad when the limit was ours,
+ *  and hides the consequence that matters: ordinary healthcare and engineering
+ *  roles are sitting in the bucket the reader's field filter just excluded.
+ *  Jobs.tsx's own inclUncatTip has said "can't be sorted into a field" the
+ *  whole time. Every surface says that now.
+ *
+ *  NO FIGURE IS QUOTED HERE ANY MORE. This comment used to carry the bucket's
+ *  count and a board total as bare literals, both measured on one day and
+ *  neither derivable from anything in this file — and the live facet had
+ *  already moved past the bucket's by sixty-seven roles while the comment went
+ *  on stating it. A number in a comment is a claim with no query behind it and
+ *  nothing to notice when it goes stale, and this page's standing rule refuses
+ *  exactly that. The bucket's size is read from the facet at render time and
+ *  rendered in one place.
+ *
+ *  ITS ROW DOES CARRY THAT COUNT. The rule was never "the bucket gets no
+ *  number", it was "no number without a destination that prints it back":
+ *  /jobs?category=other was printing the board-wide total over the bucket's own
+ *  list, and that is fixed at the destination (Jobs.tsx countCategory), so the
+ *  row and the page it opens are one integer read twice, exactly like the
+ *  seventeen fields. What its row must NOT do is read as a field — hence the
+ *  muted fill on its bar, its fixed last position, and its own row note. */
 const UNCATEGORISED = "other";
 
 /** HOW MANY ROLE NAMES RIDE THE TILE FACE.
@@ -1187,6 +1212,22 @@ function Section({ icon: Icon, title, blurb, note, children }: { icon: LucideIco
   );
 }
 
+/** THE WINDOW ON A CACHED COUNT — see the note on rolePriceCache. Five minutes,
+ *  module scope so the two caches cannot drift apart and so the predicate is not
+ *  re-made on every render of a page that measures things. */
+const PRICE_CACHE_MS = 5 * 60 * 1000;
+
+/** ONE PREDICATE FOR BOTH CACHES, so a window added to one cannot be forgotten
+ *  in the other. A stale entry is DELETED rather than merely ignored: the Map is
+ *  the only thing holding those numbers, and an expired reading is not a
+ *  measurement any more. */
+function freshEntry<T extends { at: number }>(m: Map<string, T>, key: string): T | null {
+  const held = m.get(key);
+  if (!held) return null;
+  if (Date.now() - held.at > PRICE_CACHE_MS) { m.delete(key); return null; }
+  return held;
+}
+
 export default function Explore() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -1310,21 +1351,165 @@ export default function Explore() {
     })();
   }, []);
 
+  // ── THE READER'S SLICE HAS AN ADDRESS ────────────────────────────────────
+  //
+  // WHAT WAS WRONG. Only `i` was in the URL. openField, role and the chips were
+  // React state, so the slice this page spends roughly twenty-three edge
+  // invocations building could not be shared, a reload threw it away, and Back
+  // left the page instead of closing the panel — on the one surface whose whole
+  // purpose is to assemble a slice worth keeping.
+  //
+  // `f` AND `r` NOW RIDE BESIDE `i`, AND BOTH ARE VALIDATED BY MEMBERSHIP.
+  // A `r` read off the URL is handed to priceSlice as `q`, which makes it an
+  // ARBITRARY SEARCH published under our sentence: without this, a shared link
+  // would make the page print a live count for any string a stranger chose,
+  // under a heading reading "The biggest roles in Healthcare". A regex would
+  // not fix that — "cheap rolex" is a perfectly well-formed role name. The only
+  // honest test is that the value is one WE named for that field, so it is
+  // FIELD_ROLES[field].includes(v) and nothing else. `f` is tested the same
+  // way, against the slugs the destination itself accepts plus the bucket.
+  const readSlice = useCallback((search: string) => {
+    const q = new URLSearchParams(search);
+    const f = q.get("f");
+    const field = f && (f === UNCATEGORISED || (BOARD_CATEGORY_SLUGS as readonly string[]).includes(f)) ? f : null;
+    const r = q.get("r");
+    const named = field && r && (FIELD_ROLES[field] ?? []).includes(r) ? r : null;
+    const i = q.get("i");
+    return { intent: isIntent(i) ? i : DEFAULT_INTENT, field, role: named };
+  }, []);
+
+  /** The address for a given slice, built from the CURRENT one so nothing else
+   *  in the query string (a campaign tag, a locale override) is dropped by a
+   *  panel opening. */
+  const sliceHref = useCallback((nextIntent: Intent, field: string | null, r: string | null) => {
+    const u = new URL(window.location.href);
+    u.searchParams.set("i", nextIntent);
+    if (field) u.searchParams.set("f", field); else u.searchParams.delete("f");
+    if (r) u.searchParams.set("r", r); else u.searchParams.delete("r");
+    return `${u.pathname}${u.search}${u.hash}`;
+  }, []);
+
+  // A SKIP-LINK PRESS THAT LANDED DURING HYDRATION IS STILL A PRESS. The served
+  // shell emits a bare <main>, so the target above does not exist until React
+  // mounts; the browser writes the fragment anyway, so the intent survives.
+  useEffect(() => { honourPendingSkipLink(window.location.hash); }, []);
+
+  // ON MOUNT, HYDRATE FROM THE ADDRESS — and scroll the panel into view, because
+  // a shared link to the eleventh row opens a panel below the fold and reads as
+  // a page that ignored the link.
+  useEffect(() => {
+    const s = readSlice(window.location.search);
+    setIntent(s.intent);
+    if (!s.field) return;
+    setOpenField(s.field);
+    setRole(s.role);
+    // After paint: the row does not exist until the grid has rendered.
+    const id = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`field-${s.field}`);
+      // FEATURE-TESTED, NOT ASSUMED. scrollIntoView is absent in jsdom and in
+      // any non-browser render, and a missing scroll is a cosmetic loss while a
+      // TypeError here would take the whole page down on mount — the panel is
+      // already open and correct by this point.
+      if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [readSlice]);
+
+  // AND SYNC BACK ON popstate, WHICH IS THE HALF THAT IS EASY TO LEAVE OUT.
+  //
+  // history.pushState and history.replaceState do NOT notify react-router, and
+  // this file already documents that exact mechanism about Jobs.tsx's own
+  // rewrite (see the note on fieldHref). Writing the address without listening
+  // for the Back that unwinds it is the failure that "looks correct": the URL
+  // would change while openField stayed where it was, so Back would silently
+  // desynchronise the page from its own address. The state is DERIVED from the
+  // address here rather than mirrored — whatever the address says after a
+  // popstate is what the page shows, including "no field at all".
+  useEffect(() => {
+    const onPop = () => {
+      const s = readSlice(window.location.search);
+      setIntent(s.intent);
+      setOpenField(s.field);
+      setRole(s.role);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [readSlice]);
+
   // The chosen answer lives in the URL, so it is shareable, survives Back, and
   // a crawler following ?i=check sees the employer check. A RETIRED id — the
   // five deleted leaderboards — is not an Intent and falls through to
   // DEFAULT_INTENT rather than landing a reader on something their link did not
   // name.
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("i");
-    if (isIntent(q)) setIntent(q);
-  }, []);
+  //
+  // replaceState, NOT push: switching between two answers is not a navigation,
+  // and it must not sit between the reader and the Back that closes their panel.
   const chooseIntent = (next: Intent) => {
     setIntent(next);
     const u = new URL(window.location.href);
     u.searchParams.set("i", next);
     window.history.replaceState(null, "", u.toString());
   };
+
+  /** OPENING A ROW IS A NAVIGATION; CLOSING IT AND NARROWING IT ARE NOT.
+   *
+   *  pushState on open, so ONE Back closes the panel and the NEXT leaves the
+   *  page — which is what a reader who opened a panel expects Back to do, and
+   *  what it did not do before. replaceState on close and on a role change,
+   *  because pushing there would ADD a second entry to unwind for a gesture
+   *  that navigated nowhere.
+   *
+   *  WHAT THIS COSTS, STATED RATHER THAN CLAIMED AWAY: replacing the entry does
+   *  not REMOVE it. Open a field and close it by clicking the same row again
+   *  and two adjacent entries now render the identical closed page, so the
+   *  reader's next Back pops between them and nothing on screen moves; the
+   *  second leaves. One swallowed Back after a close-by-click.
+   *
+   *  THE OBVIOUS FIX IS WORSE, which is why it is not here. Calling
+   *  history.back() on close unwinds the entry the open created — but only when
+   *  that entry is the one below. Open Healthcare, then open Design (a second
+   *  push), then close Design, and back() lands on the Healthcare entry and
+   *  RE-OPENS a panel the reader was closing. Swapping a Back that does nothing
+   *  for a close that opens something else is not a repair, and no counter kept
+   *  in a ref survives the reader navigating away and returning. */
+  const openTile = (id: string) => {
+    const next = openField === id ? null : id;
+    setOpenField(next);
+    setRole(null);
+    const href = sliceHref(intent, next, null);
+    if (next) window.history.pushState(null, "", href);
+    else window.history.replaceState(null, "", href);
+  };
+
+  const chooseRole = (name: string) => {
+    const next = role === name ? null : name;
+    setRole(next);
+    window.history.replaceState(null, "", sliceHref(intent, openField, next));
+  };
+
+  /** THE ADDRESS THIS PAGE HANDS THE BOARD SO THE BOARD CAN HAND IT BACK.
+   *
+   *  `from=explore` only told /jobs THAT the reader came from here, so its
+   *  Back-to-Explore link returned them to a cold grid — panel closed, slice
+   *  gone, and every count in it re-fetched when they rebuilt it. This is the
+   *  slice itself, as an address, carried on the link and re-added by name in
+   *  Jobs.tsx's lander rewrite.
+   *
+   *  THE INTENT IS PART OF THE SLICE, NOT A CONSTANT. It was pinned to
+   *  "fields", which is right for the seventeen field rows and WRONG for the
+   *  employer-check tab — the only other outbound link on this page. A reader
+   *  who checked an employer and clicked through landed on a company lander,
+   *  where there is no `back` to honour and no landerCategory to derive one
+   *  from, so Jobs.tsx fell through to a bare "/explore": their tab, the
+   *  employer they typed and the results they were reading, all gone. That is
+   *  the exact one-way trip this whole mechanism exists to close, and it was
+   *  left open on half the page. */
+  const backHere = useCallback((field: string | null, r: string | null, i: Intent = "fields") => {
+    const p = new URLSearchParams({ i });
+    if (field) p.set("f", field);
+    if (r) p.set("r", r);
+    return `/explore?${p.toString()}`;
+  }, []);
 
   // Debounced typeahead. 250ms and 3 chars keep this to roughly one request per
   // word typed, against a single-row lookup — no aggregate on the request path.
@@ -1368,15 +1553,15 @@ export default function Explore() {
     return nf(p.total);
   }, [i18n.language, nf]);
 
-  /** THE EIGHTEEN TILES, ORDERED BY THE FACET'S OWN COUNT, WITH THE
+  /** THE EIGHTEEN ROWS, ORDERED BY THE FACET'S OWN COUNT, WITH THE
    *  UNCATEGORISED BUCKET ALWAYS LAST.
    *
    *  Seventeen fields plus the bucket. The bucket does not compete for position
-   *  by size — it is not a field, it is the rows whose field could not be read
-   *  from the title, and sorting it into the middle of a list of fields would
-   *  present it as one. It is also the one tile that carries no number (see
-   *  UNCATEGORISED), so it could not be ranked against the others honestly even
-   *  if it were a field.
+   *  by size — it is not a field, it is the roles NO RULE OF OURS could sort
+   *  into one, and sorting it into the middle of a list of fields would present
+   *  it as one. Its count comes from the same facet row as every field's and is
+   *  rendered exactly like theirs; what its row must not do is READ as a field,
+   *  which is why its bar is muted and its position fixed rather than earned.
    *
    *  `n` IS null, NEVER 0, FOR A FIELD THE FACET DOES NOT MENTION. The facet
    *  omits an empty category rather than sending a zero, and a tile with no
@@ -1409,7 +1594,7 @@ export default function Explore() {
    *  every tile.
    *
    *  `untiled` IS THE ONE THING THAT COULD MAKE IT NOT A PARTITION: a category
-   *  VALUE the board starts emitting that this page has no tile for. It is zero
+   *  VALUE the board starts emitting that this page has no row for. It is zero
    *  today (measured: the facet's eighteen keys are exactly
    *  BOARD_CATEGORY_SLUGS plus `other`), and if it ever is not, the sentence
    *  names the remainder rather than quietly absorbing it into "every posting
@@ -1427,6 +1612,76 @@ export default function Explore() {
     if (all <= 0 || tiled <= 0) return null;
     return { all, tiled, untiled: all - tiled };
   }, [facet]);
+
+  /** THE SCALE THE BARS ARE DRAWN ON, AND THE TWO SENTENCES THAT EXPLAIN IT —
+   *  ALL OF IT DERIVED, IN ONE RENDER, FROM THE MAP THE BARS THEMSELVES USE.
+   *
+   *  THE ANCHOR HAS EXACTLY ONE HONEST CHOICE, and the two rejected ones are
+   *  rejected for measurable reasons rather than for taste:
+   *
+   *    the board total — every bar becomes a sliver (the largest is ~21% of it,
+   *      the smallest 0.5%), so the comparison the bars exist to make is
+   *      invisible and the grid reads as "nothing here is big";
+   *    the largest FIELD — the uncategorised bucket is LARGER than the largest
+   *      field, so its bar would overflow its own track by 122%. A bar that
+   *      cannot be drawn is not a scale.
+   *
+   *  So: the max over all EIGHTEEN buckets. The sentence names it in words, as
+   *  "the largest bucket on the board", because a reader who cannot see what
+   *  100% means cannot read any of the other seventeen marks.
+   *
+   *  LINEAR AND ZERO-ORIGIN, WITH NO MINIMUM WIDTH. log10 would draw Design at
+   *  about 71% of Operations' length, and the spread between them IS the thing
+   *  being made visible; a min-width floor would make the smallest fields lie in
+   *  exactly the direction this page exists to stop them lying in. The smallest
+   *  field's mark is a few pixels wide on a phone: small, legible, and true.
+   *
+   *  `ratio` COMPARES LIKE WITH LIKE — largest FIELD against smallest FIELD, not
+   *  the bucket against a field. The bucket is not a field, and a sentence that
+   *  divided it by Design would be comparing our vocabulary's coverage gap with
+   *  a job market.
+   *
+   *  `k` IS NEVER A LITERAL. The half-line's "these {{k}} fields" is computed by
+   *  walking the rendered order until the cumulative sum passes half; a facet
+   *  that moves must not leave nine locales saying "three". The SEVENTEEN FIELDS
+   *  are the population for that sum — the bucket is excluded from both the
+   *  numerator and the denominator, because "the roles whose field we could
+   *  sort" is precisely what it is not. */
+  const scale = useMemo(() => {
+    if (!facet) return null;
+    const counted = tiles.filter((r): r is { id: string; n: number } => typeof r.n === "number" && r.n > 0);
+    if (counted.length === 0) return null;
+    const top = counted.reduce((a, b) => (b.n > a.n ? b : a));
+    if (top.n <= 0) return null;
+    const fields = counted.filter((r) => r.id !== UNCATEGORISED);
+    // TWO FIELDS OR NO SENTENCE. A ratio needs two terms and a half-line needs a
+    // remainder; with fewer, the page draws bars and says nothing about them
+    // rather than publishing arithmetic over one number.
+    if (fields.length < 2) return { anchorN: top.n, top, spread: null };
+    const biggest = fields.reduce((a, b) => (b.n > a.n ? b : a));
+    const smallest = fields.reduce((a, b) => (b.n < a.n ? b : a));
+    const fieldsTotal = fields.reduce((s, r) => s + r.n, 0);
+    let above = 0;
+    let k = 0;
+    for (const r of fields) {
+      above += r.n;
+      k += 1;
+      if (above * 2 > fieldsTotal) break;
+    }
+    const rest = fields.length - k;
+    return {
+      anchorN: top.n,
+      top,
+      spread: {
+        biggest, smallest,
+        ratio: Math.round(biggest.n / smallest.n),
+        fieldsTotal, k, above, rest, below: fieldsTotal - above,
+        // The row the hairline goes after — an id rather than an index, so a
+        // re-order cannot slide the rule onto a different sentence.
+        halfAfter: rest > 0 ? fields[k - 1].id : null,
+      },
+    };
+  }, [facet, tiles]);
 
   /** THE SLICE, AS ONE OBJECT. Everything on this page that shows a number or
    *  opens a page is built from this, mapped twice — searchToBoardBody for the
@@ -1446,27 +1701,81 @@ export default function Explore() {
   // ── PRICE THE ROLE ROWS FOR THE OPEN FIELD ────────────────────────────────
   // On an explicit click, never on a page view. A field with no role
   // vocabulary of ours (the uncategorised bucket) asks for nothing and says so.
+  //
+  // AND ONCE PER FIELD PER SESSION, NOT ONCE PER OPEN. Every open of a field
+  // fired eight role probes and fourteen chip probes — twenty-two edge
+  // invocations — and closing and reopening the same field, or arriving back
+  // from the board, paid for all of them again for numbers we already held.
+  // Now that Back closes the panel rather than leaving the page, that round
+  // trip is a thing readers will do repeatedly.
+  //
+  // A CACHE OF MEASUREMENTS NEEDS A STATED WINDOW, AND THE MOUNT IS NOT ONE.
+  //
+  // Two sentences on this page publish these counts with a date basis in them:
+  // explore.rolesNote says each one is "a live count of exactly the search that
+  // row opens, taken just now", and explore.methodNamesMethod3 states the window
+  // this constant sets. A ref alone bounds the cache by the LIFETIME OF THE
+  // TAB, which is not a window — open Healthcare at 09:00, leave the tab, reopen
+  // it at 15:00 and eight role counts and fourteen chip counts render straight
+  // out of this Map under a sentence saying they were taken just now. Six-hour-
+  // old integers with a false date basis, no failure state entered and nothing
+  // on screen looking wrong: the carried-facet defect that basisCarried2 fixes
+  // one level up on this same page, one grain down.
+  //
+  // So the entry is STAMPED and expires. The window is five minutes because
+  // that is the round trip the cache was added for — open a field, click
+  // through to the board, read a page of results, come back and reopen the same
+  // field — and a count that is at most five minutes old is still a count taken
+  // just now. Anything older is treated as a miss and re-measured, which costs
+  // the twenty-two invocations exactly when the sentence would otherwise have
+  // stopped being true. It is still not persisted anywhere: a count that
+  // outlived its page would be the same defect again, further out.
+  const rolePriceCache = useRef<Map<string, { at: number; map: Record<string, Priced> }>>(new Map());
+  const chipPriceCache = useRef<Map<string, { at: number; chips: Record<string, Priced>; countries: Record<string, Priced> }>>(new Map());
+
   useEffect(() => {
     if (!openField) { setRolePrices({}); setRolesPricing(false); return; }
+    // THE PANEL IS ONLY REACHABLE ON THE FIELDS TAB, AND SO IS ITS COST.
+    // chooseIntent writes `i` and leaves `f`/`r` where they are, so switching
+    // to the employer check with a field open — two clicks, and then baked into
+    // any reload or shared link — leaves openField set while this panel renders
+    // `hidden`. Measured on /explore?i=check&f=healthcare: 23 slice probes for
+    // rows nobody can see, on the same page whose stated reason for caching
+    // these was that twenty-two per open was too many. Keyed on openField
+    // alone, this effect never consulted the tab it was priced for.
+    if (intent !== "fields") return;
     const names = FIELD_ROLES[openField];
     if (!names || names.length === 0) { setRolePrices({}); setRolesPricing(false); return; }
+    const cached = freshEntry(rolePriceCache.current, openField);
+    if (cached) { setRolePrices(cached.map); setRolesPricing(false); return; }
     let live = true;
+    const field = openField;
     setRolePrices({});
     setRolesPricing(true);
     void (async () => {
-      const results = await inBatches(names, 4, async (name) => [name, await priceSlice({ category: openField, q: name }, null)] as const);
+      const results = await inBatches(names, 4, async (name) => [name, await priceSlice({ category: field, q: name }, null)] as const);
       if (!live) return;
       const map: Record<string, Priced> = {};
       for (const [name, p] of results) map[name] = p;
+      // A FAILED PROBE IS NOT A MEASUREMENT AND IS NOT CACHED. Storing our own
+      // outage would make one bad minute permanent for the rest of the session
+      // — the row would stay missing on every reopen with nothing to retry it.
+      if (!Object.values(map).some((p) => p.failed)) rolePriceCache.current.set(field, { at: Date.now(), map });
       setRolePrices(map);
       setRolesPricing(false);
     })();
     return () => { live = false; };
-  }, [openField]);
+  }, [openField, intent]);
 
   // ── PRICE THE CONSTRAINT AND COUNTRY CHIPS FOR THE CHOSEN SLICE ───────────
   useEffect(() => {
     if (!openField) { setChipPrices({}); setCountryPrices({}); setChipsPricing(false); return; }
+    if (intent !== "fields") return;   // see the note on the role effect
+    // Keyed on the SLICE, not the field: a chip count under "data analyst" is a
+    // different number from the same chip under the whole field.
+    const key = `${openField}|${role ?? ""}`;
+    const held = freshEntry(chipPriceCache.current, key);
+    if (held) { setChipPrices(held.chips); setCountryPrices(held.countries); setChipsPricing(false); return; }
     let live = true;
     setChipPrices({});
     setCountryPrices({});
@@ -1484,11 +1793,13 @@ export default function Explore() {
       if (!live) return;
       const km: Record<string, Priced> = {};
       for (const [id, p] of countries) km[id] = p;
+      const anyFailed = [...Object.values(cm), ...Object.values(km)].some((p) => p.failed);
+      if (!anyFailed) chipPriceCache.current.set(key, { at: Date.now(), chips: cm, countries: km });
       setCountryPrices(km);
       setChipsPricing(false);
     })();
     return () => { live = false; };
-  }, [openField, role]);
+  }, [openField, role, intent]);
 
   // ── THE CLOSURE RECORD FOR THE CHOSEN SLICE ───────────────────────────────
   // Two calls, in order: a page of the slice's OWN RESULTS, whose rows carry
@@ -1506,6 +1817,7 @@ export default function Explore() {
   // narrowing.
   useEffect(() => {
     if (!openField) { setClosure(null); setClosureFailed(false); setClosurePending(false); closureAsked.current = ""; return; }
+    if (intent !== "fields") return;   // see the note on the role effect
     const sig = `${openField}|${role ?? ""}`;
     if (closureAsked.current === sig) return;
     closureAsked.current = sig;
@@ -1555,7 +1867,7 @@ export default function Explore() {
       setClosurePending(false);
     })();
     return () => { live = false; };
-  }, [openField, role]);
+  }, [openField, role, intent]);
 
   /** The churn warning for one employer, or null — POSITIVE FORM ONLY.
    *
@@ -1653,7 +1965,22 @@ export default function Explore() {
         path="/explore"
       />
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-10">
+      {/* id="main-content" AND tabIndex={-1}: THE SKIP LINK HAD NO TARGET HERE.
+          index.html ships <a href="#main-content"> as the FIRST focusable
+          element of every page. Index.tsx and Jobs.tsx render that id; this page
+          did not — so on /explore the very first key a keyboard or screen-reader
+          user pressed moved nothing, not for the hydration window but
+          permanently. tabIndex={-1} is what makes the id a real focus
+          destination rather than only an anchor.
+
+          pt-24, NOT py-10, AND THIS IS NOT A MARGIN PREFERENCE. Header renders a
+          FIXED h-16 bar and emits no spacer of its own, so every page has to
+          leave room for it: /jobs uses pt-20, /companies pt-24. This page used
+          py-10 (40px) under a 64px bar, which put the H1 and — worse — the one
+          sentence carrying the date basis for all eighteen numbers underneath a
+          translucent blur. A published statistic has to name its date basis
+          somewhere a reader can read it. */}
+      <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-4 pt-24 pb-10 focus:outline-none">
         {/* ABOVE THE FOLD: AN H1 AND ONE SENTENCE.
             197 words became 39. What was here explained what a filter over a
             column employers often leave blank does to a result set, and how a
@@ -1680,9 +2007,10 @@ export default function Explore() {
               type-level fact on the one sentence that must carry it. */}
           {reach && facet && (
             <p className="text-base text-muted-foreground max-w-2xl">
-              {/* basisWhole2 / basisPartial2, AND THE OLD PAIR IS DELETED FROM
-                  ALL NINE LOCALES. Two claims in the retired wording were
-                  wrong in ways only a reader could see.
+              {/* THIRD KEYS, AND EACH ROUND DELETED THE ONE BEFORE IT FROM
+                  ENGLISH. Three claims in the retired wordings were wrong in
+                  ways only a reader could see. The third is in the note on the
+                  mechanism clause below; the first two are these.
 
                   "in eighteen fields" COUNTED THE BUCKET AS A FIELD, which the
                   method panel two scrolls below explicitly denies ("It is not a
@@ -1715,8 +2043,21 @@ export default function Explore() {
                   The stale_parts line below already treats a carried-forward
                   aggregate this way; the tile counts now get the same
                   treatment, one level up. */}
+              {/* AND THE MECHANISM CLAUSE IS NEW IN ALL THREE — basisWhole3,
+                  basisPartial3, basisCarried2 rather than an edit in place.
+                  They said "the roles whose field we could not READ FROM THE
+                  TITLE", which describes a failure to read what the employer
+                  published. categorize() returns "other" when NO REGEX IN OUR
+                  OWN RULE SET matched the department or the title: a coverage
+                  gap in a vocabulary frozen at v9 by design. The old wording
+                  blamed the employer's data for our vocabulary and hid the
+                  consequence a reader needs — ordinary healthcare and
+                  engineering roles are in the bucket their field filter just
+                  excluded. NEW KEYS, because a locale VALUE beats an inline
+                  English default and editing in place would leave every other
+                  language making the claim this page stopped making. */}
               {facet.carried
-                ? t("explore.basisCarried", "{{n}} roles across {{fields}} fields plus the roles whose field we could not read from the title. The board's latest count did not complete, so these are the last ones that did{{when}} — each field's number is still the same one that field's page prints.", {
+                ? t("explore.basisCarried2", "{{n}} roles across {{fields}} fields plus the roles we could not sort into a field. The board's latest count did not complete, so these are the last ones that did{{when}} — each field's number is still the same one that field's page prints.", {
                     n: nf(reach.all),
                     fields: BOARD_CATEGORY_SLUGS.length,
                     when: facet.countedAt
@@ -1726,7 +2067,7 @@ export default function Explore() {
                       : "",
                   })
                 : reach.untiled <= 0
-                ? t("explore.basisWhole2", "{{n}} roles across {{fields}} fields plus the roles whose field we could not read from the title — counted {{time}} in the board's own scan, and each field's number is the same one that field's page prints.", {
+                ? t("explore.basisWhole3", "{{n}} roles across {{fields}} fields plus the roles we could not sort into a field — counted {{time}} in the board's own scan, and each field's number is the same one that field's page prints.", {
                     n: nf(reach.all),
                     fields: BOARD_CATEGORY_SLUGS.length,
                     // i18n.language, not undefined. `undefined` resolves to the
@@ -1736,23 +2077,78 @@ export default function Explore() {
                     time: new Date(facet.at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
                   })
                 // THE REMAINDER IS NAMED, NEVER ABSORBED. If the board ever
-                // emits a category this page has no tile for, the sentence says
+                // emits a category this page has no row for, the sentence says
                 // how many roles sit in it rather than going on calling the
                 // grid whole. Both numbers come from the one map.
-                : t("explore.basisPartial2", "{{tiled}} of {{all}} roles, across {{fields}} fields plus the roles whose field we could not read from the title — counted {{time}} in the board's own scan. The other {{untiled}} sit in a field this page has no tile for.", {
+                : t("explore.basisPartial3", "{{tiled}} of {{all}} roles, across {{fields}} fields plus the roles we could not sort into a field — counted {{time}} in the board's own scan. The other {{untiled}} sit in a field this page has no row for.", {
                     tiled: nf(reach.tiled), all: nf(reach.all), untiled: nf(reach.untiled),
                     fields: BOARD_CATEGORY_SLUGS.length,
                     time: new Date(facet.at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
                   })}
             </p>
           )}
-          {/* A FAILED READ IS SAID, NOT MIMED. Eighteen tiles with no numbers
+          {/* WHAT A BAR MEANS, SAID ONCE, DIRECTLY UNDER THE SENTENCE THAT
+              CARRIES THE DATE BASIS.
+              A bar with no stated anchor is a decoration: the reader cannot
+              tell whether the longest one is the whole board, the largest
+              field, or an arbitrary maximum, and every other mark on the page
+              is unreadable until they can. Every value here is derived in THIS
+              render from THE SAME facet map the bars are drawn from, so a
+              sentence and a bar cannot disagree.
+
+              TWO SENTENCES, GATED SEPARATELY, BECAUSE THEY NEED DIFFERENT
+              TERMS. The anchor half needs one number — the bucket the bars are
+              measured against — and it is exactly the half without which no
+              mark on the page can be read at all. The spread half needs two
+              FIELDS, so it is held to the same two-terms-or-nothing rule as the
+              ratio and the half-line. Gating BOTH on `spread` (as this did)
+              meant a facet carrying the bucket and a single field drew bars of
+              visibly different lengths with no anchor named, no ratio and no
+              retraction: the decoration state this file is named after, arrived
+              at by applying the right rule one clause too wide.
+
+              AND THE RATIO NAMES ITS OWN TWO TERMS. It compares the largest
+              FIELD with the smallest field — the bucket is not a field — but
+              the sentence used to name the BUCKET's count and the smallest
+              field's and then print a ratio computed from neither pair
+              together, so a reader who divided the two numbers in front of them
+              got 41 where the page said 34. Both halves were true and the
+              arithmetic between them was unfollowable, on a page whose whole
+              claim is that you can check it. */}
+          {scale && (
+            <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground max-w-2xl">
+              {t("explore.barBasisAnchor", "Bar length is that bucket's count against the largest bucket on the board — {{topLabel}}, at {{topN}}. The scale is linear and starts at zero, with no minimum width propping up the short marks.", {
+                topLabel: t(`jobsPage.categories.${scale.top.id}`, CATEGORY_LABELS[scale.top.id] ?? scale.top.id),
+                topN: nf(scale.top.n),
+              })}
+              {scale.spread && ` ${t("explore.barBasisSpread", "So {{smallLabel}}, at {{smallN}}, really is that short a mark — and set against the largest field, {{biggestLabel}} at {{biggestN}}, it makes this board {{ratio}} times deeper in one field than in another, which is the first true thing about it.", {
+                smallLabel: t(`jobsPage.categories.${scale.spread.smallest.id}`, CATEGORY_LABELS[scale.spread.smallest.id] ?? scale.spread.smallest.id),
+                smallN: nf(scale.spread.smallest.n),
+                biggestLabel: t(`jobsPage.categories.${scale.spread.biggest.id}`, CATEGORY_LABELS[scale.spread.biggest.id] ?? scale.spread.biggest.id),
+                biggestN: nf(scale.spread.biggest.n),
+                ratio: scale.spread.ratio,
+              })}`}
+            </p>
+          )}
+          {/* A FAILED READ IS SAID, NOT MIMED. Eighteen rows with no numbers
               and no explanation reads as a broken page; the links all still
               work, and the sentence says both halves of that. */}
           {facetFailed && (
-            <p className="text-base text-muted-foreground max-w-2xl">
-              {t("explore.basisNone", "We could not read the board's field counts just now, so these tiles carry no numbers. That is our measurement failing, not the board emptying — every tile still opens its field.")}
-            </p>
+            <>
+              <p className="text-base text-muted-foreground max-w-2xl">
+                {t("explore.basisNone", "We could not read the board's field counts just now, so these rows carry no numbers. That is our measurement failing, not the board emptying — every row still opens its field.")}
+              </p>
+              {/* AND THE BARS ARE RETRACTED TOO, IN WORDS AND IN THE MARKUP.
+                  With no counts there is nothing to draw, and an EMPTY TRACK IS
+                  NOT AN ABSENCE — a grey bar at zero length reads as "this
+                  field has nothing in it", which is a claim about the board
+                  made out of our own failed read. So there is no track at all
+                  on this path, and this says why, exactly as fieldsBlurb4
+                  already retracts the ordering claim beside it. */}
+              <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground max-w-2xl">
+                {t("explore.barsNone", "There are no bars either. A bar needs a count to have a length, and an empty track would read as a field with nothing in it — which is a claim about the board, not about our failed read.")}
+              </p>
+            </>
           )}
           {stale.length > 0 && (
             <p className="mt-1.5 text-xs text-warning">
@@ -1773,14 +2169,29 @@ export default function Explore() {
                 type="button"
                 role="tab"
                 aria-selected={intent === i}
+                // THE HALF OF THE TAB CONTRACT THAT WAS MISSING. role="tab"
+                // announces "tab, 1 of 2" and promises a PANEL; without
+                // aria-controls pointing at one — and the panel pointing back
+                // with role="tabpanel" and aria-labelledby — a screen-reader
+                // user is told there is a region to move to and given no way to
+                // find it. The ids are derived from the intent id, so a new
+                // answer wires itself.
+                id={`intent-tab-${i}`}
+                aria-controls={`intent-panel-${i}`}
                 // role="tablist" PROMISES arrow-key navigation. Shipping the
                 // role without the keys is worse than shipping neither.
                 tabIndex={intent === i ? 0 : -1}
                 onKeyDown={(e) => {
-                  const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-                  if (!d) return;
+                  // Home and End are part of the same promise as the arrows —
+                  // the tab pattern specifies all four, and a reader who has
+                  // been taught the arrows work reasonably tries them.
+                  const nextIdx = e.key === "Home" ? 0
+                    : e.key === "End" ? INTENTS.length - 1
+                    : e.key === "ArrowRight" ? (idx + 1) % INTENTS.length
+                    : e.key === "ArrowLeft" ? (idx - 1 + INTENTS.length) % INTENTS.length
+                    : -1;
+                  if (nextIdx < 0) return;
                   e.preventDefault();
-                  const nextIdx = (idx + d + INTENTS.length) % INTENTS.length;
                   chooseIntent(INTENTS[nextIdx]);
                   const el = e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
                   el?.[nextIdx]?.focus();
@@ -1806,13 +2217,13 @@ export default function Explore() {
           </div>
         </div>
 
-        {/* ── 1. THE FIELD GRID — THE DEFAULT VIEW ──────────────────────────
-            Eighteen tiles, ordered by the board's own count, two lines each:
-            the count, then the names of the roles inside that field. The
-            eighteenth is the uncategorised bucket, which no field tile can
-            reach and which carries no count, because no page of ours prints
-            one for it. */}
-        <div hidden={intent !== "fields"}>
+        {/* ── 1. THE FIELD ROWS — THE DEFAULT VIEW ──────────────────────────
+            Eighteen rows, ordered by the board's own count, three lines each:
+            the field name and its count, the bar that makes the spread between
+            them visible, and the names of the roles inside it. The eighteenth
+            is the uncategorised bucket — not a field, so its bar is muted and
+            its position is fixed last. */}
+        <div hidden={intent !== "fields"} role="tabpanel" id="intent-panel-fields" aria-labelledby="intent-tab-fields">
           <Section
             icon={Layers}
             title={t("explore.fieldsTitle2", "Every field on the board")}
@@ -1828,7 +2239,7 @@ export default function Explore() {
             // the half a reader can still see.
             blurb={facet
               ? t("explore.fieldsBlurb3", "Ordered by how many roles are open right now, with the roles you would find inside each one. Open a field to see every role in it counted, then narrow it.")
-              : t("explore.fieldsBlurb4", "The roles you would find inside each field. We could not read the board's counts just now, so these tiles are not ordered by size — open a field to see every role in it counted, then narrow it.")}
+              : t("explore.fieldsBlurb4", "The roles you would find inside each field. We could not read the board's counts just now, so these rows are not ordered by size — open a field to see every role in it counted, then narrow it.")}
             // NO NOTE. The reach claim used to live here as a second aggregate
             // under the section header, on top of the one above the fold; both
             // described the same eighteen tiles, and one of them had to go. The
@@ -1843,7 +2254,7 @@ export default function Explore() {
                 // page any more to confuse it with, but the mirror stays and so
                 // does this note: the window lives in SQL and this sentence
                 // names it.
-                term: t("explore.methodTileTerm", "The number on a tile"),
+                term: t("explore.methodRowTerm", "The number on a row"),
                 method: t("explore.methodTileMethod3", "An exact count, not a ceiling. It is the board's own per-field count — every posting open and inside our {{cap}}-day freshness window — grouped once per refresh and stored in one row, and it is the SAME row and the SAME number the field's own page prints in its heading when you click through. Nothing rounds it and nothing caps it: the “{{n}}+” these tiles used to show was the ceiling the serving API puts on a FILTERED count, which is not what a grouped scan produces, and it made the six biggest fields on the board look identical.", { cap: SERVE_WINDOW_DAYS, n: SERVE_COUNT_CAP.toLocaleString(i18n.language) }),
               },
               {
@@ -1860,11 +2271,19 @@ export default function Explore() {
                 // the name a reader sees and the search it runs, and would
                 // price a query nobody can run. Naming it here is the honest
                 // resolution; silently showing English is not.
-                method: t("explore.methodNamesMethod2", "Ours, not the board's: the first few names from the list we wrote for that field, so you can tell one tile from another at a glance. They are not a measurement and they carry no numbers. They stay in English in every language, because each one is the exact search term we send the board and postings are titled in the language the employer wrote them in. Open the field and every one of them is counted for real — a live count of exactly the search that row opens, taken at the moment you click, with any name that matches too little left out rather than shown as a zero."),
+                method: t("explore.methodNamesMethod3", "Ours, not the board's: the first few names from the list we wrote for that field, so you can tell one row from another at a glance. They are not a measurement and they carry no numbers. They stay in English in every language, because each one is the exact search term we send the board and postings are titled in the language the employer wrote them in. Open the field and every one of them is counted for real — a live count of exactly the search that row opens, taken when you open the field and taken again rather than remembered once a reading is more than a few minutes old, with any name that matches too little left out rather than shown as a zero."),
               },
               {
-                term: t("explore.methodUncatTerm", "The last tile — the roles with no field"),
-                method: t("explore.methodUncatMethod3", "Where a posting lands when its field could not be read from its title. It is not a field and it does not compete with the others for position — it is always last, because sorting it by size into a list of fields would present it as one. Its count comes from the same scan and the same row as every other tile's, and the page it opens counts exactly these roles, so the number on it means what the others mean. It is a large part of the board and no field tile reaches it, which is why it has a tile at all."),
+                // THE BAR GETS ITS OWN ENTRY, because a reader who wants to
+                // know why Design's mark is a few pixels wide deserves the
+                // arithmetic rather than a reassurance. The anchor is also
+                // named in one line above the rows; this is the working.
+                term: t("explore.methodBarTerm", "The bar under a field"),
+                method: t("explore.methodBarMethod", "Its length is that row's count divided by the count of the LARGEST bucket on the board, and nothing else. The scale is linear and starts at zero, so a field with a twentieth of the roles gets a twentieth of the length — there is no logarithm softening the gap and no minimum width propping up the short ones, because the gap is the thing worth seeing and a floor under it would overstate the smallest fields in exactly the direction this page exists to stop. The bars carry no information the number beside them does not, so a screen reader is given the exact count instead."),
+              },
+              {
+                term: t("explore.methodUncatTerm2", "The last row — the roles we could not sort into a field"),
+                method: t("explore.methodUncatMethod4", "Where a posting lands when NO RULE OF OURS matched its department or its title — a gap in our own vocabulary, not something missing from what the employer published, which is why ordinary healthcare and engineering roles are in here and are hidden the moment you pick a field. It is not a field and it does not compete with the others for position — it is always last, because sorting it by size into a list of fields would present it as one. Its count comes from the same scan and the same row as every other row's, and the page it opens counts exactly these roles, so the number on it means what the others mean. Its bar is drawn in grey rather than in the field colour for the same reason. It is a large part of the board and no field row reaches it, which is why it is here at all."),
               },
               {
                 // THIS IS THE PARAGRAPH THAT USED TO BE ABOVE THE FOLD. It
@@ -1875,61 +2294,123 @@ export default function Explore() {
                 method: t("explore.methodLiveMethod", "Every COUNT inside a field — on a role, on a narrowing, on a country — is taken live, at the moment you click it, for exactly the search that link runs. The PERCENTAGE beside a narrowing is not: it is how much of the board states that thing at all, from the board's own coverage scan rather than from your click. It matters because a filter can only search what employers published, so a narrowing hides the roles that did not say — it does not prove they are not there. Where we hold no coverage reading for a filter, the chip shows its count and no percentage rather than a number we would have had to invent."),
               },
             ]} />
+            {/* THE SKELETON IS ROW-SHAPED AND EIGHTEEN LONG, because that is
+                what arrives. Twelve tile-shaped blocks stood in for a grid that
+                no longer exists, so the layout jumped when the counts landed —
+                a placeholder that lies about the shape it is holding is worse
+                than none. */}
             {!facet && !facetFailed ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" aria-hidden="true">
+              <div className="space-y-0.5" aria-hidden="true">
                 <span className="sr-only" role="status" aria-live="polite">Loading fields…</span>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <div key={i} className="rounded-xl border border-border bg-card/30 px-4 py-3">
-                    <div className="h-3.5 rounded bg-muted animate-pulse" style={{ width: `${45 + ((i * 7) % 35)}%` }} />
-                    <div className="mt-2 h-2.5 rounded bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 11) % 30)}%` }} />
+                {Array.from({ length: BOARD_CATEGORY_SLUGS.length + 1 }, (_, i) => (
+                  <div key={i} className="rounded-lg border border-border/60 bg-card/30 px-4 py-2.5">
+                    <div className="h-3.5 rounded bg-muted animate-pulse" style={{ width: `${30 + ((i * 7) % 25)}%` }} />
+                    <div className="mt-1.5 h-1.5 rounded-full bg-muted animate-pulse" style={{ width: `${95 - ((i * 11) % 80)}%` }} />
+                    <div className="mt-1 h-2.5 rounded bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 13) % 30)}%` }} />
                   </div>
                 ))}
               </div>
             ) : (
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              /* THE LIST IS THE PANEL. A summary strip above a ranked list of
+                 the same eighteen numbers would be two renderings of one
+                 quantity on one screen — the defect this file spent a hundred
+                 lines removing for the counts — so the comparison lives IN the
+                 rows: name and count on line one, the bar on line two, the role
+                 names on line three. <ol> rather than <ul>, because the order
+                 is the claim the section header makes.
+
+                 THE COUNT MOVED FROM 12px MUTED TO 18px FOREGROUND. It was the
+                 faintest thing on a tile that exists to differentiate tiles by
+                 exactly that number. */
+              <ol className="space-y-0.5">
                 {tiles.map(({ id, n }) => {
                   const label = t(`jobsPage.categories.${id}`, CATEGORY_LABELS[id] ?? id);
                   const uncat = id === UNCATEGORISED;
                   const roles = uncat ? null : tileRoles(id);
                   const open = openField === id;
-                  return (
-                    <li key={id} className={`rounded-xl border transition-colors ${open ? "border-primary/60 bg-card sm:col-span-2" : "border-border bg-card/60 hover:border-primary/50"}`}>
+                  // LINEAR, ZERO-ORIGIN, AND NO MINIMUM WIDTH — see `scale`.
+                  // Null whenever there is no count or no anchor, and a null
+                  // draws NO TRACK AT ALL rather than an empty one: an empty
+                  // track reads as a field with nothing in it.
+                  const width = typeof n === "number" && n > 0 && scale && scale.anchorN > 0
+                    ? (n / scale.anchorN) * 100
+                    : null;
+                  // AN ARRAY, NOT ONE ELEMENT: a row may be followed by the
+                  // half-line rule, and React renders a nested array of keyed
+                  // children exactly as it renders siblings.
+                  return [
+                    <li key={id} id={`field-${id}`} className={`rounded-lg border transition-colors ${open ? "border-primary/60 bg-card" : "border-border bg-card/60 hover:border-primary/50"}`}>
                       <div className="flex items-stretch">
                         <button
                           type="button"
                           aria-expanded={open}
-                          onClick={() => { setOpenField(open ? null : id); setRole(null); }}
-                          className="min-w-0 flex-1 text-left px-4 py-3"
+                          onClick={() => openTile(id)}
+                          className="min-w-0 flex-1 text-left px-4 py-2"
                         >
-                          <span className="flex items-baseline gap-2">
-                            <span className="text-sm font-semibold text-foreground">{label}</span>
+                          <span className="flex items-baseline justify-between gap-3">
+                            <span className="text-[15px] font-semibold text-foreground">{label}</span>
                             {/* EXACT, UNCAPPED, AND ABSENT RATHER THAN ZERO.
                                 The facet omits a category with nothing in it,
-                                so a tile with no reading makes no claim about
+                                so a row with no reading makes no claim about
                                 depth: it must never render "0", and it must
                                 never render a ceiling.
 
-                                THE UNCATEGORISED TILE NOW CARRIES ITS NUMBER
-                                TOO. It was withheld for one reason and it was a
-                                good one — no destination of ours printed the
-                                figure back, so the tile would have made a claim
-                                its own link contradicted, and /jobs?category=other
-                                was in fact printing the board-wide 815,909 over
-                                a 174,535-row list. That is fixed at the
+                                AND IT IS THE LOUDEST MARK ON THE ROW NOW. It
+                                was 12px muted — the faintest thing on a tile
+                                that exists to differentiate tiles by exactly
+                                this number, under a header promising an
+                                ordering by it.
+
+                                THE UNCATEGORISED ROW CARRIES ITS NUMBER TOO.
+                                It was withheld while no destination of ours
+                                printed the figure back — /jobs?category=other
+                                was printing the board-wide total over the
+                                bucket's own list. That is fixed at the
                                 destination (Jobs.tsx countCategory), not papered
-                                over here: the count line on that page now reads
-                                the same facet entry, so the tile and the page it
+                                over here: the count line on that page reads the
+                                same facet entry, so the row and the page it
                                 opens are one integer read twice, exactly like
                                 the other seventeen. The rule was never "the
                                 bucket gets no number" — it was "no number
-                                without a destination that prints it". */}
+                                without a destination that prints it".
+
+                                NO FIGURE IS QUOTED IN THIS NOTE. It used to
+                                carry both sides of that defect as literals, and
+                                the bucket's had already drifted (174,535 in the
+                                comment against 174,602 live) — a number in a
+                                comment is a claim with no query behind it and
+                                nothing to notice when it goes stale. */}
                             {typeof n === "number" && n > 0 && (
-                              <span className="text-[12px] tabular-nums text-muted-foreground">{nf(n)}</span>
+                              <span className="text-[18px] font-semibold tabular-nums text-foreground shrink-0">{nf(n)}</span>
                             )}
                           </span>
+                          {/* THE BAR. aria-hidden, because it carries no
+                              information the count beside it does not — a
+                              screen reader gets the exact integer, which is
+                              strictly better than "68 percent of a bar".
+
+                              THE BUCKET'S FILL IS MUTED, NOT PRIMARY. It is not
+                              a field; drawing it in the same colour as the
+                              seventeen, at the longest length on the page,
+                              would present our own vocabulary's coverage gap as
+                              the board's biggest field. */}
+                          {width !== null && (
+                            <span aria-hidden="true" className="mt-1 block h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                              <span
+                                className={`block h-full rounded-full ${uncat ? "bg-muted-foreground/40" : "bg-primary"}`}
+                                style={{ width: `${width}%` }}
+                              />
+                            </span>
+                          )}
                           {uncat ? (
                             <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/80 italic">
-                              {t("explore.uncatLine3", "Roles whose field we could not read from the title. No field tile reaches these, and they have no role list of their own — but the page this opens counts exactly these roles.")}
+                              {/* otherRowNote REPLACES uncatLine3, which is
+                                  RETIRED rather than reworded: its sentence
+                                  described a tile face that no longer exists
+                                  ("they have no role list of their own"), and
+                                  its mechanism clause blamed the employer's
+                                  title for our own rule set's coverage gap. */}
+                              {t("explore.otherRowNote", "Roles our own field rules could not sort — ordinary healthcare, engineering and trades roles among them. No field row reaches these, and the page this opens counts exactly them.")}
                             </span>
                           ) : roles ? (
                             <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
@@ -1944,7 +2425,7 @@ export default function Explore() {
                             everything else, so the link and any count of this
                             slice describe one query. */}
                         <Link
-                          to={fieldHref(id)}
+                          to={fieldHref(id, backHere(id, null))}
                           aria-label={t("explore.tileOpen", "Open {{field}} on the board", { field: label })}
                           className="flex items-center px-3 border-l border-border/60 text-muted-foreground/60 hover:text-primary transition-colors"
                         >
@@ -1966,7 +2447,13 @@ export default function Explore() {
                           </p>
                           {uncat ? (
                             <p className="mt-2 text-[12px] text-muted-foreground">
-                              {t("explore.rolesUncat", "These roles have no field we could read, so we have no role list for them. Search by title on the board instead.")}
+                              {/* rolesUncat2: the retired string said these
+                                  roles "have no field we could read", which is
+                                  the same misattribution the basis sentences
+                                  carried — it is our rule set that could not
+                                  sort them, not the employer's title that could
+                                  not be read. */}
+                              {t("explore.rolesUncat2", "Our field rules could not sort these roles, so we have no role list for them. Search by title on the board instead.")}
                             </p>
                           ) : rolesPricing && Object.keys(rolePrices).length === 0 ? (
                             <p className="mt-2 text-[12px] text-muted-foreground" role="status" aria-live="polite">
@@ -2018,7 +2505,7 @@ export default function Explore() {
                                     <li key={name} className="flex items-center gap-2 py-1.5">
                                       <button
                                         type="button"
-                                        onClick={() => setRole(role === name ? null : name)}
+                                        onClick={() => chooseRole(name)}
                                         aria-pressed={role === name}
                                         className={`min-w-0 flex-1 text-left text-[13px] ${role === name ? "font-semibold text-primary" : "text-foreground/85 hover:text-primary"}`}
                                       >
@@ -2026,7 +2513,7 @@ export default function Explore() {
                                       </button>
                                       <span className="text-[12px] tabular-nums text-muted-foreground shrink-0">{pricedLabel(p)}</span>
                                       <Link
-                                        to={toBoard({ category: id, q: name })}
+                                        to={toBoard({ category: id, q: name }, backHere(id, name))}
                                         aria-label={t("explore.roleOpen", "Open {{role}} on the board", { role: name })}
                                         className="shrink-0 text-muted-foreground/50 hover:text-primary transition-colors"
                                       >
@@ -2074,7 +2561,7 @@ export default function Explore() {
                                 return (
                                   <Link
                                     key={c.id}
-                                    to={toBoard({ category: id, ...(role ? { q: role } : {}), ...c.patch })}
+                                    to={toBoard({ category: id, ...(role ? { q: role } : {}), ...c.patch }, backHere(id, role))}
                                     className="inline-flex items-baseline gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card/60 text-[12px] text-foreground/85 hover:border-primary/50 hover:text-primary transition-colors"
                                   >
                                     <span>{t(`explore.chip.${c.id}`, c.label)}</span>
@@ -2128,7 +2615,7 @@ export default function Explore() {
                               return (
                                 <Link
                                   key={c.id}
-                                  to={toBoard({ category: id, ...(role ? { q: role } : {}), country: c.id })}
+                                  to={toBoard({ category: id, ...(role ? { q: role } : {}), country: c.id }, backHere(id, role))}
                                   className="inline-flex items-baseline gap-1.5 px-3 py-1.5 rounded-full border border-border bg-card/60 text-[12px] text-foreground/85 hover:border-primary/50 hover:text-primary transition-colors"
                                 >
                                   <span>{t(`explore.country.${c.id}`, c.label)}</span>
@@ -2236,6 +2723,7 @@ export default function Explore() {
                                     category: id,
                                     company: closure.tokens.join(","),
                                     from: "explore",
+                                    back: backHere(id, role),
                                   }).toString()}`}
                                   className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-primary hover:underline"
                                 >
@@ -2294,10 +2782,40 @@ export default function Explore() {
                           )}
                         </div>
                       )}
-                    </li>
-                  );
+                    </li>,
+                    /* ── THE HALF LINE ──────────────────────────────────────
+                       A hairline where the cumulative count over the SEVENTEEN
+                       FIELDS passes half, with the sentence that says what
+                       crossing it means. It sits IN the list because it is a
+                       fact about the order the list is in — pulled out into a
+                       panel above, it would be the same eighteen numbers said
+                       twice on one screen.
+
+                       role="presentation" because it is not an item: it carries
+                       no field, no count and no link, and announcing it as
+                       "item 4 of 19" would be a lie about the list's length.
+
+                       EVERY NUMBER IN IT IS DERIVED, INCLUDING {{k}}. A literal
+                       "three" here is how a page goes on saying three in nine
+                       languages after the facet moves — and this one moves four
+                       times an hour. */
+                    scale?.spread?.halfAfter === id ? (
+                      <li key={`${id}-half`} role="presentation" className="pt-3 pb-1">
+                        <span className="block border-t border-border" />
+                        <span className="mt-2 block text-[11px] leading-snug text-muted-foreground">
+                          {t("explore.halfLine", "These {{k}} fields hold {{above}} of the {{fieldsTotal}} roles whose field we could sort — more than half of them. The other {{rest}} fields share {{below}} between them.", {
+                            k: scale.spread.k,
+                            above: nf(scale.spread.above),
+                            fieldsTotal: nf(scale.spread.fieldsTotal),
+                            rest: scale.spread.rest,
+                            below: nf(scale.spread.below),
+                          })}
+                        </span>
+                      </li>
+                    ) : null,
+                  ];
                 })}
-              </ul>
+              </ol>
             )}
           </Section>
         </div>
@@ -2306,7 +2824,7 @@ export default function Explore() {
             MOVED TO LAST, deliberately. It is the answer for a reader who
             already has a name in mind; the field grid is the answer for
             everyone who does not, which is who arrives here. */}
-        <div hidden={intent !== "check"}>
+        <div hidden={intent !== "check"} role="tabpanel" id="intent-panel-check" aria-labelledby="intent-tab-check">
           <Section
             icon={Search}
             title={t("explore.checkTitle2", "Check an employer — and how much of them we actually see")}
@@ -2369,7 +2887,7 @@ export default function Explore() {
                   return (
                   <Link
                     key={h.name}
-                    to={`/jobs/company/${encodeURIComponent(h.tokens[0])}?from=explore`}
+                    to={`/jobs/company/${encodeURIComponent(h.tokens[0])}?from=explore&back=${encodeURIComponent(backHere(null, null, "check"))}`}
                     className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
                   >
                     <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">

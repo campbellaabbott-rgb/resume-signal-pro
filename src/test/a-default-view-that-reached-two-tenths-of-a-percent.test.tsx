@@ -245,7 +245,17 @@ const visibleText = () => visible().map((d) => d.textContent ?? "").join(" ");
 const visibleLinks = () =>
   visible().flatMap((d) => Array.from(d.querySelectorAll("a")).map((a) => a.getAttribute("href") ?? ""));
 
-beforeEach(() => { rpc.mockReset(); invoke.mockClear(); });
+// THE PAGE NOW READS window.location, SO EVERY TEST STARTS FROM A KNOWN ONE.
+// /explore keeps the reader's slice in the address (?i, ?f, ?r) and pushes a
+// history entry when a row opens, so a test that clicked a row leaves the
+// jsdom location pointing at that slice and the NEXT test's mount hydrates it —
+// a panel opening by itself, in a test that never asked for one. Resetting the
+// address is the same thing the lander guard's own mount() does.
+beforeEach(() => {
+  rpc.mockReset();
+  invoke.mockClear();
+  window.history.replaceState({}, "", "/explore");
+});
 afterEach(() => { document.body.innerHTML = ""; });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,15 +297,35 @@ describe("2. what the default view actually renders, read off the DOM", () => {
   it("renders a tile for every board field plus the uncategorised bucket", async () => {
     mount();
     await waitFor(() => expect(visibleText()).toContain("Every field on the board"));
-    // Eighteen tiles: seventeen fields and the bucket. Each is a list item with
+    // Eighteen rows: seventeen fields and the bucket. Each is a list item with
     // its own way into the board.
+    //
+    // COUNTED BY THE EXPANDER RATHER THAN BY THE TAG. The list now also carries
+    // ONE non-item <li role="presentation"> — the hairline where the cumulative
+    // count over the seventeen fields passes half — so a bare `li` count would
+    // read 19 and, worse, would go on passing if a nineteenth FIELD row
+    // appeared and the half-line disappeared. A field row is the thing with an
+    // expander on it, so that is what is counted, and the rule is asserted
+    // separately below as what it is.
     await waitFor(() => {
-      const items = visible().flatMap((d) => Array.from(d.querySelectorAll("li")));
-      expect(items.length).toBe(BOARD_CATEGORY_SLUGS.length + 1);
+      const rows = visible().flatMap((d) => Array.from(d.querySelectorAll("li")))
+        .filter((li) => li.querySelector("button[aria-expanded]"));
+      expect(rows.length).toBe(BOARD_CATEGORY_SLUGS.length + 1);
     });
-    // The bucket, which no field tile can reach, is named as what it is —
-    // rows whose field we could not read — and never as a field.
-    expect(visibleText()).toContain("Roles whose field we could not read from the title");
+    const presentational = visible().flatMap((d) => Array.from(d.querySelectorAll('li[role="presentation"]')));
+    expect(presentational.length, "the half-line rule is not exactly one non-item row").toBe(1);
+    expect(presentational[0].textContent, "the half-line says nothing about the split it marks")
+      .toMatch(/more than half/);
+    // The bucket, which no field row can reach, is named as what it is — roles
+    // OUR OWN RULE SET could not sort — and never as a field, and never as a
+    // failure to read what the employer wrote. categorize() returns "other"
+    // when no regex of ours matched the department or the title; the retired
+    // wording ("whose field we could not read from the title") told the reader
+    // the employer's data was bad and hid the fact that ordinary healthcare and
+    // engineering roles are in the bucket their field filter just excluded.
+    expect(visibleText()).toContain("could not sort");
+    expect(visibleText(), "the retired mechanism clause is back on the page")
+      .not.toContain("could not read from the title");
   });
 
   it("the default view's population is the board's own posting count, in hundreds of thousands", async () => {
@@ -324,11 +354,19 @@ describe("2. what the default view actually renders, read off the DOM", () => {
     // one quantity had two scans up to fifty-three minutes apart. Now both
     // surfaces read the facet, and the cache — which still carries `fields` —
     // must move nothing on this page at all.
-    mount({ fields: { engineering: 11, design: 22 }, field_grid: { tiled_n: 33, board: { n: 44 } } });
+    // THE PROBE VALUES ARE THREE-DIGIT AND ARBITRARY, and both properties are
+    // load-bearing. They must be numbers the page cannot produce by any honest
+    // route — 11 and 44 were not: the bar sentence divides the largest field by
+    // the smallest and this fixture's ratio is 11, so the guard failed on a
+    // TRUE sentence rather than on a cache read. And they must be small enough
+    // to render without a thousands separator, or nf() would format them past
+    // the \b…\b match and the guard would pass by looking for a string the
+    // page could never contain.
+    mount({ fields: { engineering: 917, design: 863 }, field_grid: { tiled_n: 741, board: { n: 629 } } });
     await waitFor(() => expect(visibleText()).toContain(COVERED.toLocaleString("en-US")));
     const text = visibleText();
-    expect(text, "a tile is reading the explore cache again").not.toMatch(/\b11\b/);
-    expect(text, "the population sentence is reading the explore cache again").not.toMatch(/\b44\b/);
+    expect(text, "a tile is reading the explore cache again").not.toMatch(/\b917\b/);
+    expect(text, "the population sentence is reading the explore cache again").not.toMatch(/\b629\b/);
     expect(text).toContain(FIELD_COUNTS.engineering.toLocaleString("en-US"));
 
     // AND NO FACET, NO NUMBERS — never a fallback to the cache, which is how a
@@ -344,15 +382,15 @@ describe("2. what the default view actually renders, read off the DOM", () => {
       FIELD_COUNTS.engineering.toLocaleString("en-US"));
   });
 
-  it("a category with no tile is NAMED rather than absorbed into \"every posting we can serve\"", async () => {
+  it("a category with no row is NAMED rather than absorbed into \"every posting we can serve\"", async () => {
     // THE ONE THING THAT COULD MAKE THE GRID NOT A PARTITION: a category VALUE
-    // the board starts emitting that this page has no tile for. It is zero
+    // the board starts emitting that this page has no row for. It is zero
     // today — the facet's eighteen keys are exactly BOARD_CATEGORY_SLUGS plus
     // `other` — and if it ever is not, the remainder is stated rather than
     // quietly rolled into the whole. Both halves come off the SAME map, so the
     // gap can never be scan skew wearing a floor's name.
     mount({}, { ...FIELD_COUNTS, other: UNCAT, quantum_basketry: 4_100 });
-    await waitFor(() => expect(visibleText()).toContain("no tile for"));
+    await waitFor(() => expect(visibleText()).toContain("no row for"));
     expect(visibleText()).toContain((COVERED + 4_100).toLocaleString("en-US"));
     expect(visibleText()).toContain("4,100");
 
@@ -363,7 +401,7 @@ describe("2. what the default view actually renders, read off the DOM", () => {
     invoke.mockReset();
     mount();
     await waitFor(() => expect(visibleText()).toContain(COVERED.toLocaleString("en-US")));
-    expect(visibleText()).not.toContain("no tile for");
+    expect(visibleText()).not.toContain("no row for");
     expect(visibleText()).not.toMatch(/\b1[0-9][0-9](\.[0-9])?%/);
   });
 
@@ -462,7 +500,7 @@ describe("2. what the default view actually renders, read off the DOM", () => {
     // destination that prints it", and that condition is met now.
     expect(faces, "the uncategorised tile lost the count its destination prints")
       .toContain(UNCAT.toLocaleString("en-US"));
-    expect(visibleText()).toContain("no role list of their own");
+    expect(visibleText()).toContain("No field row reaches these");
   });
 });
 

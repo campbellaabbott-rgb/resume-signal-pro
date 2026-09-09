@@ -118,6 +118,42 @@ describe("the lander rewrite keeps the way back", () => {
     ).toBe("explore");
   });
 
+  it("keeps `back` too — the slice, not just the fact of having come from Explore", async () => {
+    // `from=explore` says only THAT the reader came from Explore, so the way
+    // back landed them on a cold grid with the field they had opened closed
+    // again and every count in that panel thrown away. /explore writes the
+    // slice it built into its own address and passes it here as `back`, which
+    // is a non-filter parameter and therefore dies exactly the way `from` did
+    // unless it is re-added BY NAME to the shared lander object.
+    mount("/jobs/field/healthcare?from=explore&back=%2Fexplore%3Fi%3Dfields%26f%3Dhealthcare%26r%3Dregistered%2Bnurse",
+      "/jobs/field/:category");
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/jobs/field/healthcare");
+    }, { timeout: 4000 });
+    expect(
+      new URLSearchParams(window.location.search).get("back"),
+      `the lander rewrite deleted the slice address; address is ${window.location.pathname}${window.location.search}`,
+    ).toBe("/explore?i=fields&f=healthcare&r=registered+nurse");
+  });
+
+  it("refuses a `back` that would leave this site", async () => {
+    // It arrives in a URL a stranger can compose and it ends up in an href, so
+    // a passthrough is an open redirect. "//evil.example" is the case a naive
+    // "must start with a slash" test lets through: a browser reads it as a
+    // PROTOCOL-RELATIVE URL on another origin.
+    mount("/jobs/field/healthcare?from=explore&back=%2F%2Fevil.example%2Fphish", "/jobs/field/:category");
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/jobs/field/healthcare");
+    }, { timeout: 4000 });
+    const links = [...document.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+    for (const h of links) {
+      expect(h, `a rendered link points off-site: ${h}`).not.toContain("evil.example");
+    }
+    // …and the affordance still renders, pointed at the field the reader is on.
+    expect(links.some((h) => h === "/explore?i=fields&f=healthcare"),
+      "the way back disappeared instead of falling back").toBe(true);
+  });
+
   it("adds no query string at all when there is nothing to keep", async () => {
     // The fix must not make every clean lander URL grow a stray "?" — the
     // lander form is what /jobs/field/:id is canonicalised to for search.
@@ -153,6 +189,10 @@ describe("the lander rewrite keeps the way back", () => {
     expect(builder, "the shared lander params builder is gone").toBeTruthy();
     expect(builder![0]).toMatch(/landerKeep\.set\("job"/);
     expect(builder![0]).toMatch(/landerKeep\.set\("from"/);
+    // …and `back`, the address of the /explore slice the reader left, which is
+    // the next parameter of exactly the same kind and was added here rather
+    // than into either branch.
+    expect(builder![0]).toMatch(/landerKeep\.set\("back"/);
   });
 
   it("still reads `from` off the live address rather than off filter state", () => {
@@ -165,6 +205,8 @@ describe("the lander rewrite keeps the way back", () => {
     for (const g of gates) {
       expect(g, `a lander gate now tests \`from\`, which would break the clean lander URL: ${g}`)
         .not.toMatch(/\bfromParam\b/);
+      expect(g, `a lander gate now tests \`back\`, which would break the clean lander URL: ${g}`)
+        .not.toMatch(/\bbackParam\b/);
     }
   });
 });
