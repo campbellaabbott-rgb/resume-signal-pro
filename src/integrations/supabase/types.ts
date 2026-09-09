@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _mig_stage: {
+        Row: {
+          applied_at: string | null
+          name: string
+          sql: string
+        }
+        Insert: {
+          applied_at?: string | null
+          name: string
+          sql: string
+        }
+        Update: {
+          applied_at?: string | null
+          name?: string
+          sql?: string
+        }
+        Relationships: []
+      }
       ab_test_events: {
         Row: {
           created_at: string
@@ -1566,6 +1584,7 @@ export type Database = {
       }
       job_board_closure_rollup: {
         Row: {
+          backfill_n: number | null
           category: string
           company: string
           company_token: string
@@ -1580,6 +1599,7 @@ export type Database = {
           rolled_at: string
         }
         Insert: {
+          backfill_n?: number | null
           category?: string
           company?: string
           company_token: string
@@ -1594,6 +1614,7 @@ export type Database = {
           rolled_at?: string
         }
         Update: {
+          backfill_n?: number | null
           category?: string
           company?: string
           company_token?: string
@@ -3885,6 +3906,7 @@ export type Database = {
         Args: { p_job_ids: string[] }
         Returns: {
           closed_at: string
+          closed_at_is_observation: boolean
           days_standing: number
           job_id: string
           outcome: string
@@ -4815,6 +4837,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_closure_population: { Args: never; Returns: undefined }
       refresh_explore_cache: { Args: never; Returns: undefined }
       refresh_explore_role_rows: { Args: never; Returns: undefined }
       refresh_ghost_stats: { Args: never; Returns: undefined }
