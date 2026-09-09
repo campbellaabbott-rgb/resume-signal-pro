@@ -1151,6 +1151,10 @@
     "bigEmployerTakedownsNoticed": {
       "title": "We now notice when a large employer takes a role down",
       "description": "At employers with more than a few hundred openings we could not tell a role being taken down apart from a role simply not appearing in the slice of their careers page we had read that visit — so we said nothing, and the listing could sit here until it aged out weeks later. That is a real cost to you: an application written against a job the employer had already pulled. We now read those careers pages all the way round before deciding anything is gone, so a genuine takedown is spotted in days instead of weeks. It takes a few days for the first full passes to finish, so roles at the very largest employers will start dropping off correctly over that period rather than immediately."
+    },
+    "activelyHiringHidLargeEmployers": {
+      "title": "The “Actively hiring” filter was hiding the biggest employers",
+      "description": "A filter called “Actively hiring” sounds like it knows who is hiring. It did not. It counted roles we had watched come off an employer’s careers page and stay off — which means reading that page all the way to the end, and on the largest employers we could not. So the filter quietly removed them: measured against the thirty biggest employers on the board, seventeen of them and 91,535 of 154,979 roles were being hidden, including one employer with 34,000 openings. It was reporting the limits of what we can read as a fact about who is hiring. It is now called “Takes roles down”, which is the thing we actually watched happen. Employers we hold no record for are no longer treated as not hiring — they are set aside, counted on screen with the reason given, and one button brings them back. And where we cannot tell whether an employer leaves roles up or we simply never saw one come down, we now say that, instead of showing you nothing."
     }
   }
 }

@@ -1151,6 +1151,10 @@
     "bigEmployerTakedownsNoticed": {
       "title": "Ahora nos damos cuenta cuando un gran empleador retira un puesto",
       "description": "En los empleadores con más de unos cientos de vacantes no podíamos distinguir un puesto retirado de un puesto que simplemente no aparecía en la porción de su página de empleo que habíamos leído en esa visita — así que no decíamos nada, y el anuncio podía seguir aquí hasta caer por antigüedad, semanas más tarde. Eso te cuesta algo real: una candidatura escrita para un empleo que el empleador ya había retirado. Ahora leemos esas páginas de empleo dando la vuelta entera antes de dar nada por desaparecido, así que una retirada real se detecta en días en lugar de semanas. Las primeras pasadas completas tardan unos días en terminar, así que los puestos de los empleadores más grandes empezarán a desaparecer correctamente a lo largo de ese periodo, no de inmediato."
+    },
+    "activelyHiringHidLargeEmployers": {
+      "title": "El filtro “Contratando activamente” ocultaba a los mayores empleadores",
+      "description": "Un filtro llamado “Contratando activamente” parece saber quién está contratando. No lo sabía. Contaba los puestos que habíamos visto salir de la página de empleo de un empleador y no volver — lo que exige leer esa página entera hasta el final, y en los empleadores más grandes no podíamos. Así que el filtro los quitaba sin decir nada: medido sobre los treinta mayores empleadores del tablero, diecisiete de ellos y 91.535 de 154.979 puestos quedaban ocultos, incluido un empleador con 34.000 vacantes abiertas. Estaba presentando los límites de lo que podemos leer como un hecho sobre quién contrata. Ahora se llama “Retira vacantes”, que es lo que de verdad vimos ocurrir. Los empleadores de los que no tenemos ningún registro ya no se tratan como si no contrataran — quedan apartados, contados en pantalla y con el motivo a la vista, y un botón los trae de vuelta. Y cuando no podemos distinguir si un empleador deja sus puestos publicados o si sencillamente nunca vimos salir ninguno, ahora lo decimos, en lugar de no mostrarte nada."
     }
   }
 }

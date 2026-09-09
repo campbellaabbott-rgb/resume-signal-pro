@@ -3024,6 +3024,32 @@ export default function Jobs() {
     const fromParam = new URLSearchParams(window.location.search).get("from");
     if (fromParam) p.set("from", fromParam);
     const qs = p.toString();
+    // THE LANDER FORM IS A REWRITE, NOT A PASSTHROUGH. Both lander branches
+    // below build their URL by hand and `return` before `qs` is ever used, so
+    // every parameter that is not filter state has to be re-added there BY
+    // NAME or this effect deletes it. `job` was. `from` was not — and the two
+    // lines above, which exist precisely to keep it, are dead on that path.
+    //
+    // That is the whole bug, and it lands on the ONLY arrival Explore
+    // produces: a tile click goes to /jobs/field/:id?from=explore, which is a
+    // lander with no filters set, which is exactly the branch that returns
+    // early. So the affordance survived every path except the one it was
+    // built for.
+    //
+    // It was invisible because cameFromExplore reads the param ONCE at mount
+    // and holds it in state (see its useState initialiser), so the
+    // Back-to-Explore link kept rendering for the rest of the session. Only a
+    // reload or a copied link showed the loss — and no server-side
+    // attribution could ever survive, which is why the referral is unmeasurable
+    // today.
+    //
+    // Three guards assert Explore EMITS from=explore and all three are green;
+    // none asserted the lander KEEPS it. Written as one params object so a
+    // parameter added to one branch cannot be forgotten in the other.
+    const landerKeep = new URLSearchParams();
+    if (jobParam) landerKeep.set("job", jobParam);
+    if (fromParam) landerKeep.set("from", fromParam);
+    const landerQs = landerKeep.toString();
     // !workMode belongs in both gates: without it, picking Hybrid on a lander
     // kept the bare lander URL and reload/share silently dropped the filter.
     // agentOnly and inclUncat are filters too, and the lander form carries no
@@ -3039,11 +3065,11 @@ export default function Jobs() {
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && sortMode !== "salary") {
-      window.history.replaceState({}, "", `/jobs/company/${landerCompany}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
+      window.history.replaceState({}, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && sortMode !== "salary") {
-      window.history.replaceState({}, "", `/jobs/field/${landerCategory}${jobParam ? `?job=${encodeURIComponent(jobParam)}` : ""}`);
+      window.history.replaceState({}, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
