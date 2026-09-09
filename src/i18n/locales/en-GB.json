@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Measured over the {{n}} of this company's roles that carry its own posting date: up to {{pct}}% came down for good within {{d}} days of being posted ({{lo}}–{{hi}}% either way). Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out. Worth applying early.",
     "hhBadgeTipObserved": "We watched {{n}} of this company's roles come off the board and stay off during our tracking — taken down, not re-listed. That is activity we observed; it is not a statement about how long any of them was up.",
     "pastFieldHorizonTipNoCount": "Measured from our own lifecycle log: of the {{field}} roles we watched over the last {{window}} days, {{gone}}% were off the board within {{d}} days. This one is on day {{age}} by the company's own posted date. A long-open role is not a dead one — but it is worth knowing before you spend an application.",
-    "compareFillRateBounded": "up to {{pct}}% of its roles come down for good within {{d}}d ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "up to {{pct}}% of its roles come down for good within {{d}}d ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} live openings — every one straight from the company's own hiring system."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Your AI agent applies with you:",
     "agentLine": "it writes the cover letter, answers the real questions, preps you — you hit send",
-    "trustFresh": "No dated posting older than 30 days — undated ones show no age"
+    "trustFresh": "No dated posting older than 30 days — undated ones show no age",
+    "companyBoards": "company job boards hiring"
   },
   "explore": {
     "repostWarn": "Re-lists roles: {{events}} re-postings across {{roles}} roles in {{d}}d",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "Upload your CV — free",
     "ctaSecondary": "Browse the board",
     "reassure": "Free scan · no card, no signup",
-    "exploreCta": "Explore by field"
+    "exploreCta": "Explore by field",
+    "statCompanyBoards": "company job boards hiring"
   }
 }

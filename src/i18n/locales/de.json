@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Gemessen über die {{n}} Stellen dieses Unternehmens mit einem eigenen Veröffentlichungsdatum: bis zu {{pct}}% wurden binnen {{d}} Tagen nach Veröffentlichung endgültig heruntergenommen ({{lo}}–{{hi}}% in beide Richtungen). Stellen, die noch online sind, und Stellen, die unsere 30-Tage-Grenze überschritten haben, zählen als unabgeschlossen statt zu fehlen. Eine frühe Bewerbung lohnt sich.",
     "hhBadgeTipObserved": "Wir haben gesehen, wie {{n}} Stellen dieses Unternehmens während unserer Beobachtung vom Board verschwanden und verschwunden blieben — heruntergenommen, nicht neu ausgeschrieben. Das ist beobachtete Aktivität; es sagt nichts darüber aus, wie lange eine davon online war.",
     "pastFieldHorizonTipNoCount": "Gemessen aus unserem eigenen Lebenszyklus-Protokoll: von den Stellen in {{field}}, die wir in den letzten {{window}} Tagen beobachtet haben, waren {{gone}}% binnen {{d}} Tagen vom Board. Diese hier ist nach dem Datum des Unternehmens an Tag {{age}}. Eine lange offene Stelle ist keine tote Stelle — aber es lohnt sich, das zu wissen, bevor Sie eine Bewerbung investieren.",
-    "compareFillRateBounded": "bis zu {{pct}}% seiner Stellen werden binnen {{d}} Tagen endgültig heruntergenommen ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "bis zu {{pct}}% seiner Stellen werden binnen {{d}} Tagen endgültig heruntergenommen ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} offene Stellen — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Ihr KI-Agent bewirbt sich mit Ihnen:",
     "agentLine": "er schreibt das Anschreiben, beantwortet die echten Fragen, bereitet Sie vor — Sie senden ab",
-    "trustFresh": "Keine datierte Anzeige älter als 30 Tage — undatierte zeigen kein Alter"
+    "trustFresh": "Keine datierte Anzeige älter als 30 Tage — undatierte zeigen kein Alter",
+    "companyBoards": "Unternehmens-Jobportale mit offenen Stellen"
   },
   "explore": {
     "repostWarn": "Schreibt Stellen neu aus: {{events}} Neuausschreibungen über {{roles}} Stellen in {{d}} Tagen",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "Lebenslauf hochladen — kostenlos",
     "ctaSecondary": "Board durchsuchen",
     "reassure": "Kostenloser Scan · ohne Karte, ohne Anmeldung",
-    "exploreCta": "Nach Bereich erkunden"
+    "exploreCta": "Nach Bereich erkunden",
+    "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen"
   }
 }

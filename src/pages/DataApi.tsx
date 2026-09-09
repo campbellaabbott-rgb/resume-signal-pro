@@ -52,7 +52,7 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     body: "What opened and what closed since a timestamp — and for each close, whether the role genuinely came down or was re-listed under a new id. Almost nobody else can answer the second half.",
     params: "since (ISO, within the last 30 days; 180 on a paid key), limit (max 100), opened_cursor, closed_cursor",
   },
-  { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. Carries asOf.", params: "q, limit (max 100), cursor" },
+  { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. open_postings counts postings the employer has not taken down, dated inside the last 30 days — the same rule /v1/jobs serves, so the two join. Carries asOf and a basis line; open_postings is null, never a substitute number, when a pass could not compute it.", params: "q, limit (max 100), cursor" },
   {
     path: "GET /v1/stats",
     body: "Headline counts, the closure log, and the two questions a buyer asks first: how fresh, and from which systems. Every figure carries its own asOf and names its basis.",

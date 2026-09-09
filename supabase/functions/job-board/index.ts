@@ -52,6 +52,7 @@ import {
   greenhouseApi,
   leverApi,
   type JobPosting,
+  NEGATED_REMOTE_SOURCE,
   normalizeUkg,
   ukgBoardParams,
 } from "./normalize.ts";
@@ -5627,6 +5628,38 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (typeof row.remote === "boolean" && row.remote !== prev.remote) {
             patch.remote = row.remote;
             note("remote", prev.remote, row.remote);
+            // AND THE TRINARY MOVES WITH IT. `put("work_mode", …)` above is
+            // stated-only (it refuses a null so vendor silence cannot erase
+            // enrichment), but work_mode and remote are not two facts — every
+            // normalizer computes `remote: workMode === "remote"` from the one
+            // trinary. So a null here is not silence: it is the re-normalised
+            // answer for THIS visit, and refusing it strands the pair in
+            // disagreement.
+            //
+            // THE ROW THAT PROVES IT, and it is the whole population the
+            // negated-remote fix is for: an iCIMS row with location_type
+            // "Non-Remote" and title "Staff Nurse" is stored today as
+            // work_mode='remote', remote=true. The fixed bundle re-normalises
+            // it to (null, false); without this line the diff loop writes ONLY
+            // remote=false and work_mode stays 'remote'. filters.ts lets an
+            // explicit workMode beat the boolean, so the row would still be
+            // served under {"workMode":"remote"} while its own boolean says it
+            // is not — the badge-vs-filter disagreement the normalizer change
+            // removes at write time, reintroduced by the writer. The repair
+            // migration does not reach it either: it reads title+location,
+            // which carry no negated phrase here.
+            //
+            // Gated on the boolean having MOVED, so this is not a new write on
+            // every row of every rotation (the employment_type
+            // write-amplification incident); and on the same
+            // vendor-authoritative reasoning as region_code above, which is
+            // this file's existing precedent for a derived field that must be
+            // clearable.
+            const nextMode = (row as Record<string, unknown>).work_mode ?? null;
+            if (nextMode !== prev.work_mode) {
+              patch.work_mode = nextMode;
+              note("work_mode", prev.work_mode, nextMode);
+            }
           }
           // Catalog-authoritative on every fetch, in BOTH directions: this is
           // how the 226 boards tagged on 2026-08-31 reach their EXISTING rows
@@ -6709,7 +6742,21 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const { data: prevRefresh } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
       const pv = (prevRefresh?.v ?? {}) as Record<string, unknown>;
       if (pv.total) {
-        f = { total: pv.total, companiesFacet: pv.companiesFacet ?? [], categoriesFacet: pv.categoriesFacet ?? {} };
+        f = {
+          total: pv.total,
+          companiesFacet: pv.companiesFacet ?? [],
+          categoriesFacet: pv.categoriesFacet ?? {},
+          // THE SERVABLE COMPANY NUMBERS RIDE THE CARRY, OR THEY VANISH.
+          // Carried through exactly like companiesFacet and marked by
+          // facetsCarried below. Carried ONLY when the previous row actually
+          // had them: on the first pass after the migration deploys, and on
+          // any pass that carries from a pre-migration row, they are absent —
+          // and absent is the state every consumer reads as "publish no
+          // number", which is the whole deploy-window contract.
+          ...(pv.companiesOpen && typeof pv.companiesOpen === "object"
+            ? { companiesOpen: pv.companiesOpen, companiesOpenCount: pv.companiesOpenCount }
+            : {}),
+        };
         facetsCarried = true;
       } else {
         // Cold database AND a failed aggregate: nothing to carry, nothing the
@@ -7204,6 +7251,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // How many actually failed, versus how many fit in the sample above.
       failedCount: failedTotal,
       companiesFacet: companies,
+      // THE SERVABLE SIBLING OF companiesFacet — see migration 20260909214000.
+      // companiesFacet is the UNFILTERED prune input and must never reach a
+      // reader; this map (company_token -> count under both serving
+      // predicates, zero-open tokens absent) is what every reader surface
+      // publishes. Spread only when the pass produced it, so an older row read
+      // during the deploy window is missing the KEY rather than carrying a
+      // misleading empty map — absence is what makes consumers fall silent.
+      // Like `total` above, it includes any just-pruned orphan until the next
+      // pass recomputes; the prune deletes at most a handful of removed boards.
+      ...(f.companiesOpen && typeof f.companiesOpen === "object" ? { companiesOpen: f.companiesOpen } : {}),
+      ...(typeof f.companiesOpenCount === "number" ? { companiesOpenCount: f.companiesOpenCount } : {}),
       categoriesFacet: f.categoriesFacet ?? {},
       ...(coverage ? { coverage } : {}),
       // Facet fields above are LAST pass's, carried through an aggregate
@@ -7252,7 +7310,38 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: v.refreshedAt } : {}),
       refreshedAt: v.refreshedAt,
       companiesCount: companies.length,
-      companiesFacet: [...companies].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).slice(0, 200),
+      // THE FAT ROW GETS THE WHOLE MAP; THE HEAD ROW GETS THE SLICE AND THE
+      // SCALAR, and that split is the size decision this row exists for.
+      //
+      // companiesOpen is ~24k entries — the same order of magnitude as
+      // companiesFacet, which is the 1.3-1.6MB this row was created to stop
+      // serving. Putting it here would undo the whole measurement above. What
+      // the serving path actually reads is (a) one number per employer for the
+      // 200 it shows, and (b) the board-wide servable count for the headline
+      // pairing. So the open count is FOLDED INTO the 200 entries, and the
+      // board-wide figure rides as an explicit scalar.
+      //
+      // companiesOpenCount is stored EXPLICITLY for the same reason
+      // companiesCount is: derived from a 200-row slice it would publish the
+      // slice size as a fact about the board.
+      ...(typeof (v as { companiesOpenCount?: number }).companiesOpenCount === "number"
+        ? { companiesOpenCount: (v as { companiesOpenCount?: number }).companiesOpenCount }
+        : {}),
+      // ORDERED BY WHAT IS OPEN, once we know it. The old ordering (raw facet
+      // count) put a board with 4,000 withdrawn postings and none open at the
+      // top of the employer dropdown. `count` stays ON the entry — it is what
+      // mergeCompanyFacet folds sub-boards by and what picks the stable
+      // primary token for links — but serveList strips it before it reaches
+      // the wire, so no client can render it.
+      companiesFacet: (() => {
+        const om = (v as { companiesOpen?: Record<string, number> }).companiesOpen;
+        const withOpen = (companies as Array<{ token?: string; name?: string; count?: number }>).map((c) =>
+          om && typeof c.token === "string" ? { ...c, open: om[c.token] ?? 0 } : c
+        ) as Array<{ token?: string; name?: string; count?: number; open?: number }>;
+        return withOpen
+          .sort((a, b) => (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0))
+          .slice(0, 200);
+      })(),
     };
     await client.from("job_board_meta").upsert({ k: "refresh_head", v: vHead, updated_at: new Date().toISOString() }, { onConflict: "k" });
     // Re-rank the hot tier from what the corpus actually holds now: velocity
@@ -8532,6 +8621,29 @@ const QUERY_FILLER = new Set([
  * counts disagree, so there is one.
  */
 const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, unknown> }> = [
+  // NEGATIONS BEFORE POSITIVES — the third and last place this rule was
+  // missing. `/\bremote(?:ly)?\b/i` matches INSIDE "non-remote", because the
+  // hyphen is a word boundary: the identical mechanism as the 2026-08-17
+  // title incident and the detectWorkMode defect fixed in the same deploy.
+  // For q="non-remote nurse" with no workMode or remote field in the body,
+  // INTENT_CONFLICTS does not suppress the lift, so this list patched
+  // workMode:"remote", deleted the word from the query (residual "non-
+  // nurse"), and DISCLOSED that it had applied a "remote" filter. A seeker who
+  // asked for non-remote work was served remote roles and told so.
+  //
+  // This rule consumes the phrase and patches NOTHING. Patching the negation
+  // into a filter is not available: the board has no not-remote predicate
+  // (work_mode is a trinary with a large NULL population, so "not remote"
+  // is not expressible as an equality), and inventing one here would be a
+  // second spelling of a filter that does not exist. Consuming without
+  // patching is the honest outcome — the phrase stops inverting the search,
+  // the words stop being matched as literal title text, and nothing is
+  // claimed that the board cannot serve. The pattern is the SHARED one from
+  // normalize.ts, so there is one definition of "negated remote" across the
+  // writer, the repair and the reader.
+  // Non-global: liftIntentFilters calls .test() then .replace() on the same
+  // object, and a /g/ regex carries lastIndex between them.
+  { re: new RegExp(NEGATED_REMOTE_SOURCE, "i"), label: "not remote", patch: {} },
   // Phrases first: a bare word below must never shred a longer phrase above it.
   { re: /\bwork(?:ing)? from home\b/i, label: "work from home", patch: { workMode: "remote" } },
   { re: /\bwfh\b/i, label: "wfh", patch: { workMode: "remote" } },
@@ -12614,18 +12726,55 @@ Deno.serve(async (req) => {
       // now ships a short head of that facet and asks here for the rest.
       const q = String(body.q ?? "").trim().toLowerCase().slice(0, 80);
       if (q.length < 2) return json({ companies: [] });
+      //
+      // AND IT RETURNED THE ONE NUMBER THE DATABASE REFUSES TO.
+      //
+      // get_company_suggest — the SQL typeahead sitting beside this one — has
+      // carried the rule in its COMMENT ON since 20260811223000: "NEVER
+      // returns companiesFacet.count: that number applies NEITHER serving
+      // predicate and would contradict the page each hit links to." This
+      // action returned `count: c.count` verbatim, so the edge function's own
+      // typeahead published exactly what the SQL one refused, into the /jobs
+      // company dropdown. Measured 2026-09-09: median employer ~1% over, PwC
+      // 3,254 against a filtered 2,119.
+      //
+      // Now it publishes `open` — the servable per-board count computed under
+      // both serving predicates in the same pass as the facet (migration
+      // 20260909214000) — summed across a merged employer's sub-boards, which
+      // is the same definition and the same summing get_company_suggest's
+      // open_roles uses. When the cached row predates that migration the map
+      // is absent and each row ships with NO number; the dropdown renders bare
+      // names until the next refresh pass.
       const { data: metaRow } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
-      const facet = ((metaRow?.v as Record<string, unknown> | undefined)?.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
-      const merged = mergeCompanyFacet(facet);
+      const suggestV = (metaRow?.v ?? {}) as Record<string, unknown>;
+      const facet = (suggestV.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
+      const openRaw = suggestV.companiesOpen;
+      const openMap = openRaw && typeof openRaw === "object" ? openRaw as Record<string, number> : null;
+      const merged = mergeCompanyFacet(
+        openMap
+          ? facet.map((c) => ({ ...c, open: typeof c.token === "string" ? (openMap[c.token] ?? 0) : 0 }))
+          : facet,
+      );
       const hit = merged.filter((c) => String(c.name ?? "").toLowerCase().includes(q));
-      // A name that STARTS with what was typed is what the reader meant;
-      // count breaks ties beneath that.
+      // A name that STARTS with what was typed is what the reader meant; the
+      // servable count breaks ties beneath that (the raw facet count only when
+      // there is no servable one to rank by, and it is never published).
       hit.sort((a, b) => {
         const ap = String(a.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
         const bp = String(b.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
-        return ap - bp || (b.count ?? 0) - (a.count ?? 0);
+        return ap - bp || (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0);
       });
-      return json({ companies: hit.slice(0, 12).map((c) => ({ token: c.token, name: c.name, count: c.count })) });
+      return json({
+        // `tokens` for the same reason facetHead ships it: `open` here is the
+        // SUM over a merged employer's sub-boards, and a filter set to the
+        // primary token alone would serve less than the number promised.
+        companies: hit.slice(0, 12).map((c) => ({
+          token: c.token,
+          name: c.name,
+          ...(typeof c.open === "number" ? { open: c.open } : {}),
+          ...(Array.isArray(c.tokens) && c.tokens.length > 1 ? { tokens: c.tokens } : {}),
+        })),
+      });
     }
 
     if (action === "exists") {
@@ -14718,6 +14867,14 @@ async function serveList(
           ...(trackedTotal !== null ? { trackedTotal } : {}),
         companies: [],
         companiesCount: ((metaV.companiesCount as number | undefined) ?? ((metaV.companiesFacet as unknown[]) ?? []).length),
+        // THE SERVABLE EMPLOYER DENOMINATOR, beside the unfiltered one.
+        // companiesCount is the length of the UNFILTERED token grouping — it
+        // counts boards whose every posting has been withdrawn or aged out —
+        // and it was being printed next to a serving-filtered opening count in
+        // one sentence. companiesOpenCount is boards with at least one open
+        // posting, under the same two predicates as `total`. Spread only when
+        // the pass computed it: absent, and every caller drops the clause.
+        ...(typeof metaV.companiesOpenCount === "number" ? { companiesOpenCount: metaV.companiesOpenCount } : {}),
         // THE SHAPE IS PART OF THE CONTRACT, NOT JUST THE VALUES.
         //
         // This exit shipped without these two and CRASHED THE WHOLE JOBS PAGE:
@@ -14881,6 +15038,7 @@ async function serveList(
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: [],
           companiesCount: ((metaV.companiesCount as number | undefined) ?? ((metaV.companiesFacet as unknown[]) ?? []).length),
+          ...(typeof metaV.companiesOpenCount === "number" ? { companiesOpenCount: metaV.companiesOpenCount } : {}),
           // Same core shape as every other exit — see the SALARY exit above.
           categories: {},
           failedSources: [], failedCount: 0,
@@ -14940,8 +15098,39 @@ async function serveList(
   // The selected employer must survive the cut whatever its rank, or its own
   // filter chip renders with no label and the reader cannot see what they
   // filtered to.
-  function facetHead(list: Array<{ token?: string; name?: string; count?: number }>) {
-    const merged = mergeCompanyFacet([...list].sort((a, b) => (b.count ?? 0) - (a.count ?? 0)));
+  //
+  // AND THE NUMBER ON THE WIRE IS THE SERVABLE ONE, OR THERE IS NO NUMBER.
+  //
+  // companiesFacet.count is `count(*) GROUP BY company_token` with NEITHER
+  // serving predicate (migration 20260825190000 leaves it unfiltered on
+  // purpose: the orphan prune DELETES by it). Measured 2026-09-09 against the
+  // board's own filtered count, the median employer was ~1% over and the tail
+  // was not: PwC 3,254 against 2,119. Every reader-facing surface that printed
+  // it — the /jobs dropdown, the detail panel's "N more open roles at X",
+  // ~500 prerendered SERP titles, /v1/companies' open_postings — was
+  // contradicting the page it linked to.
+  //
+  // So `count` DOES NOT LEAVE THIS FUNCTION. It is used here (ordering, and
+  // mergeCompanyFacet's stable primary-token pick) and dropped from every
+  // emitted row; what ships is `open`, the servable count computed under both
+  // predicates in the same pass (migration 20260909214000). A row read from a
+  // cached facet written before that migration carries no open count, and then
+  // the entry ships with NO NUMBER AT ALL — the dropdown renders bare names
+  // for one refresh interval. Silence beats a contradiction.
+  const facetOpen = (metaV as { companiesOpen?: Record<string, number> }).companiesOpen;
+  const facetOpenMap = facetOpen && typeof facetOpen === "object" ? facetOpen : null;
+  function facetHead(list: Array<{ token?: string; name?: string; count?: number; open?: number; tokens?: string[] }>) {
+    // The head row already folds `open` into its 200 entries; the fat-row
+    // fallback carries the whole map instead, so fill from it when the entry
+    // has none of its own. Neither present means neither measured.
+    const withOpen = list.map((c) =>
+      typeof c.open === "number"
+        ? c
+        : (facetOpenMap && typeof c.token === "string" ? { ...c, open: facetOpenMap[c.token] ?? 0 } : c)
+    );
+    const merged = mergeCompanyFacet(
+      withOpen.sort((a, b) => (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0)),
+    );
     const head = merged.slice(0, FACET_COMPANY_LIMIT);
     if (applied.companies.length) {
       const have = new Set(head.map((c) => c.token));
@@ -14949,7 +15138,23 @@ async function serveList(
         if (applied.companies.includes(String(c.token)) && !have.has(c.token)) head.push(c);
       }
     }
-    return head;
+    // THE WIRE SHAPE. No `count` — see above.
+    //
+    // `tokens` RIDES WITH THE SUM IT DESCRIBES. mergeCompanyFacet folds an
+    // employer's sub-boards into one row (PwC ships five Workday sub-sites)
+    // and SUMS `open` across them, but the row's `token` is only the largest
+    // sub-board's. A client that showed the sum and then filtered on that one
+    // token published a number its own link could not serve — the same defect
+    // as the unfiltered count, one level up. clusters.ts already carries every
+    // token for exactly this reason ("so the filter can cover them all"), so
+    // it ships, and the filter takes the whole group. Present only where there
+    // IS a group: a single-board employer needs no list.
+    return head.map((c) => ({
+      token: c.token,
+      name: c.name,
+      ...(typeof c.open === "number" ? { open: c.open } : {}),
+      ...(Array.isArray(c.tokens) && c.tokens.length > 1 ? { tokens: c.tokens } : {}),
+    }));
   }
   // Same gate as the count above: a filter search_jobs cannot bind must not be
   // answered by search_jobs. buildQuery binds all six.
@@ -15540,6 +15745,7 @@ async function serveList(
                     ...(trackedTotal !== null ? { trackedTotal } : {}),
                     companies: [],
                     companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
+                    ...(typeof v0.companiesOpenCount === "number" ? { companiesOpenCount: v0.companiesOpenCount } : {}),
                     categories: {},
                     failedSources: [], failedCount: 0,
                     refreshedAt: (v0.refreshedAt as string) ?? null,
@@ -15814,6 +16020,7 @@ async function serveList(
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
                 companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
+                ...(typeof v0.companiesOpenCount === "number" ? { companiesOpenCount: v0.companiesOpenCount } : {}),
                 categories: {},
                 failedSources: [], failedCount: 0,
                 refreshedAt: (v0.refreshedAt as string) ?? null,
@@ -15936,6 +16143,7 @@ async function serveList(
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                 companies: [],
                 companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
+                ...(typeof v0.companiesOpenCount === "number" ? { companiesOpenCount: v0.companiesOpenCount } : {}),
                 // Board-wide, from the cached facet row — CORRECT only on the unfiltered
           // view. Rendered inside a filtered view it overstated by 15.7x to 45x
           // (sum 587,793 shown beside a filtered total of 10,000 or less), which
@@ -16026,6 +16234,7 @@ async function serveList(
           ...(trackedTotal !== null ? { trackedTotal } : {}),
                     companies: [],
                     companiesCount: ((v0.companiesCount as number | undefined) ?? ((v0.companiesFacet as unknown[]) ?? []).length),
+                    ...(typeof v0.companiesOpenCount === "number" ? { companiesOpenCount: v0.companiesOpenCount } : {}),
                     // Board-wide, from the cached facet row — CORRECT only on the unfiltered
           // view. Rendered inside a filtered view it overstated by 15.7x to 45x
           // (sum 587,793 shown beside a filtered total of 10,000 or less), which
@@ -16672,8 +16881,12 @@ async function serveList(
           totalAllCompanies: safeMetaTotal ?? total,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0
-            ? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number }>)
-                .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+            // Ordered by the SERVABLE count (facetHead already ranks on it and
+            // the merge preserves that order); `count` is not on these rows —
+            // see facetHead. Re-stated here so the ordering is visible at the
+            // exit that publishes it.
+            ? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number; open?: number }>)
+                .sort((a, b) => (b.open ?? 0) - (a.open ?? 0))
             : [],
           // NEVER the slice's length. The serving row is refresh_head now,
           // whose companiesFacet is deliberately truncated to 200 — deriving
@@ -16681,6 +16894,7 @@ async function serveList(
           // first evening the head row qualified. The stored count first, the
           // length only for the fat-row fallback whose facet is complete.
           companiesCount: ((v0.companiesCount as number | undefined) ?? fullCompanies0.length),
+          ...(typeof v0.companiesOpenCount === "number" ? { companiesOpenCount: v0.companiesOpenCount } : {}),
           // Board-wide, from the cached facet row — CORRECT only on the unfiltered
           // view. Rendered inside a filtered view it overstated by 15.7x to 45x
           // (sum 587,793 shown beside a filtered total of 10,000 or less), which
@@ -17052,8 +17266,10 @@ async function serveList(
   // RPC (used by prerender/SEO) still returns the complete set.
   const fullCompanies = (v.companiesFacet as Array<{ count?: number }>) ?? [];
   const servedCompanies = includeFacets
-    ? facetHead(fullCompanies as Array<{ token?: string; name?: string; count?: number }>)
-        .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+    // Ordered by the SERVABLE count — see facetHead; `count` never reaches
+    // these rows.
+    ? facetHead(fullCompanies as Array<{ token?: string; name?: string; count?: number; open?: number }>)
+        .sort((a, b) => (b.open ?? 0) - (a.open ?? 0))
     : [];
   const mappedRows = (data ?? []).map(rowToJob) as Array<Record<string, unknown>>;
   // The raw, in-order rows the collapse walked. After a top-up this spans BOTH
@@ -17246,6 +17462,7 @@ async function serveList(
     companies: servedCompanies,
     // Same rule as the ranked sites: the head row's facet is a 200-row slice.
     companiesCount: ((v.companiesCount as number | undefined) ?? fullCompanies.length),
+    ...(typeof v.companiesOpenCount === "number" ? { companiesOpenCount: v.companiesOpenCount } : {}),
     // Gated like the other three. A board-wide facet printed beside a FILTERED
     // result set promises more jobs than the filter can deliver — "Engineering
     // 67,898" next to a country=GB page whose entire scope is 19,633. Today's fix

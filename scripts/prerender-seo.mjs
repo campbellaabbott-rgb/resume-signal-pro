@@ -132,15 +132,41 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       });
       if (fr.ok) {
         const j = await fr.json();
-        if (j && typeof j.totalAllCompanies === "number" && Array.isArray(j.companies) && j.companies.length > 100) {
+        // A HEAD THAT CARRIES NO NUMBER AT ALL IS NOT A USABLE RUNG.
+        //
+        // facetHead stopped emitting `count` when `open` shipped (see
+        // job-board/index.ts), so during the deploy window — migration not yet
+        // applied, a carried-facets pass, or simply before the next rotation
+        // finishes — these rows carry NEITHER field. Taken as boardFacets that
+        // produces the two worst outcomes this ladder exists to prevent: the
+        // lander gate below has no number to select on and admits NOBODY (zero
+        // company pages, the 2026-07-25 incident), and the snapshot refresh
+        // then overwrites 600 good entries with an empty list, so the NEXT
+        // build fails its `length > 100` check too and the sitemap ratchet
+        // aborts the publish.
+        //
+        // So this rung is taken only when the pass actually measured open
+        // roles. Otherwise fall through to the committed snapshot, which
+        // carries the last good bake's numbers and produces count-free landers
+        // — stale selection beats no pages.
+        const rung2Numbered = Array.isArray(j?.companies)
+          && j.companies.some((c) => typeof c?.open === "number");
+        if (j && typeof j.totalAllCompanies === "number" && Array.isArray(j.companies) && j.companies.length > 100 && rung2Numbered) {
           boardFacets = {
             total: j.totalAllCompanies,
+            // The board function's facet head carries `open` per entry (the
+            // servable count) and no `count` at all since the 20260909214000
+            // deploy — see facetHead in job-board/index.ts. Carried through
+            // unchanged so openOf() below finds it on the entry.
             companiesFacet: j.companies,
             companiesCount: typeof j.companiesCount === "number" ? j.companiesCount : j.companies.length,
+            companiesOpenCount: typeof j.companiesOpenCount === "number" ? j.companiesOpenCount : undefined,
             categoriesFacet: j.categories ?? {},
           };
           facetsSource = "board-function";
           console.log("[prerender-seo] facets RPC unavailable — using the board function's cached facets");
+        } else if (j && Array.isArray(j.companies) && j.companies.length > 100 && !rung2Numbered) {
+          console.log("[prerender-seo] board function answered but its facet pass carried no servable per-employer count — falling through to the committed snapshot rather than building count-free selection from nothing");
         }
       }
     }
@@ -157,16 +183,54 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     } catch { /* no snapshot yet — pages fall back to countless copy, sitemap ratchet guards */ }
   } else {
     try {
+      // THE SNAPSHOT HAS TO CARRY THE SERVABLE NUMBER, or a build that falls
+      // back to it publishes 500 landers whose counts it cannot reproduce.
+      // `open` rides each trimmed entry; the ranking that decides WHICH 600 are
+      // kept is the same one the landers use, so the snapshot holds the top
+      // employers by open roles rather than by raw catalog size.
+      const snapOpen = boardFacets.companiesOpen && typeof boardFacets.companiesOpen === "object"
+        ? boardFacets.companiesOpen
+        : null;
+      const snapOpenOf = (c) =>
+        typeof c?.open === "number" ? c.open : (snapOpen ? (snapOpen[c?.token] ?? 0) : null);
       const trimmed = [...(boardFacets.companiesFacet ?? [])]
-        .filter((c) => c && typeof c.count === "number")
-        .sort((a, b) => b.count - a.count)
+        .filter((c) => c && (typeof c.count === "number" || typeof snapOpenOf(c) === "number"))
+        .sort((a, b) => (snapOpenOf(b) ?? b.count ?? 0) - (snapOpenOf(a) ?? a.count ?? 0))
         .slice(0, 600)
-        .map((c) => ({ token: c.token, name: c.name, count: c.count }));
-      writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
+        .map((c) => {
+          const o = snapOpenOf(c);
+          // `count` RIDES ALONG AND IS NEVER PRINTED. It is the SELECTION
+          // fallback the gate below names (c.count >= 8) for a build that can
+          // reach neither the servable map nor a per-entry `open`; the lander
+          // body, title and A-Z row all key on `open` and stay silent without
+          // it. Dropping it here would have made a snapshot-fed build select
+          // nobody, which is zero landers rather than count-free ones.
+          return {
+            token: c.token,
+            name: c.name,
+            ...(typeof c.count === "number" ? { count: c.count } : {}),
+            ...(typeof o === "number" ? { open: o } : {}),
+          };
+        });
+      // A SNAPSHOT WRITE IS A DESTRUCTIVE PATH — it replaces the committed
+      // fallback for every future build that cannot reach the board, and the
+      // next one loads it only if it holds more than 100 entries. Writing a
+      // short (or empty) list therefore does not degrade one bake, it disarms
+      // the ladder: boardFacets goes null, the company pages vanish and the
+      // sitemap ratchet aborts the publish. So the write happens only when the
+      // new list is at least as usable as the one it overwrites.
+      if (trimmed.length <= 100) {
+        console.log(`[prerender-seo] facet read produced only ${trimmed.length} usable company entries — keeping the committed snapshot rather than overwriting it`);
+      } else writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
         total: boardFacets.total,
         companiesCount: typeof boardFacets.companiesCount === "number"
           ? boardFacets.companiesCount
           : (Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : null),
+        // Written only when measured. A snapshot that invented a 0 here would
+        // put "0 company job boards" into next build's copy.
+        ...(typeof boardFacets.companiesOpenCount === "number"
+          ? { companiesOpenCount: boardFacets.companiesOpenCount }
+          : {}),
         categoriesFacet: boardFacets.categoriesFacet ?? {},
         companiesFacet: trimmed,
         savedAt: new Date().toISOString().slice(0, 10),
@@ -209,11 +273,41 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     ? boardFacets.total
     : null;
 
-  // companiesCount is the FULL number even when the facet array is a capped
-  // slice (the function fallback serves top-1500; the RPC serves everything).
-  const BOARD_COMPANIES = typeof boardFacets?.companiesCount === "number"
-    ? boardFacets.companiesCount
-    : (Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null);
+  // THE COMPANY DENOMINATOR, AND IT IS NOT companiesCount ANY MORE.
+  //
+  // companiesCount is the length of the board's UNFILTERED company_token
+  // grouping. The board leaves that grouping unfiltered on purpose — an orphan
+  // prune DELETES by it (migration 20260825190000) — so it counts boards whose
+  // every posting has been withdrawn or has aged past the 30-day window, and
+  // every sentence below pairs it with a SERVING-FILTERED opening count.
+  // companiesOpenCount is boards with at least one open posting, taken in the
+  // same pass under the same two predicates (migration 20260909214000).
+  //
+  // NULL, NOT companiesCount, when the pass did not compute it: every consumer
+  // below already drops its clause on null, and that is the correct behaviour
+  // for one bake rather than reinstating the number this fixes.
+  //
+  // STILL A COUNT OF BOARDS, NOT OF EMPLOYERS — one employer can run several
+  // (PwC ships five Workday sub-sites) — which is why the copy that prints it
+  // says "company job boards".
+  const BOARD_OPEN_BOARDS = typeof boardFacets?.companiesOpenCount === "number"
+    ? boardFacets.companiesOpenCount
+    : null;
+  const BOARD_COMPANIES = BOARD_OPEN_BOARDS;
+  // THE SERVABLE PER-EMPLOYER COUNT, from whichever rung of the ladder
+  // answered. The RPC returns a whole map (companiesOpen); the board-function
+  // fallback and the snapshot fold it onto each entry as `open`. Null means
+  // this build cannot state that employer's open roles — and then the lander
+  // states none, rather than the unfiltered catalog count it used to print
+  // into a SERP <title>.
+  const BOARD_OPEN_MAP = boardFacets?.companiesOpen && typeof boardFacets.companiesOpen === "object"
+    ? boardFacets.companiesOpen
+    : null;
+  const openRolesOf = (c) => {
+    if (typeof c?.open === "number") return c.open;
+    if (BOARD_OPEN_MAP && typeof c?.token === "string") return BOARD_OPEN_MAP[c.token] ?? 0;
+    return null;
+  };
   // CHURN MARGIN, measured, not guessed. The comment above promised the claim
   // "stays literally true through churn between bakes" — the 2026-08-17 DB
   // incident falsified it: the corpus fell 608,082 -> 583,921 (-4.0%) and
@@ -879,7 +973,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     ],
     content: `
       <h1 class="text-3xl font-bold mb-3">Every job here is real. The agent applies for you.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} companies` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one pulled straight from the employer's own hiring system — never scraped, no dated posting older than 30 days, re-checked live at the moment you apply. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one pulled straight from the employer's own hiring system — never scraped, no dated posting older than 30 days, re-checked live at the moment you apply. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
         <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
         <ul class="space-y-1.5">
@@ -1020,9 +1114,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     const catCounts = boardFacets?.categoriesFacet ?? {};
     // The SERVABLE count — see the BOARD_TOTAL note above; `total` is tracked.
     const boardTotal = BOARD_TOTAL;
-    const boardCompanies = typeof boardFacets?.companiesCount === "number"
-      ? boardFacets.companiesCount
-      : (Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet.length : null);
+    // One derivation, shared with the homepage and llms.txt — see
+    // BOARD_OPEN_BOARDS. Never companiesCount: that is the unfiltered token
+    // grouping, and every sentence here puts this number beside a
+    // serving-filtered opening count.
+    const boardCompanies = BOARD_OPEN_BOARDS;
     const fmt = (n) => n.toLocaleString("en-US");
     for (const [slug, label] of CATEGORY_LANDERS) {
       const n = typeof catCounts[slug] === "number" ? catCounts[slug] : null;
@@ -1032,10 +1128,17 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       write({
         path: `/jobs/field/${slug}`,
         title: n ? `${label} Jobs — ${fmt(n)}+ Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
-        description: `Browse ${countPhrase}, pulled from ${boardCompanies ? `${boardCompanies}` : "3,000+"} companies' official job boards and re-checked continuously. Check your resume's fit free before you apply.`,
+        // THE NOUN AND THE FALLBACK, both wrong in the same clause. The number
+        // is companiesOpenCount — a count of company_token BOARDS, and one
+        // employer can run several — so "N companies" overstates employers,
+        // which is the wording every other surface here was changed away from.
+        // And the old fallback substituted a hardcoded "3,000+" for a
+        // measurement on exactly the builds that could not take one; the clause
+        // now drops out instead, like every other number on this page.
+        description: `Browse ${countPhrase}${boardCompanies ? `, pulled from ${fmt(boardCompanies)} company job boards with roles open now` : ", pulled from companies' own official job boards"} and re-checked continuously. Check your resume's fit free before you apply.`,
         content: `
           <h1>Live ${label} jobs</h1>
-          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} companies` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
           <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
@@ -1070,9 +1173,20 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         // valid URL path segments, the list API accepts them, and the SPA route
         // serves them 200 — verified live 2026-07-26 on Hilton (efet~us2~CX_1,
         // 2,001 postings), which had no lander at all under the old filter.
+        //
+        // GATED AND RANKED ON OPEN ROLES, NOT ON THE CATALOG COUNT. The old
+        // gate (c.count >= 8) admitted employers whose eight postings had all
+        // been withdrawn, and ranked a board with 4,000 dead rows above one
+        // with 300 live ones. `open` is counted under both serving predicates
+        // in the same pass (migration 20260909214000) — the exact query
+        // /jobs/company/{token} runs — so a lander exists only where the
+        // destination has something to show. A build that cannot reach the
+        // servable number falls back to the catalog count for SELECTION only,
+        // and then prints no number anywhere on the page.
         .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._~-]+$/.test(c.token)
-          && typeof c.count === "number" && c.count >= 8 && typeof c.name === "string" && c.name.trim())
-        .sort((a, b) => b.count - a.count)
+          && typeof c.name === "string" && c.name.trim()
+          && (typeof openRolesOf(c) === "number" ? openRolesOf(c) >= 8 : (typeof c.count === "number" && c.count >= 8)))
+        .sort((a, b) => (openRolesOf(b) ?? b.count ?? 0) - (openRolesOf(a) ?? a.count ?? 0))
         .slice(0, 500);
       // ONE EMPLOYER, TWO BOARDS, TWO IDENTICAL PAGES.
       //
@@ -1094,7 +1208,10 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       for (const c of topCompanies) {
         const key = c.name.trim().toLowerCase();
         const prev = primaryByName.get(key);
-        if (!prev || c.count > prev.count) primaryByName.set(key, c);
+        // The indexable page for an employer is the board with the most OPEN
+        // roles — the same ranking the gate above uses, so the canonical does
+        // not point at a sibling board that has nothing to serve.
+        if (!prev || (openRolesOf(c) ?? c.count ?? 0) > (openRolesOf(prev) ?? prev.count ?? 0)) primaryByName.set(key, c);
       }
       let consolidated = 0;
       for (const c of topCompanies) {
@@ -1102,6 +1219,27 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         const primary = primaryByName.get(nm.toLowerCase());
         const isPrimary = primary.token === c.token;
         if (!isPrimary) consolidated++;
+        // THE NUMBER IN THE <title> IS THE NUMBER THE DESTINATION SERVES, OR
+        // THERE IS NO NUMBER.
+        //
+        // Every figure on this page was companiesFacet.count — count(*) GROUP
+        // BY company_token with NEITHER serving predicate, because the board
+        // leaves that grouping unfiltered so its orphan prune can DELETE by it
+        // (migration 20260825190000). Measured 2026-09-09 against the board's
+        // own filtered count, the median employer was ~1% over and the tail was
+        // not: PwC 3,254 against 2,119 — 1,135 roles promised in a SERP title
+        // that /jobs/company/pwc~wd3~Global_Experienced_Careers does not have.
+        // These are ~500 crawlable URLs that only regenerate on a build, so the
+        // overstatement sat in Google's index between deploys.
+        //
+        // `open` is the same instant's count under both predicates (migration
+        // 20260909214000). When this build could not reach it, the page states
+        // NO count at all rather than the one it cannot reproduce — the same
+        // rule prerender-seo already applied to the BOARD total (see the
+        // "`total` CHANGED MEANING UNDERNEATH THIS LINE" note above), which was
+        // fixed for the whole board and never re-derived per company.
+        const openN = openRolesOf(c);
+        const hasN = typeof openN === "number";
         write({
           path: `/jobs/company/${c.token}`,
           canonical: isPrimary ? null : `/jobs/company/${primary.token}`,
@@ -1110,17 +1248,22 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           // truncated mid-claim. The name always stays whole — the count
           // phrase gives way first, "Verified" before "Openings".
           title: (() => {
-            const full = `${nm} Jobs — ${fmt(c.count)} Verified Openings`;
+            if (!hasN) return `${nm} Jobs — Open Roles From Their Own Job Board`.length <= 68
+              ? `${nm} Jobs — Open Roles From Their Own Job Board`
+              : `${nm} Jobs`;
+            const full = `${nm} Jobs — ${fmt(openN)} Verified Openings`;
             if (full.length <= 68) return full;
-            const short = `${nm} Jobs — ${fmt(c.count)} Openings`;
+            const short = `${nm} Jobs — ${fmt(openN)} Openings`;
             return short.length <= 68 ? short : `${nm} Jobs`;
           })(),
-          description: `Browse ${fmt(c.count)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
+          description: hasN
+            ? `Browse ${fmt(openN)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`
+            : `Browse open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
             <h1>Open roles at ${esc(nm)}</h1>
-            <p>${fmt(c.count)} verified ${esc(nm)} openings right now, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-checked continuously. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+            <p>${hasN ? `${fmt(openN)} verified ${esc(nm)} openings right now` : `Verified ${esc(nm)} openings`}, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-checked continuously. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site.${hasN ? ` THE COUNT'S BASIS: an "open role" here is a posting ${esc(nm)} has not taken down and whose date falls inside the last 30 days — the same two rules the linked board page applies, so the number below it is the number this page states. Counts were measured when this page was last built; the board's own count refreshes periodically through the day and moves as roles open and close.` : ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the linked page would contradict — open the board below for the roles themselves.`}</p>
             <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
-            <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} companies` : ""}.</p>
+            <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} company job boards with roles open now` : ""}.</p>
           `,
           jsonLd: [{
             "@context": "https://schema.org",
@@ -1163,7 +1306,13 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         const sections = [...byLetter.entries()].map(([letter, cs]) => `
           <h2 class="text-lg font-semibold mt-8 mb-3">${letter}</h2>
           <ul class="grid gap-x-6 gap-y-1 sm:grid-cols-2 text-sm">
-            ${cs.map((c) => `<li><a href="${publicHref(`/jobs/company/${c.token}`)}" class="text-primary hover:underline">${esc(c.name)}</a> <span class="text-muted-foreground">— ${fmt(c.count)} openings</span></li>`).join("\n            ")}
+            ${cs.map((c) => {
+              // Same rule as the landers this index links to: the servable
+              // count or no count. An A-Z row that disagreed with the page one
+              // click away is the same defect at directory scale.
+              const o = openRolesOf(c);
+              return `<li><a href="${publicHref(`/jobs/company/${c.token}`)}" class="text-primary hover:underline">${esc(c.name)}</a>${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
+            }).join("\n            ")}
           </ul>`).join("\n");
         write({
           path: "/companies",
@@ -1171,7 +1320,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           description: `Every employer on the board with a dedicated page: ${fmt(primaries.length)} companies, each pulled straight from its own official career system and re-checked continuously. No aggregators, no reposts.`,
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
-            <p class="text-muted-foreground mb-6">${fmt(primaries.length)} employers with dedicated pages, listed A–Z — every posting comes from the company's own hiring system. Looking for a specific role instead? <a href="/jobs" class="text-primary underline">Search the live board</a>.</p>
+            <p class="text-muted-foreground mb-6">${fmt(primaries.length)} employers with dedicated pages, listed A–Z — every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down, dated inside the last 30 days: the same rule the linked page serves, measured when this index was last built. Looking for a specific role instead? <a href="/jobs" class="text-primary underline">Search the live board</a>.</p>
             ${sections}`,
         });
       }
@@ -1180,7 +1329,10 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     // Main board page — the parent of the field landers. Without its own write()
     // it fell back to the homepage (scanner) meta, wasting the single most
     // important jobs URL. Board-specific title/description, live counts when the
-    // build can reach the board, honest '3,000+' fallback otherwise.
+    // build can reach the board — and NO figure otherwise. The old '3,000+'
+    // fallback was an unsourced constant standing in for a measurement on
+    // exactly the builds that could not take one; every count-bearing clause on
+    // this page now drops out instead.
     {
       // PLUS-CLAIMS, not exact figures. This lander baked "608,082 openings /
       // 25,065 companies" into its title and description, and the board then
@@ -1189,9 +1341,14 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       // true on build day is indistinguishable from a made-up one by the time
       // anyone reads it; the body text already says counts are measured at
       // build. Same margined plusClaim as the homepage, one honesty rule.
-      const jobsPhrase = boardTotal
-        ? `${plusClaim(boardTotal, 50000)} live openings across ${plusClaim(boardCompanies, 1000)} companies`
-        : "live openings across 3,000+ companies";
+      // boardCompanies is null whenever the pass could not compute the
+      // servable board count — plusClaim(null) is NaN, so the clause has to
+      // come off rather than ride along as "NaN+ companies".
+      const jobsPhrase = boardTotal && boardCompanies
+        ? `${plusClaim(boardTotal, 50000)} live openings across ${plusClaim(boardCompanies, 1000)} company job boards`
+        : boardTotal
+        ? `${plusClaim(boardTotal, 50000)} live openings`
+        : "live openings from companies' own job boards";
       write({
         path: "/jobs",
         title: boardTotal
@@ -1681,7 +1838,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
     if (BOARD_TOTAL) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? BOARD_COMPANIES.toLocaleString("en-US") : "3,000+"} companies' OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -1764,11 +1921,18 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         console.warn(`[prerender-seo] llms.txt corpus figures NOT refreshed — facets came from ${facetsSource ?? "no source"}, not a live read. The committed file keeps its current numbers rather than being rewritten from a stale snapshot.`);
       }
       if (BOARD_TOTAL && BOARD_COMPANIES && liveFacets) {
-        sub(/[\d,]+\+ openings from [\d,]+\+ companies/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} companies`);
+        // THE PATTERN ACCEPTS EITHER NOUN, because this rewrite changes it.
+        // BOARD_COMPANIES is now boards WITH OPEN ROLES rather than every
+        // token the catalog has ever held, and "companies" over a count of
+        // boards overstates employers (one employer can run five). A sub()
+        // whose pattern only matched the old wording would rewrite the file
+        // once and then silently never match again — which is exactly the
+        // ratchet the header of this file warns about.
+        sub(/[\d,]+\+ openings from [\d,]+\+ (?:companies|company job boards)/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards`);
         // Second corpus figure in the same file (the /explore line). It was
         // NOT on any pattern list, so it never refreshed — the exact defect
         // this whole finding is about, one file down from the sentence.
-        sub(/across all [\d,]+\+ companies on the board/, `across all ${plusClaim(BOARD_COMPANIES, 1000)} companies on the board`);
+        sub(/across all [\d,]+\+ (?:companies|company job boards) on the board/, `across all ${plusClaim(BOARD_COMPANIES, 1000)} company job boards on the board`);
       }
       sub(/\b\d+ industries, 10 languages\b/, `${NIND} industries, 10 languages`);
       sub(/\b\d+ industry pages\b/, `${NIND} industry pages`);

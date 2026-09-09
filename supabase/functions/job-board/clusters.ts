@@ -174,9 +174,16 @@ export function collapseClusters(
 // real roles. Merge by display name: one row, counts summed, every token
 // carried so the filter can cover them all. The primary token is the largest
 // sub-board's (stable for links).
-export function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number }>): Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> {
-  const byName = new Map<string, { token?: string; name?: string; count: number; tokens: string[]; top: number }>();
-  const out: Array<{ token?: string; name?: string; count?: number; tokens?: string[] }> = [];
+//
+// `open` — the SERVABLE count (migration 20260909214000: both serving
+// predicates) — folds the same way `count` does, and it is deliberately
+// tri-state. If no row in a group carried one, the merged row carries none
+// either: a fold must not turn "we did not measure this" into 0, because 0 is
+// a claim that the employer has nothing open. `count` keeps choosing the
+// primary token and is NOT the number any reader sees — serveList strips it.
+export function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number; open?: number }>): Array<{ token?: string; name?: string; count?: number; open?: number; tokens?: string[] }> {
+  const byName = new Map<string, { token?: string; name?: string; count: number; open?: number; tokens: string[]; top: number }>();
+  const out: Array<{ token?: string; name?: string; count?: number; open?: number; tokens?: string[] }> = [];
   for (const r of rows) {
     // NAME ALONE IS NOT AN IDENTITY. Two unrelated companies can share one:
     // measured 2026-08-23, the Greenhouse fintech "Flex" (9 postings) and the
@@ -198,15 +205,19 @@ export function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; c
     const hit = byName.get(key);
     const n = r.count ?? 0;
     if (!hit) {
-      byName.set(key, { token: r.token, name: r.name, count: n, tokens: r.token ? [r.token] : [], top: n });
+      byName.set(key, { token: r.token, name: r.name, count: n, open: r.open, tokens: r.token ? [r.token] : [], top: n });
     } else {
       hit.count += n;
+      if (typeof r.open === "number") hit.open = (hit.open ?? 0) + r.open;
       if (r.token) hit.tokens.push(r.token);
       if (n > hit.top) { hit.top = n; hit.token = r.token; }
     }
   }
   for (const v of byName.values()) {
-    out.push(v.tokens.length > 1 ? { token: v.token, name: v.name, count: v.count, tokens: v.tokens } : { token: v.token, name: v.name, count: v.count });
+    const base = typeof v.open === "number"
+      ? { token: v.token, name: v.name, count: v.count, open: v.open }
+      : { token: v.token, name: v.name, count: v.count };
+    out.push(v.tokens.length > 1 ? { ...base, tokens: v.tokens } : base);
   }
   return out;
 }

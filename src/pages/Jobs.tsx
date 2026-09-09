@@ -1034,8 +1034,36 @@ interface BoardResponse {
   trackedTotal?: number;
   // Untrimmed company count — the served `companies` array is capped (top-N by
   // count) for payload weight, so stat displays must use this, not .length.
+  //
+  // IT IS THE UNFILTERED TOKEN GROUPING and must never be paired with a
+  // serving-filtered opening count in one sentence: it includes boards whose
+  // every posting has been withdrawn or has aged past the 30-day window.
   companiesCount?: number;
-  companies: Array<{ token: string; name: string; count: number }>;
+  /**
+   * Boards with AT LEAST ONE OPEN POSTING — the servable denominator, taken in
+   * the same pass and under the same two predicates as `total`. Optional
+   * because a cached facet row written before migration 20260909214000 has no
+   * such number, and every surface that would print it drops the clause rather
+   * than falling back to companiesCount.
+   */
+  companiesOpenCount?: number;
+  /**
+   * THE EMPLOYER FACET CARRIES NO `count`, AND THAT IS THE FIX.
+   *
+   * It used to carry companiesFacet.count — count(*) GROUP BY company_token
+   * with NEITHER serving predicate — which the board deliberately leaves
+   * unfiltered because an orphan prune DELETES by it (migration
+   * 20260825190000). Rendered on this page it contradicted the very filter it
+   * set: measured 2026-09-09, the median employer was ~1% over and PwC was
+   * 3,254 against a filtered 2,119.
+   *
+   * `open` is the servable count under both predicates (migration
+   * 20260909214000), summed across an employer's merged sub-boards. It is
+   * OPTIONAL: during the deploy window the server has no such number and sends
+   * none, and every render site below prints the name alone rather than a
+   * number it cannot stand behind.
+   */
+  companies: Array<{ token: string; name: string; open?: number; tokens?: string[] }>;
   categories?: Record<string, number>;
   // OPTIONAL ON PURPOSE, and it is not a style choice. Declared as
   // `string[]` this read `data.failedSources.length` with no guard and
@@ -1162,12 +1190,14 @@ const avatarHue = (s: string) => AVATAR_HUES[[...s].reduce((n, c) => n + c.charC
 // in flight, then merge with the server's, deduped by token. Local first so
 // the list never reorders under the reader's cursor mid-type.
 function mergeCompanyOptions(
-  head: Array<{ token: string; name: string; count: number }>,
-  remote: Array<{ token: string; name: string; count: number }>,
+  head: Array<{ token: string; name: string; open?: number; tokens?: string[] }>,
+  remote: Array<{ token: string; name: string; open?: number; tokens?: string[] }>,
   query: string,
-): Array<{ token: string; name: string; count: number }> {
+): Array<{ token: string; name: string; open?: number; tokens?: string[] }> {
   const q = query.toLowerCase();
-  const out: Array<{ token: string; name: string; count: number }> = [];
+  // `tokens` travels with each option because `open` is the SUM across a
+  // merged employer's sub-boards — see scopeTokensOf below.
+  const out: Array<{ token: string; name: string; open?: number; tokens?: string[] }> = [];
   const seen = new Set<string>();
   for (const c of head) {
     if (!c?.name || !c.name.toLowerCase().includes(q) || seen.has(c.token)) continue;
@@ -1697,6 +1727,45 @@ export default function Jobs() {
       return [...tokens, token].join(",");
     });
   }, []);
+  /**
+   * ONE EMPLOYER, EVERY BOARD IT RUNS.
+   *
+   * A dropdown row is not a token, it is an EMPLOYER: the server merges an
+   * employer's feed tokens into one option (PwC ships five Workday sub-sites;
+   * 76 such employers in the top 1,500) and the `open` it shows is the SUM
+   * across them. Setting the filter to the row's primary token alone served a
+   * fraction of that sum — the same "promised more than the destination has"
+   * defect as the unfiltered facet count, one level up and invisible because
+   * both numbers came from the same row.
+   *
+   * So the scope takes the whole group. `tokens` is present only where there
+   * is a group; a single-board employer falls through to the one token.
+   *
+   * AT THE CAP, NOTHING HAPPENS — deliberately. Adding four of an employer's
+   * five boards would restore exactly the mismatch this exists to remove, so a
+   * group that does not fit inside the 12-token limit is not partially
+   * applied, the same no-op the single-token path already performs when full.
+   */
+  const toggleCompanyGroup = useCallback((group: string[]) => {
+    const want = group.filter(Boolean);
+    if (!want.length) return;
+    // Most employers run ONE board, and that case is exactly the accumulating
+    // single-token toggle this delegates to.
+    if (want.length === 1) { toggleCompanyToken(want[0]); return; }
+    setCompany((prev) => {
+      const tokens = prev.split(",").map((x) => x.trim()).filter(Boolean);
+      if (want.every((tkn) => tokens.includes(tkn))) return tokens.filter((x) => !want.includes(x)).join(",");
+      const add = want.filter((tkn) => !tokens.includes(tkn));
+      if (tokens.length + add.length > 12) return prev;
+      return [...tokens, ...add].join(",");
+    });
+  }, [toggleCompanyToken]);
+  /** The tokens an option's `open` was summed over — the scope its own number
+   *  describes. Never just `token` when the server sent a group. */
+  const scopeTokensOf = useCallback(
+    (c: { token: string; tokens?: string[] }) => (Array.isArray(c.tokens) && c.tokens.length > 1 ? c.tokens : [c.token]),
+    [],
+  );
   const [category, setCategory] = useState(initial.get("category") ?? routeCategory ?? "");
   // ALSO SEARCH THE UNCATEGORISED BUCKET. `other` held 162,800 of 590,808
   // postings on 2026-08-05 — where a posting lands when its field could not be
@@ -2019,7 +2088,7 @@ export default function Jobs() {
   // 1,433 employers — 70% of its bytes — so this typeahead could filter them
   // locally. It now carries the top 150 and the rest are reached through
   // action:company-suggest, which reads the same cached facet server-side.
-  const [companySuggest, setCompanySuggest] = useState<Array<{ token: string; name: string; count: number }>>([]);
+  const [companySuggest, setCompanySuggest] = useState<Array<{ token: string; name: string; open?: number; tokens?: string[] }>>([]);
   // A selected employer outside the head would otherwise render its own
   // filter chip with no label, so every name we ever learn is remembered:
   // from the facet, from the rows on screen (each carries its employer), and
@@ -2761,7 +2830,7 @@ export default function Jobs() {
     const t = setTimeout(async () => {
       try {
         const { data } = await supabase.functions.invoke("job-board", { body: { action: "company-suggest", q: term } });
-        const rows = ((data as { companies?: Array<{ token: string; name: string; count: number }> } | null)?.companies) ?? [];
+        const rows = ((data as { companies?: Array<{ token: string; name: string; open?: number }> } | null)?.companies) ?? [];
         if (cancelled) return;
         for (const c of rows) if (c.token && c.name) companyNames.current[c.token] = c.name;
         setCompanySuggest(rows);
@@ -4795,7 +4864,13 @@ export default function Jobs() {
   );
 
   const companies = useMemo(
-    () => (data?.companies ?? []).filter((c) => c.count > 0 || c.token === company).sort((a, b) => a.name.localeCompare(b.name)),
+    // The zero filter now asks the SERVABLE question — an employer with 4,000
+    // withdrawn postings and nothing open does not belong in a control that
+    // filters the live board. When the server sent no open count (deploy
+    // window) nothing can be told apart, so nothing is hidden.
+    () => (data?.companies ?? [])
+      .filter((c) => (typeof c.open === "number" ? c.open > 0 : true) || c.token === company)
+      .sort((a, b) => a.name.localeCompare(b.name)),
     [data, company],
   );
 
@@ -6034,15 +6109,32 @@ export default function Jobs() {
                 </Button>
               </div>
               {/* Company drill-down: every posting viewed is a jumping-off
-                  point — the count comes from the same live facet the company
-                  filter uses. Shown from 2 roles (1 = just this posting). */}
+                  point.
+
+                  THE OLD COMMENT HERE SAID "the count comes from the same live
+                  facet the company filter uses" — and it did, but the FILTER
+                  applies both serving predicates and the FACET COUNT applied
+                  neither, so this line promised roles the destination would not
+                  show (PwC: 3,254 promised, 2,119 served). It now reads the
+                  servable `open` count, and renders nothing at all when the
+                  server sent none. Shown from 2 roles (1 = just this posting). */}
               {(() => {
-                const cnt = detailJob.token ? companies.find((c) => c.token === detailJob.token)?.count : undefined;
+                // MATCHED ON THE GROUP, NOT ON THE PRIMARY TOKEN. The facet row
+                // for a multi-board employer carries the largest sub-board's
+                // token, so a posting from one of the others found nothing here
+                // — and where it DID match, `open` was the sum over every board
+                // while the click below scoped to one. Both halves now use the
+                // whole group, so the number and the destination agree.
+                const entry = detailJob.token
+                  ? companies.find((c) => c.token === detailJob.token || (Array.isArray(c.tokens) && c.tokens.includes(detailJob.token!)))
+                  : undefined;
+                const cnt = entry?.open;
+                const scope = entry ? scopeTokensOf(entry) : (detailJob.token ? [detailJob.token] : []);
                 return typeof cnt === "number" && cnt >= 2 ? (
                   <button
                     type="button"
                     className="text-[12px] text-primary hover:underline text-left"
-                    onClick={() => { setCompany(detailJob.token!); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    onClick={() => { setCompany(scope.join(",")); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                   >
                     {t("jobsPage.moreAtCompany", "{{n}} more open roles at {{company}} — see them all", { n: cnt - 1, company: detailJob.company })}
                   </button>
@@ -6630,10 +6722,24 @@ export default function Jobs() {
                   category: t(`jobsPage.categories.${countCategory}`, countCategory),
                 })
               : !countCategory && data?.totalAllCompanies
-              ? t("jobsPage.countLine", "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.", {
-                  total: data.totalAllCompanies.toLocaleString(),
-                  companyFeeds: (data.companiesCount ?? companies.length).toLocaleString(),
-                })
+              // A SERVING-FILTERED NUMERATOR NEEDS A SERVING-FILTERED
+              // DENOMINATOR. companiesCount is the length of the UNFILTERED
+              // token grouping — it counts boards whose every posting has been
+              // withdrawn or aged past the 30-day window — and it was standing
+              // next to a live-openings count in one sentence.
+              // companiesOpenCount is boards with at least one open posting,
+              // taken in the same pass under the same two predicates. When the
+              // pass did not compute it the clause is DROPPED, not backfilled
+              // from the old number: the count-free variant is a different key
+              // so eight locales cannot keep rendering the paired claim.
+              ? (typeof data.companiesOpenCount === "number"
+                ? t("jobsPage.countLine", "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.", {
+                    total: data.totalAllCompanies.toLocaleString(),
+                    companyFeeds: data.companiesOpenCount.toLocaleString(),
+                  })
+                : t("jobsPage.countLineNoFeeds", "{{total}} live openings — every one straight from the company's own hiring system.", {
+                    total: data.totalAllCompanies.toLocaleString(),
+                  }))
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
             {/* Live activity strip: the board IS alive — say so with measured
                 numbers only (each clause renders only when its data exists). */}
@@ -7225,7 +7331,7 @@ export default function Jobs() {
                   if (e.key === "ArrowDown") { e.preventDefault(); setCompanyIdx((i) => Math.min(i + 1, opts.length - 1)); }
                   else if (e.key === "ArrowUp") { e.preventDefault(); setCompanyIdx((i) => Math.max(i - 1, -1)); }
                   else if (e.key === "Enter" && companyIdx >= 0 && opts[companyIdx]) {
-                    e.preventDefault(); toggleCompanyToken(opts[companyIdx].token); setCompanyQuery(""); setCompanyIdx(-1);
+                    e.preventDefault(); toggleCompanyGroup(scopeTokensOf(opts[companyIdx])); setCompanyQuery(""); setCompanyIdx(-1);
                   } else if (e.key === "Escape") { setCompanyQuery(null); setCompanyIdx(-1); }
                 }}
                 placeholder={t("jobsPage.companySearch", "Company…")}
@@ -7254,10 +7360,15 @@ export default function Jobs() {
                         aria-current={ci === companyIdx ? "true" : undefined}
                         type="button"
                         className={`block w-full text-left px-3 py-2 hover:bg-muted ${ci === companyIdx ? "bg-muted" : ""}`}
-                        onMouseDown={(e) => { e.preventDefault(); toggleCompanyToken(c.token); setCompanyIdx(-1); }}
+                        onMouseDown={(e) => { e.preventDefault(); toggleCompanyGroup(scopeTokensOf(c)); setCompanyIdx(-1); }}
                       >
                         <span className={`mr-1.5 ${companyTokens.includes(c.token) ? "text-primary" : "text-transparent"}`} aria-hidden="true">✓</span>
-                        {c.name} <span className="text-muted-foreground">({c.count})</span>
+                        {/* THE NUMBER IS THE ONE THIS OPTION WILL PRODUCE, or
+                            there is no number: `open` is counted under the same
+                            two predicates the filter applies, and an option
+                            whose count the server could not state renders as a
+                            bare name rather than as a promise. */}
+                        {c.name}{typeof c.open === "number" ? <span className="text-muted-foreground"> ({c.open})</span> : null}
                       </button>
                     ))}
                 </div>
@@ -8593,14 +8704,26 @@ export default function Jobs() {
                     ? `${pageTotalCount.toLocaleString()}+`
                     : pageTotalCount.toLocaleString(),
                 })
-                  : t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds", {
+                  // Same pairing rule as the headline above: the feeds clause
+                  // needs the SERVABLE board count (boards with at least one
+                  // open posting), never companiesCount's unfiltered token
+                  // grouping. Without it the sentence falls back to the
+                  // existing feed-free wording rather than to a wrong number.
+                  : typeof data?.companiesOpenCount === "number"
+                  ? t("jobsPage.resultsSummary", "Showing {{shown}} of {{total}} matching openings across {{companyFeeds}} company feeds", {
                   shown: shownCount,
                   // The server caps counting for speed; above the cap it says so,
                   // and we render "10,000+" rather than passing the cap off as exact.
                   total: data?.countCapped || data?.relatedCapped
                     ? `${pageTotalCount.toLocaleString()}+`
                     : pageTotalCount.toLocaleString(),
-                  companyFeeds: (data?.companiesCount ?? companies.length).toLocaleString(),
+                  companyFeeds: data.companiesOpenCount.toLocaleString(),
+                })
+                  : t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
+                  shown: shownCount,
+                  total: data?.countCapped || data?.relatedCapped
+                    ? `${pageTotalCount.toLocaleString()}+`
+                    : pageTotalCount.toLocaleString(),
                 })}
                 {/* THE BOARD SEARCHED FOR SOMETHING NOBODY TYPED.
                     Dropping a résumé now puts a role in the search box, because

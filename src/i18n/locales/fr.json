@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Mesuré sur les {{n}} postes de cette entreprise portant sa propre date de publication : jusqu'à {{pct}}% ont été retirés définitivement dans les {{d}} jours suivant leur publication ({{lo}}–{{hi}}% dans les deux sens). Les postes encore en ligne, et ceux ayant dépassé notre plafond de 30 jours, comptent comme non terminés plutôt que d'être exclus. Il vaut mieux postuler tôt.",
     "hhBadgeTipObserved": "Nous avons vu {{n}} postes de cette entreprise quitter le tableau et ne pas revenir pendant notre suivi — retirés, pas republiés. C'est une activité observée ; cela ne dit rien de la durée pendant laquelle l'un d'eux est resté en ligne.",
     "pastFieldHorizonTipNoCount": "Mesuré depuis notre propre journal de cycle de vie : parmi les postes en {{field}} suivis ces {{window}} derniers jours, {{gone}}% avaient quitté le tableau en {{d}} jours. Celui-ci en est au jour {{age}} selon la date publiée par l'entreprise. Un poste ouvert longtemps n'est pas un poste mort — mais mieux vaut le savoir avant d'investir une candidature.",
-    "compareFillRateBounded": "jusqu'à {{pct}}% de ses postes sont retirés définitivement en {{d}} j ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "jusqu'à {{pct}}% de ses postes sont retirés définitivement en {{d}} j ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} offres en ligne — chacune issue directement du système de recrutement de l'entreprise."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Votre agent IA candidate avec vous :",
     "agentLine": "il rédige la lettre, répond aux vraies questions, vous prépare — vous envoyez",
-    "trustFresh": "Aucune offre datée n'excède 30 jours — les offres sans date n'affichent pas d'ancienneté"
+    "trustFresh": "Aucune offre datée n'excède 30 jours — les offres sans date n'affichent pas d'ancienneté",
+    "companyBoards": "sites carrières d'entreprises qui recrutent"
   },
   "explore": {
     "repostWarn": "Republie ses offres : {{events}} republications concernant {{roles}} postes en {{d}} j",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "Déposez votre CV — gratuit",
     "ctaSecondary": "Parcourir les offres",
     "reassure": "Analyse gratuite · sans carte, sans inscription",
-    "exploreCta": "Explorer par domaine"
+    "exploreCta": "Explorer par domaine",
+    "statCompanyBoards": "sites carrières d'entreprises qui recrutent"
   }
 }

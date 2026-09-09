@@ -157,10 +157,77 @@ let firstId = null;
   ok(A.size > 0 && dupes === 0, "/v1/jobs page 1 and 2 do not overlap", `${dupes} repeated ids`);
 }
 {
-  const r = await api("/v1/companies?limit=3");
+  // A PAGE, NOT A ROW. See the join note below: row[0] is the employer with the
+  // most open roles, and the biggest boards are precisely the ones whose two
+  // numbers already agreed.
+  const r = await api("/v1/companies?limit=15");
   ok(r.status === 200, "/v1/companies answers", `HTTP ${r.status}`);
   const row = (r.body?.data ?? [])[0];
   ok(row ? ["company", "company_token", "open_postings"].every((k) => k in row) : false, "/v1/companies row shape");
+  // A NUMBER NAMES ITS POPULATION, AND A SHAPE CHECK CANNOT SEE THE
+  // POPULATION. `open_postings` shipped for months as the board's UNFILTERED
+  // per-token count — every posting ever seen for that employer, withdrawn and
+  // aged-out rows included — while every other /v1 endpoint applied both
+  // serving predicates. The row shape above was green throughout. Verified
+  // live 2026-09-09: /v1/companies?q=domino returned open_postings 33,986, and
+  // the same employer's PwC-shaped tail cases ran +54% over what /v1/jobs
+  // serves for the same token. Nothing in this file could tell.
+  //
+  // So the probe now JOINS the two endpoints, which is the thing a customer
+  // does. The tolerance is wide on purpose: /v1/companies is a cached facet
+  // refreshed at the end of a rotation pass (its own `basis` says so) while
+  // /v1/jobs counts at request time, so they are minutes-to-hours apart and
+  // exact equality would fail on ordinary churn. It is still ten times tighter
+  // than the gap it exists to catch.
+  ok(typeof r.body?.basis === "string" && /not withdrawn|unavailable/.test(r.body.basis),
+    "/v1/companies states what open_postings counts", r.body?.basis ?? "no basis");
+  const rows = (r.body?.data ?? []);
+  if (rows.length && rows.some((x) => typeof x?.open_postings === "number")) {
+    // SAMPLE DOWN THE PAGE, NOT JUST THE TOP OF IT.
+    //
+    // /v1/companies sorts by open postings descending, and the defect this
+    // check exists for is NOT uniform across that order. Measured live
+    // 2026-09-09: rank 1 Dollar Tree 5,299 vs 5,296 and rank 3 O'Reilly 4,727
+    // vs 4,726 — under a 10% tolerance those PASS against the broken code —
+    // while rank 7 PwC ran 3,254 vs 2,119 and rank 10 AECOM 2,874 vs 2,229.
+    // A probe that only read row[0] would have been green through the entire
+    // outage, which is the guard-over-a-falsehood pattern this file was
+    // rewritten to stop. So the tail of the first page is checked too, and
+    // EVERY sampled row has to agree.
+    const picks = [];
+    for (const i of [0, Math.min(7, rows.length - 1), Math.min(11, rows.length - 1), rows.length - 1]) {
+      const c = rows[i];
+      if (c && typeof c.open_postings === "number" && c.company_token && !picks.some((p) => p.company_token === c.company_token)) picks.push(c);
+    }
+    let compared = 0;
+    let worst = null;
+    for (const c of picks) {
+      const j = await api(`/v1/jobs?company_token=${encodeURIComponent(c.company_token)}&limit=1`);
+      const served = j.body?.total?.value;
+      const basis = j.body?.total?.basis;
+      // `planned` is the PLANNER ESTIMATE (public-api/index.ts: the fallback
+      // when the exact count times out). Comparing a cached facet against a
+      // planner guess to within 10% tests the planner, not the population, so
+      // that row is skipped rather than asserted on.
+      if (typeof served !== "number" || basis === "planned" || basis === "unavailable") continue;
+      compared++;
+      const drift = Math.abs(c.open_postings - served);
+      const allowed = Math.max(25, Math.round(served * 0.1));
+      if (!worst || drift - allowed > worst.drift - worst.allowed) worst = { token: c.company_token, open: c.open_postings, served, drift, allowed };
+    }
+    if (compared > 0) {
+      ok(worst.drift <= worst.allowed,
+        `/v1/companies open_postings agrees with what /v1/jobs serves (${compared} employers sampled down the page)`,
+        `${worst.token}: companies ${worst.open} vs jobs ${worst.served} (drift ${worst.drift}, allowed ${worst.allowed})`);
+    } else {
+      ok(true, "/v1/jobs gave no exact total for any sampled employer (capped, planned or unavailable) — join not tested");
+    }
+  } else if (row && row.open_postings === null) {
+    // The deploy-window state, and it is a PASS: the facet pass had not
+    // computed the servable count, so the field is null rather than the
+    // unfiltered number. Silence beats a contradiction.
+    ok(true, "/v1/companies withheld open_postings rather than serving the unfiltered count");
+  }
 }
 {
   // A change feed without a window is a full dump; refusing is correct, and

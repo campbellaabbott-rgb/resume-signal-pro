@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Medido sobre as {{n}} vagas desta empresa que trazem a sua própria data de publicação: até {{pct}}% foram retiradas em definitivo em {{d}} dias após a publicação ({{lo}}–{{hi}}% para qualquer lado). As vagas ainda abertas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora. Vale a pena candidatar-se cedo.",
     "hhBadgeTipObserved": "Vimos {{n}} vagas desta empresa saírem do quadro e não voltarem durante o nosso acompanhamento — retiradas, não republicadas. É atividade que observámos; não diz nada sobre quanto tempo qualquer uma delas esteve publicada.",
     "pastFieldHorizonTipNoCount": "Medido a partir do nosso próprio registo de ciclo de vida: das vagas de {{field}} que acompanhámos nos últimos {{window}} dias, {{gone}}% saíram do quadro em {{d}} dias. Esta está no dia {{age}} pela data publicada pela própria empresa. Uma vaga aberta há muito tempo não é uma vaga morta — mas vale a pena saber antes de investir uma candidatura.",
-    "compareFillRateBounded": "até {{pct}}% das suas vagas são retiradas em definitivo em {{d}}d ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "até {{pct}}% das suas vagas são retiradas em definitivo em {{d}}d ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} ofertas ativas — todas diretamente do sistema de recrutamento de cada empresa."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Seu agente de IA se candidata com você:",
     "agentLine": "ele escreve a carta, responde às perguntas reais, prepara você — você envia",
-    "trustFresh": "Nenhuma vaga datada passa de 30 dias — as sem data não mostram idade"
+    "trustFresh": "Nenhuma vaga datada passa de 30 dias — as sem data não mostram idade",
+    "companyBoards": "portais de emprego de empresas a contratar"
   },
   "explore": {
     "repostWarn": "Republica vagas: {{events}} republicações em {{roles}} vagas em {{d}} dias",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "Carregue o seu CV — grátis",
     "ctaSecondary": "Explorar o mural",
     "reassure": "Análise grátis · sem cartão, sem registo",
-    "exploreCta": "Explorar por área"
+    "exploreCta": "Explorar por área",
+    "statCompanyBoards": "portais de emprego de empresas a contratar"
   }
 }

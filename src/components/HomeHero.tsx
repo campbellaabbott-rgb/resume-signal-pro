@@ -112,11 +112,23 @@ export function HomeHero() {
                 {t("homeHero.statOpenings", "verified openings")}
               </span>
             )}
-            {totals && totals.companies > 0 && (
+            {/* BOARDS WITH OPEN ROLES, NOT THE CATALOG. This read
+                companiesCount — the unfiltered company_token grouping, which
+                includes boards whose every posting has been withdrawn or aged
+                out — and printed it one separator away from a serving-filtered
+                openings count. It now reads the servable board count, and
+                renders nothing when the board could not state one.
+
+                NEW KEY, not new text under the old one: the noun changed from
+                "companies" to "company job boards" (a token is one board; PwC
+                ships five), and a locale VALUE overrides an inline English
+                default, so reusing homeHero.statCompanies would leave eight
+                locales rendering the old claim over the new number. */}
+            {totals && totals.feeds !== null && (
               <span className="text-muted-foreground">
                 <span className="text-border" aria-hidden>·</span>{" "}
-                <span className="font-bold text-foreground tabular-nums">{nf(totals.companies)}</span>{" "}
-                {t("homeHero.statCompanies", "companies")}
+                <span className="font-bold text-foreground tabular-nums">{nf(totals.feeds)}</span>{" "}
+                {t("homeHero.statCompanyBoards", "company job boards hiring")}
               </span>
             )}
             {sendable !== null && (

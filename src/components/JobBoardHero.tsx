@@ -10,7 +10,7 @@ import { AtsCoverage } from "@/components/AtsCoverage";
 // from the same board function the /jobs page uses — never hardcoded, so they
 // stay honest as the catalog grows.
 function useBoardTotals() {
-  const [totals, setTotals] = useState<{ jobs: number; companies: number } | null>(null);
+  const [totals, setTotals] = useState<{ jobs: number; feeds: number | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
     supabase.functions
@@ -29,10 +29,18 @@ function useBoardTotals() {
         // which still counts aged rows the read filter hides). This keeps the
         // homepage number identical to what a visitor sees on the board, and
         // honest with the "nothing older than 30 days" claim.
-        const d = data as { total?: number; companiesCount?: number } | null;
+        // THE DENOMINATOR HAS TO OBEY THE SAME RULE THE NUMERATOR DOES.
+        // `companiesCount` is the length of the board's UNFILTERED
+        // company_token grouping — it counts boards whose every posting has
+        // been withdrawn or has aged past the 30-day window — and it was
+        // rendered in the same sentence as `total`, which applies both serving
+        // predicates. companiesOpenCount is boards with at least one open
+        // posting, from the same pass. Null (never 0, never companiesCount)
+        // when the pass did not compute it, and the clause is then dropped.
+        const d = data as { total?: number; companiesOpenCount?: number } | null;
         const jobs = d?.total || 0;
-        const companies = d?.companiesCount ?? 0;
-        if (jobs > 0) setTotals({ jobs, companies });
+        const feeds = typeof d?.companiesOpenCount === "number" && d.companiesOpenCount > 0 ? d.companiesOpenCount : null;
+        if (jobs > 0) setTotals({ jobs, feeds });
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -99,11 +107,18 @@ export function JobBoardHero() {
               <p className="text-sm text-muted-foreground">
                 <span className="font-bold text-foreground tabular-nums">{totals.jobs.toLocaleString()}</span>{" "}
                 {t("boardHero.liveOpenings", "live openings")}
-                {totals.companies > 0 && (
+                {/* NEW KEY, because the noun changed. A company_token is one
+                    job board, not one employer (PwC ships five Workday
+                    sub-sites), and the number under it is now boards with open
+                    roles rather than every board ever seen. A locale VALUE
+                    overrides an inline English default, so reusing
+                    boardHero.companies would leave eight locales saying
+                    "companies" over a count of boards. */}
+                {totals.feeds !== null && (
                   <>
                     {" · "}
-                    <span className="font-bold text-foreground tabular-nums">{totals.companies.toLocaleString()}</span>{" "}
-                    {t("boardHero.companies", "companies")}
+                    <span className="font-bold text-foreground tabular-nums">{totals.feeds.toLocaleString()}</span>{" "}
+                    {t("boardHero.companyBoards", "company job boards hiring")}
                   </>
                 )}
                 {" · "}

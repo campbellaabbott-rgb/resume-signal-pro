@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Sinukat sa {{n}} posisyon ng kompanyang ito na may sariling petsa ng pag-post: hanggang {{pct}}% ang tuluyang naalis sa loob ng {{d}} araw mula nang i-post ({{lo}}–{{hi}}% sa magkabilang panig). Ang mga posisyong nakabukas pa, at ang mga lumampas sa aming 30-araw na hangganan, ay binibilang na hindi pa tapos sa halip na iwanan. Sulit ang mag-apply nang maaga.",
     "hhBadgeTipObserved": "Nakita naming {{n}} posisyon ng kompanyang ito ang naalis sa board at hindi na bumalik habang binabantayan namin — inalis, hindi muling na-post. Aktibidad iyon na nakita namin; hindi iyon pahayag kung gaano katagal nakabukas ang alinman sa kanila.",
     "pastFieldHorizonTipNoCount": "Sinukat mula sa sarili naming lifecycle log: sa mga posisyon sa {{field}} na binantayan namin sa nakaraang {{window}} araw, {{gone}}% ang naalis sa board sa loob ng {{d}} araw. Ang isang ito ay nasa araw {{age}} ayon sa sariling petsa ng kompanya. Ang matagal nang bukas na posisyon ay hindi patay — pero mabuting malaman bago ka gumugol ng isang aplikasyon.",
-    "compareFillRateBounded": "hanggang {{pct}}% ng mga posisyon nito ang tuluyang naaalis sa loob ng {{d}}d ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "hanggang {{pct}}% ng mga posisyon nito ang tuluyang naaalis sa loob ng {{d}}d ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} live na opening — bawat isa'y direkta mula sa sariling hiring system ng kumpanya."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Kasama mong nag-a-apply ang iyong AI agent:",
     "agentLine": "isinusulat nito ang cover letter, sinasagot ang tunay na mga tanong, inihahanda ka — ikaw ang magpapadala",
-    "trustFresh": "Walang may petsang posting na lampas 30 araw — walang ipinapakitang edad ang mga walang petsa"
+    "trustFresh": "Walang may petsang posting na lampas 30 araw — walang ipinapakitang edad ang mga walang petsa",
+    "companyBoards": "job board ng kumpanyang naghi-hire"
   },
   "explore": {
     "repostWarn": "Paulit-ulit na inilalathala ang mga posisyon: {{events}} muling paglalathala sa {{roles}} posisyon sa loob ng {{d}} araw",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "I-upload ang CV mo — libre",
     "ctaSecondary": "Tingnan ang board",
     "reassure": "Libreng scan · walang card, walang signup",
-    "exploreCta": "Tuklasin ayon sa larangan"
+    "exploreCta": "Tuklasin ayon sa larangan",
+    "statCompanyBoards": "job board ng kumpanyang naghi-hire"
   }
 }

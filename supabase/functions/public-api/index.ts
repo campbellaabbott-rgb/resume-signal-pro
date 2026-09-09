@@ -1326,16 +1326,42 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     console.error("[PUBLIC-API] /v1/companies failed:", error.message?.slice(0, 160));
     return fail(500, "query_failed", "The query could not be completed.", headers);
   }
-  const v = (data?.v ?? {}) as { companiesFacet?: Array<{ token?: string; name?: string; count?: number }> };
+  const v = (data?.v ?? {}) as {
+    companiesFacet?: Array<{ token?: string; name?: string; count?: number }>;
+    companiesOpen?: Record<string, number>;
+  };
   const facet = Array.isArray(v.companiesFacet) ? v.companiesFacet : [];
-  // Sorted by TOKEN when paging, by size otherwise. A cursor needs a total,
-  // stable order and posting counts move between refreshes; the token does not.
+  // `open_postings` NOW MEANS OPEN. This is a FIX, not a breaking change: the
+  // field kept its name, its type and its position, and the name was always
+  // the promise. What it carried was companiesFacet.count — count(*) GROUP BY
+  // company_token with NEITHER serving predicate, so it counted postings the
+  // employer had withdrawn and postings past the 30-day freshness window that
+  // the sweep had not deleted yet. Verified live 2026-09-09:
+  // /v1/companies?q=domino returned open_postings 33,986 for a board whose
+  // /v1/jobs?company_token= page serves a fraction of that. A customer joining
+  // this endpoint to /v1/jobs got two irreconcilable numbers for one employer.
+  //
+  // companiesOpen is the same instant's count under BOTH serving predicates
+  // (migration 20260909214000), which is exactly what every other /v1
+  // endpoint's own filters produce — so the join now closes.
+  //
+  // NULL, NOT THE OLD NUMBER, when the cached row predates that migration:
+  // during the deploy window the key is present and the value is null, and
+  // `basis` says so. A consumer that reads a null learns we cannot state it;
+  // a consumer that reads the old number learns something false. The row shape
+  // the contract probe pins is unchanged either way.
+  const openMap = v.companiesOpen && typeof v.companiesOpen === "object" ? v.companiesOpen : null;
+  const openOf = (tok: unknown) =>
+    openMap ? (openMap[String(tok ?? "")] ?? 0) : null;
+  // Sorted by TOKEN when paging, by open postings otherwise. A cursor needs a
+  // total, stable order and posting counts move between refreshes; the token
+  // does not.
   const matched = facet
     .filter((c) => !term || String(c.name ?? "").toLowerCase().includes(term) || String(c.token ?? "").toLowerCase().includes(term))
     .slice()
     .sort((a, b) => (cursorRaw || term)
       ? String(a.token ?? "").localeCompare(String(b.token ?? ""))
-      : (b.count ?? 0) - (a.count ?? 0));
+      : (openMap ? (openOf(b.token) ?? 0) - (openOf(a.token) ?? 0) : (b.count ?? 0) - (a.count ?? 0)));
   const startAt = cursor ? matched.findIndex((c) => String(c.token ?? "") > cursor.id) : 0;
   const window = startAt < 0 ? [] : matched.slice(startAt, startAt + limit);
   const more = startAt >= 0 && startAt + limit < matched.length;
@@ -1343,7 +1369,7 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
   return json({
     apiVersion: API_VERSION,
     data: window
-      .map((c) => ({ company_token: c.token ?? null, company: c.name ?? null, open_postings: c.count ?? 0 })),
+      .map((c) => ({ company_token: c.token ?? null, company: c.name ?? null, open_postings: openOf(c.token) })),
     page: {
       limit,
       returned: window.length,
@@ -1357,7 +1383,13 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     // The figure's age is published rather than implied. This facet refreshes
     // at the end of a rotation pass, so it is minutes-to-hours old by design.
     asOf: data?.updated_at ?? null,
-    basis: "cached facet, refreshed at the end of each rotation pass",
+    // A PUBLISHED NUMBER NAMES ITS DATE BASIS **AND** ITS POPULATION. The old
+    // basis named only the refresh cadence, which is why a field called
+    // open_postings could carry a count of every posting ever seen for that
+    // token without anything on the response contradicting it.
+    basis: openMap
+      ? "open_postings = postings not withdrawn and dated within the last 30 days (the same rule /v1/jobs serves), counted from the cached facet at asOf and refreshed at the end of each rotation pass"
+      : "open_postings unavailable: this cached facet pass did not compute the servable per-employer count, and the unfiltered count it does hold is not what this field means",
   }, 200, headers);
 }
 
@@ -1488,6 +1520,7 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
     total?: number;
     coverage?: { open?: number; tracked?: number; openAt?: string };
     companiesFacet?: unknown[];
+    companiesOpenCount?: number;
     refreshedAt?: string;
   };
   // `v.total` IS NOT THE LIVE COUNT, and publishing it as one overstated the
@@ -1557,7 +1590,21 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       // name is worse than an absent one, and this endpoint just proved it.
       livePostings: open,
       trackedPostings: tracked,
-      companies: Array.isArray(v.companiesFacet) ? v.companiesFacet.length : null,
+      // A SERVING-FILTERED NUMERATOR MUST NOT SIT BESIDE AN UNFILTERED
+      // DENOMINATOR. This was companiesFacet.length — the length of the
+      // UNFILTERED token grouping, which includes boards whose every posting
+      // has been withdrawn or aged past the freshness window — published one
+      // line under livePostings, which applies both predicates. It is now the
+      // count of boards with at least one open posting, taken in the same pass
+      // as livePostings, and null when that pass did not compute it.
+      companies: typeof v.companiesOpenCount === "number" ? v.companiesOpenCount : null,
+      // AND IT NAMES ITS POPULATION, because the noun is not exact and the
+      // inexactness is knowable: one employer can run several boards (PwC
+      // ships five Workday sub-sites; 76 such employers in the top 1,500), and
+      // the display-name fold that merges them happens after this count. So
+      // this is a floor on employers and an exact count of boards.
+      companiesBasis:
+        "Distinct company job boards with at least one open posting, under the same two rules as livePostings (not withdrawn, dated within the last 30 days), counted in the pass named by asOf. A count of BOARDS, not of employers: an employer running several boards is counted once per board, so this is a floor on the number of employers.",
       freshnessWindowDays: FRESH_WINDOW_DAYS,
       // THE CLOSURE LOG, PUBLISHED. Every figure here is the one the site shows,
       // read from the same cache, so an API customer and a reader of the page

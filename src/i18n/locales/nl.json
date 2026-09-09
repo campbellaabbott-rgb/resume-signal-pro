@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Gemeten over de {{n}} functies van dit bedrijf met een eigen plaatsingsdatum: tot {{pct}}% werd binnen {{d}} dagen na plaatsing definitief weggehaald ({{lo}}–{{hi}}% beide kanten op). Functies die er nog staan, en functies die onze 30-dagengrens passeerden, tellen als onafgerond in plaats van weggelaten. Vroeg solliciteren loont.",
     "hhBadgeTipObserved": "We zagen {{n}} functies van dit bedrijf tijdens ons volgen van het bord verdwijnen en wegblijven — weggehaald, niet opnieuw geplaatst. Dat is waargenomen activiteit; het zegt niets over hoe lang een ervan online stond.",
     "pastFieldHorizonTipNoCount": "Gemeten uit ons eigen levenscyclus-logboek: van de {{field}}-functies die we de afgelopen {{window}} dagen volgden, was {{gone}}% binnen {{d}} dagen van het bord. Deze staat op dag {{age}} volgens de datum van het bedrijf zelf. Een functie die lang openstaat is niet dood — maar het is goed om te weten voordat je een sollicitatie investeert.",
-    "compareFillRateBounded": "tot {{pct}}% van zijn functies wordt binnen {{d}} dagen definitief weggehaald ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "tot {{pct}}% van zijn functies wordt binnen {{d}} dagen definitief weggehaald ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} actuele vacatures — stuk voor stuk rechtstreeks uit het eigen wervingssysteem van het bedrijf."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Je AI-agent solliciteert met je mee:",
     "agentLine": "hij schrijft de brief, beantwoordt de echte vragen, bereidt je voor — jij verstuurt",
-    "trustFresh": "Geen gedateerde vacature ouder dan 30 dagen — vacatures zonder datum tonen geen leeftijd"
+    "trustFresh": "Geen gedateerde vacature ouder dan 30 dagen — vacatures zonder datum tonen geen leeftijd",
+    "companyBoards": "vacaturesites van bedrijven met openstaande vacatures"
   },
   "explore": {
     "repostWarn": "Plaatst functies opnieuw: {{events}} herplaatsingen over {{roles}} functies in {{d}} d",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "Upload uw cv — gratis",
     "ctaSecondary": "Bekijk het bord",
     "reassure": "Gratis scan · geen kaart, geen registratie",
-    "exploreCta": "Verkennen op vakgebied"
+    "exploreCta": "Verkennen op vakgebied",
+    "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures"
   }
 }

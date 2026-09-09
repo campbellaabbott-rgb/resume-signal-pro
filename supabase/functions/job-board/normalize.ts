@@ -198,24 +198,181 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-const looksRemote = (s: string) => /\bremote\b/i.test(s);
+// THE MISSING NEGATION ARM (measured live 2026-09-09 against deployed .67).
+//
+// In "NON-REMOTE" the hyphen is a word boundary, so the bare \bremote\b below
+// matched and the board stored the exact inverse of what the employer wrote.
+// Two live rows returned under workMode=remote:
+//   "Application Analyst II-Full Time- Days - Cupid/Radiant- NON-REMOTE" (workday)
+//   "RN (PRN - Not Remote)"                                             (icims)
+// This is the SECOND time this board has shipped that inversion — see
+// migration 20260817210000 and the index.ts remoteType classifier, whose rule
+// is "a classifier built from substrings must answer the NEGATIONS before the
+// POSITIVES". That rule lived in one classifier; this one never got it.
+//
+// The repair is to REMOVE the negated phrase from the string before the
+// positive ladder runs, rather than to return a mode from the negation.
+// Removal, not an early return, is what keeps the rest of the string readable:
+//   "On-site (not remote)"  -> "On-site ()"   -> onsite
+//   "Hybrid, non-remote"    -> "Hybrid, "     -> hybrid
+//   "Analyst - NON-REMOTE"  -> "Analyst - "   -> null
+// The bare case is NULL and not "onsite" on purpose: we know it is not remote,
+// we do NOT know whether it is hybrid or onsite, and this file's rule is that
+// null means the posting doesn't say and the board shows nothing rather than a
+// guess. (index.ts's classifier reads a vendor's structured remoteType ENUM,
+// where "Non-Remote Posting" IS Workday's own onsite label, so it may answer
+// onsite there. Free text in a title states less, so it resolves to less.)
+//
+// COVERAGE, stated honestly. The English arms are backed by observed strings
+// (the two titles above, plus "Non-Remote Posting"/"Not Remote"/"No Remote"
+// from the 2026-08-17 incident). The DE/FR/ES/PT/NL arms are the standard
+// negations of the tokens P_REMOTE already carries; they are NOT backed by
+// observed feed strings, so they are written narrowly (adjacent negator +
+// token only) and no language is covered beyond the five P_REMOTE already
+// names. Nothing here invents a token P_REMOTE does not match.
+const P_NEGATED_REMOTE = new RegExp(
+  [
+    // EN — "non-remote", "non remote", "nonremote", "not remote", "no remote"
+    "\\b(?:non|not|no)[-\\s]?remote\\b",
+    // EN — "not a remote role", "not fully remote", "not eligible for remote"
+    "\\bnot\\s+(?:a\\s+|an\\s+|fully\\s+)?remote\\b",
+    "\\bnot\\s+(?:eligible|available|open|considered)\\s+(?:for|to)\\s+remote\\b",
+    // EN — a FIELD-VALUE negation: "Remote: No", "Remote — None", "Remote(No)".
+    //
+    // THE NEGATOR MUST END THE SEGMENT, and that lookahead is the whole point
+    // of this arm's shape. Written without it — `remote\s*[:=–—-]\s*(?:no|
+    // none|not)\b` — a hyphen or dash is read as a field separator, but in a
+    // job TITLE those characters separate SEGMENTS, so the arm fired on the
+    // extremely common genuinely-remote shapes and deleted the only remote
+    // token in them:
+    //   "Registered Nurse - Remote - No Weekends"          -> null (was remote)
+    //   "Data Entry Clerk - Remote - No Experience Required"-> null
+    //   "Data Analyst — Remote — No sponsorship"           -> null
+    //   "Remote: No Cold Calling Sales Rep"                -> null
+    // That is the mirror image of the incident this file exists to fix: a
+    // remote role deleted from the Remote filter instead of a non-remote role
+    // added to it, and the repair migration would have rewritten those rows
+    // irreversibly. "no experience" in particular is part of this board's own
+    // vocabulary — index.ts's INTENT_FILTERS carries a rule for it.
+    // Requiring end-of-string or a delimiter after the negator keeps the real
+    // field-value form and refuses the segment form. "not" is dropped here
+    // entirely: it is already carried by the \bnot\s+…remote\b arms above, and
+    // the "Remote - Not Available" shape is the trailing-negator arm below.
+    "\\bremote\\s*[:=(–—-]\\s*(?:no|none)\\s*(?=$|[).|,;·/])",
+    // EN — a TRAILING negator: "Work from home not available", "Remote Not
+    // Available", "Remote - unavailable". Adjacency is required (the negator
+    // follows the token directly), so "Remote Support Engineer - not available
+    // for sponsorship" is untouched and stays remote.
+    "\\b(?:remote|wfh|work\\s+from\\s+home|home\\s?office)\\s*[:=–—-]?\\s*(?:not\\s+(?:available|offered|permitted|an\\s+option)|unavailable)\\b",
+    // EN — the other tokens P_REMOTE carries
+    "\\b(?:non|not|no)[-\\s]?(?:wfh|work\\s+from\\s+home|home\\s?office)\\b",
+    "\\bno\\s+remote\\s+(?:work|option|options|opportunit(?:y|ies))\\b",
+    // DE — "kein/keine/nicht Home Office" (home office is P_REMOTE's DE token)
+    "\\b(?:keine|kein|nicht)\\s+(?:im\\s+)?home\\s?office\\b",
+    // FR — "non-télétravail", "pas de télétravail", "sans télétravail",
+    //      "aucun télétravail", "télétravail : non"
+    "\\b(?:non|sans|aucun)[-\\s]?t[ée]l[ée]travail\\b",
+    "\\bpas\\s+de\\s+t[ée]l[ée]travail\\b",
+    // Same segment-vs-field hazard as the EN field-value arm above, same fix.
+    "\\bt[ée]l[ée]travail\\s*[:=(–—-]\\s*non\\s*(?=$|[).|,;·/])",
+    // ES/PT — "no remoto", "não remoto", "sin/no teletrabajo"
+    "\\b(?:no|n[ãa]o)[-\\s]?remoto\\b",
+    "\\b(?:sin|no)\\s+teletrabajo\\b",
+    // NL — "geen/niet thuiswerken"
+    "\\b(?:geen|niet)\\s+thuiswerken\\b",
+  ].join("|"),
+  "gi",
+);
 
-// Trinary work-mode detection from explicit title/location text — the same
-// precision bar as looksRemote (clear words only; descriptions are never
-// inferred from). Hybrid outranks remote ("Hybrid remote" is hybrid); onsite
-// needs the explicit phrase. null = the posting doesn't say, and the board
-// shows nothing rather than a guess. Multilingual: the board carries DE/FR/
-// ES/NL/PT postings.
+/**
+ * The negated-remote phrase set as a SOURCE STRING, so index.ts's read-side
+ * INTENT_FILTERS can build its own non-global RegExp from the one definition
+ * instead of spelling the phrases a second time. There is one "negated remote"
+ * in this codebase and this is it: the writer (detectWorkMode), the reader
+ * (the query-intent lift) and the repair migration all quote it.
+ */
+export const NEGATED_REMOTE_SOURCE = P_NEGATED_REMOTE.source;
+
+/** Remove every negated-remote phrase, so the positive ladder never sees the
+ *  remote token that a negation owns. Exported for the vendor label path and
+ *  for the guards. */
+export function stripNegatedRemote(s: string): string {
+  return s.replace(P_NEGATED_REMOTE, " ");
+}
+
+// Trinary work-mode detection from explicit title/location text (clear words
+// only; descriptions are never inferred from). Negations are stripped FIRST.
+// Hybrid then outranks remote ("Hybrid remote" is hybrid); onsite needs the
+// explicit phrase. null = the posting doesn't say, and the board shows nothing
+// rather than a guess. Multilingual: the board carries DE/FR/ES/NL/PT postings.
 const P_HYBRID = /\bhybrid\b|\bhybride\b|\bh[íi]brido?\b/i;
 const P_REMOTE = /\bremote\b|\bwork from home\b|\bwfh\b|\bt[ée]l[ée]travail\b|\bhome\s?office\b|\bremoto\b|\bthuiswerken\b|\bteletrabajo\b/i;
 const P_ONSITE = /\bon-?site\b|\bin-?office\b|\bvor ort\b|\bpresencial\b|\bsur site\b/i;
 export function detectWorkMode(...parts: Array<string | null | undefined>): "remote" | "hybrid" | "onsite" | null {
-  const s = parts.filter(Boolean).join(" · ");
-  if (!s) return null;
+  const joined = parts.filter(Boolean).join(" · ");
+  if (!joined) return null;
+  const s = stripNegatedRemote(joined);
   if (P_HYBRID.test(s)) return "hybrid";
   if (P_REMOTE.test(s)) return "remote";
   if (P_ONSITE.test(s)) return "onsite";
   return null;
+}
+
+/**
+ * THE ONE reader of a vendor's own workplace/location-type LABEL.
+ *
+ * Vendor arms used to re-implement this with `label.includes("remote")`
+ * ladders of their own, which reproduced both defects at once: no negation
+ * (iCIMS location_type "Non-Remote" read as remote) and remote tested BEFORE
+ * hybrid, inverting the deliberate order above ("Hybrid Remote" is hybrid).
+ * Every vendor arm now calls this or detectWorkMode; nothing re-implements.
+ *
+ * Order: the vendor's exact enum wins (ORA_REMOTE, ON_SITE, …), then the same
+ * text detector every other field gets, then the one word that is a clear
+ * statement in a workplace-type FIELD but a guess in a job title — "office".
+ * ("Office Manager" must not become onsite; location_type "Office" must.)
+ */
+export function statedWorkMode(label: string | null | undefined): "remote" | "hybrid" | "onsite" | null {
+  if (typeof label !== "string" || !label.trim()) return null;
+  const enumMode = vendorWorkMode(label);
+  if (enumMode) return enumMode;
+  const detected = detectWorkMode(label);
+  if (detected) return detected;
+  return /\boffice\b/i.test(stripNegatedRemote(label)) ? "onsite" : null;
+}
+
+/**
+ * THE ONE way a vendor arm combines its own workplace LABEL with free text.
+ *
+ * `statedWorkMode(label) ?? detectWorkMode(...)` looked right and was not: for
+ * a label that NEGATES remote ("Non-Remote", iCIMS's own location_type value)
+ * statedWorkMode answers null, null is indistinguishable from "the vendor said
+ * nothing", and the `??` then handed the decision to the title — so a vendor
+ * explicitly stating not-remote was overridden by the word "remote" in the
+ * title. Measured on the real functions before this change:
+ *   normalizeIcims(location_type "Non-Remote", title "Remote Patient
+ *     Monitoring RN")                      -> workMode "remote", remote true
+ *   normalizeLever(workplaceType "Non-Remote", text "Remote Support Engineer")
+ *                                          -> workMode "remote", remote true
+ * "Remote Patient Monitoring" is a real iCIMS-heavy clinical title family, and
+ * iCIMS is the vendor whose location_type genuinely carries "Non-Remote".
+ *
+ * The rule: free text may NARROW a negated label (a title saying hybrid or
+ * onsite tells us which of the two it is), but it can never ANSWER "remote"
+ * over the employer's own negation. It resolves to null instead — this file's
+ * documented value for "we know what it is not, not what it is".
+ */
+export function workModeFrom(
+  label: string | null | undefined,
+  ...parts: Array<string | null | undefined>
+): "remote" | "hybrid" | "onsite" | null {
+  const stated = statedWorkMode(label);
+  if (stated) return stated;
+  const detected = detectWorkMode(...parts);
+  if (typeof label === "string" && stripNegatedRemote(label) !== label) {
+    return detected === "remote" ? null : detected;
+  }
+  return detected;
 }
 // A Map, not an object literal — the third instance of this hazard in this
 // codebase (see NAME_FIXES in company-display.ts and CATEGORY_ACCENT in
@@ -925,6 +1082,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
   return (raw.jobs ?? []).map((j) => {
     const location = stripCoordinateSuffix(j.location?.name ?? "");
     const indexUrl = (titlesPerUrl.get(j.absolute_url ?? "")?.size ?? 0) >= 5;
+    const workMode = detectWorkMode(location, j.title);
     return {
       id: `greenhouse:${token}:${j.id}`,
       source: "greenhouse" as const,
@@ -932,8 +1090,8 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       company,
       title: j.title ?? "",
       location,
-      workMode: detectWorkMode(location, j.title),
-      remote: detectWorkMode(location, j.title) === "remote",
+      workMode,
+      remote: workMode === "remote",
       department: j.departments?.[0]?.name ?? null,
       // first_published only — updated_at re-stamps on any edit, so using it
       // as a posting date silently biases every age stat young. Undated is
@@ -976,6 +1134,7 @@ export function leverSalary(r?: { min?: number; max?: number; currency?: string;
 export function normalizeLever(raw: LeverJob[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : []).map((j) => {
     const location = j.categories?.allLocations?.join(" · ") || j.categories?.location || "";
+    const workMode = workModeFrom(j.workplaceType, location, j.text);
     return {
       id: `lever:${token}:${j.id}`,
       source: "lever" as const,
@@ -983,8 +1142,8 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       company,
       title: j.text ?? "",
       location,
-      workMode: vendorWorkMode(j.workplaceType) ?? detectWorkMode(location, j.text),
-      remote: (vendorWorkMode(j.workplaceType) ?? detectWorkMode(location, j.text)) === "remote",
+      workMode,
+      remote: workMode === "remote",
       department: j.categories?.team ?? null,
       postedAt: safeIso(j.createdAt),
       category: categorize(j.text ?? "", j.categories?.team),
@@ -1018,6 +1177,13 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
     .filter((j) => j.isListed !== false)
     .map((j) => {
       const location = j.location ?? "";
+      // isRemote is Ashby's own boolean, so it outranks free text — but not a
+      // workplaceType that NEGATES remote, which workModeFrom already refuses
+      // to let text override. A vendor contradicting itself resolves to null.
+      const workMode = statedWorkMode(j.workplaceType)
+        ?? (j.isRemote === true && stripNegatedRemote(String(j.workplaceType ?? "")) === String(j.workplaceType ?? "")
+              ? "remote" as const
+              : workModeFrom(j.workplaceType, location, j.title));
       return {
         id: `ashby:${token}:${j.id}`,
         source: "ashby" as const,
@@ -1025,8 +1191,8 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
         company,
         title: j.title ?? "",
         location,
-        workMode: vendorWorkMode(j.workplaceType) ?? (j.isRemote === true ? "remote" : detectWorkMode(location, j.title)),
-        remote: (vendorWorkMode(j.workplaceType) ?? (j.isRemote === true ? "remote" : detectWorkMode(location, j.title))) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: j.department ?? j.team ?? null,
         postedAt: j.publishedAt ?? null,
         category: categorize(j.title ?? "", j.department ?? j.team),
@@ -1055,6 +1221,13 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         p.location?.fullLocation ||
         [p.location?.city, p.location?.region, p.location?.country?.toUpperCase()].filter(Boolean).join(", ");
       const department = p.function?.label ?? p.department?.label ?? null;
+      // HYBRID BEFORE REMOTE. SmartRecruiters sets both flags on a hybrid
+      // posting that also allows remote days; remote-first read those as fully
+      // remote, inverting detectWorkMode's own documented order ("Hybrid
+      // remote" is hybrid). Same correction applied to recruitee and rippling.
+      const workMode = p.location?.hybrid === true ? "hybrid" as const
+        : p.location?.remote === true ? "remote" as const
+        : detectWorkMode(location, p.name);
       return {
         id: `smartrecruiters:${token}:${p.id}`,
         source: "smartrecruiters" as const,
@@ -1062,10 +1235,8 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         company,
         title: p.name ?? "",
         location,
-        workMode: p.location?.remote === true ? "remote" as const
-          : p.location?.hybrid === true ? "hybrid" as const
-          : detectWorkMode(location, p.name),
-        remote: (p.location?.remote === true) || detectWorkMode(location, p.name) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department,
         postedAt: p.releasedDate ?? null,
         category: categorize(p.name ?? "", department),
@@ -1098,6 +1269,7 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
     .map((j) => {
       const location = [j.city, j.state, j.country].filter(Boolean).join(", ");
       const posted = j.published_on ?? j.created_at;
+      const workMode = j.telecommuting === true ? "remote" as const : detectWorkMode(location, j.title);
       return {
         id: `workable:${token}:${j.shortcode}`,
         source: "workable" as const,
@@ -1105,8 +1277,8 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         company,
         title: j.title ?? "",
         location,
-        workMode: j.telecommuting === true ? "remote" as const : detectWorkMode(location, j.title),
-        remote: j.telecommuting === true || detectWorkMode(location, j.title) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: j.department ?? null,
         postedAt: safeIso(posted),
         category: categorize(j.title ?? "", j.department),
@@ -1135,6 +1307,7 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
         j.atsLocation?.state ?? j.atsLocation?.province ?? j.location?.state,
         j.atsLocation?.country,
       ].filter(Boolean).join(", ");
+      const workMode = j.isRemote === true ? "remote" as const : detectWorkMode(location, j.jobOpeningName);
       return {
         id: `bamboohr:${token}:${j.id}`,
         source: "bamboohr" as const,
@@ -1142,8 +1315,8 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
         company,
         title: j.jobOpeningName ?? "",
         location,
-        workMode: j.isRemote === true ? "remote" as const : detectWorkMode(location, j.jobOpeningName),
-        remote: j.isRemote === true || detectWorkMode(location, j.jobOpeningName) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: j.departmentLabel ?? null,
         postedAt: null, // the list feed carries no dates
         category: categorize(j.jobOpeningName ?? "", j.departmentLabel),
@@ -1202,6 +1375,12 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
       const salary = sal && sal.min && sal.max
         ? `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max}${sal.type ? ` ${sal.type}` : ""}`.trim()
         : null;
+      // Hybrid first — see the SmartRecruiters note; Recruitee exposes all
+      // three booleans and a hybrid offer commonly sets `remote` too.
+      const workMode = o.hybrid === true ? "hybrid" as const
+        : o.remote === true ? "remote" as const
+        : o.on_site === true ? "onsite" as const
+        : detectWorkMode(location, o.title);
       return {
         id: `recruitee:${token}:${o.id}`,
         source: "recruitee" as const,
@@ -1209,11 +1388,8 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         company,
         title: o.title ?? "",
         location,
-        workMode: o.remote === true ? "remote" as const
-          : o.hybrid === true ? "hybrid" as const
-          : o.on_site === true ? "onsite" as const
-          : detectWorkMode(location, o.title),
-        remote: o.remote === true || detectWorkMode(location, o.title) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: o.department ?? null,
         postedAt: safeIso(o.published_at ?? o.created_at),
         category: categorize(o.title ?? "", o.department),
@@ -1243,6 +1419,9 @@ export function normalizePersonio(xml: string, company: string, token: string, h
       const office = xmlValue(block, "office") ?? "";
       const department = xmlValue(block, "department");
       const schedule = xmlValue(block, "schedule") ?? "";
+      // <schedule> is an enum (full-time | part-time | …), NOT a description —
+      // the "never infer from prose" rule is intact.
+      const workMode = detectWorkMode(office, title, schedule);
       return {
         id: `personio:${token}:${id}`,
         source: "personio" as const,
@@ -1250,8 +1429,8 @@ export function normalizePersonio(xml: string, company: string, token: string, h
         company,
         title,
         location: office,
-        workMode: detectWorkMode(office, title, schedule),
-        remote: detectWorkMode(office, title, schedule) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department,
         postedAt: safeIso(xmlValue(block, "createdAt")),
         category: categorize(title, department),
@@ -1281,6 +1460,7 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
     .map((p) => {
       const externalId = p.friendly_id || p.id || "";
       const location = p.location?.name ?? "";
+      const workMode = p.location?.is_remote === true ? "remote" as const : detectWorkMode(location, p.name);
       return {
         id: `breezy:${token}:${externalId}`,
         source: "breezy" as const,
@@ -1288,8 +1468,8 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
         company,
         title: p.name ?? "",
         location,
-        workMode: p.location?.is_remote === true ? "remote" as const : detectWorkMode(location, p.name),
-        remote: p.location?.is_remote === true || detectWorkMode(location, p.name) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: p.department ?? null,
         postedAt: safeIso(p.published_date ?? p.creation_date),
         category: categorize(p.name ?? "", p.department),
@@ -1370,12 +1550,15 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         : typeof d.category === "string" ? d.category.trim() : "";
       // location_type is the vendor's own structured field; text detection only
       // fills in when the feed doesn't state one (never guessed from prose).
-      const lt = String(d.location_type ?? "").toLowerCase();
-      const structuredMode = lt.includes("remote") ? "remote" as const
-        : lt.includes("hybrid") ? "hybrid" as const
-        : lt.includes("onsite") || lt.includes("on-site") || lt.includes("office") ? "onsite" as const
-        : null;
-      const workMode = structuredMode ?? detectWorkMode(location, d.title, cat);
+      //
+      // This arm used to read location_type with its own substring ladder,
+      // which reproduced BOTH defects of the shared detector's old shape: no
+      // negation ("Non-Remote" .includes("remote") -> remote, which is how
+      // "RN (PRN - Not Remote)" reached the Remote filter) and remote tested
+      // BEFORE hybrid, so location_type "Hybrid Remote" read as remote while
+      // the identical text in a title read as hybrid. statedWorkMode is the
+      // one reader now; "office" survives as an onsite word there.
+      const workMode = workModeFrom(d.location_type, location, d.title, cat);
       return {
         id: `icims:${token}:${externalId}`,
         source: "icims" as const,
@@ -1475,6 +1658,22 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
       const first = locs[0] ?? {};
       const location = [first.name, locs.length > 1 ? `+${locs.length - 1} more` : ""].filter(Boolean).join(" ");
       const cc = typeof first.countryCode === "string" && /^[A-Z]{2}$/.test(first.countryCode) ? first.countryCode : null;
+      // Per-location workplaceType read through the shared label reader, so a
+      // negated or unexpected spelling cannot invert here either. HYBRID is
+      // asked first: a posting with one hybrid site and one remote site is
+      // hybrid, matching detectWorkMode's own order.
+      // `.some(m => m === …)` and not `.includes("…")`: these are already
+      // CLASSIFIED modes, but a substring call on a work-mode word inside a
+      // vendor arm is the exact shape of the defect, and the guard that keeps
+      // a seventh ladder out bans it outright rather than trying to tell the
+      // two apart by eye.
+      const siteModes = locs.map((l) => statedWorkMode(l.workplaceType));
+      const workMode = siteModes.some((m) => m === "hybrid") ? "hybrid" as const
+        : siteModes.some((m) => m === "remote") ? "remote" as const
+        : siteModes.length > 0 && siteModes.every((m) => m === "onsite") ? "onsite" as const
+        : siteModes.length > 0 && locs.some((l) => typeof l.workplaceType === "string" && stripNegatedRemote(l.workplaceType) !== l.workplaceType)
+          ? (detectWorkMode(location, j.name) === "remote" ? null : detectWorkMode(location, j.name))
+        : detectWorkMode(location, j.name);
       return {
         id: `rippling:${token}:${j.id ?? ""}`,
         source: "rippling" as const,
@@ -1482,11 +1681,8 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
         company,
         title: j.name ?? "",
         location,
-        workMode: locs.some((l) => l.workplaceType === "REMOTE") ? "remote" as const
-          : locs.some((l) => l.workplaceType === "HYBRID") ? "hybrid" as const
-          : locs.length > 0 && locs.every((l) => l.workplaceType === "ON_SITE") ? "onsite" as const
-          : detectWorkMode(location, j.name),
-        remote: locs.some((l) => l.workplaceType === "REMOTE") || detectWorkMode(location, j.name) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: j.department?.name ?? null,
         postedAt: null, // the board payload carries no dates — undated is honest
         category: categorize(j.name ?? "", j.department?.name),
@@ -1837,6 +2033,7 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
       const raw3 = String(addr.Country?.Code ?? "").trim().toUpperCase();
       const country = UKG_ALPHA3[raw3]
         ?? (/^[A-Z]{2}$/.test(raw3) ? raw3 : detectCountry([location, city, state, String(addr.Country?.Name ?? "")].filter(Boolean).join(", ")));
+      const workMode = detectWorkMode(location, title, dept);
       return {
         id: `ukg:${token}:${externalId}`,
         source: "ukg" as const,
@@ -1846,8 +2043,8 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
         location,
         // The list states no remote flag of its own, so work mode is inferred
         // from text exactly as it is for every other vendor that stays silent.
-        workMode: detectWorkMode(location, title, dept),
-        remote: detectWorkMode(location, title, dept) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: dept,
         postedAt: safeIso(j.PostedDate),
         category: categorize(title, dept),
@@ -1914,6 +2111,7 @@ export function normalizePinpoint(items: PinpointPosting[], company: string, tok
       const locFull = [loc.name, loc.city, loc.province, loc.country].filter(Boolean).join(", ");
       const title = String(j.title ?? "").trim();
       const dept = j.job?.department?.name ?? null;
+      const workMode = workModeFrom(j.workplace_type, location, title);
       return {
         id: `pinpoint:${token}:${j.id ?? ""}`,
         source: "pinpoint" as const,
@@ -1921,8 +2119,8 @@ export function normalizePinpoint(items: PinpointPosting[], company: string, tok
         company,
         title,
         location,
-        workMode: vendorWorkMode(j.workplace_type) ?? detectWorkMode(location, title),
-        remote: (vendorWorkMode(j.workplace_type) ?? detectWorkMode(location, title)) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: dept,
         postedAt: null, // no date in the payload — undated is honest
         category: categorize(title, dept),
@@ -2051,6 +2249,10 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
       // display text but it won't resolve to a country (honest).
       const days = workdayPostedDays(j.postedOn);
       const stale = days !== null && days > 30; // Workday says it's past our cap
+      // The live inversion of 2026-09-09 came through here: the title
+      // "Application Analyst II-Full Time- Days - Cupid/Radiant- NON-REMOTE"
+      // has a word boundary at the hyphen, so the old bare \bremote\b matched.
+      const workMode = detectWorkMode(loc, String(j.title ?? ""));
       return {
         id: `workday:${token}:${reqId}`,
         source: "workday" as const,
@@ -2058,8 +2260,8 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         company,
         title: String(j.title ?? "").trim(),
         location: loc,
-        workMode: detectWorkMode(loc, String(j.title ?? "")),
-        remote: detectWorkMode(loc, String(j.title ?? "")) === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: null,
         // Workday's list states a relative age ("Posted 3 Days Ago") — that IS
         // the company's stated date, at day precision. Convert to absolute
@@ -2134,7 +2336,7 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
       const posted = /^\d{4}-\d{2}-\d{2}/.test(String(j.PostedDate ?? ""))
         ? new Date(`${String(j.PostedDate).slice(0, 10)}T00:00:00Z`).toISOString()
         : null;
-      const mode = vendorWorkMode(j.WorkplaceTypeCode) ?? detectWorkMode(location, title);
+      const workMode = workModeFrom(j.WorkplaceTypeCode, location, title);
       const dept = j.JobFamily ? String(j.JobFamily).trim() || null : null;
       return {
         id: `oracle:${token}:${id}`,
@@ -2143,8 +2345,8 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
         company,
         title,
         location,
-        workMode: mode,
-        remote: mode === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: dept,
         postedAt: posted,
         category: categorize(title, dept),
@@ -2200,11 +2402,17 @@ export function normalizeTeamtailor(rss: string, company: string, token: string)
       const city = xmlValue(item, "tt:city");
       const country = xmlValue(item, "tt:country");
       const location = [city, country].filter(Boolean).join(", ");
-      const status = (xmlValue(item, "remoteStatus") ?? "").toLowerCase();
+      // Teamtailor's own vocabulary, matched WHOLE (never by substring), so
+      // there is no negation surface here: "fully" is its word for remote and
+      // means nothing to the shared reader. "none"/"temporary" stay null — see
+      // the sample note above. Anything outside the vocabulary falls through
+      // to the one shared label reader rather than a second ladder.
+      const status = (xmlValue(item, "remoteStatus") ?? "").toLowerCase().trim();
       const statedMode = status === "hybrid" ? "hybrid" as const
         : status === "fully" ? "remote" as const
         : status === "onsite" ? "onsite" as const
-        : null;
+        : status === "none" || status === "temporary" ? null
+        : statedWorkMode(status);
       const workMode = statedMode ?? detectWorkMode(title, location);
       return {
         id: `teamtailor:${token}:${externalId}`,
@@ -2308,7 +2516,7 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
       const stated = d.RemoteIndicator === true ? "remote" as const
         : String(d.TeleworkEligible ?? "").toLowerCase() === "true" ? "hybrid" as const
         : null;
-      const mode = stated ?? detectWorkMode(loc, title);
+      const workMode = stated ?? detectWorkMode(loc, title);
       const posted = safeIso(d.PublicationStartDate);
       const pay = Array.isArray(d.PositionRemuneration) ? d.PositionRemuneration[0] : null;
       const min = Number(pay?.MinimumRange) || 0;
@@ -2323,8 +2531,8 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         company: agency || "U.S. Federal Government",
         title,
         location: loc,
-        workMode: mode,
-        remote: mode === "remote",
+        workMode,
+        remote: workMode === "remote",
         department: String(d.JobCategory?.[0]?.Name ?? "").trim() || null,
         postedAt: posted,
         category: categorize(title, String(d.JobCategory?.[0]?.Name ?? "")),

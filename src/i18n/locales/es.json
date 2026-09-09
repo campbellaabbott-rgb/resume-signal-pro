@@ -4235,7 +4235,8 @@
     "urgencyTipRateDated": "Medido sobre las {{n}} vacantes de esta empresa que llevan su propia fecha de publicación: hasta un {{pct}}% se retiró definitivamente en {{d}} días desde su publicación ({{lo}}–{{hi}}% en cualquier dirección). Las vacantes que siguen abiertas, y las que superaron nuestro límite de 30 días, cuentan como no terminadas en lugar de excluirse. Conviene postular pronto.",
     "hhBadgeTipObserved": "Vimos {{n}} vacantes de esta empresa salir del tablón y no volver durante nuestro seguimiento — retiradas, no republicadas. Es actividad que observamos; no dice nada sobre cuánto tiempo estuvo publicada ninguna de ellas.",
     "pastFieldHorizonTipNoCount": "Medido desde nuestro propio registro de ciclo de vida: de las vacantes de {{field}} que seguimos en los últimos {{window}} días, el {{gone}}% salió del tablón en {{d}} días. Esta lleva {{age}} días según la fecha publicada por la empresa. Una vacante abierta mucho tiempo no está muerta — pero conviene saberlo antes de invertir una postulación.",
-    "compareFillRateBounded": "hasta un {{pct}}% de sus vacantes se retira definitivamente en {{d}}d ({{lo}}–{{hi}}%)"
+    "compareFillRateBounded": "hasta un {{pct}}% de sus vacantes se retira definitivamente en {{d}}d ({{lo}}–{{hi}}%)",
+    "countLineNoFeeds": "{{total}} vacantes activas — todas directo del sistema de contratación de cada empresa."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",
@@ -4416,7 +4417,8 @@
   "boardHero": {
     "agentLead": "Tu agente de IA postula contigo:",
     "agentLine": "escribe la carta, responde las preguntas reales, te prepara — tú envías",
-    "trustFresh": "Ninguna vacante con fecha supera los 30 días — las que no tienen fecha no muestran antigüedad"
+    "trustFresh": "Ninguna vacante con fecha supera los 30 días — las que no tienen fecha no muestran antigüedad",
+    "companyBoards": "portales de empleo de empresas con vacantes"
   },
   "explore": {
     "repostWarn": "Vuelve a publicar puestos: {{events}} republicaciones en {{roles}} puestos en {{d}} días",
@@ -4790,6 +4792,7 @@
     "ctaPrimary": "Sube tu CV — gratis",
     "ctaSecondary": "Explorar el tablón",
     "reassure": "Análisis gratis · sin tarjeta, sin registro",
-    "exploreCta": "Explorar por campo"
+    "exploreCta": "Explorar por campo",
+    "statCompanyBoards": "portales de empleo de empresas con vacantes"
   }
 }

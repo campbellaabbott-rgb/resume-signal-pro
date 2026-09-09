@@ -1071,7 +1071,23 @@ async function runBoardStats(): Promise<unknown> {
   return {
     servablePostings: r.totalAllCompanies ?? null,
     trackedPostings: r.trackedTotal ?? null,
-    employers: r.companiesCount ?? null,
+    // WAS `employers: r.companiesCount`, one line under a serving-filtered
+    // numerator — the same unfiltered-denominator pairing fixed on /jobs, both
+    // heroes and /v1/stats. companiesCount is the length of the UNFILTERED
+    // company_token grouping (left unfiltered because the orphan prune DELETES
+    // by it), so it counts boards whose every posting has been withdrawn or has
+    // aged past the 30-day window, while servablePostings above counts only
+    // postings that pass both. An agent reading the two together got a ratio
+    // neither number supports, and it disagreed with /v1/stats' `companies`
+    // for the same board at the same instant.
+    //
+    // Renamed as well as re-sourced: a company_token is a BOARD, and one
+    // employer can run several (PwC ships five Workday sub-sites), so this was
+    // never a count of employers. Null — never companiesCount — when the pass
+    // did not compute it: an agent gets no number rather than a wrong one.
+    openCompanyBoards: r.companiesOpenCount ?? null,
+    openCompanyBoardsBasis:
+      "Distinct company job boards with at least one open posting, under the same two rules as servablePostings (not withdrawn, dated within the last 30 days). A count of BOARDS, not of employers: an employer running several boards is counted once per board, so this is a floor on the number of employers.",
     categories: r.categories && typeof r.categories === "object" ? Object.keys(r.categories as object) : [],
     freshnessWindowDays: 30,
     refreshedAt: r.refreshedAt ?? null,

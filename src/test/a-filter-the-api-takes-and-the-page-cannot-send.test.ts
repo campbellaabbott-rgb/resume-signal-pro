@@ -167,9 +167,20 @@ describe("the four filters the page was throttling", () => {
     // The typeahead must ADD, and both of its commit paths — Enter and click —
     // must go through the same one. `setCompany(<token>)` as a bare replacement
     // is the throttle this removes.
+    //
+    // ASSERTED AS A PROPERTY, NOT AS A NAME. This used to count call sites of
+    // `toggleCompanyToken` literally, and went red when a dropdown row stopped
+    // being one token: the server merges an employer's feed tokens into a
+    // single option and sums its open-role count over them, so both paths now
+    // commit the whole GROUP through toggleCompanyGroup — which still
+    // accumulates, and still delegates the one-board case to
+    // toggleCompanyToken. The property is that neither path replaces the scope.
     expect(JOBS_CODE).toMatch(/const toggleCompanyToken = useCallback\(/);
-    // Both commit paths: Enter on the highlighted option, and the click.
-    expect((JOBS_CODE.match(/toggleCompanyToken\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    const commits = JOBS_CODE.match(/toggleCompany(?:Token|Group)\(/g) ?? [];
+    expect(commits.length, "both commit paths plus the single-token delegate").toBeGreaterThanOrEqual(3);
+    // Neither path may set the scope from scratch.
+    expect(JOBS_CODE).not.toMatch(/setCompany\(c\.token\)/);
+    expect(JOBS_CODE).not.toMatch(/setCompany\(opts\[companyIdx\]/);
     expect(JOBS_CODE).not.toMatch(/setCompany\(opts\[companyIdx\]\.token\)/);
     expect(JOBS_CODE).not.toMatch(/onMouseDown=\{\(\) => \{ setCompany\(c\.token\)/);
   });
