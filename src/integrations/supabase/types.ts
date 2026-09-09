@@ -3885,7 +3885,6 @@ export type Database = {
         Args: { p_job_ids: string[] }
         Returns: {
           closed_at: string
-          closed_at_is_observation: boolean
           days_standing: number
           job_id: string
           outcome: string
