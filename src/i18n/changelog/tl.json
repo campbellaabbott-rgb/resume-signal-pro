@@ -1143,6 +1143,14 @@
     "repostsCountedAsReposts": {
       "title": "Ang trabahong paulit-ulit na muling inilalathala ay hindi na binibilang bilang napunan",
       "description": "May mga employer na inaalis ang isang posisyon at agad ding ibinabalik ang mismong posisyong iyon. Dati, kamukhang-kamukha ito ng pagpuno sa posisyon. Hiwalay na ngayon ang muling paglalathala sa tunay na pagpuno, kaya ang employer na paulit-ulit na ginagamit ang parehong bakante ay hindi na binibigyan ng kredito para rito. Ang bilang ng muling paglalathala ay ipinapakita bilang “hindi bababa sa” isang numero, dahil sinasadya naming huwag itala ang bawat pag-ulit ng parehong titulo ng trabaho sa loob ng isang araw — kaya ang tunay na bilang ay maaari lamang na mas mataas kaysa sa nakikita mo, hindi kailanman mas mababa."
+    },
+    "exploreOpensOnTheWholeBoard": {
+      "title": "Bumubukas na ang Explore sa buong board, hindi sa labindalawang kompanya",
+      "description": "Dati, bumubukas ang Explore sa labindalawang employer na pinili ng isang estadistika sa pagkuha — mga 1,800 posisyon mula sa mahigit 800,000. Bumubukas na ito ngayon sa bawat larangan sa board. Ipinapakita ng bawat isa ang tunay na bilang ng posisyong bukas dito sa halip na “10,000+” sa anim na pinakamalaki, inililista ang mga titulo ng trabahong talagang nasa loob nito sa halip na isang pangungusap na magkakapareho ang mababasa sa bawat tile, at dumidiretso sa sarili nitong pahina na nagpapakita ng parehong bilang na kaka-click mo lang. Hindi nawala ang talaan ng pagkuha; inilipat ito kung saan may ibang sinasabi ito mula sa isang employer patungo sa susunod, sa halip na magkaparehong bagay nang labingwalong beses."
+    },
+    "bigEmployerTakedownsNoticed": {
+      "title": "Napapansin na namin kapag inaalis ng isang malaking employer ang isang posisyon",
+      "description": "Sa mga employer na mahigit ilang daan ang bakante, hindi namin matukoy ang pagkakaiba ng isang posisyong inaalis at ng isang posisyong hindi lamang lumitaw sa bahagi ng kanilang careers page na nabasa namin sa pagbisitang iyon — kaya wala kaming sinabi, at maaaring manatili ang listing dito hanggang sa maalis ito dahil sa katandaan nito makalipas ang ilang linggo. Tunay na gastos iyon para sa iyo: isang aplikasyong isinulat para sa trabahong inalis na pala ng employer. Binabasa na namin ngayon ang mga careers page na iyon nang paikot hanggang dulo bago kami magpasyang wala na ang anuman, kaya natutukoy ang tunay na pag-alis sa loob ng ilang araw sa halip na ilang linggo. Kailangan ng ilang araw bago matapos ang mga unang buong pag-ikot, kaya ang mga posisyon sa pinakamalalaking employer ay magsisimulang maalis nang tama sa loob ng panahong iyon, hindi kaagad."
     }
   }
 }

@@ -337,9 +337,16 @@ export const NL_FILTERS: readonly NlFilter[] = [
   },
   {
     key: "activelyHiring",
-    prompt: "true when the user asks for companies that really hire / actually fill roles / proven hirers / no ghost jobs.",
+    // THE MODEL'S WORDS COME BACK ON SCREEN. Jobs.tsx renders the parser's
+    // `interpreted` chips verbatim beside the results, so a prompt written in
+    // terms of "proven hirers" and "actually fill roles" steers the model into
+    // re-publishing the retired claim next to a filter whose own chip now reads
+    // "Takes roles down" — and "fill" reasserts the hire that a closure can
+    // never evidence. The key still means the same filter; the description now
+    // names the observation the filter is built on.
+    prompt: "true when the user asks for employers whose postings we have watched come off the board and stay off / employers that move their roles / no ghost jobs.",
     type: "boolean",
-    schema: "true only when the user wants companies with a proven fill record",
+    schema: "true only when the user wants employers whose postings we have watched come down and stay down",
     take: flag,
   },
   {

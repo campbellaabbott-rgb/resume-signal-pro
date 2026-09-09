@@ -1767,6 +1767,15 @@ describe("the page says when it was measured", () => {
  * blanket one, which is the weakening the guard exists to prevent. The cap
  * below is what makes that argument have to be had out loud.
  */
+// TOUCHED AND EMPTIED AGAIN ON 2026-09-09 by the closure-record third state.
+// The slice section stated the SIZE of its gap (`asked` and `readable` as two
+// numbers) and never what the gap IS: the employers in it are the boards bigger
+// than one visit can read, whose closures are not observable to us at all, and
+// reading their absence as inactivity is the same defect the board's hiring chip
+// was shipping at 59% of inventory. Its two keys (closureUnreadable,
+// closureNone2) sat here for the length of one locale pass and came off the
+// moment they landed in en.json — which is the third bound doing exactly its
+// job, and the reason the list is declared rather than deleted.
 const PENDING_LOCALE_KEYS = [] as const as readonly string[];
 
 /** The exemption's own ceiling. It is deliberately small: a handful of keys

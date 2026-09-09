@@ -1143,6 +1143,14 @@
     "repostsCountedAsReposts": {
       "title": "Een vacature die telkens opnieuw wordt geplaatst telt niet langer als vervuld",
       "description": "Sommige werkgevers halen een vacature offline en zetten precies dezelfde meteen weer online. Dat zag er tot nu toe hetzelfde uit als vervullen. Herplaatsingen worden nu gescheiden van echte vervullingen, zodat een werkgever die dezelfde vacature blijft recyclen daar geen krediet voor krijgt. Het aantal herplaatsingen staat erbij als “minstens” zoveel, omdat we bewust niet elke herhaling van dezelfde functietitel op één dag vastleggen — het werkelijke aantal kan dus alleen hoger zijn dan wat je ziet, nooit lager."
+    },
+    "exploreOpensOnTheWholeBoard": {
+      "title": "Ontdek opent nu op het hele bord, niet op twaalf bedrijven",
+      "description": "Ontdek opende op twaalf werkgevers die op een wervingscijfer waren gekozen — zo’n 1.800 vacatures van de ruim 800.000. Het opent nu op elk vakgebied op het bord. Elk vakgebied toont het echte aantal openstaande vacatures in plaats van “10.000+” bij de zes grootste, noemt de functietitels die er werkelijk in zitten in plaats van één zin die op elke tegel hetzelfde was, en gaat rechtstreeks naar zijn eigen pagina met precies het aantal waarop je zojuist klikte. Het wervingscijfer is niet verdwenen; het is verhuisd naar waar het van werkgever tot werkgever iets anders zegt, in plaats van achttien keer hetzelfde."
+    },
+    "bigEmployerTakedownsNoticed": {
+      "title": "We merken nu wanneer een grote werkgever een vacature offline haalt",
+      "description": "Bij werkgevers met meer dan een paar honderd openstaande vacatures konden we een vacature die werd ingetrokken niet onderscheiden van een vacature die simpelweg niet voorkwam in het stuk van hun vacaturepagina dat we bij dat bezoek hadden gelezen — dus zeiden we niets, en kon de vermelding hier blijven staan tot ze weken later verliep. Dat kost jou echt iets: een sollicitatie geschreven op een vacature die de werkgever al had ingetrokken. We lezen die vacaturepagina’s nu helemaal rond voordat we besluiten dat iets weg is, zodat een echte intrekking in dagen wordt opgemerkt in plaats van in weken. Het duurt een paar dagen voordat de eerste volledige rondes klaar zijn, dus vacatures bij de allergrootste werkgevers vallen in die periode correct af, niet meteen."
     }
   }
 }

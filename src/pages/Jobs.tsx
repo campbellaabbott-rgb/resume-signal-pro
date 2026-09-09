@@ -352,6 +352,145 @@ interface FillCurve {
 // not gated on `sufficient`: "has taken down three roles" is arithmetic, and it
 // stays true on a record too thin to support a rate.
 const ACTIVELY_HIRING_MIN_CLOSED = 3;
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THREE ANSWERS, AND THE THIRD ONE IS NOT A NO.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * WHAT THIS REPLACES, AND WHAT IT COST. The bar below used to be read as a
+ * boolean, right here:
+ *
+ *     return !!h && h.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED
+ *            && h.relists_90d <= h.fills_90d;
+ *
+ * fills_90d counts closures WE SUCCESSFULLY OBSERVED. A closure is only
+ * observable on a board we can read in full: a tenant whose feed exceeds our
+ * per-visit cap is windowed, and until the lap fix of 2026-09-09 the truncated
+ * branch pruned its vanished postings WITHOUT WRITING A CLOSURE ROW AT ALL. So
+ * fills_90d sits at 0 for every large paginated employer, structurally, however
+ * much they hire — and the boolean turned that into "not hiring".
+ *
+ * Measured against the thirty largest employers by live role count on
+ * 2026-09-09: 13 passed, 17 were blocked, and the block hid 91,535 of 154,979
+ * roles — 59% of the inventory, every blocked employer at fills_90d = 0,
+ * including the one with 34,000 open roles. A control a person clicks expecting
+ * MORE signal removed most of the board and said nothing.
+ *
+ * THE DEFECT IS THE CATEGORY, NOT THE THRESHOLD. "We could not observe it" and
+ * "they are not hiring" were the same return value, and the surface published
+ * the second. So the answer is a union of three, and `unknown` is never folded
+ * into the negative anywhere: a fact about our instrument may not be rendered as
+ * a fact about an employer.
+ *
+ * WHAT MAKES A RECORD SPEAK. The RPC is `FROM toks t LEFT JOIN …` and projects
+ * COALESCE(...,0), so it answers with a ROW FOR EVERY TOKEN ASKED and an
+ * employer we have never logged an event for comes back 0/0. A row is therefore
+ * not evidence. Evidence is a CLOSURE LEDGER ENTRY: a fill or a re-list, both of
+ * which required watching a posting go away on a board we could read to the end.
+ * Age-outs are deliberately NOT evidence here (Explore's closureRecordOf counts
+ * them for a different question — "have we logged anything at all about this
+ * board"): an age-out is OUR 30-day cap expiring a posting, an event we
+ * manufacture without observing the employer do anything, so it cannot license a
+ * sentence about their hiring.
+ *
+ * IT IS A SHRINKING CATEGORY, NOT A PERMANENT BUCKET. The lap-proven-absence
+ * fix (absence_basis 'lap') starts writing closures for windowed tenants as each
+ * completes its first full pass, and get_closure_population() publishes how many
+ * boards are full-read, lap-proven, lap-pending, unprovable and unobserved. Every
+ * employer that moves out of lap-pending moves out of `unknown` here.
+ *
+ * AND NONE OF THE THREE IS A CLAIM THAT ANYONE WAS HIRED. A hire, a withdrawal,
+ * a cancelled requisition and a retitle are indistinguishable to us.
+ */
+export type HiringRecordVerdict = "closes" | "no-pattern" | "unknown";
+
+/**
+ * THE ONLY PLACE THE BAR IS READ. Every surface on this page goes through this
+ * function or through `isActivelyHiring` (which is `=== "closes"` and nothing
+ * else), so a fourth surface cannot quietly re-derive a two-state answer.
+ *
+ * relists_90d is a FLOOR — the collector logs one relisted title per company per
+ * day and deletes the rest — so requiring it to stay at or under the fills errs
+ * towards DISQUALIFYING, the safe direction for a claim that speaks well of an
+ * employer. That is a "no-pattern", not an "unknown": we watched the roles come
+ * back, which is a reading and not a gap.
+ */
+export function hiringRecordVerdict(
+  h: Pick<FillCurve, "fills_90d" | "relists_90d"> | null | undefined,
+): HiringRecordVerdict {
+  // No row: either the batch is still in flight, or this token was never asked
+  // (the fetch caps at 200). Both are our side.
+  if (!h) return "unknown";
+  const fills = h.fills_90d;
+  const relists = h.relists_90d;
+  // A build that stops returning the columns is our instrument failing, and is
+  // a statement about the deploy rather than about the employer.
+  if (!Number.isFinite(fills) || !Number.isFinite(relists)) return "unknown";
+  // THE WINDOWED-TENANT SIGNATURE, AND THE WHOLE POINT OF THIS FUNCTION. Not one
+  // closure-ledger row for this employer in ninety days. On a board we can read
+  // to the end that would be a finding; on a board bigger than one visit it is
+  // the shape of our own cap, and the two are indistinguishable from here.
+  if (fills + relists <= 0) return "unknown";
+  if (fills >= ACTIVELY_HIRING_MIN_CLOSED && relists <= fills) return "closes";
+  return "no-pattern";
+}
+
+/**
+ * WHAT A SURFACE IS ALLOWED TO DO WITH A VERDICT.
+ *
+ * Silence is legal for exactly one verdict. "no-pattern" is a reading we can
+ * support — we watched this employer's postings and they did not come down and
+ * stay down — so a chip slot may simply not fire. "unknown" may NEVER take that
+ * branch: a surface that renders nothing for it is making the negative claim
+ * silently, which is the same defect one indirection further out.
+ */
+export type HiringRecordSlot = "positive" | "unreadable" | "silent";
+export function hiringRecordSlot(v: HiringRecordVerdict): HiringRecordSlot {
+  return v === "closes" ? "positive" : v === "unknown" ? "unreadable" : "silent";
+}
+
+/** What the filter kept, what it set aside, and why — so the page can SAY it. */
+export interface HiringRecordPartition<T> {
+  /** Verdict "closes". The rows the filter is for. */
+  shown: T[];
+  /** Verdict "unknown". Held out of the list AND NAMED ON SCREEN — never a
+   *  silent gap. This is the 59%. */
+  setAside: T[];
+  /** Distinct employers behind `setAside`, counted on token. */
+  setAsideEmployers: number;
+  /** Verdict "no-pattern": read, and the pattern is not there. Excluded with no
+   *  apology, because that exclusion is a finding we can support. */
+  noPattern: number;
+}
+
+/**
+ * THE FILTER, AS AN ACCOUNTING RATHER THAN A PREDICATE. A `.filter()` returns
+ * one list and throws the reason away; this keeps the three piles apart so the
+ * copy beneath the results can quote the exclusion instead of implying it. The
+ * counts are of ROWS ALREADY FETCHED — this filter has never had a board
+ * predicate — and the sentence that renders them says so.
+ */
+export function partitionByHiringRecord<T extends { token?: string | null }>(
+  rows: readonly T[],
+  verdictOf: (tok?: string | null) => HiringRecordVerdict,
+): HiringRecordPartition<T> {
+  const shown: T[] = [];
+  const setAside: T[] = [];
+  const setAsideTokens = new Set<string>();
+  let noPattern = 0;
+  for (const r of rows) {
+    const v = verdictOf(r.token);
+    if (v === "closes") { shown.push(r); continue; }
+    if (v === "unknown") {
+      setAside.push(r);
+      if (r.token) setAsideTokens.add(r.token);
+      continue;
+    }
+    noPattern += 1;
+  }
+  return { shown, setAside, setAsideEmployers: setAsideTokens.size, noPattern };
+}
 // The horizon the curve is read at, everywhere. It is not a threshold on a
 // midpoint any more — it is the day the fill rate is quoted for, and the day a
 // posting has to outlive before this page will say it has been up a long time.
@@ -2270,6 +2409,14 @@ export default function Jobs() {
     maxYears, department, vendor, freshness, employmentType, hideAgencies]);
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
+  // A READ STILL IN FLIGHT IS NOT AN EMPTY RECORD. The curve batch was measured
+  // at 7-16s, and every token is `unknown` until its row lands. Without this
+  // flag the third state's own copy ("we hold no closure record for this
+  // employer") would print for fifteen seconds about employers whose record we
+  // are in the middle of reading — trading one false statement for another,
+  // quieter one. Surfaces that ASSERT the gap wait for this to clear; surfaces
+  // that merely withhold praise do not have to.
+  const [healthPending, setHealthPending] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
   // and whether the user already applied — the dedup guard), and which card is
   // currently loading its description.
@@ -2583,7 +2730,7 @@ export default function Jobs() {
       title: t("jobsPage.searchSaved", "Search saved"),
       description: [
         t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
-        activelyHiringOnly ? t("jobsPage.savedWithoutActivelyHiring", "The Actively hiring filter is applied in your browser, not on the board, so this saved search does not include it.") : "",
+        activelyHiringOnly ? t("jobsPage.savedWithoutTakedownFilter", "The \u201cTakes roles down\u201d filter is applied in your browser, not on the board, so this saved search does not include it.") : "",
         // THE FILTERS THE NIGHTLY RUNNER CANNOT REPRODUCE, NAMED RATHER THAN
         // SAVED. send-search-digest builds its board call from a hand-listed
         // set of params; anything outside that list is stored and ignored, and
@@ -4022,7 +4169,13 @@ export default function Jobs() {
     const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x)))
       .filter((tok) => !healthAttempted.current.has(tok))
       .slice(0, 200);
-    if (batch.length === 0) return;
+    // Nothing left to ask for: every visible token has been attempted, so the
+    // pending flag must clear here as well as on the response. A run whose
+    // fetch was cancelled by a `jobs` change leaves its tokens marked attempted,
+    // and without this the next run would take this branch and strand
+    // healthPending at true — the disclosure that names the gap would then never
+    // render, which is the exact silence this change exists to end.
+    if (batch.length === 0) { setHealthPending(false); return; }
     batch.forEach((t) => healthAttempted.current.add(t));
     // A failure here used to vanish: badges simply did not render and the
     // "Actively hiring" filter quietly matched nothing, with the page giving no
@@ -4030,7 +4183,20 @@ export default function Jobs() {
     // this very effect sends (26 tokens: 500 at 15.8s, then 200 at 7.1s on
     // retry). Absent data must read as absent, not as "no employer is hiring".
     setHealthFailed(false);
+    setHealthPending(true);
     let cancelled = false;
+    // A CANCELLED BATCH MUST NOT LEAVE ITS TOKENS MARKED ASKED. The tokens went
+    // into healthAttempted above so a re-render cannot re-ask for them; they
+    // came back out only inside giveUp(), which early-returns when cancelled.
+    // So a `jobs` change during the measured 7-16s read — one "Load more", one
+    // dismissal, one new search — threw the response away AND kept its 60
+    // tokens marked attempted for the rest of the session. Those employers then
+    // had no curve row that could ever arrive, and with the third state shipped
+    // that silence became a stated sentence: the filter would set them aside and
+    // tell the reader we hold no closure record for them, when in fact we
+    // fetched it and discarded it. `settled` is the difference between a read
+    // that answered and a read that was abandoned.
+    let settled = false;
     // A FAILED RPC IS NOT AN EMPTY MARKET, AND supabase-js DOES NOT THROW ONE.
     // PostgREST answers a missing function with PGRST202/404 and the client
     // RESOLVES with { data: null, error } — it does not reject — so the catch
@@ -4046,6 +4212,8 @@ export default function Jobs() {
     const giveUp = () => {
       if (cancelled) return;
       setHealthFailed(true);
+      setHealthPending(false);
+      settled = true;
       batch.forEach((tok) => healthAttempted.current.delete(tok));
     };
     (async () => {
@@ -4062,29 +4230,52 @@ export default function Jobs() {
           }
           return next;
         });
+        settled = true;
+        setHealthPending(false);
       } catch { giveUp(); }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // Only an ANSWERED read keeps its tokens. An abandoned one hands them
+      // back so the next run asks again — see `settled` above.
+      if (!settled) batch.forEach((tok) => healthAttempted.current.delete(tok));
+    };
   }, [jobs]);
 
-  const isActivelyHiring = useCallback(
-    (tok?: string) => {
-      if (!tok) return false;
-      const h = curveByToken[tok];
-      // Churn-dominated boards (more re-lists than takedowns) don't qualify —
-      // same disqualifier the Explore fills list applies. relists_90d is a floor
-      // (the collector logs a relisted title once a day per company), so this
-      // errs towards disqualifying, which is the safe direction for a claim
-      // that speaks well of an employer.
-      return !!h && h.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED && h.relists_90d <= h.fills_90d;
-    },
+  /** THE PAGE'S ONE READING OF THE CLOSURE RECORD. Three answers, and every
+   *  surface below branches on all three — see hiringRecordVerdict for why the
+   *  third one exists and what it cost to not have it. */
+  const hiringRecordOf = useCallback(
+    (tok?: string | null): HiringRecordVerdict =>
+      hiringRecordVerdict(tok ? curveByToken[tok] : undefined),
     [curveByToken],
+  );
+
+  /** Kept, and kept to ONE meaning: the positive verdict and nothing else. It
+   *  is a convenience over hiringRecordOf, never a second definition of the bar
+   *  — and because it is a boolean it may only ever gate a POSITIVE render. Any
+   *  site that needs to know what the false side meant must call
+   *  hiringRecordOf, which is why the guard enumerates both names. */
+  const isActivelyHiring = useCallback(
+    (tok?: string) => hiringRecordOf(tok) === "closes",
+    [hiringRecordOf],
+  );
+
+  /** The filter's three piles, computed once. `setAside` is the exclusion the
+   *  copy under the results states out loud. */
+  const hiringPartition = useMemo(
+    () => partitionByHiringRecord(jobs, hiringRecordOf),
+    [jobs, hiringRecordOf],
   );
 
   useEffect(() => { jobsCount.current = jobs.length; }, [jobs]);
 
   const displayJobs = useMemo(() => {
-    let list = activelyHiringOnly ? jobs.filter((j) => isActivelyHiring(j.token)) : jobs;
+    // THE FILTER KEEPS THE POSITIVE VERDICT ONLY — that is what it is for — but
+    // the rows it drops are no longer thrown away unlabelled: hiringPartition
+    // holds the unknown pile, and the disclosure beside the results counts it.
+    // A `.filter()` here is what made a 59% exclusion invisible.
+    let list = activelyHiringOnly ? hiringPartition.shown : jobs;
     if (dismissedIds.size > 0) list = list.filter((j) => !dismissedIds.has(j.id));
     // The my-jobs views, applied with the dismissals because they are the same
     // kind of thing: a local narrowing of rows the server already sent.
@@ -4131,7 +4322,7 @@ export default function Jobs() {
       list = [...scored, ...unscored];
     }
     return list;
-  }, [jobs, fitRanking, fits, activelyHiringOnly, isActivelyHiring, dismissedIds, refreshing, q, location,
+  }, [jobs, fitRanking, fits, activelyHiringOnly, hiringPartition, dismissedIds, refreshing, q, location,
     savedOnly, hideViewed, hideApplied, savedIds, appliedIds, viewedIds, detailJob?.id]);
 
   // De-dupe near-identical postings: the same role cross-posted across locations
@@ -4781,7 +4972,7 @@ export default function Jobs() {
     // vendors the apply agent can drive — and a visitor could leave it switched
     // on believing they had cleared everything.
     if (agentOnly) f.push({ key: "agentOnly", label: t("jobsPage.chipAgentOnly", "Agent can apply"), clear: () => setAgentOnly(false) });
-    if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipActivelyHiring", "Actively hiring"), clear: () => setActivelyHiringOnly(false) });
+    if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipTakedowns", "Takes roles down"), clear: () => setActivelyHiringOnly(false) });
     // A WIDENING toggle, so it gets a chip for visibility and for Clear all, but
     // it only means anything alongside a category. Gated on the sort, matching
     // the checkbox: under a salary sort the server drops the opt-in, so a chip
@@ -4985,8 +5176,9 @@ export default function Jobs() {
       // and the count>0 filter below drops the button — correctly, because
       // switching a browser-side filter off cannot surface rows the server
       // did not send. When THIS toggle is what emptied a served page, the
-      // rescue never runs (jobs.length > 0) and the activelyHiringEmpty line
-      // offers the way out instead. The entry exists so the chip key is
+      // rescue never runs (jobs.length > 0) and the takedownSetAside /
+      // takedownEmpty disclosure offers the way out instead — it now states the
+      // exclusion whenever the filter is on, not only when the page empties. The entry exists so the chip key is
       // accounted for here rather than silently reaching the same {} through
       // the fallback lookup.
       activelyHiring: {},
@@ -5388,12 +5580,51 @@ export default function Jobs() {
                   <Link2 className="w-3.5 h-3.5" />
                   {t("jobsPage.share", "Share")}
                 </button>
-                {isActivelyHiring(detailJob.token) && (
-                  <span className="inline-flex items-center gap-1 text-success">
-                    <Activity className="w-3 h-3" />
-                    {t("jobsPage.hhActive", "Actively hiring")}
-                  </span>
-                )}
+                {/* THE PANEL'S CLOSURE-RECORD LINE, IN THREE STATES.
+                    "Actively hiring" was never what the bar measures, and its
+                    ABSENCE was the worse half: on a windowed tenant — a feed too
+                    big to read in one visit, so no closure of theirs was ever
+                    observable — this rendered nothing, and nothing beside a
+                    green badge on the next employer reads as "not hiring".
+                    Both halves are named now. */}
+                {(() => {
+                  // NO ROW IS NOT A VERDICT — the same rule the card slot has
+                  // always had, now applied here too. get_company_fill_curve
+                  // answers for every token it is handed, so a missing row means
+                  // the batch is still in flight, this token fell past the
+                  // 200-token cap, or the posting carries no token at all. In
+                  // none of those did we ask about THIS employer, and rendering
+                  // "we hold no closure record for this employer" over an
+                  // unasked question is the same fabrication as the original
+                  // defect. A row that came back 0/0 IS an answer, and it still
+                  // takes the unreadable branch below.
+                  const detailCurve = detailJob.token ? curveByToken[detailJob.token] : undefined;
+                  if (!detailCurve) return null;
+                  const slot = hiringRecordSlot(hiringRecordVerdict(detailCurve));
+                  if (slot === "positive") {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 text-success"
+                        title={t("jobsPage.takedownBadgeTip", "We watched at least {{min}} of this employer's postings come off the board and stay off. That is activity we observed — it is not a claim that anyone was hired, because a filled role, a cancelled one and a withdrawn one look identical from here.", { min: ACTIVELY_HIRING_MIN_CLOSED })}
+                      >
+                        <Activity className="w-3 h-3" />
+                        {t("jobsPage.takedownBadge", "Takes roles down")}
+                      </span>
+                    );
+                  }
+                  if (slot === "unreadable") {
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 text-muted-foreground"
+                        title={t("jobsPage.noRecordBadgeTip", "We hold no record of a posting from this employer coming off the board. That happens two ways we cannot tell apart from here: on a board bigger than one visit can read, no closure is observable to us at all until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it simply means nothing came down while we watched. Either way it is a gap in our record and says nothing about whether they are hiring.")}
+                      >
+                        <Info className="w-3 h-3" />
+                        {t("jobsPage.noRecordBadge", "No closure record")}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* ── AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD ─────
@@ -5827,7 +6058,29 @@ export default function Jobs() {
                 // too, and "genuinely fills" became a claim its own number no
                 // longer supports. What is left is exactly what we watched:
                 // roles came off this board and did not come back.
-                if (hh && fills >= 3 && churn <= fills) clauses.push(t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: fills }));
+                //
+                // AND THE BAR IS READ ONCE, NOT TYPED AGAIN. This line was
+                // `fills >= 3 && churn <= fills` — the same arithmetic as the
+                // chip, with the threshold spelled as a literal, so the two
+                // surfaces could drift and neither could grow a third state.
+                // It goes through hiringRecordVerdict like everything else.
+                const verdict = hiringRecordVerdict(hh);
+                if (verdict === "closes") clauses.push(t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: fills }));
+                // THE THIRD STATE, SAID OUT LOUD IN THE PLACE PEOPLE DECIDE.
+                // This block answers "should I apply?", and on a windowed
+                // employer it used to answer it while silently omitting that we
+                // hold no closure record at all — the reader could not tell a
+                // employer we had watched and found nothing from one we had
+                // never been able to watch.
+                //
+                // AND IT NEEDS A ROW TO SAY IT. `hh` is undefined while the
+                // batch is in flight, past the 200-token cap, and on a posting
+                // with no token — none of which is a fact about this employer's
+                // record, so the sentence would be asserting the state of a
+                // question we never asked. The cause is not asserted either:
+                // windowing and a quiet fully-read board are indistinguishable
+                // from here.
+                if (hh && verdict === "unknown") clauses.push(t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched"));
                 // "at least": the collector logs a relisted title once a day per
                 // company, so this count is a floor and never an exact tally.
                 if (hh && churn > fills && churn >= 10) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
@@ -5854,7 +6107,16 @@ export default function Jobs() {
                 }
                 if (clauses.length === 0) return null;
                 const caution = churn > fills && churn >= 10;
-                const go = !caution && typeof f === "number" && f >= 20 && fills >= 3 && typeof age === "number" && age <= 7;
+                // `fills >= 3` was typed here too — a third spelling of the bar,
+                // in the condition that decides whether this panel's headline
+                // reads "Worth applying now". It reads the shared verdict now,
+                // which also makes the headline refuse an employer whose
+                // re-lists outnumber its take-downs without reaching the
+                // caution's own floor of ten. Withholding the headline is the
+                // one thing an unknown verdict may do here: "What the data says"
+                // asserts nothing about the employer, and the clause list above
+                // has already said, in words, that we hold no record for them.
+                const go = !caution && typeof f === "number" && f >= 20 && verdict === "closes" && typeof age === "number" && age <= 7;
                 return (
                   <div className={`rounded-xl border p-3 text-sm ${go ? "border-success/40 bg-success/5" : caution ? "border-warning/40 bg-warning/5" : "border-border bg-muted/30"}`}>
                     <p className={`font-semibold mb-0.5 ${go ? "text-success" : caution ? "text-warning" : "text-foreground"}`}>
@@ -6485,10 +6747,18 @@ export default function Jobs() {
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-primary shrink-0" />
                 <h2 className="text-sm font-semibold text-foreground">{t("jobsPage.hhTitle", "Hiring Health")}</h2>
-                {hiringCurve.open_roles > 0 && hiringCurve.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED
-                  && hiringCurve.relists_90d <= hiringCurve.fills_90d && (
+                {/* The employer-page pill, on the same three-state reading as
+                    every other surface. The open-roles condition stays: a
+                    closure record with a dead board behind it is not a reason to
+                    say anything encouraging. */}
+                {hiringCurve.open_roles > 0 && hiringRecordVerdict(hiringCurve) === "closes" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success">
-                    {t("jobsPage.hhActive", "Actively hiring")}
+                    {t("jobsPage.takedownBadge", "Takes roles down")}
+                  </span>
+                )}
+                {hiringRecordVerdict(hiringCurve) === "unknown" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {t("jobsPage.noRecordBadge", "No closure record")}
                   </span>
                 )}
               </div>
@@ -6511,8 +6781,21 @@ export default function Jobs() {
                       : t("jobsPage.hhTakenDownPostUntracked", "roles since we began tracking — taken down for good, not re-listed")}
                   </li>
                 ) : (
+                  /* WHAT ZERO FILLS ACTUALLY MEANS, AND IT IS TWO DIFFERENT
+                     THINGS. This said "we just started tracking this company's
+                     role closures" for both of them. On an employer whose
+                     re-lists we HAVE logged that is false — we have been
+                     watching, and what we watched was roles going back up. On a
+                     windowed tenant it is false the other way: we did not just
+                     start, we cannot finish, because a board bigger than one
+                     visit produces no observable closure until a full lap is
+                     assembled. Neither reading is "hiring-health fills in as
+                     roles close", and on the employer with 34,000 open roles
+                     that sentence had been true-sounding and wrong for months. */
                   <li className="italic text-muted-foreground/80">
-                    {t("jobsPage.hhGathering", "We just started tracking this company's role closures — hiring-health fills in as roles close.")}
+                    {hiringRecordVerdict(hiringCurve) === "unknown"
+                      ? t("jobsPage.hhNoClosureRecord", "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.")
+                      : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relists_90d })}
                   </li>
                 )}
                 {/* THE PACE LINE. Three states and no fourth: a share with its
@@ -7390,15 +7673,18 @@ export default function Jobs() {
               className={`hidden lg:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
               }`}
-              // Two false claims in one tooltip: "actually filled" (the
-              // lifecycle log observes a posting disappearing, which may be a
-              // fill, a cancelled req or a paused budget) and the implication
-              // that this filters the board (it filters the rows already
-              // fetched). Both corrected.
-              title={t("jobsPage.activelyHiringTip", "Filters the openings already loaded on this page (not the whole board) down to employers whose postings have closed and stayed closed — we can see a posting disappear, but not whether it was filled.")}
+              // THE LABEL NAMES THE MEASUREMENT NOW. "Actively hiring" was a
+              // claim about an employer's behaviour built from a count of what
+              // WE managed to observe, and the tooltip's job is to say which of
+              // the two the chip is: it keeps employers whose postings we have
+              // watched come down, and it names the employers it has to set
+              // aside because we hold no reading of them at all. The two older
+              // corrections still stand — it filters the rows already fetched,
+              // not the board, and a closure is not a hire.
+              title={t("jobsPage.takedownFilterTip", "Keeps the openings already loaded on this page (not the whole board) whose employer we have watched take at least {{min}} postings off the board and leave them off. A closure is not a hire: a filled role, a cancelled one and a withdrawn one look identical from here. Employers we hold no closure record for are set aside and counted underneath, never treated as not hiring — that can be a feed bigger than one visit can read, where no closure of theirs is observable to us, or simply nothing coming down while we watched.", { min: ACTIVELY_HIRING_MIN_CLOSED })}
             >
               <Activity className="w-3 h-3" />
-              {t("jobsPage.activelyHiringFilter", "Actively hiring")}
+              {t("jobsPage.takedownFilter", "Takes roles down")}
             </button>
             {/* MY JOBS. Each control renders only when it has something to
                 act on — a signed-out visitor has no tracker, and a first
@@ -7414,7 +7700,7 @@ export default function Jobs() {
                 className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   savedOnly ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
-                title={t("jobsPage.savedViewTip", "Show only the postings you've saved to your application tracker. Like the Actively-hiring toggle, it narrows the results already loaded on this page rather than re-searching the whole board.")}
+                title={t("jobsPage.savedViewTip", "Show only the postings you've saved to your application tracker. Like the “Takes roles down” toggle, it narrows the results already loaded on this page rather than re-searching the whole board.")}
               >
                 <BookmarkCheck className="w-3 h-3" />
                 {t("jobsPage.savedView", "Saved")}
@@ -7582,17 +7868,90 @@ export default function Jobs() {
                 {t("jobsPage.hideEmpty", "Every posting loaded here is one you have already opened or applied to. Load more results, or turn these off.")}
               </span>
             )}
-            {activelyHiringOnly && displayJobs.length === 0 && (
+            {/* ── WHAT THIS FILTER SET ASIDE, STATED, ALWAYS ────────────────
+                A REFUSAL IS SAID, NEVER LEFT AS A GAP — the rule the zero-result
+                and gate-refusal paths on this page already follow, applied to
+                the control that was breaking it hardest.
+
+                THE MEASUREMENT THAT PUT THIS HERE. Against the thirty largest
+                employers by live role count (2026-09-09) the chip passed 13 and
+                blocked 17, hiding 91,535 of 154,979 roles — 59% — and every
+                blocked employer sat at fills_90d = 0 because their feed is
+                bigger than one visit can read, not because they had stopped
+                hiring. The list simply got shorter and said nothing. Now the
+                count of what was held out, the reason, and the way back are on
+                screen whenever the filter is on, not only when it empties the
+                page.
+
+                FOUR CAUSES, FOUR SENTENCES, and they are not interchangeable:
+                the RPC failed (ours, and retryable); the read has not finished
+                (ours, and about to resolve); we hold no reading for these
+                employers (ours); nothing in the page's own rows clears the bar
+                (a finding we can support).
+
+                healthPending SUPPRESSES THE WHOLE FINDING HALF, not just the
+                set-aside line. It used to gate only the middle sentence, so for
+                the 7–16s the curve batch takes — measured, and every row is
+                `unknown` for all of it — a shared /jobs?activelyHiring=1 URL
+                rendered an empty board captioned "no employer here has a
+                closure record that clears the bar", with the set-aside count
+                and its way back suppressed at the same moment. That is "we have
+                not read yet" published as "there are none": the defect this
+                whole change exists to close, one indirection out from the
+                predicate. An unfinished read is not an empty record, and the
+                pending state now has a sentence of its own rather than
+                borrowing the negative one. */}
+            {activelyHiringOnly && (healthFailed
+              || (healthPending && jobs.length > 0)
+              || (!healthPending && (hiringPartition.setAside.length > 0 || (jobs.length > 0 && hiringPartition.shown.length === 0)))) && (
               <span className="text-[11px] text-muted-foreground">
-                {/* OUR OUTAGE IS NOT A FACT ABOUT EMPLOYERS. When the curve RPC
-                    failed, this filter matched nothing and the board explained
-                    the emptiness as "no company here is hiring" — a statement
-                    about the labour market manufactured out of a 404. The two
-                    causes now read differently, which is the whole reason
-                    healthFailed exists. */}
-                {healthFailed
-                  ? t("jobsPage.activelyHiringUnavailable", "We could not read hiring-pace data just now, so this filter has nothing to match on — that is our side, not the market's. Turn it off to see all verified roles.")
-                  : t("jobsPage.activelyHiringEmpty", "No proven-active companies in these results yet — hiring-health data is still accruing. Turn this off to see all verified roles.")}
+                {healthFailed ? (
+                  t("jobsPage.activelyHiringUnavailable", "We could not read hiring-pace data just now, so this filter has nothing to match on — that is our side, not the market's. Turn it off to see all verified roles.")
+                ) : healthPending ? (
+                  t("jobsPage.takedownReading", "Still reading our closure record for these employers. An unfinished read is not an empty one, so nothing on screen yet is a finding about anybody.")
+                ) : (
+                  <>
+                    {hiringPartition.setAside.length > 0 && (
+                      <>
+                        {/* "AT LEAST {{c}}": setAsideEmployers is a DEDUPE on
+                            token, and rows carrying no token are held out of the
+                            list but cannot be attributed to an employer at all,
+                            so the employer count is a floor and never an
+                            equality — the same rule the relist counts follow.
+                            THE CAUSE IS NOT ASSERTED. This said their boards are
+                            bigger than one visit can read. Nothing the client
+                            holds can tell that apart from an employer on a board
+                            we read to the end every visit who simply took
+                            nothing down, and naming a cause we did not measure
+                            is the original defect with the sign flipped. */}
+                        {t("jobsPage.takedownSetAside", "Set aside: {{n}} openings at at least {{c}} employers we hold no closure record for — we have never watched a posting of theirs come off the board. That can be a board bigger than one visit can read, where no closure of theirs is observable to us at all, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. Either way it is a gap in our record, not evidence about their hiring.", {
+                          n: hiringPartition.setAside.length.toLocaleString(),
+                          c: hiringPartition.setAsideEmployers.toLocaleString(),
+                        })}{" "}
+                        <button
+                          type="button"
+                          onClick={() => setActivelyHiringOnly(false)}
+                          className="underline hover:text-foreground"
+                        >
+                          {t("jobsPage.takedownSetAsideShow", "Show them")}
+                        </button>
+                        {hiringPartition.shown.length === 0 ? " " : null}
+                      </>
+                    )}
+                    {/* THE CLAIM IS ABOUT THIS FILTER, SO IT IS MEASURED ON
+                        THIS FILTER. Read off hiringPartition.shown rather than
+                        displayJobs, which is also narrowed by saved-only, hide-
+                        viewed, hide-applied and the instant-search pass: an
+                        empty page those emptied would have been captioned "no
+                        employer here clears the bar", a sentence about
+                        employers manufactured out of an unrelated toggle.
+
+                        AND IT IS INSIDE THE !healthPending BRANCH, which is the
+                        other half of the same rule: this sentence may only be
+                        said about a read that finished. */}
+                    {jobs.length > 0 && hiringPartition.shown.length === 0 && t("jobsPage.takedownEmpty", "No employer among the openings loaded here has a closure record that clears the bar. Turn this off to see all verified roles.")}
+                  </>
+                )}
               </span>
             )}
             {fitRanking && (
@@ -7629,7 +7988,7 @@ export default function Jobs() {
               { key: "remote", active: hasMode(workMode, "remote"), label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(toggleMode(workMode, "remote")); setRemoteOnly(false); } },
               { key: "hybrid", active: hasMode(workMode, "hybrid"), label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(toggleMode(workMode, "hybrid")); setRemoteOnly(false); } },
               { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
-              { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipHiring", "Actively hiring"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
+              { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipTakedowns", "Takes roles down"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
               // Density lives here below lg (its standalone button is desktop-
               // only) so the controls row above stops wrapping on phones.
               { key: "density", active: density === "compact", label: density === "compact" ? t("jobsPage.densityComfortable", "Comfortable view") : t("jobsPage.densityCompact", "Compact view"), toggle: toggleDensity },
@@ -9016,6 +9375,15 @@ export default function Jobs() {
                                 in the same order they were read before. */}
                             {job.token && (() => {
                               const hh = curveByToken[job.token];
+                              // NO ROW YET IS NOT A VERDICT. The batch is in
+                              // flight (measured 7-16s) or this token fell past
+                              // the 200-token cap; the slot renders nothing at
+                              // all rather than a state. The moment a row lands,
+                              // the unreadable branch at the bottom of this
+                              // chain speaks for the employers whose record is
+                              // empty — it is the absence of THAT branch that
+                              // let a windowed tenant render as a blank slot
+                              // beside a green one.
                               if (!hh) return null;
                               const churn = hh.relists_90d;
                               // Repost caution: frequent same-title relistings — shown as a
@@ -9043,6 +9411,17 @@ export default function Jobs() {
                               // needs the RPC's own sufficiency flag, enough
                               // employer-stated dates to build on, and at least half the
                               // employer's roles gone inside the horizon.
+                              //
+                              // THE COUNT GATE HERE IS NOT A SECOND READING OF THE BAR,
+                              // and it is deliberately still spelled out. This branch is
+                              // only reached when the caution above did not fire, i.e.
+                              // churn < REPOST_FLAG_MIN (3) <= ACTIVELY_HIRING_MIN_CLOSED
+                              // (3) <= fills, so relists <= fills holds by arithmetic and
+                              // the condition is exactly hiringRecordVerdict === "closes"
+                              // at this point in the chain. It is a POSITIVE-ONLY gate: a
+                              // fills count of zero falls through to the branches below,
+                              // where the third state is named, so nothing here can turn
+                              // an unreadable record into a silent negative.
                               if (hh.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED && canStateFillRate(hh, hh.tracking_days)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
@@ -9082,7 +9461,27 @@ export default function Jobs() {
                                     title={t("jobsPage.hhBadgeTipObserved", "We watched {{n}} of this company's roles come off the board and stay off during our tracking — taken down, not re-listed. That is activity we observed; it is not a statement about how long any of them was up.", { n: hh.fills_90d })}
                                   >
                                     <Activity className="w-3 h-3 shrink-0" />
-                                    {t("jobsPage.hhBadge", "Actively hiring")}
+                                    {t("jobsPage.takedownBadge", "Takes roles down")}
+                                  </span>
+                                );
+                              }
+                              // THE THIRD STATE TAKES THE SLOT IT USED TO LEAVE
+                              // EMPTY. A card whose employer we have never been
+                              // able to observe rendered exactly what a card
+                              // whose employer we watched and found nothing
+                              // rendered: nothing. Side by side with a green
+                              // badge on the next card, that blank is a claim.
+                              // It is now a muted, explicitly non-committal
+                              // chip, and it is deliberately the LAST branch —
+                              // a caution or a measured pace still outranks it.
+                              if (hiringRecordSlot(hiringRecordOf(job.token)) === "unreadable") {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-muted-foreground whitespace-nowrap"
+                                    title={t("jobsPage.noRecordBadgeTip", "We hold no record of a posting from this employer coming off the board. That happens two ways we cannot tell apart from here: on a board bigger than one visit can read, no closure is observable to us at all until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it simply means nothing came down while we watched. Either way it is a gap in our record and says nothing about whether they are hiring.")}
+                                  >
+                                    <Info className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.noRecordBadge", "No closure record")}
                                   </span>
                                 );
                               }
@@ -10052,8 +10451,25 @@ export default function Jobs() {
                       {age !== null && (
                         <li>{age === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: age })}</li>
                       )}
-                      {hh && hh.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED && hh.relists_90d <= hh.fills_90d && (
-                        <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh.fills_90d })}</li>
+                      {/* THE COMPARISON IS WHERE A SILENT THIRD STATE DOES THE
+                          MOST DAMAGE: two employers side by side, one carrying
+                          the green line and the other carrying nothing, with no
+                          way for the reader to tell "we watched and found
+                          nothing" from "we have never been able to watch". Both
+                          are stated here, and the unknown line is deliberately
+                          neutral-toned rather than a warning — it is a fact
+                          about our record. */}
+                      {hiringRecordVerdict(hh) === "closes" && (
+                        <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh!.fills_90d })}</li>
+                      )}
+                      {/* `hh &&`, not `!healthPending`: a row is the evidence
+                          that we asked about this employer and got an answer.
+                          Without one — batch in flight, token past the cap, or
+                          a posting with no token — there is no employer to
+                          speak about, and the compare drawer stays silent for
+                          the same reason the card slot does. */}
+                      {hh && hiringRecordVerdict(hh) === "unknown" && (
+                        <li className="text-muted-foreground">{t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched")}</li>
                       )}
                       {hh && hh.relists_90d > hh.fills_90d && hh.relists_90d >= 10 && (
                         <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relists_90d })}</li>

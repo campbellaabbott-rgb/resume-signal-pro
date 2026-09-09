@@ -558,8 +558,22 @@ serve(async (req) => {
       // reordering their queue by it would be showing them worse jobs for a
       // reason that does not apply to them.
       const SENDABLE_BOOST = 6;
+      // THE CLOSURE BOOST IS GONE, AND ITS ABSENCE IS THE POINT.
+      //
+      // It was `+8` whenever fills_90d >= 3 — the same bar the board's filter
+      // used, re-derived here. fills_90d counts closures we OBSERVED, and a
+      // closure is only observable on a board we can read to the end, so an
+      // employer whose feed is bigger than one visit sits at 0 forever no
+      // matter how much they hire. Measured on the board's 30 largest
+      // employers: 17 of them, 59% of the live inventory, could never earn it.
+      // Eight points is larger than most fit gaps, so a 67%-fit role at a small
+      // readable employer outranked a 74%-fit role at one of those 17 — the
+      // queue was silently sorting by which boards we can read, and there is no
+      // scalar that ranks a third-state answer against a two-state one. So the
+      // boost is dropped rather than repaired. The observation still appears as
+      // a stated reason on the row; it just no longer moves anybody down for a
+      // gap in our own collection.
       const rank = fit.pct
-        + ((h && (h.fills_90d ?? 0) >= 3) ? 8 : 0)
         + (sendable && m.apply_mode === "auto" ? SENDABLE_BOOST : 0);
       scored.push({ c, fit: fit.pct, reasons: [...reasons, { k: "_rank", v: rank }] });
     }

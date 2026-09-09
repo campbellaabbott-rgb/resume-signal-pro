@@ -1143,6 +1143,14 @@
     "repostsCountedAsReposts": {
       "title": "Uma vaga que é republicada vezes sem conta já não conta como preenchida",
       "description": "Alguns empregadores retiram uma vaga e voltam a publicar exatamente a mesma logo a seguir. Isso era indistinguível de a terem preenchido. As republicações estão agora separadas dos preenchimentos genuínos, para que um empregador que recicla a mesma vaga não seja creditado por isso. O número de republicações é apresentado como “pelo menos” um número, porque não registamos de propósito cada repetição do mesmo cargo no mesmo dia — por isso a contagem real só pode ser maior do que o que vê, nunca menor."
+    },
+    "exploreOpensOnTheWholeBoard": {
+      "title": "O Explorar abre agora sobre todo o quadro, e não sobre doze empresas",
+      "description": "O Explorar abria em doze empregadores escolhidos por uma estatística de contratação — cerca de 1.800 vagas em mais de 800.000. Agora abre em todas as áreas do quadro. Cada uma mostra o número real de vagas abertas nela, em vez de “10.000+” nas seis maiores, lista os cargos que estão mesmo lá dentro em vez de uma frase que era igual em todos os cartões, e leva diretamente à sua própria página, que mostra a mesma contagem em que acabou de clicar. A estatística de contratação não desapareceu; mudou para onde diz algo diferente de um empregador para o seguinte, em vez de dizer o mesmo dezoito vezes."
+    },
+    "bigEmployerTakedownsNoticed": {
+      "title": "Já damos conta quando um grande empregador retira uma vaga",
+      "description": "Nos empregadores com mais de algumas centenas de vagas abertas, não conseguíamos distinguir uma vaga que tinha sido retirada de uma vaga que apenas não aparecia na fatia da página de carreiras que tínhamos lido nessa visita — por isso não dizíamos nada, e o anúncio podia ficar aqui até desaparecer por antiguidade, semanas mais tarde. Isso tem um custo real para si: uma candidatura escrita para uma vaga que o empregador já tinha retirado. Agora lemos essas páginas de carreiras até ao fim, dando a volta completa, antes de decidir que alguma coisa desapareceu, por isso uma retirada genuína é detetada em dias, e não em semanas. As primeiras passagens completas demoram alguns dias a terminar, por isso as vagas dos maiores empregadores vão começar a sair corretamente ao longo desse período, e não de imediato."
     }
   }
 }

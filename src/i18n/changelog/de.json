@@ -1143,6 +1143,14 @@
     "repostsCountedAsReposts": {
       "title": "Eine Stelle, die immer wieder neu ausgeschrieben wird, gilt nicht mehr als besetzt",
       "description": "Manche Arbeitgeber nehmen eine Stelle herunter und stellen dieselbe sofort wieder ein. Das sah bisher genauso aus, als hätten sie sie besetzt. Neuausschreibungen werden jetzt von echten Besetzungen getrennt: Wer dieselbe offene Stelle immer wieder recycelt, bekommt sie nicht mehr als Besetzung angerechnet. Die Zahl der Neuausschreibungen wird als „mindestens“-Wert angegeben, weil wir bewusst nicht jede Wiederholung desselben Stellentitels an einem Tag festhalten — der wahre Wert kann also nur höher liegen als der angezeigte, niemals niedriger."
+    },
+    "exploreOpensOnTheWholeBoard": {
+      "title": "Entdecken öffnet jetzt auf dem ganzen Board, nicht auf zwölf Unternehmen",
+      "description": "Entdecken öffnete bisher auf zwölf Arbeitgebern, ausgewählt nach einer Einstellungskennzahl — rund 1.800 Stellen von mehr als 800.000. Jetzt öffnet es auf jedem Bereich des Boards. Jeder zeigt die tatsächliche Zahl der darin offenen Stellen statt „10.000+“ bei den sechs größten, listet die Stellentitel, die wirklich darin stecken, statt eines Satzes, der auf jeder Kachel gleich lautete, und führt direkt auf seine eigene Seite mit genau der Zahl, die Sie gerade angeklickt haben. Die Einstellungskennzahl ist nicht verschwunden; sie ist dorthin gewandert, wo sie von einem Arbeitgeber zum nächsten etwas anderes aussagt, statt achtzehnmal dasselbe."
+    },
+    "bigEmployerTakedownsNoticed": {
+      "title": "Wir merken jetzt, wenn ein großer Arbeitgeber eine Stelle zurückzieht",
+      "description": "Bei Arbeitgebern mit mehr als ein paar hundert offenen Stellen konnten wir eine zurückgezogene Stelle nicht von einer unterscheiden, die schlicht nicht in dem Ausschnitt ihrer Karriereseite auftauchte, den wir bei diesem Besuch gelesen hatten — also sagten wir nichts, und die Anzeige konnte hier stehen bleiben, bis sie Wochen später von selbst herausfiel. Das hat Sie real etwas gekostet: eine Bewerbung, geschrieben auf eine Stelle, die der Arbeitgeber längst zurückgezogen hatte. Wir lesen diese Karriereseiten jetzt einmal ganz durch, bevor wir entscheiden, dass etwas weg ist — ein echter Rückzug fällt so in Tagen statt in Wochen auf. Bis die ersten vollständigen Durchläufe fertig sind, dauert es einige Tage; Stellen bei den allergrößten Arbeitgebern fallen deshalb über diesen Zeitraum hinweg korrekt heraus und nicht sofort."
     }
   }
 }

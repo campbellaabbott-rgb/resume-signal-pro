@@ -623,7 +623,7 @@ export default function GhostJobIndex() {
         {/* Closure-derived stats — the moat, staged honestly */}
         <div className="rounded-2xl border border-border bg-card p-5 mb-8">
           <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
-            <Clock className="w-4 h-4 text-primary" /> Do these companies actually fill roles?
+            <Clock className="w-4 h-4 text-primary" /> Do these companies take their roles down?
           </h2>
           {hasClosureData ? (
             <p className="text-sm text-muted-foreground">
@@ -686,7 +686,12 @@ export default function GhostJobIndex() {
           )}
         </div>
 
-        {/* Actively-hiring leaderboard.
+        {/* THE TAKE-DOWN LEADERBOARD — formerly headed "Actively hiring right
+            now", which is not what it ranks. It ranks the share of an
+            employer's roles we WATCHED come down and stay down, so a board we
+            cannot read to the end produces no closures, cannot rank at all, and
+            was being captioned as though it were not hiring. The heading now
+            names the measurement and the paragraph below names the exclusion.
             `shownLeaders` is the list once the guard has answered: a board
             whose logged takedowns were all in feed-dark batches has no fills
             to rank and is not listed. The leaderboard's own RPC cannot make
@@ -699,7 +704,7 @@ export default function GhostJobIndex() {
         {shownLeaders.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-primary" /> Actively hiring right now
+              <Briefcase className="w-4 h-4 text-primary" /> Most roles taken down and not re-listed
             </h2>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               {shownLeaders.map((c, i) => (
@@ -748,7 +753,12 @@ export default function GhostJobIndex() {
               taking its whole board down in one second. Every figure reads “up to”: our collector records only
               the first re-listing of a title per day and discards the rest, so re-listings we never saw are
               missing from the pool the share is computed over. It is a share, not a duration — nothing here
-              claims how fast those roles moved.
+              claims how fast those roles moved. And the exclusion this list cannot show you: a board too
+              big for us to read in one visit produces no observable closure at all until we complete a
+              provable full pass over it, so the largest paginated employers on the board — several of them
+              with thousands of open roles — are absent from this ranking by construction rather than by
+              inactivity. This heading read “Actively hiring right now” until today, which said the opposite
+              about exactly those employers.
             </p>
           </div>
         )}

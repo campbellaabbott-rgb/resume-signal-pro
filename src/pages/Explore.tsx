@@ -923,6 +923,15 @@ export interface ClosureRecord {
   rowsRead: number;
   asked: number;
   readable: number;
+  /** OUR INSTRUMENT'S OWN SHARE OF THE REMAINDER, KEPT APART FROM THE
+   *  EMPLOYERS'. `asked - readable` was being explained to the reader as a
+   *  statement about employers' boards, and it silently included two things
+   *  that are statements about US: a token the RPC returned no row for at all,
+   *  and a row whose columns came back non-finite because the deployed function
+   *  no longer returns them. During a deploy skew that is EVERY employer in the
+   *  slice, and the sentence would have described our own outage as a fact
+   *  about their board sizes. Counted here so the copy can name it as ours. */
+  unanswered: number;
   closers: number;
   /** The closers' tokens, capped at 12 — the size Jobs.tsx:1523-1545 already
    *  round-trips through the comma-separated `company` param, so a link this
@@ -951,17 +960,21 @@ export function closureRecordOf(
     if (r && typeof r.company_token === "string" && r.company_token) byToken.set(r.company_token, r);
   }
   let readable = 0;
+  let unanswered = 0;
   const tokens: string[] = [];
   for (const tok of askedTokens) {
     const r = byToken.get(tok);
-    if (!r) continue;
+    // NO ROW IS NOT A READING ABOUT THIS EMPLOYER. We asked and got nothing
+    // back for them, so they belong in the instrument's pile, not in the
+    // sentence that explains employers' records.
+    if (!r) { unanswered += 1; continue; }
     const fills = numOr(r.fills_90d);
     const relists = numOr(r.relists_90d);
     const ageouts = numOr(r.ageouts_90d);
     // OUR INSTRUMENT FIRST. Absent columns mean the deployed function does not
     // return them, which is a statement about the build and not about the
-    // employer.
-    if (fills === null || relists === null) continue;
+    // employer — so it is counted as ours rather than folded into theirs.
+    if (fills === null || relists === null) { unanswered += 1; continue; }
     // THEN THE RECORD. The RPC answers for every token it is handed, so a row
     // is not evidence of anything until the log has actually recorded one of
     // this employer's roles leaving: a fill, a re-list or an age-out. All three
@@ -974,9 +987,9 @@ export function closureRecordOf(
     readable += 1;
     if (fills >= CLOSURE_MIN_FILLS && relists <= fills) tokens.push(tok);
   }
-  if (readable === 0) return { inSlice, rowsRead, asked, readable: 0, closers: 0, tokens: [], capped: false };
+  if (readable === 0) return { inSlice, rowsRead, asked, readable: 0, unanswered, closers: 0, tokens: [], capped: false };
   return {
-    inSlice, rowsRead, asked, readable,
+    inSlice, rowsRead, asked, readable, unanswered,
     closers: tokens.length,
     tokens: tokens.slice(0, 12),
     capped: tokens.length > 12,
@@ -1529,7 +1542,7 @@ export default function Explore() {
         .filter(Boolean))];
       if (tokens.length === 0) {
         // NO EMPLOYER COUNT IS INVENTED HERE. See ClosureRecord.inSlice.
-        setClosure({ inSlice: null, rowsRead: rows.length, asked: 0, readable: 0, closers: 0, tokens: [], capped: false });
+        setClosure({ inSlice: null, rowsRead: rows.length, asked: 0, readable: 0, unanswered: 0, closers: 0, tokens: [], capped: false });
         setClosurePending(false);
         return;
       }
@@ -2156,6 +2169,50 @@ export default function Explore() {
                                       rows: nf(closure.rowsRead), asked: nf(closure.asked), readable: nf(closure.readable),
                                     })}
                               </p>
+                              {/* THE UNREADABLE REMAINDER, NAMED AND EXPLAINED.
+                                  The basis line above already printed `asked`
+                                  and `readable` as two different numbers, which
+                                  states the SIZE of the gap; it never said what
+                                  the gap IS, so a reader could only conclude
+                                  that those employers had nothing going on. They
+                                  is a gap in our record, and the sentence says
+                                  what it can support and stops. It is the same
+                                  third state the board's chip now carries — "we
+                                  could not observe it" is not "they are not
+                                  hiring".
+
+                                  THE CAUSE IS NOT NAMED, BECAUSE WE DID NOT
+                                  MEASURE IT. This read "their boards are bigger
+                                  than one visit can read", flat, about every
+                                  employer in the remainder. Nothing here can
+                                  tell a windowed tenant from an employer on a
+                                  board we read to the end every visit who simply
+                                  took nothing down in ninety days — and stating
+                                  the first is inventing a fact about their board
+                                  to excuse a gap in ours, which is the original
+                                  defect with its sign flipped.
+
+                                  AND OUR OWN FAILURES ARE COUNTED SEPARATELY.
+                                  `asked - readable` also held tokens the RPC
+                                  answered with no row and rows whose columns
+                                  came back non-finite — a deploy skew, i.e. our
+                                  build, described to the reader as the size of
+                                  those employers' boards. Those are `unanswered`
+                                  now and get their own sentence. */}
+                              {closure.asked - closure.readable - closure.unanswered > 0 && (
+                                <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                                  {t("explore.closureUnreadable", "For the other {{n}} we hold no closure event at all — we have never watched a role there come down. That can be a board bigger than one visit can read, where no closure of theirs is observable to us until we complete a provable full pass, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. They are in neither number below, and their absence is a gap in our record rather than evidence about their hiring.", {
+                                    n: nf(closure.asked - closure.readable - closure.unanswered),
+                                  })}
+                                </p>
+                              )}
+                              {closure.unanswered > 0 && (
+                                <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                                  {t("explore.closureUnanswered", "A further {{n}} we asked about came back with no closure figures at all. That is our own read failing, not a reading about them.", {
+                                    n: nf(closure.unanswered),
+                                  })}
+                                </p>
+                              )}
                               {closure.readable > 0 && (
                                 <p className="mt-1 text-[12px] leading-snug text-foreground/85">
                                   {t("explore.closureFinding", "{{closers}} of those {{readable}} have taken at least {{min}} roles down and not put them back up.", {
@@ -2203,8 +2260,16 @@ export default function Explore() {
                               )}
                             </>
                           ) : (
+                            /* AND THE EMPTY CASE SAYS WHAT IT CAN AND NO MORE.
+                               "We hold no readable closure record yet" is true
+                               but reads as a delay; the previous fix overshot
+                               the other way and asserted that these boards are
+                               all bigger than one visit can read, which is a
+                               fact about them we never measured. Both halves
+                               are stated as possibilities, and neither is
+                               presented as the finding. */
                             <p className="mt-1 text-[12px] text-muted-foreground">
-                              {t("explore.closureNone", "We hold no readable closure record for the employers in this slice yet.")}
+                              {t("explore.closureNone2", "We hold no closure event for any employer in this slice — we have never watched a role here come down. That can be boards bigger than one visit can read, where no closure is observable to us at all, or employers who simply took nothing down while we watched; we cannot tell those apart from here. It is a gap in our record, and not a finding about these employers.")}
                             </p>
                           )}
 

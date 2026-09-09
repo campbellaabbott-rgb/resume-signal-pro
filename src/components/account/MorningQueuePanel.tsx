@@ -540,7 +540,12 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
 
   const reasonLabel = (r: QueueItem["reasons"][number]): string | null => {
     if (r.k === "fit" && r.pct != null) return t("agentQueue.reasonFit", "{{pct}}% match{{terms}}", { pct: r.pct, terms: r.top?.length ? ` · ${r.top.join(", ")}` : "" });
-    if (r.k === "fills") return t("agentQueue.reasonFills", "filled {{n}} roles in our tracking", { n: r.n });
+    // A CLOSURE IS NEVER A HIRE. This read "filled {{n}} roles", from
+    // fills_90d, which counts postings we watched come off the board and stay
+    // off — a filled role, a withdrawn one, a cancelled requisition and a
+    // retitle are indistinguishable to us, so the word "filled" was a claim the
+    // number cannot carry. It now says what we watched.
+    if (r.k === "fills") return t("agentQueue.reasonFills", "we watched {{n}} of its roles come off the board and stay off", { n: r.n });
     if (r.k === "fresh") return (r.days ?? 0) === 0 ? t("agentQueue.reasonToday", "posted today") : t("agentQueue.reasonFresh", "posted {{d}}d ago", { d: r.days });
     if (r.k === "salary") return t("agentQueue.reasonSalary", "meets your salary floor");
     // Says what the agent can actually DO with this one. Four vendors have an

@@ -175,7 +175,15 @@ const ROWS = [
 //       the new 0.5 rate gate is live. Refusing gamma via `sufficient: false`
 //       instead would have proved only that a thin row is silent, which was
 //       already true before the change.
-// delta: no closure record at all — the slot is simply empty.
+// delta: THE WINDOWED TENANT, and the row the deployed RPC actually returns for
+//       one. get_company_fill_curve is `FROM toks t LEFT JOIN ...` with
+//       COALESCE(...,0), so an employer whose board is bigger than one visit can
+//       read — no closure of theirs ever observable — comes back 0/0 rather than
+//       absent. Measured live 2026-09-09, seventeen of the thirty largest
+//       employers on the board looked exactly like this, and the slot rendered
+//       NOTHING for them: an empty slot beside Beta's green one reads as "not
+//       hiring" about the employer with 34,000 open roles. The third state has
+//       the slot now.
 const CURVE = [
   {
     company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, ageouts_90d: 2,
@@ -203,6 +211,15 @@ const CURVE = [
     median_days_to_fill: null, median_censored: true,
     dated_coverage: 0.80, dated_n: 29, undated_n: 7,
     fill_through: 0.50, churn: 0.14, absorption: 0.20, tracking_days: 90, sufficient: true,
+  },
+  {
+    company_token: "delta", open_roles: 900, fills_90d: 0, relists_90d: 0, ageouts_90d: 0,
+    n_at_risk_14: 0, fills_le_14: 0,
+    fill_rate_14: 0, fill_rate_14_lo: 0, fill_rate_14_hi: 0,
+    relist_rate_14: 0, still_open_14: 0, fill_rate_7: 0, fill_rate_30: 0,
+    median_days_to_fill: null, median_censored: true,
+    dated_coverage: 0, dated_n: 0, undated_n: 0,
+    fill_through: 0, churn: 0, absorption: 0, tracking_days: 90, sufficient: false,
   },
 ];
 
@@ -251,7 +268,7 @@ function mount(path = "/jobs", field: unknown[] = FIELD_CURVE) {
 const text = () => document.body.textContent ?? "";
 const hits = (s: string) => text().split(s).length - 1;
 // SCOPED READS. The board's own filter controls carry several of the same
-// words the cards do ("Actively hiring" is a control AND a chip; "Pay
+// words the cards do ("Takes roles down" is a control AND a chip; "Pay
 // Transparency Index" lives in the footer), so a document-wide count answers a
 // different question from the one being asked. `list()` is the rendered cards
 // and nothing else; `panel()` is the open detail pane.
@@ -318,12 +335,15 @@ describe("a card that shows nine chips shows nothing", () => {
     // not decoration. If the marker ever goes away this must fail.
     await waitFor(() => expect(text()).toContain("Re-lists roles often (7×+)"), SLOW);
     await waitFor(() => expect(text()).toContain("Fills fast — 58% within 14d"), SLOW);
-    await waitFor(() => expect(text()).toContain("Actively hiring"), SLOW);
+    // SCOPED TO THE CARDS, not the document: "Takes roles down" is the filter
+    // control's label as well as the chip's, and a document-wide wait would be
+    // satisfied by a control that renders before the closure lookup has even
+    // been made — the exact way a chip guard goes vacuous.
+    await waitFor(() => expect(list()).toContain("Takes roles down"), SLOW);
     // Acme fills 62% of its roles inside the horizon AND re-lists at least 7
     // times. It qualifies for both branches; the caution is what a reader
-    // needs. Asserted on ACME'S OWN CARD rather than document-wide: "Actively
-    // hiring" is also a filter control on this page, so a document-wide
-    // negative could be satisfied by the wrong element entirely.
+    // needs. Asserted on ACME'S OWN CARD rather than document-wide, for the
+    // same reason.
     const acme = cards().find((c) => (c.textContent ?? "").includes("Acme"));
     expect(acme, "Acme's card is not on the page").toBeTruthy();
     const acmeText = acme!.textContent ?? "";
@@ -331,22 +351,38 @@ describe("a card that shows nine chips shows nothing", () => {
     expect(acmeText, "praise must not sit beside the caution about the same employer")
       .not.toContain("Fills fast");
     expect(acmeText, "praise must not sit beside the caution about the same employer")
-      .not.toContain("Actively hiring");
+      .not.toContain("Takes roles down");
     // Beta has the same fast-fill record and no churn, so the slot speaks well
     // of it — proving the caution won on merit and not because the positive
     // branch is dead. Gamma has a real takedown record but a fill rate under
     // URGENT_FILL_RATE_MIN, so it falls through to the count-only branch: the
     // weakest true statement, and the only one left for that slot. Both waited
-    // for above. Delta has no closure record at all — the slot is simply
-    // empty. One statement per card, four cards, three statements. Counted
-    // over the CARDS only, for the reason above.
-    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
+    // for above. Delta's closure ledger is EMPTY — a board too big to read in
+    // one visit — and that is the third state, not a fourth positive: it takes
+    // the slot with a muted "No closure record" and is asserted separately
+    // below. Three positive-or-caution statements over four cards. Counted over
+    // the CARDS only, for the reason above.
+    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Takes roles down")).toBe(3);
     // And no card carries two of them.
     for (const c of cards()) {
       const t = c.textContent ?? "";
-      const said = ["Re-lists roles often", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
+      const said = ["Re-lists roles often", "Fills fast", "Takes roles down"].filter((x) => t.includes(x));
       expect(said.length, `two employer statements on one card: ${said.join(" + ")}`).toBeLessThanOrEqual(1);
     }
+    // ── THE THIRD STATE HAS THE SLOT IT USED TO LEAVE EMPTY ────────────────
+    // Delta's row is 0/0: we have never watched one of its postings come off
+    // the board, because its feed is bigger than one visit can read. That is
+    // OUR instrument, and until this branch existed the card said nothing at
+    // all — which, next to Beta's green chip, is a claim about Delta. It must
+    // say "we cannot read this", and it must NOT say the positive thing.
+    const delta = cards().find((c) => (c.textContent ?? "").includes("Delta"));
+    expect(delta, "Delta's card is not on the page").toBeTruthy();
+    const deltaText = delta!.textContent ?? "";
+    await waitFor(() => expect(delta!.textContent ?? "").toContain("No closure record"), SLOW);
+    expect(deltaText, "an unreadable record must never render as the positive one")
+      .not.toContain("Takes roles down");
+    expect(deltaText).not.toContain("Fills fast");
+    expect(deltaText).not.toContain("Re-lists roles often");
   });
 
   it("behaviour: the field-window comparison appears only on a posting the EMPLOYER dated", async () => {

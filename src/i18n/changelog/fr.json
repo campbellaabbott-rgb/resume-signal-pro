@@ -1143,6 +1143,14 @@
     "repostsCountedAsReposts": {
       "title": "Un poste republié sans cesse n’est plus compté comme pourvu",
       "description": "Certains employeurs retirent un poste et remettent aussitôt le même en ligne. Jusqu’ici, cela ressemblait exactement à un poste pourvu. Les republications sont désormais distinguées des postes réellement pourvus : un employeur qui recycle la même offre n’en tire plus aucun crédit. Le nombre de republications est précédé de la mention « au moins », parce que nous n’enregistrons volontairement pas chaque répétition d’un même intitulé dans une même journée — le compte réel ne peut donc être que supérieur à celui que vous voyez, jamais inférieur."
+    },
+    "exploreOpensOnTheWholeBoard": {
+      "title": "Explorer s’ouvre désormais sur tout le tableau, pas sur douze entreprises",
+      "description": "Explorer s’ouvrait sur douze employeurs choisis par une statistique de recrutement — environ 1 800 postes sur plus de 800 000. La page s’ouvre désormais sur tous les domaines du tableau. Chacun affiche le nombre réel de postes qui y sont ouverts plutôt que « 10 000+ » sur les six plus gros, énumère les intitulés réellement présents à l’intérieur au lieu d’une phrase identique sur chaque tuile, et mène directement à sa propre page, qui affiche le compte même sur lequel vous venez de cliquer. Ce relevé de recrutement n’a pas disparu : il a changé de place, vers un endroit où il dit quelque chose de différent d’un employeur à l’autre, au lieu de répéter dix-huit fois la même chose."
+    },
+    "bigEmployerTakedownsNoticed": {
+      "title": "Nous voyons désormais quand un grand employeur retire un poste",
+      "description": "Chez les employeurs qui dépassent quelques centaines d’offres, nous ne pouvions pas distinguer un poste retiré d’un poste simplement absent de la portion de leur page carrières que nous avions lue lors de cette visite — nous ne disions donc rien, et l’annonce pouvait rester ici jusqu’à expirer d’elle-même des semaines plus tard. C’est un coût réel pour vous : une candidature écrite pour une offre que l’employeur avait déjà retirée. Nous parcourons désormais ces pages carrières jusqu’au bout avant de conclure que quoi que ce soit a disparu, si bien qu’un retrait réel est repéré en quelques jours au lieu de quelques semaines. Les premières passes complètes demandent quelques jours : les postes des plus gros employeurs commenceront donc à disparaître correctement au fil de cette période, et non immédiatement."
     }
   }
 }

@@ -1143,6 +1143,14 @@
     "repostsCountedAsReposts": {
       "title": "Un puesto que se republica una y otra vez ya no cuenta como cubierto",
       "description": "Algunos empleadores retiran un puesto y vuelven a publicar el mismo de inmediato. Antes eso era indistinguible de haberlo cubierto. Ahora las republicaciones se distinguen de los puestos realmente cubiertos, así que un empleador que recicla la misma vacante no se lleva el mérito por ello. La cifra de republicaciones se muestra como “al menos” un número, porque a propósito no registramos cada repetición del mismo puesto en un mismo día — así que el conteo real solo puede ser mayor que el que ves, nunca menor."
+    },
+    "exploreOpensOnTheWholeBoard": {
+      "title": "Explorar se abre ahora sobre todo el tablero, no sobre doce empresas",
+      "description": "Explorar se abría sobre doce empleadores elegidos por una estadística de contratación — unos 1.800 puestos de más de 800.000. Ahora se abre sobre todos los campos del tablero. Cada uno muestra el número real de puestos abiertos en él en vez de «10.000+» en los seis más grandes, enumera los cargos que hay realmente dentro en lugar de una frase que se leía igual en todas las fichas, y lleva directamente a su propia página con el mismo recuento que acabas de pulsar. El historial de contratación no ha desaparecido: se ha trasladado a donde dice algo distinto de un empleador a otro, en vez de lo mismo dieciocho veces."
+    },
+    "bigEmployerTakedownsNoticed": {
+      "title": "Ahora nos damos cuenta cuando un gran empleador retira un puesto",
+      "description": "En los empleadores con más de unos cientos de vacantes no podíamos distinguir un puesto retirado de un puesto que simplemente no aparecía en la porción de su página de empleo que habíamos leído en esa visita — así que no decíamos nada, y el anuncio podía seguir aquí hasta caer por antigüedad, semanas más tarde. Eso te cuesta algo real: una candidatura escrita para un empleo que el empleador ya había retirado. Ahora leemos esas páginas de empleo dando la vuelta entera antes de dar nada por desaparecido, así que una retirada real se detecta en días en lugar de semanas. Las primeras pasadas completas tardan unos días en terminar, así que los puestos de los empleadores más grandes empezarán a desaparecer correctamente a lo largo de ese periodo, no de inmediato."
     }
   }
 }
