@@ -148,6 +148,13 @@
       "when": 1788982383083,
       "tag": "0020_mig_exec_helper",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788982629163,
+      "tag": "0021_revoke_mig_exec_helper_access",
+      "breakpoints": true
     }
   ]
 }
