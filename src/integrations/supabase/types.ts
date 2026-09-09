@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _mig_stage: {
+        Row: {
+          applied_at: string | null
+          name: string
+          sql: string
+        }
+        Insert: {
+          applied_at?: string | null
+          name: string
+          sql: string
+        }
+        Update: {
+          applied_at?: string | null
+          name?: string
+          sql?: string
+        }
+        Relationships: []
+      }
       ab_test_events: {
         Row: {
           created_at: string
@@ -1611,6 +1629,7 @@ export type Database = {
       }
       job_board_closures: {
         Row: {
+          absence_basis: string | null
           batch_live_before: number | null
           batch_removed: number | null
           category: string
@@ -1638,6 +1657,7 @@ export type Database = {
           work_mode: string | null
         }
         Insert: {
+          absence_basis?: string | null
           batch_live_before?: number | null
           batch_removed?: number | null
           category?: string
@@ -1665,6 +1685,7 @@ export type Database = {
           work_mode?: string | null
         }
         Update: {
+          absence_basis?: string | null
           batch_live_before?: number | null
           batch_removed?: number | null
           category?: string
@@ -2028,6 +2049,7 @@ export type Database = {
           experience_band: string | null
           first_seen: string
           id: string
+          lap_epoch: number | null
           last_seen: string
           location: string
           min_years: number | null
@@ -2061,6 +2083,7 @@ export type Database = {
           experience_band?: string | null
           first_seen?: string
           id: string
+          lap_epoch?: number | null
           last_seen?: string
           location?: string
           min_years?: number | null
@@ -2094,6 +2117,7 @@ export type Database = {
           experience_band?: string | null
           first_seen?: string
           id?: string
+          lap_epoch?: number | null
           last_seen?: string
           location?: string
           min_years?: number | null
@@ -3842,6 +3866,7 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_ageout_basis: { Args: never; Returns: Json }
       get_ai_generation_metrics_hourly: {
         Args: { p_hours_back?: number }
         Returns: {
@@ -3959,6 +3984,28 @@ export type Database = {
           payments_completed: number
         }[]
       }
+      get_closure_population: {
+        Args: never
+        Returns: {
+          as_of: string
+          boards_first_lap: number
+          boards_full_read: number
+          boards_lap_pending: number
+          boards_lap_proven: number
+          boards_unobserved: number
+          boards_unprovable: number
+          closures_full_read: number
+          closures_lap: number
+          closures_lap_backfill: number
+          closures_pre_basis: number
+          first_lap_earliest: string
+          postings_full_read: number
+          postings_lap_pending: number
+          postings_lap_proven: number
+          postings_unobserved: number
+          postings_unprovable: number
+        }[]
+      }
       get_company_claim_status: { Args: { p_token: string }; Returns: Json }
       get_company_fill_curve: {
         Args: { p_tokens: string[] }
@@ -4007,7 +4054,10 @@ export type Database = {
       get_company_suggest: {
         Args: { p_q: string }
         Returns: {
+          feed_total: number
+          feed_total_at: string
           name: string
+          open_roles: number
           tokens: string[]
         }[]
       }
@@ -4117,6 +4167,7 @@ export type Database = {
       }
       get_explore_cache: { Args: never; Returns: Json }
       get_explore_denominators: { Args: never; Returns: Json }
+      get_explore_field_grid: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
         Args: { p_limit?: number }
         Returns: {
@@ -4129,6 +4180,10 @@ export type Database = {
           status: string
           stripe_session_id: string
         }[]
+      }
+      get_field_role_rows: {
+        Args: { p_min_n?: number; p_per_field?: number }
+        Returns: Json
       }
       get_filter_coverage: { Args: never; Returns: Json }
       get_freshness_stats: {
@@ -4341,6 +4396,25 @@ export type Database = {
           n: number
           p25: number
           p75: number
+        }[]
+      }
+      get_relisting_employers: {
+        Args: { p_limit?: number }
+        Returns: {
+          board_median_per_title: number
+          board_p90_per_title: number
+          board_pool_n: number
+          company: string
+          company_token: string
+          events_per_title: number
+          first_relisted_at: string
+          observed_days: number
+          relist_events_floor: number
+          relisted_titles: number
+          window_days: number
+          worst_title: string
+          worst_title_events_floor: number
+          worst_title_first_at: string
         }[]
       }
       get_repost_churn_companies: {
@@ -4695,6 +4769,7 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_close_title: { Args: { p_title: string }; Returns: string }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
@@ -4759,6 +4834,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_explore_cache: { Args: never; Returns: undefined }
+      refresh_explore_role_rows: { Args: never; Returns: undefined }
       refresh_ghost_stats: { Args: never; Returns: undefined }
       refresh_headline_open: { Args: never; Returns: number }
       refresh_job_board_facets: { Args: never; Returns: Json }
