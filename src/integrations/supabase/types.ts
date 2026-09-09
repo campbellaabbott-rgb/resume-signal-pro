@@ -14,24 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _mig_stage: {
-        Row: {
-          applied_at: string | null
-          name: string
-          sql: string
-        }
-        Insert: {
-          applied_at?: string | null
-          name: string
-          sql: string
-        }
-        Update: {
-          applied_at?: string | null
-          name?: string
-          sql?: string
-        }
-        Relationships: []
-      }
       ab_test_events: {
         Row: {
           created_at: string
