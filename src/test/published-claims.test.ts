@@ -179,25 +179,47 @@ describe("windows, denominators and units are never asserted by hand", () => {
   // lets the share come back unqualified the day someone re-adds a band line.
   // If the page prints one again, the denominator clause is required exactly as
   // it was before.
-  it("Explore publishes no work-mode share, or states the denominator behind it", () => {
+  //
+  // A THIRD ARM, BECAUSE A COUNT IS NOT A SHARE. The rebuilt /explore offers a
+  // "Remote" constraint chip: it prices the slice with a real countOnly-class
+  // probe and prints the SERVER'S OWN coverage figure for the column it binds,
+  // beside the count, out of the same response. That is the honest form of this
+  // disclosure and the second arm's blanket "no work-mode word at all" would
+  // have banned it — which is a guard blocking the fix, the inverse of the
+  // guard-over-a-dead-claim failure. The third arm pins what makes it honest
+  // instead: the chip binds `work_mode`, it publishes no percentage of ours,
+  // and it never reads `remote_n`.
+  it("Explore publishes no work-mode share — and any work-mode COUNT carries the server's own coverage", () => {
     const src = read("src/pages/Explore.tsx");
-    // CODE, not raw. The only two mentions of the retired aggregate left in
-    // this file are the comments recording its deletion, and a guard satisfied
-    // by an obituary is precisely the trap this file's header describes.
+    // CODE, not raw. The only mentions of the retired aggregate left in this
+    // file are the comments recording its deletion, and a guard satisfied by an
+    // obituary is precisely the trap this file's header describes.
     const code = strip(src);
-    const publishes = /remote_pct|remote_n|get_size_segments/.test(code);
+    const publishes = /remote_pct|get_size_segments/.test(code);
     if (publishes) {
       expect(code, "a remote share must be divided by the rows that state a work mode")
         .toMatch(/disclosed/);
       expect(code, "a band where nobody disclosed must render nothing, never 0%")
         .toMatch(/remote_pct != null/);
       expect(src, "the denominator must be named to the reader").toMatch(/state a work mode/);
-    } else {
-      // Nothing rendered, and nothing left half-alive either: no work-mode word
-      // survives in the code at all, so there is no path on which a share is
-      // being computed under another column name.
-      expect(code, "a work-mode figure is being computed with no denominator clause")
-        .not.toMatch(/remote/i);
+    } else if (/remote/i.test(code)) {
+      // A COUNT, AND IT BINDS THE STATED MODE. `workMode: "remote"` is
+      // `work_mode = 'remote'`, whose coverage is about 28%.
+      expect(code, "a work-mode control must bind work_mode, not a bare flag")
+        .toMatch(/id: "remote"[^}]*patch: \{ workMode: "remote" \}[^}]*coverageKey: "workMode"/);
+      // THE COLUMN THAT IS NOT THE CHIP. get_explore_field_grid also publishes
+      // remote_n, which counts the `remote` BOOLEAN — NOT NULL on every row, so
+      // it reads as 100% coverage and is 40,325 rows against work_mode =
+      // 'remote''s 43,773. Reading it here would print one query's count beside
+      // another query's coverage over a third query's destination.
+      expect(code, "the `remote` boolean's count is not the remote chip's number")
+        .not.toMatch(/\bremote_n\b/);
+      // AND NO PERCENTAGE OF OURS ANYWHERE NEAR IT. The chip prints the figure
+      // the server returned for its own key and nothing else.
+      expect(code, "a work-mode share is being computed under another name")
+        .not.toMatch(/remote(Pct|Share|Percent|Rate)/i);
+      expect(code, "the chip must print the server's coverage, not a constant")
+        .toMatch(/p\.coverage/);
     }
     // AND THE CONSTRUCTION THAT KEEPS IT RETIRED, which is what makes the
     // failure mode impossible rather than merely absent: the collection is on

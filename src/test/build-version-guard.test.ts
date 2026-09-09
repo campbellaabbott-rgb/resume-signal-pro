@@ -1121,7 +1121,32 @@ const PINNED = {
   //   already over and eight is 192MB against a 128MB allotment; and at five
   //   workers 2,600 postings is 87s of loop, ~107s with a straggler, inside the
   //   128s every surviving slice has finished in. Expect ~2x, not 3.4x.
-  buildVersion: "2026-09-06.64",
+  //
+  // .66 — the closure fix's own review, and the two fixes that were stranded
+  //   outside the tree.
+  //   (a) A LAP MAY NOT CERTIFY ITSELF. Every paginated fetcher wraps on
+  //   `exhausted || advanced >= feedTotal`, and .65 tested the lap's coverage
+  //   against that same feedTotal — numerator and denominator moving together,
+  //   so any understated total proved a complete pass over a feed still being
+  //   served. The fetchers now report `feedEnded` (a short or empty page: the
+  //   feed itself ending) and `endOffset`, the total is PINNED at lap open, and
+  //   the tail tolerance is absolute (LAP_TAIL_SLACK) rather than 10% of a
+  //   16,000-posting board.
+  //   (b) A VISIT THAT CANNOT STAMP NOW DISARMS THE LAP. lapMark 0 suppressed
+  //   stamping but left `rec.s` crediting the window, so the one lap straddling
+  //   the lap_epoch migration would have written missing_since over every row it
+  //   served beforehand — out of the serving fence, on the largest boards, for
+  //   up to a lap.
+  //   (c) Laps are keyed source:token (139 catalog tokens carry two vendors, and
+  //   six pair a windowed rippling board with a non-windowed twin that was
+  //   deleting its lap), epochs are monotonic in time rather than a counter that
+  //   restarts at 1, and a board read whole in one visit no longer opens a lap
+  //   it can never close while rewriting its whole row set every visit.
+  //   (d) Light mode admits on the TOKEN's whole catalog, not its first match:
+  //   isLight is token-keyed, so enrolling greenhouse `antenna` turned the
+  //   WORKABLE `antenna` light too. Plus fix C, so the descriptions a refused
+  //   board defers have a lane that fills them.
+  buildVersion: "2026-09-09.66",
 };
 
 /**

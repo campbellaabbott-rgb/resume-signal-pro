@@ -1608,50 +1608,53 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       //
       // Explore.tsx has its own <SEO title=…> for the client render; this
       // object is what CRAWLERS and JS-disabled readers receive. It has now
-      // gone stale TWICE. When trending and newest were deleted, the React copy
-      // was corrected and this was not, so the served HTML kept advertising
-      // "Trending Companies". When the page was rebuilt into six answers, this
-      // still advertised "Companies that actually fill roles" (a ranking the
-      // page stopped publishing, over a sentence asserting that a role which
-      // stayed up a week and then came down IS a fill — the one claim the page
-      // is most explicit it cannot make) and "Serial re-posters" (replaced by a
-      // section that groups on the collector's own title normalisation).
+      // gone stale THREE times, and the third is the worst of them. When
+      // trending and newest were deleted, the React copy was corrected and this
+      // was not. When the page was rebuilt into six answers, this still
+      // advertised "Companies that actually fill roles" and "Serial
+      // re-posters". And when the page was rebuilt AGAIN into a field grid --
+      // deleting all five employer leaderboards outright, because twelve
+      // employer cards reached 0.19% of the board -- this file was untouched
+      // and went on serving every crawler seven cards describing rankings that
+      // no longer exist, over a page that renders eighteen field tiles.
       //
-      // The guard for this is explore-claims.test.ts, and its GONE regex named
-      // only the FIRST removal, so it stayed green over the second. It now
-      // names both.
+      // The guard for this is explore-claims.test.ts, and its GONE regex has
+      // twice named only the PREVIOUS removal, so it stayed green over the next
+      // one. It now names all three rounds of removals, including the five
+      // headings deleted here.
       //
       // Whatever this says must remain true of what /explore actually renders:
-      // mirror seoTitle3 / seoDescription3 in Explore.tsx.
-      title: "Explore Employers — How Long Roles Stay Up, Who Recycles Dates, Who States Pay",
-      description: "Pick what you're looking for: how long an employer's roles actually stay up, which boards re-list the same title under a fresh date, which roles were still advertised when they passed our 30-day cap, who states pay you can compare, and where a beginner has a real chance — all measured from companies' own job boards and our own daily tracking.",
+      // mirror seoTitle4 / seoDescription4 in Explore.tsx. Audit it by curling
+      // this path with a Googlebot UA, never in a browser -- a browser runs the
+      // React render and cannot see this document at all.
+      title: "Explore Every Field on the Board — Live Counts, Real Role Sizes, and How Long Roles Last",
+      description: "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of the board each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.",
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
         {
           "@context": "https://schema.org",
           "@type": "CollectionPage",
-          name: "Explore employers",
-          description: "Six answers computed from the board's own daily tracking of every posting: how long roles stay up, which employers re-list the same title under a new date, which roles were still advertised at our 30-day cap, who states pay, where a beginner has a real chance, and salary by field.",
+          name: "Explore every field on the board",
+          description: "Every field on the board, ordered by how many roles are open in it right now, plus the bucket whose field could not be read from the title. Open a field for the roles inside it priced by live counts, the narrowings that say how much of the board each one can even see, and what our own closure record does and does not say about the employers hiring in that slice.",
           url: `${SITE}/explore`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         },
       ],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Explore" }])}
-        <h1 class="text-3xl font-bold mb-3">Explore the board by measured signal</h1>
-        <p class="text-muted-foreground mb-8">Every answer below is computed from our own daily tracking of companies' official job boards — never bought, never guessed. Where a number is the employer's own we say so and give the day we read it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live lists load when the page opens in a browser.</p>
-        <div class="space-y-3 mb-8">
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Check an employer</h2><p class="text-xs text-muted-foreground">Any board we carry: how many of its roles we hold, and — where its own feed states a total — how much of its hiring is not on this page, with the day we read it.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">How long do I have</h2><p class="text-xs text-muted-foreground">The median time an employer's roles stayed up, measured from the date the employer itself put on them, with the sample and the span we watched beside it.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The dates here are not what they look like</h2><p class="text-xs text-muted-foreground">Employers that take a role down and put the same title back up, ranked by re-listings per affected title rather than by volume. Each return resets the posted date.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Still advertised when it crossed day 30</h2><p class="text-xs text-muted-foreground">Roles that never came down — we stopped serving them at our own 30-day cap while the employer was still advertising them.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Who states pay</h2><p class="text-xs text-muted-foreground">Employers stating pay on at least 80% of a board of 20 or more — a badge no one can buy — and, where enough of those parse to a US-dollar annual floor, a median you can compare.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Where a beginner actually has a chance</h2><p class="text-xs text-muted-foreground">Ranked by the share of an employer's open roles that are open early in a career, not by how many it has. "Entry-level" is our own classifier reading the posting, never the employer's word.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Where the pay is</h2><p class="text-xs text-muted-foreground">Fields ranked by median advertised salary floor, from postings that state pay — never converted, never mixed across currencies.</p></div>
-        </div>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Browse by field</h2>
-          <div class="flex flex-wrap gap-2 text-xs">${CATEGORY_LANDERS.map(([slug, l]) => pill(`/jobs/field/${slug}`, `${l} jobs →`)).join("")}</div>
+        <h1 class="text-3xl font-bold mb-3">Start with your field. Land on a list you can actually read.</h1>
+        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there. Counts are measured in an hourly scan of what we serve; everything you open is counted live at the moment you click it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Every field on the board</h2>
+          <div class="flex flex-wrap gap-2 text-xs">${CATEGORY_LANDERS.map(([slug, l]) => pill(`/jobs/field/${slug}`, `${l} jobs →`)).join("")}${pill("/jobs?category=other", "Roles with no field we could read →")}</div>
+          <p class="text-xs text-muted-foreground mt-3">Seventeen fields plus the roles whose field we could not read from the title. Every posting we serve carries exactly one of these, so between them they reach the whole board — the last one is not a residue, it is a large part of the inventory that no field tile can see.</p>
         </section>
+        <div class="space-y-3 mb-8">
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The roles inside a field, priced</h2><p class="text-xs text-muted-foreground">Role names are ours, not the board's. The number beside one is a live count of exactly the search that row opens, so a role we named that matches nothing is left out rather than shown as zero.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Narrowings that state what they hide</h2><p class="text-xs text-muted-foreground">Remote, on-site, states the pay, a pay floor, open to beginners, full-time, posted this week, one-click apply — each with its live count and how much of the board states that thing at all. A filter can only search what employers published.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">How long roles last in that field</h2><p class="text-xs text-muted-foreground">Half the roles we watched come down and stay down were gone within this many days of the date the EMPLOYER put on the posting. It prints only when the field's own record clears the estimator's bar and enough of it carries the employer's own date; below that we say so instead of showing a number.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">What our closure record says about the employers in a slice</h2><p class="text-xs text-muted-foreground">Not a ranking. For the slice you assembled, how many employers we found, how many of those we hold any closure record for, and how many of those have taken roles down and not put them back up — with the gap in our record stated as plainly as the finding.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Check an employer</h2><p class="text-xs text-muted-foreground">Any board we carry: how many of its roles we hold, and — where its own feed states a total — how much of its hiring is not on this page, with the day we read it.</p></div>
+        </div>
         <p class="text-sm text-muted-foreground">See also the <a href="/jobs" class="text-primary">live board</a> and the <a href="/ghost-job-index" class="text-primary">Ghost Job Index</a>.</p>`,
     });
   }

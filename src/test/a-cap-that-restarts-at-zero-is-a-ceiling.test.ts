@@ -132,7 +132,21 @@ describe("a cap that restarts at zero is a ceiling", () => {
     // The load-bearing assertion. Rotation without this deletes the previous
     // window five minutes later, every pass, forever.
     expect(CODE).toMatch(/const partialRead = r\.windowed === true;/);
-    expect(CODE).toMatch(/if \(partialRead\) continue;/);
+    // UPDATED 2026-09-08, and the update is the point. This used to pin
+    // `if (partialRead) continue;` — an UNCONDITIONAL bail, which is safe and
+    // also made every board over the page cap permanently incapable of
+    // producing a closure (36.4% of inventory, ~270 boards). The bail is still
+    // here and still unconditional WITHIN A VISIT; what may now overrule it is
+    // the one thing that outranks it, a completed lap over the whole feed in
+    // which the id was served by no window at all.
+    //
+    // This file keeps only the shape. The BEHAVIOUR — that a displaced posting
+    // is never logged as a takedown, and that a large board is not excluded
+    // forever — is asserted by executing the shipped decision in
+    // a-page-cap-must-not-forge-or-forbid-a-closure.test.ts. What must never
+    // come back is a bare pass-through for a windowed board.
+    expect(CODE).toMatch(/if \(partialRead && !\(lapMode && [^\n]*\)\) continue;/);
+    expect(CODE).not.toMatch(/if \(partialRead\) continue;/);
   });
 
   it("but an aged-out row still goes, because that date is ours to prove", () => {
@@ -140,7 +154,7 @@ describe("a cap that restarts at zero is a ceiling", () => {
     // cap stops being enforced on exactly the biggest boards.
     const loop = CODE.slice(CODE.indexOf("for (const id of vanishedAll)"), CODE.indexOf("toUnstamp = ["));
     expect(loop).toMatch(/agedOutIds\.has\(id\)/);
-    expect(loop.indexOf("agedOutIds.has(id)")).toBeLessThan(loop.indexOf("if (partialRead) continue;"));
+    expect(loop.indexOf("agedOutIds.has(id)")).toBeLessThan(loop.indexOf("if (partialRead &&"));
   });
 
   it("workday giants get the same wider window, through the same chunked walk", () => {

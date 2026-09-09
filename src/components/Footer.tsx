@@ -29,7 +29,13 @@ export function Footer() {
             this list is unreachable by any link in the product. /explore was
             missing from both for exactly that reason. */}
         <nav aria-label="Resources" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground mb-8 pb-8 border-b border-border/50">
-          <Link to="/explore" className="hover:text-foreground transition-colors">Explore employers</Link>
+          {/* TRANSLATED, AND NAMING WHAT THE PAGE IS. This was the one literal
+              in this nav with no t() call, so a German or Hindi reader saw it
+              in English — and it advertised "Explore employers" for a page
+              whose default view is the field grid and whose employer lookup is
+              now last. Wording matches homeHero.exploreCta, which the same
+              rebuild rewrote in all nine locales. */}
+          <Link to="/explore" className="hover:text-foreground transition-colors">{t("footer.explore", "Explore by field")}</Link>
           <Link to="/trust" className="hover:text-foreground transition-colors">Trust &amp; transparency</Link>
           <Link to="/resume-checker" className="hover:text-foreground transition-colors">Free resume checker</Link>
           <Link to="/ats-resume-test" className="hover:text-foreground transition-colors">ATS resume test</Link>

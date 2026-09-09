@@ -131,7 +131,21 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-06.64"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.66"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+// .65: A BOARD OVER THE PAGE CAP CAN PRODUCE A CLOSURE AGAIN, WITHOUT EVER
+// LOGGING A DISPLACED POSTING AS A TAKEDOWN. MAX_POSTINGS_PER_VISIT is 250, so
+// every board whose feed advertises more is permanently `windowed`, and the
+// prune's `partialRead` branch refused to stamp or log any of them — correct
+// (7/8 sampled closures on a windowed board were still live, 2026-07-21) and
+// also the reason ~36% of inventory, every employer above the cap, was
+// structurally incapable of appearing in the one table nobody can rebuild.
+// Absence is now proved ACROSS visits instead of within one: the deep cursor
+// already walks a big board from offset 0 to a wrap, so each such board carries
+// a lap epoch, every posting a lap serves is stamped with it, and only an id
+// that reached a fully-covered, fully-instrumented wrap without the epoch is
+// treated as gone — then still through the same two-pass grace, one lap per
+// pass. Closure rows carry `absence_basis` ('full_read' | 'lap') so no
+// published number can pool the two populations without saying so.
 // .61: A BATCH THAT WENT DARK NOW SAYS SO IN THE ROW ITSELF. `windowed` only
 // catches a TRUNCATED fetch — a feed that answers 200 with a valid, nearly
 // empty list is not windowed, so every stored posting for that board vanished
@@ -912,6 +926,100 @@ const waitUntil = (p: Promise<unknown>) => {
 
 // ── board fetching ─────────────────────────────────────────────────────────
 
+// LIGHT IS ONLY AN ESCAPE WHERE THE DESCRIPTIONS CAN COME BACK.
+//
+// Two vendors have a light LIST form: greenhouse drops ?content=true and
+// workable drops details=true (see listUrl). Only ONE of them has a filler
+// that works while the board is light. backfill-desc selects
+// descBackfillBoards() — greenhouse boards that are light — and hits
+// greenhouse's per-JOB endpoint; workable is absent from DETAIL_DESC_SOURCES,
+// so its only filler is the desc-sweep BOARD lane — which calls fetchBoard(),
+// which goes through listUrl, which for an enrolled token emits details=false.
+// The sweep would re-fetch the board in the very mode that omits the
+// descriptions it is trying to recover, fill 0 rows, and report it handled.
+//
+// So enrolling a workable board in light mode does not defer its descriptions,
+// it DELETES them: every posting ingests with description null, permanently,
+// scoring null in fit-batch and invisible to the sampled description tier,
+// with nothing in any counter saying so. A deferral is recoverable and loud;
+// that is not. Workable oversize boards take the plain deferral path with the
+// other eighteen vendors until a per-posting workable filler exists.
+//
+// THIS SET WAS TRUE AND UNENFORCED FOR ITS WHOLE LIFE. It was consulted at
+// exactly ONE call site — the byte-budget bound — while the two content-volume
+// enrolments (greenhouse and workable, in the ingest loop) added their token to
+// DYNAMIC_LIGHT with no vendor test at all. 2,925 workable boards could enrol
+// themselves into the mode this comment exists to keep them out of, and the
+// enrolment is PERSISTED to job_board_meta, so the destruction outlived the
+// isolate that chose it and reloaded into every isolate after.
+//
+// A rule written in prose beside a set that anything may write to is not a
+// rule. The membership test now lives INSIDE the set (LightCapableOnly below),
+// so the property holds for the class: there is no call site that can forget
+// to ask, because asking is what `add` does.
+const LIGHT_CAPABLE_VENDORS = new Set(["greenhouse"]);
+
+// A TOKEN IS THE UNIT LIGHT MODE ACTS ON, AND A TOKEN IS NOT A BOARD.
+//
+// isLight() and listUrl() are keyed by TOKEN, not by (vendor, token), and the
+// catalog is not token-unique: 139 tokens are carried by two or three vendors
+// at once (measured against sources.ts, 44,542 entries / 44,402 distinct
+// tokens). Enrolling "the greenhouse board" therefore enrols every board that
+// shares its token — `antenna`, `mcs` and `lockwood` are greenhouse+workable
+// pairs, and `echo`, `dispatch`, `vmax`, `pulse`, `pdq`, `excel`, `tdg`,
+// `cabrillohospice`, `playonsports` and `ism` pair greenhouse with a vendor
+// that has no light form at all.
+//
+// So the question this must answer is NOT "what vendor is this token" — that
+// question has no single answer and a first-match lookup silently invents one,
+// which is defect B intact for the exact vendor the fix was written about
+// (first match on `antenna` is greenhouse, so the workable board goes light and
+// its descriptions are deleted forever). The question is "would going light be
+// safe for EVERY board this token turns light", and the answer is yes only when
+// every catalog entry carrying it is light-capable. UNKNOWN IS REFUSED, NOT
+// ASSUMED: a token the catalog no longer carries gets no promise either.
+//
+// Linear over JOB_SOURCES and deliberately un-indexed, with no early return
+// (the whole point is that the FIRST match is not the answer). A token→vendors
+// Map is ~1MB retained for the life of every isolate — against a 36MB heap p50
+// — to serve a call that happens at most a few dozen times per isolate:
+// admission only, never per board, never per posting. Two integers of state.
+const lightTokenRefusal = (token: string): string | null => {
+  let seen = 0;
+  let blocker = "";
+  for (const s of JOB_SOURCES) {
+    if (s.token !== token) continue;
+    seen++;
+    if (!LIGHT_CAPABLE_VENDORS.has(s.source) && !blocker) blocker = s.source;
+  }
+  if (seen === 0) return "not in the catalog";
+  if (blocker) return seen > 1 ? `token shared with ${blocker}` : `vendor ${blocker}`;
+  return null;
+};
+
+/**
+ * A set that can only ever hold a token every one of whose boards is
+ * light-capable.
+ *
+ * Refusing inside `add` covers every writer at once — today's two
+ * content-volume enrolments and the byte-budget bound, tomorrow's third one,
+ * and the meta reload that replays whatever an older build persisted.
+ *
+ * A refusal is a no-op plus a log line, never a throw. Light mode is an
+ * optimisation; failing a refresh slice over one board would trade a
+ * description problem for an ingest outage.
+ */
+class LightCapableOnly extends Set<string> {
+  override add(token: string): this {
+    const refusal = lightTokenRefusal(token);
+    if (refusal) {
+      console.warn(`[JOB-BOARD] light mode REFUSED for ${token} (${refusal}): no filler can refill a light board on that vendor, so its descriptions would be deleted rather than deferred`);
+      return this;
+    }
+    return super.add(token);
+  }
+}
+
 // Self-tuning light mode: the static LIGHT_DESC_TOKENS set plus a dynamic,
 // meta-persisted set of Greenhouse boards whose content payloads measured
 // past the auto-enroll threshold. stripe (3.9MB) and zscaler (4.9MB) were
@@ -920,38 +1028,75 @@ const waitUntil = (p: Promise<unknown>) => {
 // is measured instead of waiting for a human to notice missing stamps.
 // Descriptions for light boards arrive via the daily backfill-desc sweep
 // (Greenhouse per-job endpoint, its own compute budget).
-const DYNAMIC_LIGHT = new Set<string>();
+const DYNAMIC_LIGHT: Set<string> = new LightCapableOnly();
 const AUTO_LIGHT_THRESHOLD_CHARS = 2_500_000; // ~2.5MB of raw content HTML
 const AUTO_LIGHT_CAP = 50; // bound the meta row; realistically a handful
 const isLight = (token: string) => LIGHT_DESC_TOKENS.has(token) || DYNAMIC_LIGHT.has(token);
+
+/**
+ * THE BOARDS backfill-desc CAN ACTUALLY FILL — one predicate, two readers.
+ *
+ * The maintenance ladder built its own list (JOB_SOURCES filtered by isLight,
+ * vendor-agnostic) and counted description-nulls across it, while the filler
+ * selected greenhouse light boards only. A null on a non-greenhouse light
+ * token was therefore COUNTED by the trigger and UNREACHABLE by the filler:
+ * the count could never fall, missingCoverage was permanently true, and the
+ * rung's `return` sat directly in front of desc-sweep — the only lane that
+ * fills workday, oracle, smartrecruiters, bamboohr, breezy, rippling, adp, ukg
+ * and jazzhr. Workday description coverage fell 98% -> 90% (~23,035 workday
+ * plus 5,772 oracle live postings served with no text) because the trigger
+ * meant to protect descriptions was starving the lane that writes them.
+ *
+ * Both readers call THIS function. A trigger that measures a population its
+ * filler cannot reach is a trigger that can never be satisfied.
+ */
+const DESC_BACKFILL_VENDOR = "greenhouse"; // backfill-desc hits the GH per-JOB endpoint and only that
+const descBackfillBoards = (): JobSource[] =>
+  JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s.token));
+
 async function loadDynamicLight(client: SupabaseClient): Promise<void> {
   try {
     const { data } = await client.from("job_board_meta").select("v").eq("k", "light_desc_dynamic").maybeSingle();
     const tokens = (data?.v as { tokens?: unknown } | null)?.tokens;
     DYNAMIC_LIGHT.clear();
-    if (Array.isArray(tokens)) for (const t of tokens) if (typeof t === "string") DYNAMIC_LIGHT.add(t);
+    // SWEEP THE ROW, don't merely filter the read. Tokens an older build
+    // persisted without a vendor test are refused by the set above, which is
+    // enough to stop them going light again — but leaving them in the row means
+    // every isolate re-reads and re-refuses them forever, and nobody reading
+    // the row can tell which boards were stranded. Rewrite it ONCE, naming the
+    // removals, so the row says what happened and stops repeating itself.
+    const refused: string[] = [];
+    if (Array.isArray(tokens)) {
+      for (const t of tokens) {
+        if (typeof t !== "string") continue;
+        DYNAMIC_LIGHT.add(t);
+        if (!DYNAMIC_LIGHT.has(t)) refused.push(t);
+      }
+    }
+    if (refused.length > 0) {
+      // One write, and only on a dirty row: the next load finds nothing to
+      // refuse. The stranded boards recover on their own — listUrl stops
+      // emitting the light form for them, so new postings carry descriptions
+      // again, and rows already stored NULL are refilled by the desc-sweep
+      // BOARD lane (workable is in BOARD_DESC_SOURCES), which is the lane the
+      // maintenance-ladder fix below un-starves.
+      console.warn(`[JOB-BOARD] light_desc_dynamic swept: ${refused.length} non-light-capable token(s) removed (${refused.slice(0, 10).join(", ")})`);
+      await client.from("job_board_meta").upsert(
+        {
+          k: "light_desc_dynamic",
+          v: {
+            tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP),
+            updatedAt: new Date().toISOString(),
+            strandedRemovedAt: new Date().toISOString(),
+            strandedRemoved: refused.slice(0, AUTO_LIGHT_CAP),
+          },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "k" },
+      );
+    }
   } catch { /* meta unreadable — static set still applies */ }
 }
-
-// LIGHT IS ONLY AN ESCAPE WHERE THE DESCRIPTIONS CAN COME BACK.
-//
-// Two vendors have a light LIST form: greenhouse drops ?content=true and
-// workable drops details=true (see listUrl). Only ONE of them has a filler
-// that works while the board is light. backfill-desc selects
-// `s.source === "greenhouse" && isLight(s.token)` and hits greenhouse's
-// per-JOB endpoint; workable is absent from DETAIL_DESC_SOURCES, so its only
-// filler is the desc-sweep BOARD lane — which calls fetchBoard(), which goes
-// through listUrl, which for an enrolled token emits details=false. The sweep
-// would re-fetch the board in the very mode that omits the descriptions it is
-// trying to recover, fill 0 rows, and report the board handled.
-//
-// So enrolling a workable board in light mode does not defer its descriptions,
-// it DELETES them: every posting ingests with description null, permanently,
-// scoring null in fit-batch and invisible to the sampled description tier,
-// with nothing in any counter saying so. A deferral is recoverable and loud;
-// that is not. Workable oversize boards take the plain deferral path with the
-// other eighteen vendors until a per-posting workable filler exists.
-const LIGHT_CAPABLE_VENDORS = new Set(["greenhouse"]);
 
 // PERMANENTLY OVERSIZE BOARDS MUST BE NAMEABLE THREE MONTHS LATER.
 //
@@ -1015,10 +1160,19 @@ async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
  *
  * Extracted so the byte bound can reuse the machinery rather than grow a
  * second, differently-spelled copy of it — the mistake DEEP_PER_SLICE paid
- * for: never copy a cap without matching what it measures.
+ * for: never copy a cap without matching what it measures. It is now the ONLY
+ * writer of DYNAMIC_LIGHT outside the meta reload, and the only writer of the
+ * light_desc_dynamic row outside that reload's sweep.
+ *
+ * Returns whether the board is now light. FALSE means the set refused the
+ * vendor (it logs why), and the caller must take the deferral path instead of
+ * reporting an enrolment that did not happen — nothing may be persisted, and
+ * at the byte bound no board slot may be handed back for a re-fetch that would
+ * be byte-for-byte identical to the one that just failed.
  */
-async function enrolDynamicLight(client: SupabaseClient, token: string, why: string): Promise<void> {
+async function enrolDynamicLight(client: SupabaseClient, token: string, why: string): Promise<boolean> {
   DYNAMIC_LIGHT.add(token);
+  if (!DYNAMIC_LIGHT.has(token)) return false;
   console.warn(`[JOB-BOARD] auto-light: ${token} ${why} — enrolled in light mode (descs via backfill)`);
   try {
     const { error: alErr } = await client.from("job_board_meta").upsert(
@@ -1027,6 +1181,7 @@ async function enrolDynamicLight(client: SupabaseClient, token: string, why: str
     );
     if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${token} (re-enrolls next fetch):`, alErr.message?.slice(0, 120));
   } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
+  return true;
 }
 
 // Greenhouse and Lever EU tenants live on separate infrastructure with its
@@ -1105,7 +1260,7 @@ const listUrl = (s: JobSource, startOffset = 0) =>
 const SR_PAGE = 100;
 const SR_PAGE_CAP = 20;
 const SR_CAP = SR_PAGE * SR_PAGE_CAP; // 2,000/board/pass
-async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ content: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number }> {
+async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ content: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   // Same rotation as Workday: a board bigger than SR_CAP is read a tranche per
   // pass instead of the same first tranche forever. Measured 2026-08-25: one
   // board (dominos, 2,080 rows) sits at this cap today, so the win here is
@@ -1121,11 +1276,23 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   const feedTotal = Number(page1.totalFound) || 0;
   const total = Math.min(feedTotal, SR_CAP);
   const content: unknown[] = [...(page1.content ?? [])];
+  // DID THE FEED RUN OUT, or did we merely stop where `total` told us to? This
+  // loop is bounded by the advertised total, so without watching page sizes it
+  // has no way to tell the two apart and would report every stop as an ending.
+  // A short page is the only end-of-feed observation SmartRecruiters offers.
+  let srEnded = (page1.content ?? []).length < SR_PAGE;
   for (let offset = SR_PAGE; offset < total; offset += SR_PAGE) {
     const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${SR_PAGE}&offset=${startOffset + offset}`);
     if (!res.ok) break; // partial page set is fine — prune guard keys off success of THIS board overall
     const page = await res.json();
-    content.push(...(page.content ?? []));
+    const batch = (page.content ?? []) as unknown[];
+    content.push(...batch);
+    // RECORD the ending; do not act on it. Breaking here would leave a
+    // non-zero nextOffset where the loop used to run to `total` and wrap, which
+    // changes this lane's cursor rate — a thing this repo re-measures on
+    // purpose rather than changes in passing. Pages past the end return
+    // nothing, so `content` (and therefore nextOffset) is unaffected either way.
+    if (batch.length < SR_PAGE) srEnded = true;
   }
   // windowed, reported the same way Workday and Oracle report it: the company
   // holds more than we fetched, so a posting's ABSENCE from our copy proves
@@ -1135,7 +1302,7 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   // board of exactly 2,000 from one of 24,566.
   const advancedSr = startOffset + content.length;
   const nextOffset = content.length === 0 || (feedTotal > 0 && advancedSr >= feedTotal) ? 0 : advancedSr;
-  return { content, windowed: feedTotal > content.length, feedTotal, nextOffset };
+  return { content, windowed: feedTotal > content.length, feedTotal, nextOffset, feedEnded: srEnded || content.length === 0, endOffset: advancedSr };
 }
 
 /**
@@ -1473,7 +1640,7 @@ const RIPPLING_PAGE_CAP = 10;
 // 2026-08-25 across 198 of 1,051 boards, one exceeds the 10-page cap —
 // medcbo-inc at 64 pages, which loses 1,080 postings, roughly 5,700 across the
 // catalogue. Concentrated in a handful of large boards rather than spread.
-async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: string; windowed: boolean; feedTotal: number; nextOffset: number }> {
+async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: string; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const RIPPLING_PER_PAGE = 20;
   const startPage = Math.max(0, Math.floor(startOffset / RIPPLING_PER_PAGE));
   const pageUrl = (p: number) => `https://ats.rippling.com/${s.token}/jobs${p ? `?page=${p}` : ""}`;
@@ -1504,6 +1671,15 @@ async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: un
     windowed: totalPages > RIPPLING_PAGE_CAP,
     feedTotal,
     nextOffset: reachedEnd ? 0 : lastPage * RIPPLING_PER_PAGE,
+    // `ranOut` ONLY, never `reachedEnd`. reachedEnd folds in `lastPage >=
+    // totalPages`, and totalPages is the same number feedTotal is derived from
+    // (totalPages * 20) — so a lap that wrapped on it would be testing our own
+    // arithmetic against itself, which is DERIVED_FEED_TOTAL_SOURCES' whole
+    // point. A rippling board therefore proves absence only when a page came
+    // back with nothing in it, and otherwise sits in boards_unprovable, which
+    // is what the population function already tells readers it is.
+    feedEnded: ranOut,
+    endOffset: startPage * RIPPLING_PER_PAGE + items.length,
   };
 }
 
@@ -1720,6 +1896,113 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
 // returns nextOffset and resumes exactly where it stopped on its next visit,
 // which is the mechanism the deep lane has always used.
 const MAX_POSTINGS_PER_VISIT = 250;
+
+/**
+ * PER-BOARD LAP STATE — see the block comment where deepLaps is loaded.
+ *
+ * One of these per WINDOWED, CURSOR-CARRYING board, carried inside the
+ * deep_cursor meta row under `__laps` (a non-token key, which both readers of
+ * that row already ignore). Seven small scalars: no per-posting allocation, and
+ * the map is bounded by the number of boards still paging, exactly like
+ * deepCursors beside it, deleted the moment a board stops being windowed.
+ *
+ * KEYED BY `source:token`, NOT BY TOKEN. deepCursors beside it is token-keyed
+ * and stays that way (re-keying it would reset every cursor in the rotation),
+ * but the catalog is not token-unique — 139 tokens carry two or three vendors —
+ * and six of the collisions pair a windowed rippling board with a non-windowed
+ * greenhouse/workable/pinpoint twin (`nve`, `pdq`, `excel`, `mozn-ai`,
+ * `booknook-inc`, `lineleap`). Under a token key the twin's visit takes the
+ * `else` branch and DELETES the rippling board's open lap, while leaving its
+ * cursor alone: the board then stamps nothing for the rest of the pass, proves
+ * nothing at the wrap, and re-opens at epoch 1 — matching stamps left by the
+ * aborted lap, so those rows read as served forever and a real takedown on them
+ * can never be logged. Silently, while `status.deepCursor.laps.tracking` counts
+ * the board as tracked.
+ */
+type LapState = {
+  /**
+   * Epoch number: which lap stamped a row. Non-zero ONLY for a lap that opened
+   * at offset 0 under this build.
+   *
+   * MONOTONIC IN TIME, never a counter restarting at 1. If the record is ever
+   * lost (a dropped meta write, a key that changed shape, a 45-day prune), a
+   * counter would hand the next lap an epoch that stale rows already carry, and
+   * those rows would read as "served by the current lap" forever — absence
+   * unprovable on exactly the rows most likely to be gone. Seconds since
+   * 2020-09-13 fits `integer` until 2088 and cannot repeat a value, so a lost
+   * record costs one lap and nothing else.
+   */
+  e: number;
+  /**
+   * How deep into the feed this lap has reached, in the vendor's own offsets —
+   * a MAXIMUM, never a running sum. Within a lap the cursor only ever advances
+   * by what it served, so the windows are contiguous from 0 and this number is
+   * exactly the covered prefix. A sum would double-count a window re-read after
+   * a lost slice and could certify a lap whose tail was never fetched.
+   */
+  s: number;
+  /** When the lap opened (ours, not any employer date). */
+  t: string;
+  /** 1 = an epoch write failed somewhere in this lap, so it can never prove absence. */
+  f: 0 | 1;
+  /**
+   * The employer's advertised total AT LAP OPEN, pinned so it cannot move with
+   * the wrap it is supposed to certify. Zero = the vendor stated none, which
+   * can never prove.
+   */
+  t0: number;
+  /** When this board last COMPLETED a provable lap. Absent = it never has. */
+  w?: string;
+  /**
+   * When this board completed its FIRST provable lap. Absent = never.
+   *
+   * The first proven lap of a big board stamps up to 30 days of accumulated
+   * absence at once — every takedown since 2026-09-06 that the page cap made
+   * unobservable — and the second one closes it. Those closures carry a
+   * `closed_at` of now(), so their durations are inflated by up to a month and
+   * they arrive as a spike that reads like the employer's behaviour changing.
+   * They are logged as `absence_basis = 'lap_backfill'` so a duration statistic
+   * can exclude them by name instead of silently absorbing them.
+   */
+  w0?: string;
+};
+
+/**
+ * THE ADVERTISED TOTAL MAY NOT BE ITS OWN DENOMINATOR.
+ *
+ * A wrap is derived from feedTotal (`advanced >= feedTotal` in every paginated
+ * fetcher), so testing coverage against the SAME visit's feedTotal is a test
+ * that always passes: numerator and denominator move together and any
+ * understatement certifies itself. This bounds how far the total may fall
+ * DURING a lap before the lap forfeits its power to prove — the total is
+ * pinned at lap open (LapState.t0) and a collapse below this share of it means
+ * we walked a feed that is no longer the feed we started walking. A genuine
+ * mass takedown fails this once and proves on the very next lap, which opens
+ * against the new total.
+ *
+ * Not 1.0: a live board loses postings while we walk it, so the feed
+ * legitimately ends a little short of the total advertised at open. Not lower
+ * than this either — at 0.5 a board serving half its feed would be allowed to
+ * declare the other half closed.
+ */
+const LAP_COVERAGE_MIN = 0.9;
+
+/**
+ * How far short of the feed's advertised end a lap may stop and still claim it
+ * read the whole thing, in the vendor's own offsets.
+ *
+ * `LapState.s` is an OFFSET, not a sum of rows, so a shortfall here is
+ * literally territory that was never requested — not churn. A 10% ratio on a
+ * 16,027-posting board is 1,600 unfetched offsets, and a single short page
+ * (any transient hiccup: Workday treats <20 items as the last page) inside
+ * that band would certify a lap whose whole tail was never asked for, then
+ * convert that tail into logged takedowns. So the tolerance is ABSOLUTE and
+ * small, and only ever narrower than the ratio: shortfall <= min(this, (1 -
+ * LAP_COVERAGE_MIN) * total), which leaves small boards their proportional
+ * slack and gives big ones a bound that does not grow with them.
+ */
+const LAP_TAIL_SLACK = 100;
+
 /** fit-batch bounds — see the action. 20 ids survives the shared worker pool; 60 did not. */
 const FIT_BATCH_MAX = 20;
 const FIT_DESC_CHARS = 20_000;
@@ -1749,7 +2032,7 @@ const ORACLE_PAGE_CAP = 20;
 // partialRead branch in the ingest): otherwise each pass would delete the
 // window the previous pass just stored, and the board would churn instead of
 // filling. The two changes are one change.
-async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number }> {
+async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPostings: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const [tenant, dc, site] = s.token.split("~");
   if (!tenant || !dc || !site) throw new Error("bad workday token");
   const url = `https://${tenant}.${dc}.myworkdayjobs.com/wday/cxs/${tenant}/${site}/jobs`;
@@ -1826,7 +2109,13 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
   // windowed compares the WHOLE feed against this pass's slice, not against the
   // running total, so it stays true for every pass of a multi-pass board — which
   // is what keeps the prune off while the board fills.
-  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal, nextOffset };
+  // feedEnded/endOffset are the lap's evidence, and they are NOT recoverable
+  // from nextOffset: `exhausted || advanced >= feedTotal` collapses "the feed
+  // ran out" and "our arithmetic reached the number the tenant printed" into
+  // one zero. Only the first is an observation about the employer's feed; the
+  // second is an observation about feedTotal, which is the very number the
+  // coverage test is supposed to check. See the lap proof gate.
+  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advanced };
 }
 
 // Oracle Recruiting Cloud: paginated public CE REST. The finder carries the
@@ -1837,7 +2126,7 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
 // across passes. No oracle board sits at that 2,000 ceiling today (measured
 // 2026-08-25: zero), so this is a ceiling being removed before an employer
 // grows into it rather than a backlog being drained.
-async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number }> {
+async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const [tenant, region, site] = s.token.split("~");
   if (!tenant || !region || !site) throw new Error("bad oracle token");
   const base = `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
@@ -1912,7 +2201,7 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   // windowed:false — so one partial read absence-pruned the whole employer.
   // Kroger (12,350 postings via pages:130), Costco, AutoZone, PetSmart, Ulta
   // and JCPenney all lose almost everything the moment their cursor wraps.
-  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset };
+  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
 }
 
 // onFail receives a COMPACT reason. The reason was already known here and
@@ -1929,11 +2218,11 @@ async function fetchBoard(
   // back on the same shape so the caller can persist it without knowing which
   // vendor paginates.
   startOffset = 0,
-): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number } | null> {
+): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number; feedEnded?: boolean; endOffset?: number } | null> {
   try {
     if (s.source === "oracle") {
-      const { items, raw, windowed, feedTotal, nextOffset } = await fetchOracle(s, startOffset);
-      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset };
+      const { items, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchOracle(s, startOffset);
+      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
     }
     if (s.source === "icims") {
       // The employer's own career-site JSON (token IS the host). Paginated at
@@ -2007,7 +2296,7 @@ async function fetchBoard(
       const advancedIc = startOffset + all.length;
       const nextOffset = exhausted || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
       // A resumed read is windowed by definition — see the note in fetchOracle.
-      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset };
+      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
     }
     if (s.source === "usajobs") {
       // Single national feed, paged 500 at a time. The key lives in secrets;
@@ -2040,8 +2329,8 @@ async function fetchBoard(
       return { jobs: normalizeUsajobs(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
     }
     if (s.source === "rippling") {
-      const { items, raw, windowed, feedTotal, nextOffset } = await fetchRippling(s, startOffset);
-      return { jobs: normalizeRippling(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset };
+      const { items, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchRippling(s, startOffset);
+      return { jobs: normalizeRippling(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
     }
     if (s.source === "pinpoint") {
       // Documented public JSON — single unpaginated list.
@@ -2080,8 +2369,8 @@ async function fetchBoard(
       return { jobs: normalizeAdp(items as never, s.name, s.token), raw, windowed, feedTotal };
     }
     if (s.source === "workday") {
-      const { jobPostings, raw, windowed, feedTotal, nextOffset } = await fetchWorkday(s, startOffset);
-      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed, feedTotal, nextOffset };
+      const { jobPostings, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchWorkday(s, startOffset);
+      return { jobs: normalizeWorkday(jobPostings as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
     }
     // XML vendors first — their raw payload is text, not JSON.
     if (s.source === "personio") {
@@ -2139,8 +2428,8 @@ async function fetchBoard(
     // died here at the return, and downstream kept inferring truncation from a
     // row-count proxy.
     if (s.source === "smartrecruiters") {
-      const sr = raw as { windowed?: boolean; feedTotal?: number; nextOffset?: number };
-      return { jobs, raw, windowed: sr.windowed === true, feedTotal: sr.feedTotal ?? 0, nextOffset: sr.nextOffset };
+      const sr = raw as { windowed?: boolean; feedTotal?: number; nextOffset?: number; feedEnded?: boolean; endOffset?: number };
+      return { jobs, raw, windowed: sr.windowed === true, feedTotal: sr.feedTotal ?? 0, nextOffset: sr.nextOffset, feedEnded: sr.feedEnded === true, endOffset: sr.endOffset };
     }
     return { jobs, raw };
   } catch (e) {
@@ -2607,7 +2896,7 @@ const EXIT_OPTIONAL_COLS = [
  * narrow retries cover strictly less than one wide one.
  */
 const CLOSURE_OPTIONAL_COLS = [
-  "suspect", "batch_removed", "batch_live_before",
+  "suspect", "batch_removed", "batch_live_before", "absence_basis",
   "department", "country", "region_code", "work_mode", "employment_type",
   "experience_band", "min_years",
   "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
@@ -3835,14 +4124,86 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // Read BEFORE the slice is sealed (moved up here in .19) so the lane below
   // can use the map as its work list. Nothing between the old site and this
   // one touched it, so the move is positional only.
-  const deepCursors: Record<string, number> = await (async () => {
+  const deepCursorRow: Record<string, unknown> = await (async () => {
     try {
       const { data } = await client.from("job_board_meta").select("v").eq("k", "deep_cursor").maybeSingle();
-      const v = (data?.v ?? {}) as Record<string, unknown>;
-      const out: Record<string, number> = {};
-      for (const [k, n] of Object.entries(v)) if (Number.isInteger(n) && (n as number) > 0) out[k] = n as number;
-      return out;
+      return (data?.v ?? {}) as Record<string, unknown>;
     } catch { return {}; } // a missing cursor costs one restart, never a failure
+  })();
+  const deepCursors: Record<string, number> = (() => {
+    const out: Record<string, number> = {};
+    for (const [k, n] of Object.entries(deepCursorRow)) if (Number.isInteger(n) && (n as number) > 0) out[k] = n as number;
+    return out;
+  })();
+  // ── LAP EPOCHS: HOW A BIG BOARD PROVES A POSTING IS GONE ────────────────
+  //
+  // A windowed board reads 250 postings a visit, so absence WITHIN a visit
+  // says nothing: an id we did not see may be sitting at offset 9,000. That
+  // is why `partialRead` suppresses stamping and closure logging, and the
+  // suppression is right — 7 of 8 sampled "closures" on a windowed board were
+  // still live on the employer's site (2026-07-21). It is also why CVS Health
+  // (16,027 postings), Marriott, Albertsons and every other board over the cap
+  // has been STRUCTURALLY INCAPABLE of producing a closure, which quietly
+  // excludes ~36% of inventory from the one asset nobody can rebuild.
+  //
+  // Absence is provable across visits instead. The deep cursor already walks a
+  // big board from offset 0 to a wrap; the union of the windows in one such
+  // LAP is the whole feed. So each board carries an epoch:
+  //   - a lap OPENS at a visit whose cursor was 0, with a fresh epoch number;
+  //   - every posting the lap serves is stamped with that epoch (one row-write
+  //     per posting per lap, folded into the unstamp write already here);
+  //   - at the wrap, a stored id still not carrying the epoch was absent from
+  //     EVERY window of a complete pass — gone, not displaced.
+  //
+  // Six things must hold before a wrap is allowed to prove anything, and any
+  // one of them missing drops the board back to today's behaviour:
+  //   `e` the epoch, non-zero only if the lap OPENED under this code at an
+  //       offset that left work to resume (so the first partial lap after a
+  //       deploy proves nothing and cannot mass-stamp a board out of the
+  //       serving fence, and a board read whole in one visit never opens one);
+  //   `f` no epoch write failed anywhere in the lap — including a visit that
+  //       could not stamp at all, which is what the deploy-before-migration
+  //       window looks like from in here;
+  //   the FEED must have ended: a short or empty page, observed. Every fetcher
+  //       also wraps on `advanced >= feedTotal`, which is not an observation
+  //       about the employer's feed but about feedTotal itself — the number a
+  //       coverage ratio would then be checking against;
+  //   `t0` the advertised total pinned AT OPEN, so a total that collapses
+  //       mid-lap cannot relax the test it is the denominator of;
+  //   `s` the offset the lap reached, which must land within LAP_TAIL_SLACK of
+  //       that total — an offset shortfall is unfetched territory, not churn.
+  // `w` is the last wrap this board actually proved — the coverage signal the
+  // published population reads — and `w0` the first one ever, which is what
+  // separates the 30-day backlog the first laps drain (logged
+  // absence_basis='lap_backfill', its closed_at knowingly late) from ordinary
+  // churn. Both are inert to the two other readers of this row.
+  const deepLaps: Record<string, LapState> = (() => {
+    const out: Record<string, LapState> = {};
+    const raw = deepCursorRow.__laps;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        const o = v as Partial<LapState> | null;
+        if (!o || typeof o !== "object") continue;
+        if (!Number.isInteger(o.e) || (o.e as number) <= 0) continue;
+        // Pre-rename entries were keyed by bare token (see LapState). They are
+        // dropped rather than migrated: a lap is only meaningful together with
+        // the cursor position it was opened at, and a token key cannot say
+        // which vendor's board that was. The affected boards re-lap on their
+        // next wrap and prove one lap later, which is the same cost as any
+        // disarm. Nothing is deleted from job_board_postings by dropping them.
+        if (!k.includes(":")) continue;
+        out[k] = {
+          e: o.e as number,
+          s: Number.isFinite(o.s) ? Number(o.s) : 0,
+          t: typeof o.t === "string" ? o.t : "",
+          f: o.f === 1 ? 1 : 0,
+          t0: Number.isFinite(o.t0) ? Number(o.t0) : 0,
+          ...(typeof o.w === "string" ? { w: o.w } : {}),
+          ...(typeof o.w0 === "string" ? { w0: o.w0 } : {}),
+        };
+      }
+    }
+    return out;
   })();
   let deepCursorsDirty = false;
 
@@ -4216,9 +4577,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             if (!prev || Math.abs(prev.mb - mb) >= 0.1 || !(prevAge < 12 * 3_600_000)) oversizeDirty = true;
             OVERSIZE_BOARDS.delete(s.token); // re-insert so the cap keeps the most RECENT
             OVERSIZE_BOARDS.set(s.token, { source: s.source, mb, at: new Date().toISOString() });
+            // THE SLOT IS RETURNED ONLY IF THE NEXT ATTEMPT WOULD DIFFER.
+            // The vendor pre-filter is not sufficient on its own: the set
+            // refuses a greenhouse board whose TOKEN is shared with a vendor
+            // that has no light form (see lightTokenRefusal), and such a board
+            // will re-fetch byte-for-byte identically. Handing its slot back on
+            // a refusal is exactly the "burn a board slot and a 4MB transfer
+            // per pass forever" the paragraph above says this avoids, so the
+            // decrement follows the enrolment that actually happened.
             if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s.token)) {
-              await enrolDynamicLight(client, s.token, `list response ${failReason} — over the byte budget`);
-              if (baseTokens.has(s.token) && baseAttempted > 0) baseAttempted--;
+              const enrolled = await enrolDynamicLight(client, s.token, `list response ${failReason} — over the byte budget`);
+              if (enrolled && baseTokens.has(s.token) && baseAttempted > 0) baseAttempted--;
             }
             budgetSkipped.push(s.token);
             continue;
@@ -4258,11 +4627,150 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Advance (or wrap) this board's cursor. Written only for boards that
         // actually paginate, and cleared the moment one wraps, so the row does
         // not accumulate an entry per board in the catalogue.
+        const cursorBefore = deepCursors[s.token] ?? 0;
         if (typeof r.nextOffset === "number") {
-          const prev = deepCursors[s.token] ?? 0;
+          const prev = cursorBefore;
           if (r.nextOffset > 0) { if (prev !== r.nextOffset) { deepCursors[s.token] = r.nextOffset; deepCursorsDirty = true; } }
           else if (prev !== 0) { delete deepCursors[s.token]; deepCursorsDirty = true; }
         }
+
+        // ── LAP BOOKKEEPING ──────────────────────────────────────────────
+        // Runs for windowed boards that carry a cursor, which is the only set
+        // that can complete a lap: workday, oracle, smartrecruiters, icims and
+        // rippling. UKG, ADP, JazzHR and USAJobs report `windowed` with no
+        // offset to resume from, so they have no lap, prove nothing, and are
+        // counted as uncovered rather than silently treated as covered.
+        //
+        // `lapEpoch` is what the rows of THIS visit get stamped with, and 0
+        // means "no stamping, no proof" — the pre-lap behaviour, byte for byte.
+        // `lapProven` is true only on the visit that closes a fully-covered,
+        // fully-instrumented lap, which is the one visit allowed to conclude a
+        // posting is gone.
+        let lapEpoch = 0;
+        let lapProven = false;
+        let lapSeen = 0;
+        // See LapState: token-keyed would let a same-token board on ANOTHER
+        // vendor read and delete this board's lap.
+        const lapKey = `${s.source}:${s.token}`;
+        // A BOARD THAT STARTS AND ENDS A VISIT AT OFFSET 0 WAS READ WHOLE.
+        // `windowed` is `feedTotal > all.length`, so a tenant that advertises
+        // 140 and serves 137 reports windowed with nextOffset 0 — common on
+        // Workday (the file's own Caterpillar note: 503 served against 942
+        // advertised). Under the plain `cursorBefore === 0` open, such a board
+        // opened a FRESH lap on every single visit, which can never satisfy the
+        // wrap's `cursorBefore > 0` and therefore proves nothing ever — while
+        // re-stamping its whole row set on the hottest table in the system
+        // every visit and growing a permanent `__laps` entry the 45-day prune
+        // never reaches (its `t` is refreshed each visit). All cost, no
+        // evidence. A lap may only open on a visit that leaves work to resume.
+        const lapOpens = cursorBefore === 0 && typeof r.nextOffset === "number" && r.nextOffset > 0;
+        if (r.windowed === true && typeof r.nextOffset === "number") {
+          let rec: LapState | undefined = deepLaps[lapKey];
+          if (lapOpens) {
+            // A LAP OPENS. Everything served from here to the wrap carries this
+            // epoch, so an id that reaches the wrap without it was served in no
+            // window at all. Opening only at offset 0 is what makes the first
+            // lap after a deploy honest: a board caught mid-pass has no epoch,
+            // proves nothing, and cannot stamp rows out of the serving fence.
+            //
+            // `t0` pins the advertised total HERE, at the open, so the wrap
+            // cannot be certified by a total that moved with it.
+            rec = {
+              e: Math.max(Math.floor(Date.now() / 1000) - 1_600_000_000, (rec?.e ?? 0) + 1),
+              s: 0, t: startIso, f: 0, t0: Math.max(0, Math.trunc(r.feedTotal ?? 0)),
+              ...(rec?.w ? { w: rec.w } : {}), ...(rec?.w0 ? { w0: rec.w0 } : {}),
+            };
+            deepLaps[lapKey] = rec;
+            deepCursorsDirty = true;
+          } else if (cursorBefore === 0 && rec) {
+            // Read whole in one visit (see lapOpens): retire the entry rather
+            // than leave a lap that can never close sitting in the meta row.
+            delete deepLaps[lapKey];
+            deepCursorsDirty = true;
+            rec = undefined;
+          }
+          if (rec) {
+            // The offset this visit reached. `endOffset` is the vendor's own
+            // `startOffset + items fetched`, exact and independent of the wrap;
+            // the fallback (older shapes, and any vendor that reports no
+            // endOffset) uses our normalised count, which can only UNDERSTATE
+            // coverage — a normaliser may drop a malformed entry the cursor
+            // counted — and therefore fails closed.
+            const reached = typeof r.endOffset === "number" && r.endOffset > 0
+              ? r.endOffset
+              : (typeof r.nextOffset === "number" && r.nextOffset > 0 ? r.nextOffset : cursorBefore + r.jobs.length);
+            if (reached > rec.s) { rec.s = reached; deepCursorsDirty = true; }
+          }
+          if (rec) {
+            lapEpoch = rec.e;
+            lapSeen = rec.s;
+            // ── THE WRAP, AND WHAT IT IS ALLOWED TO CONCLUDE ──────────────
+            //
+            // (1) It must be a wrap of a lap that opened here: nextOffset back
+            //     to 0 from a non-zero cursor, with no failed epoch write.
+            //
+            // (2) THE FEED MUST HAVE ACTUALLY RUN OUT. Every paginated fetcher
+            //     wraps on `exhausted || advanced >= feedTotal`, and the second
+            //     disjunct is not an observation about the employer's feed — it
+            //     is an observation about feedTotal, the very number a coverage
+            //     ratio would then check itself against. A tenant that
+            //     understates its total (this file's own note: "several tenants
+            //     report exactly 2000, which is Workday's own reporting cap
+            //     rather than a count") wraps there with full pages while the
+            //     feed keeps serving, so every stored row past that offset is
+            //     unreachable, unstamped, and — without this term — a logged
+            //     takedown on a live role. `feedEnded` is set only by a short or
+            //     empty page: the feed telling us it ended. It is also what
+            //     keeps rippling honest, whose feedTotal is our own arithmetic.
+            //
+            // (3) THE TOTAL MAY NOT HAVE COLLAPSED UNDER US. Pinned at open in
+            //     `t0`; if the tenant now advertises less than
+            //     LAP_COVERAGE_MIN of it, we finished walking a different feed
+            //     from the one we started. Fails closed for one lap; the next
+            //     lap opens against the new total and proves normally.
+            //
+            // (4) THE TAIL MUST NOT BE UNFETCHED TERRITORY. `s` is an OFFSET,
+            //     so a shortfall against the advertised end is not churn — it
+            //     is offsets never requested. The tolerance is absolute and
+            //     small (LAP_TAIL_SLACK), never the 10% a ratio would allow on
+            //     a 16,000-posting board, because a single transient short page
+            //     inside that band would certify a lap whose last 1,500 offsets
+            //     were never asked for and then close every one of them.
+            //
+            // A board that states no total can never satisfy (3)/(4) and stays
+            // suppressed, which is the correct answer rather than a guess.
+            const totalNow = Math.max(0, Math.trunc(r.feedTotal ?? 0));
+            const totalRef = Math.max(totalNow, 0);
+            const tailSlack = Math.min(LAP_TAIL_SLACK, Math.floor((1 - LAP_COVERAGE_MIN) * totalRef));
+            if (r.nextOffset === 0 && cursorBefore > 0 && rec.f === 0 &&
+                r.feedEnded === true &&
+                totalRef > 0 && totalNow >= LAP_COVERAGE_MIN * rec.t0 &&
+                lapSeen >= totalRef - tailSlack) {
+              lapProven = true;
+            }
+          }
+        } else if (deepLaps[lapKey]) {
+          // The board stopped being windowed (or lost its cursor): it is read in
+          // full now and proves absence within a single visit, so the lap entry
+          // is deleted rather than left to accumulate one row per catalogue board.
+          delete deepLaps[lapKey];
+          deepCursorsDirty = true;
+        }
+        /**
+         * A LAP WITH A HOLE IN ITS INSTRUMENTATION PROVES NOTHING.
+         *
+         * The epoch write is best-effort like every other write on this path,
+         * and a failed chunk leaves rows that WERE served carrying the previous
+         * epoch — indistinguishable, at the wrap, from rows nobody served. That
+         * would turn a transient database error into logged employer takedowns,
+         * which is precisely the failure this whole mechanism exists to
+         * prevent. So any failure disarms the lap for its whole remaining
+         * length; the board simply re-laps and proves absence one pass later.
+         */
+        const failLap = () => {
+          const rec = deepLaps[lapKey];
+          if (rec && rec.f !== 1) { rec.f = 1; deepCursorsDirty = true; }
+        };
         // ONE REQUISITION, ONE POSTING — ACROSS A TENANT'S CAREER SITES.
         //
         // A Workday tenant runs several sites (external, subsidiary, campus,
@@ -4348,6 +4856,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
         }
         const descs = new Map<string, string>();
+        // Set when a board is over the content threshold but its vendor has no
+        // filler, so light mode is refused. The volume that would wedge the
+        // isolate is the same either way, so the parse is still skipped — but
+        // for THIS PASS ONLY, with nothing persisted, and the description
+        // column omitted from the row (see lightDescs) so stored text survives.
+        // One boolean per board iteration; no allocation, no round trip.
+        let descsDeferred = false;
         if (s.source === "lever") {
           for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
             const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
@@ -4366,15 +4881,26 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // this pass; postings land desc-less and backfill-desc fills them.
           const contentChars = ghJobs.reduce((n, j) => n + (j.content?.length ?? 0), 0);
           if (contentChars >= AUTO_LIGHT_THRESHOLD_CHARS) {
-            DYNAMIC_LIGHT.add(s.token);
-            console.warn(`[JOB-BOARD] auto-light: ${s.token} content payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold — enrolled in light mode (descs via backfill)`);
-            try {
-              const { error: alErr } = await client.from("job_board_meta").upsert(
-                { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-                { onConflict: "k" },
-              );
-              if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${s.token} (re-enrolls next fetch):`, alErr.message?.slice(0, 120));
-            } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
+            // Through the one door: enrolDynamicLight owns the set and the meta
+            // row, and the set owns the token test. This branch used to write
+            // both by hand, which is how a rule stated at the byte bound never
+            // reached the site that actually enrols most boards.
+            //
+            // A GREENHOUSE BOARD CAN BE REFUSED HERE, and what that costs is
+            // stated rather than discovered: eleven greenhouse tokens are also
+            // carried by a vendor with no light form (`echo`, `dispatch`,
+            // `vmax`, `pulse`, `tdg`, `cabrillohospice`, `pdq`, `excel`,
+            // `playonsports`, `ism`, `mercari`), and since isLight is keyed by
+            // token, enrolling one would flip that twin to a light form its own
+            // vendor has no filler for. So the giant takes the deferral: the
+            // parse is skipped, its NEW rows store no description, and — unlike
+            // the light path — backfill-desc will not reach it, because that
+            // lane selects light boards. It is the smaller loss (one board's new
+            // descriptions against two boards' entire description columns), it
+            // affects only a board that is BOTH oversize AND on a colliding
+            // token, and the way out is to make light mode keyed by
+            // (source, token) rather than to relax this test.
+            if (!await enrolDynamicLight(client, s.token, `content payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold`)) descsDeferred = true;
           } else {
             for (const j of ghJobs) {
               const text = j.content ? htmlToText(String(j.content).slice(0, RAW_HTML_CAP)).trim() : "";
@@ -4393,15 +4919,25 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const wkJobs = (r.raw as { jobs?: Array<{ shortcode?: string; description?: string }> }).jobs ?? [];
           const contentChars = wkJobs.reduce((n, j) => n + (j.description?.length ?? 0), 0);
           if (contentChars >= AUTO_LIGHT_THRESHOLD_CHARS) {
-            DYNAMIC_LIGHT.add(s.token);
-            console.warn(`[JOB-BOARD] auto-light: ${s.token} workable payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold — enrolled (descs via backfill)`);
-            try {
-              const { error: alErr } = await client.from("job_board_meta").upsert(
-                { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-                { onConflict: "k" },
-              );
-              if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${s.token}:`, alErr.message?.slice(0, 120));
-            } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
+            // THIS IS THE SITE THE GUARD ABOVE WAS WRITTEN FOR AND NEVER
+            // REACHED. workable is not light-capable, so the set refuses it and
+            // this returns false.
+            //
+            // WHAT THAT ACTUALLY BUYS, stated exactly, because the deferral is
+            // NOT one pass long. The threshold measures the board's own
+            // steady-state payload, so a board that reaches this branch reaches
+            // it on every pass: the bulk parse is skipped every time and every
+            // NEW row inserts with no description, for as long as the board
+            // stays oversize. What the refusal preserves is (a) the listUrl
+            // stays details=true, so the text is still on the wire and still
+            // recoverable, and (b) `lightDescs` omits the column rather than
+            // nulling it, so text we already hold survives. The text is put
+            // back by the desc-sweep BOARD lane (workable is in
+            // BOARD_DESC_SOURCES), which re-fetches the board through the same
+            // details=true url — a different lane on a different cadence, and
+            // the lane the maintenance-ladder fix below exists to un-starve.
+            // That is why fix B is worth nothing without fix C.
+            if (!await enrolDynamicLight(client, s.token, `workable payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold`)) descsDeferred = true;
           } else {
             for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);
           }
@@ -4438,7 +4974,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
         // isLight covers the static set, prior auto-enrollments, AND a board
         // enrolled seconds ago in this very iteration (descs skipped above).
-        const lightDescs = isLight(s.token);
+        // descsDeferred covers the board whose enrolment was REFUSED: its descs
+        // were skipped too, and writing the column would null out text we
+        // already hold. Omitting it is what makes a deferral recoverable.
+        const lightDescs = isLight(s.token) || descsDeferred;
         const rowsById = new Map<string, Record<string, unknown>>();
         // Ids the feed still serves but whose REAL stated date crossed the
         // 30-day window — our freshness cap, not a feed absence. They bypass
@@ -4527,12 +5066,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
           salary?: string | null; agency?: boolean | null; employment_type?: string | null;
           region_code?: string | null; first_seen?: string | null;
+          /** Which lap last SERVED this row. See deepLaps. Absent/NULL = never, or not read this visit. */
+          lap_epoch?: number | null;
         };
         const existingRows: Array<ExistingRow> = [];
         let missingColUnknown = false; // pre-migration: column absent → legacy single-pass behavior
         // pre-migration: region_code absent → never patch it, or every visited
         // row of every board queues a no-op correction forever (below).
         let regionColUnknown = false;
+        // lap_epoch rides the SELECT unconditionally, as a LITERAL column list
+        // like every other read here. It was briefly conditional on whether the
+        // board had a lap open, but a template literal over two possible column
+        // lists makes the PostgREST select overload resolve both shapes and the
+        // union exceeds the compiler's budget (TS2590) — so the honest form is
+        // the fixed one. The cost is one nullable integer per already-stored row
+        // on boards that will never use it: bounded by the board's stored size,
+        // on an array already carrying title, location, salary and first_seen,
+        // and released with the board's scope.
+        //
+        // ANY read that came back without the column sets this, including the
+        // three fallbacks below, whose narrower column lists do not carry it.
+        // The flag then blocks stamping AND proving for the visit, so a board
+        // degrades to today's behaviour instead of reading `undefined` as
+        // "not seen this lap" and closing a live posting.
+        let lapColUnknown = false;
         for (let from = 0; ; from += 1000) {
           // region_code rides the SELECT (.61) so the corrections path can tell
           // "already stamped" from "never stamped". It costs a ≤6-char string
@@ -4543,15 +5100,27 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // write-amplification hole employment_type fell into below.
           let res = await client
             .from("job_board_postings")
-            .select("id,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
+            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
+          // The lap column's own deploy window, FIRST because its fallback is
+          // the exact select the other three already know how to degrade.
+          if (res.error?.message?.includes("lap_epoch")) {
+            lapColUnknown = true;
+            res = (await client
+              .from("job_board_postings")
+              .select("id,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
+              .eq("company_token", s.token)
+              .order("id")
+              .range(from, from + 999)) as typeof res;
+          }
           // Same deploy-window rule as the two below, and it must come FIRST so
           // its fallback still carries agency: a select naming an absent column
           // fails the whole board read.
           if (res.error?.message?.includes("region_code")) {
             regionColUnknown = true;
+            lapColUnknown = true; // the narrower list below does not carry it
             res = (await client
               .from("job_board_postings")
               .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
@@ -4565,6 +5134,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // field. Retry without it; the correction guard already treats an
           // absent prev value as "do not patch", so the window is quiet.
           if (res.error?.message?.includes("agency")) {
+            lapColUnknown = true; // as above: this list does not carry it either
             res = (await client
               .from("job_board_postings")
               .select("id,missing_since,title,location,country,apply_url,work_mode,employment_type,remote,salary,first_seen")
@@ -4574,6 +5144,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
           if (res.error?.message?.includes("missing_since")) {
             missingColUnknown = true;
+            lapColUnknown = true; // an id-only read carries no lap evidence
             res = (await client
               .from("job_board_postings")
               .select("id")
@@ -4608,11 +5179,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // window). ~24 bytes on a row already carrying title, location and
             // salary, bounded by this board's stored size and released with it.
             first_seen: (r as { first_seen?: string | null }).first_seen ?? null,
+            // The lap marker. One integer, read only on boards that have a lap
+            // open, and the sole thing that lets a wrap tell "absent from every
+            // window of a full pass" from "displaced past this visit's window".
+            lap_epoch: (r as { lap_epoch?: number | null }).lap_epoch ?? null,
           })));
           if (!page || page.length < 1000) break;
         }
         if (!boardOk) {
           failed.push(`${s.name} (db-read)`);
+          // The cursor already advanced past this window, but nothing here got
+          // an epoch: those rows would read as never-seen at the wrap. Disarm
+          // the lap rather than let a database blip become takedowns.
+          failLap();
           continue;
         }
         const prefix = `${s.source}:`;
@@ -4676,13 +5255,86 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let vanished: string[];
         const toStamp: string[] = [];
         let toUnstamp: string[] = [];
+        // The epoch this visit's rows are stamped with, and the ONLY value a
+        // wrap compares against. Zero disables every lap behaviour — no
+        // stamping, no proof, no closures — which is what a board without a
+        // cursor, without an open lap, or read before the migration applied
+        // gets, byte for byte the behaviour that shipped before this change.
+        const lapMark = missingColUnknown || lapColUnknown ? 0 : lapEpoch;
+        // A VISIT THAT COULD NOT STAMP MUST NOT LEAVE THE LAP ARMED.
+        //
+        // lapMark 0 suppresses stamping and proving FOR THIS VISIT — which is
+        // the whole of what the flags above claimed — but the lap bookkeeping
+        // ran before the SELECT and has already credited this window's offsets
+        // to `rec.s`. So the lap goes on believing it covered ground it never
+        // stamped, and the wrap converts every row served in those visits into
+        // a `missing_since` stamp: out of the serving fence (buildQuery, every
+        // published statistic, the detail page) for up to a full lap, and into
+        // real closures if the next lap is holed too.
+        //
+        // This is not a rare path. It is GUARANTEED on the deploy that ships
+        // the lap columns, because the function deploys before the migration
+        // applies and this file already carries three deploy-window fallbacks
+        // for exactly that ordering; every board mid-lap when the column
+        // appears would mass-stamp the rows it served before it. The two
+        // transient fallbacks (region_code, agency) reach it outside any deploy
+        // window at all.
+        //
+        // failLap is the contract that already exists for "this lap has a hole
+        // in its instrumentation": forfeit the lap, re-lap cleanly, prove one
+        // pass later. One line, no write, no round trip.
+        if (lapMark === 0) failLap();
+        // The one visit per lap that may conclude a posting is gone.
+        const lapMode = r.windowed === true && lapProven && lapMark > 0;
+        // THE FIRST PROVEN LAP CARRIES A BACKLOG, AND ITS closed_at IS A LIE.
+        // Read BEFORE the receipt below writes w0, so the lap that establishes
+        // observability is itself inside the backfill window. Any row whose
+        // missing_since predates the board's first proven lap was absent for an
+        // unknown part of the preceding 30 days — the page cap made it
+        // unobservable — so its closed_at of now() overstates its life by up to
+        // a month. Those rows are logged under their own absence_basis so a
+        // duration statistic can drop them by name.
+        const lapBackfillUntil = lapMode ? (deepLaps[lapKey]?.w0 ?? startIso) : "";
+        // THE COVERAGE RECEIPT, written where the proof is actually USED rather
+        // than where it is computed. `lapProven` is decided before the existing
+        // -rows read, so a wrap that then turned out to be unstampable (lapMark
+        // 0) would otherwise stamp `w` and tell the population function this
+        // board completed a provable pass on a visit that proved nothing.
+        if (lapMode) {
+          const lrec = deepLaps[lapKey];
+          if (lrec) {
+            lrec.w = startIso;
+            if (!lrec.w0) lrec.w0 = startIso;
+            deepCursorsDirty = true; // the receipt must survive the hop, even if no offset moved
+          }
+        }
+        // Hoisted: the feed-dark guard further down measures the SAME
+        // population this block prunes on, and the two disagreeing is how a
+        // stored ratio ends up not matching the verdict it justified.
+        let absenceCount = 0;
         if (missingColUnknown) {
           vanished = vanishedAll; // legacy behavior until the migration applies
+          for (const id of vanishedAll) if (!agedOutIds.has(id)) absenceCount++;
         } else {
-          const bigShrink = existing.size >= 20 && vanishedAll.length > SHRINK_RATIO * existing.size;
+          const partialRead = r.windowed === true;
+          // WHAT THIS PASS CAN ACTUALLY SPEAK TO, excluding the freshness cap
+          // (an age-out is our rule, produces no closure, and routes to the
+          // exit ledger). On a board read in full this is vanishedAll minus
+          // age-outs — the number that has always driven these guards. On a
+          // windowed board it is the LAP's absence, not the visit's: the visit
+          // is "missing" ~everything outside its 250-row window, and feeding
+          // that to a shrink ratchet or a share threshold produces a verdict
+          // about our page cap rather than about the employer.
+          for (const id of vanishedAll) {
+            if (agedOutIds.has(id)) continue;
+            if (partialRead && !(lapMode && existingById.get(id)?.lap_epoch !== lapMark)) continue;
+            absenceCount++;
+          }
+          const shrinkNumerator = partialRead ? absenceCount : vanishedAll.length;
+          const bigShrink = existing.size >= 20 && shrinkNumerator > SHRINK_RATIO * existing.size;
           const needMs = bigShrink ? RATCHET_MS : GRACE_MS;
-          if (bigShrink && vanishedAll.length) {
-            console.warn(`[JOB-BOARD] ${s.token}: ${vanishedAll.length}/${existing.size} postings vanished in one pass — shrink ratchet holds closures for 6h`);
+          if (bigShrink && shrinkNumerator) {
+            console.warn(`[JOB-BOARD] ${s.token}: ${shrinkNumerator}/${existing.size} postings vanished in one ${partialRead ? "lap" : "pass"} — shrink ratchet holds closures for 6h`);
           }
           // A PARTIAL READ CANNOT PROVE ABSENCE.
           //
@@ -4704,17 +5356,48 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // prove the date. Everything else on a windowed board waits for the
           // 30-day cap. The cost is that a genuinely closed role on a big board
           // can linger; the alternative is serving 6% of the employer's jobs.
-          const partialRead = r.windowed === true;
+          //
+          // ...AND A COMPLETED LAP CAN. The suppression above is not lifted, it
+          // is given a second kind of evidence. Within a visit nothing changes:
+          // an id we did not see may be at offset 9,000 and is skipped exactly
+          // as before. At a WRAP — a pass that opened at offset 0 under this
+          // code, covered LAP_COVERAGE_MIN of the employer's own advertised
+          // total, and stamped every row it served without a single failed
+          // write — an id that never received the epoch was absent from EVERY
+          // window of the whole feed. That is absence, not displacement, and it
+          // is the only thing on this path that promotes a windowed board's
+          // vanished id past this line.
+          //
+          // It then re-enters the SAME two-pass grace as everything else, where
+          // one "pass" is one lap: the first proven wrap stamps, the second
+          // closes. A posting skipped because a takedown above the cursor
+          // shifted the feed under us would have to be skipped in two
+          // consecutive laps, at independent positions, to be logged.
           vanished = [];
           for (const id of vanishedAll) {
             if (agedOutIds.has(id)) { vanished.push(id); continue; } // freshness cap — no grace, no log
-            if (partialRead) continue; // absence unprovable — do not stamp, do not delete
+            if (partialRead && !(lapMode && existingById.get(id)?.lap_epoch !== lapMark)) continue; // absence unprovable — do not stamp, do not delete
             const stamp = missingSinceById.get(id);
             if (stamp && nowMs - new Date(stamp).getTime() >= needMs) vanished.push(id); // confirmed gone
             else if (!stamp) toStamp.push(id); // first miss — stamp only
             // recent stamp → still in grace, leave as-is
           }
-          toUnstamp = [...liveIds].filter((id) => missingSinceById.get(id));
+          // SEEN THIS VISIT — one write, two meanings, no new round trip.
+          //
+          // This list was "served rows carrying a stale missing_since", cleared
+          // so a flicker heals. It now also carries "served rows not yet marked
+          // for this lap", and the update sets both columns at once. A posting
+          // is therefore written at most ONCE PER LAP (the cursor passes each
+          // offset once), not once per visit: across the whole windowed
+          // population that is roughly 179,000 rows per lap, ~5k row-writes an
+          // hour at the measured lap length — three orders below the 450k/hour
+          // that bloated this table when every row was rewritten every pass.
+          toUnstamp = [...liveIds].filter((id) => {
+            const ex = existingById.get(id);
+            if (!ex) return false; // inserted this visit — it carries the epoch already
+            if (ex.missing_since) return true;
+            return lapMark > 0 && ex.lap_epoch !== lapMark;
+          });
         }
         for (let i = 0; i < toStamp.length; i += 200) {
           const { error: stErr } = await client.from("job_board_postings")
@@ -4723,8 +5406,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         for (let i = 0; i < toUnstamp.length; i += 200) {
           const { error: unErr } = await client.from("job_board_postings")
-            .update({ missing_since: null }).in("id", toUnstamp.slice(i, i + 200));
-          if (unErr) console.warn(`[JOB-BOARD] missing-unstamp failed for ${s.token} (harmless until next miss):`, unErr.message?.slice(0, 120));
+            .update({ missing_since: null, ...(lapMark > 0 ? { lap_epoch: lapMark } : {}) })
+            .in("id", toUnstamp.slice(i, i + 200));
+          if (unErr) {
+            console.warn(`[JOB-BOARD] missing-unstamp failed for ${s.token} (harmless until next miss):`, unErr.message?.slice(0, 120));
+            // Harmless for the stamp; NOT harmless for the lap. Rows that were
+            // served keep an older epoch and would read as never-seen at the
+            // wrap, so this lap forfeits its power to prove absence.
+            if (lapMark > 0) failLap();
+          }
         }
 
         // UNFREEZE. Until now a row was written once and never corrected:
@@ -5074,6 +5764,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
         }
 
+        // A ROW BORN MID-LAP HAS BEEN SEEN THIS LAP.
+        //
+        // Without this it would insert with a NULL epoch, and the wrap a few
+        // thousand postings later would read that NULL as "absent from every
+        // window" — stamping a posting we ingested hours ago out of the serving
+        // fence. The value is written here rather than in the row builder
+        // because only the SELECT above can tell us the column exists: lapMark
+        // is zero whenever the read did not carry it, so the deploy window
+        // needs no strip retry of its own. One property write per NEW row (not
+        // per posting fetched), on objects that already exist.
+        if (lapMark > 0) for (const nr of newRows) (nr as Record<string, unknown>).lap_epoch = lapMark;
         for (let i = 0; i < newRows.length; i += 250) {
           let { error } = await client.from("job_board_postings").upsert(newRows.slice(i, i + 250), { onConflict: "id" });
           // Deploy-before-migration window: the country column may not exist
@@ -5260,25 +5961,67 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Three orthogonal protections, none substituting for another. The 0.30
         // share intentionally fires inside the 30-60% band the ratchet's 0.6
         // lets through.
+        //
+        // BOTH TERMS MUST BE READ AT THE SCALE OF THE EVIDENCE. On a lap-proven
+        // windowed board the unit of evidence is the LAP, not the visit, and
+        // feeding visit-scale numbers to these two tests inverts both of them:
+        // the numerator would be "everything outside a 250-row window" (always
+        // implausible) and `servedInPass` would be the last window's remainder,
+        // perhaps 27 rows against 16,000 stored (always short). Every
+        // lap-proven closure batch would be stamped suspect — and a suspect
+        // batch is EXCLUDED by every reader, so the cohort leaves the risk set
+        // entirely. That is truncation wearing the mark's clothes, and it would
+        // have made this whole fix write closures nothing is allowed to count.
+        // So on a lap the numerator is the lap's absence and the served count
+        // is the lap's own total, measured against the same stored population.
         const FEED_SHORT_RATIO = 0.6;
         let removableBefore = 0; // = existing.size minus this pass's freshness-cap age-outs
         for (const id of existing) if (!agedOutIds.has(id)) removableBefore += 1;
-        const absentInPass = vanishedAll.reduce((n, id) => n + (agedOutIds.has(id) ? 0 : 1), 0);
+        const absentInPass = absenceCount;
         const removedInBatch = vanished.reduce((n, id) => n + (agedOutIds.has(id) ? 0 : 1), 0);
-        const servedInPass = r.jobs.length;
+        const servedInPass = lapMode ? lapSeen : r.jobs.length;
         const shareImplausible = absentInPass > Math.max(5, 0.30 * removableBefore);
         const feedCameBackShort = servedInPass < FEED_SHORT_RATIO * removableBefore;
+        // THE ONE RESIDUAL, NAMED RATHER THAN GUESSED AT.
+        //
+        // A vendor that understates its total AND refuses to serve past it ends
+        // the feed honestly at an offset the lap cannot see beyond, so a stored
+        // row that has drifted past it is absent from every window while being
+        // live. NOTHING ON THIS PATH CAN SEPARATE THAT FROM A TAKEDOWN, and a
+        // guard was tried and rejected rather than shipped: any coverage floor
+        // measured against what we HOLD refuses every board carrying
+        // accumulated dead stock too, and dead stock is exactly the 30-day
+        // backlog this mechanism exists to drain — such a floor would make the
+        // fix a silent no-op on CVS-class boards while reporting coverage. The
+        // same argument kills it as a suspect MARK: `removableBefore - lapSeen`
+        // IS the absence being reported, so the mark would fire on every
+        // closure batch and mean nothing.
+        //
+        // What narrows it to almost nothing is the chunked walk. Pages are
+        // requested four at a time and consumed in order, so a walk that stops
+        // "at the advertised total" has usually already REQUESTED offsets past
+        // it; a tenant that serves them returns full pages, `exhausted` stays
+        // false, and the proof gate above refuses the lap outright. The residual
+        // is only the tenant that refuses to serve past its own understated
+        // total — a board no client can read whole by any means — and it is
+        // disclosed as such by get_closure_population() rather than papered over
+        // here.
         const batchSuspect = shareImplausible && feedCameBackShort;
-        if (!truncatedFetch && (batchSuspect || (shareImplausible && vanished.length))) {
+        if ((!truncatedFetch || lapMode) && (batchSuspect || (shareImplausible && vanished.length))) {
           console.warn(
-            `[JOB-BOARD] ${s.token}: ${absentInPass}/${removableBefore} absent this pass ` +
+            `[JOB-BOARD] ${s.token}: ${absentInPass}/${removableBefore} absent this ${lapMode ? "lap" : "pass"} ` +
             `(${removedInBatch} confirmed, feed served ${servedInPass}) — ` +
             (batchSuspect
               ? "closures logged but marked suspect (possible dark feed)"
               : "feed served a full list, so this reads as a real takedown — logged unmarked"),
           );
         }
-        if (vanished.length && !truncatedFetch) {
+        // A TRUNCATED FETCH STILL LOGS NOTHING; A PROVEN LAP DOES.
+        // `truncatedFetch` is a property of the VISIT and has not changed
+        // meaning. `lapMode` is the strictly stronger evidence assembled across
+        // visits, and it is the only thing that opens this branch for a board
+        // over the page cap.
+        if (vanished.length && (!truncatedFetch || lapMode)) {
           const closedAt = new Date().toISOString();
           const liveTitles = new Set(
             [...rowsById.values()].map((r) => normalizeCloseTitle(String(r.title ?? ""))).filter(Boolean),
@@ -5426,6 +6169,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                   suspect: batchSuspect,
                   batch_removed: absentInPass,
                   batch_live_before: removableBefore,
+                  // WHAT KIND OF EVIDENCE ENDED THIS POSTING. 'full_read' is a
+                  // board we can read in one visit, where absence is a fact
+                  // about one fetch; 'lap' is a board over the page cap, where
+                  // it is a fact about a complete pass assembled across visits.
+                  // The two populations are not interchangeable and no
+                  // published number may pool them without saying so.
+                  absence_basis: lapMode
+                    ? (lapBackfillUntil && (missingSinceById.get(String(r.id)) ?? startIso) <= lapBackfillUntil ? "lap_backfill" : "lap")
+                    : "full_read",
                   ...lifecycleFacets(r),
                 }));
                 // Deploy-before-migration tolerance (the country-column rule),
@@ -5476,7 +6228,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             if (delErr) console.warn(`[JOB-BOARD] closure prune delete failed for ${s.token} (non-fatal):`, delErr.message?.slice(0, 150));
           }
         } else if (vanished.length) {
-          // Truncated fetch: prune without logging — can't distinguish closed from displaced.
+          // Truncated fetch with NO completed lap behind it: prune without
+          // logging — this visit still cannot distinguish closed from
+          // displaced. On a windowed board `vanished` holds only ids the
+          // freshness cap aged out, which is our own rule and no employer
+          // event; everything else waited above for a wrap to speak for it.
           for (let i = 0; i < vanished.length; i += 200) {
             await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
           }
@@ -5777,8 +6533,63 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // cursor map, and it cannot disturb boards/maxOffset/sumOffset. Written
         // when the lane ran even if no cursor moved — "ran and selected none"
         // is precisely the state that has to be distinguishable.
+        // The lap map rides the SAME row and the same write. It is a nested
+        // object under a non-token key, so it is inert to both readers exactly
+        // as __lane is, and it costs no second meta key, no second read and no
+        // second round trip. Entries whose board has not been walked in 45 days
+        // are dropped: the delete branch in the board loop retires a board that
+        // stops being windowed, but a board that stops being VISITED (dormant,
+        // removed from the catalogue) would otherwise sit here forever.
+        const lapCutoff = Date.now() - 45 * 86_400_000;
+        const lapsOut: Record<string, LapState> = {};
+        for (const [tok, rec] of Object.entries(deepLaps)) {
+          const t = rec.t ? new Date(rec.t).getTime() : NaN;
+          if (Number.isFinite(t) && t < lapCutoff) continue;
+          lapsOut[tok] = rec;
+        }
+        // A DISARM MAY ONLY EVER BE ADDED BY THIS WRITE, NEVER REMOVED BY IT.
+        //
+        // `f = 1` is the thing that stops a holed lap becoming logged
+        // takedowns, and it lives in a whole-row, last-writer-wins meta row,
+        // while the evidence it invalidates (lap_epoch) is committed per
+        // posting and survives everything. Chain hops run past the slice lock
+        // with force=true, so two isolates overlap: the one holding the older
+        // copy writes last and reverts the other's disarm, leaving a lap that
+        // proves over rows it never stamped.
+        //
+        // So re-read the row and fold, in the fail-closed direction ONLY: a
+        // stored lap on a NEWER epoch wins outright (that isolate has walked
+        // further than we have), and a stored disarm on the SAME epoch is
+        // OR'd in. Nothing here can clear an `f`, advance an `s`, or invent a
+        // `w`. deepCursors itself is deliberately untouched — re-keying or
+        // re-merging the cursor map is how rotation speed gets silently
+        // changed, and that is a separate measurement.
+        //
+        // One extra SELECT of one meta row, at hop end, OUTSIDE the board loop
+        // — not per board and not per posting — and wrapped so a failed read
+        // costs the fold and nothing else.
+        try {
+          const { data: fresh } = await client.from("job_board_meta").select("v").eq("k", "deep_cursor").maybeSingle();
+          const stored = (fresh?.v as Record<string, unknown> | null | undefined)?.__laps;
+          if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+            for (const [k, v] of Object.entries(stored as Record<string, Partial<LapState> | null>)) {
+              const o = v;
+              if (!o || typeof o !== "object" || !Number.isInteger(o.e) || (o.e as number) <= 0) continue;
+              const mine = lapsOut[k];
+              if (!mine) continue; // not a board this isolate touched — the upsert below keeps it only if we hold it
+              if ((o.e as number) > mine.e) { lapsOut[k] = o as LapState; continue; }
+              if ((o.e as number) === mine.e && o.f === 1) mine.f = 1;
+            }
+            // Deliberately NOT restoring keys we do not hold. `mine` is absent
+            // for two different reasons — a board another isolate added since
+            // our read, and a board THIS isolate retired because it stopped
+            // being windowed — and the fold cannot tell them apart. Resurrecting
+            // a retired lap is the worse error (it re-arms stamping on a board
+            // that is read in full), and the cost of the other is one lap.
+          }
+        } catch { /* fold is best-effort; the write below still lands */ }
         await client.from("job_board_meta")
-          .upsert({ k: "deep_cursor", v: { ...deepCursors, ...(deepLane ? { __lane: deepLane } : {}) }, updated_at: new Date().toISOString() }, { onConflict: "k" })
+          .upsert({ k: "deep_cursor", v: { ...deepCursors, ...(deepLane ? { __lane: deepLane } : {}), ...(Object.keys(lapsOut).length ? { __laps: lapsOut } : {}) }, updated_at: new Date().toISOString() }, { onConflict: "k" })
           .then(({ error }) => { if (error) console.warn("[JOB-BOARD] deep_cursor write failed:", error.message?.slice(0, 120)); });
       }
     }
@@ -6903,15 +7714,25 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     // Self-healing override: if meaningful description coverage is still
     // missing on the light boards, run regardless of the stamp — recovers from
     // a stamp written by an older/buggy sweep without a manual reset.
-    const lightTokens = JOB_SOURCES.filter((s) => isLight(s.token)).map((s) => s.token);
+    // THE SAME PREDICATE THE FILLER USES — descBackfillBoards, one definition.
+    // This list was built vendor-agnostically, so it counted nulls on boards
+    // backfill-desc cannot touch; those nulls never fell, and the trigger below
+    // was therefore permanently true.
+    const lightTokens = descBackfillBoards().map((s) => s.token);
     let missingCoverage = false;
     if (lightTokens.length > 0 && bfAge > 30 * 60_000) {
       const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).is("description", null);
       missingCoverage = (count ?? 0) > 50;
     }
+    // NON-EXCLUSIVE — kick and FALL THROUGH, like the country and embed tracks
+    // at the top of this function. The `return` that used to sit here made this
+    // rung a gate in front of desc-sweep, and a permanently-true trigger made
+    // it a closed one: the July starvation recorded above, arriving through a
+    // different door. The two lanes cannot collide — this one fetches the
+    // greenhouse per-JOB endpoint for greenhouse light boards, desc-sweep
+    // fetches DETAIL_DESC_SOURCES, and neither vendor set contains the other.
     if (missingCoverage || bfAge > (bfIncomplete ? 60 * 60_000 : 24 * 60 * 60_000)) {
       await kick("backfill-desc", { ti: 0, off: 0 });
-      return;
     }
     // desc-sweep: the per-posting vendors (workday/SR/bamboohr/oracle/breezy).
     // Every hop restamps desc_sweep, so a live chain keeps the age small and
@@ -8546,7 +9367,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -8681,6 +9502,16 @@ Deno.serve(async (req) => {
         // can see it — the board never enters failedSources, board_failures or
         // job_board_board_state, by design (it did not fail).
         client.from("job_board_meta").select("v, updated_at").eq("k", "oversize_boards").maybeSingle(),
+        // THE POPULATION EVERY CLOSURE NUMBER ON THIS BOARD IS DRAWN FROM.
+        //
+        // A statistic that names no population is a claim about employers made
+        // from whichever boards happened to be readable, and until 2026-09-08
+        // that was a small minority of inventory with nothing anywhere saying
+        // so. This is the one artefact that states it, so it ships beside the
+        // numbers rather than waiting for someone to run it by hand: aggregate
+        // counts only, one function call, cached at the same cadence as the
+        // rest of this bundle.
+        client.rpc("get_closure_population").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -8949,8 +9780,43 @@ Deno.serve(async (req) => {
               const l = (deepCur.data?.v as Record<string, unknown> | null | undefined)?.__lane;
               return l && typeof l === "object" && !Array.isArray(l) ? l as Record<string, unknown> : null;
             })(),
+            // WHICH BIG BOARDS CAN PRODUCE A CLOSURE AT ALL.
+            //
+            // A board over MAX_POSTINGS_PER_VISIT proves absence only across a
+            // completed lap (see deepLaps). `proven` is the number that have
+            // actually completed one — the honest population for any statistic
+            // computed from closures on windowed boards. `tracking` minus
+            // `proven` are boards being walked that have not yet closed a lap
+            // and can therefore report nothing, and `disarmed` are laps that
+            // lost an epoch write and will re-lap before they can prove
+            // anything. None of these is "the employer had no closures".
+            laps: (() => {
+              const raw = (deepCur.data?.v as Record<string, unknown> | null | undefined)?.__laps;
+              if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { tracking: 0, proven: 0, disarmed: 0, lastProvenAt: null as string | null, firstLapAt: null as string | null };
+              const recs = Object.values(raw as Record<string, { f?: number; w?: string; w0?: string }>);
+              let proven = 0, disarmed = 0, last: string | null = null, first: string | null = null;
+              for (const rec of recs) {
+                if (!rec || typeof rec !== "object") continue;
+                if (rec.f === 1) disarmed++;
+                if (typeof rec.w === "string") { proven++; if (!last || rec.w > last) last = rec.w; }
+                // The earliest board-level observability boundary. Any closure
+                // cohort whose window spans this date measures a population
+                // that changed mid-window, and the closures the first laps
+                // wrote carry a knowingly-late closed_at (absence_basis
+                // 'lap_backfill'). It is the date to exclude around, not a
+                // health number.
+                if (typeof rec.w0 === "string" && (!first || rec.w0 < first)) first = rec.w0;
+              }
+              return { tracking: recs.length, proven, disarmed, lastProvenAt: last, firstLapAt: first };
+            })(),
           };
         })(),
+        // See the RPC's own COMMENT: buckets (3), (4) and (5) are the boards
+        // whose silence is NOT evidence about the employer, and any number on
+        // this board derived from job_board_closures describes (1)+(2) only.
+        // `closuresLapBackfill` is the first laps' thirty-day backlog, whose
+        // closed_at is knowingly late — a count of events, never a duration.
+        closurePopulation: (closurePop.error ? null : (closurePop.data ?? null)),
         hostSweep: {
           cursor: ((hsMeta.data?.v ?? {}) as { cursor?: number }).cursor ?? null,
           of: Array.isArray(((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list) ? (((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list as unknown[]).length : null,
@@ -10376,12 +11242,13 @@ Deno.serve(async (req) => {
         return json({ error: "backfill-desc is a maintenance action" }, 403);
       }
       await loadDynamicLight(client); // fresh invocation — auto-enrolled boards need their descs filled too
-      // Greenhouse ONLY: this lane fetches the GH per-job endpoint, and the
-      // light set is vendor-agnostic (Workable boards auto-enrol into
-      // DYNAMIC_LIGHT), so every non-GH board here 404s forever. Other
-      // vendors fill via the desc-sweep board lane, which uses their own
-      // list payloads.
-      const BOARDS = JOB_SOURCES.filter((s) => s.source === "greenhouse" && isLight(s.token));
+      // Greenhouse ONLY: this lane fetches the GH per-job endpoint, so a non-GH
+      // board here would 404 forever. That is not a filter written twice — it
+      // is descBackfillBoards(), the same call the maintenance trigger makes,
+      // so the population measured and the population filled are one
+      // population. Other vendors fill via the desc-sweep board lane, which
+      // uses their own list payloads.
+      const BOARDS = descBackfillBoards();
       const PER_HOP = 50; // small per-job fetches; keeps each invocation light
       let ti = Math.max(0, Number(body.ti) || 0);
       // Touch meta each hop so the 24h staleness trigger can't spawn an

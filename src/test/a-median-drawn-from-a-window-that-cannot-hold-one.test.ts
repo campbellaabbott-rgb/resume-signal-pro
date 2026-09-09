@@ -511,15 +511,27 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     //     trap this repo has hit repeatedly.
     expect(code, "the sentence describing the seven-day floor must not be rendered")
       .not.toMatch(/"explore\.hiringBlurb"/);
-    // (c) ITS REPLACEMENT, pinned as a PROPERTY rather than as a key name: the
-    //     evidence line beside each median names the window we watched THAT
-    //     board, and takes it from the row rather than printing a constant.
-    const at = code.indexOf('t("explore.durEvidence"');
+    // (c) ITS REPLACEMENT, pinned as a PROPERTY rather than as a key name.
+    //     THE OBLIGATION MOVED AGAIN, and it moved DOWN A GRAIN rather than
+    //     away: the twelve-employer duration leaderboard that carried
+    //     explore.durEvidence is gone with the other four, because twelve
+    //     employer cards reached 0.19% of the board. The same statistic now
+    //     rides on the FIELD tile, where the estimator passes the very gates
+    //     the per-employer form was failing — thousands of closures against
+    //     three. So the pin follows the obligation to the field lifecycle line:
+    //     every median names the depth of the closure log it was read from,
+    //     interpolated from the row and never printed as a constant.
+    const at = code.indexOf('t("explore.fieldCurveMedian2"');
     expect(at, "the median's evidence line must be rendered").toBeGreaterThanOrEqual(0);
     const call = code.slice(at, at + 400);
-    expect(call, "it names the tracked window").toMatch(/days we have watched this board/);
+    expect(call, "it names the observation window the median was read from").toMatch(/closure log/);
     expect(call, "the span is interpolated, never a literal").toMatch(/\{\{days\}\}/);
-    expect(call, "and comes from that employer's own record").toMatch(/days:\s*c\.windowDays/);
+    expect(call, "and comes from that field's own record").toMatch(/days:\s*lc\.windowDays/);
+    // AND THE DATE BASIS, which is the half a median cannot be published
+    // without: durations run from the EMPLOYER'S stated post date, never our
+    // discovery date.
+    expect(call, "the median must name whose date it was measured from")
+      .toMatch(/employer's own post date/);
   });
 });
 

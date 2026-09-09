@@ -349,6 +349,21 @@ describe("a body read before anything counted it", () => {
     const bfLine = CODE_LINES.find((ln) => ln.includes("JOB_SOURCES.filter(") && ln.includes("isLight(") && ln.includes("s.source ==="))!;
     expect(bfLine, "backfill-desc's vendor filter not found").toBeTruthy();
     const backfillVendors = (bfLine.match(/"([a-z]+)"/g) ?? []).map((q) => q.replace(/"/g, ""));
+    // THE VENDOR MAY BE NAMED BY A CONSTANT RATHER THAN SPELLED IN PLACE.
+    // The predicate was extracted into descBackfillBoards() so the maintenance
+    // trigger and the filler could stop drifting apart, and its vendor moved
+    // into DESC_BACKFILL_VENDOR in the same edit. A guard that only reads
+    // quoted literals goes blind at exactly that moment — it would have
+    // reported "greenhouse has no filler" while greenhouse's filler was working
+    // perfectly, which is this repo's own guard-literal lesson running the
+    // other way. So resolve the constant.
+    if (backfillVendors.length === 0) {
+      const named = /s\.source === ([A-Z_][A-Z0-9_]*)/.exec(bfLine);
+      expect(named, "backfill-desc names its vendor neither as a literal nor as a constant").toBeTruthy();
+      const decl = new RegExp(`const ${named![1]} = "([a-z]+)"`).exec(CODE);
+      expect(decl, `${named![1]} is referenced but never given a string value`).toBeTruthy();
+      backfillVendors.push(decl![1]);
+    }
     const DESCS = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/descriptions.ts"), "utf8");
     const detailVendors = (DESCS.match(/export const DETAIL_DESC_SOURCES = \[([^\]]*)\]/)![1].match(/"([a-z]+)"/g) ?? [])
       .map((q) => q.replace(/"/g, ""));

@@ -89,7 +89,12 @@ describe("a lever that cuts count cannot cut size", () => {
     expect(block, "iCIMS block not found").not.toBe("");
     expect(block).toMatch(/const startPage = Math\.floor\(startOffset \/ ICIMS_PAGE\) \+ 1;/);
     expect(block, "iCIMS must report where it stopped").toMatch(/startOffset \+ all\.length/);
-    expect(block, "iCIMS must return nextOffset so the deep cursor can resume it").toMatch(/feedTotal, nextOffset \}/);
+    // The PROPERTY, not the trailing brace: this used to pin
+    // `feedTotal, nextOffset }` and would have gone red the moment the return
+    // grew feedEnded/endOffset for the lap proof — a guard failing over a
+    // comma while the resumability it names was untouched.
+    expect(block, "iCIMS must return nextOffset so the deep cursor can resume it").toMatch(/return \{[\s\S]{0,400}?\bnextOffset\b/);
+    expect(block, "iCIMS must return the vendor's advertised total").toMatch(/return \{[\s\S]{0,400}?\bfeedTotal\b/);
     expect(block).toMatch(/if \(all\.length >= MAX_POSTINGS_PER_VISIT\) break outer;/);
     const capLine = /if \(all\.length >= MAX_POSTINGS_PER_VISIT\)[^\n]*/.exec(block)?.[0] ?? "";
     expect(capLine, "iCIMS cap wraps the board instead of resuming it").not.toMatch(/exhausted/);
