@@ -51,6 +51,7 @@ import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
+import { readBoardFacets } from "@/lib/board-facets";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -756,6 +757,47 @@ const VENDOR_LIMIT = 8;
 const VENDOR_OPTIONS = [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES].map((v) => ({ value: v.key, label: v.label }));
 
 /**
+ * THE INVENTORY BESIDE EACH SOURCE'S NAME (owner's ask, 2026-09-10).
+ *
+ * `sources` is the board's per-source facet — source -> servable count under
+ * both serving predicates, from the same stored row and the same pass as the
+ * category counts on /explore. Board-wide, not narrowed by the reader's other
+ * filters: a per-query version would cost twenty counted queries per call
+ * under a deadline that already truncates the category counts, and the basis
+ * line on the control says so.
+ *
+ * Three rules, each the shape of a defect this board has shipped before:
+ *
+ *   - NEVER `capped`. jsonb_object_agg counts are exact; the 10,000 cap
+ *     belongs to the list `total`, not to a facet. A "+" here would claim a
+ *     ceiling the query never hit. The option type still admits the field
+ *     because the country picker genuinely needs it; this builder never sets
+ *     it, and the guard walks the values to prove that.
+ *   - ZERO OR ABSENT IS NO NUMBER. The facet omits a source with nothing in
+ *     it rather than sending 0, so a 0 here is a shape we do not understand;
+ *     the row keeps its name and prints nothing. The component already omits
+ *     an undefined count — the point is that the option carries no `count`
+ *     key at all, so a mutant rendering "0" has nothing to render from.
+ *   - THE ROW STAYS. Hiding a zero-inventory source would make the option
+ *     set depend on inventory, and a shared ?vendor= link for a source that
+ *     dipped to zero would land on a control that cannot show the filter it
+ *     is applying — the silent-narrowing bug in a new coat.
+ *
+ * Keys are the source strings themselves (lowercase, as the ingest writes
+ * them), so `v.key` indexes the facet directly.
+ */
+export function vendorOptionsWithCounts(
+  sources: Record<string, number> | null | undefined,
+): Array<{ value: string; label: string; count?: number }> {
+  return VENDOR_OPTIONS.map((v) => {
+    const n = sources && Object.prototype.hasOwnProperty.call(sources, v.value) ? sources[v.value] : undefined;
+    return typeof n === "number" && Number.isFinite(n) && n > 0
+      ? { value: v.value, label: v.label, count: Math.floor(n) }
+      : { value: v.value, label: v.label };
+  });
+}
+
+/**
  * THE ONE PLACE THIS PAGE TURNS ITS FILTER STATE INTO A REQUEST.
  *
  * Five call sites used to build this body by hand — the list fetch, the
@@ -990,6 +1032,10 @@ interface BoardResponse {
     salaryFloor?: number; workMode?: number; experience?: number; country?: number;
     salaryCeiling?: number; payBasis?: number; hasStatedPay?: number; maxYears?: number;
     department?: number; vendor?: number;
+    /** Emitted since the employment-type filter shipped; this type omitted it
+     *  and the renderer had no clause, so the one filter over a column
+     *  employers leave blank most often published no coverage at all. */
+    employmentType?: number;
   };
   /** Phrases lifted OUT of the query and applied as filters instead — typing
    *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
@@ -1650,7 +1696,7 @@ const LD_EMPLOYMENT_TYPE: Record<EmploymentTypeKey, string> = {
 };
 
 export default function Jobs() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // How far the agent actually reaches, from the DEPLOYED bundle rather than a
   // literal in this one. Shared with AgentReachNote so the two cannot disagree.
   const agentReach = useAgentReach();
@@ -3213,6 +3259,37 @@ export default function Jobs() {
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
   }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany]);
 
+  // THE PER-SOURCE INVENTORY FOR THE VENDOR DROPDOWN, read once on mount from
+  // the same stored facet row /explore's tiles come from (src/lib/board-facets).
+  //
+  // Published only WITH its stamp: `at` is the pass the map was taken in, or
+  // — when the pass carried last time's counts through a failed aggregate —
+  // the time those were actually counted. A carried map whose row could not
+  // say when it was counted is not published at all: twenty exact integers
+  // under no date basis is the defect the Explore reader was rebuilt to
+  // refuse, and this control holds the same rule. Null is silence: no
+  // numbers beside the names, no basis line — never "0".
+  const [vendorInventory, setVendorInventory] = useState<{ sources: Record<string, number>; at: string; carried: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const f = await readBoardFacets();
+      if (!live || !f || !f.sources) return;
+      // AN EMPTY MAP IS NOT AN INVENTORY. refresh_job_board_facets COALESCEs
+      // an empty aggregate to '{}' and the reader keeps that distinct from
+      // null (an older function), so `{}` DOES reach here — a cold or empty
+      // board — and it is truthy. Publishing it would print the basis line
+      // under twenty nameless rows, a sentence about nothing. The control
+      // has numbers only when at least one source counted something.
+      if (!Object.values(f.sources).some((n) => n > 0)) return;
+      const at = f.carried ? f.carriedAt : (f.sourcesAt ?? f.refreshedAt);
+      if (!at) return;
+      setVendorInventory({ sources: f.sources, at, carried: f.carried });
+    })();
+    return () => { live = false; };
+  }, []);
+  const vendorOptions = useMemo(() => vendorOptionsWithCounts(vendorInventory?.sources), [vendorInventory]);
+
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
   // returns no row and we show nothing). Fetched once, on first category view.
@@ -4502,6 +4579,30 @@ export default function Jobs() {
   }, [jobs, fitRanking, fits, activelyHiringOnly, hiringPartition, dismissedIds, refreshing, q, location,
     savedOnly, hideViewed, hideApplied, savedIds, appliedIds, viewedIds, detailJob?.id]);
 
+  // WHAT THE THREE MY-JOBS VIEWS TOOK OFF THE PAGE, counted so the results
+  // line can say so. Saved / Hide viewed / Hide applied narrow rows the server
+  // already sent — the same kind of thing as a dismissal, which has printed
+  // "{{count}} hidden" beside the results since it shipped — but they said
+  // nothing, so a page of forty rows read "Showing 3 matching openings" with
+  // no trace of the 37 the reader's own toggles removed. Same base as
+  // displayJobs (after the hiring filter and the dismissals, whose exclusions
+  // are already disclosed on their own), same three predicates, in the same
+  // order; a row several toggles would each drop is counted once.
+  const hiddenByViews = useMemo(() => {
+    if (!savedOnly && !hideViewed && !hideApplied) return { n: 0, views: [] as Array<"saved" | "viewed" | "applied"> };
+    let base = activelyHiringOnly ? hiringPartition.shown : jobs;
+    if (dismissedIds.size > 0) base = base.filter((j) => !dismissedIds.has(j.id));
+    const kept = base.filter((j) =>
+      (!savedOnly || savedIds.has(j.id))
+      && (!hideViewed || !viewedIds.has(j.id) || j.id === detailJob?.id)
+      && (!hideApplied || !appliedIds.has(j.id)));
+    const views: Array<"saved" | "viewed" | "applied"> = [];
+    if (savedOnly) views.push("saved");
+    if (hideViewed) views.push("viewed");
+    if (hideApplied) views.push("applied");
+    return { n: base.length - kept.length, views };
+  }, [jobs, activelyHiringOnly, hiringPartition, dismissedIds, savedOnly, hideViewed, hideApplied, savedIds, appliedIds, viewedIds, detailJob?.id]);
+
   // De-dupe near-identical postings: the same role cross-posted across locations
   // (same company + same title) collapses into ONE card with a "+N more locations"
   // expander. Nothing is deleted — every posting is a real, distinct opening and
@@ -5570,7 +5671,7 @@ export default function Jobs() {
     let cancelled = false;
     (async () => {
       try {
-        const { data: r } = await invokeBoard<{ total?: number; countCapped?: boolean }>({
+        const probe = (patch: Partial<BoardFilterState>) => invokeBoard<{ total?: number; countCapped?: boolean }>({
           action: "list", countOnly: true, includeFacets: false,
           // Drop ONLY the disclosure-dependent controls and re-derive; every
           // other constraint stays. The whole pay BAND goes together — floor,
@@ -5578,13 +5679,30 @@ export default function Jobs() {
           // published figure, so dropping one and keeping the others would
           // count a denominator that is still hiding the postings this line
           // exists to count.
-          ...boardFilterBody({
-            ...filterState,
-            ...(kind === "salary"
-              ? { salaryFloor: 0, salaryCeiling: 0, payBasis: "" as const, statedPayOnly: false }
-              : { workMode: "" as const, remoteOnly: false }),
-          }),
+          ...boardFilterBody({ ...filterState, ...patch }),
         });
+        // THE WORK-MODE SENTENCE COUNTS WHAT IT SAYS IT COUNTS.
+        //
+        // It says "don't say remote, hybrid, or on-site". The old figure was
+        // (count with the whole mode filter dropped) − (this page's total),
+        // which INCLUDES every posting stated hybrid or on-site — rows the
+        // reader excluded on purpose, counted as rows that never said.
+        // Measured live under Remote: "Another 787,292 openings … don't say",
+        // most of them stated. So the mode kind issues a SECOND count, with
+        // the mode filter set to every stated value at once, and the unstated
+        // denominator is the difference between the two: dropped − any-stated.
+        // One extra countOnly, only while a mode filter is on — the sentence
+        // keeps its wording and the number becomes the one it describes.
+        // The pay kind is unchanged: "don't state a salary" was already the
+        // exact complement of the band, so one probe still suffices.
+        const [dropped, anyStatedRes] = kind === "salary"
+          ? [await probe({ salaryFloor: 0, salaryCeiling: 0, payBasis: "" as const, statedPayOnly: false }), null]
+          : await Promise.all([
+              probe({ workMode: "" as const, remoteOnly: false }),
+              probe({ workMode: "remote,hybrid,onsite", remoteOnly: false }),
+            ]);
+        const r = dropped?.data;
+        const stated = anyStatedRes?.data;
         const without = r?.total;
         if (cancelled || typeof without !== "number") return;
         // The server caps this count at 10,000 and flags it. Subtracting the
@@ -5593,7 +5711,16 @@ export default function Jobs() {
         // true 19,361 — 49.1% short. If the denominator is capped we cannot
         // state the gap, so we say nothing rather than a comfortable number.
         if (r?.countCapped) { setDisclosure(null); return; }
-        const hidden = without - data.total;
+        let hidden: number;
+        if (kind === "salary") {
+          hidden = without - data.total;
+        } else {
+          // Both halves of a difference must be exact, or the difference is
+          // not a number this page can publish.
+          const anyStated = stated?.total;
+          if (typeof anyStated !== "number" || stated?.countCapped) { setDisclosure(null); return; }
+          hidden = without - anyStated;
+        }
         // Only worth saying when the silent majority is actually large.
         setDisclosure(hidden > data.total ? { kind, shown: data.total, hidden } : null);
       } catch { /* advisory only — never block the board */ }
@@ -7604,13 +7731,27 @@ export default function Jobs() {
               value={vendor}
               onChange={setVendor}
               max={VENDOR_LIMIT}
-              options={VENDOR_OPTIONS}
+              options={vendorOptions}
               allLabel={t("jobsPage.allVendors", "Any source")}
               ariaLabel={t("jobsPage.vendorFieldLabel", "Job board source")}
               selectedLabel={(n) => t("jobsPage.nVendors", "{{n}} sources", { n })}
               atMaxNote={t("jobsPage.vendorsAtMax", "Eight sources at a time — the same cap the board applies.")}
               clearLabel={t("jobsPage.clearVendors", "Clear sources")}
-              title={t("jobsPage.vendorTip", "The platform the employer publishes on. Every posting has one, so this filter hides nothing that isn't from another source.")}
+              // vendorTip2, not vendorTip: the tooltip now also says what the
+              // number beside each name is, so its MEANING changed and the
+              // old key is retired from every locale rather than edited.
+              title={t("jobsPage.vendorTip2", "The platform the employer publishes on. Every posting has one, so this filter hides nothing that isn't from another source. The number beside each name is that source's open roles on the whole board.")}
+              // THE BASIS, STATED ONCE, ON THE CONTROL, WITH THE FACET'S OWN
+              // STAMP — and only when there are numbers for it to describe.
+              // No inventory (an older function during the deploy window, a
+              // failed read, a carried map with no counted-at) means no
+              // numbers AND no basis line: silence, never a sentence about
+              // counts that are not there.
+              note={vendorInventory
+                ? t("jobsPage.vendorCountsBasis", "Counts are open roles on the whole board from each source, in the board's own scan{{when}} — not narrowed by your other filters.", {
+                    when: ` ${new Date(vendorInventory.at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" })}`,
+                  })
+                : undefined}
             />
             {/* HIDE STAFFING AGENCIES — the opt-in decline of the disclosed
                 agency inventory (2026-08-31 charter: agencies are carried and
@@ -8439,6 +8580,10 @@ export default function Jobs() {
                     if (typeof fc.payBasis === "number") parts.push(t("jobsPage.coveragePayBasis", "hourly or salaried on {{pct}}%", { pct: Math.round(fc.payBasis * 100) }));
                     if (typeof fc.maxYears === "number") parts.push(t("jobsPage.coverageMaxYears", "years of experience on {{pct}}%", { pct: Math.round(fc.maxYears * 100) }));
                     if (typeof fc.department === "number") parts.push(t("jobsPage.coverageDepartment", "a department on {{pct}}%", { pct: Math.round(fc.department * 100) }));
+                    // Emitted by the server since the employment-type filter
+                    // shipped, read by nothing until now — the disclosure-
+                    // nobody-renders defect, one key later.
+                    if (typeof fc.employmentType === "number") parts.push(t("jobsPage.coverageEmploymentType", "employment type on {{pct}}%", { pct: Math.round(fc.employmentType * 100) }));
                     // 100%, and rendered anyway. The server emits it, and the
                     // honest answer to "how much of the board can this filter
                     // see" is sometimes "all of it" — leaving it out would make
@@ -8701,7 +8846,13 @@ export default function Jobs() {
                     <p className="text-foreground">
                       {disclosure.kind === "salary"
                         ? t("jobsPage.discSalary", "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })
-                        : t("jobsPage.discWorkMode", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })}
+                        // discWorkMode2, not discWorkMode: the wording is the
+                        // same and the NUMBER under it changed meaning — it
+                        // is now the postings that state no mode at all,
+                        // which is what the sentence always claimed. The old
+                        // key is retired from every locale so no translation
+                        // can be read against the old arithmetic.
+                        : t("jobsPage.discWorkMode2", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })}
                     </p>
                     <button
                       type="button"
@@ -8974,6 +9125,23 @@ export default function Jobs() {
                     <button type="button" className="text-primary hover:underline" onClick={restoreDismissed}>
                       {t("jobsPage.restoreHidden", "restore")}
                     </button>
+                  </span>
+                )}
+                {/* The three my-jobs views publish what they hid, in the same
+                    slot as the dismissals — and name which toggle did it, in
+                    the toggle's own label, so the reader knows which one to
+                    switch off. Rendered only while the toggles remove
+                    something: zero is not a disclosure. */}
+                {hiddenByViews.n > 0 && (
+                  <span data-testid="hidden-by-views">
+                    {" · "}
+                    {t("jobsPage.hiddenByViews", "{{count}} hidden by {{views}}", {
+                      count: hiddenByViews.n,
+                      views: hiddenByViews.views.map((v) =>
+                        v === "saved" ? t("jobsPage.savedView", "Saved")
+                        : v === "viewed" ? t("jobsPage.hideViewed", "Hide viewed")
+                        : t("jobsPage.hideApplied", "Hide applied")).join(" / "),
+                    })}
                   </span>
                 )}
               </p>

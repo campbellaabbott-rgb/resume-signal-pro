@@ -561,7 +561,11 @@ describe("a key that exists only in English ships English to eight audiences", (
     // departmentFieldLabel / departmentPlaceholder / departmentTip left this
     // list with the control (owner decision 2026-09-09) — see the department
     // case above, which asserts they are gone from every locale.
-    "allVendors", "vendorFieldLabel", "nVendors", "vendorsAtMax", "clearVendors", "vendorTip",
+    // vendorTip left this list on 2026-09-10: the tooltip now also says what
+    // the number beside each source is, so it was re-minted as vendorTip2 and
+    // retired from every locale — a-count-beside-a-name-is-a-promise pins the
+    // successor and the retirement.
+    "allVendors", "vendorFieldLabel", "nVendors", "vendorsAtMax", "clearVendors",
     "fresh3", "fresh14", "fresh30", "freshDays",
     "coverageCeiling", "coverageStatedPay", "coveragePayBasis", "coverageMaxYears",
     "coverageDepartment", "coverageVendor",
@@ -612,7 +616,7 @@ describe("a key that exists only in English ships English to eight audiences", (
     // it just hides better. Checked on the strings with real words in them; the
     // short interpolation-only ones legitimately match across locales.
     const en = JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).jobsPage as Record<string, string>;
-    const prose = ["experienceTip", "maxYearsTip", "payBasisTip", "statedPayTip", "vendorTip", "savedWithoutFilters"];
+    const prose = ["experienceTip", "maxYearsTip", "payBasisTip", "statedPayTip", "savedWithoutFilters"];
     for (const f of LOCALE_FILES) {
       if (f === "en.json" || f === "en-GB.json") continue;
       const jp = JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, string>;

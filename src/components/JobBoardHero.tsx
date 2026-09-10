@@ -142,7 +142,13 @@ export function JobBoardHero() {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/5 text-primary font-semibold px-6 py-4 text-base hover:bg-primary/10 transition-colors min-h-[56px]"
             >
               <Target className="w-5 h-5" />
-              {t("boardHero.rankCta", "Rank them to my resume")}
+              {/* rankCta2, not rankCta. "Rank them to my resume" promised a
+                  ranking the click could not deliver: /jobs ranks nothing
+                  until a résumé is dropped on it, and the button said nothing
+                  about that. The label now says what happens — the board
+                  opens on its résumé drop panel, and the ranking follows the
+                  drop. New key because the meaning changed. */}
+              {t("boardHero.rankCta2", "Drop a resume to rank them by fit")}
             </Link>
           </div>
 

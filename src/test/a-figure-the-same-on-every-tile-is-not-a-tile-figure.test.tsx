@@ -269,9 +269,12 @@ describe("a tile's number and its destination's number are one reading", () => {
       .toMatch(/data\?\.categories\?\.\[countCategory\]/);
     expect(JOBS, "the exact count is keyed on the route param again, so the bucket loses it")
       .toMatch(/const countCategory = useMemo/);
-    // THIS PAGE'S HALF. The tile reads `categories` off a list reply and
+    // THIS PAGE'S HALF. The tile reads `categories` off the facets reply and
     // nothing else; the stamp it publishes is that reply's own refreshedAt.
-    expect(EXPLORE).toMatch(/r\?\.categories/);
+    // `r.categories` since 2026-09-10: the reply comes through the shared
+    // reader in src/lib/board-facets.ts, which has already refused a null
+    // reply, so the chain is no longer optional — the read is the same.
+    expect(EXPLORE).toMatch(/\br\??\.categories/);
     expect(EXPLORE).toMatch(/refreshedAt/);
   });
 

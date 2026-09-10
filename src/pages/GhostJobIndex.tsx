@@ -21,7 +21,17 @@ import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
 
 interface Stats {
   total_open: number;
+  /** count(DISTINCT company_token) — FEED TOKENS, i.e. boards, not employers
+   *  (PwC ships five Workday sub-sites). NO LONGER RENDERED: the tile that
+   *  printed it was captioned "companies", and a board count under that word
+   *  overstates employers. Kept on the type because the RPC and a cached
+   *  ghost_stats row still return it. */
   total_companies: number;
+  /** count(DISTINCT company) — employers, boards merged by the raw company
+   *  string, the same key get_size_segments groups on. Optional: a cache row
+   *  written before 20260727180000 has no such column, and the tile then
+   *  shows no number rather than the larger one. */
+  total_company_names?: number | null;
   closed_90d: number;
   /** Median AGE of a posting that is open right now. Still rendered — it is a
    *  fact about the board's stock, not a duration to a fill. */
@@ -520,7 +530,7 @@ export default function GhostJobIndex() {
     <div className="min-h-screen bg-background">
       <SEO
         title="The Ghost Job Index — how many job postings are actually real?"
-        description="A live, honest look at job-posting freshness: how many roles are open right now, how long they stay open, and which companies actually fill roles — computed from companies' official job boards, not aggregators or scrapes."
+        description="A live, honest look at job-posting freshness: how many roles are open right now, how many employers have one, how long postings stay open, and which employers actually fill roles — computed from employers' own official job boards, not aggregators or scrapes."
         path="/ghost-job-index"
       />
       <Header />
@@ -562,8 +572,19 @@ export default function GhostJobIndex() {
             </div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="text-2xl font-bold text-foreground">{statsLoading && !stats ? <Skel /> : fmt(stats?.total_companies)}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">companies, each from its own feed</div>
+            {/* EMPLOYERS, NOT FEEDS. This printed total_companies —
+                count(DISTINCT company_token), one per feed token — under the
+                word "companies", and one employer runs several feeds (76 of
+                the top 1,500 do), so the number overstated employers by
+                every sub-board. total_company_names is in the same payload,
+                counted in the same statement under the same predicate,
+                merged by the raw company string exactly as the size-segments
+                page merges — so this tile and that page cannot disagree
+                about what one employer is. The population is in the caption:
+                a posting the board has not withdrawn, the same rule as the
+                open-roles tile beside it. */}
+            <div className="text-2xl font-bold text-foreground">{statsLoading && !stats ? <Skel /> : fmt(stats?.total_company_names)}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">employers with an open posting — boards merged by name</div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-success">30 days</div>

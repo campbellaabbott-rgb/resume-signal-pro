@@ -34,6 +34,7 @@ export function MultiSelectFilter({
   atMaxNote,
   clearLabel,
   selectedLabel,
+  note,
 }: {
   /** Comma-joined selection, exactly as the URL and the request body carry it. */
   value: string;
@@ -49,6 +50,12 @@ export function MultiSelectFilter({
   clearLabel: string;
   /** Trigger text for 2+ selections, already interpolated with the count. */
   selectedLabel: (n: number) => string;
+  /** THE BASIS FOR THE NUMBERS, stated once, under the rows that print them.
+   *  A count beside a name is a claim about the board; the sentence that says
+   *  which board, under which rule, as of when, belongs where the count is
+   *  read — not in a tooltip on the trigger. Omit it when the options carry
+   *  no counts: a basis line over no numbers is a sentence about nothing. */
+  note?: string;
 }) {
   const selected = useMemo(
     () => value.split(",").map((v) => v.trim()).filter(Boolean),
@@ -139,6 +146,11 @@ export function MultiSelectFilter({
             );
           })}
         </div>
+        {note && (
+          <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground" data-testid="multi-select-note">
+            {note}
+          </p>
+        )}
         {atMax && (
           <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground" role="status">
             {atMaxNote}

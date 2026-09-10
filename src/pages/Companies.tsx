@@ -9,6 +9,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { COMPANY_SCOPE_MAX } from "@/lib/company-scope";
 
 // `open` — the SERVABLE per-employer count, under BOTH serving predicates
 // (not withdrawn, dated inside the last 30 days: migration 20260909214000).
@@ -22,7 +23,35 @@ import { supabase } from "@/integrations/supabase/client";
 // OPTIONAL: a facet pass written before that migration carries no servable
 // number, and then this row prints the employer's name alone rather than a
 // figure the page it links to would contradict.
-interface CompanyChip { token: string; name: string; open?: number }
+// `tokens` — present only where the row IS a group: mergeCompanyFacet folds an
+// employer's sub-boards into one row and SUMS `open` across them, and the
+// board's `company` filter takes the comma-joined group (same contract as
+// scopeTokensOf on /jobs). Linking the primary token alone printed a sum the
+// destination could not serve.
+interface CompanyChip { token: string; name: string; open?: number; tokens?: string[] }
+
+/** The scope a row's `open` was summed over — the whole group when the server
+ *  sent one, the single token otherwise — and whether the link can CARRY it.
+ *
+ *  The /jobs lander keeps at most COMPANY_SCOPE_MAX tokens of a `?company=`
+ *  list, so a group past that is cut at the destination, silently: the row
+ *  would print a sum over N boards above a link that serves the first 12.
+ *  The link is cut HERE instead, where it can be said, and `complete` tells
+ *  the row whether its figure still describes what the link serves. It does
+ *  not when the group was cut — and a number that describes a different
+ *  scope than the one under it is withheld, not printed. Exported so the
+ *  guard can walk it. */
+export function companyRowScope(c: { token: string; tokens?: string[] }): { tokens: string[]; complete: boolean } {
+  const group = Array.isArray(c.tokens) && c.tokens.length > 1
+    ? c.tokens.filter((t): t is string => typeof t === "string" && t !== "")
+    : [c.token];
+  const tokens = group.slice(0, COMPANY_SCOPE_MAX);
+  return { tokens, complete: tokens.length === group.length };
+}
+/** The tokens the row links — the group, cut to what the lander keeps. */
+export function companyLinkScope(c: { token: string; tokens?: string[] }): string[] {
+  return companyRowScope(c).tokens;
+}
 
 export default function Companies() {
   const [companies, setCompanies] = useState<CompanyChip[]>([]);
@@ -79,10 +108,12 @@ export default function Companies() {
             <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2 text-sm">
               {companies.map((c) => (
                 <li key={c.token}>
-                  <Link to={`/jobs?company=${encodeURIComponent(c.token)}`} className="text-primary hover:underline">
+                  <Link to={`/jobs?company=${encodeURIComponent(companyLinkScope(c).join(","))}`} className="text-primary hover:underline">
                     {c.name}
                   </Link>{" "}
-                  {typeof c.open === "number"
+                  {/* ONLY WHEN THE LINK SERVES THE WHOLE GROUP `open` was
+                      summed over; a cut group prints the name alone. */}
+                  {typeof c.open === "number" && companyRowScope(c).complete
                     ? <span className="text-muted-foreground">— {c.open.toLocaleString()} open roles</span>
                     : null}
                 </li>

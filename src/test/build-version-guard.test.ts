@@ -267,6 +267,11 @@ const PINNED = {
   // dead-chain watchdog (chain-watchdog.ts, from maybeKickMaintenance AND
   // status, chain_watchdog stamp), and status publishing the freshness
   // rollup's dark_boards bucket (migration 20260909221000).
+  // 2026-09-09.70: index.ts only — sources.ts UNCHANGED (the hash below
+  // still pins the .68 dedupe; no board waits on the bootstrap lane). The
+  // head row carries sourcesFacet and the facets action forwards it as
+  // `sources` + `sourcesAt` for the vendor dropdown's inventory; the coverage
+  // disclosure emits workMode for the legacy remote=1 binding as well.
   sourcesHash: "bf3535d300ace24f",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
@@ -1173,7 +1178,7 @@ const PINNED = {
   //   isLight is token-keyed, so enrolling greenhouse `antenna` turned the
   //   WORKABLE `antenna` light too. Plus fix C, so the descriptions a refused
   //   board defers have a lane that fills them.
-  buildVersion: "2026-09-09.69",
+  buildVersion: "2026-09-09.70",
 };
 
 /**

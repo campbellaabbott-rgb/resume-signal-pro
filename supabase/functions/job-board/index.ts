@@ -141,7 +141,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.69"; // .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.70"; // .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -7174,6 +7174,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           ...(pv.companiesOpen && typeof pv.companiesOpen === "object"
             ? { companiesOpen: pv.companiesOpen, companiesOpenCount: pv.companiesOpenCount }
             : {}),
+          // The per-source map rides the carry by the same rule: present only
+          // when the previous row had it, absent otherwise, so the vendor
+          // dropdown falls silent rather than printing a stale-or-empty map.
+          ...(pv.sourcesFacet && typeof pv.sourcesFacet === "object" && !Array.isArray(pv.sourcesFacet)
+            ? { sourcesFacet: pv.sourcesFacet }
+            : {}),
         };
         facetsCarried = true;
       } else {
@@ -7714,6 +7720,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       ...(f.companiesOpen && typeof f.companiesOpen === "object" ? { companiesOpen: f.companiesOpen } : {}),
       ...(typeof f.companiesOpenCount === "number" ? { companiesOpenCount: f.companiesOpenCount } : {}),
       categoriesFacet: f.categoriesFacet ?? {},
+      // source -> servable count, same pass, same two serving predicates as
+      // categoriesFacet (migration 20260909214000). Spread only when the pass
+      // produced it: an absent key is what the vendor dropdown reads as
+      // "publish no number", and an empty map would read as twenty zeros.
+      ...(f.sourcesFacet && typeof f.sourcesFacet === "object" && !Array.isArray(f.sourcesFacet)
+        ? { sourcesFacet: f.sourcesFacet }
+        : {}),
       ...(coverage ? { coverage } : {}),
       // Facet fields above are LAST pass's, carried through an aggregate
       // failure so the upsert-replaces-whole-v write cannot clobber them —
@@ -7777,6 +7790,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // slice size as a fact about the board.
       ...(typeof (v as { companiesOpenCount?: number }).companiesOpenCount === "number"
         ? { companiesOpenCount: (v as { companiesOpenCount?: number }).companiesOpenCount }
+        : {}),
+      // sourcesFacet RIDES THE HEAD ROW WHOLE, and that is not a contradiction
+      // of the size note above: it is one entry per SOURCE — twenty keys, a
+      // few hundred bytes — not one per employer. It is the servable count
+      // per vendor under the same two predicates as categoriesFacet, taken in
+      // the same pass, and the facets action forwards it to the vendor
+      // dropdown so each source can print its inventory. Spread only when the
+      // fat row has it, so a pre-migration pass leaves the key absent rather
+      // than publishing an empty map as twenty zeros.
+      ...((v as { sourcesFacet?: unknown }).sourcesFacet
+          && typeof (v as { sourcesFacet?: unknown }).sourcesFacet === "object"
+          && !Array.isArray((v as { sourcesFacet?: unknown }).sourcesFacet)
+        ? { sourcesFacet: (v as { sourcesFacet?: Record<string, number> }).sourcesFacet }
         : {}),
       // ORDERED BY WHAT IS OPEN, once we know it. The old ordering (raw facet
       // count) put a board with 4,000 withdrawn postings and none open at the
@@ -9697,6 +9723,7 @@ function coverageDisclosure(
     department?: string | null;
     vendors?: string[];
     employmentType?: string | null;
+    remote?: boolean;
   },
   meta?: { v: Record<string, unknown> } | null,
 ): Record<string, unknown> {
@@ -9753,7 +9780,12 @@ function coverageDisclosure(
   // constant. Two constants for one column is how a number goes stale on one of
   // its two readers.
   if (applied.salaryCeiling != null && typeof cov.salaryFloor === "number") out.salaryCeiling = cov.salaryFloor;
-  if (applied.workMode != null && typeof cov.workMode === "number") out.workMode = cov.workMode;
+  // THE LEGACY remote=1 IS A WORK-MODE FILTER TOO. It binds `remote = true`,
+  // which is NULL-false for every posting that states no mode — the same
+  // rows the mode filter hides — so an old saved search or a digest link
+  // narrowed the board to the stated-mode slice and got no coverage sentence
+  // for it. Same column, same figure, same disclosure.
+  if ((applied.workMode != null || applied.remote === true) && typeof cov.workMode === "number") out.workMode = cov.workMode;
   if (applied.experience?.length && typeof cov.experience === "number") out.experience = cov.experience;
   // Country was the one filter of the four with no caveat, and it is the
   // thinnest on several vendors. Teamtailor was cited here as stating a
@@ -11842,6 +11874,17 @@ Deno.serve(async (req) => {
         // publishes nothing -- the same shape rankedFellBack uses.
         ...(fv.facetsCarried ? { facetsCarried: true, facetsCarriedAt: (fv.facetsCarriedAt as string) ?? null } : {}),
         totalAllCompanies: ((fv.coverage as { open?: number } | undefined)?.open ?? null),
+        // THE PER-SOURCE INVENTORY, board-wide, under the SAME stamp as the
+        // categories above (and the same carried flag when the pass failed).
+        // Exact counts from jsonb_object_agg under both serving predicates —
+        // never the 10,000 list cap, so no `capped` rides with them. Deploy
+        // window: a head row written before this build has no sourcesFacet,
+        // and the reply says NULL rather than {} — null is what the dropdown
+        // reads as "print nothing", an empty map would read as twenty zeros.
+        sources: (fv.sourcesFacet && typeof fv.sourcesFacet === "object" && !Array.isArray(fv.sourcesFacet))
+          ? (fv.sourcesFacet as Record<string, number>)
+          : null,
+        sourcesAt: (fv.refreshedAt as string) ?? null,
       }, 200);
     }
 

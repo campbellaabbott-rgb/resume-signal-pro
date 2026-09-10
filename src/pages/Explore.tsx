@@ -129,6 +129,7 @@ import { Footer } from "@/components/Footer";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { supabase } from "@/integrations/supabase/client";
+import { readBoardFacets } from "@/lib/board-facets";
 // THE SKIP-LINK RECOVERY, FROM src/lib RATHER THAN FROM Jobs.tsx. It was
 // declared in Jobs.tsx and importing it from there would pull that 10.6k-line
 // board page — every control, the detail panel, the fit scorer — into this
@@ -715,30 +716,30 @@ interface BoardFacet {
   countedAt: string | null;
 }
 
-/** How long the grid waits for its numbers before saying it could not get them.
+/** THE READ ITSELF LIVES IN src/lib/board-facets.ts — one request, one
+ *  deadline, one validated shape — because the vendor dropdown on /jobs now
+ *  reads the same row for its per-source inventory, and two copies of the
+ *  reader are how the two pages' numbers start disagreeing about a stamp.
  *
  *  A FAILURE MUST BE FAST AND STATED, NOT A LONG BLANK GRID. The old read had
  *  no client deadline at all, and the edge function's own notes record a
  *  {limit:1} list call measured at 30,728ms during the 2026-08-30 saturation
  *  incident. Eighteen tiles render no numbers until this resolves, on a page
  *  that is prerendered and sitemapped daily — so an unbounded wait shows a
- *  reader a grid of bare labels with no explanation for half a minute.
- *  action:"facets" is one indexed single-row read and should answer in
- *  milliseconds; if it has not answered in six seconds something is wrong, and
- *  basisNone says so truthfully. */
-const FACET_DEADLINE_MS = 6000;
-
+ *  reader a grid of bare labels with no explanation for half a minute. The
+ *  shared reader's deadline is six seconds; if the one indexed single-row read
+ *  has not answered by then something is wrong, and basisNone says so
+ *  truthfully.
+ *
+ *  What stays HERE is this page's own rule on top of the shared shape: a
+ *  category map with no positive entry, or a row with no stamp, is a failed
+ *  read for the tiles. */
 async function readCategoryFacet(): Promise<BoardFacet | null> {
   try {
-    const { data, error } = await Promise.race([
-      supabase.functions.invoke("job-board", { body: { action: "facets" } }),
-      new Promise<{ data: null; error: true }>((res) =>
-        setTimeout(() => res({ data: null, error: true }), FACET_DEADLINE_MS)),
-    ]);
-    if (error) return null;
-    const r = (data ?? null) as { categories?: unknown; refreshedAt?: unknown; facetsCarried?: unknown; facetsCarriedAt?: unknown } | null;
-    const raw = r?.categories;
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const r = await readBoardFacets();
+    if (!r) return null;
+    const raw = r.categories;
+    if (!raw) return null;
     const out: Record<string, number> = {};
     for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
       // A ZERO OR A NON-NUMBER IS NOT A TILE NUMBER. The facet omits a category
@@ -760,7 +761,7 @@ async function readCategoryFacet(): Promise<BoardFacet | null> {
     // board's own scan". Eighteen exact integers with no date basis at all,
     // presented as though they had one. facetFailed already has the sentence
     // for a read we could not make; this IS one.
-    const at = r?.refreshedAt;
+    const at = r.refreshedAt;
     if (typeof at !== "string" || at === "") return null;
     // CARRIED COUNTS ARE LAST PASS'S, UNDER THIS PASS'S STAMP.
     //
@@ -772,11 +773,11 @@ async function readCategoryFacet(): Promise<BoardFacet | null> {
     // so — facetsCarried, and facetsCarriedAt, which IS the time they were
     // counted — and the sentence below prints that instead of the false one.
     // Measured failure window: 4+ hours on 2026-08-29.
-    const carriedAt = r?.facetsCarriedAt;
+    const carriedAt = r.carriedAt;
     return {
       categories: out,
       at,
-      carried: r?.facetsCarried === true,
+      carried: r.carried,
       countedAt: typeof carriedAt === "string" && carriedAt !== "" ? carriedAt : null,
     };
   } catch {

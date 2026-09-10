@@ -142,6 +142,29 @@ describe("locale files", () => {
    * hhBadgeTipObserved, the three department-box keys) came out of all nine, in
    * the same change — so both lists are empty and no key is exempt.
    */
+  /* ── 2026-09-10, the locale-capable pass ──────────────────────────────────
+   * CLOSED. Seven new keys, each minted because a sentence's MEANING changed
+   * or a number gained a basis:
+   *   jobsPage.vendorTip2         the vendor tooltip now says what the number
+   *                               beside each source is (vendorTip retired)
+   *   jobsPage.vendorCountsBasis  the basis line on the vendor control, {{when}}
+   *   jobsPage.discWorkMode2      same words, the number under it is now the
+   *                               postings that state NO mode (discWorkMode
+   *                               retired — it counted stated hybrid/on-site
+   *                               rows as "don't say")
+   *   jobsPage.coverageEmploymentType  the eleventh coverage clause, {{pct}}
+   *   jobsPage.filterName.employmentType  the filter's name for the ignored-
+   *                               filters warning
+   *   jobsPage.hiddenByViews      what Saved / Hide viewed / Hide applied took
+   *                               off the page, {{count}} {{views}}
+   *   boardHero.rankCta2          the hero's second CTA says what happens
+   *                               (a résumé drop) instead of promising a rank
+   * The translations landed in all nine locales in the same change (the
+   * window this file opened for them expired the moment they did — the
+   * assertion below flagged every key, which is the mechanism working), and
+   * the four retired keys (vendorTip, discWorkMode, welcomeFillers — called by
+   * nothing since the welcome panel reuses hiringFilter2 — and rankCta, which
+   * was never in a locale file) came out of all nine. Both lists are empty. */
   const PENDING_TRANSLATION: string[] = [];
   const RETIRED_PENDING: string[] = [];
   const PARITY_EXEMPTION_CAP = 40;
