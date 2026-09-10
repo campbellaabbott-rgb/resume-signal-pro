@@ -150,8 +150,12 @@ describe("at-cap boards need a fast lane", () => {
     // integers, so an object-valued key is inert to them. This is the whole
     // reason it is safe to store instrumentation in the row it measures.
     expect(CODE).toMatch(/__lane: deepLane/);
-    // Refresh-side reader.
-    expect(CODE).toMatch(/if \(Number\.isInteger\(n\) && \(n as number\) > 0\) out\[k\] = n as number;/);
+    // Refresh-side reader: a Map since .69 (a token named 'constructor' read a
+    // function from the Record form), bridged by token-map.ts, whose filter
+    // is the same positive-integer rule.
+    expect(CODE).toMatch(/const deepCursors: Map<string, number> = tokenMapFromRecord\(deepCursorRow\);/);
+    const BRIDGE = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/token-map.ts"), "utf8");
+    expect(BRIDGE).toMatch(/if \(Number\.isInteger\(n\) && \(n as number\) > 0\) out\.set\(k, n as number\);/);
     // Status-side reader.
     expect(CODE).toMatch(/const entries = Object\.entries\(v\)\.filter\(\(\[, n\]\) => typeof n === "number" && n > 0\);/);
 

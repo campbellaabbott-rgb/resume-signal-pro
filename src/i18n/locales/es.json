@@ -4798,5 +4798,10 @@
     "reassure": "Análisis gratis · sin tarjeta, sin registro",
     "exploreCta": "Explorar por campo",
     "statCompanyBoards": "portales de empleo de empresas con vacantes"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "El {{pct}}% de las vacantes con fecha de {{field}} publicadas entre {{cohortFrom}} y {{cohortTo}} seguían anunciadas al llegar a nuestro tope de 30 días (n={{n}}, ±{{hw}} puntos); como mucho el {{r}}% había sido retirado definitivamente y al menos el {{x}}% vuelto a publicar. Contado solo en portales que leemos hasta el final.",
+    "stillUp30Unread": "{{n}} de los campos listados aquí — {{fields}} — no tienen lectura de la proporción que seguía anunciada en nuestro tope de 30 días: en los portales que podemos leer hasta el final, muy pocas de sus vacantes con fecha llegaron al tope como para dar una proporción que podamos respaldar.",
+    "capTileWithReading": "nuestro tope de frescura — una vacante cuya fecha declarada por la empresa supera los 30 días sale del tablero. La proporción que sigue anunciada al llegar al tope es la línea del día 30 en la tabla de campos de abajo."
   }
 }

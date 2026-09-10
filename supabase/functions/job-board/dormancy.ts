@@ -54,6 +54,26 @@ export interface BoardFailureState {
 }
 
 /**
+ * THE ONLY WAY A TOKEN-KEYED RECORD IS READ IN THIS MODULE.
+ *
+ * Every map above is a JSON object keyed by board token, and a token can be
+ * any property name of Object.prototype. 'constructor' is one — a real,
+ * catalogued ashby board — and until 2026-09-10 `dormant[t]` for it returned
+ * Object (a function), `now - since` was NaN, `NaN >= recheckMs` was false,
+ * and the board was skipped as "dormant, not due" on every cold slice since
+ * the skip-list shipped (2026-07-14). Its stamp aged to 14.6 days, the oldest
+ * on the board, with nothing anywhere saying why.
+ *
+ * An OWN-property read cannot do that: an inherited name is not an own key,
+ * so an empty map has no 'constructor'. The persisted shape stays a Record
+ * (that is what job_board_meta stores and what index.ts spreads), the reads
+ * go through here, and the guard test refuses any bracket read of these maps
+ * by a token key that is not hasOwn-guarded. The ES5 spelling, because this
+ * module is also type-checked under the app's ES2020 lib by vitest's tsc.
+ */
+const own = (rec: Record<string, number>, t: string): number | undefined => (Object.prototype.hasOwnProperty.call(rec, t) ? rec[t] : undefined);
+
+/**
  * How long to wait before retrying a board that just failed, by streak.
  *
  * EXPONENTIAL, AND THAT IS THE POINT. A retry is not free: a dead feed burns the
@@ -96,9 +116,9 @@ export function selectRetries(params: {
 }): string[] {
   const due: Array<{ token: string; overdueBy: number }> = [];
   for (const [token, at] of Object.entries(params.failedAt)) {
-    if (params.dormant[token] != null) continue;      // dormancy owns its cadence
+    if (own(params.dormant, token) != null) continue;  // dormancy owns its cadence
     if (params.exclude.has(token)) continue;           // already in this slice
-    const streak = params.streaks[token] ?? 1;
+    const streak = own(params.streaks, token) ?? 1;
     const overdueBy = params.now - at - retryBackoffMs(streak);
     if (overdueBy >= 0) due.push({ token, overdueBy });
   }
@@ -128,7 +148,7 @@ export function classifyDormancy(
   const skip = new Set<string>();
   const recheck = new Set<string>();
   for (const t of tokens) {
-    const since = dormant[t];
+    const since = own(dormant, t);
     if (since == null) continue; // active board — fetch normally
     if (now - since >= recheckMs) recheck.add(t); // due for a recovery probe
     else skip.add(t); // dormant and not due — skip the dead fetch
@@ -193,14 +213,16 @@ export function updateBoardFailures(params: {
       delete firstFailedAt[t];
       continue;
     }
-    streaks[t] = (streaks[t] ?? 0) + 1;
+    const streak = (own(streaks, t) ?? 0) + 1;
+    streaks[t] = streak;
     failedAt[t] = params.now;
     // A board carrying no start-of-streak stamp starts its clock NOW. That is
     // deliberately the conservative direction: state written before this field
     // existed delays a prune by up to the floor, and never accelerates one.
-    if (firstFailedAt[t] == null) firstFailedAt[t] = params.now;
-    const failingFor = params.now - firstFailedAt[t];
-    if (streaks[t] >= params.deadThreshold && failingFor >= params.minFailureAgeMs) {
+    const firstAt = own(firstFailedAt, t) ?? params.now;
+    firstFailedAt[t] = firstAt;
+    const failingFor = params.now - firstAt;
+    if (streak >= params.deadThreshold && failingFor >= params.minFailureAgeMs) {
       toPrune.push(t);
       delete streaks[t];
       delete failedAt[t];      // handed over to the dormant probe cadence

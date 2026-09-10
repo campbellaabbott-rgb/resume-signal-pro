@@ -1023,14 +1023,38 @@ describe("Ghost Job Index age stats use the company's date, not our discovery ti
       .toMatch(/\{FILL_HORIZON_DAYS\} days/);
     expect(head, "the caption must say what happens to roles that outlive the cap")
       .toMatch(/roles that passed our 30-day cap,\s+are\s+counted as unfinished rather than left out/);
+    // 2026-09-10: THE CENSORED-MEDIAN SENTENCE SAID THE WRONG SHARE. It read
+    // "more than half the roles we tracked were still up at 30 days", and
+    // median_censored is not that: it is R(30) < 0.5, the fill arm alone
+    // failing to reach one half, which a field with 30% re-listed and 25%
+    // still advertised satisfies. The share still advertised at the cap is
+    // S(30), which now has its own line on each row through day30Reading, so
+    // the median sentence must name the arm it measures and may not borrow
+    // the other one's words. The guard moved with the sentence.
     expect(head, "a censored median must be reported as a finding, not omitted")
-      .toMatch(/still up at 30 days/);
+      .toMatch(/fewer than half the roles we tracked had been taken down for good by day 30/);
+    expect(head, "the censored median may not be captioned as the share still up at the cap — that is S(30), a different arm")
+      .not.toMatch(/more than half the roles we tracked were still up/);
     // (3) …and the methodology entry must explain WHY the bound exists, or the
     //     number reads as a fact about hiring speed rather than about this
     //     board. The term was renamed with the statistic it describes.
     const method = page.slice(page.indexOf('term: "How often roles are actually filled"'));
     expect(method, "the methodology term was renamed again — re-anchor it").not.toBe("");
     expect(method.slice(0, 1800)).toMatch(/drops any posting older than 30 days|structural/);
+    const methodEntry = method.slice(0, method.indexOf("\n"));
+    expect(methodEntry, "the fill entry's no-median clause must name R(30), not the share still up")
+      .toMatch(/fewer than half of a field's roles had been taken down for good by day 30/);
+    expect(methodEntry).not.toMatch(/more than half of a field's roles were still up/);
+    // (4) The cap's own methodology entry says what the cap is AND that the
+    //     share still advertised at the cap is a reading of its own, counted
+    //     only on boards read to the end, and not proof about the employer.
+    const capEntry = page.slice(page.indexOf('term: "30-day freshness cap"'));
+    expect(capEntry, "the cap term was renamed — re-anchor it").not.toBe("");
+    const capMethod = capEntry.slice(0, capEntry.indexOf("\n"));
+    expect(capMethod).toMatch(/dropped at ingestion AND filtered at read time/);
+    expect(capMethod).toMatch(/still advertised when they reached day 30/);
+    expect(capMethod).toMatch(/only on boards we read to the end/);
+    expect(capMethod).toMatch(/not proof of anything about the employer/);
   });
 
   it("every surface quoting time-to-close states the 30-day window", () => {
@@ -2061,7 +2085,9 @@ describe("filters send and show one honest definition", () => {
     // Measured: freshness narrowed 3,940 -> 965 then reverted to 3,940 after
     // reloading the app's OWN url; ?sort=salary survived 0 of 1 mounts.
     expect(jobs).toMatch(/p\.set\("fresh", freshness\)/);
-    expect(jobs).toMatch(/p\.set\("sort", sortMode\)/);
+    // The sort write is ONE predicate now — salary, or newest-first under a
+    // query — so the URL, the body and both lander gates read the same value.
+    expect(jobs).toMatch(/if \(sortParam\) p\.set\("sort", sortParam\)/);
     expect(jobs).toMatch(/p\.set\("from", fromParam\)/);
   });
 

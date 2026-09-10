@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -55,6 +55,14 @@ export function MultiSelectFilter({
     [value],
   );
   const atMax = selected.length >= max;
+  // WHERE FOCUS LANDS ON OPEN. Radix moves focus to the first tabbable thing
+  // inside the content, which is the first row — and the global focus ring
+  // (2px outline, 2px offset) drawn around a row inside a list that scrolls
+  // is clipped on both sides by that overflow, leaving two bars above and
+  // below the row and, on this theme, no visible box beside them. Focus goes
+  // to the list itself instead: still inside the menu, so Tab reaches every
+  // row and Escape closes it, but no row is pre-selected by a ring.
+  const listRef = useRef<HTMLDivElement>(null);
 
   const toggle = (v: string) => {
     const has = selected.includes(v);
@@ -93,8 +101,12 @@ export function MultiSelectFilter({
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
-        <div className="max-h-72 overflow-y-auto py-1" role="group" aria-label={ariaLabel}>
+      <PopoverContent
+        align="start"
+        className="w-64 p-0"
+        onOpenAutoFocus={(e) => { e.preventDefault(); listRef.current?.focus(); }}
+      >
+        <div ref={listRef} tabIndex={-1} className="max-h-72 overflow-y-auto py-1 focus:outline-none" role="group" aria-label={ariaLabel}>
           {options.map((o) => {
             const on = selected.includes(o.value);
             // Disabled only for ADDING past the cap — an already-chosen option
@@ -108,11 +120,15 @@ export function MultiSelectFilter({
                 aria-checked={on}
                 disabled={blocked}
                 onClick={() => toggle(o.value)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm focus-visible:outline-offset-[-2px] ${
                   blocked ? "opacity-40 cursor-not-allowed" : "hover:bg-muted"
                 }`}
               >
-                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${on ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
+                {/* The unselected box borders in the muted-foreground token at
+                    70%, not the border token: --border is 14% lightness on a
+                    9% popover surface and the box could not be seen at all on
+                    the dark theme. The selected rendering is unchanged. */}
+                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${on ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/70"}`}>
                   {on && <Check className="h-3 w-3" aria-hidden="true" />}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>

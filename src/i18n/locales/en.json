@@ -4798,5 +4798,10 @@
     "reassure": "Free scan · no card, no signup",
     "exploreCta": "Explore by field",
     "statCompanyBoards": "company job boards hiring"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end.",
+    "stillUp30Unread": "{{n}} of the fields listed here — {{fields}} — have no reading of the share still advertised at our 30-day cap: on the boards we can read to the end, too few of their dated roles reached the cap for a share we would stand behind.",
+    "capTileWithReading": "our freshness cap — a posting whose company-stated date passes 30 days leaves the board. The share still advertised on reaching the cap is the day-30 line in the field table below."
   }
 }

@@ -51,7 +51,7 @@ describe("nothing bounded the sum", () => {
     const skip = CODE.indexOf("if (skipTokens.has(s.token)) continue;");
     const budget = CODE.indexOf("if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }");
     // .32 wrapped the fetch in try/finally to release the in-flight reservation.
-    const fetch = CODE.indexOf("r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0);");
+    const fetch = CODE.indexOf("r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0);");
     expect(budget, "budget check missing").toBeGreaterThan(0);
     expect(budget, "budget check must follow the dormancy skip").toBeGreaterThan(skip);
     expect(fetch, "budget check must precede the fetch it prevents").toBeGreaterThan(budget);
@@ -85,7 +85,8 @@ describe("nothing bounded the sum", () => {
     // Under the budget the tail of this list is what gets deferred. The
     // cursor-bearing base carries the freshness claim; the lane's fill rate
     // does not. This is the .21 trade made on purpose.
-    expect(CODE).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.baseSlice, \.\.\.deepBoards\];/);
+    // .69 added the stale lane between retry and base; deep is still last.
+    expect(CODE).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\];/);
   });
 
   it("records the outcome where status already looks", () => {
@@ -99,6 +100,6 @@ describe("nothing bounded the sum", () => {
   it("does not gate deep-lane ENTRY — that would turn the cap into a truncation", () => {
     // The lane is the only thing that resumes a capped board. Entry must stay
     // "any board that reports nextOffset > 0", vendor-agnostic.
-    expect(CODE).toMatch(/if \(r\.nextOffset > 0\) \{ if \(prev !== r\.nextOffset\) \{ deepCursors\[s\.token\] = r\.nextOffset; deepCursorsDirty = true; \} \}/);
+    expect(CODE).toMatch(/if \(r\.nextOffset > 0\) \{ if \(prev !== r\.nextOffset\) \{ deepCursors\.set\(s\.token, r\.nextOffset\); deepCursorsDirty = true; \} \}/);
   });
 });

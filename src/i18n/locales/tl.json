@@ -4798,5 +4798,10 @@
     "reassure": "Libreng scan · walang card, walang signup",
     "exploreCta": "Tuklasin ayon sa larangan",
     "statCompanyBoards": "job board ng kumpanyang naghi-hire"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "{{pct}}% ng mga may-petsang posisyon sa {{field}} na na-post mula {{cohortFrom}} hanggang {{cohortTo}} ay nakapaskil pa rin nang umabot sa aming 30-araw na hangganan (n={{n}}, ±{{hw}} puntos); hindi hihigit sa {{r}}% ang tuluyang naalis at hindi bababa sa {{x}}% ang muling na-post. Binilang lamang sa mga board na nababasa namin hanggang dulo.",
+    "stillUp30Unread": "{{n}} sa mga larangang nakalista rito — {{fields}} — ang walang sukat ng bahaging nakapaskil pa rin sa aming 30-araw na hangganan: sa mga board na nababasa namin hanggang dulo, masyadong kakaunti ang kanilang may-petsang posisyon na umabot sa hangganan para sa isang bahaging mapapanindigan namin.",
+    "capTileWithReading": "ang aming freshness cap — inaalis sa board ang posting na lampas 30 araw na ang petsang isinaad ng kumpanya. Ang bahaging nakapaskil pa rin pagdating sa hangganan ay ang linya ng ika-30 araw sa talahanayan ng mga larangan sa ibaba."
   }
 }

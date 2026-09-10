@@ -4798,5 +4798,10 @@
     "reassure": "Gratis scan · geen kaart, geen registratie",
     "exploreCta": "Verkennen op vakgebied",
     "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "{{pct}}% van de gedateerde vacatures in {{field}}, geplaatst tussen {{cohortFrom}} en {{cohortTo}}, stond nog online bij het bereiken van onze grens van 30 dagen (n={{n}}, ±{{hw}} punten); hoogstens {{r}}% was definitief verwijderd en minstens {{x}}% opnieuw geplaatst. Alleen geteld op borden die we tot het einde lezen.",
+    "stillUp30Unread": "Voor {{n}} van de hier vermelde vakgebieden — {{fields}} — is er geen meting van het aandeel dat bij onze grens van 30 dagen nog online stond: op de borden die we tot het einde kunnen lezen, bereikten te weinig van hun gedateerde vacatures de grens voor een aandeel waar we achter staan.",
+    "capTileWithReading": "onze versheidsgrens — een vacature waarvan de door het bedrijf opgegeven datum 30 dagen overschrijdt, verlaat het bord. Het aandeel dat bij het bereiken van de grens nog online staat, is de dag-30-regel in de vakgebiedentabel hieronder."
   }
 }

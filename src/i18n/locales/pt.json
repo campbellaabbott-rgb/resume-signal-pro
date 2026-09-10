@@ -4798,5 +4798,10 @@
     "reassure": "Análise grátis · sem cartão, sem registo",
     "exploreCta": "Explorar por área",
     "statCompanyBoards": "portais de emprego de empresas a contratar"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "{{pct}}% das vagas datadas de {{field}} publicadas entre {{cohortFrom}} e {{cohortTo}} ainda estavam anunciadas ao atingir o nosso limite de 30 dias (n={{n}}, ±{{hw}} pontos); no máximo {{r}}% tinham sido retiradas em definitivo e pelo menos {{x}}% republicadas. Contado apenas em portais que lemos até ao fim.",
+    "stillUp30Unread": "{{n}} das áreas listadas aqui — {{fields}} — não têm leitura da parcela ainda anunciada no nosso limite de 30 dias: nos portais que conseguimos ler até ao fim, demasiado poucas das suas vagas datadas chegaram ao limite para uma parcela que possamos defender.",
+    "capTileWithReading": "o nosso limite de frescura — uma vaga cuja data declarada pela empresa ultrapassa 30 dias sai do portal. A parcela ainda anunciada ao atingir o limite é a linha do dia 30 na tabela de áreas abaixo."
   }
 }

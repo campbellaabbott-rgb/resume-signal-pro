@@ -254,6 +254,19 @@ const PINNED = {
   // site, so a sub-site-only requisition survives and a mirror costs a fetch,
   // not a row. The removed tokens' stored rows leave through the orphan
   // prune as 'untracked' once migration 20260909216000 lowers the mark.
+  // 2026-09-09.69: index.ts, dormancy.ts and two new pure modules —
+  // sources.ts UNCHANGED (the hash below still pins the .68 dedupe; no
+  // board waits on the bootstrap lane). Bumped so the deploy is externally
+  // identifiable, and because four of the five live Object.prototype traps
+  // close in the fetch path: deepCursors is a Map bridged by token-map.ts,
+  // the companiesOpen facet read is hasOwn-guarded, dormancy.ts reads its
+  // three token-keyed maps through own(). 'constructor' — a catalogued
+  // ashby board skipped as dormant on every cold slice since 2026-07-14 —
+  // fetches again. Rides along: the stale lane wired (stale-lane.ts, cold
+  // slices only, get_stalest_boards once per hop, staleLane on status), the
+  // dead-chain watchdog (chain-watchdog.ts, from maybeKickMaintenance AND
+  // status, chain_watchdog stamp), and status publishing the freshness
+  // rollup's dark_boards bucket (migration 20260909221000).
   sourcesHash: "bf3535d300ace24f",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
@@ -1160,7 +1173,7 @@ const PINNED = {
   //   isLight is token-keyed, so enrolling greenhouse `antenna` turned the
   //   WORKABLE `antenna` light too. Plus fix C, so the descriptions a refused
   //   board defers have a lane that fills them.
-  buildVersion: "2026-09-09.68",
+  buildVersion: "2026-09-09.69",
 };
 
 /**

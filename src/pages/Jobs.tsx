@@ -2159,7 +2159,13 @@ export default function Jobs() {
   const [sortMode, setSortMode] = useState<"newest" | "salary">(() => (initial.get("sort") === "salary" ? "salary" : "newest"));
   // S3: search results default to relevance ranking; this flips them to
   // strict newest-first (server bypasses the ranked path).
-  const [searchNewestFirst, setSearchNewestFirst] = useState(false);
+  // READ ON MOUNT AS WELL AS WRITTEN. Under a query this toggle is the whole
+  // of the order the select shows ("Newest first" vs relevance), and until it
+  // was written to the address bar a reload or a shared link silently served
+  // relevance under a select that had said Newest. Read only alongside a
+  // query, mirroring the write: without a query the body sends no sort and
+  // the URL carries none.
+  const [searchNewestFirst, setSearchNewestFirst] = useState(() => initial.get("sort") === "newest" && !!initial.get("q"));
   const [fitRanking, setFitRanking] = useState(false);
   // Role titles read out of the dropped résumé. Shown, never hidden: the board
   // searched for something the reader did not type, so it has to say what.
@@ -2347,6 +2353,19 @@ export default function Jobs() {
   }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
+  // THE TRAY COUNTS ROWS THAT ARE ON THE PAGE. compareIds index `jobs`, and a
+  // refetch, a narrowed filter or Clear all can drop a compared row from the
+  // list while its id stayed in the tray — "Comparing 3 of 3" over a sheet
+  // that could only find two of them. Pruned whenever the list changes; a
+  // functional update returns the same array when nothing left, so this never
+  // re-renders the tray for a list that kept every compared row.
+  useEffect(() => {
+    setCompareIds((prev) => {
+      if (prev.length === 0) return prev;
+      const kept = prev.filter((id) => jobs.some((j) => j.id === id));
+      return kept.length === prev.length ? prev : kept;
+    });
+  }, [jobs]);
   /** How many of the RENDERED postings actually carry a numeric fit.
    *
    *  The ranking claim is derived from this, never from the `fitRanking`
@@ -3057,6 +3076,14 @@ export default function Jobs() {
     [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions],
   );
 
+  // THE SURVIVING HISTORY ENTRY CAN BE STALE. Opening the detail panel pushes
+  // a ?job= entry; every filter change made while it is open is written by
+  // the effect below with replaceState — onto THAT entry. Closing the panel
+  // pops it, and the entry that becomes current still carries the filters as
+  // they were before the panel opened, while the state (and the request body)
+  // carry the new ones. Bumped by the popstate handler after a pushed panel
+  // is popped, so the effect re-runs from state and rewrites the survivor.
+  const [urlSyncTick, setUrlSyncTick] = useState(0);
   // Keep the URL shareable — filters in, defaults out. A category lander
   // (/jobs/field/engineering) keeps its crawlable URL while its category is
   // the only active filter; touching any other filter moves to query form.
@@ -3064,7 +3091,10 @@ export default function Jobs() {
     const p = new URLSearchParams();
     if (q) p.set("q", q);
     if (location) p.set("location", location);
-    if (remoteOnly) p.set("remote", "1");
+    // Gated exactly as boardFilterBody gates the body's `remote` key: under a
+    // work mode the toggle sends nothing, so the address bar must not claim
+    // it either.
+    if (remoteOnly && !workMode) p.set("remote", "1");
     if (workMode) p.set("mode", workMode);
     if (company) p.set("company", company);
     if (category) p.set("category", category);
@@ -3107,7 +3137,14 @@ export default function Jobs() {
     // 3,940 after reloading the app's OWN url; ?sort=salary survived 0 of 1
     // mounts, which also broke Explore's "Where the pay is" links.
     if (freshness) p.set("fresh", freshness);
-    if (sortMode === "salary") p.set("sort", sortMode);
+    // ONE PREDICATE, the body's own: the salary sort, or newest-first under a
+    // query. Newest-first was never written here — it lived only in
+    // searchNewestFirst — so a reload or a shared link reverted to relevance
+    // while the select had shown Newest. The same predicate gates both lander
+    // forms below, so a lander cannot swallow a sort the way it once
+    // swallowed activelyHiring.
+    const sortParam = sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : "";
+    if (sortParam) p.set("sort", sortParam);
     // `from` is only read into state at mount, so this rewrite stripped it and
     // took the Back-to-Explore affordance with it.
     const fromParam = new URLSearchParams(window.location.search).get("from");
@@ -3165,16 +3202,16 @@ export default function Jobs() {
     // "Actively hiring" on rewrote the bare lander URL and a reload or shared
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && sortMode !== "salary") {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !sortParam) {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && sortMode !== "salary") {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !sortParam) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
     window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, landerCategory, landerCompany]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany]);
 
   // Category salary benchmarks: median advertised pay floor per field, computed
   // live from postings that state pay (RPC self-gates at n>=30 — a thin sample
@@ -3508,7 +3545,9 @@ export default function Jobs() {
     setDetailJob(null);
     if (!viaHistory && new URLSearchParams(window.location.search).has("job")) {
       if (detailPushed.current) {
-        detailPushed.current = false;
+        // The flag stays up until the popstate lands: the pop handler reads
+        // it to know the entry it just landed on sat under a pushed panel and
+        // may carry stale filters, and resets it via closeDetail(true).
         window.history.back(); // pops the ?job entry we pushed
       } else {
         const p = new URLSearchParams(window.location.search);
@@ -3553,13 +3592,24 @@ export default function Jobs() {
   // Back button closes the panel; Escape too. Deep link opens it on load.
   useEffect(() => {
     const onPop = () => {
-      if (!new URLSearchParams(window.location.search).has("job")) closeDetail(true);
+      if (new URLSearchParams(window.location.search).has("job")) return;
+      // Read BEFORE closeDetail resets it: only a pop that landed on the entry
+      // under a pushed panel can have left that entry stale.
+      const poppedPushedPanel = detailPushed.current;
+      closeDetail(true);
+      if (poppedPushedPanel) setUrlSyncTick((n) => n + 1);
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeDetail(); };
+    // The compare sheet sits above the panel (z-50 over z-40), so Escape
+    // closes what is on top first, and only then the panel beneath it.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (compareOpen) { setCompareOpen(false); return; }
+      closeDetail();
+    };
     window.addEventListener("popstate", onPop);
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("keydown", onKey); };
-  }, [closeDetail]);
+  }, [closeDetail, compareOpen]);
   const deepLinkTried = useRef(false);
   // A shared ?job= link that no longer resolves. null = no dead link; `kind`
   // separates a watched closure from a posting that merely aged past OUR cap
@@ -5121,8 +5171,7 @@ export default function Jobs() {
     // claiming it is active would name a filter the board is not applying.
     if (category && inclUncat && sortMode !== "salary") f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -7871,6 +7920,7 @@ export default function Jobs() {
             <button
               type="button"
               onClick={() => setActivelyHiringOnly((v) => !v)}
+              aria-pressed={activelyHiringOnly}
               className={`hidden lg:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
               }`}
@@ -9077,11 +9127,19 @@ export default function Jobs() {
                     className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
                     {t("jobsPage.welcomePostedToday", "Posted today")}
                   </button>
+                  {/* Named after the filter it sets, in the filter's own key,
+                      so the panel cannot drift from the toggle it stands in
+                      for (the toggle was renamed by owner decision 2026-09-09
+                      and this button kept the old words). */}
                   <button type="button" onClick={() => { trackBoard("welcome_actively_hiring"); dismissWelcome(); setActivelyHiringOnly(true); }}
                     className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
-                    {t("jobsPage.welcomeFillers", "Companies that fill roles")}
+                    {t("jobsPage.hiringFilter2", "Actively hiring")}
                   </button>
-                  <button type="button" onClick={() => { trackBoard("welcome_stated_pay"); dismissWelcome(); setSalaryFloor(1); }}
+                  {/* THE STATES-PAY FILTER, not a one-dollar floor. A floor of
+                      1 sent salaryFloor:1, printed a "$0.001k+" chip, and left
+                      the "States pay" box unticked while the body narrowed to
+                      the same rows that box narrows to. */}
+                  <button type="button" onClick={() => { trackBoard("welcome_stated_pay"); dismissWelcome(); setStatedPayOnly(true); }}
                     className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
                     {t("jobsPage.welcomeStatedPay", "Stated pay only")}
                   </button>

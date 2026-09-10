@@ -72,6 +72,9 @@ import {
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { classifyDormancy, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, tokensOf, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
+import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
+import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
@@ -138,7 +141,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.68"; // .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.69"; // .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -923,6 +926,46 @@ const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VI
 // keeps the pool small in steady state, so the lane is usually far under its
 // cap. RE-MEASURE the cold-cursor rate after changing this number.
 const RETRY_PER_SLICE = 5;
+// THE STALE LANE'S TWO NON-THROUGHPUT NUMBERS. Its size is STALE_PER_SLICE in
+// stale-lane.ts (pinned there); these bound the one RPC it issues per cold hop.
+// The RPC's own statement_timeout is 5s; the deadline sits under it so a slow
+// read costs the lane one hop and the hop nothing. 20 rows is the RPC default:
+// the classifier needs to see past the classes no fetch can fix (the live tail
+// was 1 prototype name + 7 oversize before the first 'unexplained' board).
+// THE CANDIDATE WINDOW, and why it is wider than the lane. get_stalest_boards
+// returns the oldest stamps that hold any row, and the head of that list is
+// where the PERMANENT residents live: oversize boards never stamp (seven of
+// the twelve oldest on 2026-09-10), and a token at STALE_TRIES_MAX stays
+// where it is. At 20 rows the window clogged silently — selectStaleLane
+// returned [] every hop while status read "asked 20 / unexplained 0", which
+// looks like "nothing stale left". 60 rows is three times the room at the
+// same bounded cost (one index probe per row under the RPC's 5s timeout,
+// 200 its cap); `windowFull` on status names the clogged state when it
+// arrives anyway. The real fix is a p_exclude on a later RPC revision so the
+// registry and the unresolved set never occupy the window — not this file's.
+const STALE_RPC_LIMIT = 60;
+const STALE_RPC_DEADLINE_MS = 4_000;
+/** Every catalogued token, once: the stale lane's 'uncatalogued' test. A Set, so a token named 'constructor' is a real member. */
+const CATALOGUE_TOKENS: ReadonlySet<string> = new Set(JOB_SOURCES.map((s) => s.token));
+/** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
+interface StaleLaneRun {
+  at: string;
+  /** ok = rows came back; error = PostgREST answered an error (an absent RPC in the deploy window lands here) OR the request rejected outright (network/TLS — the message says which); timeout = the deadline won. */
+  rpc: "ok" | "error" | "timeout";
+  asked: number;
+  /** The RPC returned a full window and none of it was fetchable: permanent residents (oversize, unresolved) fill it and the tail behind them goes unexamined. */
+  windowFull: boolean;
+  classes: Record<StaleClass, number> | null;
+  selected: string[];
+  /** Selected boards the loop actually attempted (not deferred by the posting budget). */
+  fetched: number;
+  /** Attempted boards that STAMPED — the lane's job for them is done and they leave `tries`. */
+  resolved: number;
+  unresolved: string[];
+  prototypeNames: string[];
+}
+/** The slice's stale-lane outcome, written onto slice_stats by recordSliceStats beside the budget note. */
+let sliceStaleNote: { tries: number; resolved: number } | null = null;
 const HEADLINE_MAX_AGE_MS = 15 * 60_000; // how stale the published board total may get before it is recounted; the count itself measured 0.63s, so this is cadence, not cost
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
@@ -3550,11 +3593,56 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, boardBudget: sliceBudgetNote.boardBudget, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
+        // The stale lane's slice outcome rides the same row: how many stale
+        // boards this slice tried, and how many of those stamped.
+        ...(sliceStaleNote ? { staleTries: sliceStaleNote.tries, staleResolved: sliceStaleNote.resolved } : {}),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
   })().catch((e) => { sliceStampError = `slice: ${String(e).slice(0, 160)}`; });
   await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
+}
+
+/**
+ * The optimistic cursor advance as a compare-and-set. A forced hop (the
+ * chain's own, carrying a chainKey) writes unconditionally, as it always
+ * did. A non-forced hop 0 — cron, watchdog, manual — takes the row only if
+ * its updated_at is still the one the slice lock read: an UPDATE filtered
+ * on that stamp, or an INSERT when the lock saw no row (a second INSERT
+ * fails on the key). Zero rows means another kick was admitted in the gap.
+ *
+ * NEVER STALLS THE ROTATION. If the conditional write matches nothing while
+ * a re-read shows the stamp unchanged — the timestamp did not round-trip
+ * through the filter — this degrades to the unconditional write the code
+ * had before, with a warning, rather than declining every hop 0 forever.
+ * The failure mode of this function is therefore the old behaviour, never
+ * a dark rotation.
+ */
+async function admitSlice(
+  client: SupabaseClient,
+  next: RefreshProgress,
+  ctx: { force: boolean; prog: { updated_at: string } | null },
+): Promise<boolean> {
+  const updated_at = new Date().toISOString();
+  if (ctx.force) {
+    await client.from("job_board_meta").upsert({ k: "refresh_progress", v: next, updated_at }, { onConflict: "k" });
+    return true;
+  }
+  if (!ctx.prog) {
+    const { error } = await client.from("job_board_meta").insert({ k: "refresh_progress", v: next, updated_at });
+    return !(error && error.code === "23505");
+  }
+  const { data, error } = await client.from("job_board_meta")
+    .update({ v: next, updated_at })
+    .eq("k", "refresh_progress")
+    .eq("updated_at", ctx.prog.updated_at)
+    .select("k");
+  if (!error && Array.isArray(data) && data.length === 1) return true;
+  const { data: again } = await client.from("job_board_meta").select("updated_at").eq("k", "refresh_progress").maybeSingle();
+  if (again && again.updated_at !== ctx.prog.updated_at) return false;
+  console.warn(`[JOB-BOARD] slice admission: conditional write matched no row though the stamp is unchanged (${error?.message ?? "0 rows"}) — admitting unconditionally`);
+  await client.from("job_board_meta").upsert({ k: "refresh_progress", v: next, updated_at }, { onConflict: "k" });
+  return true;
 }
 
 async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, boardBudget = MIN_BOARDS_PER_SLICE): Promise<{ ok: boolean; detail: string }> {
@@ -3576,6 +3664,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // this number. Starts after the lock check so skipped invocations record
   // nothing.
   const sliceWallStart = Date.now();
+  // Reset per slice, like sliceBudgetNote: it is assigned only inside the
+  // stale lane's fold, so an isolate that served a cold hop and then a hot one
+  // would otherwise write the cold hop's staleTries onto the hot hop's row.
+  sliceStaleNote = null;
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Loaded in the same invocation that runs the freshness sweep, because the
@@ -3853,6 +3945,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // FETCH_TIMEOUT — which is why they go first and completely.
   const effBootstrapPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 10 : BOOTSTRAP_PER_SLICE;
   const shedRetryPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 2 : RETRY_PER_SLICE;
+  // The stale lane sheds on the retry lane's ladder, one step smaller (3 ->
+  // 1 -> 0): it fetches boards the rotation has not stamped in three days,
+  // the least urgent fetch on the slice after the deep lane, and a stale board
+  // that fails again costs a full FETCH_TIMEOUT exactly as a retry does.
+  const effStalePerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 1 : STALE_PER_SLICE;
   const shedBootstrapPerSlice = effBootstrapPerSlice;
   const shedDeepPerSlice = effDeepPerSlice;
 
@@ -4158,11 +4255,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       return (data?.v ?? {}) as Record<string, unknown>;
     } catch { return {}; } // a missing cursor costs one restart, never a failure
   })();
-  const deepCursors: Record<string, number> = (() => {
-    const out: Record<string, number> = {};
-    for (const [k, n] of Object.entries(deepCursorRow)) if (Number.isInteger(n) && (n as number) > 0) out[k] = n as number;
-    return out;
-  })();
+  // A MAP, NOT A RECORD (2026-09-10). Keyed by board token, and a token can be
+  // a property name of Object.prototype: 'constructor' is a catalogued ashby
+  // board, and `rec[token] ?? 0` read a FUNCTION for it. token-map.ts is the
+  // one bridge to the JSON shape the row stores; both directions walk own
+  // keys, so 'constructor' round-trips as a real entry.
+  const deepCursors: Map<string, number> = tokenMapFromRecord(deepCursorRow);
   // ── LAP EPOCHS: HOW A BIG BOARD PROVES A POSTING IS GONE ────────────────
   //
   // A windowed board reads 250 postings a visit, so absence WITHIN a visit
@@ -4260,7 +4358,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   let deepLane: { at: string; candidates: number; selected: number; visited: number; start: number } | null = null;
   if (!inHotPhase) {
     try {
-      const tokens = Object.keys(deepCursors);
+      const tokens = [...deepCursors.keys()];
       if (tokens.length > 0) {
         const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards].map((s) => s.token));
         const start = cold % tokens.length;
@@ -4340,21 +4438,109 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       };
     } catch { /* accelerator only — the rotation still reaches every board if this throws */ }
   }
-  // Deep lane LAST: under SLICE_POSTING_BUDGET the tail of this list is what
-  // gets skipped, and the rotation's freshness claim outranks the lane's fill
-  // rate — see SLICE_POSTING_BUDGET.
-  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...baseSlice, ...deepBoards];
-  const startIso = new Date().toISOString();
-  const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
-
-
   // Vendor circuit-breaker state (see constants above): decayed per-vendor
   // feed-zero counters + the currently quarantined vendor set. Key is
   // vendor_breaker — vendor_health belongs to the schema-drift canary action.
+  //
+  // Read BEFORE the slice is sealed (moved up in .69) because the stale lane
+  // below classifies against the quarantine set. Positional only: nothing
+  // between the old site and this one touched it.
   const { data: vhMeta } = await client.from("job_board_meta").select("v").eq("k", "vendor_breaker").maybeSingle();
   const vhV = (vhMeta?.v ?? {}) as { vendors?: Record<string, { a: number; z: number }>; quarantined?: string[] };
   const vendorPrev: Record<string, { a: number; z: number }> = { ...(vhV.vendors ?? {}) };
   const quarantinedVendors = new Set<string>(Array.isArray(vhV.quarantined) ? vhV.quarantined.filter((x): x is string => typeof x === "string") : []);
+
+  // THE STALE LANE (stale-lane.ts, wired in .69). The freshness rollup's
+  // max_min sat at 14.6 days and named nobody; get_stalest_boards
+  // (20260909218000) names the tail and classifyStale says why each board is
+  // there. Only the 'unexplained' class — catalogued, vendor healthy, no
+  // failure/dormancy/oversize record, simply not reached — is fetched; every
+  // other class is another lane's, or nobody's, to fetch.
+  //
+  // COLD SLICES ONLY, on the retry lane's ladder (effStalePerSlice), one RPC
+  // and one meta read per hop, at most STALE_PER_SLICE boards through the
+  // ordinary fetch path with the ordinary reservation, budget and failure
+  // fold. The lane sits ahead of the base slice for the reason the retry lane
+  // does: under SLICE_POSTING_BUDGET the tail of the composed slice is what
+  // gets deferred (budgetHit was true on the live sample this was designed
+  // against), and a lane that is only ever deferred is the "selected is not
+  // visited" starvation the deep lane's instrumentation exists to expose. The
+  // cold cursor still advances by baseAttempted, so no rotation board is
+  // marked visited unread; on a budget-hit hop the lane displaces at most
+  // STALE_PER_SLICE base fetches to the next hop.
+  //
+  // THE RPC MAY BE ABSENT — a deploy that lands before migration 20260909218000
+  // — and PostgREST answers that as an error object, not a throw. Either way
+  // the lane is a no-op with a warning and the hop is untouched; a missing
+  // accelerator is never a failed slice.
+  let staleBoards: JobSource[] = [];
+  let staleTries: Map<string, number> = new Map();
+  let staleLane: StaleLaneRun | null = null;
+  if (!inHotPhase && effStalePerSlice > 0) {
+    try {
+      const { data: slMeta } = await client.from("job_board_meta").select("v").eq("k", "stale_lane").maybeSingle();
+      staleTries = readStaleTries(slMeta?.v);
+      // Cancelled, not abandoned: the request carries its own abort at the
+      // deadline, so a slow RPC does not sit unread past the race (the
+      // abandoned-response class that leaked the heap in .28-.38). A rejected
+      // request (network, TLS, abort) is mapped to an error OBJECT here so it
+      // publishes as rpc:"error" with the cause — withDeadline alone would
+      // have read it as "timeout" and sent an operator to the RPC's plan
+      // instead of the network.
+      const rpc = await withDeadline(
+        client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H })
+          .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
+          .then((r) => r, (e: unknown) => ({ data: null, error: { code: "rejected", message: String(e).slice(0, 160) } })),
+        STALE_RPC_DEADLINE_MS,
+      );
+      const rpcErr = (rpc as { error?: { code?: string; message?: string } | null }).error ?? null;
+      const rows = !rpcErr && Array.isArray(rpc.data) ? (rpc.data as StaleRow[]) : null;
+      if (!rows) {
+        const why = rpcErr ? `${rpcErr.code ?? ""} ${rpcErr.message ?? ""}`.trim().slice(0, 160) : "deadline";
+        console.warn(`[JOB-BOARD] stale lane: get_stalest_boards unavailable — no lane this hop (${why})`);
+        staleLane = { at: new Date().toISOString(), rpc: rpcErr ? "error" : "timeout", asked: 0, windowFull: false, classes: null, selected: [], fetched: 0, resolved: 0, unresolved: [], prototypeNames: [] };
+      } else {
+        const verdicts: StaleVerdict[] = classifyStale(rows, {
+          catalogued: CATALOGUE_TOKENS,
+          quarantinedVendors,
+          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          dormant: tokensOf(boardFailures.dormant),
+          failing: new Set([...tokensOf(boardFailures.failedAt), ...tokensOf(boardFailures.streaks)]),
+          tries: staleTries,
+        });
+        const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...deepBoards].map((s) => s.token));
+        staleBoards = selectStaleLane(verdicts, { perSlice: effStalePerSlice, exclude: taken })
+          .map((t) => JOB_SOURCES.find((s) => s.token === t))
+          .filter((s): s is JobSource => !!s);
+        const classes = countByClass(verdicts);
+        staleLane = {
+          at: new Date().toISOString(),
+          rpc: "ok",
+          asked: rows.length,
+          // A full window with nothing fetchable in it is the clogged state,
+          // named: the tail behind row STALE_RPC_LIMIT is going unexamined.
+          windowFull: rows.length >= STALE_RPC_LIMIT && classes.unexplained === 0 && staleBoards.length === 0,
+          classes,
+          selected: staleBoards.map((s) => s.token),
+          fetched: 0,
+          resolved: 0,
+          unresolved: verdicts.filter((v) => v.cls === "unresolved").map((v) => v.token),
+          prototypeNames: verdicts.filter((v) => v.cls === "prototype_name").map((v) => v.token),
+        };
+      }
+    } catch (e) {
+      // accelerator only — the rotation still reaches every board if this throws
+      console.warn("[JOB-BOARD] stale lane threw (no lane this hop):", String(e).slice(0, 160));
+      staleBoards = [];
+    }
+  }
+  // Deep lane LAST: under SLICE_POSTING_BUDGET the tail of this list is what
+  // gets skipped, and the rotation's freshness claim outranks the lane's fill
+  // rate — see SLICE_POSTING_BUDGET.
+  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...baseSlice, ...deepBoards];
+  const startIso = new Date().toISOString();
+  const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
+
   const vendorStats = new Map<string, { a: number; z: number }>();
   const quarantineSkipped = new Set<string>();
   let skipTokens = new Set<string>();
@@ -4403,10 +4589,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // the whole pipeline. Failure accounting is finalized after the slice.
   {
     const { next } = advanceProgress({ prev: progressBefore, ...advanceArgs });
-    await client.from("job_board_meta").upsert(
-      { k: "refresh_progress", v: next, updated_at: new Date().toISOString() },
-      { onConflict: "k" },
-    );
+    // ADMISSION IS COMPARE-AND-SET. The slice lock above is read-then-write
+    // with every read between here and there in the gap — tier lists, the
+    // shed signal, the lanes, on cold hops the stale lane's RPC under a 4s
+    // deadline — and two non-forced kicks inside that gap both passed it.
+    // Before .69 the only non-forced kicks were the two crons five minutes
+    // apart; the dead-chain watchdog fires from status calls at random times,
+    // and a chain hop is forced, so two admitted hop-0s are two chains for the
+    // rest of the pass — twice CONCURRENCY against the database, the load the
+    // shed ladder exists to prevent. The write now lands only if the row is
+    // still the one the lock read; a loser answers "skipped", the word the
+    // parent's declined-regex and the cron already read.
+    if (!(await admitSlice(client, next, { force, prog: (prog as { updated_at: string } | null) ?? null }))) {
+      return { ok: true, detail: "skipped — a slice was admitted moments ago" };
+    }
   }
 
   const queue = [...slice];
@@ -4545,7 +4741,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (baseTokens.has(s.token)) baseAttempted++;
         inFlightReserve += reserve;
         let r: Awaited<ReturnType<typeof fetchBoard>>;
-        try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors[s.token] ?? 0); }
+        try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
         if (r) fetchedInSlice += r.jobs.length;
         // Every 24th board, so the row names the neighbourhood of the death
@@ -4655,11 +4851,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Advance (or wrap) this board's cursor. Written only for boards that
         // actually paginate, and cleared the moment one wraps, so the row does
         // not accumulate an entry per board in the catalogue.
-        const cursorBefore = deepCursors[s.token] ?? 0;
+        const cursorBefore = deepCursors.get(s.token) ?? 0;
         if (typeof r.nextOffset === "number") {
           const prev = cursorBefore;
-          if (r.nextOffset > 0) { if (prev !== r.nextOffset) { deepCursors[s.token] = r.nextOffset; deepCursorsDirty = true; } }
-          else if (prev !== 0) { delete deepCursors[s.token]; deepCursorsDirty = true; }
+          if (r.nextOffset > 0) { if (prev !== r.nextOffset) { deepCursors.set(s.token, r.nextOffset); deepCursorsDirty = true; } }
+          else if (prev !== 0) { deepCursors.delete(s.token); deepCursorsDirty = true; }
         }
 
         // ── LAP BOOKKEEPING ──────────────────────────────────────────────
@@ -6821,8 +7017,33 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
         } catch { /* fold is best-effort; the write below still lands */ }
         await client.from("job_board_meta")
-          .upsert({ k: "deep_cursor", v: { ...deepCursors, ...(deepLane ? { __lane: deepLane } : {}), ...(Object.keys(lapsOut).length ? { __laps: lapsOut } : {}) }, updated_at: new Date().toISOString() }, { onConflict: "k" })
+          .upsert({ k: "deep_cursor", v: { ...tokenMapToRecord(deepCursors), ...(deepLane ? { __lane: deepLane } : {}), ...(Object.keys(lapsOut).length ? { __laps: lapsOut } : {}) }, updated_at: new Date().toISOString() }, { onConflict: "k" })
           .then(({ error }) => { if (error) console.warn("[JOB-BOARD] deep_cursor write failed:", error.message?.slice(0, 120)); });
+      }
+    }
+    // THE STALE LANE'S FOLD. A selected board the loop attempted counts one
+    // try unless it STAMPED (okSet), in which case it leaves the tries map —
+    // the lane's job for it is done. A board the posting budget deferred was
+    // never attempted and is untouched, the same rule failedTokens follows
+    // above. Written whenever the lane ran, including an RPC-less hop, so
+    // "ran and selected none", "could not ask" and "never ran" stay three
+    // different readings on status. Best-effort: losing this costs one try's
+    // worth of bookkeeping, never a row.
+    if (staleLane) {
+      try {
+        const attempted = staleBoards.map((s) => s.token).filter((tk) => !budgetSkippedSet.has(tk));
+        const resolved = attempted.filter((tk) => okSet.has(tk)).length;
+        const nextTries = bumpStaleTries(staleTries, attempted, okSet);
+        staleLane.fetched = attempted.length;
+        staleLane.resolved = resolved;
+        sliceStaleNote = { tries: attempted.length, resolved };
+        await client.from("job_board_meta").upsert(
+          { k: "stale_lane", v: { ...staleLane, tries: writeStaleTries(nextTries) }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        if (attempted.length) console.log(`[JOB-BOARD] stale lane: asked ${staleLane.asked}, fetched ${attempted.length} (${attempted.join(", ")}), stamped ${resolved}`);
+      } catch (e) {
+        console.warn("[JOB-BOARD] stale lane fold failed (non-fatal):", String(e).slice(0, 150));
       }
     }
   }
@@ -6860,6 +7081,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   }
 
   if (passDone) {
+    // THE TAIL PULSES TOO. The dead-chain watchdog judges the freshest stamp
+    // on slice_trace / slice_stats / refresh_progress, and this block is the
+    // longest silence a live hop can show after its loop-done mark: facets,
+    // orphan prune and the freshness sweep page the table for minutes. Three
+    // coarse marks per PASS (never per slice) bound that silence at one block
+    // and keep a status call during the tail inside the window.
+    await breadcrumb(client, "pass-end", { elapsedMs: Date.now() - sliceWallStart });
     // ONE POOL SAMPLE PER COMPLETED PASS. This is the entire basis for the
     // board's published growth number, which is now OBSERVED (sample at the
     // window start differenced against the pool now) rather than inferred from
@@ -7031,6 +7259,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
         companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
       }
+      await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, elapsedMs: Date.now() - sliceWallStart });
     }
 
     // Date hygiene: repair any stored posted_at that's junk (future, or
@@ -7190,6 +7419,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         dropped += Math.min(200, ids.length - i);
       }
       if (dropped > 0) console.log(`[JOB-BOARD] freshness cap: dropped ${dropped} postings older than ${FRESH_WINDOW_DAYS}d`);
+      await breadcrumb(client, "pass-end-swept", { dropped, elapsedMs: Date.now() - sliceWallStart });
       // Tombstones expire, so the table stays bounded and a vendor that
       // recycles posting ids eventually gets a second chance. 180 days is far
       // past any window in which a re-fetched id could still be the same
@@ -7843,8 +8073,128 @@ const MAINTENANCE_ANY_GAP_MS = 10 * 60_000; // floor between any two kicks
 // the one reliably-scheduled thing in this system.
 const MAINTENANCE_STALL_MS = 12 * 60_000;
 
+/**
+ * THE DEAD-CHAIN WATCHDOG. Decision in chain-watchdog.ts (pure, tested); this
+ * is the I/O half: one read of five meta rows, and — on "rekick" only, from a
+ * status call only — one conditional stamp and one plain, NON-forced
+ * {action:"refresh"}, the body pg_cron sends. Non-forced means runRefresh's
+ * SLICE_LOCK_MS check still guards it, so a live chain that merely looked
+ * quiet answers "skipped" and no second chain starts.
+ *
+ * THE PULSE IS THE FRESHEST OF FOUR STAMPS, not slice_stats.workAt alone:
+ * refresh_progress.updated_at (hop start and end), slice_trace.updated_at
+ * (every board fetched and stored), slice_stats.workAt (loop end) and
+ * slice_stats.at (hop end). The first cut read only workAt and would have
+ * called a live hot slice dead: hot slices run 341s and workAt is silent for
+ * the whole loop, while the window at the live cold EMA is ~4 min. A live
+ * loop now pulses per board, so its longest silence is one board's
+ * FETCH_TIMEOUT_MS and the cold-EMA window holds in both phases.
+ *
+ * THE chain_kick ROW IS ONE HOP BEHIND (chain-watchdog.ts header): 'continued'
+ * is the grandparent's verdict on the parent, stamped while the child runs,
+ * and if the child then dies with its parent the row stays 'continued'
+ * forever. So 'continued' proves the chain alive only while nothing has
+ * pulsed since it was stamped; a later pulse supersedes it and the window
+ * rule decides. Judge this watchdog, after deploy, on deaths of EITHER shape.
+ *
+ * FALLS THROUGH, and takes its own stamp (`chain_watchdog`, floor SLICE_LOCK_MS)
+ * rather than the exclusive ladder's `maintenance_kick` and its ten-minute
+ * floor — the desc-sweep rule: a kick that consumed the ladder's stamp would
+ * starve the tracks behind it, and a ten-minute floor here would recreate the
+ * wait 20260909219000 exists to remove. The stamp is a CONDITIONAL write
+ * (update where the row is older than the lock, else insert): the decision's
+ * throttle is read-then-write across two round trips, and two status calls a
+ * few hundred milliseconds apart both passed it. Only the call whose write
+ * lands sends the kick; the other reads "throttled".
+ *
+ * NEVER on an unsuperseded 'continued', and never inside 2 x coldEmaMs +
+ * SLICE_LOCK_MS of the freshest pulse — both decided in decideRekick and
+ * pinned by its test; this function sends nothing on any other verdict.
+ *
+ * NEVER FROM INSIDE A HOP. maybeKickMaintenance calls this with inHop, from a
+ * hop that is itself the chain's pulse — at pass end it runs AFTER a tail
+ * (facets, orphan prune, freshness sweep) that can outlast the window, and a
+ * kick from there would start a second chain beside the one evaluating. The
+ * in-hop path observes, logs a would-have-fired as the measurement of how
+ * often a tail exceeds the window, and returns "in_hop". The status action is
+ * the path monitors hit while nothing else runs; a dead chain is observed
+ * there, and that is where the re-kick actually shortens dark time. Returns
+ * the verdict so status can publish the decision it just made.
+ */
+async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: boolean } = {}): Promise<Record<string, unknown> | null> {
+  try {
+    const { data: rows } = await client.from("job_board_meta").select("k, v, updated_at").in("k", ["slice_stats", "chain_kick", "chain_watchdog", "slice_trace", "refresh_progress"]);
+    const byKey = new Map<string, { v: unknown; updated_at: string }>();
+    for (const r of (rows ?? []) as Array<{ k: string; v: unknown; updated_at: string }>) byKey.set(r.k, r);
+    const ss = (byKey.get("slice_stats")?.v ?? {}) as { workAt?: string; at?: string; coldEmaMs?: unknown };
+    const ckRow = byKey.get("chain_kick") ?? null;
+    const ck = (ckRow?.v ?? {}) as { outcome?: unknown };
+    const wd = byKey.get("chain_watchdog") ?? null;
+    const now = Date.now();
+    const verdict = decideRekick({
+      now,
+      workAt: ss.workAt,
+      sliceAt: ss.at,
+      traceAt: byKey.get("slice_trace")?.updated_at ?? null,
+      progressAt: byKey.get("refresh_progress")?.updated_at ?? null,
+      coldEmaMs: ss.coldEmaMs,
+      chainOutcome: ck.outcome,
+      chainAt: ckRow?.updated_at ?? null,
+      watchdogAt: wd?.updated_at ?? null,
+      sliceLockMs: SLICE_LOCK_MS,
+    });
+    const lastKick = wd
+      ? { ...((wd.v ?? {}) as Record<string, unknown>), ageMin: Math.round((now - new Date(wd.updated_at).getTime()) / 60_000) }
+      : null;
+    const report = { at: new Date(now).toISOString(), ...verdict, kicked: false, lastKick };
+    if (verdict.decision !== "rekick") return report;
+    if (opts.inHop) {
+      console.warn(`[JOB-BOARD] chain watchdog (in-hop, observing only): pulse ${Math.round((verdict.pulseAgeMs ?? 0) / 1000)}s old (> ${Math.round(verdict.thresholdMs / 1000)}s) from ${verdict.pulse ?? "none"} while this hop runs — a tail outlasted the window; no kick`);
+      return { ...report, decision: "in_hop" };
+    }
+    // A paused ingest is a chain that is SUPPOSED to be silent. runRefresh
+    // would decline the kick at its own pause check, but a kick every
+    // SLICE_LOCK_MS on every status call while an operator holds the pause is
+    // noise dressed as recovery. One bounded meta read, only on this branch.
+    if (await isIngestPaused(client)) return { ...report, decision: "paused" };
+    // Stamp BEFORE the kick, the order every chain hop uses: a kick whose
+    // stamp is lost is a kick that happened, so the throttle reads what was
+    // sent, not what landed. CONDITIONAL: the row is taken only if it is older
+    // than the lock (or absent), so of two callers racing here exactly one
+    // sends.
+    const stampV = { at: report.at, pulseAgeMs: verdict.pulseAgeMs, pulse: verdict.pulse, thresholdMs: verdict.thresholdMs, chainOutcome: verdict.chainOutcome, stampSuperseded: verdict.stampSuperseded, hop: 0 };
+    const { data: taken } = await client.from("job_board_meta")
+      .update({ v: stampV, updated_at: report.at })
+      .eq("k", "chain_watchdog")
+      .lt("updated_at", new Date(now - SLICE_LOCK_MS).toISOString())
+      .select("k");
+    let stamped = Array.isArray(taken) && taken.length === 1;
+    if (!stamped) {
+      const { error: insErr } = await client.from("job_board_meta").insert({ k: "chain_watchdog", v: stampV, updated_at: report.at });
+      stamped = !insErr;
+    }
+    if (!stamped) return { ...report, decision: "throttled", note: "another caller took the stamp inside the lock" };
+    console.warn(`[JOB-BOARD] chain watchdog: pulse ${Math.round((verdict.pulseAgeMs ?? 0) / 1000)}s old (> ${Math.round(verdict.thresholdMs / 1000)}s) from ${verdict.pulse ?? "none"}, chainKick ${verdict.chainOutcome ?? "none"}${verdict.stampSuperseded ? " (superseded)" : ""} — re-kicking hop 0`);
+    const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+    waitUntil(fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "refresh" }),
+    }).then((r) => discardBody(r)));
+    return { ...report, kicked: true };
+  } catch (e) {
+    console.warn("[JOB-BOARD] chain watchdog failed (non-fatal):", String(e).slice(0, 150));
+    return null;
+  }
+}
+
 async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
   try {
+    // The dead-chain watchdog first, and it falls through: its own stamp, its
+    // own SLICE_LOCK_MS floor, never this function's ten-minute gap. In-hop it
+    // OBSERVES only — this hop is the chain's pulse, and at pass end it is
+    // reached after a tail that can outlast the window.
+    await maybeRekickDeadChain(client, { inHop: true });
     const { data: mk } = await client.from("job_board_meta").select("v, updated_at").eq("k", "maintenance_kick").maybeSingle();
     const lastAge = mk ? Date.now() - new Date(mk.updated_at).getTime() : Infinity;
     if (lastAge < MAINTENANCE_ANY_GAP_MS) return;
@@ -8092,7 +8442,14 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
 
 /** Resolve to `{ data: null }` if a query outruns its deadline. Used for the
  *  optional analytics on the status action: a stat that is slow to compute is
- *  worth omitting, never worth delaying the deploy answer for. */
+ *  worth omitting, never worth delaying the deploy answer for.
+ *
+ *  TWO THINGS A CALLER MUST KNOW. (1) A REJECTED promise also resolves to
+ *  `{ data: null }` — indistinguishable from a timeout here; a caller that
+ *  publishes the reason maps rejections to an error object BEFORE handing
+ *  the promise in (the stale lane does). (2) This is a race, not a cancel:
+ *  the losing query keeps running and its response is abandoned unread. A
+ *  caller on a hot path attaches its own abort at the deadline. */
 function withDeadline<T>(p: PromiseLike<T>, ms: number): Promise<T | { data: null }> {
   return Promise.race([
     Promise.resolve(p).then((r) => r, () => ({ data: null } as { data: null })),
@@ -9709,7 +10066,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -9858,6 +10215,16 @@ Deno.serve(async (req) => {
         // progress row (migration 20260909216000), so the sweep can be
         // verified from outside without a service key.
         client.from("job_board_meta").select("v, updated_at").eq("k", "oracle_subsite_repair").maybeSingle(),
+        // APPENDED AT THE END, same rule. The stale lane's last run: verdict
+        // counts by class, what it fetched, what stamped, and the tries map
+        // it is carrying — the two classes no fetch can fix (prototype_name,
+        // unresolved) named here so nobody has to grep a log for them.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "stale_lane").maybeSingle(),
+        // The 'freshness' rollup ROW, beside the RPC that projects four keys
+        // from it: migration 20260909221000 added dark_boards / dark_max_min
+        // (stamps whose token holds rows but none live) and the row is the
+        // only place they exist — get_freshness_stats keeps its signature.
+        client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "freshness").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -9887,6 +10254,14 @@ Deno.serve(async (req) => {
       // status endpoint answers "is the sweep behind, and will it re-arm" in
       // one place instead of leaving it to be inferred from two percentages.
       const pbBacklogNow = await undatedBacklog(client);
+      // THE DEAD-CHAIN WATCHDOG IS EVALUATED HERE ON PURPOSE. Inside the
+      // refresh path it runs only from a hop that just stamped its pulse, so
+      // it can never see a dead chain there; status is the path monitors hit
+      // while nothing else runs. One read of three meta rows; a kick only on
+      // "rekick", throttled by its own stamp, declined at the child's slice
+      // lock if the chain was alive after all. The decision it just made is
+      // published beside the last kick it sent.
+      const chainWatchdog = await maybeRekickDeadChain(client);
       return json({
         statusDegraded: false,
         // deployed build identity (constants baked into THIS bundle)
@@ -10336,9 +10711,57 @@ Deno.serve(async (req) => {
         failedCount: Number(pgV.failedTotal) || 0,
         // Measured freshness: re-verification age across all stamped boards.
         // THE number behind the public "within a few hours" claim.
-        freshness: Array.isArray((fresh as { data?: unknown }).data) && ((fresh as { data: unknown[] }).data)[0]
-          ? ((fresh as { data: unknown[] }).data)[0]
-          : null,
+        freshness: (() => {
+          const row = Array.isArray((fresh as { data?: unknown }).data) && ((fresh as { data: unknown[] }).data)[0]
+            ? ((fresh as { data: unknown[] }).data)[0] as Record<string, unknown>
+            : null;
+          if (!row) return null;
+          // POPULATION SINCE 20260909221000: stamps whose token holds at least
+          // one LIVE posting row. Stamps whose token holds rows but none live
+          // are the dark bucket, counted separately with their own max, so
+          // the excluded population is a number on this page and not a
+          // silence. Absent on a rollup row written before that migration.
+          const v = (freshRow.data?.v ?? {}) as { dark_boards?: unknown; dark_max_min?: unknown; population?: unknown };
+          return {
+            ...row,
+            ...(v.dark_boards !== undefined
+              ? { dark_boards: Number(v.dark_boards) || 0, dark_max_min: v.dark_max_min ?? null, population: typeof v.population === "string" ? v.population : null }
+              : {}),
+          };
+        })(),
+        // THE STALE LANE, VISIBLE. `classes` says why the oldest stamps are
+        // old — prototype_name and unresolved are the two no fetch can fix —
+        // `fetched`/`resolved` say what the last cold hop did about the rest,
+        // and `triesPending` is how many boards it is still spending fetches
+        // on. rpc != "ok" is the deploy window (migration 20260909218000 not
+        // yet applied) or a slow read; either way the hop was untouched.
+        staleLane: (() => {
+          const v = (staleMeta.data?.v ?? null) as (Partial<StaleLaneRun> & { tries?: unknown }) | null;
+          if (!v) return null;
+          const tries = v.tries && typeof v.tries === "object" && !Array.isArray(v.tries) ? Object.keys(v.tries as Record<string, unknown>).length : 0;
+          const ss = (sliceStatsRow?.data?.v ?? {}) as { staleTries?: unknown; staleResolved?: unknown };
+          return {
+            at: v.at ?? null,
+            ageMin: ageMin(staleMeta.data?.updated_at ?? null),
+            rpc: v.rpc ?? null,
+            asked: Number(v.asked) || 0,
+            // The window is clogged with boards no fetch can move; the stale
+            // tail behind it is going unexamined. Absent on a pre-.69 row.
+            windowFull: typeof v.windowFull === "boolean" ? v.windowFull : null,
+            classes: v.classes ?? null,
+            selected: Array.isArray(v.selected) ? v.selected : [],
+            fetched: Number(v.fetched) || 0,
+            resolved: Number(v.resolved) || 0,
+            unresolved: Array.isArray(v.unresolved) ? v.unresolved : [],
+            prototypeNames: Array.isArray(v.prototypeNames) ? v.prototypeNames : [],
+            triesPending: tries,
+            lastSlice: ss.staleTries !== undefined ? { tries: ss.staleTries, resolved: ss.staleResolved ?? null } : null,
+          };
+        })(),
+        // The watchdog's verdict for THIS call (decision, workAgeMs against
+        // thresholdMs, the chainKick outcome it judged) and the last kick it
+        // actually sent, so "did it fire" and "why not" are both one read.
+        chainWatchdog,
         quarantinedVendors: (((breaker.data?.v ?? {}) as { quarantined?: string[] }).quarantined ?? []),
         // Which hiring systems state posting dates, and for what share of
         // their postings — the measured basis behind every age stat.
@@ -12982,10 +13405,13 @@ Deno.serve(async (req) => {
       const suggestV = (metaRow?.v ?? {}) as Record<string, unknown>;
       const facet = (suggestV.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
       const openRaw = suggestV.companiesOpen;
-      const openMap = openRaw && typeof openRaw === "object" ? openRaw as Record<string, number> : null;
+      const openMap = openRaw && typeof openRaw === "object" && !Array.isArray(openRaw) ? openRaw as Record<string, number> : null;
+      // OWN keys only: the map is keyed by board token, and a token named
+      // 'constructor' (a real ashby board) reads Object.prototype.constructor
+      // from a bare bracket — a function served as an open-roles count.
       const merged = mergeCompanyFacet(
         openMap
-          ? facet.map((c) => ({ ...c, open: typeof c.token === "string" ? (openMap[c.token] ?? 0) : 0 }))
+          ? facet.map((c) => ({ ...c, open: typeof c.token === "string" && Object.prototype.hasOwnProperty.call(openMap, c.token) ? openMap[c.token] : 0 }))
           : facet,
       );
       const hit = merged.filter((c) => String(c.name ?? "").toLowerCase().includes(q));

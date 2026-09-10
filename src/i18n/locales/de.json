@@ -4798,5 +4798,10 @@
     "reassure": "Kostenloser Scan · ohne Karte, ohne Anmeldung",
     "exploreCta": "Nach Bereich erkunden",
     "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "{{pct}}% der datierten Stellen im Bereich {{field}}, veröffentlicht zwischen {{cohortFrom}} und {{cohortTo}}, waren beim Erreichen unserer 30-Tage-Grenze noch ausgeschrieben (n={{n}}, ±{{hw}} Punkte); höchstens {{r}}% waren endgültig zurückgezogen und mindestens {{x}}% erneut eingestellt worden. Gezählt nur auf Jobbörsen, die wir bis zum Ende lesen.",
+    "stillUp30Unread": "{{n}} der hier aufgeführten Bereiche — {{fields}} — haben keinen Wert für den Anteil, der an unserer 30-Tage-Grenze noch ausgeschrieben war: Auf den Jobbörsen, die wir bis zum Ende lesen können, erreichten zu wenige ihrer datierten Stellen die Grenze, um einen Anteil zu nennen, hinter dem wir stehen.",
+    "capTileWithReading": "unsere Frischegrenze — eine Stelle, deren vom Unternehmen angegebenes Datum 30 Tage überschreitet, verlässt die Börse. Der Anteil, der beim Erreichen der Grenze noch ausgeschrieben ist, steht in der Tag-30-Zeile der Bereichstabelle unten."
   }
 }

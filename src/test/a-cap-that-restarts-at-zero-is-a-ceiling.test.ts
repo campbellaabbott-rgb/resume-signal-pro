@@ -85,7 +85,9 @@ describe("a cap that restarts at zero is a ceiling", () => {
     // per board in a 31,600-board catalogue.
     expect(CODE).toMatch(/eq\("k", "deep_cursor"\)/);
     expect(CODE).toMatch(/k: "deep_cursor"/);
-    expect(CODE).toMatch(/delete deepCursors\[s\.token\]; deepCursorsDirty = true;/);
+    // A Map since .69 (a token named 'constructor' read a function from the
+    // Record form — see a-token-named-constructor-reads-a-function-from-the-map).
+    expect(CODE).toMatch(/deepCursors\.delete\(s\.token\); deepCursorsDirty = true;/);
   });
 
   it("the rotation is ARMED, and the cursor is observable", () => {
@@ -102,7 +104,7 @@ describe("a cap that restarts at zero is a ceiling", () => {
     // So the cursor is now published on `status`, and that is the part that
     // must never be removed: without it the only way to judge this rotation is
     // to infer it from row counts, which is exactly how I got it wrong.
-    expect(CODE).toMatch(/fetchBoard\(s, \(m\) => \{ failReason = m; \}, deepCursors\[s\.token\] \?\? 0\)/);
+    expect(CODE).toMatch(/fetchBoard\(s, \(m\) => \{ failReason = m; \}, deepCursors\.get\(s\.token\) \?\? 0\)/);
   });
 
   it("status publishes the cursor, so the rotation can be judged by a number", () => {

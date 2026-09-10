@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { classifyDormancy, selectRetries } from "../../supabase/functions/job-board/dormancy.ts";
+import { classifyDormancy, selectRetries, updateBoardFailures } from "../../supabase/functions/job-board/dormancy.ts";
+import { tokenMapFromRecord, tokenMapToRecord } from "../../supabase/functions/job-board/token-map.ts";
 
 /**
  * A TOKEN NAMED 'constructor' READS A FUNCTION FROM THE MAP.
@@ -35,23 +36,27 @@ import { classifyDormancy, selectRetries } from "../../supabase/functions/job-bo
  * lines of `Object.hasOwn(<map>,` is guarded. Comment-stripped first, with
  * the `://`-safe stripper, so prose about the trap is never counted as one.
  *
- * THE WAIVER EXPIRES ITSELF. index.ts and dormancy.ts are not this lane's to
- * edit, so the traps they hold today are named in KNOWN_TRAPS and the guard
- * asserts the detected set EQUALS it: a new token-keyed Record fails the
- * build, and a trap that gets FIXED also fails it — with the instruction to
- * remove it from the list. A waiver that can only shrink is not a hole.
+ * THE WAIVER EXPIRED ITSELF. When this guard was written (HEAD 87351855,
+ * 2026-09-09) index.ts and dormancy.ts held five traps, named in KNOWN_TRAPS
+ * so the guard could assert the detected set EQUALS it: a new token-keyed
+ * Record fails the build, and a trap that gets FIXED also fails it — with the
+ * instruction to remove it from the list. 2026-09-09.69 fixed all five
+ * (deepCursors is a Map bridged by token-map.ts; openMap's read and every
+ * dormancy.ts read are hasOwn-guarded), so the list is EMPTY and the property
+ * is now unconditional. The list stays as the mechanism, not as a hole: a
+ * future trap must be waived here by name, and a waived trap must be real.
  */
 const DIR = resolve(__dirname, "../../supabase/functions/job-board");
-const FETCH_PATH = ["index.ts", "dormancy.ts", "stale-lane.ts", "rotation.ts", "paging.ts"] as const;
+const FETCH_PATH = ["index.ts", "dormancy.ts", "stale-lane.ts", "token-map.ts", "chain-watchdog.ts", "rotation.ts", "paging.ts"] as const;
 
-/** Traps present at HEAD 87351855 (2026-09-09). Remove an entry when its map becomes a Map or its reads are hasOwn-guarded. */
-const KNOWN_TRAPS = new Set([
-  "index.ts:deepCursors",     // deep_cursor meta, read at the fetch call and the cursor fold
-  "index.ts:openMap",         // companiesOpen facet: a company token named 'constructor' serves open = Object
-  "dormancy.ts:dormant",      // classifyDormancy / selectRetries: the token is skipped as dormant
-  "dormancy.ts:streaks",      // selectRetries / updateBoardFailures: NaN backoff
-  "dormancy.ts:firstFailedAt", // updateBoardFailures: the prune floor never elapses (NaN)
-]);
+/**
+ * Traps waived by name. EMPTY since 2026-09-09.69 — the five present at HEAD
+ * 87351855 (index.ts:deepCursors, index.ts:openMap, dormancy.ts:dormant,
+ * dormancy.ts:streaks, dormancy.ts:firstFailedAt) were all fixed. Add an entry
+ * only for a trap that is live and cannot be fixed in the same change; remove
+ * it when the map becomes a Map or its reads are hasOwn-guarded.
+ */
+const KNOWN_TRAPS = new Set<string>([]);
 
 /** Line comments first (never after `:` or a word char, so URLs survive), then block comments. */
 const stripped = (raw: string) => raw.replace(/(^|[^:\w])\/\/[^\n]*/g, "$1 ").replace(/\/\*[\s\S]*?\*\//g, " ");
@@ -80,7 +85,10 @@ export function tokenKeyedRecordReads(code: string): Offender[] {
       if (/^\s*=[^=]/.test(after)) continue;     // a write: an own property shadows the prototype
       if (/\bdelete\s+$/.test(before)) continue;  // delete never reads
       const window = lines.slice(Math.max(0, i - 2), i + 1).join("\n");
-      if (new RegExp(`Object\\.hasOwn\\(\\s*(?:\\w+\\.)?${name}\\s*,`).test(window)) continue;
+      // Either spelling of an own-property test guards the read: Object.hasOwn
+      // (ES2022; index.ts runs on Deno) or Object.prototype.hasOwnProperty.call
+      // (dormancy.ts is also type-checked under the app's ES2020 lib).
+      if (new RegExp(`(?:Object\\.hasOwn|Object\\.prototype\\.hasOwnProperty\\.call)\\(\\s*(?:\\w+\\.)?${name}\\s*,`).test(window)) continue;
       out.push({ name, key: key.trim(), text: ln.trim().slice(0, 120) });
     }
   });
@@ -183,6 +191,97 @@ describe("every token-keyed map on the fetch path is a Map, or every read is has
 
   it("the new stale-lane module carries none", () => {
     expect([...detected.keys()].filter((k) => k.startsWith("stale-lane.ts:"))).toEqual([]);
+  });
+
+  it("the waiver is empty, so the property holds with no exceptions on the fetch path", () => {
+    expect(KNOWN_TRAPS.size).toBe(0);
+    expect([...detected.keys()]).toEqual([]);
+  });
+
+  it("STILL HAS TEETH after the fixes: a fresh unguarded Record keyed by token in index.ts fails the guard", () => {
+    // The assertion above is "detected minus KNOWN_TRAPS is empty". Prove it
+    // is not vacuous by handing the SAME detector the real index.ts with one
+    // new offender appended — the shape a future lane would most plausibly
+    // write — and checking it surfaces as a fresh key.
+    const idx = stripped(readFileSync(resolve(DIR, "index.ts"), "utf8"));
+    const INJECTED = `
+  const laneTries: Record<string, number> = {};
+  const n = laneTries[s.token] ?? 0;
+  `;
+    const fresh = tokenKeyedRecordReads(idx + INJECTED).map((o) => `index.ts:${o.name}`).filter((k) => !KNOWN_TRAPS.has(k));
+    expect(fresh).toEqual(["index.ts:laneTries"]);
+    // And the real file, unmodified, contributes nothing to that list.
+    expect(tokenKeyedRecordReads(idx)).toEqual([]);
+  });
+});
+
+describe("the deep cursor round-trips a token named 'constructor' through the meta row", () => {
+  // deepCursors is serialised into job_board_meta.deep_cursor and read back
+  // every cold hop. A Map in memory is only a fix if the JSON bridge keeps a
+  // prototype-named token as a REAL entry in both directions.
+  it("Map -> JSON -> Map keeps 'constructor' and '__proto__' as own entries with their offsets", () => {
+    const m = new Map<string, number>([["constructor", 500], ["__proto__", 250], ["gopuff", 1000]]);
+    const rec = tokenMapToRecord(m);
+    const has = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+    expect(has(rec, "constructor")).toBe(true);
+    expect(has(rec, "__proto__")).toBe(true);   // Object.fromEntries defines an OWN property; `out[k] = n` would have hit the setter
+    const json = JSON.stringify({ ...rec, __lane: { selected: 1 }, __laps: { "workday:x": { e: 1 } } });
+    expect(json).toContain('"constructor":500');
+    const back = tokenMapFromRecord(JSON.parse(json));
+    expect(back.get("constructor")).toBe(500);
+    expect(back.get("__proto__")).toBe(250);
+    expect(back.get("gopuff")).toBe(1000);
+    // The nested lane and lap objects are not positive integers and stay out
+    // of the cursor map, exactly as they did through the Record form.
+    expect([...back.keys()].sort()).toEqual(["__proto__", "constructor", "gopuff"]);
+  });
+
+  it("an empty row yields an empty Map — it does not 'have' constructor", () => {
+    expect(tokenMapFromRecord({}).has("constructor")).toBe(false);
+    expect(tokenMapFromRecord({}).get("constructor")).toBeUndefined();
+    for (const bad of [null, undefined, "x", 3, [1, 2]]) expect(tokenMapFromRecord(bad).size, String(bad)).toBe(0);
+    expect(tokenMapFromRecord({ a: 0, b: -1, c: 1.5, d: "2", e: 2 })).toEqual(new Map([["e", 2]]));
+  });
+
+  it("index.ts reads the cursor through the bridge and writes it back through the bridge", () => {
+    const idx = stripped(readFileSync(resolve(DIR, "index.ts"), "utf8"));
+    expect(idx).toMatch(/const deepCursors: Map<string, number> = tokenMapFromRecord\(deepCursorRow\);/);
+    expect(idx).toMatch(/deepCursors\.get\(s\.token\) \?\? 0\)/);
+    expect(idx).toMatch(/deepCursors\.set\(s\.token, r\.nextOffset\); deepCursorsDirty = true;/);
+    expect(idx).toMatch(/deepCursors\.delete\(s\.token\); deepCursorsDirty = true;/);
+    expect(idx).toMatch(/k: "deep_cursor", v: \{ \.\.\.tokenMapToRecord\(deepCursors\),/);
+    expect(idx, "the cursor map is read by bracket somewhere").not.toMatch(/deepCursors\[/);
+  });
+});
+
+describe("dormancy.ts with a board named 'constructor' — the fourth incident, closed", () => {
+  const now = 1_000_000_000;
+
+  it("updateBoardFailures: 'constructor' failing is a real streak with a real clock, and it prunes at the threshold like any board", () => {
+    // Before the fix `firstFailedAt['constructor'] == null` was false (it read
+    // Object), the start stamp was never written, `failingFor` was NaN, and
+    // the prune floor never elapsed.
+    let state = { streaks: {}, dormant: {}, failedAt: {}, firstFailedAt: {} } as ReturnType<typeof updateBoardFailures>;
+    for (let i = 0; i < 6; i++) {
+      state = updateBoardFailures({
+        okTokens: [], failedTokens: ["constructor", "gopuff"], recheckTokens: new Set(),
+        streaks: state.streaks, dormant: state.dormant, failedAt: state.failedAt, firstFailedAt: state.firstFailedAt,
+        deadThreshold: 6, minFailureAgeMs: 5 * 3_600_000, dormantCap: 100, now: now + i * 3_600_000,
+      });
+    }
+    expect(state.toPrune.sort()).toEqual(["constructor", "gopuff"]);
+    expect(Object.prototype.hasOwnProperty.call(state.dormant, "constructor")).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(state.streaks, "constructor")).toBe(false);
+  });
+
+  it("every token-keyed read in dormancy.ts goes through the hasOwn helper", () => {
+    const src = stripped(readFileSync(resolve(DIR, "dormancy.ts"), "utf8"));
+    expect(src).toMatch(/const own = \(rec: Record<string, number>, t: string\): number \| undefined => \(Object\.prototype\.hasOwnProperty\.call\(rec, t\) \? rec\[t\] : undefined\);/);
+    expect(src).toMatch(/own\(params\.dormant, token\)/);
+    expect(src).toMatch(/own\(params\.streaks, token\) \?\? 1/);
+    expect(src).toMatch(/const since = own\(dormant, t\);/);
+    expect(src).toMatch(/const streak = \(own\(streaks, t\) \?\? 0\) \+ 1;/);
+    expect(src).toMatch(/const firstAt = own\(firstFailedAt, t\) \?\? params\.now;/);
   });
 });
 

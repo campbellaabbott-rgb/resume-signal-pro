@@ -184,7 +184,9 @@ describe("a failed board should not wait a whole rotation", () => {
     // slice is what gets deferred, and the retry lane and cursor-bearing base
     // must outrank the lane's fill rate. Retry is still present and still
     // ahead of base, which is what this guard exists to hold.
-    expect(CODE).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.baseSlice, \.\.\.deepBoards\]/);
+    // .69 put the stale lane between retry and base, for the same reason retry
+    // sits ahead of base: a lane behind the budget-hit tail is never visited.
+    expect(CODE).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\]/);
   });
 
   it("the failure state is read BEFORE the slice is sealed", () => {

@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Activity, ShieldCheck, Clock, Briefcase } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
@@ -140,7 +141,83 @@ interface FillCurveRow {
   window_days: number;
   /** n_at_risk_14 >= 25 AND fills_le_14 >= 5 AND CI half-width <= 0.15. */
   sufficient: boolean;
+  // ── STILL ADVERTISED AT DAY 30, appended by 20260909217500 ────────────────
+  // Every column below is OPTIONAL on the type because the deployed RPC may
+  // predate it, and every one may be NULL on a row the RPC did answer: the
+  // day-30 cohort is empty by design at p_days 30, and the day-30 risk set
+  // admits only postings on boards whose observability bucket is full_read or
+  // lap_proven, because a takedown on a windowed board is invisible and every
+  // posting there would seem to reach the cap. NULL, never 1.0, is what the
+  // RPC returns when the gate admitted nothing. numeric arrives as a JSON
+  // number on one PostgREST build and a STRING on another, so every read goes
+  // through numOr, and the render is gated on sufficient_30 alone — see
+  // day30Reading below, the one path a day-30 figure can reach the screen by.
+  /** Share of the field's dated day-30 cohort that sat on boards we read to the end. */
+  gate_share_30?: number | string | null;
+  /** S(30): the share still advertised on reaching the cap. */
+  still_open_30?: number | string | null;
+  still_open_30_lo?: number | string | null;
+  still_open_30_hi?: number | string | null;
+  /** R(30): taken down for good. A CEILING, for the relist-dedupe reason R(14) is one. */
+  taken_down_30?: number | string | null;
+  /** X(30): re-listed. A FLOOR. */
+  relist_rate_30?: number | string | null;
+  n_at_risk_30?: number | string | null;
+  /** OUR sweep's takedowns at the cap — our action, never an employer event. */
+  ageouts_at_30?: number | string | null;
+  /** The cohort's edges as the RPC computed them, ISO dates. Printed from the row, never typed. */
+  cohort_from?: string | null;
+  cohort_to?: string | null;
+  /** n_at_risk_30 >= 25 AND half-width <= 0.15 AND R + X + S = 1 within 1e-6, over admitted boards. */
+  sufficient_30?: boolean | null;
 }
+/** THE DAY-30 READING FOR ONE ROW, or null. This is the ONLY route by which a
+ *  day-30 figure reaches the screen, and it renders on exactly one condition:
+ *  the RPC's own sufficiency finding is the boolean true. An absent column
+ *  (old RPC), a NULL (gate admitted nothing, or the cohort is empty), and an
+ *  explicit false all come out as null here, and null draws nothing — no dash,
+ *  no "n/a" — because a windowed board would read 1.0 by construction and a
+ *  placeholder beside a field name reads as a finding about that field.
+ *  Every number is coerced at the boundary and the cohort edges are carried
+ *  through as the row states them. */
+export interface Day30Reading {
+  /** S(30), R(30), X(30) and the interval, as whole percentages. */
+  pct: number;
+  lo: number;
+  hi: number;
+  /** Half the interval's width, in points. */
+  hw: number;
+  r: number;
+  x: number;
+  n: number;
+  cohortFrom: string;
+  cohortTo: string;
+}
+export const day30Reading = (row: Pick<FillCurveRow,
+  "sufficient_30" | "still_open_30" | "still_open_30_lo" | "still_open_30_hi"
+  | "taken_down_30" | "relist_rate_30" | "n_at_risk_30" | "cohort_from" | "cohort_to">): Day30Reading | null => {
+  if (row.sufficient_30 !== true) return null;
+  const s = numOr(row.still_open_30);
+  const lo = numOr(row.still_open_30_lo);
+  const hi = numOr(row.still_open_30_hi);
+  const r = numOr(row.taken_down_30);
+  const x = numOr(row.relist_rate_30);
+  const n = numOr(row.n_at_risk_30);
+  if (s === null || lo === null || hi === null || r === null || x === null || n === null) return null;
+  if (typeof row.cohort_from !== "string" || typeof row.cohort_to !== "string") return null;
+  if (row.cohort_from.length === 0 || row.cohort_to.length === 0) return null;
+  const pc = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 100);
+  return {
+    pct: pc(s), lo: pc(lo), hi: pc(hi), hw: Math.round(((hi - lo) / 2) * 100),
+    r: pc(r), x: pc(x), n: Math.round(n), cohortFrom: row.cohort_from, cohortTo: row.cohort_to,
+  };
+};
+/** Whether the RPC that answered carries the day-30 columns at all. The
+ *  disclosure of WHICH fields lack a reading is only true once the function
+ *  that decides it has run; against an old RPC it would name every field as
+ *  unread, which is a claim the response cannot support. */
+export const day30ColumnPresent = (rows: Array<Pick<FillCurveRow, "sufficient_30">>): boolean =>
+  rows.some((r) => typeof r.sufficient_30 === "boolean");
 /** docs/hiring-health-model.md §4/§5. The horizon sits strictly inside the
  *  observable window for every dated posting; the coverage bands say what
  *  population the rate speaks for and are NOT part of `sufficient`. */
@@ -373,6 +450,15 @@ export default function GhostJobIndex() {
   const shownCurve = fillCurve.filter((r) => r.sufficient
     && r.dated_coverage >= FILL_COVERAGE_QUALIFY
     && r.window_days >= FILL_RATE_MIN_TRACKING_DAYS);
+  /** The day-30 reading per LISTED row, through the one gate. A row without
+   *  one draws nothing for day 30; the fields that lack one are named once
+   *  above the table, and only when the RPC actually carried the columns. */
+  const { t } = useTranslation();
+  const day30Rows = shownCurve.map((r) => ({ r, d: day30Reading(r) }));
+  const anyDay30 = day30Rows.some((x) => x.d !== null);
+  const day30Unread = day30ColumnPresent(fillCurve)
+    ? day30Rows.filter((x) => x.d === null).map((x) => x.r.category.replace(/_/g, " "))
+    : [];
   /** The leaders this page lists. Until the guard answers, today's list in the
    *  RPC's own order; after it, only boards with a fill the guard stands behind,
    *  ORDERED BY THE SAME COUNT THAT RENDERS. Ranking on one population while
@@ -481,7 +567,16 @@ export default function GhostJobIndex() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-success">30 days</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">hard freshness cap — older postings auto-dropped</div>
+            {/* THE CAP, AND WHERE THE READING AT THE CAP IS. The second
+                sentence points at the field table's day-30 line, so it may
+                only appear when at least one listed field publishes that
+                line; pointing a reader at a reading that is not there is the
+                "published above, unedited" audit panel all over again. */}
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              {anyDay30
+                ? t("ghostIndex.capTileWithReading", "our freshness cap — a posting whose company-stated date passes 30 days leaves the board. The share still advertised on reaching the cap is the day-30 line in the field table below.")
+                : "hard freshness cap — older postings auto-dropped"}
+            </div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">
@@ -637,9 +732,9 @@ export default function GhostJobIndex() {
         <HowWeMeasure
           items={[
             { term: "Verified open roles", method: "A live count of postings currently served from companies' official hiring systems (Greenhouse, Lever, Ashby and 8 more) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass." },
-            { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age." },
+            { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age. Past the cap a posting is deleted, not watched, so nothing on this page says how long postings stay up beyond it. What can be measured is how many reach it: for each field, the share of dated roles from a stated posting window that were still advertised when they reached day 30, with its interval, and beside it the share taken down for good (a ceiling: a takedown we have not yet seen re-listed counts there) and the share re-listed (a floor). The three sum to one before each is rounded to the nearest point, so the printed figures can add to one more or less than a hundred. That line is counted only on boards we read to the end — on a board we can only read part of, a takedown is invisible and every posting would seem to reach the cap — and fields where too few roles sat on such boards are named above the table rather than given a figure. A role still advertised at day 30 is a fact about that posting, not proof of anything about the employer: a role can be genuinely open for longer than a month." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
-            { term: "How often roles are actually filled", method: "The share of a field's roles taken down for good — down, and not re-listed under the same title — within 14 days of the date the company itself published, never our discovery date, and never a median. Roles that come back up are counted as re-listings and shown separately; the two together are the share that left the board at all, so the fill figure is always the smaller number. We used to publish a median time to close and state its window beside it; the window was the problem. The board drops any posting older than 30 days, so a role that stays up longer leaves the board instead of being recorded as closed, and every fill surface then required a posting to have stood a week before it counted at all. A median drawn from a window of [7, 30] days lands near 15 whatever employers do — measured 2026-09-06, eighteen fields spanning nursing, law, retail and ML research agreed to within 1.4 days across roughly 600,000 closures. Roles that outlive the cap, and roles still up today, are now counted as unfinished rather than dropped from the sample, which is what that figure got wrong: dropping the slowest cases and taking a median of the rest is not censoring, it is truncation, and it biases the answer down without bound. Same-title relistings are held out as their own outcome, not counted as fills. Where more than half of a field's roles were still up at 30 days there is no typical figure to give and we say so instead of manufacturing one." },
+            { term: "How often roles are actually filled", method: "The share of a field's roles taken down for good — down, and not re-listed under the same title — within 14 days of the date the company itself published, never our discovery date, and never a median. Roles that come back up are counted as re-listings and shown separately; the two together are the share that left the board at all, so the fill figure is always the smaller number. We used to publish a median time to close and state its window beside it; the window was the problem. The board drops any posting older than 30 days, so a role that stays up longer leaves the board instead of being recorded as closed, and every fill surface then required a posting to have stood a week before it counted at all. A median drawn from a window of [7, 30] days lands near 15 whatever employers do — measured 2026-09-06, eighteen fields spanning nursing, law, retail and ML research agreed to within 1.4 days across roughly 600,000 closures. Roles that outlive the cap, and roles still up today, are now counted as unfinished rather than dropped from the sample, which is what that figure got wrong: dropping the slowest cases and taking a median of the rest is not censoring, it is truncation, and it biases the answer down without bound. Same-title relistings are held out as their own outcome, not counted as fills. Where fewer than half of a field's roles had been taken down for good by day 30 there is no typical figure to give and we say so instead of manufacturing one." },
             { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system. The percentage is a share of the probes that DECIDED, and the count it was computed on is printed beside it: a probe we could not reach, and a probe on a feed larger than one read of ours, both leave the denominator instead of being scored either way. That exclusion is not a rounding detail — around a tenth of our boards page short of the vendor's own advertised total, and on those a posting's absence from our read is evidence about our page cap, not about the employer. Saying 'we could not decide' is the only honest answer there, and it is why this figure is published with its own basis attached." },
             { term: "Re-verification freshness", method: "Every board carries a verification stamp from the refresh loop; the median and 95th-percentile ages shown are computed from those stamps at page load — a measurement, not a promise." },
           ]}
@@ -698,9 +793,9 @@ export default function GhostJobIndex() {
                   up and roles that passed the cap counted as unfinished rather
                   than deleted. That is R(14), the fill arm alone; the share
                   that left the board at all is larger by the relist rate,
-                  which is published in its own column. Where more than
-                  half were still up at 30 days there is no median to give, and
-                  we say that instead of manufacturing one. */}
+                  which is published in its own column. Where fewer than half
+                  had been taken down for good by day 30 there is no median to
+                  give, and we say that instead of manufacturing one. */}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -821,11 +916,24 @@ export default function GhostJobIndex() {
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Briefcase className="w-4 h-4 text-primary" /> How often roles are actually filled, by field
             </h2>
+            {/* WHICH LISTED FIELDS HAVE NO DAY-30 LINE, said once, and only
+                when the RPC carried the columns that decide it. The count and
+                the names are the rows day30Reading returned null for: the
+                gate admitted no board we read to the end, or too few of the
+                field's roles reached the cap on the ones it did. */}
+            {day30Unread.length > 0 && (
+              <p className="text-[11px] text-muted-foreground mb-2">
+                {t("ghostIndex.stillUp30Unread",
+                  "{{n}} of the fields listed here — {{fields}} — have no reading of the share still advertised at our 30-day cap: on the boards we can read to the end, too few of their dated roles reached the cap for a share we would stand behind.",
+                  { n: day30Unread.length, fields: day30Unread.join(", ") })}
+              </p>
+            )}
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              {[...shownCurve]
-                .sort((x, y) => y.fill_rate_14 - x.fill_rate_14)
-                .map((r, i) => (
-                  <div key={r.category} className={`flex items-center gap-3 px-4 py-2.5 ${i > 0 ? "border-t border-border/60" : ""}`}>
+              {[...day30Rows]
+                .sort((x, y) => y.r.fill_rate_14 - x.r.fill_rate_14)
+                .map(({ r, d }, i) => (
+                  <div key={r.category} className={i > 0 ? "border-t border-border/60" : ""}>
+                  <div className="flex items-center gap-3 px-4 py-2.5">
                     <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
                     <span className="flex-1 text-sm font-medium text-foreground truncate">{r.category.replace(/_/g, " ")}</span>
                     {/* R(14), NOT 1 − S(14). This prints the cumulative
@@ -854,6 +962,24 @@ export default function GhostJobIndex() {
                       {Math.round(r.fill_rate_14_lo * 100)}–{Math.round(r.fill_rate_14_hi * 100)}% · {r.n_at_risk_14.toLocaleString()} tracked
                     </span>
                   </div>
+                  {/* STILL ADVERTISED AT DAY 30 — S(30) with its interval,
+                      R(30) as a ceiling and X(30) as a floor, drawn only when the row's
+                      own sufficiency finding is true, which is the one thing
+                      day30Reading checks. The cohort's edges are the row's:
+                      the floor is the date our exit log began holding what
+                      the estimator needs, and it retires itself as the window
+                      moves, so a typed date here would go stale by itself.
+                      ISO dates are printed as the RPC states them — parsing a
+                      date-only string lands at UTC midnight and shifts a day
+                      in every western timezone. */}
+                  {d && (
+                    <p className="px-4 pb-2.5 pl-12 text-[11px] text-muted-foreground -mt-1">
+                      {t("ghostIndex.stillUp30Row",
+                        "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end.",
+                        { pct: d.pct, field: r.category.replace(/_/g, " "), cohortFrom: d.cohortFrom, cohortTo: d.cohortTo, n: d.n.toLocaleString(), hw: d.hw, r: d.r, x: d.x })}
+                    </p>
+                  )}
+                  </div>
                 ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-2">
@@ -874,12 +1000,20 @@ export default function GhostJobIndex() {
                   table filtered on sufficiency AND coverage, so this sentence
                   could report "in 3 of these fields…" about three fields the
                   sentence above had just said were not listed. */}
+              {/* WHAT median_censored MEASURES, said as measured. It is true
+                  when R(30) — the share taken down for good by day 30 — is
+                  below one half, so the median time to a fill is not reached
+                  inside our record. It is NOT the share still advertised at
+                  the cap: a field can have R(30) = 0.45 with 30% re-listed and
+                  only 25% still up. That share is the day-30 line on each row
+                  above, and it has its own name. */}
               {shownCurve.some((r) => r.median_censored) && (
                 <>
                   In{" "}
                   <strong>{shownCurve.filter((r) => r.median_censored).length}</strong>{" "}
-                  of the fields listed here more than half the roles we tracked were still up at 30 days, so there is
-                  no typical time to give for them — only "more than 30 days", which is where our own record ends.{" "}
+                  of the fields listed here fewer than half the roles we tracked had been taken down for good by day 30,
+                  so there is no typical time to a fill to give for them — only "more than 30 days", which is where our
+                  own record ends.{" "}
                 </>
               )}
               {shownCurve.some((r) => r.dated_coverage < FILL_COVERAGE_PLAIN) && (

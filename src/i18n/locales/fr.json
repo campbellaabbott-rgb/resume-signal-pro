@@ -4798,5 +4798,10 @@
     "reassure": "Analyse gratuite · sans carte, sans inscription",
     "exploreCta": "Explorer par domaine",
     "statCompanyBoards": "sites carrières d'entreprises qui recrutent"
+  },
+  "ghostIndex": {
+    "stillUp30Row": "{{pct}}% des postes datés en {{field}} publiés entre {{cohortFrom}} et {{cohortTo}} étaient encore affichés en atteignant notre plafond de 30 jours (n={{n}}, ±{{hw}} points) ; au plus {{r}}% avaient été retirés définitivement et au moins {{x}}% republiés. Compté uniquement sur les sites que nous lisons jusqu'au bout.",
+    "stillUp30Unread": "{{n}} des domaines listés ici — {{fields}} — n'ont pas de mesure de la part encore affichée à notre plafond de 30 jours : sur les sites que nous pouvons lire jusqu'au bout, trop peu de leurs postes datés ont atteint le plafond pour une part que nous puissions défendre.",
+    "capTileWithReading": "notre plafond de fraîcheur — un poste dont la date déclarée par l'entreprise dépasse 30 jours quitte le tableau. La part encore affichée en atteignant le plafond est la ligne du jour 30 dans le tableau des domaines ci-dessous."
   }
 }

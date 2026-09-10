@@ -271,8 +271,105 @@ describe("the lane selector and its state fold", () => {
     expect(STALE_PER_SLICE).toBe(3);
     expect(STALE_LANE_MIN_AGE_H).toBe(72);
     expect(STALE_TRIES_MAX).toBeGreaterThanOrEqual(2);
-    // Not wired, and says so — index.ts is not this lane's to edit.
-    expect(header).toMatch(/NOT WIRED/);
+    // Wired in .69, and says so.
+    expect(header).toMatch(/WIRED in 2026-09-09\.69/);
+    expect(header).not.toMatch(/NOT WIRED/);
+  });
+});
+
+describe("the lane is WIRED into index.ts the way the header planned it (2026-09-09.69)", () => {
+  // Comment-stripped with the `://`-safe stripper, so prose about a site is
+  // never mistaken for the site.
+  const IDX = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8")
+    .replace(/(^|[^:\w])\/\/[^\n]*/g, "$1 ").replace(/\/\*[\s\S]*?\*\//g, " ");
+
+  it("imports the module and never re-implements it", () => {
+    expect(IDX).toMatch(/import \{ STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, tokensOf, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict \} from "\.\/stale-lane\.ts";/);
+    expect(IDX, "the class ladder lives in stale-lane.ts only").not.toMatch(/"prototype_name"\s*:/);
+  });
+
+  it("cold slices only, on the retry lane's shed ladder, one step smaller (3 -> 1 -> 0)", () => {
+    expect(IDX).toMatch(/const effStalePerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 1 : STALE_PER_SLICE;/);
+    expect(IDX).toMatch(/if \(!inHotPhase && effStalePerSlice > 0\) \{/);
+    // The same try/catch shape as the retry lane: an accelerator, never a failed slice.
+    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
+    expect(lane).toMatch(/\} catch \(e\) \{/);
+    expect(lane).toMatch(/staleBoards = \[\];/);
+    // And the throughput constant it is sized by is the module's, not a copy.
+    expect(IDX).not.toMatch(/const STALE_PER_SLICE\b/);
+  });
+
+  it("reads the tail once per hop through get_stalest_boards, bounded, and an absent RPC is a warning, never a throw", () => {
+    expect(IDX).toMatch(/client\.rpc\("get_stalest_boards", \{ p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H \}\)/);
+    expect(IDX).toMatch(/withDeadline\(\s*client\.rpc\("get_stalest_boards"/);
+    expect(IDX).toMatch(/const STALE_RPC_DEADLINE_MS = 4_000;/);      // under the RPC's own 5s statement_timeout
+    // 60, not 20: the head of the oldest-first list is where permanent
+    // residents live (oversize boards never stamp; unresolved tokens stay),
+    // and at 20 the window clogged silently. Still under the RPC's 200 cap.
+    expect(IDX).toMatch(/const STALE_RPC_LIMIT = 60;/);
+    // PostgREST answers a missing function as an error OBJECT, not a rejection: read it as "no lane this hop".
+    expect(IDX).toMatch(/const rows = !rpcErr && Array\.isArray\(rpc\.data\) \? \(rpc\.data as StaleRow\[\]\) : null;/);
+    expect(IDX).toMatch(/console\.warn\(`\[JOB-BOARD\] stale lane: get_stalest_boards unavailable — no lane this hop \(\$\{why\}\)`\);/);
+    expect(IDX).toMatch(/rpc: rpcErr \? "error" : "timeout"/);
+    expect((IDX.match(/rpc\("get_stalest_boards"/g) ?? []).length, "one call site").toBe(1);
+    // Cancelled at the deadline, never abandoned unread; a REJECTED request
+    // (network/TLS/abort) is mapped to an error object BEFORE withDeadline, so
+    // it publishes as rpc:"error" with its cause rather than as "timeout".
+    expect(IDX).toMatch(/\.abortSignal\(AbortSignal\.timeout\(STALE_RPC_DEADLINE_MS \+ 500\)\)/);
+    expect(IDX).toMatch(/\.then\(\(r\) => r, \(e: unknown\) => \(\{ data: null, error: \{ code: "rejected", message: String\(e\)\.slice\(0, 160\) \} \}\)\)/);
+  });
+
+  it("names the clogged window: a full window with nothing fetchable in it is windowFull, on the meta row and on status", () => {
+    expect(IDX).toMatch(/windowFull: rows\.length >= STALE_RPC_LIMIT && classes\.unexplained === 0 && staleBoards\.length === 0,/);
+    expect(IDX).toMatch(/rpc: rpcErr \? "error" : "timeout", asked: 0, windowFull: false,/);
+    expect(IDX).toMatch(/windowFull: boolean;/);
+  });
+
+  it("builds the context from Sets and Maps the hop already holds — never a token-keyed Record", () => {
+    expect(IDX).toMatch(/const CATALOGUE_TOKENS: ReadonlySet<string> = new Set\(JOB_SOURCES\.map\(\(s\) => s\.token\)\);/);
+    expect(IDX).toMatch(/catalogued: CATALOGUE_TOKENS,/);
+    expect(IDX).toMatch(/quarantinedVendors,\s*oversize: new Set\(OVERSIZE_BOARDS\.keys\(\)\),/);
+    expect(IDX).toMatch(/dormant: tokensOf\(boardFailures\.dormant\),/);
+    expect(IDX).toMatch(/failing: new Set\(\[\.\.\.tokensOf\(boardFailures\.failedAt\), \.\.\.tokensOf\(boardFailures\.streaks\)\]\),/);
+    expect(IDX).toMatch(/tries: staleTries,/);
+    expect(IDX).toMatch(/staleTries = readStaleTries\(slMeta\?\.v\);/);
+    // The quarantine set is read BEFORE the slice is sealed, or the context is empty by construction.
+    expect(IDX.indexOf('eq("k", "vendor_breaker")')).toBeLessThan(IDX.indexOf("const slice = [...demandBoards"));
+    expect(IDX.indexOf('eq("k", "stale_lane")')).toBeLessThan(IDX.indexOf("const slice = [...demandBoards"));
+  });
+
+  it("takes up to STALE_PER_SLICE 'unexplained' tokens not already in the slice, through the ordinary fetch path", () => {
+    expect(IDX).toMatch(/const taken = new Set\(\[\.\.\.baseSlice, \.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.deepBoards\]\.map\(\(s\) => s\.token\)\);\s*staleBoards = selectStaleLane\(verdicts, \{ perSlice: effStalePerSlice, exclude: taken \}\)/);
+    // Appended to the composed slice ahead of the base rotation, behind retry — the ordinary loop fetches it.
+    expect(IDX).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\];/);
+    // No second fetch path, no second budget: the lane has no fetchBoard call of its own.
+    const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
+    expect(lane).not.toMatch(/fetchBoard\(/);
+    expect(lane).not.toMatch(/SLICE_POSTING_BUDGET|inFlightReserve/);
+  });
+
+  it("folds tries at hop end: a stamped board leaves the map, an attempted one counts, a budget-deferred one is untouched", () => {
+    expect(IDX).toMatch(/const attempted = staleBoards\.map\(\(s\) => s\.token\)\.filter\(\(tk\) => !budgetSkippedSet\.has\(tk\)\);/);
+    expect(IDX).toMatch(/const resolved = attempted\.filter\(\(tk\) => okSet\.has\(tk\)\)\.length;/);
+    expect(IDX).toMatch(/const nextTries = bumpStaleTries\(staleTries, attempted, okSet\);/);
+    expect(IDX).toMatch(/\{ k: "stale_lane", v: \{ \.\.\.staleLane, tries: writeStaleTries\(nextTries\) \}, updated_at: new Date\(\)\.toISOString\(\) \}/);
+    expect((IDX.match(/k: "stale_lane"/g) ?? []).length, "one writer, one key").toBe(1);
+    // staleTries ride slice_stats beside the budget note.
+    expect(IDX).toMatch(/\.\.\.\(sliceStaleNote \? \{ staleTries: sliceStaleNote\.tries, staleResolved: sliceStaleNote\.resolved \} : \{\}\),/);
+    expect(IDX).toMatch(/sliceStaleNote = \{ tries: attempted\.length, resolved \};/);
+  });
+
+  it("status publishes staleLane: asked, classes, fetched, resolved, and the two classes no fetch can fix", () => {
+    expect(IDX).toMatch(/staleLane: \(\(\) => \{/);
+    const block = IDX.slice(IDX.indexOf("staleLane: (() => {"), IDX.indexOf("chainWatchdog,", IDX.indexOf("staleLane: (() => {")));
+    for (const f of ["asked:", "windowFull:", "classes:", "fetched:", "resolved:", "unresolved:", "prototypeNames:", "triesPending:", "rpc:", "lastSlice:"]) {
+      expect(block, `status.staleLane is missing ${f}`).toContain(f);
+    }
+    // APPENDED to the status read, never inserted (the positional-destructure rule).
+    const at = IDX.indexOf("hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow");
+    expect(at).toBeGreaterThan(-1);
+    const arr = IDX.slice(at);
+    expect(arr.indexOf('eq("k", "stale_lane")')).toBeGreaterThan(arr.indexOf('eq("k", "oracle_subsite_repair")'));
   });
 });
 

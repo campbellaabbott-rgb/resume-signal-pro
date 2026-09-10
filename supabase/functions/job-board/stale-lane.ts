@@ -1,9 +1,12 @@
 // Stale-board classification for a cold-slice "stale lane".
 //
-// NOT WIRED. index.ts does not import this file yet; the plan below is for
-// whoever owns index.ts to apply. Everything here is pure and unit-tested
-// (src/test/every-stale-board-is-named-and-classified.test.ts) so the wiring
-// is a paste, not a design.
+// WIRED in 2026-09-09.69: index.ts imports this module and follows the plan
+// below step for step (the lane sits between the retry lane and the base
+// slice; its fold and the `stale_lane` meta write sit beside the
+// board_failures write at hop end; status publishes `staleLane`). Everything
+// here is pure and unit-tested
+// (src/test/every-stale-board-is-named-and-classified.test.ts), which also
+// pins the wiring sites in index.ts.
 //
 // WHAT IT ANSWERS. get_freshness_stats() says the oldest stamp is 14.6 days
 // old and names nobody. get_stalest_boards() (20260909218000) names the
@@ -42,8 +45,14 @@
 //
 //   1. Read the tail once per cold hop, not per board:
 //        const { data } = await client.rpc("get_stalest_boards",
-//          { p_limit: 20, p_min_age_hours: STALE_LANE_MIN_AGE_H });
+//          { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H });
 //      A null/error result means "no lane this hop" — never a failure.
+//      STALE_RPC_LIMIT is index.ts's (60 in .69, raised from 20): the head of
+//      the oldest-first list is where permanent residents live — oversize
+//      boards never stamp, unresolved tokens stay — and a 20-row window
+//      clogged with them silently. index.ts publishes `windowFull` when a
+//      full window holds nothing fetchable; the durable fix is a p_exclude
+//      on a later RPC revision.
 //
 //   2. Build the context from state the hop already holds. Every field is a
 //      Set/Map; convert meta Records with tokensOf() (own keys only):
