@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public._mig_exec(text) TO sandbox_exec;
