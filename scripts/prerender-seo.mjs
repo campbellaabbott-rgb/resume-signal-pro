@@ -1798,18 +1798,18 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       // refresh_job_board_facets (:07/:22/:37/:52).
       //
       // Whatever this says must remain true of what /explore actually renders:
-      // mirror seoTitle5 / seoDescription4 in Explore.tsx. Audit it by curling
+      // mirror seoTitle5 / seoDescription5 in Explore.tsx. Audit it by curling
       // this path with a Googlebot UA, never in a browser -- a browser runs the
       // React render and cannot see this document at all.
       title: "Explore Every Field on the Board — An Exact Live Count and the Roles Inside Each One",
-      description: "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of the board each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.",
+      description: "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of that field each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.",
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
         {
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Explore every field on the board",
-          description: "Every field on the board, ordered by how many roles are open in it right now and each printed with its count, plus the bucket of roles our own field rules could not sort. Open a field for the roles inside it priced by live counts, the narrowings that say how much of the board each one can even see, and what our own closure record does and does not say about the employers hiring in that slice.",
+          description: "Every field on the board, ordered by how many roles are open in it right now and each printed with its count, plus the bucket of roles our own field rules could not sort. Open a field for the roles inside it priced by live counts, the narrowings that say how much of that field each one can even see, and what our own closure record does and does not say about the employers hiring in that slice.",
           url: `${SITE}/explore`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         },
@@ -1817,7 +1817,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Explore" }])}
         <h1 class="text-3xl font-bold mb-3">Start with your field. Land on a list you can actually read.</h1>
-        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now and drawn to scale against the largest bucket on the board, so the spread between the deepest field and the shallowest is visible rather than asserted. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — each of those says how much of the board it can even see, because a filter over a column employers often leave blank hides roles rather than proving they are not there. A field's count is the board's own facet sweep, which runs four times an hour and stamps the page with the time it was taken; everything you open is counted live at the moment you click it. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
+        <p class="text-muted-foreground mb-8">Every field on the board, ordered by how many roles are open in it right now and drawn to scale against the largest bucket on the board, so the spread between the deepest field and the shallowest is visible rather than asserted. Open one to see the roles inside it priced by real counts, then narrow by remote, pay, experience or country — and one sentence under those narrowings says how much of that field states a work mode, a pay figure, an experience level or an employment type at all, from the board's hourly per-field scan, because a filter over a column employers often leave blank hides roles rather than proving they are not there. A field's count is the board's own facet sweep, which runs four times an hour and stamps the page with the time it was taken; everything you open is counted live when you open it and counted again once a reading is a few minutes old. A posting coming down never means someone was hired: a hire, a withdrawal, a cancelled requisition and a retitle look identical to us. The live counts load when the page opens in a browser.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">Every field on the board</h2>
           ${(() => {
             // THE DOCUMENT SAID THE FIELDS WERE "ordered by how many roles are
@@ -1862,7 +1862,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         </section>
         <div class="space-y-3 mb-8">
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">The roles inside a field, priced</h2><p class="text-xs text-muted-foreground">Role names are ours, not the board's. The number beside one is a live count of exactly the search that row opens, so a role we named that matches nothing is left out rather than shown as zero.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Narrowings that state what they hide</h2><p class="text-xs text-muted-foreground">Remote, on-site, states the pay, a pay floor, open to beginners, full-time, posted this week, one-click apply — each with its live count and how much of the board states that thing at all. A filter can only search what employers published.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Narrowings that state what they hide</h2><p class="text-xs text-muted-foreground">Remote, on-site, states the pay, a pay floor, open to beginners, full-time, posted this week, one-click apply — each with its live count, and one sentence beneath them saying how much of that field states a work mode, a pay figure, an experience level or an employment type at all. A filter can only search what employers published.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">What our closure record says about the employers in a slice</h2><p class="text-xs text-muted-foreground">Not a ranking. For the slice you assembled, how many employers we found, how many of those we hold any closure record for, and how many of those have taken roles down and not put them back up — with the gap in our record stated as plainly as the finding.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold text-foreground mb-1">Check an employer</h2><p class="text-xs text-muted-foreground">Any board we carry: how many of its roles we hold, and — where its own feed states a total — how much of its hiring is not on this page, with the day we read it.</p></div>
         </div>

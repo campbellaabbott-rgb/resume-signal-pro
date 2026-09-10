@@ -155,7 +155,7 @@ describe("an absent payload column disables a claim, it never becomes one", () =
     // And a cache still carrying the collection must not raise a staleness
     // banner about a section that does not exist.
     expect(CODE, "the segments collection must stay on the retired list")
-      .toMatch(/RETIRED_CACHE_PARTS[\s\S]{0,200}"segments"/);
+      .toMatch(/UNRENDERED_CACHE_PARTS[\s\S]{0,200}"segments"/);
   });
 });
 
@@ -253,11 +253,23 @@ describe("the page does not fire a query that cannot finish", () => {
     // header describes.
     expect(CODE, "the 44-second scan is back on /explore").not.toMatch(/get_category_fill_curve/);
     expect(CODE, "the tiles are reading the explore cache again").not.toMatch(/obj\(c\.field_curves\)/);
-    expect(CODE, "the tiles are reading the explore cache again").not.toMatch(/obj\(c\.field_grid\)/);
     expect(CODE, "the tiles are reading the explore cache again").not.toMatch(/obj\(c\.fields\)/);
-    // …and the four keys that lost their reader must not raise a staleness
-    // banner about a collection this page does not render.
-    expect(EXPLORE).toMatch(/"fields", "field_grid", "field_curves", "totals"/);
+    // field_grid IS READ NOW — for the chips' coverage sentence, never for a
+    // tile. The chips printed the BOARD's coverage beside a FIELD's count
+    // (identical on every field: 23% on finance and design while the fields
+    // really state a work mode on 30.5% and 38.1%), and the only per-field
+    // reading on this board is the hourly grid's own filter counts over its
+    // own n. The property this line used to protect — no tile number from the
+    // cache — is asserted off a real render, with a wrong n fed to the grid,
+    // in a-percentage-that-reads-the-same-on-every-field-is-not-a-field-
+    // percentage.test.tsx.
+    expect(CODE, "the coverage sentence reads the per-field scan; the tiles must not")
+      .toMatch(/obj\(c\.field_grid\)/);
+    // …and the three keys that lost their reader must not raise a staleness
+    // banner about a collection this page does not render, while the one this
+    // page DOES render discloses its staleness inside its own sentence.
+    expect(EXPLORE).toMatch(/UNRENDERED_CACHE_PARTS[\s\S]{0,400}"fields", "field_curves", "totals"/);
+    expect(EXPLORE).toMatch(/SELF_DISCLOSED_CACHE_PARTS = new Set\(\["field_grid"\]\)/);
     // COMMENT-STRIPPED, and the whole reason is in this file's own history: a
     // guard satisfied by prose describing what the code no longer does is the
     // failure this repo has shipped repeatedly. The header of that migration
@@ -283,7 +295,7 @@ describe("the page does not fire a query that cannot finish", () => {
     expect(refresh, "a deleted section's scan is still being paid for")
       .not.toMatch(/get_salary_benchmarks/);
     expect(EXPLORE, "the retired collections must not raise a staleness banner")
-      .toMatch(/RETIRED_CACHE_PARTS[\s\S]{0,300}"transparent", "salary"/);
+      .toMatch(/UNRENDERED_CACHE_PARTS[\s\S]{0,300}"transparent", "salary"/);
   });
 
   it("a slow collection cannot blank the others", () => {
@@ -647,9 +659,15 @@ describe("no locale ships a string the page cannot render", () => {
     // rest: a six-figure count rendered ungrouped is "639424" in a sentence.
     const COUNT_KEYS = ["basisWhole3", "basisPartial3", "basisCarried2",
                         "barBasisAnchor", "barBasisSpread",
-                        "halfLine", "closureBasis2",
-                        "closureBasisNoTotal2", "closureFinding", "closureOpen",
-                        "closureOpenCapped", "fillOpen", "checkFeedGap2", "repostWarn"];
+                        "halfLine",
+                        // closureBasis2 is GONE (its inSlice was always null, so
+                        // it could never render) and closureFinding took a
+                        // second key when it gained its 90-day window; the two
+                        // partial-outage sentences interpolate a count of our
+                        // own failed probes and are held to the same grouping.
+                        "closureBasisNoTotal2", "closureFinding2", "closureOpen",
+                        "closureOpenCapped", "fillOpen", "checkFeedGap2", "repostWarn",
+                        "rolesPartial", "chipsPartial"];
     /** The whole `t("explore.<key>", …)` call, found by BALANCING PARENTHESES
      *  from the call's own bracket rather than by a fixed window. A fixed
      *  window is a guess about how long the thing being checked happens to be,
@@ -702,7 +720,7 @@ describe("no locale ships a string the page cannot render", () => {
           // are deliberately absent: they are bounded small numbers (34, 3, 14)
           // where a thousands separator would be noise, exactly like `pct` and
           // `days` above.
-          .matchAll(/\b(n|total|open|entry|events|roles|rows|asked|readable|closers|inSlice|board|all|tiled|untiled|topN|smallN|biggestN|above|below|fieldsTotal):\s*([^,\n]+)/g)];
+          .matchAll(/\b(n|total|open|entry|events|roles|rows|asked|readable|closers|board|all|tiled|untiled|topN|smallN|biggestN|above|below|fieldsTotal):\s*([^,\n]+)/g)];
         expect(args.length, `explore.${key} interpolates no count at all: ${call}`).toBeGreaterThan(0);
         for (const [, name, value] of args) {
           expect(value, `explore.${key} interpolates ${name} raw: ${value.trim()}`).toContain("nf(");
@@ -929,13 +947,20 @@ describe("a card's number and the page it opens agree", () => {
     // The constraint chips can: each names the filterCoverage key for ITS OWN
     // column and prints the server's figure for it. So the floor may appear as
     // a chip bound to salaryFloor coverage, and nowhere else.
+    // ONE, NOT TWO. The chip no longer names a coverage key of its own; the
+    // floor's population is disclosed by the pay FAMILY, whose floorCol binds
+    // salary_rank_usd's per-field count (pay_floor_n) and quotes it only when
+    // it rounds differently from the stated-pay column.
     const floors = [...CODE.matchAll(/salaryFloor/g)];
-    expect(floors.length, "the pay floor appears somewhere other than its own chip").toBe(2);
-    expect(CODE).toMatch(/patch: \{ salaryFloor: 80_000 \}, coverageKey: "salaryFloor"/);
-    // And it must not be quoted against the wider column's coverage, which
-    // overstates a floor's reach by about half again.
+    expect(floors.length, "the pay floor appears somewhere other than its own chip").toBe(1);
+    expect(CODE).toMatch(/id: "pay80k", label: "\$80,000\+", patch: \{ salaryFloor: 80_000 \} \}/);
+    expect(CODE, "the $80k chip is not bound to the floor column's per-field count")
+      .toMatch(/floorCol: "pay_floor_n"[\s\S]{0,200}"pay80k"/);
+    // And it must not be quoted against the wider column, which overstates a
+    // floor's reach by about half again.
     expect(CODE, "a pay floor quoting the states-pay population overstates its reach")
-      .not.toMatch(/salaryFloor[^\n]*coverageKey: "hasStatedPay"/);
+      .not.toMatch(/floorCol: "stated_pay_n"/);
+    expect(CODE).not.toMatch(/salaryFloor[^\n]*hasStatedPay/);
   });
 });
 
@@ -990,12 +1015,18 @@ describe("every interpolation a badge passes exists in every locale", () => {
     barBasisSpread: ["{{smallLabel}}", "{{smallN}}", "{{biggestLabel}}", "{{biggestN}}", "{{ratio}}"],
     halfLine: ["{{k}}", "{{above}}", "{{fieldsTotal}}", "{{rest}}", "{{below}}"],
     closureBasisNoTotal2: ["{{rows}}", "{{asked}}", "{{readable}}"],
-    closureFinding: ["{{closers}}", "{{readable}}", "{{min}}"],
+    closureFinding2: ["{{closers}}", "{{readable}}", "{{min}}", "{{days}}"],
     checkFeedGap2: ["{{total}}", "{{when}}", "{{gap}}"],
   };
+  // Every key here is checked in ALL NINE locale files. closureFinding2 was
+  // minted on 2026-09-10 by the chip-coverage pass and the locale pass landed
+  // in the same change, so there is no window to hold it to en/en-GB — a guard
+  // left at that strength could never report the next dropped {{days}}.
   for (const [key, vars] of Object.entries(NEW_KEYS)) {
     it(`${key} keeps every placeholder in all nine locales`, () => {
-      for (const f of localeFiles) {
+      const files = localeFiles;
+      expect(files.length).toBeGreaterThan(0);
+      for (const f of files) {
         const e = (JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).explore ?? {}) as Record<string, string>;
         expect(e[key], `${f} is missing explore.${key}`).toBeTruthy();
         for (const v of vars) {
@@ -2229,10 +2260,12 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
     // tile counts and their denominator; both now come off the board's own
     // category facet in one read with the page a tile opens, so the cache is
     // consulted for the churn index alone.
-    for (const k of ["c.repost_index"]) {
+    // …and for the per-field grid the chips' coverage sentence reads its
+    // SHARES from — never a tile number; see the render guard.
+    for (const k of ["c.repost_index", "c.field_grid"]) {
       expect(CODE).toContain(`obj(${k})`);
     }
-    for (const k of ["c.fields", "c.totals", "c.field_grid", "c.field_curves"]) {
+    for (const k of ["c.fields", "c.totals", "c.field_curves"]) {
       expect(CODE, `${k} is being read again — one quantity, two scans`).not.toContain(`obj(${k})`);
     }
   });
@@ -2299,14 +2332,28 @@ describe("every answer states the pool it was drawn from, and zero is silence", 
       barBasisSpread: ["{{smallLabel}}", "{{smallN}}", "{{biggestLabel}}", "{{biggestN}}", "{{ratio}}"],
       halfLine: ["{{k}}", "{{above}}", "{{fieldsTotal}}", "{{rest}}", "{{below}}"],
       methodTileMethod3: ["{{cap}}", "{{n}}"],
-      closureBasis2: ["{{inSlice}}", "{{asked}}", "{{readable}}"],
       closureBasisNoTotal2: ["{{rows}}", "{{asked}}", "{{readable}}"],
-      closureFinding: ["{{closers}}", "{{readable}}", "{{min}}"],
+      closureFinding2: ["{{closers}}", "{{readable}}", "{{min}}", "{{days}}"],
       closureBasisNote2: ["{{min}}"],
       closureOpen: ["{{n}}"],
       closureOpenCapped: ["{{n}}", "{{closers}}"],
       rolesBelowFloor: ["{{min}}"],
-      chipCoverage: ["{{pct}}"],
+      // THE CHIP-COVERAGE PASS. chipCoverage ("stated on {{pct}}%") is retired:
+      // it printed the board's share beside a field's count. What replaced it
+      // is one sentence per panel naming the field, the scan's time and four
+      // shares; a counts-basis line naming the field, the window, the cache
+      // bound and the cap; two partial-outage sentences; a Where note; and the
+      // role title and note that say what the rows are.
+      panelCountsBasis: ["{{field}}", "{{window}}", "{{min}}", "{{cap}}"],
+      rolesTitle2: ["{{field}}"],
+      rolesPartial: ["{{n}}", "{{total}}"],
+      chipsPartial: ["{{n}}", "{{total}}"],
+      chipsCoverageField: ["{{field}}", "{{time}}", "{{workMode}}", "{{pay}}", "{{experience}}", "{{employmentType}}"],
+      chipsCoveragePayFloor: ["{{payFloor}}"],
+      chipsCoverageRole: ["{{role}}"],
+      chipsCoverageNone: ["{{field}}"],
+      whereNote: ["{{field}}"],
+      methodLiveMethod2: ["{{min}}"],
       fillOpen: ["{{n}}"],
       checkFeedGap2: ["{{total}}", "{{when}}", "{{gap}}"],
       checkFeedMulti: ["{{n}}"],

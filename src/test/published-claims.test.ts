@@ -206,7 +206,11 @@ describe("windows, denominators and units are never asserted by hand", () => {
       // A COUNT, AND IT BINDS THE STATED MODE. `workMode: "remote"` is
       // `work_mode = 'remote'`, whose coverage is about 28%.
       expect(code, "a work-mode control must bind work_mode, not a bare flag")
-        .toMatch(/id: "remote"[^}]*patch: \{ workMode: "remote" \}[^}]*coverageKey: "workMode"/);
+        .toMatch(/id: "remote"[^}]*patch: \{ workMode: "remote" \}/);
+      // …and its coverage is the FIELD's stated-mode share, from the per-field
+      // scan's work_mode_n, shared with the onsite chip as one family.
+      expect(code, "the remote chip's share is not bound to the field's work_mode_n")
+        .toMatch(/id: "workMode", col: "work_mode_n", chips: \["remote", "onsite"\]/);
       // THE COLUMN THAT IS NOT THE CHIP. get_explore_field_grid also publishes
       // remote_n, which counts the `remote` BOOLEAN — NOT NULL on every row, so
       // it reads as 100% coverage and is 40,325 rows against work_mode =
@@ -218,15 +222,15 @@ describe("windows, denominators and units are never asserted by hand", () => {
       // the server returned for its own key and nothing else.
       expect(code, "a work-mode share is being computed under another name")
         .not.toMatch(/remote(Pct|Share|Percent|Rate)/i);
-      expect(code, "the chip must print the server's coverage, not a constant")
-        .toMatch(/p\.coverage/);
+      expect(code, "the share must come from the per-field scan, not a constant")
+        .toMatch(/fieldShares\(grid, id\)/);
     }
     // AND THE CONSTRUCTION THAT KEEPS IT RETIRED, which is what makes the
     // failure mode impossible rather than merely absent: the collection is on
     // the page's retired list, so a cache row still carrying `segments` cannot
     // even raise a staleness banner about a section that does not exist.
     expect(code, "the segments collection must stay retired")
-      .toMatch(/RETIRED_CACHE_PARTS[\s\S]{0,200}"segments"/);
+      .toMatch(/UNRENDERED_CACHE_PARTS[\s\S]{0,200}"segments"/);
   });
 
   it("the segments RPC divides remote by disclosed rows only — in the definition the database runs, and it is no longer reachable", () => {

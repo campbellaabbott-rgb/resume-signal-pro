@@ -131,7 +131,11 @@ const wire = (facet: Record<string, number> | null = FACET) => {
     const b = (opts?.body ?? {}) as Record<string, unknown>;
     if (b.action === "facets") return facet === null ? { data: null, error: { message: "down" } } : facetReply(facet);
     if (b.limit === 60) return { data: { jobs: [], total: 0 }, error: null };
-    return { data: { total: 3_140, filterCoverage: { workMode: 0.23, country: 0.91 } }, error: null };
+    // A q probe is answered by the title tier, the one exit that carries
+    // `ranked: true`; a role row renders from nothing else, and an unranked
+    // reply is held as our instrument and deliberately NOT memoised. The
+    // board-wide filterCoverage is still sent so the page is proved to ignore it.
+    return { data: { total: 3_140, ...(typeof b.q === "string" ? { ranked: true } : {}), filterCoverage: { workMode: 0.23, country: 0.91 } }, error: null };
   });
   rpc.mockImplementation(async () => ({ data: [], error: null }));
 };
@@ -433,7 +437,7 @@ describe("the reader's slice has an address", () => {
     await waitFor(() => expect(rows().length).toBeGreaterThan(0));
     const before = window.history.length;
     act(() => { (rowFor("healthcare")!.querySelector("button[aria-expanded]") as HTMLButtonElement).click(); });
-    await waitFor(() => expect(pageText()).toContain("The biggest roles in"));
+    await waitFor(() => expect(pageText()).toContain("Roles we named in"));
     expect(new URLSearchParams(window.location.search).get("f")).toBe("healthcare");
     // pushState, not replaceState: the panel is a place, and Back must return
     // from it before it leaves the page.
@@ -536,10 +540,11 @@ describe("the reader's slice has an address", () => {
 
   it("…and the memo EXPIRES, because the sentence over those counts states when they were taken", async () => {
     // A CACHE OF MEASUREMENTS NEEDS A STATED WINDOW, AND A REF IS NOT ONE.
-    // These counts render under explore.rolesNote — "a live count of exactly
-    // the search that row opens, taken just now" — and a Map that lives as long
-    // as the tab publishes a six-hour-old integer under that sentence with no
-    // failure state entered and nothing on screen looking wrong. That is the
+    // These counts render under explore.panelCountsBasis — "taken when you
+    // opened this field and taken again once a reading is more than N minutes
+    // old" — and a Map that lives as long as the tab would publish a six-hour-
+    // old integer under that sentence with no failure state entered and
+    // nothing on screen looking wrong. That is the
     // carried-facet defect basisCarried2 fixes one level up on this same page,
     // one grain down: the number is real, its DATE BASIS is a lie.
     mount();

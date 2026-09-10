@@ -84,7 +84,7 @@ function stubTable() {
 }
 
 import Explore, {
-  CONSTRAINT_CHIPS, COUNTRY_CHIPS, DEFAULT_INTENT, FIELD_ROLES, INTENTS,
+  CONSTRAINT_CHIPS, COUNTRY_CHIPS, COVERAGE_FAMILIES, DEFAULT_INTENT, FIELD_ROLES, INTENTS,
   closureRecordOf, feedTotalClaim, numOr,
 } from "../pages/Explore";
 import { BOARD_CATEGORY_SLUGS } from "../lib/job-board-categories";
@@ -689,34 +689,47 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     expect(CODE).not.toMatch(/`\/jobs\?[a-zA-Z]+=/);
   });
 
-  it("every constraint chip names the coverage column it can be checked against — or states its exclusion in words", () => {
-    // A chip whose filter hides rows must publish how much of the board it can
-    // even see. Two chips carry no coverage key, and they are OPPOSITE cases
-    // that must not share a render:
+  it("every constraint chip that hides rows belongs to a coverage family read from the per-field scan — or states its exclusion in words", () => {
+    // A chip whose filter hides rows must publish how much of the FIELD it can
+    // even see — and it does so through a family, not a key of its own: the
+    // share is said once per family in one sentence under the row, because
+    // remote and onsite share a denominator and a figure identical on two
+    // chips is not a chip figure. Two chips belong to no family, and they are
+    // OPPOSITE cases that must not share a render:
     //
     //   apply — genuinely complete. sendableOnly filters on `source`, which
     //     every served row carries, so an invented "100%" would be noise.
     //   week  — the chip that hides the MOST. maxAgeDays binds `posted_at`, the
-    //     employer's own stated date (job-board/index.ts, and count_jobs_capped
-    //     itself), NOT effective_posted; whole vendors are structurally undated
-    //     (bamboohr 43,687 of 43,687) and every one of those rows is dropped
-    //     however new it is. get_filter_coverage publishes the fraction as
-    //     `dated`, but coverageDisclosure has no maxAgeDays branch, so no
-    //     number reaches this page — and the honest render of a figure we
-    //     cannot get is the exclusion IN WORDS. Silence here put the page's
-    //     largest hidden population under a note that reads silence as "we hold
-    //     no coverage reading for this filter".
-    const withCoverage = CONSTRAINT_CHIPS.filter((c) => c.coverageKey !== null);
-    expect(withCoverage.length).toBeGreaterThanOrEqual(6);
-    for (const c of withCoverage) {
-      expect(["workMode", "hasStatedPay", "salaryFloor", "experience", "employmentType", "country"])
-        .toContain(c.coverageKey);
-      // A chip may publish a figure OR state an exclusion, never both.
-      expect(c.note, `${c.id} carries both a coverage key and a prose exclusion`).toBeUndefined();
+    //     employer's own stated date, NOT effective_posted. The per-field scan
+    //     carries dated_n, but this file's earlier note recorded whole vendors
+    //     as structurally undated while the scan reads 99.4% dated — two claims
+    //     that cannot both be true — so no percentage is printed for it and the
+    //     exclusion is stated IN WORDS.
+    expect(COVERAGE_FAMILIES.map((f) => f.id).sort()).toEqual(["employmentType", "experience", "pay", "workMode"]);
+    const chipIds = new Set(CONSTRAINT_CHIPS.map((c) => c.id));
+    const inFamily = new Set<string>();
+    for (const f of COVERAGE_FAMILIES) {
+      expect(["work_mode_n", "stated_pay_n", "experience_n", "employment_type_n"]).toContain(f.col);
+      if (f.floorCol !== undefined) expect(f.floorCol).toBe("pay_floor_n");
+      for (const id of f.chips) {
+        expect(chipIds.has(id), `family ${f.id} names a chip that does not exist: ${id}`).toBe(true);
+        expect(inFamily.has(id), `${id} is in two families`).toBe(false);
+        inFamily.add(id);
+        // A chip may be measured OR state an exclusion, never both.
+        expect(CONSTRAINT_CHIPS.find((c) => c.id === id)!.note, `${id} carries both a family and a prose exclusion`).toBeUndefined();
+      }
     }
-    for (const c of CONSTRAINT_CHIPS.filter((x) => x.coverageKey === null)) {
+    // The shared-denominator pair is ONE family.
+    const modes = COVERAGE_FAMILIES.find((f) => f.id === "workMode")!;
+    expect([...modes.chips].sort()).toEqual(["onsite", "remote"]);
+    const floor = COVERAGE_FAMILIES.find((f) => f.floorCol);
+    expect(floor?.id).toBe("pay");
+    expect(floor!.chips).toContain("pay80k");
+    for (const c of CONSTRAINT_CHIPS.filter((x) => !inFamily.has(x.id))) {
       expect(["week", "apply"]).toContain(c.id);
     }
+    // And no chip carries a coverage key of its own any more.
+    for (const c of CONSTRAINT_CHIPS) expect("coverageKey" in c, `${c.id} carries a per-chip coverage key again`).toBe(false);
     const week = CONSTRAINT_CHIPS.find((c) => c.id === "week")!;
     expect(week.patch).toEqual({ maxAgeDays: 7 });
     expect(week.note, "the chip bounded by dated_n disclosed nothing").toBeTruthy();
@@ -750,7 +763,14 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     for (const stale of ["20.1", "12.9", "0.201", "0.129"]) {
       expect(CODE, `${stale} is a dated snapshot and must not be pinned on this page`).not.toContain(stale);
     }
-    expect(CODE).toMatch(/filterCoverage/);
+    // AND THE BOARD-WIDE BLOCK IS NOT READ EITHER. The probe reply's
+    // filterCoverage is get_filter_coverage's whole-board ratio; printed
+    // beside a field's count it read "stated on 23%" on every field. A read
+    // with no sentence is the number waiting to be re-rendered, so the page
+    // must not even hold it — the field's own share comes from the per-field
+    // scan through fieldShares.
+    expect(CODE, "the board-wide coverage block is being read again").not.toMatch(/filterCoverage/);
+    expect(CODE).toMatch(/fieldShares\(grid, id\)/);
   });
 
   it("the role vocabulary is ours, is never a number, and covers every field", () => {
@@ -762,7 +782,10 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     // could read, so a role list for them would be a list about nothing.
     expect(FIELD_ROLES.other).toBeUndefined();
     // And the page says whose words these are, on screen, not only in a comment.
-    expect(RAW).toContain("Role names are ours, not the board's");
+    // rolesNote2, not rolesNote: the same authorship claim, in the sentence
+    // that also says the counts are TITLE matches and that overlapping names
+    // count the same postings.
+    expect(RAW).toContain("The names are ours — a list we wrote, not the board's ranking");
   });
 });
 
@@ -795,7 +818,7 @@ describe("teeth — the builders refuse what they are supposed to refuse", () =>
         .not.toMatch(new RegExp(`\\b${name}\\b`));
     }
     // The claim builders that STAYED still refuse what they are supposed to.
-    expect(closureRecordOf(null, 60, ["a"], [{ company_token: "a", fills_90d: 0, relists_90d: 0, ageouts_90d: 0 }])?.readable).toBe(0);
+    expect(closureRecordOf(60, ["a"], [{ company_token: "a", fills_90d: 0, relists_90d: 0, ageouts_90d: 0 }])?.readable).toBe(0);
     expect(feedTotalClaim(678, 400, "2026-09-01")).toBeNull();
     expect(numOr("0.42")).toBe(0.42);
   });
@@ -819,8 +842,11 @@ describe("teeth — the builders refuse what they are supposed to refuse", () =>
       // employers, 47 of which we had never logged an event for.
       { company_token: "d", fills_90d: 0, relists_90d: 0, ageouts_90d: 0 },
     ];
-    const rec = closureRecordOf(null, 60, asked, rows)!;
-    expect(rec.inSlice).toBeNull();
+    const rec = closureRecordOf(60, asked, rows)!;
+    // THE ALWAYS-NULL FIELD IS GONE FROM THE TYPE. It could only ever have been
+    // filled from the board-wide companiesCount, which is the wrong number, and
+    // the sentence that rendered it (closureBasis2) could never render.
+    expect("inSlice" in rec, "the always-null employer count is back on the record").toBe(false);
     expect(rec.rowsRead).toBe(60);
     expect(rec.asked).toBe(4);
     expect(rec.readable).toBe(3);
@@ -829,33 +855,33 @@ describe("teeth — the builders refuse what they are supposed to refuse", () =>
     // A relist count EQUAL to the fills still qualifies — relists_90d is a
     // FLOOR, so the bar errs towards disqualifying, which is the safe direction
     // for a claim that speaks well of an employer.
-    expect(closureRecordOf(null, 60, ["a"], [{ company_token: "a", fills_90d: 3, relists_90d: 3 }])!.closers).toBe(1);
-    expect(closureRecordOf(null, 60, ["a"], [{ company_token: "a", fills_90d: 3, relists_90d: 4 }])!.closers).toBe(0);
+    expect(closureRecordOf(60, ["a"], [{ company_token: "a", fills_90d: 3, relists_90d: 3 }])!.closers).toBe(1);
+    expect(closureRecordOf(60, ["a"], [{ company_token: "a", fills_90d: 3, relists_90d: 4 }])!.closers).toBe(0);
     // Nothing to ask about is not a finding.
-    expect(closureRecordOf(null, 60, [], rows)).toBeNull();
+    expect(closureRecordOf(60, [], rows)).toBeNull();
     // The multi-employer link caps at the 12 Jobs.tsx round-trips.
     const many = Array.from({ length: 30 }, (_, i) => `t${i}`);
     const allClosers = many.map((tk) => ({ company_token: tk, fills_90d: 5, relists_90d: 1 }));
-    expect(closureRecordOf(null, 60, many, allClosers)!.tokens.length).toBe(12);
-    expect(closureRecordOf(null, 60, many, allClosers)!.closers).toBe(30);
+    expect(closureRecordOf(60, many, allClosers)!.tokens.length).toBe(12);
+    expect(closureRecordOf(60, many, allClosers)!.closers).toBe(30);
     // ...and the truncation is REPORTED, because the finding sentence counts 30
     // and the link carries 12. "Open this slice at those N employers" asserted
     // an identity the destination did not have.
-    expect(closureRecordOf(null, 60, many, allClosers)!.capped).toBe(true);
-    expect(closureRecordOf(null, 60, ["a"], [{ company_token: "a", fills_90d: 5, relists_90d: 1 }])!.capped).toBe(false);
+    expect(closureRecordOf(60, many, allClosers)!.capped).toBe(true);
+    expect(closureRecordOf(60, ["a"], [{ company_token: "a", fills_90d: 5, relists_90d: 1 }])!.capped).toBe(false);
 
     // AN EMPLOYER WITH NO LOGGED EVENT IS NOT A READABLE RECORD — the test
     // that could never fire, as its own class. One arm of three is enough:
     // "no fills, no relists, but four roles aged out" IS a record we read.
-    expect(closureRecordOf(null, 60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 0, ageouts_90d: 0 }])!.readable).toBe(0);
-    expect(closureRecordOf(null, 60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 0, ageouts_90d: 4 }])!.readable).toBe(1);
-    expect(closureRecordOf(null, 60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 2, ageouts_90d: 0 }])!.readable).toBe(1);
+    expect(closureRecordOf(60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 0, ageouts_90d: 0 }])!.readable).toBe(0);
+    expect(closureRecordOf(60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 0, ageouts_90d: 4 }])!.readable).toBe(1);
+    expect(closureRecordOf(60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 2, ageouts_90d: 0 }])!.readable).toBe(1);
     // A build that does not return the columns at all is OUR INSTRUMENT and is
     // still refused — a different fact, kept in front of the counts test.
-    expect(closureRecordOf(null, 60, ["z"], [{ company_token: "z", fills_90d: null, relists_90d: null }])!.readable).toBe(0);
+    expect(closureRecordOf(60, ["z"], [{ company_token: "z", fills_90d: null, relists_90d: null }])!.readable).toBe(0);
     // An older build with no ageouts_90d degrades towards "unreadable", which
     // is the safe direction for a sentence about how little we hold.
-    expect(closureRecordOf(null, 60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 0 }])!.readable).toBe(0);
+    expect(closureRecordOf(60, ["z"], [{ company_token: "z", fills_90d: 0, relists_90d: 0 }])!.readable).toBe(0);
   });
 
   it("feedTotalClaim still refuses a total with no date and never yields a ratio", () => {
@@ -915,6 +941,11 @@ describe("6. opening a field prices what is inside it, from the query each link 
       return {
         data: {
           total,
+          // A q probe is answered by the title tier, which is the only exit
+          // that carries `ranked: true` — a role row renders from nothing else.
+          ...(typeof body.q === "string" ? { ranked: true } : {}),
+          // THE BOARD-WIDE BLOCK, STILL SENT, so the assertions below prove the
+          // page no longer prints it rather than merely that it was absent.
           filterCoverage: {
             workMode: 0.281, hasStatedPay: 0.201, salaryFloor: 0.201,
             experience: 0.431, employmentType: 0.62, country: 0.72,
@@ -957,8 +988,10 @@ describe("6. opening a field prices what is inside it, from the query each link 
     }
     expect(bodies.some((b) => b.limit === 1), "the pricing probes ask for one row").toBe(true);
     expect(bodies.some((b) => b.limit === 60), "the closure probe reads a page of the slice's own results").toBe(true);
-    // And the chips really do render the coverage that exit carries.
-    await waitFor(() => expect(visibleText()).toContain("stated on 28%"));
+    // And the chips render their counts — and NOT the board-wide coverage
+    // that exit carries, which is no longer read by anything on this page.
+    await waitFor(() => expect(visibleText()).toContain("1,204"));
+    expect(visibleText(), "the probe reply's board-wide share is on a chip again").not.toMatch(/stated on \d+%/);
     expect(visibleText()).not.toContain("coverage unknown");
   });
 
@@ -992,14 +1025,23 @@ describe("6. opening a field prices what is inside it, from the query each link 
     // 2. PRICED ROLE ROWS — the count beside a role is the count for that
     //    role's own query, not the field's.
     await waitFor(() => expect(visibleText()).toContain("7,311"));
-    expect(visibleText()).toContain("The biggest roles in Data & AI");
-    expect(visibleText()).toContain("Role names are ours, not the board's");
+    // THE TITLE SAYS WHAT THE LIST IS. "The biggest roles in Data & AI" was a
+    // ranking claim over a list we wrote; a role we did not name was absent
+    // however large.
+    expect(visibleText()).toContain("Roles we named in Data & AI, by count");
+    expect(visibleText()).not.toContain("The biggest roles in");
+    expect(visibleText()).toContain("The names are ours");
+    // …and the counts carry their basis: the field, the window, the cache
+    // bound and the cap rule, once, at the top of the panel.
+    expect(visibleText()).toContain("inside the board's 30-day freshness window");
+    expect(visibleText()).toContain("more than 5 minutes old");
 
-    // 3. PRICED CONSTRAINT CHIPS — count AND the live coverage of the column
-    //    each one filters on, read out of that chip's own probe response.
+    // 3. PRICED CONSTRAINT CHIPS — the count, and NOT the probe reply's
+    //    board-wide coverage, which read the same on every field.
     await waitFor(() => expect(visibleText()).toContain("1,204"));
-    expect(visibleText()).toContain("stated on 28%");
-    expect(visibleText()).toContain("stated on 20%");
+    expect(visibleText(), "the board-wide share is back beside a field count").not.toMatch(/stated on \d+%/);
+    expect(visibleText()).not.toContain("28%");
+    expect(visibleText()).not.toContain("20%");
     // A chip the server named in ignoredFilters priced a query the click will
     // not run, so it does not render at all.
     expect(visibleText()).not.toContain("One-click apply");
@@ -1055,8 +1097,8 @@ describe("6. opening a field prices what is inside it, from the query each link 
     invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
       const body = ((opts ?? {}) as { body?: Record<string, unknown> }).body ?? {};
       if (body.limit === 60) return { data: { total: 7_311, jobs: [] }, error: null };
-      if (body.q === "data analyst") return { data: { total: 2_028 }, error: null };
-      if (typeof body.q === "string") return { data: { total: 4 }, error: null };
+      if (body.q === "data analyst") return { data: { total: 2_028, ranked: true }, error: null };
+      if (typeof body.q === "string") return { data: { total: 4, ranked: true }, error: null };
       return { data: { total: 41_000 }, error: null };
     });
     rpc.mockImplementation(async (fn: string) => {
@@ -1078,7 +1120,7 @@ describe("6. opening a field prices what is inside it, from the query each link 
     invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
       const body = ((opts ?? {}) as { body?: Record<string, unknown> }).body ?? {};
       if (body.limit === 60) return { data: { total: 90, jobs: [] }, error: null };
-      if (typeof body.q === "string") return { data: { total: 4 }, error: null };
+      if (typeof body.q === "string") return { data: { total: 4, ranked: true }, error: null };
       return { data: { total: 90 }, error: null };
     });
     rpc.mockImplementation(async (fn: string) => {
@@ -1125,7 +1167,11 @@ describe("6. opening a field prices what is inside it, from the query each link 
     render(<MemoryRouter initialEntries={["/explore"]}><Explore /></MemoryRouter>);
     await waitFor(() => expect(visibleText()).toContain("Data & AI"));
     (screen.getAllByRole("button", { name: /Data & AI/ })[0]).click();
-    await waitFor(() => expect(visibleText()).toContain("None of the role names we tried matched"));
+    // AN OUTAGE IS SAID AS OURS, NEVER AS A FACT ABOUT THE FIELD. Eight failed
+    // probes used to render "None of the role names we tried matched anything
+    // in this field" — our instrument, published as a market finding.
+    await waitFor(() => expect(visibleText()).toContain("could not be counted just now"));
+    expect(visibleText()).not.toContain("None of the role names we tried matched");
     // A FAILED MEASUREMENT IS OURS AND SAYS SO — it must never borrow the
     // sentence for a slice with no record in it.
     await waitFor(() => expect(visibleText()).toContain("That is our measurement failing"));

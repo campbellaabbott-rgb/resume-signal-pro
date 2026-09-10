@@ -165,6 +165,21 @@ describe("locale files", () => {
    * the four retired keys (vendorTip, discWorkMode, welcomeFillers — called by
    * nothing since the welcome panel reuses hiringFilter2 — and rankCta, which
    * was never in a locale file) came out of all nine. Both lists are empty. */
+  /* ── 2026-09-10, the chip-coverage pass on /explore ────────────────────────
+   * CLOSED. Every "stated on N%" in the expanded field panel was the BOARD's
+   * coverage printed beside a FIELD's count — the same 23%/22%/44%/27% on all
+   * eighteen panels while finance really states a work mode on 30.5% and
+   * design on 38.1% (measured against the hourly per-field scan). The
+   * percentage came off every chip face and became one sentence per panel
+   * from the per-field scan, stamped; the counts gained a basis line (field,
+   * window, cache bound, cap rule); the role list was retitled to what it is;
+   * the closure finding gained its 90-day window; outages are said as ours.
+   * Fourteen keys minted, nine retired, all under explore.*. The locale pass
+   * landed in all nine files in the same change — the assertion below flagged
+   * every one of the fourteen the moment it did, which is the mechanism
+   * working — so both lists are empty. The guard that keeps a future pass from
+   * half-landing is in src/test/a-percentage-that-reads-the-same-on-every-
+   * field-is-not-a-field-percentage.test.tsx. */
   const PENDING_TRANSLATION: string[] = [];
   const RETIRED_PENDING: string[] = [];
   const PARITY_EXEMPTION_CAP = 40;

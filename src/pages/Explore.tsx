@@ -113,6 +113,28 @@
 //   • A FIGURE IDENTICAL ON EVERY TILE IS NOT A TILE FIGURE. See the design
 //     pass above; the new guard test states this as a property rather than as
 //     a spelling.
+//   • …AND THE SAME RULE HOLDS ONE GRAIN DOWN, AT THE CHIPS. The expanded panel
+//     printed "stated on 23%" beside every work-mode chip in every field,
+//     because the figure was the BOARD's coverage (the probe reply's
+//     board-wide block) printed beside a FIELD-scoped count. Measured
+//     2026-09-10: finance states a work mode on 30.5% and design on 38.1%
+//     while both chips said 23%; finance states an experience level on 58%
+//     while the chip said 44%. A percentage that reads the same on every
+//     field is not a field percentage. So the share now comes from the
+//     board's hourly PER-FIELD scan (get_explore_cache().field_grid — one
+//     statement, numerator and denominator over exactly the serving
+//     predicate, stamped), it is said ONCE per family in one sentence under
+//     the chip row rather than on any chip face (remote and onsite share a
+//     denominator; a figure identical on two chips is not a chip figure), and
+//     where no per-field reading exists — the country chips, the week chip —
+//     nothing is printed.
+//   • TWO QUANTITIES MAY CARRY TWO STAMPS; ONE QUANTITY MAY NOT. The count on a
+//     chip is a live probe (bounded by PRICE_CACHE_MS) and the share under the
+//     row is an hourly scan; they are different quantities, neither is a
+//     rendering of the other, and each names its own basis on screen. What
+//     the rule forbids is field_grid's own `n` reaching a tile or a sentence —
+//     that WOULD be the facet's number from a second scan — and a guard feeds
+//     the grid a wrong `n` to prove it reaches nothing.
 //   • Never publish a number the query could not produce; a total can be null.
 //   • A locale VALUE overrides an inline English default, so every sentence
 //     whose MEANING changed here takes a NEW key. Editing a key in place would
@@ -265,6 +287,19 @@ export const numOr = (v: unknown, fallback: number | null = null): number | null
  *  rate. The estimator bar governs rates; this one governs counting. */
 const CLOSURE_MIN_FILLS = 3;
 
+/** THE WINDOW THE CLOSURE COUNTS ARE DRAWN OVER, MIRRORED FROM THE RPC.
+ *
+ *  fills_90d and relists_90d in get_company_fill_curve are cut on
+ *  `closed_at >= now() - interval '90 days'`. The finding sentence used to say
+ *  "have taken at least 3 roles down and not put them back up" with no window
+ *  at all, which reads as all-time; a published statistic names its date basis,
+ *  and this is the only way the sentence can name one without typing "90" into
+ *  nine locale files. Jobs.tsx mirrors the same interval as
+ *  ACTIVELY_HIRING_WINDOW_DAYS; a guard pins both to the migration, so a
+ *  re-windowed RPC turns a test red rather than leaving the page describing a
+ *  window the query stopped using. */
+const CLOSURE_WINDOW_DAYS = 90;
+
 /** How many of the slice's own result rows we read to find the employers in it.
  *  One board page. Every distinct token among them goes to the curve in one
  *  batch, and the sentence on screen names BOTH numbers — the rows read and the
@@ -329,27 +364,44 @@ const SERVE_COUNT_CAP = 10_000;
  *  role_rows stale — a yellow warning, in a raw internal spelling, about a
  *  section this page does not have.
  *
- *  FOUR MORE JOINED THE SET IN THE DESIGN PASS, and they are the four the page
- *  used to build its tiles out of:
+ *  THREE MORE JOINED THE SET IN THE DESIGN PASS, and they are three of the four
+ *  the page used to build its tiles out of:
  *
- *    fields, field_grid — the tile counts and the reach pair. Both now come off
- *      the board's own category facet in ONE read, alongside the very number
- *      the destination prints. Keeping the cache as a second source for the
- *      same quantity is exactly the two-scans-one-number failure the reach line
- *      was rebuilt to remove; the cache row is not consulted for a tile at all.
+ *    fields — the tile counts. They now come off the board's own category
+ *      facet in ONE read, alongside the very number the destination prints.
+ *      Keeping the cache as a second source for the same quantity is exactly
+ *      the two-scans-one-number failure the reach line was rebuilt to remove;
+ *      the cache row is not consulted for a tile at all.
  *    field_curves — the field-grain lifecycle line is gone, and with it the
  *      only reader of this key. It was deliberately NOT retired while that line
  *      existed ("it IS read, and its staleness is this page's business"); the
  *      inverse is just as strictly true now that nothing here reads it, or the
  *      page would fly a yellow warning about a collection it does not render.
  *    totals — get_explore_denominators' pool sizes. The last sentence standing
- *      over one of them was the old reach fraction, and it has gone too. */
-const RETIRED_CACHE_PARTS = new Set([
+ *      over one of them was the old reach fraction, and it has gone too.
+ *
+ *  THE FOURTH — field_grid — CAME BACK OUT, AND INTO A SET OF ITS OWN. It was
+ *  retired as a TILE source (its `n` is the facet's quantity from a second
+ *  scan, up to fifty-three minutes apart — see the header) and it stays
+ *  retired as one. But its per-field FILTER counts are the only reading on
+ *  this board of how much of ONE FIELD states a work mode, a pay figure, an
+ *  experience level or an employment type: numerator and denominator from one
+ *  statement over exactly the serving predicate, uncapped, stamped. The chips'
+ *  coverage sentence reads them, and a collection this page RENDERS has to be
+ *  able to say when it is stale. It does not say it in the raw-spelling banner
+ *  below: the sentence that carries the shares carries their staleness in its
+ *  own words (explore.chipsCoverageCarried), because the writer copies the
+ *  previous grid forward whole, so its `at` is already the old scan's and the
+ *  stamp on screen stays true by construction. */
+const UNRENDERED_CACHE_PARTS = new Set([
   "trending", "newest", "segments", "reposters",
   "hiring", "relisting", "entry", "transparent", "salary",
   "role_rows", "chip_coverage", "ageout_basis",
-  "fields", "field_grid", "field_curves", "totals",
+  "fields", "field_curves", "totals",
 ]);
+/** Cache parts this page renders and whose staleness is said INSIDE the
+ *  sentence that renders them, never in the generic banner. */
+const SELF_DISCLOSED_CACHE_PARTS = new Set(["field_grid"]);
 
 /** THE BOARD'S SERVING WINDOW, MIRRORED — AND IT IS NOT THE CURVE'S SUPPORT CAP.
  *
@@ -504,55 +556,135 @@ export const FIELD_ROLES: Record<string, readonly string[]> = {
  *  dropped. Nothing here re-implements a filter; it hands the existing one a
  *  slice and reads back what the server says about it.
  *
- *  `coverageKey` NAMES THE filterCoverage FIELD THE SERVER RETURNS FOR THIS
- *  FILTER, and the chip prints THAT number — never a constant of ours. See the
- *  long note on PayCoverage below for why a pinned percentage was not an
- *  option here.
+ *  A CHIP CARRIES A NAME AND A COUNT, AND NOTHING ELSE. It used to carry a
+ *  `coverageKey` naming the probe reply's coverage field and print "stated on
+ *  N%" beside the count — and that N was the BOARD's share, identical on every
+ *  field's panel (see the header). The share a reader needs is the FIELD's,
+ *  and that is a fact about the field, not about a chip: remote and onsite
+ *  share one denominator, the two pay chips share one to within rounding, so
+ *  a figure on the face would read the same on two chips. It is said once per
+ *  family, in one sentence under the row, from COVERAGE_FAMILIES below.
  *
- *  A `null` coverageKey MEANS THE SERVER PUBLISHES NO FIGURE FOR THIS FILTER,
- *  AND IT COMES IN TWO KINDS THAT MUST NOT SHARE A RENDER:
- *
- *    sendableOnly — genuinely complete. It filters on `source`, which every
- *      served row carries, so there is no hidden population and a "100%" line
- *      would be noise.
- *
- *    maxAgeDays — THE OPPOSITE, and this was shipped the wrong way round. It
- *      does NOT filter on effective_posted: the board applies
- *      `q.gte("posted_at", …)` (job-board/index.ts:13787, and count_jobs_capped
- *      itself), the EMPLOYER'S own stated date, because our discovery date is
- *      not a posting age. Whole vendors are structurally undated — bamboohr
- *      43,687 of 43,687, rippling 8,991 of 8,991 — and every one of those rows
- *      is silently excluded by this chip however new it is. So it is the chip
- *      hiding the MOST, and it was the only one disclosing nothing, directly
- *      under a note teaching readers that a chip with no percentage is one we
- *      hold no reading for. get_filter_coverage publishes the fraction as
- *      `dated` (20260909100000) but coverageDisclosure has no branch for
- *      maxAgeDays, so no number reaches this page — and the honest render of a
- *      number we cannot get is the exclusion IN WORDS, which is `note`.
- *
- *  `note` therefore states an exclusion the server will not quantify. It is not
- *  a substitute for a coverage figure and no chip may carry both. */
+ *  `note` STATES AN EXCLUSION NO PUBLISHED FIGURE MEASURES, and only the week
+ *  chip carries one. maxAgeDays does NOT filter on effective_posted: the board
+ *  applies `q.gte("posted_at", …)` (job-board/index.ts, and count_jobs_capped
+ *  itself), the EMPLOYER'S own stated date, because our discovery date is not a
+ *  posting age. This file's own earlier note recorded whole vendors as
+ *  structurally undated (bamboohr 43,687 of 43,687) while the per-field scan
+ *  now reads dated_n/n at 99.4% for finance — two claims that cannot both be
+ *  true, and until someone re-establishes what posted_at means (memory: it was
+ *  rolling-capped) neither is printed as a percentage. The chip keeps its
+ *  words and no figure. sendableOnly filters on `source`, which every served
+ *  row carries, so it has no hidden population and needs neither. */
 export interface ConstraintChip {
   id: string;
   /** The English fallback; the render interpolates a t() key built from `id`. */
   label: string;
   patch: JobSearchParams;
-  coverageKey: string | null;
   /** An exclusion this filter makes that no published figure measures, said in
    *  words on the chip. English fallback; the key is `explore.chipNote.{id}`. */
   note?: string;
 }
 
 export const CONSTRAINT_CHIPS: readonly ConstraintChip[] = [
-  { id: "remote", label: "Remote", patch: { workMode: "remote" }, coverageKey: "workMode" },
-  { id: "onsite", label: "On-site", patch: { workMode: "onsite" }, coverageKey: "workMode" },
-  { id: "statedPay", label: "States the pay", patch: { hasStatedPay: true }, coverageKey: "hasStatedPay" },
-  { id: "pay80k", label: "$80,000+", patch: { salaryFloor: 80_000 }, coverageKey: "salaryFloor" },
-  { id: "entry", label: "Open to beginners", patch: { experience: "entry" }, coverageKey: "experience" },
-  { id: "fullTime", label: "Full-time", patch: { employmentType: "full_time" }, coverageKey: "employmentType" },
-  { id: "week", label: "Posted this week", patch: { maxAgeDays: 7 }, coverageKey: null, note: "roles carrying the employer's own date only" },
-  { id: "apply", label: "One-click apply", patch: { sendableOnly: true }, coverageKey: null },
+  { id: "remote", label: "Remote", patch: { workMode: "remote" } },
+  { id: "onsite", label: "On-site", patch: { workMode: "onsite" } },
+  { id: "statedPay", label: "States the pay", patch: { hasStatedPay: true } },
+  { id: "pay80k", label: "$80,000+", patch: { salaryFloor: 80_000 } },
+  { id: "entry", label: "Open to beginners", patch: { experience: "entry" } },
+  { id: "fullTime", label: "Full-time", patch: { employmentType: "full_time" } },
+  { id: "week", label: "Posted this week", patch: { maxAgeDays: 7 }, note: "roles carrying the employer's own date only" },
+  { id: "apply", label: "One-click apply", patch: { sendableOnly: true } },
 ];
+
+/** THE FOUR THINGS A FIELD CAN STATE, AND THE COLUMN EACH ONE IS COUNTED ON.
+ *
+ *  Each `col` is a column of get_explore_field_grid's per-category row
+ *  (20260909110000): the count of postings in that field whose row has the
+ *  thing at all, over the same `n` the row carries. The families map onto the
+ *  chips that FILTER on that thing, which is why remote and onsite are one
+ *  family — `work_mode IS NOT NULL` is the denominator of both — and why the
+ *  two pay chips are one family with a `floorCol`: "states the pay" counts
+ *  salary_min_annual and the $80,000+ floor binds salary_rank_usd, a
+ *  different column (the PayCoverage note below has the history), so the
+ *  floor's own share is quoted only when it rounds differently from the
+ *  stated-pay share rather than duplicated beside it.
+ *
+ *  NO FAMILY FOR week OR apply. field_grid carries dated_n and week_n, and the
+ *  reason they are not read is in the ConstraintChip note above; apply has no
+ *  hidden population. NO FAMILY FOR COUNTRY: field_grid has no country_n, and
+ *  the sum of six chips is a floor on the roles that name one, not the
+ *  stated-country population. Silence over a guess. */
+export interface CoverageFamily {
+  id: "workMode" | "pay" | "experience" | "employmentType";
+  col: "work_mode_n" | "stated_pay_n" | "experience_n" | "employment_type_n";
+  floorCol?: "pay_floor_n";
+  chips: readonly string[];
+}
+
+export const COVERAGE_FAMILIES: readonly CoverageFamily[] = [
+  { id: "workMode", col: "work_mode_n", chips: ["remote", "onsite"] },
+  { id: "pay", col: "stated_pay_n", floorCol: "pay_floor_n", chips: ["statedPay", "pay80k"] },
+  { id: "experience", col: "experience_n", chips: ["entry"] },
+  { id: "employmentType", col: "employment_type_n", chips: ["fullTime"] },
+];
+
+/** ONE FIELD'S ROW OF THE HOURLY PER-FIELD SCAN, as this page holds it: the
+ *  scan's own stamp, its window, and the per-category rows keyed by slug. */
+export interface FieldGrid {
+  at: string;
+  windowDays: number;
+  fields: Record<string, Record<string, unknown>>;
+}
+
+/** The four rounded shares for one field, or null when any of them cannot be
+ *  produced. `payFloor` is non-null ONLY when the floor column's share rounds
+ *  to a different integer from the stated-pay share — the one case in which
+ *  printing it adds information rather than repeating a figure. */
+export interface FieldShares {
+  workMode: number;
+  pay: number;
+  payFloor: number | null;
+  experience: number;
+  employmentType: number;
+}
+
+/** THE SHARES, AS A PURE FUNCTION OF THE ROW, so the guard can drive it
+ *  directly and so nothing in the render divides anything.
+ *
+ *  ALL FOUR OR NONE. A row missing one column is a row this page does not
+ *  understand, and a sentence with three shares and a hole would be a
+ *  sentence about a scan we did not read. `n` never leaves this function — it
+ *  is the facet's quantity from a second scan (see the header), and the only
+ *  thing it may do here is be a denominator. */
+export function fieldShares(grid: FieldGrid | null, field: string): FieldShares | null {
+  if (!grid) return null;
+  const row = grid.fields[field];
+  if (!row || typeof row !== "object") return null;
+  const n = numOr(row.n);
+  if (n === null || n <= 0) return null;
+  const share = (col: string): number | null => {
+    const v = numOr(row[col]);
+    if (v === null || v < 0 || v > n) return null;
+    return Math.round((v / n) * 100);
+  };
+  const out: Partial<Record<CoverageFamily["id"], number>> = {};
+  let floor: number | null = null;
+  for (const fam of COVERAGE_FAMILIES) {
+    const s = share(fam.col);
+    if (s === null) return null;
+    out[fam.id] = s;
+    if (fam.floorCol) floor = share(fam.floorCol);
+  }
+  const pay = out.pay!;
+  return {
+    workMode: out.workMode!,
+    pay,
+    payFloor: floor !== null && floor !== pay ? floor : null,
+    experience: out.experience!,
+    employmentType: out.employmentType!,
+  };
+}
 
 /** WHERE, AS A CANONICAL VALUE RATHER THAN A TYPED STRING.
  *
@@ -560,11 +692,15 @@ export const CONSTRAINT_CHIPS: readonly ConstraintChip[] = [
  *  the honest form of it is COUNTRY, not city. `location` is free text matched
  *  against whatever the employer wrote, so "canonical" is a property it does
  *  not have and a hand-written metro list would be a curated denominator
- *  pricing nothing. `country` is ISO-2, the board filters on the column
- *  directly, and it is one of the ten filters the server publishes a coverage
- *  figure for — so a country chip can say both how many roles and how much of
- *  the board could even answer. A country with no roles in the slice is priced
- *  at nothing and does not render. */
+ *  pricing nothing. `country` is ISO-2 and the board filters on the column
+ *  directly. A country with no roles in the slice is priced at nothing and
+ *  does not render.
+ *
+ *  SIX COUNTRIES WE CHOSE, IN A FIXED ORDER — not the board's largest and not
+ *  ranked by count — and the sentence over the chips says so (explore.whereNote).
+ *  NO PERCENTAGE RIDES A COUNTRY CHIP ANY MORE: the "stated on 85%" it used to
+ *  carry was the BOARD's country coverage, identical on every field, and
+ *  field_grid holds no per-field country count to replace it with. */
 export const COUNTRY_CHIPS: readonly { id: string; label: string }[] = [
   { id: "US", label: "United States" },
   { id: "GB", label: "United Kingdom" },
@@ -874,19 +1010,28 @@ const isIntent = (v: string | null): v is Intent => !!v && (INTENTS as readonly 
  *    record for 9 of them. 7 of those 9 close roles and do not put them back
  *    up."
  *
- * THREE DENOMINATORS, AND ALL THREE ARE NAMED, because they are three different
+ * TWO DENOMINATORS, AND BOTH ARE NAMED, because they are two different
  * populations and this page's whole defect history is populations swapped for
  * each other:
  *
- *   inSlice  — companiesCount from the board's own facet. The employers with a
- *              posting in this slice. NULL when the server did not compute it;
- *              never defaulted to the facet array's length, which is a TOP-N
- *              slice capped for payload weight.
- *   asked    — how many tokens we could actually hand to the curve. The facet
- *              array is capped, so this is at most the top employers by count
- *              and the sentence says so rather than implying we asked about all
- *              of them.
+ *   asked    — how many distinct employer tokens the slice's own first page of
+ *              results carried, and so how many we could hand to the curve. The
+ *              sentence names the rows read as well, because "the employers in
+ *              the first sixty results" is a different claim from "the
+ *              employers in the slice".
  *   readable — of those, how many the closure log HAS ANYTHING IN IT FOR.
+ *
+ * THERE IS NO THIRD. A field for "employers with a role in this slice IN ALL"
+ * lived on this record and was ALWAYS NULL, by measurement: the only candidate
+ * source, the board's `companies` facet and the `companiesCount` beside it, is
+ * BOARD-WIDE — probed three ways while that field was written, the same
+ * 33,545 and the same top row (Domino's, count 34,000) came back for a
+ * four-role slice and for the whole 805,926-row board. So the sentence that
+ * would have rendered it (explore.closureBasis2) could never render, and a
+ * sentence that cannot render is copy waiting in nine locales for someone to
+ * wire the wrong number into it. Both are gone; the sentence that always did
+ * render, closureBasisNoTotal2, says plainly that the board publishes no such
+ * count and we do not guess one.
  *
  * WHAT "READABLE" HAD TO BECOME, AND WHY THE OBVIOUS TEST WAS A FALSEHOOD.
  * This once tested `fills_90d === null || relists_90d === null`, which reads
@@ -920,29 +1065,6 @@ const isIntent = (v: string | null): v is Intent => !!v && (INTENTS as readonly 
  * one.
  */
 export interface ClosureRecord {
-  /** How many employers have a role in this slice IN ALL.
-   *
-   *  ALWAYS NULL TODAY, AND THAT IS A MEASUREMENT, NOT AN OVERSIGHT. The board
-   *  returns a `companies` facet with a `companiesCount` beside it, and both
-   *  are BOARD-WIDE — probed live, three ways, while this was written:
-   *
-   *    category=data_ai                             total 7,837  companiesCount 33,545
-   *    category=data_ai + q="database administrator" total     4  companiesCount 33,545
-   *    the whole board                              total 805,926 companiesCount 33,545
-   *
-   *  ...with the identical top row every time (Domino's, whose `count` of
-   *  34,000 is its WHOLE-BOARD total, over a slice holding four roles). It is a
-   *  cached global employer list, not a facet of the query. Reading it as the
-   *  slice's employer count would have printed "33,545 employers have roles in
-   *  this slice" over four postings, and handed the curve the sixty largest
-   *  employers on the board, most of which have nothing in the slice at all —
-   *  the exact denominator defect this whole rebuild exists to remove, at the
-   *  bottom of the page that removed it.
-   *
-   *  So the field stays, and stays null: the shape keeps the three quantities
-   *  separate, and the sentence says plainly that we cannot count this one
-   *  rather than borrowing a number that answers a different question. */
-  inSlice: number | null;
   /** Result rows the slice's own query returned, and the population `asked` was
    *  drawn from. Named on screen, because "the employers in the first sixty
    *  results" is a different claim from "the biggest employers in the slice". */
@@ -974,7 +1096,6 @@ export interface ClosureRecord {
 }
 
 export function closureRecordOf(
-  inSlice: number | null,
   rowsRead: number,
   askedTokens: readonly string[],
   rows: readonly CompanyCurveRow[],
@@ -1013,9 +1134,9 @@ export function closureRecordOf(
     readable += 1;
     if (fills >= CLOSURE_MIN_FILLS && relists <= fills) tokens.push(tok);
   }
-  if (readable === 0) return { inSlice, rowsRead, asked, readable: 0, unanswered, closers: 0, tokens: [], capped: false };
+  if (readable === 0) return { rowsRead, asked, readable: 0, unanswered, closers: 0, tokens: [], capped: false };
   return {
-    inSlice, rowsRead, asked, readable, unanswered,
+    rowsRead, asked, readable, unanswered,
     closers: tokens.length,
     tokens: tokens.slice(0, 12),
     capped: tokens.length > 12,
@@ -1041,67 +1162,51 @@ export function closureRecordOf(
  *  unknowable, rendered as "N+" for the same reason.
  *
  *  `ignored` is ignoredFilters. A chip whose OWN filter is named there priced
- *  a query the click will not run, so it does not render at all. */
+ *  a query the click will not run, so it does not render at all.
+ *
+ *  `ranked` IS THE ONLY PROOF THAT A q PROBE WAS COUNTED BY THE TITLE TIER.
+ *  The board sets `ranked: true` on exactly one exit — the search_jobs path,
+ *  whose `total` is the exact-title count the destination page leads with as
+ *  "{{exact}} exact". When search_jobs errors the list path falls to the
+ *  recency exit, whose ILIKE count is documented to disagree with the ranked
+ *  one by up to 4.3x, and that reply carries no `ranked`. A role row that
+ *  printed it would publish the fallback engine's number as the row's fact
+ *  (memory: judge the ranked path ONLY by `ranked: true`).
+ *
+ *  `rescued` IS THE OTHER THING A q PROBE CAN COME BACK AS. A name with zero
+ *  exact title matches enters the board's rescue tiers — exact-word, trigram,
+ *  semantic — which return their own rows under their own markers
+ *  (`exactWordMatch` at the top level, `closeMatch` / `semanticMatch` on the
+ *  rows) and no `ranked`. Those are a measurement that the name matched
+ *  NOTHING exactly, not an outage: the row is withheld, and it is not counted
+ *  as our instrument failing. A reply with neither marker nor `ranked` is an
+ *  engine this page does not recognise and IS counted as ours. */
 export interface Priced {
   total: number | null;
   capped: boolean;
   atLeast: number | null;
-  coverage: number | null;
   ignored: string[];
+  ranked: boolean;
+  rescued: boolean;
   /** The probe itself failed — OUR instrument, distinct from a probe that
    *  answered with nothing. */
   failed: boolean;
 }
 
-/** THE PAY-COVERAGE RECONCILIATION, AND WHY NO CHIP HERE CARRIES A CONSTANT.
+/** THE PAY-COVERAGE HISTORY, IN ONE LINE, AND WHERE THE FIGURE COMES FROM NOW.
  *
- *  Three numbers were in the repository for one apparent fact, which is the
- *  claim-drift shape this codebase has already been burned by:
- *
- *    20.1%  MEASURED_COVERAGE.hasStatedPay in job-board/index.ts. It is
- *           `salary_min_annual IS NOT NULL` — 112,524 of the 559,805 SERVABLE
- *           rows (open, inside the freshness window), measured 2026-08-25. This
- *           is the population "states pay at all", and it is the right figure
- *           for a "states the pay" chip.
- *
- *    12.9%  In the comments at index.ts (the coverage pass, and again above
- *           coverageDisclosure), written as "salary is stated on 12.9%" and
- *           measured against 599,316 OPEN postings — a denominator that does
- *           NOT apply the freshness window. It is attached to the PAY FLOOR's
- *           cost ("setting a salary floor discards 87% of the board"), and the
- *           floor binds `salary_rank_usd`, a different column from the one
- *           20.1% counts. So it is mislabelled AND stale, and the live board
- *           settles it: probed here while this was written, the same request
- *           that returns a count returns filterCoverage {salaryFloor 0.22,
- *           hasStatedPay 0.22}. The two columns are within a point of each
- *           other in practice — almost every parsed annual figure also resolves
- *           a currency — so 12.9% is not a second reading of a narrower
- *           population. It is simply an old number under a wrong name.
- *
- *     ~4%   "only ~4% of postings state salary at all", in a comment in
- *           Jobs.tsx. WRONG UNDER EVERY DEFINITION IN THE REPOSITORY. It is a
- *           gloss on an $80k-floor collapse (572,348 -> 10,374), which is a
- *           FLOOR RESULT — 1.8% — and not a pay-statement rate at all. No query
- *           in this codebase produces 4%. It drives no rendered figure (the
- *           panel it introduces prices itself with live countOnly probes), so
- *           it is a stale comment rather than a shipped falsehood; it belongs
- *           to /jobs, which this workflow does not own, and is reported rather
- *           than edited here.
- *
- *  THE ANSWER, THEN: 20.1% is right, for the servable board, as at 2026-08-25,
- *  and the live figure has since moved to about 22% for both keys. 12.9% is
- *  wrong under its own label and out of date under any other. ~4% is not a
- *  measurement of anything.
- *
- *  THE RESOLUTION THIS PAGE ADOPTS: a chip publishes NO pinned percentage at
- *  all. get_filter_coverage() recomputes all ten figures in one pass every
- *  refresh, coverageDisclosure returns the live value for exactly the filters a
- *  request applied, and each chip reads the figure for ITS OWN column out of
- *  ITS OWN probe response. A chip whose response carries no coverage for its
- *  key says so in words and prints no percentage — which is the only reading of
- *  three-numbers-for-one-fact that cannot go stale again.
- */
-export const PAY_COVERAGE_SOURCE = "filterCoverage" as const;
+ *  Three snapshots once sat in this repository for one apparent fact — 20.1%
+ *  (salary_min_annual over servable rows, 2026-08-25), 12.9% (the pay FLOOR's
+ *  column over an older, un-windowed denominator, mislabelled) and "~4%" (a
+ *  gloss on an $80k-floor collapse, not a rate) — and all three are retired
+ *  snapshots that no sentence on this page may pin. The board-wide live figure
+ *  that replaced them here was then printed beside FIELD-scoped counts, which
+ *  is the header's chip-grain defect. The stated-pay share a reader sees now
+ *  is the FIELD's, from COVERAGE_FAMILIES over the hourly per-field scan, and
+ *  the floor's column (salary_rank_usd, `pay_floor_n`) is quoted only when it
+ *  rounds differently from the stated-pay column (`stated_pay_n`). Nothing on
+ *  this page reads the probe reply's board-wide coverage block any more: a
+ *  read with no sentence is the number waiting to be re-rendered. */
 
 interface BoardCountReply {
   total?: number | null;
@@ -1109,15 +1214,17 @@ interface BoardCountReply {
   countCapped?: boolean;
   countUnavailable?: boolean;
   ignoredFilters?: string[];
-  filterCoverage?: Record<string, number>;
+  ranked?: boolean;
+  exactWordMatch?: string;
   /** The slice's own result rows. `token` on a row is the employer that posting
    *  belongs to, and a page of these is the ONLY slice-scoped employer list the
-   *  board offers — see the note on ClosureRecord.inSlice for what the
-   *  `companies` facet actually is, and why it is not read anywhere here. */
-  jobs?: Array<{ token?: string | null }>;
+   *  board offers — see the note on ClosureRecord for what the `companies`
+   *  facet actually is, and why it is not read anywhere here. `closeMatch` and
+   *  `semanticMatch` are the rescue tiers' own row markers. */
+  jobs?: Array<{ token?: string | null; closeMatch?: boolean; semanticMatch?: boolean }>;
 }
 
-const FAILED: Priced = { total: null, capped: false, atLeast: null, coverage: null, ignored: [], failed: true };
+const FAILED: Priced = { total: null, capped: false, atLeast: null, ignored: [], ranked: false, rescued: false, failed: true };
 
 /** ONE PROBE, ONE SLICE, THROUGH THE ONE MAPPER.
  *
@@ -1127,46 +1234,68 @@ const FAILED: Priced = { total: null, capped: false, atLeast: null, coverage: nu
  *  would be the drift that had a pill advertising "+N new" for a query the user
  *  never saved: every filter the hand-written list omitted was silently WIDENED
  *  for the count only. */
-async function priceSlice(params: JobSearchParams, coverageKey: string | null): Promise<Priced> {
+async function priceSlice(params: JobSearchParams): Promise<Priced> {
   try {
     const { data, error } = await supabase.functions.invoke("job-board", {
       // `limit: 1`, NOT `countOnly: true`, AND THE REASON IS MEASURED.
       //
       // Probed live against production while this was written, same filters,
       // both exits:
-      //   {countOnly:true}  -> keys ["total"]                     total 1059
-      //   {limit:1}         -> keys [... "filterCoverage" ...]    total 1059,
-      //                        filterCoverage {workMode: 0.235}
+      //   {countOnly:true}  -> keys ["total"]                        total 1059
+      //   {limit:1}         -> keys [... "ignoredFilters", "ranked" ...] total 1059
       //
       // The countOnly exit returns the number and DROPS EVERY DISCLOSURE the
-      // other exits carry — the coverage block and ignoredFilters both. On a
-      // countOnly probe every chip on this page said "coverage unknown", which
-      // is the honest render of a missing figure and a completely avoidable
-      // one; worse, a chip whose filter the server had REFUSED would have
-      // rendered a count for a query the click never runs, because the name of
-      // the refusal was in the payload the countOnly exit does not send. That
-      // is the silent-filter failure this codebase has a standing contract
-      // against.
+      // other exits carry: the name of any filter the server REFUSED, and the
+      // `ranked` marker that proves a q probe was counted by the title tier.
+      // A chip whose filter the server had refused would have rendered a count
+      // for a query the click never runs, because the name of the refusal was
+      // in the payload the countOnly exit does not send. That is the
+      // silent-filter failure this codebase has a standing contract against.
       //
-      // One row of payload buys both. The count is identical, and the server
-      // does the same work either way.
+      // One row of payload buys all of it. The count is identical, and the
+      // server does the same work either way.
       body: { action: "list", limit: 1, includeFacets: false, ...searchToBoardBody(params) },
     });
     if (error) return FAILED;
     const r = (data ?? null) as BoardCountReply | null;
     if (!r) return FAILED;
     const total = typeof r.total === "number" ? r.total : null;
-    const cov = coverageKey && r.filterCoverage && typeof r.filterCoverage[coverageKey] === "number"
-      ? r.filterCoverage[coverageKey] : null;
+    const rows = Array.isArray(r.jobs) ? r.jobs : [];
     return {
       total,
       capped: r.countCapped === true,
       atLeast: typeof r.totalAtLeast === "number" ? r.totalAtLeast : null,
-      coverage: cov,
       ignored: Array.isArray(r.ignoredFilters) ? r.ignoredFilters.filter((x): x is string => typeof x === "string") : [],
+      ranked: r.ranked === true,
+      rescued: typeof r.exactWordMatch === "string" || rows.some((j) => j?.closeMatch === true || j?.semanticMatch === true),
       failed: false,
     };
   } catch { return FAILED; }
+}
+
+/** WHAT A ROLE ROW MAY PRINT, AS ONE PURE DECISION.
+ *
+ *    "count"   — the title tier answered with an exact integer above zero, or
+ *                the count stopped at the cap; the row renders it.
+ *    "none"    — a measurement that yields no row: the name matched nothing
+ *                exactly (a zero, or a rescue-tier reply), or the tier could
+ *                not produce an exact total (countUnavailable). Withheld, and
+ *                NOT an outage.
+ *    "failed"  — our instrument: the probe errored, or the reply came from an
+ *                engine that is neither the title tier nor a declared rescue
+ *                (the recency fallback after a ranked-path error, or a build
+ *                this page does not recognise). Counted in rolesPartial.
+ *
+ *  `atLeast` IS DELIBERATELY NOT ADMITTED FOR A ROLE ROW. A floor from the
+ *  trigram tier under a name we wrote is the count of typo-tolerant matches,
+ *  not the count of that name; it used to render as "N+" under a sentence
+ *  saying a name that matches nothing is left out. Chips still admit a floor —
+ *  under a role slice it is the same "N+" the destination prints. */
+export function roleRowReading(p: Priced | undefined): "count" | "none" | "failed" {
+  if (!p || p.failed) return "failed";
+  if (!p.ranked) return p.rescued ? "none" : "failed";
+  if (p.capped) return "count";
+  return typeof p.total === "number" && p.total > 0 ? "count" : "none";
 }
 
 /** Run probes a few at a time. A field with eight roles, eight constraints and
@@ -1259,6 +1388,17 @@ export default function Explore() {
   const [facetFailed, setFacetFailed] = useState(false);
   const [repostIndex, setRepostIndex] = useState<RepostIndex>({});
   const [stale, setStale] = useState<string[]>([]);
+  /** THE HOURLY PER-FIELD SCAN, FOR THE COVERAGE SENTENCE ALONE — never for a
+   *  tile (see the header). `null` both while the read is in flight and after
+   *  it failed or returned no usable grid; `gridRead` tells the two apart so
+   *  the panel says "not measured just now" only once the read has actually
+   *  settled, rather than flashing that sentence over every fresh open. */
+  const [grid, setGrid] = useState<FieldGrid | null>(null);
+  const [gridRead, setGridRead] = useState(false);
+  /** The refresh could not recompute field_grid and carried the previous one
+   *  forward whole — so `grid.at` is already the earlier scan's stamp, and the
+   *  sentence says so in its own words rather than in the generic banner. */
+  const [gridCarried, setGridCarried] = useState(false);
 
   // The reader's slice: a field, then optionally a role inside it, then
   // optionally one constraint and one country. Every one of those is a real
@@ -1324,16 +1464,24 @@ export default function Explore() {
     return () => { live = false; };
   }, []);
 
-  // ── THE HOURLY CACHE, FOR THE ONE THING THIS PAGE STILL READS FROM IT ─────
+  // ── THE HOURLY CACHE, FOR THE TWO THINGS THIS PAGE STILL READS FROM IT ────
   //
-  // The churn index the employer check carries, and nothing else. `fields`,
-  // `field_grid`, `field_curves` and `totals` are no longer read — the first
-  // two because the tiles now come off the board's own facet in one read with
-  // their destination, the third because the field-grain lifecycle line is
-  // gone, the fourth because the sentence that stood over it went with the old
-  // reach fraction. All four are in RETIRED_CACHE_PARTS, because a collection
-  // this page does not render cannot make this page stale, and a yellow warning
-  // naming a key in a raw internal spelling is worse than no warning at all.
+  // The churn index the employer check carries, and the per-field grid the
+  // chips' coverage sentence reads its SHARES from. `fields`, `field_curves`
+  // and `totals` are no longer read — the first because the tiles now come off
+  // the board's own facet in one read with their destination, the second
+  // because the field-grain lifecycle line is gone, the third because the
+  // sentence that stood over it went with the old reach fraction. All three are
+  // in UNRENDERED_CACHE_PARTS, because a collection this page does not render
+  // cannot make this page stale, and a yellow warning naming a key in a raw
+  // internal spelling is worse than no warning at all.
+  //
+  // field_grid IS READ, AND NOT FOR A TILE. Its `n` per category is the facet's
+  // quantity from a second scan and reaches nothing on screen; what is read is
+  // the ratio of its filter counts to that `n`, which is a different quantity
+  // from any count on this page, stamped with the scan's own `at`. A grid with
+  // no `at` is a share with no date basis and is refused whole, exactly as
+  // readCategoryFacet refuses a facet with no stamp.
   useEffect(() => {
     (async () => {
       try {
@@ -1342,13 +1490,22 @@ export default function Explore() {
         const obj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
         if (c) {
           if (obj(c.repost_index)) setRepostIndex(c.repost_index as RepostIndex);
+          if (obj(c.field_grid)) {
+            const g = c.field_grid as Record<string, unknown>;
+            const at = typeof g.at === "string" && g.at !== "" ? g.at : null;
+            const windowDays = numOr(g.window_days);
+            if (at && windowDays !== null && windowDays > 0 && obj(g.fields)) {
+              setGrid({ at, windowDays, fields: g.fields as Record<string, Record<string, unknown>> });
+            }
+          }
           if (Array.isArray(c.stale_parts)) {
-            setStale((c.stale_parts as unknown[])
-              .filter((x): x is string => typeof x === "string")
-              .filter((x) => !RETIRED_CACHE_PARTS.has(x)));
+            const parts = (c.stale_parts as unknown[]).filter((x): x is string => typeof x === "string");
+            setGridCarried(parts.some((x) => SELF_DISCLOSED_CACHE_PARTS.has(x)));
+            setStale(parts.filter((x) => !UNRENDERED_CACHE_PARTS.has(x) && !SELF_DISCLOSED_CACHE_PARTS.has(x)));
           }
         }
       } catch { /* the employer check still works, without the churn warning */ }
+      finally { setGridRead(true); }
     })();
   }, []);
 
@@ -1712,9 +1869,9 @@ export default function Explore() {
   //
   // A CACHE OF MEASUREMENTS NEEDS A STATED WINDOW, AND THE MOUNT IS NOT ONE.
   //
-  // Two sentences on this page publish these counts with a date basis in them:
-  // explore.rolesNote says each one is "a live count of exactly the search that
-  // row opens, taken just now", and explore.methodNamesMethod3 states the window
+  // Three sentences on this page publish these counts with a date basis in
+  // them: explore.panelCountsBasis (under the field header), explore.
+  // methodNamesMethod3 and explore.methodLiveMethod2 all interpolate the window
   // this constant sets. A ref alone bounds the cache by the LIFETIME OF THE
   // TAB, which is not a window — open Healthcare at 09:00, leave the tab, reopen
   // it at 15:00 and eight role counts and fourteen chip counts render straight
@@ -1754,7 +1911,13 @@ export default function Explore() {
     setRolePrices({});
     setRolesPricing(true);
     void (async () => {
-      const results = await inBatches(names, 4, async (name) => [name, await priceSlice({ category: field, q: name }, null)] as const);
+      const results = await inBatches(names, 4, async (name) => {
+        const p = await priceSlice({ category: field, q: name });
+        // A REPLY FROM AN ENGINE THIS PAGE DOES NOT RECOGNISE IS OUR INSTRUMENT,
+        // and is held as one: not printed, not cached, counted in the partial
+        // sentence, retried on the next open. See roleRowReading.
+        return [name, roleRowReading(p) === "failed" ? FAILED : p] as const;
+      });
       if (!live) return;
       const map: Record<string, Priced> = {};
       for (const [name, p] of results) map[name] = p;
@@ -1784,13 +1947,13 @@ export default function Explore() {
     void (async () => {
       const base = { ...(openField ? { category: openField } : {}), ...(role ? { q: role } : {}) } as JobSearchParams;
       const chips = await inBatches(CONSTRAINT_CHIPS, 4, async (c) =>
-        [c.id, await priceSlice({ ...base, ...c.patch }, c.coverageKey)] as const);
+        [c.id, await priceSlice({ ...base, ...c.patch })] as const);
       if (!live) return;
       const cm: Record<string, Priced> = {};
       for (const [id, p] of chips) cm[id] = p;
       setChipPrices(cm);
       const countries = await inBatches(COUNTRY_CHIPS, 3, async (c) =>
-        [c.id, await priceSlice({ ...base, country: c.id }, "country")] as const);
+        [c.id, await priceSlice({ ...base, country: c.id })] as const);
       if (!live) return;
       const km: Record<string, Priced> = {};
       for (const [id, p] of countries) km[id] = p;
@@ -1812,8 +1975,8 @@ export default function Explore() {
   // NOT THE `companies` FACET, WHICH IS BOARD-WIDE. That was the obvious source
   // and it is the wrong one: it returns the same 33,545 employers and the same
   // top row for a four-role slice as for the whole 805,926-row board, with each
-  // employer's WHOLE-BOARD count beside it. The full measurement is on
-  // ClosureRecord.inSlice. Result rows are slice-scoped by construction, which
+  // employer's WHOLE-BOARD count beside it. The full measurement is in the
+  // note on ClosureRecord. Result rows are slice-scoped by construction, which
   // is the property this section needs and the only one that survives a
   // narrowing.
   useEffect(() => {
@@ -1854,8 +2017,8 @@ export default function Explore() {
         .map((j) => (typeof j?.token === "string" ? j.token : ""))
         .filter(Boolean))];
       if (tokens.length === 0) {
-        // NO EMPLOYER COUNT IS INVENTED HERE. See ClosureRecord.inSlice.
-        setClosure({ inSlice: null, rowsRead: rows.length, asked: 0, readable: 0, unanswered: 0, closers: 0, tokens: [], capped: false });
+        // NO EMPLOYER COUNT IS INVENTED HERE. See the note on ClosureRecord.
+        setClosure({ rowsRead: rows.length, asked: 0, readable: 0, unanswered: 0, closers: 0, tokens: [], capped: false });
         setClosurePending(false);
         return;
       }
@@ -1864,7 +2027,7 @@ export default function Explore() {
         .catch(() => ({ data: null, error: true }));
       if (!live) return;
       if (curveErr || !Array.isArray(curve)) { giveUp(); return; }
-      setClosure(closureRecordOf(null, rows.length, tokens, curve as CompanyCurveRow[]));
+      setClosure(closureRecordOf(rows.length, tokens, curve as CompanyCurveRow[]));
       setClosurePending(false);
     })();
     return () => { live = false; };
@@ -1962,7 +2125,11 @@ export default function Explore() {
             careless t() away from rendering the retired claim again. Mirrored
             in scripts/prerender-seo.mjs, the document crawlers receive. */
           t("explore.seoTitle5", "Explore Every Field on the Board — An Exact Live Count and the Roles Inside Each One")}
-        description={t("explore.seoDescription4", "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of the board each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.")}
+        description={/* seoDescription5, NOT seoDescription4: "how much of the
+            board each filter can even see" described the board-wide share the
+            chips stopped printing; the share on the page is now the FIELD's.
+            Mirrored in scripts/prerender-seo.mjs. */
+          t("explore.seoDescription5", "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of that field each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.")}
         path="/explore"
       />
       <Header />
@@ -2292,7 +2459,14 @@ export default function Explore() {
                 // opened a field and seen a percentage on a chip, so it waits
                 // here until they do.
                 term: t("explore.methodLiveTerm", "The counts and percentages inside a field"),
-                method: t("explore.methodLiveMethod", "Every COUNT inside a field — on a role, on a narrowing, on a country — is taken live, at the moment you click it, for exactly the search that link runs. The PERCENTAGE beside a narrowing is not: it is how much of the board states that thing at all, from the board's own coverage scan rather than from your click. It matters because a filter can only search what employers published, so a narrowing hides the roles that did not say — it does not prove they are not there. Where we hold no coverage reading for a filter, the chip shows its count and no percentage rather than a number we would have had to invent."),
+                // methodLiveMethod2, NOT methodLiveMethod. The retired sentence
+                // said every count was taken "at the moment you click it",
+                // which the five-minute price cache made false on every
+                // reopen, and said the percentage was "how much of the BOARD
+                // states that thing" — true of the number and the chip-grain
+                // defect in the header. The shares are the field's now, from a
+                // different scan, and the sentence names both bases.
+                method: t("explore.methodLiveMethod2", "Every COUNT inside a field — on a role, a narrowing, a country — is the board's live count of exactly the search that link runs, taken when you open the field and kept for at most {{min}} minutes before it is taken again. The PERCENTAGES under the narrowings are neither live nor per chip: they are how much of that FIELD states a work mode, a pay figure, an experience level or an employment type at all, from the board's hourly per-field scan, stamped with that scan's time — and they do not read the same on every field, which is how you can tell they are the field's. A filter can only search what employers published, so a narrowing hides the roles that did not say. Where we hold no per-field reading — the country chips, the posted-this-week chip — nothing is printed rather than a number we would have had to invent.", { min: PRICE_CACHE_MS / 60_000 }),
               },
             ]} />
             {/* THE SKELETON IS ROW-SHAPED AND EIGHTEEN LONG, because that is
@@ -2435,16 +2609,48 @@ export default function Explore() {
                       </div>
 
                       {open && (
-                        <div className="border-t border-border/60 px-4 py-4">
+                        <div className="border-t border-border/60 px-4 py-4" data-panel="field">
+                          {/* THE BASIS FOR EVERY COUNT IN THIS PANEL, SAID ONCE.
+                              Role rows, constraint chips and country chips are
+                              all live probes of the same shape, and their date
+                              basis is a BOUND, not an instant: a reading is
+                              taken when the field opens and held for at most
+                              PRICE_CACHE_MS. The retired rolesNote said "taken
+                              just now", which was false for up to 299 seconds;
+                              the window the tiles' sentence names
+                              (SERVE_WINDOW_DAYS) was never stated for these
+                              rows at all. Every term is interpolated from the
+                              constant that governs it, so the sentence tracks
+                              the code in nine languages. */}
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            {t("explore.panelCountsBasis", "Every count in this panel is the board's own live count of exactly the list its link opens — postings in {{field}} that are open and inside the board's {{window}}-day freshness window — taken when you opened this field and taken again once a reading is more than {{min}} minutes old. “{{cap}}+” means the board stopped counting at {{cap}}; a name or a narrowing we could not count is said to be missing, never shown as zero.", {
+                              field: label,
+                              window: SERVE_WINDOW_DAYS,
+                              min: PRICE_CACHE_MS / 60_000,
+                              cap: nf(SERVE_COUNT_CAP),
+                            })}
+                          </p>
                           {/* ── 2. PRICED ROLE ROWS ─────────────────────────
                               This adds no mass to the page. It changes the SIZE
                               of what a reader lands in, which is the actual
-                              failure a field-sized list has. */}
-                          <p className="text-[12px] font-semibold text-foreground">
-                            {t("explore.rolesTitle", "The biggest roles in {{field}}", { field: label })}
+                              failure a field-sized list has.
+
+                              rolesTitle2, NOT rolesTitle. "The biggest roles
+                              in {{field}}" was never what the rows were: they
+                              are the largest of a list WE wrote, floored at
+                              ROLE_ROW_MIN and sorted by live count, and a role
+                              we did not name is absent however large. The
+                              title says what the list is. rolesNote2 replaces
+                              a note that said "taken just now" (the basis line
+                              above carries the bound now) and adds the two
+                              things a reader summing the rows needs: the count
+                              is TITLE matches, and names that contain one
+                              another count the same postings. */}
+                          <p className="mt-3 text-[12px] font-semibold text-foreground">
+                            {t("explore.rolesTitle2", "Roles we named in {{field}}, by count", { field: label })}
                           </p>
                           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                            {t("explore.rolesNote", "Role names are ours, not the board's. Every count beside one is a live count of exactly the search that row opens, taken just now — a role we named that matches nothing here is left out rather than shown as zero.")}
+                            {t("explore.rolesNote2", "The names are ours — a list we wrote, not the board's ranking — so a common role we did not name is simply not here. Each count is postings whose TITLE matches that name; the page a row opens leads with the same number and lists roles where the term appears only in the description separately, below it. Where one name contains another, both count the same postings, so the rows do not add up.")}
                           </p>
                           {uncat ? (
                             <p className="mt-2 text-[12px] text-muted-foreground">
@@ -2462,13 +2668,23 @@ export default function Explore() {
                             </p>
                           ) : (
                             (() => {
-                              const priced = (FIELD_ROLES[id] ?? [])
-                                .map((name) => ({ name, p: rolePrices[name] }))
-                                // A ROW WE COULD NOT PRICE DOES NOT RENDER. A
-                                // failed probe is our instrument and a zero
-                                // count is a role that is not here; neither is
-                                // a row worth putting a reader through.
-                                .filter((r) => r.p && !r.p.failed && ((r.p.total ?? 0) > 0 || r.p.capped || (r.p.atLeast ?? 0) > 0));
+                              const names = FIELD_ROLES[id] ?? [];
+                              const readings = names.map((name) => ({ name, p: rolePrices[name], reading: roleRowReading(rolePrices[name]) }));
+                              // OUR INSTRUMENT, COUNTED APART FROM THE FIELD.
+                              // A probe that errored, or a reply from an engine
+                              // that is neither the title tier nor a declared
+                              // rescue, is a name we could not count — and it
+                              // is SAID, above the list, never folded into
+                              // "nothing matched". Only names the effect has
+                              // actually answered for are counted, so the one
+                              // render before the probes start makes no claim.
+                              const failed = readings.filter((r) => r.p && r.reading === "failed").length;
+                              // A ROW RENDERS ONLY FROM A TITLE-TIER COUNT. A
+                              // zero, a rescue-tier reply and a withdrawn total
+                              // are all measurements that yield no row; a
+                              // trigram floor under a name we wrote is not the
+                              // count of that name and is no longer admitted.
+                              const counted = readings.filter((r) => r.reading === "count");
                               // AND A ROW BELOW THE FLOOR DOES NOT RENDER
                               // EITHER, which is a different refusal and is
                               // said separately below. This section's whole job
@@ -2476,31 +2692,49 @@ export default function Explore() {
                               // "database administrator 4" beside "data
                               // engineer 2,028" is an honest number attached to
                               // a click that reproduces the landing-size defect
-                              // one grain down. A capped or floored count is
-                              // above the bar by construction.
-                              const rows = priced
-                                .filter((r) => r.p!.capped || (r.p!.total ?? r.p!.atLeast ?? 0) >= ROLE_ROW_MIN)
-                                .sort((a, b) => (b.p!.total ?? b.p!.atLeast ?? 0) - (a.p!.total ?? a.p!.atLeast ?? 0));
+                              // one grain down. A capped count is above the bar
+                              // by construction.
+                              const rows = counted
+                                .filter((r) => r.p!.capped || (r.p!.total ?? 0) >= ROLE_ROW_MIN)
+                                .sort((a, b) => (b.p!.total ?? 0) - (a.p!.total ?? 0));
+                              const partial = failed > 0 && (
+                                <p className="mt-2 text-[12px] text-warning">
+                                  {t("explore.rolesPartial", "{{n}} of the {{total}} names we tried could not be counted just now. That is our instrument failing, not the field — reopen it to try again.", { n: nf(failed), total: nf(names.length) })}
+                                </p>
+                              );
                               if (rows.length === 0) {
                                 return (
-                                  <p className="mt-2 text-[12px] text-muted-foreground">
-                                    {rolesPricing
-                                      ? t("explore.rolesPricing", "Counting each role…")
-                                      // TWO DIFFERENT FACTS, TWO SENTENCES. "No
-                                      // role name matched" and "every role name
-                                      // matched too few to be worth a page" are
-                                      // not the same statement about the board,
-                                      // and letting the floor fall into the
-                                      // first one would publish a falsehood
-                                      // about a field that does have these
-                                      // roles in it.
-                                      : priced.length > 0
-                                        ? t("explore.rolesBelowFloor", "Every role name we tried matched fewer than {{min}} roles in this field — too few to be worth a page of their own. Open the whole field instead, or search by title on the board.", { min: nf(ROLE_ROW_MIN) })
-                                        : t("explore.rolesNone", "None of the role names we tried matched anything in this field right now.")}
-                                  </p>
+                                  <>
+                                    {partial}
+                                    {/* TWO DIFFERENT FACTS, TWO SENTENCES — AND
+                                        A THIRD THAT MUST NOT BORROW EITHER. "No
+                                        role name matched" and "every role name
+                                        matched too few to be worth a page" are
+                                        not the same statement about the board,
+                                        and letting the floor fall into the
+                                        first one would publish a falsehood
+                                        about a field that does have these roles
+                                        in it. And an OUTAGE is neither: when any
+                                        probe failed, rolesNone is not rendered
+                                        at all, because "none of the names
+                                        matched" over eight failed probes was
+                                        our instrument published as a market
+                                        fact. */}
+                                    {(rolesPricing || counted.length > 0 || failed === 0) && (
+                                      <p className="mt-2 text-[12px] text-muted-foreground">
+                                        {rolesPricing
+                                          ? t("explore.rolesPricing", "Counting each role…")
+                                          : counted.length > 0
+                                            ? t("explore.rolesBelowFloor", "Every role name we tried matched fewer than {{min}} roles in this field — too few to be worth a page of their own. Open the whole field instead, or search by title on the board.", { min: nf(ROLE_ROW_MIN) })
+                                            : t("explore.rolesNone", "None of the role names we tried matched anything in this field right now.")}
+                                      </p>
+                                    )}
+                                  </>
                                 );
                               }
                               return (
+                                <>
+                                {partial}
                                 <ul className="mt-2 divide-y divide-border/60">
                                   {rows.map(({ name, p }) => (
                                     <li key={name} className="flex items-center gap-2 py-1.5">
@@ -2523,22 +2757,22 @@ export default function Explore() {
                                     </li>
                                   ))}
                                 </ul>
+                                </>
                               );
                             })()
                           )}
 
                           {/* ── 3. PRICED CONSTRAINT CHIPS ──────────────────
                               Under the chosen slice, each carrying its live
-                              count AND the live coverage of the column it
-                              filters on. */}
+                              count — and NOTHING ELSE on the face. The share of
+                              the field that states each thing is one sentence
+                              under the row, from the per-field scan, said once
+                              per family (see COVERAGE_FAMILIES). */}
                           <p className="mt-4 flex items-center gap-1.5 text-[12px] font-semibold text-foreground">
                             <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
                             {sliceLabel
                               ? t("explore.chipsTitle", "Narrow “{{slice}}”", { slice: sliceLabel })
                               : t("explore.chipsTitleBare", "Narrow this field")}
-                          </p>
-                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
-                            {t("explore.chipsCoverageNote", "The percentage on a chip is how much of the board states that thing at all. A filter can only search what employers published — roles that did not say are hidden by it, not absent from the market. Where we hold no coverage reading for a filter, the chip shows its count and no percentage rather than a number we would have had to invent.")}
                           </p>
                           {chipsPricing && Object.keys(chipPrices).length === 0 ? (
                             <p className="mt-2 text-[12px] text-muted-foreground" role="status" aria-live="polite">
@@ -2567,27 +2801,14 @@ export default function Explore() {
                                   >
                                     <span>{t(`explore.chip.${c.id}`, c.label)}</span>
                                     <span className="tabular-nums text-muted-foreground">{label}</span>
-                                    {c.coverageKey && p.coverage !== null && (
-                                      <span className="text-[10px] text-muted-foreground/70">
-                                        {t("explore.chipCoverage", "stated on {{pct}}%", { pct: Math.round(p.coverage * 100) })}
-                                      </span>
-                                    )}
-                                    {c.coverageKey && p.coverage === null && (
-                                      <span className="text-[10px] italic text-muted-foreground/60">
-                                        {t("explore.chipCoverageUnknown", "coverage unknown")}
-                                      </span>
-                                    )}
                                     {/* THE EXCLUSION NO FIGURE MEASURES. Only
-                                        the week chip carries one today, and it
-                                        is the chip that hides the most: it
+                                        the week chip carries one today: it
                                         binds posted_at, so every posting from a
-                                        structurally undated vendor is dropped
-                                        however new it is, and coverageDisclosure
-                                        publishes no key for maxAgeDays to
-                                        quantify it with. Rendering nothing here
-                                        put the page's biggest silent exclusion
-                                        under a note that reads silence as "we
-                                        hold no reading". */}
+                                        vendor that publishes no date is dropped
+                                        however new it is. No percentage rides
+                                        it — see the ConstraintChip note for why
+                                        the per-field dated share is withheld
+                                        until posted_at's meaning is settled. */}
                                     {c.note && (
                                       <span className="text-[10px] italic text-muted-foreground/60">
                                         {t(`explore.chipNote.${c.id}`, c.note)}
@@ -2598,13 +2819,73 @@ export default function Explore() {
                               })}
                             </div>
                           )}
+                          {/* OUR INSTRUMENT, SAID APART FROM THE FIELD, exactly
+                              as the role rows say it. A chip that failed to
+                              price does not render, and without this line a
+                              panel missing half its narrowings looked like a
+                              field with half as many things to narrow by. */}
+                          {(() => {
+                            const all = [...CONSTRAINT_CHIPS.map((c) => chipPrices[c.id]), ...COUNTRY_CHIPS.map((c) => countryPrices[c.id])];
+                            const failed = all.filter((p) => p?.failed).length;
+                            if (failed === 0) return null;
+                            return (
+                              <p className="mt-2 text-[12px] text-warning">
+                                {t("explore.chipsPartial", "{{n}} of the {{total}} narrowings could not be counted just now — our instrument, not the field.", { n: nf(failed), total: nf(all.length) })}
+                              </p>
+                            );
+                          })()}
+                          {/* THE COVERAGE SENTENCE — THE ONLY PERCENT SIGNS IN
+                              THIS PANEL.
+                              Population: ALL of the field under the serving
+                              rule, never the role slice (field_grid has no role
+                              grain, and the clause says so when a role is
+                              chosen). Window: the scan's own window_days.
+                              Stamp: the scan's own `at`, in the reader's
+                              language. Values: each family's column over the
+                              row's `n`, rounded, from fieldShares — and `n`
+                              itself reaches no sentence. When the grid could
+                              not be read, or the field is under its 50-row
+                              floor, the sentence says nothing is measured;
+                              there is NO fallback to the board-wide figure,
+                              because two populations under one sentence is
+                              exactly how "of the board" ended up beside a
+                              field's count. */}
+                          {(() => {
+                            const shares = fieldShares(grid, id);
+                            if (shares && grid) {
+                              return (
+                                <p className="mt-2 text-[11px] leading-snug text-muted-foreground" data-coverage="field">
+                                  {t("explore.chipsCoverageField", "A narrowing searches only what employers published; roles that did not say are hidden by it, not absent from the market. Across all of {{field}} — counted {{time}} in the board's hourly per-field scan — a work mode is stated on {{workMode}}%, a pay figure on {{pay}}%, an experience level on {{experience}}%, an employment type on {{employmentType}}%.", {
+                                    field: label,
+                                    time: new Date(grid.at).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }),
+                                    workMode: shares.workMode,
+                                    pay: shares.pay,
+                                    experience: shares.experience,
+                                    employmentType: shares.employmentType,
+                                  })}
+                                  {shares.payFloor !== null && ` ${t("explore.chipsCoveragePayFloor", "A figure in a currency we could price — what the $80,000+ chip compares against — on {{payFloor}}%.", { payFloor: shares.payFloor })}`}
+                                  {role && ` ${t("explore.chipsCoverageRole", "That share is for the whole field; we do not measure it for “{{role}}” alone.", { role })}`}
+                                  {gridCarried && ` ${t("explore.chipsCoverageCarried", "The board's latest hourly pass did not finish; these shares are from the last one that did, at the time shown.")}`}
+                                </p>
+                              );
+                            }
+                            if (!gridRead) return null;
+                            return (
+                              <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                                {t("explore.chipsCoverageNone", "How much of {{field}} states each of these is not measured just now, so no percentage is shown here — a filter still searches only what employers published.", { field: label })}
+                              </p>
+                            );
+                          })()}
 
-                          {/* WHERE. Country, because it is canonical and the
-                              board publishes a coverage figure for it; a typed
-                              city is neither. */}
+                          {/* WHERE. Country, because it is canonical; a typed
+                              city is not. Six countries we chose, in a fixed
+                              order, and the note says so. */}
                           <p className="mt-4 flex items-center gap-1.5 text-[12px] font-semibold text-foreground">
                             <MapPin className="w-3.5 h-3.5 text-primary" />
                             {t("explore.whereTitle", "Where")}
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                            {t("explore.whereNote", "Six countries we chose, in a fixed order — not the board's largest and not ranked. How much of {{field}} names a country at all is not measured here, and a country chip cannot see the roles that name none.", { field: label })}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {COUNTRY_CHIPS.map((c) => {
@@ -2621,11 +2902,6 @@ export default function Explore() {
                                 >
                                   <span>{t(`explore.country.${c.id}`, c.label)}</span>
                                   <span className="tabular-nums text-muted-foreground">{label}</span>
-                                  {p.coverage !== null && (
-                                    <span className="text-[10px] text-muted-foreground/70">
-                                      {t("explore.chipCoverage", "stated on {{pct}}%", { pct: Math.round(p.coverage * 100) })}
-                                    </span>
-                                  )}
                                 </Link>
                               );
                             })}
@@ -2649,13 +2925,14 @@ export default function Explore() {
                           ) : closure && closure.asked > 0 ? (
                             <>
                               <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
-                                {closure.inSlice !== null
-                                  ? t("explore.closureBasis2", "{{inSlice}} employers have roles in this slice. We looked at {{asked}} of them and hold a readable closure record for {{readable}}.", {
-                                      inSlice: nf(closure.inSlice), asked: nf(closure.asked), readable: nf(closure.readable),
-                                    })
-                                  : t("explore.closureBasisNoTotal2", "We read the first {{rows}} results for this slice, found {{asked}} employers among them, and hold a readable closure record for {{readable}} of those. This is not every employer hiring in the slice — the board publishes no count of those, and we are not going to guess one.", {
-                                      rows: nf(closure.rowsRead), asked: nf(closure.asked), readable: nf(closure.readable),
-                                    })}
+                                {/* ONE BASIS SENTENCE, NOT A BRANCH. The other
+                                    arm rendered an "employers in this slice IN
+                                    ALL" count that was always null — see the
+                                    note on ClosureRecord — so it was a sentence
+                                    in nine locales that could never render. */}
+                                {t("explore.closureBasisNoTotal2", "We read the first {{rows}} results for this slice, found {{asked}} employers among them, and hold a readable closure record for {{readable}} of those. This is not every employer hiring in the slice — the board publishes no count of those, and we are not going to guess one.", {
+                                  rows: nf(closure.rowsRead), asked: nf(closure.asked), readable: nf(closure.readable),
+                                })}
                               </p>
                               {/* THE UNREADABLE REMAINDER, NAMED AND EXPLAINED.
                                   The basis line above already printed `asked`
@@ -2703,8 +2980,12 @@ export default function Explore() {
                               )}
                               {closure.readable > 0 && (
                                 <p className="mt-1 text-[12px] leading-snug text-foreground/85">
-                                  {t("explore.closureFinding", "{{closers}} of those {{readable}} have taken at least {{min}} roles down and not put them back up.", {
-                                    closers: nf(closure.closers), readable: nf(closure.readable), min: CLOSURE_MIN_FILLS,
+                                  {/* closureFinding2, NOT closureFinding: the
+                                      count is drawn over CLOSURE_WINDOW_DAYS and
+                                      the retired sentence named no window, so it
+                                      read as all-time. */}
+                                  {t("explore.closureFinding2", "{{closers}} of those {{readable}} have taken at least {{min}} roles down in the last {{days}} days and not put them back up.", {
+                                    closers: nf(closure.closers), readable: nf(closure.readable), min: CLOSURE_MIN_FILLS, days: CLOSURE_WINDOW_DAYS,
                                   })}
                                 </p>
                               )}

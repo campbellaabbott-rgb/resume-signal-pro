@@ -322,7 +322,23 @@ describe("a tile's number and its destination's number are one reading", () => {
     // out of step with the page it opens. So a cache row carrying WRONG numbers
     // must change nothing on the grid.
     rpc.mockImplementation(async (fn: string) => (fn === "get_explore_cache"
-      ? { data: { fields: { engineering: 1, healthcare: 2 }, field_grid: { tiled_n: 3, board: { n: 4 } }, computed_at: "2026-09-09T13:07:00Z" }, error: null }
+      ? {
+          data: {
+            fields: { engineering: 1, healthcare: 2 },
+            // THE GRID IN ITS REAL SHAPE, WITH A WRONG n ON EVERY FIELD. The
+            // chips' coverage sentence reads this row's filter counts over its
+            // n; a tile must still print the facet's integer, never these.
+            field_grid: {
+              at: "2026-09-09T13:07:00Z", window_days: 30, tiled_n: 3, board: { n: 4 },
+              fields: {
+                engineering: { n: 1, work_mode_n: 1, stated_pay_n: 1, pay_floor_n: 1, experience_n: 1, employment_type_n: 1 },
+                healthcare: { n: 2, work_mode_n: 1, stated_pay_n: 1, pay_floor_n: 1, experience_n: 1, employment_type_n: 1 },
+              },
+            },
+            computed_at: "2026-09-09T13:07:00Z",
+          },
+          error: null,
+        }
       : { data: null, error: null }));
     const { container } = mount();
     await waitFor(() => expect(tileTexts(container).join(" ")).toContain("73,841"));
@@ -331,8 +347,13 @@ describe("a tile's number and its destination's number are one reading", () => {
     expect(texts).not.toMatch(/\b1\b/);
     // And the source cannot quietly re-acquire the habit.
     expect(EXPLORE, "the tiles are reading the explore cache again").not.toMatch(/c\.fields/);
-    expect(EXPLORE, "the reach pair is being read from the explore cache again").not.toMatch(/c\.field_grid/);
-    for (const part of ["fields", "field_grid", "field_curves", "totals"]) {
+    // c.field_grid IS read now — by the chips' coverage sentence, for the
+    // field's own share of stated work mode / pay / experience / employment
+    // type. Its n is the tile quantity from a second scan and reaches no tile:
+    // proved above by the wrong n on this fixture, and again with n = 999,999
+    // in a-percentage-that-reads-the-same-on-every-field-is-not-a-field-
+    // percentage.test.tsx.
+    for (const part of ["fields", "field_curves", "totals"]) {
       expect(EXPLORE, `${part} is read by nothing here and must not raise a staleness warning`)
         .toMatch(new RegExp(`"${part}"`));
     }
@@ -407,9 +428,13 @@ describe("the field-grain lifecycle claim left the page, and its computation wit
       }
       // …and every sentence the redesign DOES say exists in that locale, or
       // seven languages fall back to English for the page's only date basis.
+      // methodLiveMethod became methodLiveMethod2 when the percentages it
+      // described stopped being the board's and started being the field's;
+      // the locale pass for the new key landed in all nine in the same change,
+      // so it is checked here at the same strength as the rest.
       for (const k of ["basisCarriedWhen", "basisNone", "fieldsBlurb3", "fieldsBlurb4",
         "methodTileMethod3", "methodNamesTerm", "methodNamesMethod3",
-        "methodLiveTerm", "methodLiveMethod"]) {
+        "methodLiveTerm", "methodLiveMethod2"]) {
         expect(ex, `${loc}.json is missing explore.${k}`).toHaveProperty(k);
       }
       // …and the sentences the row rewrite minted, in ALL NINE. They were held
