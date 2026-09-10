@@ -1513,6 +1513,27 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_board_observability: {
+        Row: {
+          as_of: string
+          bucket: string
+          company_token: string
+          lap_w0: string | null
+        }
+        Insert: {
+          as_of?: string
+          bucket: string
+          company_token: string
+          lap_w0?: string | null
+        }
+        Update: {
+          as_of?: string
+          bucket?: string
+          company_token?: string
+          lap_w0?: string | null
+        }
+        Relationships: []
+      }
       job_board_board_state: {
         Row: {
           company_token: string
@@ -2060,6 +2081,7 @@ export type Database = {
           posted_at: string | null
           region_code: string | null
           remote: boolean
+          req_key: string | null
           salary: string | null
           salary_currency: string | null
           salary_max_annual: number | null
@@ -2094,6 +2116,7 @@ export type Database = {
           posted_at?: string | null
           region_code?: string | null
           remote?: boolean
+          req_key?: string | null
           salary?: string | null
           salary_currency?: string | null
           salary_max_annual?: number | null
@@ -2128,6 +2151,7 @@ export type Database = {
           posted_at?: string | null
           region_code?: string | null
           remote?: boolean
+          req_key?: string | null
           salary?: string | null
           salary_currency?: string | null
           salary_max_annual?: number | null
@@ -3952,18 +3976,30 @@ export type Database = {
       get_category_fill_curve: {
         Args: { p_days?: number; p_min_n?: number }
         Returns: {
+          ageouts_at_30: number
           category: string
+          cohort_from: string
+          cohort_to: string
           dated_coverage: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
           fills_le_14: number
+          gate_share_30: number
           median_censored: boolean
           median_days_to_fill: number
           n_at_risk_14: number
+          n_at_risk_30: number
           relist_rate_14: number
+          relist_rate_30: number
           still_open_14: number
+          still_open_30: number
+          still_open_30_hi: number
+          still_open_30_lo: number
           sufficient: boolean
+          sufficient_30: boolean
+          sum_check_30: number
+          taken_down_30: number
           window_days: number
         }[]
       }
@@ -4017,7 +4053,10 @@ export type Database = {
         Returns: {
           absorption: number
           ageouts_90d: number
+          ageouts_at_30: number
           churn: number
+          cohort_from: string
+          cohort_to: string
           company_token: string
           dated_coverage: number
           dated_n: number
@@ -4032,11 +4071,20 @@ export type Database = {
           median_censored: boolean
           median_days_to_fill: number
           n_at_risk_14: number
+          n_at_risk_30: number
+          observability_bucket: string
           open_roles: number
           relist_rate_14: number
+          relist_rate_30: number
           relists_90d: number
           still_open_14: number
+          still_open_30: number
+          still_open_30_hi: number
+          still_open_30_lo: number
           sufficient: boolean
+          sufficient_30: boolean
+          sum_check_30: number
+          taken_down_30: number
           tracking_days: number
           undated_n: number
         }[]
@@ -4516,6 +4564,18 @@ export type Database = {
       }
       get_size_segments: { Args: never; Returns: Json }
       get_stale_board_count: { Args: never; Returns: number }
+      get_stalest_boards: {
+        Args: { p_limit?: number; p_min_age_hours?: number }
+        Returns: {
+          age_min: number
+          live_rows: number
+          newest_effective: string
+          posting_rows: number
+          stale_token: string
+          stale_vendor: string
+          stamped_at: string
+        }[]
+      }
       get_stats_cache: { Args: never; Returns: Json }
       get_storage_footprint: {
         Args: never
@@ -4853,6 +4913,10 @@ export type Database = {
         Returns: Json
       }
       release_scan_slot: { Args: { p_id: string }; Returns: undefined }
+      repair_oracle_subsite_duplicates: {
+        Args: { p_max_rows?: number; p_restart?: boolean }
+        Returns: Json
+      }
       roll_up_and_prune_closures: {
         Args: { p_keep_days?: number }
         Returns: {

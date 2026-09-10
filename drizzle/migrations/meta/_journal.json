@@ -162,6 +162,13 @@
       "when": 1789055469934,
       "tag": "0022_regrant_mig_exec_for_bbea5030",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789055505132,
+      "tag": "0023_revoke_mig_exec_after_bbea5030",
+      "breakpoints": true
     }
   ]
 }
