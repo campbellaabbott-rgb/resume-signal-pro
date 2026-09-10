@@ -169,6 +169,13 @@
       "when": 1789055505132,
       "tag": "0023_revoke_mig_exec_after_bbea5030",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789073690637,
+      "tag": "0024_the_stale_window_fills_with_what_it_cannot_fix",
+      "breakpoints": true
     }
   ]
 }
