@@ -128,6 +128,19 @@ describe("locale files", () => {
    * stay declared, empty, because the mechanism is the part worth keeping: the
    * next English-first change declares its window here instead of leaving this
    * file red, and the assertion above is what forces it back to empty again.
+   *
+   * ── 2026-09-09, "Actively hiring" is back and the department box is gone ──
+   * CLOSED. The hiring filter's label went back to "Actively hiring" by owner
+   * decision with its measure unchanged (takedowns we watched over 90 days, not
+   * hires, not yet new postings), so every string that carries the label or
+   * states its basis took a NEW key — a locale VALUE beats an inline default,
+   * and editing the takedown* values in place would have left seven languages
+   * naming a control that no longer exists. The nine new keys (hiringFilter2,
+   * hiringFilterTip2, chipHiring2, hiringBadge2, hiringBadgeTip2, hiringBasis2,
+   * hiringSetAside2, savedWithoutHiringFilter2, departmentChip2) landed in all
+   * nine locales, and the eleven retired keys (the takedown* family,
+   * hhBadgeTipObserved, the three department-box keys) came out of all nine, in
+   * the same change — so both lists are empty and no key is exempt.
    */
   const PENDING_TRANSLATION: string[] = [];
   const RETIRED_PENDING: string[] = [];

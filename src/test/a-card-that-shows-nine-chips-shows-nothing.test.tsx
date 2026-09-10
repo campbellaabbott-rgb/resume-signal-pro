@@ -268,7 +268,7 @@ function mount(path = "/jobs", field: unknown[] = FIELD_CURVE) {
 const text = () => document.body.textContent ?? "";
 const hits = (s: string) => text().split(s).length - 1;
 // SCOPED READS. The board's own filter controls carry several of the same
-// words the cards do ("Takes roles down" is a control AND a chip; "Pay
+// words the cards do ("Actively hiring" is a control AND a chip; "Pay
 // Transparency Index" lives in the footer), so a document-wide count answers a
 // different question from the one being asked. `list()` is the rendered cards
 // and nothing else; `panel()` is the open detail pane.
@@ -335,11 +335,11 @@ describe("a card that shows nine chips shows nothing", () => {
     // not decoration. If the marker ever goes away this must fail.
     await waitFor(() => expect(text()).toContain("Re-lists roles often (7×+)"), SLOW);
     await waitFor(() => expect(text()).toContain("Fills fast — 58% within 14d"), SLOW);
-    // SCOPED TO THE CARDS, not the document: "Takes roles down" is the filter
+    // SCOPED TO THE CARDS, not the document: "Actively hiring" is the filter
     // control's label as well as the chip's, and a document-wide wait would be
     // satisfied by a control that renders before the closure lookup has even
     // been made — the exact way a chip guard goes vacuous.
-    await waitFor(() => expect(list()).toContain("Takes roles down"), SLOW);
+    await waitFor(() => expect(list()).toContain("Actively hiring"), SLOW);
     // Acme fills 62% of its roles inside the horizon AND re-lists at least 7
     // times. It qualifies for both branches; the caution is what a reader
     // needs. Asserted on ACME'S OWN CARD rather than document-wide, for the
@@ -351,7 +351,7 @@ describe("a card that shows nine chips shows nothing", () => {
     expect(acmeText, "praise must not sit beside the caution about the same employer")
       .not.toContain("Fills fast");
     expect(acmeText, "praise must not sit beside the caution about the same employer")
-      .not.toContain("Takes roles down");
+      .not.toContain("Actively hiring");
     // Beta has the same fast-fill record and no churn, so the slot speaks well
     // of it — proving the caution won on merit and not because the positive
     // branch is dead. Gamma has a real takedown record but a fill rate under
@@ -362,11 +362,11 @@ describe("a card that shows nine chips shows nothing", () => {
     // the slot with a muted "No closure record" and is asserted separately
     // below. Three positive-or-caution statements over four cards. Counted over
     // the CARDS only, for the reason above.
-    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Takes roles down")).toBe(3);
+    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
     // And no card carries two of them.
     for (const c of cards()) {
       const t = c.textContent ?? "";
-      const said = ["Re-lists roles often", "Fills fast", "Takes roles down"].filter((x) => t.includes(x));
+      const said = ["Re-lists roles often", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
       expect(said.length, `two employer statements on one card: ${said.join(" + ")}`).toBeLessThanOrEqual(1);
     }
     // ── THE THIRD STATE HAS THE SLOT IT USED TO LEAVE EMPTY ────────────────
@@ -380,7 +380,7 @@ describe("a card that shows nine chips shows nothing", () => {
     const deltaText = delta!.textContent ?? "";
     await waitFor(() => expect(delta!.textContent ?? "").toContain("No closure record"), SLOW);
     expect(deltaText, "an unreadable record must never render as the positive one")
-      .not.toContain("Takes roles down");
+      .not.toContain("Actively hiring");
     expect(deltaText).not.toContain("Fills fast");
     expect(deltaText).not.toContain("Re-lists roles often");
   });

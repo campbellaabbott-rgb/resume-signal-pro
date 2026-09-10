@@ -2546,3 +2546,217 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
     })
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
+
+// ── Oracle sub-sites: one requisition, one stored row ─────────────────────
+// An Oracle tenant publishes the SAME requisition on several "career sites"
+// (CX_1, CX_3, CX_1001 ...): a French mirror, an audience view (Veterans,
+// Apprenticeship), a brand or region partition. Each site is its own catalog
+// token and the posting id is `oracle:<token>:<reqId>`, so before 2026-09-09
+// every mirror stored its own copy — measured live that day: Clean Harbors
+// EN/FR 703 = 703 with 200/200 sampled ids identical, Cummins' seven audience
+// views of one ~710-req tenant, Hearst's three 148-row mirrors. Board-wide
+// estimate from a 9-tenant/32-token sample: ~23k duplicate servable rows
+// (defensible range 12k-52k), every one inflating an employer's open count.
+//
+// THE RULE IS PER (tenant, reqId), NEVER PER SITE NAME. The same sample
+// refuted every name-based shortcut: "French" sites were exact mirrors at
+// Clean Harbors and Tremco and DISJOINT at Chartwell and Penske (their own
+// reqIds); eexs' "All" site was NOT a superset of its "All Community" site
+// (19 of 78 reqs unique to the latter); Coherent's 17 country sites overlap
+// 0/61. So the identity is the requisition id within the tenant, sites are
+// RANKED, and a requisition is stored once, under the best-ranked site that
+// lists it. A requisition listed on no better-ranked site survives under
+// whichever site carries it, so a sub-site-only req is never lost.
+//
+// The helpers here are pure so vitest can prove the property without Deno:
+// the fetcher (index.ts) supplies the catalog ranks and the rows the database
+// currently holds; the plan says what to drop, what to shed, what to keep.
+
+/**
+ * A tenant whose code carries a dev/test/stage/uat suffix is a vendor
+ * sandbox, not an employer's board. Tested on the TENANT segment only, so
+ * `fa-exrr-dev2-saasfaprod1~ocs~CX_1` (suffix followed by `-saasfaprod1`, not
+ * `~`) is caught and a non-Oracle token such as `real-dev-inc` is not: the
+ * pattern requires the Oracle `tenant~region~site` shape first.
+ */
+export const ORACLE_DEV_TENANT_RE = /^[^~]*-(dev|test|stage|uat)\d*(?:-|$)/i;
+
+/** `tenant` of an Oracle `tenant~region~site` token; null for any other shape. */
+export function oracleTenantOf(token: string): string | null {
+  const parts = String(token ?? "").split("~");
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return null;
+  return parts[0];
+}
+
+/** True only for an Oracle-shaped token whose tenant segment is a sandbox. */
+export function isOracleDevToken(token: string): boolean {
+  const tenant = oracleTenantOf(token);
+  return tenant !== null && ORACLE_DEV_TENANT_RE.test(tenant);
+}
+
+/** The tenant-level identity of a requisition: `oracle:<tenant>:<reqId>`. */
+export function oracleReqKey(token: string, reqId: string): string | null {
+  const tenant = oracleTenantOf(token);
+  const id = String(reqId ?? "").trim();
+  if (!tenant || !id) return null;
+  return `oracle:${tenant}:${id}`;
+}
+
+/** The same key derived from a stored posting id `oracle:<token>:<reqId>`; null for other vendors. */
+export function oracleReqKeyOfId(id: string): string | null {
+  const parts = String(id ?? "").split(":");
+  if (parts.length !== 3 || parts[0] !== "oracle") return null;
+  return oracleReqKey(parts[1], parts[2]);
+}
+
+/** The reqId of a stored Oracle posting id; null for any other shape. */
+export function oracleReqIdOfId(id: string): string | null {
+  const parts = String(id ?? "").split(":");
+  if (parts.length !== 3 || parts[0] !== "oracle" || !parts[2]) return null;
+  return parts[2];
+}
+
+/**
+ * Rank every Oracle site of every multi-site tenant. Lower wins. The
+ * canonical site (an explicit override from sources.ts, else the tenant's
+ * first-listed site) is rank 0; the others follow in catalog order from 1.
+ * Single-site tenants are omitted: with no sibling there is nothing to
+ * dedupe and the fetcher skips them at zero cost.
+ *
+ * Catalog order rather than served size, because size is not known at module
+ * load and a rule that flips with a count would move a tenant's rows between
+ * sites on every visit. Where size argues against catalog order the override
+ * map says so by name (Cummins: "All Functions" over "Technicians").
+ */
+export function rankOracleSites(
+  entries: ReadonlyArray<{ source: string; token: string }>,
+  canonical: Readonly<Record<string, string>>,
+): Map<string, number> {
+  const byTenant = new Map<string, string[]>();
+  for (const e of entries) {
+    if (e.source !== "oracle") continue;
+    const tenant = oracleTenantOf(e.token);
+    if (!tenant) continue;
+    const list = byTenant.get(tenant) ?? [];
+    if (!list.includes(e.token)) list.push(e.token);
+    byTenant.set(tenant, list);
+  }
+  const ranks = new Map<string, number>();
+  for (const [tenant, sites] of byTenant) {
+    if (sites.length < 2) continue;
+    const want = canonical[tenant];
+    const head = want && sites.includes(want) ? want : sites[0];
+    const ordered = [head, ...sites.filter((t) => t !== head)];
+    ordered.forEach((t, i) => ranks.set(t, i));
+  }
+  return ranks;
+}
+
+export interface OracleHolderRow {
+  id: string;
+  token: string;
+  /** Catalog rank of the holder's site, or null when its token is not ranked (untracked, single-site, unknown). */
+  rank: number | null;
+  /**
+   * True when the holder's row carries missing_since: its site stopped serving
+   * the requisition and the row is on its way through the absence path. A
+   * stamped holder does not OWN the requisition -- a live copy on any ranked
+   * site outranks it -- or a sub-site's live copy would be shed in favour of a
+   * copy about to close as a takedown the employer never made.
+   */
+  missing?: boolean;
+}
+
+export interface OracleSubsitePlan {
+  /** Fetched reqIds this site must NOT store: a better-ranked sibling holds them. */
+  dropReqIds: Set<string>;
+  /** Ids of THIS site's stored rows that a better-ranked sibling now owns — OUR action, exit as untracked. */
+  shedMineIds: string[];
+  /** Ids of lower-ranked siblings' rows for reqs this site owns — OUR action, exit as untracked. */
+  shedSiblingIds: string[];
+}
+
+/**
+ * Decide one visit of one Oracle site against what the database holds.
+ *
+ *   fetched   reqIds the site served this visit (after the freshness cap)
+ *   stored    reqId -> id of the rows this site already holds
+ *   holders   reqKey -> every row of any site holding that requisition
+ *   fullRead  the feed was read to its end (not windowed); only a full read
+ *             may conclude that a stored requisition is no longer served here
+ *
+ * For each requisition the best-ranked LIVE holder owns it. A holder whose
+ * row is stamped missing_since is not live: it is the copy the absence path
+ * is about to close, and a live copy anywhere outranks it. If a live sibling
+ * ranked above this site holds it, this site drops it (and sheds its own
+ * stale copy, if any). If this site serves it and is the best live holder,
+ * lower-ranked live siblings' copies are shed, and so is every stamped
+ * sibling copy whatever its rank -- left alone, that copy would close as a
+ * takedown while the requisition is still open here. If this site STORES a
+ * requisition a full read no longer served, and a live sibling holds it, this
+ * site's copy is shed rather than stamped: the employer moved the listing,
+ * they did not take it down. Holders with no rank are left alone -- they
+ * belong to the orphan prune, which logs them under the same reason.
+ *
+ * Idempotent and safe under a partial read: a decision is only ever taken
+ * about a requisition the visit actually fetched or this site actually
+ * stores, a windowed visit concludes nothing from a requisition it did not
+ * see, and running the same plan twice returns an empty plan the second time.
+ */
+export function planOracleSubsiteVisit(args: {
+  token: string;
+  rank: number;
+  fetched: Iterable<string>;
+  stored: ReadonlyMap<string, string>;
+  holders: ReadonlyMap<string, ReadonlyArray<OracleHolderRow>>;
+  /** Bound on sibling rows shed in one visit; the rest converge on later visits. */
+  shedCap?: number;
+  /** The feed was read to its end this visit. Default false: assume windowed. */
+  fullRead?: boolean;
+}): OracleSubsitePlan {
+  const { token, rank, stored, holders } = args;
+  const shedCap = args.shedCap ?? 1000;
+  const fullRead = args.fullRead === true;
+  const plan: OracleSubsitePlan = { dropReqIds: new Set(), shedMineIds: [], shedSiblingIds: [] };
+  const fetchedSet = new Set(args.fetched);
+  const reqIds = new Set<string>([...fetchedSet, ...stored.keys()]);
+  const isLive = (h: OracleHolderRow) => h.rank !== null && h.missing !== true;
+  for (const reqId of reqIds) {
+    const key = oracleReqKey(token, reqId);
+    if (!key) continue;
+    const rows = holders.get(key) ?? [];
+    let bestOther: number | null = null;
+    let anyLiveSibling = false;
+    for (const h of rows) {
+      if (h.token === token || !isLive(h)) continue;
+      anyLiveSibling = true;
+      if (bestOther === null || (h.rank as number) < bestOther) bestOther = h.rank as number;
+    }
+    if (bestOther !== null && bestOther < rank) {
+      // A better-ranked live sibling owns this requisition.
+      if (fetchedSet.has(reqId)) plan.dropReqIds.add(reqId);
+      const mine = stored.get(reqId);
+      if (mine) plan.shedMineIds.push(mine);
+      continue;
+    }
+    if (!fetchedSet.has(reqId)) {
+      // Stored here, not served here this visit. On a FULL read that is the
+      // employer no longer listing it on this site; if a live sibling still
+      // lists it the requisition is open and this copy is shed as our action
+      // instead of walking into the absence path as a closure. On a windowed
+      // read nothing can be concluded, and the ordinary grace logic applies.
+      const mine = stored.get(reqId);
+      if (fullRead && anyLiveSibling && mine) plan.shedMineIds.push(mine);
+      continue;
+    }
+    // This site serves it and is the best live holder (or the only ranked
+    // one). Shed lower-ranked live copies, and every stamped ranked copy.
+    for (const h of rows) {
+      if (h.token === token || h.rank === null) continue;
+      if (h.missing !== true && h.rank <= rank) continue;
+      if (plan.shedSiblingIds.length >= shedCap) break;
+      plan.shedSiblingIds.push(h.id);
+    }
+  }
+  return plan;
+}

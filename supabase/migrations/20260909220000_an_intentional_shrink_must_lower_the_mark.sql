@@ -1,0 +1,52 @@
+-- AN INTENTIONAL SHRINK MUST LOWER THE MARK, OR THE ORPHAN PRUNE STAYS OFF.
+--
+-- status.orphanPruneBlocked has read TRUE since the catalogue shrank from
+-- 44,544 to 44,542 boards. That is the stale-bundle guard doing its job: after
+-- the 2026-07-15 incident (an older bundle saw every board added since as an
+-- orphan and wiped their postings) the prune refuses to run from any bundle
+-- smaller than the largest ever deployed. The guard cannot tell an intentional
+-- removal from a stale deploy, so it has to be told.
+--
+-- WHAT THE BLOCK COSTS. Tokens that left the catalogue keep their posting rows
+-- and are never fetched again. Two of them — 'constructor' and 'applied',
+-- stamped 2026-08-26 — have sat at the top of freshness.max_min (14.6 days)
+-- ever since, so the published "stalest board" figure is a fossil, not a
+-- board. Their postings only leave by the 30-day age-out, which is the wrong
+-- exit reason for a board we stopped watching on purpose.
+--
+-- THE SAME SHAPE AS 20260824040000, DELIBERATELY. The mark is lowered here, in
+-- SQL, to a literal — not by POSTing {resetCatalogHighwater:true} to the
+-- function with the chain key. A first draft of this file did exactly that,
+-- deriving the chain key from the vault inside a DO block; it was replaced
+-- because (a) the repository's guard for high-water migrations (src/test/
+-- a-demo-board-is-not-an-employer.test.ts) requires the NET clamp to be a
+-- literal it can check against the real catalogue, and a POST carries no such
+-- literal, and (b) the POST form has an ordering hazard this form does not:
+-- the function resets the mark to the LIVE bundle's length, so applying it
+-- while the older .67 bundle (44,542) was live would have set the mark to
+-- 44,542 and re-blocked the .68 bundle (44,519) the moment it deployed. A
+-- literal at 44,519 cannot do that: a bundle larger than the mark is, by the
+-- guard's own rule, never treated as stale.
+--
+-- 44,519 IS THE CATALOGUE AS OF THIS COMMIT (JOB_SOURCES.length after
+-- 20260909216000 removed the duplicate Oracle sub-sites and the six dev/test
+-- tenants). The guard test fails this file if that literal is ever above the
+-- catalogue the tree carries, which is the check that would have caught the
+-- 31,709 that shipped once before.
+--
+-- IDEMPOTENT: LEAST() lowers and never raises; re-running is a no-op. The
+-- function raises the mark itself the next time a larger catalogue deploys,
+-- so nothing here has to be undone.
+--
+-- PROOF IS EXTERNAL AND NAMED: the next status call after this applies must
+-- report orphanPruneBlocked = false and catalogHighwater.size <= catalogSize;
+-- the following completed refresh pass must drop 'constructor' and 'applied'
+-- out of the freshness rollup, and freshness.max_min must fall from ~21,000
+-- minutes to the order of the p95.
+--
+-- Authorised by the owner, 2026-09-09 ("yes run it").
+
+UPDATE public.job_board_meta
+SET v = jsonb_set(v, '{size}', to_jsonb(LEAST((v->>'size')::int, 44519))),
+    updated_at = now()
+WHERE k = 'catalog_highwater';

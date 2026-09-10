@@ -14,7 +14,7 @@
 // never linger. A refresh lock in job_board_meta stops stampedes.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, type JobSource } from "./sources.ts";
+import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, type JobSource } from "./sources.ts";
 import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
 import { fetchJazzhr, jazzhrPostingUrl, parseJazzhrDetail } from "./vendors/jazzhr.ts";
 import {
@@ -47,6 +47,12 @@ import {
   extractRipplingJobPosts,
   normalizeWorkday,
   normalizeOracle,
+  type OracleHolderRow,
+  oracleReqIdOfId,
+  oracleReqKey,
+  oracleReqKeyOfId,
+  planOracleSubsiteVisit,
+  rankOracleSites,
   detectCountry,
   detectRegion,
   greenhouseApi,
@@ -132,7 +138,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.67"; // .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.68"; // .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -2022,6 +2028,18 @@ const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
 // postings/board/pass, which exhausts every tenant in the first tranche.
 const ORACLE_PAGE_SIZE = 100;
 const ORACLE_PAGE_CAP = 20;
+// Every Oracle site of every multi-site tenant, ranked (0 = canonical). The
+// ingest stores one row per tenant requisition under the best-ranked site that
+// lists it; see normalize.ts (the rule, its measurement) and sources.ts
+// ORACLE_CANONICAL_SITES (the overrides). Single-site tenants are absent and
+// pay nothing. The same table is published to job_board_meta each pass so the
+// repair SQL (migration 20260909216000) keeps exactly this rule.
+const ORACLE_SITE_RANK: ReadonlyMap<string, number> = rankOracleSites(JOB_SOURCES, ORACLE_CANONICAL_SITES);
+// Deploy-before-migration: until job_board_postings.req_key exists the holder
+// lookup fails naming the column. Back off for ten minutes rather than for the
+// isolate's life, so the dedupe switches itself on once the migration lands.
+let oracleReqKeyMissingUntil = 0;
+const ORACLE_REQ_KEY_BACKOFF_MS = 10 * 60_000;
 // A CAP THAT ALWAYS RESTARTS AT ZERO IS NOT A CAP, IT IS A CEILING.
 //
 // Every pass fetched pages 0..24 — the same 500 postings, forever. A tenant
@@ -5012,6 +5030,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             id: j.id,
             source: j.source,
             company_token: j.token,
+            // The tenant-level identity of an Oracle requisition, `oracle:<tenant>:<reqId>`,
+            // which the sub-site dedupe below and the repair SQL both key on. Only
+            // Oracle rows carry it; the column ships in migration 20260909216000 and
+            // the upsert strips it until then.
+            ...(j.source === "oracle" ? { req_key: oracleReqKeyOfId(j.id) } : {}),
             company: j.company,
             title: clean(j.title.trim().slice(0, 300)),
             location: clean(j.location.trim().slice(0, 300)),
@@ -5203,6 +5226,166 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // the lap rather than let a database blip become takedowns.
           failLap();
           continue;
+        }
+        // ── ORACLE SUB-SITE DEDUPE: one stored row per tenant requisition ──
+        //
+        // An Oracle tenant lists the same requisition on several career sites
+        // and each site is its own token here, so a French mirror or an
+        // audience view used to store a full second copy of every row (the
+        // rule, its live measurement and the pure planner live in
+        // normalize.ts). This visit asks the database who holds each
+        // requisition this site served or stores, by req_key, and then:
+        //   - a requisition a BETTER-ranked sibling holds is not stored by this
+        //     site, and a stale copy this site already holds is shed;
+        //   - a requisition this site owns has its LOWER-ranked siblings'
+        //     copies shed (only for requisitions this visit actually served).
+        // Both sheds are OUR action, never the employer's: they go to the exit
+        // ledger under the untracked reason, exactly like a board leaving the
+        // catalog, and they are removed from this visit's stored set BEFORE
+        // the absence logic below so a shed row can never be stamped, closed,
+        // or written to the closure log. A sub-site-only requisition has no
+        // better-ranked holder and is kept: nothing here can lose it.
+        //
+        // Single-site tenants are not ranked and skip this block entirely.
+        // The lookup is bounded by this visit's own rows (100 keys per query,
+        // paged), and a plan is only ever made about requisitions the visit
+        // fetched or this site stores, so a partial read decides nothing about
+        // the rest.
+        //
+        // What the site SERVED, before the dedupe leaves any of it to a
+        // sibling: the board-state row below reads its state from this, so a
+        // mirror whose every requisition is stored under its canonical site
+        // is recorded as a board that answered ('ok', stored_count 0), never
+        // as one that served nothing ('empty' beside a feed_total of 703).
+        const servedThisVisit = rowsById.size;
+        if (s.source === "oracle" && ORACLE_SITE_RANK.has(s.token) && Date.now() >= oracleReqKeyMissingUntil) {
+          const myRank = ORACLE_SITE_RANK.get(s.token)!;
+          const stored = new Map<string, string>(); // reqId -> id, this site's own rows
+          for (const ex of existingRows) {
+            if (!ex.id.startsWith(`oracle:${s.token}:`)) continue;
+            const rq = oracleReqIdOfId(ex.id);
+            if (rq) stored.set(rq, ex.id);
+          }
+          const fetched: string[] = [];
+          for (const id of rowsById.keys()) { const rq = oracleReqIdOfId(id); if (rq) fetched.push(rq); }
+          const keys = [...new Set([...fetched, ...stored.keys()].map((rq) => oracleReqKey(s.token, rq)).filter((k): k is string => !!k))];
+          const holders = new Map<string, OracleHolderRow[]>();
+          const holderRows = new Map<string, Record<string, unknown>>();
+          let lookupOk = keys.length > 0;
+          // PAGINATED, like the existing-rows read above: PostgREST caps a
+          // response at 1,000 rows and says nothing. A key can have as many
+          // holders as the tenant has sites (Cummins 10, eexs 109), so 100
+          // keys is not 100 rows; every chunk pages by id until a short page,
+          // and a chunk that cannot be completed skips the plan rather than
+          // deciding from the holders it happened to see. missing_since rides
+          // the select because a stamped holder does not own a requisition.
+          const HOLDER_KEYS_PER_QUERY = 100;
+          lookup: for (let i = 0; i < keys.length; i += HOLDER_KEYS_PER_QUERY) {
+            const chunk = keys.slice(i, i + HOLDER_KEYS_PER_QUERY);
+            for (let from = 0; ; from += 1000) {
+              const { data, error } = await client
+                .from("job_board_postings")
+                .select(`${LIFECYCLE_SELECT}, req_key, missing_since`)
+                .in("req_key", chunk)
+                .order("id")
+                .range(from, from + 999);
+              if (error) {
+                lookupOk = false;
+                if (error.message?.includes("req_key")) {
+                  oracleReqKeyMissingUntil = Date.now() + ORACLE_REQ_KEY_BACKOFF_MS;
+                  console.warn(`[JOB-BOARD] oracle sub-site dedupe OFF for ${ORACLE_REQ_KEY_BACKOFF_MS / 60_000} min: job_board_postings.req_key absent (migration 20260909216000 not applied yet)`);
+                } else {
+                  console.warn(`[JOB-BOARD] ${s.token}: oracle holder lookup failed (dedupe skipped this visit):`, String(error.message ?? "").slice(0, 120));
+                }
+                break lookup;
+              }
+              const page = (data ?? []) as Array<Record<string, unknown>>;
+              for (const row of page) {
+                const key = String(row.req_key ?? "");
+                const tok = String(row.company_token ?? "");
+                const id = String(row.id ?? "");
+                if (!key || !id) continue;
+                const list = holders.get(key) ?? [];
+                list.push({ id, token: tok, rank: ORACLE_SITE_RANK.get(tok) ?? null, missing: row.missing_since != null });
+                holders.set(key, list);
+                holderRows.set(id, row);
+              }
+              if (page.length < 1000) break;
+              if (from + 1000 >= 100_000) { // a runaway read is not a holder set
+                lookupOk = false;
+                console.warn(`[JOB-BOARD] ${s.token}: oracle holder lookup exceeded 100k rows for ${chunk.length} keys (dedupe skipped this visit)`);
+                break lookup;
+              }
+            }
+          }
+          if (lookupOk) {
+            // A windowed read (the freshness cursor, a page cap, a resumed read)
+            // cannot conclude that a stored requisition is no longer served here.
+            // A FULL READ IS THE COMPLEMENT OF THE ONE FLAG, DERIVED THE ONE WAY.
+            // Every reader of `windowed` spells it `X.windowed === true` — the
+            // window guard (a-window-of-ours-is-not-a-closure-of-theirs) pins
+            // that so three derivations cannot drift into three meanings. The
+            // planner's parameter is the complement, so it is the complement
+            // OF that expression, never a second spelling like `!== true`.
+            const windowedRead = r.windowed === true;
+            const plan = planOracleSubsiteVisit({ token: s.token, rank: myRank, fetched, stored, holders, fullRead: !windowedRead });
+            for (const rq of plan.dropReqIds) rowsById.delete(`oracle:${s.token}:${rq}`);
+            // `rows` was materialised from rowsById above and feeds newRows; keep the two in step.
+            if (plan.dropReqIds.size) rows.splice(0, rows.length, ...rows.filter((row) => rowsById.has(String(row.id))));
+            const shed = [...plan.shedMineIds, ...plan.shedSiblingIds];
+            if (shed.length) {
+              // Ledger BEFORE delete, awaited: after the delete there is nothing to read.
+              // A shed row is OUR action — the employer still lists the
+              // requisition, on the sibling site we now store it under — so it
+              // leaves under the same reason as a board dropped from the
+              // catalog, never as a closure, and never reaches the closure log.
+              const exitedAt = new Date().toISOString();
+              // A shed row of THIS site that carries no req_key yet (stored
+              // before the backfill reached its token) is absent from the
+              // holder lookup; read it by id so its exit row keeps the title,
+              // date and facets the ledger exists to keep.
+              const unread = shed.filter((id) => !holderRows.has(id));
+              for (let i = 0; i < unread.length; i += 200) {
+                const { data: byId, error: byIdErr } = await client
+                  .from("job_board_postings")
+                  .select(LIFECYCLE_SELECT)
+                  .in("id", unread.slice(i, i + 200));
+                if (byIdErr) { console.warn(`[JOB-BOARD] ${s.token}: oracle dedupe could not read ${unread.length} shed row(s) by id (exit rows degrade to id-only):`, String(byIdErr.message ?? "").slice(0, 120)); break; }
+                for (const row of (byId ?? []) as unknown as Array<Record<string, unknown>>) holderRows.set(String(row.id), row);
+              }
+              const shedRows = shed.map((id) => holderRows.get(id) ?? { id, source: "oracle", company_token: s.token });
+              const exitRow = (r: Record<string, unknown>) => {
+                const t = tenureDays(r.posted_at, r.first_seen, exitedAt);
+                return {
+                  posting_id: String(r.id),
+                  source: String(r.source ?? "oracle"),
+                  company_token: String(r.company_token ?? s.token),
+                  company: (r.company as string | null) ?? null,
+                  title: (r.title as string | null) ?? null,
+                  category: String(r.category ?? "other"),
+                  exit_reason: "untracked",
+                  posted_at: r.posted_at ?? null,
+                  days_on_board: t.days,
+                  origin_basis: t.basis,
+                  exited_at: exitedAt,
+                  ...lifecycleFacets(r),
+                };
+              };
+              const { error: exErr } = await insertExits(client, shedRows.map(exitRow), s.token);
+              if (exErr) console.warn(`[JOB-BOARD] oracle dedupe exit-log insert failed for ${s.token} (non-fatal):`, String(exErr.message ?? "").slice(0, 120));
+              for (let i = 0; i < shed.length; i += 200) {
+                const { error: delErr } = await client.from("job_board_postings").delete().in("id", shed.slice(i, i + 200));
+                if (delErr) console.warn(`[JOB-BOARD] oracle dedupe delete failed for ${s.token} (retries next visit):`, String(delErr.message ?? "").slice(0, 120));
+              }
+              // Shed rows leave this visit's stored set here, before the
+              // absence logic reads it, so they are neither stamped nor closed.
+              const shedMine = new Set(plan.shedMineIds);
+              if (shedMine.size) existingRows.splice(0, existingRows.length, ...existingRows.filter((ex) => !shedMine.has(ex.id)));
+            }
+            if (plan.dropReqIds.size || shed.length) {
+              console.log(`[JOB-BOARD] ${s.token}: oracle sub-site dedupe — ${plan.dropReqIds.size} served req(s) left to a better-ranked site, ${plan.shedMineIds.length} own row(s) and ${plan.shedSiblingIds.length} sibling row(s) exited untracked`);
+            }
+          }
         }
         const prefix = `${s.source}:`;
         const existingById = new Map(existingRows.filter((r) => r.id.startsWith(prefix)).map((r) => [r.id, r]));
@@ -5847,6 +6030,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const stripped = newRows.slice(i, i + 250).map((r) => { const { region_code: _r, ...rest } = r as Record<string, unknown>; return rest; });
             ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
           }
+          // And once more for req_key (migration 20260909216000): only Oracle
+          // rows carry it, only that column is stripped, and the repair
+          // function backfills it from the id once the column exists.
+          if (error?.message?.includes("req_key")) {
+            const stripped = newRows.slice(i, i + 250).map((r) => { const { req_key: _k, ...rest } = r as Record<string, unknown>; return rest; });
+            ({ error } = await client.from("job_board_postings").upsert(stripped, { onConflict: "id" }));
+          }
           if (error) {
             boardOk = false;
             lastUpsertError = `${s.token}: ${error.message}`;
@@ -6409,7 +6599,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
               // an employer who genuinely advertises nothing.
               state: r.windowed === true
                 ? "truncated"
-                : (rows.length === 0 ? (existingById.size > 0 ? "dark" : "empty") : "ok"),
+                : (servedThisVisit === 0 ? (existingById.size > 0 ? "dark" : "empty") : "ok"),
             },
             { onConflict: "company_token,observed_on" },
           )).then(({ error }) => {
@@ -6780,6 +6970,37 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // prune refuse to run from any bundle smaller than the largest ever deployed;
     // an intentional catalog SHRINK must lower the mark via {action:"refresh",
     // resetCatalogHighwater:true} with the chain key.
+    // THE ORACLE SITE-RANK TABLE, PUBLISHED FOR THE REPAIR SQL. The repair
+    // function (migration 20260909216000) keeps the same one-row-per-tenant-
+    // requisition rule as the ingest, and it must keep it under the SAME
+    // ranks or the two would move a tenant's rows back and forth between
+    // sites. So this bundle's table is the source of truth: written to meta
+    // whenever its hash differs from what is stored (one read per pass, a
+    // write only when the catalog's Oracle sites changed), read by the
+    // function at run time. The migration seeds the same key so the sweep
+    // can start before this bundle serves.
+    try {
+      const ranks = Object.fromEntries(ORACLE_SITE_RANK);
+      const rankJson = JSON.stringify(ranks);
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rankJson));
+      const rankHash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+      const { data: rankRow } = await client.from("job_board_meta").select("v").eq("k", "oracle_site_rank").maybeSingle();
+      // Written when the hash differs OR the stamped bundle version differs:
+      // the migration's seed carries the same hash and no version, and the
+      // repair SQL refuses its delete phase until a bundle that dedupes at
+      // ingest (this one or later) has stamped `version` here. Without that
+      // proof the pre-.68 bundle re-inserts every copy the repair deletes.
+      const rankStored = (rankRow?.v ?? null) as { hash?: string; version?: string } | null;
+      if (rankStored?.hash !== rankHash || rankStored?.version !== BUILD_VERSION) {
+        await client.from("job_board_meta").upsert(
+          { k: "oracle_site_rank", v: { hash: rankHash, sites: ORACLE_SITE_RANK.size, ranks, canonical: ORACLE_CANONICAL_SITES, version: BUILD_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+        console.log(`[JOB-BOARD] oracle site-rank table published: ${ORACLE_SITE_RANK.size} ranked sites (hash ${rankHash})`);
+      }
+    } catch (e) {
+      console.warn("[JOB-BOARD] oracle site-rank publish failed (non-fatal):", String((e as Error)?.message ?? e).slice(0, 120));
+    }
     const validTokens = new Set(JOB_SOURCES.map((s) => s.token));
     const { data: hwRow } = await client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle();
     const highwater = Number((hwRow?.v as { size?: number } | null)?.size) || 0;
@@ -9488,7 +9709,7 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
-      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop] = await Promise.all([
+      const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
@@ -9633,6 +9854,10 @@ Deno.serve(async (req) => {
         // counts only, one function call, cached at the same cadence as the
         // rest of this bundle.
         client.rpc("get_closure_population").maybeSingle(),
+        // APPENDED AT THE END, same rule: the Oracle sub-site repair's own
+        // progress row (migration 20260909216000), so the sweep can be
+        // verified from outside without a service key.
+        client.from("job_board_meta").select("v, updated_at").eq("k", "oracle_subsite_repair").maybeSingle(),
       ]);
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
@@ -9938,6 +10163,14 @@ Deno.serve(async (req) => {
         // `closuresLapBackfill` is the first laps' thirty-day backlog, whose
         // closed_at is knowingly late — a count of events, never a duration.
         closurePopulation: (closurePop.error ? null : (closurePop.data ?? null)),
+        // The Oracle sub-site repair (migration 20260909216000): phase,
+        // counts and the duplicates it still finds, written by the function
+        // itself each run. null until the migration applies; `phase: "done"`
+        // with `duplicates_remaining: 0` is the sweep's completion receipt.
+        oracleSubsiteRepair: oracleRepair.error
+          ? null
+          : (oracleRepair.data ? { ...(oracleRepair.data.v as Record<string, unknown>), updatedAt: oracleRepair.data.updated_at } : null),
+        oracleRankedSites: ORACLE_SITE_RANK.size,
         hostSweep: {
           cursor: ((hsMeta.data?.v ?? {}) as { cursor?: number }).cursor ?? null,
           of: Array.isArray(((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list) ? (((hsMeta.data?.v ?? {}) as { list?: unknown[] }).list as unknown[]).length : null,

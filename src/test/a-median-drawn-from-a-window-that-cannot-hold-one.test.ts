@@ -354,6 +354,14 @@ describe("a median drawn from a window that cannot hold one — no published dur
     // decision about a duration and none should arrive by default.
     const readers = [...LIVE].filter(([, { code }]) => /days_on_board/i.test(code)).map(([n]) => n).sort();
     expect(readers, "a new reader of days_on_board needs a decision, not a default").toEqual([
+      // DECISION (2026-09-09, migration 20260909216000): a WRITER, not a
+      // reader. repair_oracle_subsite_duplicates inserts job_board_exits rows
+      // for the Oracle sub-site copies it removes; days_on_board and
+      // origin_basis come from the same CASE over the same clock (posted_at
+      // -> 'stated', else first_seen -> 'discovered'), and nothing in it
+      // aggregates the column. The segmentation property above is what
+      // checks it; this pin records that it was looked at.
+      "repair_oracle_subsite_duplicates",
       "roll_up_and_prune_exits",
     ]);
 
@@ -488,9 +496,17 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // that the-estimator-that-must-agree-with-arithmetic.test.ts, which mirrors
     // the reference estimator against the whole FILE, keeps reading only the
     // curves.
-    const CURVES = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
-    expect(LIVE.get("get_company_fill_curve")?.file).toBe(CURVES);
-    expect(LIVE.get("get_category_fill_curve")?.file).toBe(CURVES);
+    // MOVED, NOT DROPPED, a third time: both curves were re-issued on
+    // 2026-09-09 to publish the day-30 share beside the day-14 figures, each
+    // in its own file (the OUT-param guard slices the newest migration that
+    // mentions a function, so two functions in one file would fail it). The
+    // seven-day-floor property this block guards is unchanged; the pins
+    // follow the functions so an older definition sorting last cannot leave
+    // the body check above asserting dead text.
+    const COMPANY_CURVE = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
+    const CATEGORY_CURVE = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
+    expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
+    expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });
 
   it("no live copy still describes the floor as a feature", () => {

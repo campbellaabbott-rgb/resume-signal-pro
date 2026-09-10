@@ -1,5 +1,9 @@
 {
   "changelogEntries": {
+    "activelyHiringIsBack": {
+      "title": "“Actively hiring” is back — and here is exactly what it measures today",
+      "description": "An earlier entry today renamed this filter “Takes roles down”, because that is the only thing it counts: employers we have watched take at least three roles down from their own careers page in the last 90 days and leave them down. The name is now “Actively hiring” again, and the measure has not changed — so read the label with that in mind. A takedown is not a hire: a role that was filled, one that was cancelled and one that was withdrawn all look identical from here. And how many new roles an employer is posting is not yet part of it. We have only just begun keeping our own day-by-day count of new postings per employer, and a rate needs more days of its own clock than we hold so far; once we hold enough days of our own counts, that half joins the label and an entry here will say so. Everything the earlier fix did still stands: employers we hold no record for are set aside and counted on screen with the reason given, never treated as not hiring, and one button brings them back."
+    },
     "boardControlsAudited": {
       "title": "Every board control was clicked and checked — five were fixed",
       "description": "We drove every filter, chip, menu and button on the live board and matched each click to the request it sent. Five did the wrong thing and are fixed: “Try again” after a failed fit score sent nothing and wiped good scores; “Show those too” did nothing for a pay ceiling, pay basis or “States pay”; the industry rail vanished once you set any other filter; “Any source” couldn’t select Paylocity, UKG or ADP; and a busy-network scan limit was reported as a broken file. Capped counts now read “10,000+” everywhere instead of a bare 10,000."

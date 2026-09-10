@@ -338,15 +338,17 @@ export const NL_FILTERS: readonly NlFilter[] = [
   {
     key: "activelyHiring",
     // THE MODEL'S WORDS COME BACK ON SCREEN. Jobs.tsx renders the parser's
-    // `interpreted` chips verbatim beside the results, so a prompt written in
-    // terms of "proven hirers" and "actually fill roles" steers the model into
-    // re-publishing the retired claim next to a filter whose own chip now reads
-    // "Takes roles down" — and "fill" reasserts the hire that a closure can
-    // never evidence. The key still means the same filter; the description now
-    // names the observation the filter is built on.
-    prompt: "true when the user asks for employers whose postings we have watched come off the board and stay off / employers that move their roles / no ghost jobs.",
+    // `interpreted` chips verbatim beside the results, so the prompt has to
+    // carry the same words and the same honesty as the chip it maps to. The
+    // chip reads "Actively hiring" again (owner decision, 2026-09-09) and the
+    // measure behind it is unchanged: postings we watched come off the board
+    // and stay off. So the prompt names the label AND its basis in one breath,
+    // and says outright that a takedown is not a hire and that new-posting
+    // counts are not yet part of it — "fill" and "proven hirers" stay out,
+    // because either would reassert a hire that a closure can never evidence.
+    prompt: "true when the user asks for employers that are actively hiring. On this board that means one observed thing: employers whose postings we have watched come off the board and stay off — a takedown is not a hire, and how many new roles an employer posts is not yet part of it. Also true for: employers that move their roles / no ghost jobs.",
     type: "boolean",
-    schema: "true only when the user wants employers whose postings we have watched come down and stay down",
+    schema: "true only when the user wants employers that are actively hiring — meaning, here, employers whose postings we have watched come down and stay down",
     take: flag,
   },
   {

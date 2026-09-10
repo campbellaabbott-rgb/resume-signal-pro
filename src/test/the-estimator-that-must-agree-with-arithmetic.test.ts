@@ -668,8 +668,14 @@ const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
 // them carries the schema's single sanctioned COALESCE(posted_at, first_seen),
 // which mirrorViolations reads file-wide and would have reported as the
 // estimator growing a coalesced origin.
-const COMPANY_SQL = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
-const CATEGORY_SQL = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
+// MOVED, NOT DROPPED. Both curves were re-issued on 2026-09-09 to publish the
+// day-30 share (S(30), R(30), X(30)) beside the day-14 figures, each in its
+// own file because the OUT-param guard slices the newest migration that
+// mentions a function. Every column this file asserts is byte-identical in
+// the successors; the pins follow the functions so an OLDER definition
+// sorting last cannot leave these assertions reading dead text.
+const COMPANY_SQL = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
+const CATEGORY_SQL = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
 
 const readRaw = (f: string) => readFileSync(resolve(MIGRATIONS, f), "utf8");
 const stripComments = (raw: string) =>

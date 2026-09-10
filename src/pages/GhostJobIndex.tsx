@@ -711,12 +711,16 @@ export default function GhostJobIndex() {
           )}
         </div>
 
-        {/* THE TAKE-DOWN LEADERBOARD — formerly headed "Actively hiring right
-            now", which is not what it ranks. It ranks the share of an
-            employer's roles we WATCHED come down and stay down, so a board we
-            cannot read to the end produces no closures, cannot rank at all, and
-            was being captioned as though it were not hiring. The heading now
-            names the measurement and the paragraph below names the exclusion.
+        {/* THE TAKE-DOWN LEADERBOARD. Headed "Actively hiring right now" until
+            2026-09-09, retitled "Most roles taken down and not re-listed" that
+            morning, and headed "Actively hiring" again by owner decision the
+            same day — with the measurement stated in the heading itself and
+            the paragraph below naming both the exclusion and what is not yet
+            counted. It ranks the share of an employer's roles we WATCHED come
+            down and stay down, so a board we cannot read to the end produces
+            no closures, cannot rank at all, and must not be captioned as
+            though it were not hiring; and no count of NEW postings is in it
+            yet — that joins once the openings series holds enough days.
             `shownLeaders` is the list once the guard has answered: a board
             whose logged takedowns were all in feed-dark batches has no fills
             to rank and is not listed. The leaderboard's own RPC cannot make
@@ -729,7 +733,8 @@ export default function GhostJobIndex() {
         {shownLeaders.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-primary" /> Most roles taken down and not re-listed
+              <Briefcase className="w-4 h-4 text-primary" /> Actively hiring
+              <span className="text-xs font-normal text-muted-foreground">— measured as roles taken down and not re-listed</span>
             </h2>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               {shownLeaders.map((c, i) => (
@@ -782,8 +787,12 @@ export default function GhostJobIndex() {
               big for us to read in one visit produces no observable closure at all until we complete a
               provable full pass over it, so the largest paginated employers on the board — several of them
               with thousands of open roles — are absent from this ranking by construction rather than by
-              inactivity. This heading read “Actively hiring right now” until today, which said the opposite
-              about exactly those employers.
+              inactivity. The heading says “Actively hiring”, and here that means exactly one observed thing:
+              roles we watched taken down and not re-listed. A takedown is not a hire — a filled role, a
+              cancelled one and a withdrawn one look identical from here — and how many new roles an employer
+              is posting is not yet part of this ranking; that joins once we hold enough days of our own
+              counts. Until then the employers above are the ones whose takedowns we could see, not the ones
+              hiring most.
             </p>
           </div>
         )}

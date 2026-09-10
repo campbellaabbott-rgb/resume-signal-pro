@@ -240,7 +240,21 @@ const PINNED = {
   // NOT a bootstrap-lane event: no board was added, so nothing is queued
   // behind the cold rotation waiting on a bump. .62 was already minted for the
   // slice-sizing measurement and the collection pass; the repack rides it.
-  sourcesHash: "72d52359f9c767ec",
+  // 2026-09-09.68: 44,519, DOWN 23 ON PURPOSE (Oracle sub-site dedupe, the
+  // oracle-subsite-dedupe test). 19 tokens on 8 Oracle DEV/TEST tenants
+  // (eodr-dev5 x4, fa-exrr-dev2 x8, efzu-dev8, hdbt-dev1, iaasbk-dev1,
+  // iazmqy-dev2 x2, ibwsjb-dev2, fa-exdu-dev2) — vendor sandboxes, not
+  // employers' boards; three of them were an employer's ONLY board (Hayat
+  // National Hospital, KFH, KP GCC) and are gone with it, said out loud
+  // rather than silently. Plus 4 sub-sites measured live as EXACT mirrors of
+  // a sibling (0 unique requisitions): Clean Harbors FR (epyc CX_3, 200/200
+  // identical, 703 = 703), Hearst CX_1 and CX_14001 (148/148 each), Tremco
+  // French (hcwx CX_5001, 66/66). Every other sub-site stays fetched — the
+  // ingest now stores one row per tenant requisition under the best-ranked
+  // site, so a sub-site-only requisition survives and a mirror costs a fetch,
+  // not a row. The removed tokens' stored rows leave through the orphan
+  // prune as 'untracked' once migration 20260909216000 lowers the mark.
+  sourcesHash: "bf3535d300ace24f",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -260,8 +274,8 @@ const PINNED = {
   // catalog until it learned the packed form. Removing them shifts every
   // later index by two and the refresh cursor is positional, so this costs
   // one transient partial rotation, the same as a census merge.
-  catalogSize: 44_542,
-  catalogHash: "492c4095fc875e8b",
+  catalogSize: 44_519,
+  catalogHash: "0eca2d501140ab79",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1146,7 +1160,7 @@ const PINNED = {
   //   isLight is token-keyed, so enrolling greenhouse `antenna` turned the
   //   WORKABLE `antenna` light too. Plus fix C, so the descriptions a refused
   //   board defers have a lane that fills them.
-  buildVersion: "2026-09-09.67",
+  buildVersion: "2026-09-09.68",
 };
 
 /**

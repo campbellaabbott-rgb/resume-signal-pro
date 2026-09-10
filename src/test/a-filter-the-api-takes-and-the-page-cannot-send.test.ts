@@ -45,8 +45,20 @@ import { resolve } from "node:path";
  * Departments were sampled the same day across q=nurse/engineer/sales: 79 of
  * 120 rows carried one, written however the employer writes it — "Engineering",
  * "Nursing", "Sales", but also "680 - Engineering - CoreSuite Platform" and
- * "Sycamore Senior Living (SCL) - 6032". That is why the control is a substring
- * box and not a dropdown.
+ * "Sycamore Senior Living (SCL) - 6032". That is why the control was a
+ * substring box and not a dropdown.
+ *
+ * DEPARTMENT IS API-ONLY BY OWNER DECISION, 2026-09-09. The box came off the
+ * page ("I don't understand the department button… get rid of it"): 40.5%
+ * coverage, free-text matching, and a tooltip that conceded it "narrows rather
+ * than proves". This file exists to catch "the API takes it, the page cannot
+ * send it" — and that is now the deliberate state for exactly one filter. The
+ * department case below RECORDS the decision instead of disappearing: the
+ * server predicate, /v1's `department` parameter, filters.ts and the contract
+ * probe are untouched because the public API is a promise to someone else's
+ * code; a shared /jobs?department=x link and a parsed sentence are still
+ * honoured, still chip'd, still clearable; and no control on the page offers a
+ * way to ADD one. Every other filter's case is intact.
  *
  * These assertions CALL the page's filter derivation rather than grepping for
  * it. A guard that greps source passes while the code is dead, which has caught
@@ -60,6 +72,23 @@ const strip = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
 const JOBS = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
 const JOBS_CODE = strip(JOBS);
+/**
+ * The activeFilters memo — the array that IS the definition of a filter on
+ * this page — sliced out ONCE, anchored on CODE at both ends. JOBS_CODE is
+ * comment-stripped, so the "// S1: search suggestions" comment both chip
+ * cases used to end on was never found: indexOf returned -1, slice(start, -1)
+ * was the rest of the file minus one character, and a chip pushed from
+ * anywhere later in Jobs.tsx satisfied a check that promised the memo. The
+ * memo ends at its dependency list, which survives stripping; a missing
+ * anchor now fails instead of widening.
+ */
+const CHIP_BLOCK = (() => {
+  const start = JOBS_CODE.indexOf("const activeFilters = useMemo(");
+  const end = JOBS_CODE.indexOf("}, [q, location, category, experience, maxYears, company, companyTokens", start);
+  if (start < 0) throw new Error("the activeFilters memo moved — RE-ANCHOR this guard");
+  if (end <= start) throw new Error("the activeFilters dependency list moved — RE-ANCHOR this guard, do not widen the slice");
+  return JOBS_CODE.slice(start, end);
+})();
 const LOCALES = resolve(root, "src/i18n/locales");
 const LOCALE_FILES = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 
@@ -129,11 +158,48 @@ describe("a filter the API takes and the page cannot send", () => {
     }
   });
 
-  it("whitespace typed into the department box is not a filter", () => {
-    // The box is a free-text ILIKE. A stray space would bind '% %' and narrow
-    // the board to whatever happens to contain one.
+  it("whitespace in a department value is not a filter", () => {
+    // The predicate is a free-text ILIKE. A stray space in a link would bind
+    // '% %' and narrow the board to whatever happens to contain one.
     expect(boardFilterBody({ ...OFF, department: "   " })).toEqual({});
     expect(boardFilterBody({ ...OFF, department: "  Nursing " })).toEqual({ department: "Nursing" });
+  });
+
+  it("department is API-only by owner decision (2026-09-09): link-honoured, chip'd, never offered", () => {
+    // THE DECISION, RECORDED AS ASSERTIONS. Read on stripped source so a
+    // comment describing the old box cannot satisfy or fail any of them.
+    //
+    // 1. No control on the page can ADD a department.
+    expect(JOBS_CODE, "the department input is back on the page").not.toMatch(/setDepartment\(e\.target\.value\)/);
+    for (const k of ["departmentPlaceholder", "departmentFieldLabel", "departmentTip"]) {
+      expect(JOBS_CODE, `jobsPage.${k} still renders — that is the control`).not.toContain(`jobsPage.${k}`);
+    }
+    // 2. The wire still carries it — the API contract is untouched.
+    expect(boardFilterBody({ ...OFF, department: "nursing" })).toEqual({ department: "nursing" });
+    expect(activeBoardFilterKeys({ ...OFF, department: "nursing" })).toEqual(["department"]);
+    // 3. A shared link is honoured in both directions: read on mount, written
+    //    back, so a reload or a copied address keeps the filter it shows.
+    expect(JOBS_CODE).toContain('initial.get("department")');
+    expect(JOBS_CODE).toMatch(/if \(department\) p\.set\("department"/);
+    // 4. And it is never a SILENT narrowing: an active department has a chip
+    //    that names what it is, clears it, and joins Clear all — the bug this
+    //    page has fixed three times is a filter with no chip.
+    const chipBlock = CHIP_BLOCK;
+    expect(chipBlock).toMatch(/if \(department\) f\.push\(\{ key: "department", label: t\("jobsPage\.departmentChip2"/);
+    expect(chipBlock).toMatch(/clear: \(\) => setDepartment\(""\)/);
+    // 5. The coverage line survives for the same reason the chip does: the
+    //    filter can still be applied, and a filter that sees 40% of the board
+    //    must say so whenever it is on.
+    expect(JOBS_CODE).toContain("jobsPage.coverageDepartment");
+    // 6. The retired control's strings are gone from every locale, not only
+    //    from the code — a locale VALUE would otherwise keep a label for a box
+    //    that no longer exists.
+    for (const f of LOCALE_FILES) {
+      const jp = JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, unknown>;
+      for (const k of ["departmentPlaceholder", "departmentFieldLabel", "departmentTip"]) {
+        expect(k in jp, `${f} still carries jobsPage.${k}`).toBe(false);
+      }
+    }
   });
 });
 
@@ -298,10 +364,7 @@ describe("one derivation, and everything downstream reads it", () => {
     // the definition of what a filter is on this page. A filter with no chip
     // survives Clear all and narrows the board invisibly — which is exactly what
     // agentOnly, inclUncat and activelyHiring each did.
-    const chipBlock = JOBS_CODE.slice(
-      JOBS_CODE.indexOf("const activeFilters = useMemo("),
-      JOBS_CODE.indexOf("// S1: search suggestions"),
-    );
+    const chipBlock = CHIP_BLOCK;
     const relaxBlock = JOBS_CODE.slice(
       JOBS_CODE.indexOf("const RELAX: Record<string, Partial<BoardFilterState>>"),
       JOBS_CODE.indexOf("const candidates = activeFilters.slice(0, 4);"),
@@ -441,7 +504,7 @@ describe("a filter over a column employers leave blank says so", () => {
       expect(JOBS_CODE, `${k} is not saved — parity is one-sided`).toMatch(new RegExp(`${k}: `));
     }
     // The toast now names ONLY the genuinely un-mailable: a multi-employer
-    // scope (the runner sends one token) and Actively hiring (browser-side).
+    // scope (the runner sends one token) and the hiring toggle (browser-side).
     expect(JOBS_CODE).toMatch(/const unsavedFilters = \[/);
     expect(JOBS_CODE).toContain("jobsPage.savedWithoutFilters");
     expect(JOBS_CODE, "the toast still names a filter that now rides along")
@@ -495,7 +558,9 @@ describe("a key that exists only in English ships English to eight audiences", (
     "payFieldLabel", "salaryCeilingFieldLabel", "anyCeiling", "salaryCeilingOption", "salaryCeilingTip",
     "payBasisFieldLabel", "anyPayBasis", "payBasisHourly", "payBasisSalaried", "payBasisTip",
     "statedPay", "statedPayTip",
-    "departmentFieldLabel", "departmentPlaceholder", "departmentTip",
+    // departmentFieldLabel / departmentPlaceholder / departmentTip left this
+    // list with the control (owner decision 2026-09-09) — see the department
+    // case above, which asserts they are gone from every locale.
     "allVendors", "vendorFieldLabel", "nVendors", "vendorsAtMax", "clearVendors", "vendorTip",
     "fresh3", "fresh14", "fresh30", "freshDays",
     "coverageCeiling", "coverageStatedPay", "coveragePayBasis", "coverageMaxYears",
@@ -547,7 +612,7 @@ describe("a key that exists only in English ships English to eight audiences", (
     // it just hides better. Checked on the strings with real words in them; the
     // short interpolation-only ones legitimately match across locales.
     const en = JSON.parse(readFileSync(resolve(LOCALES, "en.json"), "utf8")).jobsPage as Record<string, string>;
-    const prose = ["experienceTip", "maxYearsTip", "payBasisTip", "statedPayTip", "departmentTip", "vendorTip", "savedWithoutFilters"];
+    const prose = ["experienceTip", "maxYearsTip", "payBasisTip", "statedPayTip", "vendorTip", "savedWithoutFilters"];
     for (const f of LOCALE_FILES) {
       if (f === "en.json" || f === "en-GB.json") continue;
       const jp = JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, string>;

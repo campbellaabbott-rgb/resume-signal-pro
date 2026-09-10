@@ -346,6 +346,12 @@ interface FillCurve {
 // not gated on `sufficient`: "has taken down three roles" is arithmetic, and it
 // stays true on a record too thin to support a rate.
 const ACTIVELY_HIRING_MIN_CLOSED = 3;
+// The window those closures are counted over. get_company_fill_curve's
+// fills_90d is `closed_at >= now() - interval '90 days'`; every basis sentence
+// prints this beside {{min}}, because "at least three roles down" with no
+// window reads as an all-time count and it is not one. The guard pins this
+// constant to the migration's interval.
+const ACTIVELY_HIRING_WINDOW_DAYS = 90;
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
@@ -2813,7 +2819,7 @@ export default function Jobs() {
       title: t("jobsPage.searchSaved", "Search saved"),
       description: [
         t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
-        activelyHiringOnly ? t("jobsPage.savedWithoutTakedownFilter", "The \u201cTakes roles down\u201d filter is applied in your browser, not on the board, so this saved search does not include it.") : "",
+        activelyHiringOnly ? t("jobsPage.savedWithoutHiringFilter2", "The \u201cActively hiring\u201d filter \u2014 employers we have watched take roles down and leave them down, which is not a count of hires and not yet a count of new postings \u2014 is applied in your browser, not on the board, so this saved search does not include it.") : "",
         // THE FILTERS THE NIGHTLY RUNNER CANNOT REPRODUCE, NAMED RATHER THAN
         // SAVED. send-search-digest builds its board call from a hand-listed
         // set of params; anything outside that list is stored and ignored, and
@@ -5034,7 +5040,16 @@ export default function Jobs() {
     if (statedPayOnly) f.push({ key: "statedPay", label: t("jobsPage.statedPay", "States pay"), clear: () => setStatedPayOnly(false) });
     if (includeUnstatedPay) f.push({ key: "inclUnstatedPay", label: t("jobsPage.inclUnstatedPay", "Incl. unstated pay"), clear: () => setIncludeUnstatedPay(false) });
     if (hideAgencies) f.push({ key: "noAgencies", label: t("jobsPage.chipNoAgencies", "No staffing agencies"), clear: () => setHideAgencies(false) });
-    if (department) f.push({ key: "department", label: department, clear: () => setDepartment("") });
+    // DEPARTMENT IS API-ONLY BY OWNER DECISION, 2026-09-09. The input box is
+    // gone from the page (it matched free-text team names on two postings in
+    // five and, by its own tooltip, narrowed rather than proved). The server
+    // filter, /v1's `department` parameter and the nl-search mapping all stay,
+    // so a shared /jobs?department=x link and a parsed sentence can still
+    // narrow this board — and an active filter with no chip is the silent-
+    // narrowing bug this page has fixed three times. So the chip stays, now
+    // prefixed with what it is (the raw value alone made sense only beside a
+    // box labelled Department), and clearing it is the only control offered.
+    if (department) f.push({ key: "department", label: t("jobsPage.departmentChip2", "Department: {{value}}", { value: department }), clear: () => setDepartment("") });
     if (vendor) {
       const vs = vendor.split(",").filter(Boolean);
       f.push({
@@ -5099,7 +5114,7 @@ export default function Jobs() {
     // vendors the apply agent can drive — and a visitor could leave it switched
     // on believing they had cleared everything.
     if (agentOnly) f.push({ key: "agentOnly", label: t("jobsPage.chipAgentOnly", "Agent can apply"), clear: () => setAgentOnly(false) });
-    if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipTakedowns", "Takes roles down"), clear: () => setActivelyHiringOnly(false) });
+    if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipHiring2", "Actively hiring"), clear: () => setActivelyHiringOnly(false) });
     // A WIDENING toggle, so it gets a chip for visibility and for Clear all, but
     // it only means anything alongside a category. Gated on the sort, matching
     // the checkbox: under a salary sort the server drops the opt-in, so a chip
@@ -5303,7 +5318,7 @@ export default function Jobs() {
       // and the count>0 filter below drops the button — correctly, because
       // switching a browser-side filter off cannot surface rows the server
       // did not send. When THIS toggle is what emptied a served page, the
-      // rescue never runs (jobs.length > 0) and the takedownSetAside /
+      // rescue never runs (jobs.length > 0) and the hiringSetAside2 /
       // takedownEmpty disclosure offers the way out instead — it now states the
       // exclusion whenever the filter is on, not only when the page empties. The entry exists so the chip key is
       // accounted for here rather than silently reaching the same {} through
@@ -5732,10 +5747,10 @@ export default function Jobs() {
                     return (
                       <span
                         className="inline-flex items-center gap-1 text-success"
-                        title={t("jobsPage.takedownBadgeTip", "We watched at least {{min}} of this employer's postings come off the board and stay off. That is activity we observed — it is not a claim that anyone was hired, because a filled role, a cancelled one and a withdrawn one look identical from here.", { min: ACTIVELY_HIRING_MIN_CLOSED })}
+                        title={t("jobsPage.hiringBadgeTip2", "We watched at least {{min}} of this employer's roles come off the board in the last {{days}} days and stay off. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles they are posting is not yet part of it; that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
                       >
                         <Activity className="w-3 h-3" />
-                        {t("jobsPage.takedownBadge", "Takes roles down")}
+                        {t("jobsPage.hiringBadge2", "Actively hiring")}
                       </span>
                     );
                   }
@@ -6933,8 +6948,11 @@ export default function Jobs() {
                     closure record with a dead board behind it is not a reason to
                     say anything encouraging. */}
                 {hiringCurve.open_roles > 0 && hiringRecordVerdict(hiringCurve) === "closes" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success">
-                    {t("jobsPage.takedownBadge", "Takes roles down")}
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success"
+                    title={t("jobsPage.hiringBadgeTip2", "We watched at least {{min}} of this employer's roles come off the board in the last {{days}} days and stay off. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles they are posting is not yet part of it; that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+                  >
+                    {t("jobsPage.hiringBadge2", "Actively hiring")}
                   </span>
                 )}
                 {hiringRecordVerdict(hiringCurve) === "unknown" && (
@@ -7519,19 +7537,16 @@ export default function Jobs() {
                 </label>
               )}
             </div>
-            {/* THE EMPLOYER'S OWN TEAM LABEL, matched as a substring. 226,631
-                rows carry one. Until now it was reachable only by typing into
-                the search box, where it ORs with the title and the company name
-                instead of narrowing anything. */}
-            <input
-              type="text"
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              placeholder={t("jobsPage.departmentPlaceholder", "Department…")}
-              className="px-3 py-2 rounded-lg bg-background border border-border text-sm w-36 focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={t("jobsPage.departmentFieldLabel", "Department")}
-              title={t("jobsPage.departmentTip", "Matches the team name the employer wrote on the posting, anywhere inside it — “nurs” finds Nursing. Two postings in five carry one, and employers spell them however they like, so this narrows rather than proves.")}
-            />
+            {/* THE DEPARTMENT BOX USED TO STAND HERE and was removed by owner
+                decision on 2026-09-09: it matched the employer's free-text team
+                label as a substring, on the two postings in five that carry one,
+                and its own tooltip conceded it narrowed rather than proved. The
+                filter itself is not gone — the server predicate, /v1's
+                `department` parameter and the nl-search mapping are promises to
+                other people's code — so a link or a parsed sentence can still
+                apply it, and when one does the active-filter chip above names
+                it and clears it. What this page no longer offers is a way to
+                ADD one. */}
             {/* WHICH ATS THE POSTING CAME FROM. Every row has a source, so this
                 is the one new filter that hides nothing at all — and the only
                 vendor control before it was the agent-can-apply toggle, which
@@ -7859,18 +7874,24 @@ export default function Jobs() {
               className={`hidden lg:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
               }`}
-              // THE LABEL NAMES THE MEASUREMENT NOW. "Actively hiring" was a
-              // claim about an employer's behaviour built from a count of what
-              // WE managed to observe, and the tooltip's job is to say which of
-              // the two the chip is: it keeps employers whose postings we have
-              // watched come down, and it names the employers it has to set
-              // aside because we hold no reading of them at all. The two older
-              // corrections still stand — it filters the rows already fetched,
-              // not the board, and a closure is not a hire.
-              title={t("jobsPage.takedownFilterTip", "Keeps the openings already loaded on this page (not the whole board) whose employer we have watched take at least {{min}} postings off the board and leave them off. A closure is not a hire: a filled role, a cancelled one and a withdrawn one look identical from here. Employers we hold no closure record for are set aside and counted underneath, never treated as not hiring — that can be a feed bigger than one visit can read, where no closure of theirs is observable to us, or simply nothing coming down while we watched.", { min: ACTIVELY_HIRING_MIN_CLOSED })}
+              // THE LABEL IS "ACTIVELY HIRING" AGAIN, BY OWNER DECISION ON
+              // 2026-09-09, AND THE MEASURE HAS NOT CHANGED. The predicate is
+              // still fills_90d >= ACTIVELY_HIRING_MIN_CLOSED over closures WE
+              // watched, with the same three verdicts and the same counted
+              // set-aside pile. So the label is a claim the measure does not yet
+              // fully support, and the honest way to carry it is to say, on the
+              // same surface, exactly what is measured today: takedowns, which
+              // are not hires — and NOT the rate at which an employer posts new
+              // roles. That half joins once the openings series (collecting
+              // since migration 20260909212000) holds enough days to compute a
+              // rate; no calendar date is printed because the code cannot
+              // verify one. The two older corrections still stand — it filters
+              // the rows already fetched, not the board, and a closure is not a
+              // hire.
+              title={t("jobsPage.hiringFilterTip2", "Keeps the openings already loaded on this page (not the whole board) whose employer we have watched take at least {{min}} roles down in the last {{days}} days and leave them down. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles an employer is posting is not yet part of it; that joins once we hold enough days of our own counts. Employers we hold no closure record for are set aside and counted underneath, never treated as not hiring — that can be a feed bigger than one visit can read, where no closure of theirs is observable to us, or simply nothing coming down while we watched.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
             >
               <Activity className="w-3 h-3" />
-              {t("jobsPage.takedownFilter", "Takes roles down")}
+              {t("jobsPage.hiringFilter2", "Actively hiring")}
             </button>
             {/* MY JOBS. Each control renders only when it has something to
                 act on — a signed-out visitor has no tracker, and a first
@@ -7886,7 +7907,7 @@ export default function Jobs() {
                 className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   savedOnly ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
-                title={t("jobsPage.savedViewTip", "Show only the postings you've saved to your application tracker. Like the “Takes roles down” toggle, it narrows the results already loaded on this page rather than re-searching the whole board.")}
+                title={t("jobsPage.savedViewTip", "Show only the postings you've saved to your application tracker. Like the hiring toggle beside it, it narrows the results already loaded on this page rather than re-searching the whole board.")}
               >
                 <BookmarkCheck className="w-3 h-3" />
                 {t("jobsPage.savedView", "Saved")}
@@ -8087,6 +8108,18 @@ export default function Jobs() {
                 predicate. An unfinished read is not an empty record, and the
                 pending state now has a sentence of its own rather than
                 borrowing the negative one. */}
+            {/* THE BASIS, ON SCREEN WHENEVER THE LABEL IS ON. The desktop
+                button's tooltip is hover-only and the mobile chip has none, so
+                a reader who taps "Actively hiring" would otherwise see a
+                narrowed list under a claim with nothing beside it saying what
+                the claim is made of. This line is gated on the toggle alone —
+                not on the read state, not on the set-aside pile — because the
+                label is on screen under every one of those conditions. */}
+            {activelyHiringOnly && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.hiringBasis2", "“Actively hiring” here means employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down. A takedown is not a hire, and how many new roles an employer is posting is not yet part of it — that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+              </span>
+            )}
             {activelyHiringOnly && (healthFailed
               || (healthPending && jobs.length > 0)
               || (!healthPending && (hiringPartition.setAside.length > 0 || (jobs.length > 0 && hiringPartition.shown.length === 0)))) && (
@@ -8110,9 +8143,11 @@ export default function Jobs() {
                             we read to the end every visit who simply took
                             nothing down, and naming a cause we did not measure
                             is the original defect with the sign flipped. */}
-                        {t("jobsPage.takedownSetAside", "Set aside: {{n}} openings at at least {{c}} employers we hold no closure record for — we have never watched a posting of theirs come off the board. That can be a board bigger than one visit can read, where no closure of theirs is observable to us at all, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. Either way it is a gap in our record, not evidence about their hiring.", {
+                        {t("jobsPage.hiringSetAside2", "Set aside: {{n}} openings at at least {{c}} employers we hold no closure record for — we have never watched a posting of theirs come off the board. That can be a board bigger than one visit can read, where no closure of theirs is observable to us at all, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. Either way it is a gap in our record, not evidence about their hiring. What “Actively hiring” measures today is only employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down — a takedown is not a hire, and how many new roles an employer is posting is not yet part of it.", {
                           n: hiringPartition.setAside.length.toLocaleString(),
                           c: hiringPartition.setAsideEmployers.toLocaleString(),
+                          min: ACTIVELY_HIRING_MIN_CLOSED,
+                          days: ACTIVELY_HIRING_WINDOW_DAYS,
                         })}{" "}
                         <button
                           type="button"
@@ -8174,7 +8209,7 @@ export default function Jobs() {
               { key: "remote", active: hasMode(workMode, "remote"), label: t("jobsPage.workMode.remote", "Remote"), toggle: () => { setWorkMode(toggleMode(workMode, "remote")); setRemoteOnly(false); } },
               { key: "hybrid", active: hasMode(workMode, "hybrid"), label: t("jobsPage.workMode.hybrid", "Hybrid"), toggle: () => { setWorkMode(toggleMode(workMode, "hybrid")); setRemoteOnly(false); } },
               { key: "pay", active: salaryFloor >= 100000, label: t("jobsPage.chip100k", "$100k+"), toggle: () => setSalaryFloor(salaryFloor >= 100000 ? 0 : 100000) },
-              { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipTakedowns", "Takes roles down"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
+              { key: "hiring", active: activelyHiringOnly, label: t("jobsPage.chipHiring2", "Actively hiring"), toggle: () => setActivelyHiringOnly(!activelyHiringOnly) },
               // Density lives here below lg (its standalone button is desktop-
               // only) so the controls row above stops wrapping on phones.
               { key: "density", active: density === "compact", label: density === "compact" ? t("jobsPage.densityComfortable", "Comfortable view") : t("jobsPage.densityCompact", "Compact view"), toggle: toggleDensity },
@@ -9649,17 +9684,16 @@ export default function Jobs() {
                                 return (
                                   <span
                                     className="inline-flex items-center gap-1 font-medium text-success whitespace-nowrap"
-                                    /* The tenure floor that stood behind the
-                                       words "proven, active hiring pattern" is
-                                       deleted, so the words go with it: a feed
-                                       cycling roles every three days now clears
-                                       this count. What the count still says
-                                       exactly is that we watched N roles leave
-                                       and not come back. */
-                                    title={t("jobsPage.hhBadgeTipObserved", "We watched {{n}} of this company's roles come off the board and stay off during our tracking — taken down, not re-listed. That is activity we observed; it is not a statement about how long any of them was up.", { n: hh.fills_90d })}
+                                    /* No tenure floor: a feed cycling roles
+                                       every three days clears this count. The
+                                       label is "Actively hiring" again (owner
+                                       decision), so the tooltip is the shared
+                                       basis sentence: what we watched, not a
+                                       hire, new postings not yet counted. */
+                                    title={t("jobsPage.hiringBadgeTip2", "We watched at least {{min}} of this employer's roles come off the board in the last {{days}} days and stay off. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles they are posting is not yet part of it; that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
                                   >
                                     <Activity className="w-3 h-3 shrink-0" />
-                                    {t("jobsPage.takedownBadge", "Takes roles down")}
+                                    {t("jobsPage.hiringBadge2", "Actively hiring")}
                                   </span>
                                 );
                               }
