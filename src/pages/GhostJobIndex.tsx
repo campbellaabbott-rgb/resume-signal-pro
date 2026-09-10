@@ -187,6 +187,10 @@ const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
 
 const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
+/** A tile that has not been answered yet. Drawn INSTEAD of "—" while the
+ *  stats read is in flight, so an unanswered tile cannot be mistaken for an
+ *  empty one. Sized to the number it stands in for. */
+const Skel = () => <span aria-hidden="true" className="inline-block h-7 w-20 rounded bg-muted animate-pulse align-middle" />;
 
 interface FreshnessStats {
   boards: number;
@@ -196,6 +200,12 @@ interface FreshnessStats {
 
 export default function GhostJobIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
+  // LOADING IS NOT "NO DATA". fmt() renders "—" for a missing number, and for
+  // the first several seconds of every visit every number is missing — so the
+  // page opened on three dashes beside a hardcoded "30 days", indistinguishable
+  // from a failed read, on a page whose subject is whether numbers can be
+  // trusted. While this is true the tiles draw a skeleton instead.
+  const [statsLoading, setStatsLoading] = useState(true);
   /** When the cached figures were computed. Null when they were read live. */
   const [statsComputedAt, setStatsComputedAt] = useState<string | null>(null);
   /** Hours since those figures were computed; null when they are live. */
@@ -236,7 +246,14 @@ export default function GhostJobIndex() {
         const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
         const [s, l, a, f, b] = await Promise.all([
           cache?.ghost_stats ? Promise.resolve({ data: [cache.ghost_stats] }) : rpc("get_ghost_job_index_stats"),
-          rpc("get_actively_hiring_companies", { p_limit: 20 }),
+          // THE ONE CALL IN THIS ARRAY WITH NO .catch. Every sibling is wrapped
+          // in Promise.resolve(...).catch(() => ({ data: null })) for the reason
+          // the comment two entries down records: a PostgREST thenable that
+          // rejects kills the whole Promise.all, and "verified live: every tile
+          // went —". This one was left bare, so a single failed leaderboard read
+          // blanked total_open, total_companies and median_days_open — three
+          // numbers that were sitting in the stats cache the whole time.
+          Promise.resolve(rpc("get_actively_hiring_companies", { p_limit: 20 })).catch(() => ({ data: null })),
           // The daily self-audit result. This was a direct table read on
           // job_board_meta, under a comment asserting the table was
           // public-read. It is not — anon gets 42501 permission denied — so
@@ -304,6 +321,8 @@ export default function GhostJobIndex() {
         }
       } catch {
         /* RPCs not deployed yet — page still renders its explainer */
+      } finally {
+        setStatsLoading(false);
       }
     })();
   }, []);
@@ -419,7 +438,13 @@ export default function GhostJobIndex() {
         path="/ghost-job-index"
       />
       <Header />
-      <main className="max-w-4xl mx-auto px-4 py-10">
+      {/* pt-24, NOT py-10: the header is a fixed h-16 bar that emits no spacer,
+          so with py-10 the H1 "The Ghost Job Index" began under its blur and the
+          owner could not see the title. Jobs/Explore compensate the same way.
+          id + tabIndex: index.html ships href="#main-content" as the first
+          focusable element of every page; this page had no target, so a keyboard
+          reader's first keystroke moved nothing. */}
+      <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-4 pt-24 pb-10 focus:outline-none">
         <div className="flex items-center gap-2 mb-2">
           <Activity className="w-6 h-6 text-primary" />
           <h1 className="text-3xl md:text-4xl font-bold">The Ghost Job Index</h1>
@@ -436,7 +461,7 @@ export default function GhostJobIndex() {
         {/* Headline stats — always true */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_open)}</div>
+            <div className="text-2xl font-bold text-foreground">{statsLoading && !stats ? <Skel /> : fmt(stats?.total_open)}</div>
             {/* "right now" WAS A CLAIM, and for four days it was a false one.
                 These figures come from an hourly cache; when that cache is
                 current the wording is true and saying so costs nothing. When
@@ -451,7 +476,7 @@ export default function GhostJobIndex() {
             </div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_companies)}</div>
+            <div className="text-2xl font-bold text-foreground">{statsLoading && !stats ? <Skel /> : fmt(stats?.total_companies)}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">companies, each from its own feed</div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
@@ -460,7 +485,7 @@ export default function GhostJobIndex() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">
-              {stats?.median_days_open != null ? `${stats.median_days_open}d` : "—"}
+              {statsLoading && !stats ? <Skel /> : stats?.median_days_open != null ? `${stats.median_days_open}d` : "—"}
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">
               median age of an open posting, by the company's own stated post date
