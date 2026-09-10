@@ -331,8 +331,21 @@ export default function GhostJobIndex() {
         // fast calls (leaders, freshness, audit) always run live below.
         const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
         const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
-        const [s, l, a, f, b] = await Promise.all([
-          cache?.ghost_stats ? Promise.resolve({ data: [cache.ghost_stats] }) : rpc("get_ghost_job_index_stats"),
+        // THE STATS TILES DO NOT WAIT FOR THE LEADERBOARD. They used to sit
+        // inside the same Promise.all as get_actively_hiring_companies, which
+        // answered in 15.9s on 2026-09-10 after 20260909217000 made the fill
+        // curve it calls heavier — so three numbers that had arrived in 0.24s
+        // showed a skeleton for sixteen seconds. The stats read settles on its
+        // own here and paints; the slower reads join below. Behaviour is
+        // otherwise unchanged: the same retry, the same "—" for a failed read.
+        const s = await (cache?.ghost_stats
+          ? Promise.resolve({ data: [cache.ghost_stats] })
+          : Promise.resolve(rpc("get_ghost_job_index_stats")).catch(() => ({ data: null })));
+        {
+          const early = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
+          if (early) { setStats(early); setStatsLoading(false); }
+        }
+        const [l, a, f, b] = await Promise.all([
           // THE ONE CALL IN THIS ARRAY WITH NO .catch. Every sibling is wrapped
           // in Promise.resolve(...).catch(() => ({ data: null })) for the reason
           // the comment two entries down records: a PostgREST thenable that

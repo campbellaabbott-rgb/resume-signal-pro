@@ -72,7 +72,7 @@ import {
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { classifyDormancy, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
-import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, tokensOf, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
+import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
@@ -141,7 +141,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.70"; // .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.71"; // .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -941,8 +941,14 @@ const RETRY_PER_SLICE = 5;
 // looks like "nothing stale left". 60 rows is three times the room at the
 // same bounded cost (one index probe per row under the RPC's 5s timeout,
 // 200 its cap); `windowFull` on status names the clogged state when it
-// arrives anyway. The real fix is a p_exclude on a later RPC revision so the
-// registry and the unresolved set never occupy the window — not this file's.
+// arrives anyway. And it arrived anyway: the first live pass after .70 read
+// asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull,
+// fetched 0 — 145 boards in the registry outnumber any window. Since .71 the
+// call passes p_exclude (migration 20260909222000, evaluated INSIDE the RPC's
+// capped scan): staleExclusion() = the Object.prototype names ∪
+// OVERSIZE_BOARDS ∪ the unresolved tokens, at most STALE_EXCLUDE_MAX (400)
+// of them, so `windowFull` now means "60 rows AFTER exclusion and still
+// nothing unexplained" and is also written as a warn line when it happens.
 const STALE_RPC_LIMIT = 60;
 const STALE_RPC_DEADLINE_MS = 4_000;
 /** Every catalogued token, once: the stale lane's 'uncatalogued' test. A Set, so a token named 'constructor' is a real member. */
@@ -953,8 +959,10 @@ interface StaleLaneRun {
   /** ok = rows came back; error = PostgREST answered an error (an absent RPC in the deploy window lands here) OR the request rejected outright (network/TLS — the message says which); timeout = the deadline won. */
   rpc: "ok" | "error" | "timeout";
   asked: number;
-  /** The RPC returned a full window and none of it was fetchable: permanent residents (oversize, unresolved) fill it and the tail behind them goes unexamined. */
+  /** The RPC returned a full window AFTER the exclusion and none of it was fetchable: something outside the excluded classes fills it and the tail behind row STALE_RPC_LIMIT goes unexamined. Also a warn line. */
   windowFull: boolean;
+  /** Tokens sent as p_exclude (prototype names ∪ oversize ∪ unresolved, ≤ STALE_EXCLUDE_MAX); 0 when the RPC predates the arm (PGRST202 fallback) or was not asked. */
+  excluded: number;
   classes: Record<StaleClass, number> | null;
   selected: string[];
   /** Selected boards the loop actually attempted (not deferred by the posting budget). */
@@ -4487,18 +4495,39 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // publishes as rpc:"error" with the cause — withDeadline alone would
       // have read it as "timeout" and sent an operator to the RPC's plan
       // instead of the network.
-      const rpc = await withDeadline(
-        client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H })
+      //
+      // THE EXCLUSION (.71, migration 20260909222000). The window's permanent
+      // residents — the OVERSIZE registry, the tokens this lane already gave
+      // up on, the Object.prototype names — are the lane's own state, so it
+      // hands them to the RPC as p_exclude and they never occupy a row. Built
+      // by staleExclusion() from Sets/Maps only, bounded at STALE_EXCLUDE_MAX.
+      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
+      const askStale = (exclude: readonly string[] | null) => withDeadline(
+        client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
           .then((r) => r, (e: unknown) => ({ data: null, error: { code: "rejected", message: String(e).slice(0, 160) } })),
         STALE_RPC_DEADLINE_MS,
       );
-      const rpcErr = (rpc as { error?: { code?: string; message?: string } | null }).error ?? null;
+      const errOf = (r: unknown) => (r as { error?: { code?: string; message?: string } | null }).error ?? null;
+      let rpc = await askStale(staleExclude);
+      let excluded = staleExclude.length;
+      let rpcErr = errOf(rpc);
+      // A bundle that lands BEFORE the migration meets the (integer, integer)
+      // signature, and PostgREST answers a named argument no signature takes
+      // with PGRST202 — not a failure of the lane, a deploy-order gap. Ask
+      // once more the .70 way (same single call site) so the lane is never
+      // worse than .70's during the gap; `excluded: 0` on status names it.
+      if (rpcErr?.code === "PGRST202") {
+        console.warn(`[JOB-BOARD] stale lane: get_stalest_boards has no p_exclude arm yet (apply migration 20260909222000) — asking unexcluded (${(rpcErr.message ?? "").slice(0, 120)})`);
+        rpc = await askStale(null);
+        excluded = 0;
+        rpcErr = errOf(rpc);
+      }
       const rows = !rpcErr && Array.isArray(rpc.data) ? (rpc.data as StaleRow[]) : null;
       if (!rows) {
         const why = rpcErr ? `${rpcErr.code ?? ""} ${rpcErr.message ?? ""}`.trim().slice(0, 160) : "deadline";
         console.warn(`[JOB-BOARD] stale lane: get_stalest_boards unavailable — no lane this hop (${why})`);
-        staleLane = { at: new Date().toISOString(), rpc: rpcErr ? "error" : "timeout", asked: 0, windowFull: false, classes: null, selected: [], fetched: 0, resolved: 0, unresolved: [], prototypeNames: [] };
+        staleLane = { at: new Date().toISOString(), rpc: rpcErr ? "error" : "timeout", asked: 0, windowFull: false, excluded: 0, classes: null, selected: [], fetched: 0, resolved: 0, unresolved: [], prototypeNames: [] };
       } else {
         const verdicts: StaleVerdict[] = classifyStale(rows, {
           catalogued: CATALOGUE_TOKENS,
@@ -4519,7 +4548,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           asked: rows.length,
           // A full window with nothing fetchable in it is the clogged state,
           // named: the tail behind row STALE_RPC_LIMIT is going unexamined.
+          // Since .71 the window is read AFTER p_exclude, so this can only be
+          // a class the exclusion does not cover (uncatalogued, quarantined,
+          // dormant, failing) filling sixty rows — worth a human's eyes, hence
+          // the warn line below as well as the field.
           windowFull: rows.length >= STALE_RPC_LIMIT && classes.unexplained === 0 && staleBoards.length === 0,
+          excluded,
           classes,
           selected: staleBoards.map((s) => s.token),
           fetched: 0,
@@ -4527,6 +4561,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           unresolved: verdicts.filter((v) => v.cls === "unresolved").map((v) => v.token),
           prototypeNames: verdicts.filter((v) => v.cls === "prototype_name").map((v) => v.token),
         };
+        if (staleLane.windowFull) {
+          const filled = (Object.entries(classes) as Array<[StaleClass, number]>).filter(([, n]) => n > 0).map(([c, n]) => `${c} ${n}`).join(", ");
+          console.warn(`[JOB-BOARD] stale lane: window STILL full after excluding ${excluded} tokens — ${rows.length} rows, none fetchable (${filled}); the tail behind row ${STALE_RPC_LIMIT} is unexamined`);
+        }
       }
     } catch (e) {
       // accelerator only — the rotation still reaches every board if this throws
@@ -7023,9 +7061,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     }
     // THE STALE LANE'S FOLD. A selected board the loop attempted counts one
     // try unless it STAMPED (okSet), in which case it leaves the tries map —
-    // the lane's job for it is done. A board the posting budget deferred was
-    // never attempted and is untouched, the same rule failedTokens follows
-    // above. Written whenever the lane ran, including an RPC-less hop, so
+    // the lane's job for it is done. So does ANY entry whose token stamped
+    // this slice: okSet holds every stamp the slice landed, not only the
+    // lane's, and since .71 a token at STALE_TRIES_MAX is excluded from the
+    // window, so the rotation's stamp is the only way its entry can clear. A
+    // board the posting budget deferred was never attempted and is untouched,
+    // the same rule failedTokens follows above. Written whenever the lane ran, including an RPC-less hop, so
     // "ran and selected none", "could not ask" and "never ran" stay three
     // different readings on status. Best-effort: losing this costs one try's
     // worth of bookkeeping, never a row.
@@ -10780,12 +10821,22 @@ Deno.serve(async (req) => {
             // The window is clogged with boards no fetch can move; the stale
             // tail behind it is going unexamined. Absent on a pre-.69 row.
             windowFull: typeof v.windowFull === "boolean" ? v.windowFull : null,
+            // Tokens sent as p_exclude on that hop (.71): 0 means the RPC
+            // predated the arm and the lane fell back to the unexcluded ask.
+            // Absent on a pre-.71 row.
+            excluded: typeof v.excluded === "number" ? v.excluded : null,
             classes: v.classes ?? null,
             selected: Array.isArray(v.selected) ? v.selected : [],
             fetched: Number(v.fetched) || 0,
             resolved: Number(v.resolved) || 0,
             unresolved: Array.isArray(v.unresolved) ? v.unresolved : [],
             prototypeNames: Array.isArray(v.prototypeNames) ? v.prototypeNames : [],
+            // Since .71 the tokens at STALE_TRIES_MAX are sent as p_exclude and
+            // never occupy a window row, so `unresolved` above reads [] once the
+            // exclusion works. This is the list it hides, read from the tries
+            // the fold wrote: the boards a human should look at. An entry leaves
+            // on the slice that stamps its board, whichever lane stamps it.
+            excludedUnresolved: unresolvedTokens(readStaleTries(v)),
             triesPending: tries,
             lastSlice: ss.staleTries !== undefined ? { tries: ss.staleTries, resolved: ss.staleResolved ?? null } : null,
           };

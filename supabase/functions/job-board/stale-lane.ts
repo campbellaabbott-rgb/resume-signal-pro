@@ -50,9 +50,14 @@
 //      STALE_RPC_LIMIT is index.ts's (60 in .69, raised from 20): the head of
 //      the oldest-first list is where permanent residents live — oversize
 //      boards never stamp, unresolved tokens stay — and a 20-row window
-//      clogged with them silently. index.ts publishes `windowFull` when a
-//      full window holds nothing fetchable; the durable fix is a p_exclude
-//      on a later RPC revision.
+//      clogged with them silently. So did the 60-row one: the first live
+//      pass after .70 read asked 60 / oversize 59 / prototype_name 1 /
+//      unexplained 0, windowFull, fetched 0 — the residents outnumber any
+//      window. Since .71 the call passes p_exclude = staleExclusion(...)
+//      (migration 20260909222000): the prototype names ∪ OVERSIZE_BOARDS
+//      ∪ the unresolved tokens, so none of them occupies the window and
+//      `windowFull` now means "60 rows AFTER exclusion and still nothing
+//      unexplained" — a state index.ts also writes as a warn line.
 //
 //   2. Build the context from state the hop already holds. Every field is a
 //      Set/Map; convert meta Records with tokensOf() (own keys only):
@@ -73,14 +78,22 @@
 //      board); it is a ceiling, not a plan.
 //
 //   4. After the fetch, fold the attempt: tries = bumpStaleTries(tries, lane,
-//      okTokens) — a token that STAMPED leaves the map; one that did not
-//      counts one more try. Persist writeStaleTries(tries) under meta
-//      k = "stale_lane" beside `at`. At STALE_TRIES_MAX the token classifies
-//      as 'unresolved' and the lane stops spending fetches on it.
+//      okTokens) — a token that STAMPED this slice leaves the map, whether
+//      this lane fetched it or the rotation did (okTokens is every stamp the
+//      slice landed, so an 'unresolved' board the rotation later fixes is
+//      forgotten on the hop that fixes it and starts from zero if it ever
+//      goes stale again); a lane-fetched token that did not stamp counts one
+//      more try. Persist writeStaleTries(tries) under meta k = "stale_lane"
+//      beside `at`. At STALE_TRIES_MAX the token classifies as 'unresolved',
+//      the lane stops spending fetches on it, and since .71 it is EXCLUDED
+//      from the window (step 1) — so it must be named from the tries map
+//      (unresolvedTokens), not from the window it no longer occupies.
 //
 //   5. Surface the verdicts on /status as `staleLane: { at, classes:
-//      {class: count}, unresolved: [tokens], prototypeNames: [tokens] }` so
-//      the two classes no fetch can fix are visible without a log grep.
+//      {class: count}, unresolved: [tokens], prototypeNames: [tokens],
+//      excludedUnresolved: unresolvedTokens(tries) }` so the classes no fetch
+//      can fix are visible without a log grep — including the unresolved
+//      tokens the exclusion keeps out of every window row.
 //
 //   Guard already in place: src/test/a-token-named-constructor-reads-a-
 //   function-from-the-map.test.ts flags any Record<string, …> read by a token
@@ -94,6 +107,25 @@ export const STALE_PER_SLICE = 3;
 export const STALE_LANE_MIN_AGE_H = 72;
 /** Fetches the lane spends on one board before calling it unresolved. */
 export const STALE_TRIES_MAX = 4;
+/**
+ * Upper bound on the p_exclude array the lane sends get_stalest_boards. The
+ * three sets it is built from are each bounded: PROTOTYPE_NAMES is 12 names,
+ * OVERSIZE_BOARDS is capped at 200 entries by index.ts's OVERSIZE_CAP, and
+ * the remainder (188) is room for unresolved tokens, which enter the tries
+ * map at most STALE_PER_SLICE per cold hop, only reach STALE_TRIES_MAX after
+ * four failed fetches, and leave it on the first slice that stamps them (by
+ * any lane), so the room is not consumed monotonically. 400 tokens × (longest catalogued token + JSON
+ * quoting) is under 30 KB: a POST body PostgREST reads without a thought,
+ * and the RPC's own c_exclude_cap (2,000) is five times wider, so truncation
+ * on either side is a degradation back to the pre-fix window, never an error.
+ */
+export const STALE_EXCLUDE_MAX = 400;
+/**
+ * Every property name of Object.prototype, own and accessor alike — the
+ * twelve tokens a token-keyed Record misreads. Computed, not listed, so an
+ * engine that grows the prototype grows the exclusion with it.
+ */
+export const PROTOTYPE_NAMES: readonly string[] = Object.getOwnPropertyNames(Object.prototype);
 
 /** One row of get_stalest_boards(), as PostgREST returns it. */
 export interface StaleRow {
@@ -197,10 +229,21 @@ export function writeStaleTries(tries: ReadonlyMap<string, number>): Record<stri
 }
 
 /**
- * Fold one hop's stale-lane attempt into the tries map. A token that STAMPED
- * (is in okTokens) leaves the map — the lane's job for it is done. A token
- * the lane fetched that did not stamp counts one more try. Tokens the lane
- * did not fetch are untouched. Pure: returns a new Map.
+ * Fold one slice's stamps into the tries map. A token that STAMPED this slice
+ * (is in okTokens) leaves the map whoever fetched it — this lane, or the
+ * rotation reaching a board the lane had given up on: okTokens is every stamp
+ * the slice landed, and a board that stamps is not stale, so its history is
+ * done. A token the lane fetched that did not stamp counts one more try.
+ * Every other entry is untouched. Pure: returns a new Map.
+ *
+ * Why the rotation's stamps must count: since .71 a token at STALE_TRIES_MAX
+ * is sent as p_exclude, so the lane never sees it in a window again and never
+ * fetches it — an entry only this lane's own fetches could clear would be
+ * permanent, and four historical failures would hide a catalogued board from
+ * the stale window for good. A stamp that lands on a hop where the lane does
+ * not run (hot phase, shed level 2) is forgotten on the next lap's stamp that
+ * lands on one that does; while such an entry lingers the board is fresh, so
+ * excluding it costs nothing.
  */
 export function bumpStaleTries(
   tries: ReadonlyMap<string, number>,
@@ -208,11 +251,54 @@ export function bumpStaleTries(
   okTokens: ReadonlySet<string>,
 ): Map<string, number> {
   const out = new Map(tries);
+  for (const t of out.keys()) if (okTokens.has(t)) out.delete(t);
   for (const t of fetched) {
     if (okTokens.has(t)) out.delete(t);
     else out.set(t, (out.get(t) ?? 0) + 1);
   }
   return out;
+}
+
+/**
+ * The tokens the lane has given up on: every entry at or past triesMax, in
+ * map order. Since .71 this is the list p_exclude keeps out of the window, so
+ * it is also what status publishes as `excludedUnresolved` — the window's own
+ * 'unresolved' verdicts read [] once the exclusion works, and a count alone
+ * (triesPending) does not say which boards a human should look at.
+ */
+export function unresolvedTokens(
+  tries: ReadonlyMap<string, number>,
+  triesMax: number = STALE_TRIES_MAX,
+): string[] {
+  const out: string[] = [];
+  for (const [t, n] of tries) if (n >= triesMax) out.push(t);
+  return out;
+}
+
+/**
+ * The tokens get_stalest_boards must keep OUT of the window: the classes no
+ * fetch can move. In order — PROTOTYPE_NAMES first (a fixed twelve), then
+ * OVERSIZE_BOARDS (≤ OVERSIZE_CAP), then every token whose tries reached
+ * triesMax ('unresolved') — deduplicated and cut at `max` (STALE_EXCLUDE_MAX),
+ * so if anything is ever dropped it is the youngest unresolved tokens, which
+ * re-enter the window and classify as 'unresolved' exactly as before .71.
+ *
+ * Not excluded on purpose: uncatalogued (the orphan prune's, and worth seeing
+ * while it is blocked), quarantined (lifts on its own), dormant and failing
+ * (other lanes own them and they leave the tail when those lanes stamp them).
+ *
+ * `oversize` is an Iterable so the call site can pass OVERSIZE_BOARDS.keys()
+ * without materialising a Set. Pure: returns a new array, inputs untouched.
+ */
+export function staleExclusion(
+  ctx: { oversize: Iterable<string>; tries: ReadonlyMap<string, number>; triesMax?: number },
+  max: number = STALE_EXCLUDE_MAX,
+): string[] {
+  const triesMax = ctx.triesMax ?? STALE_TRIES_MAX;
+  const out = new Set<string>(PROTOTYPE_NAMES);
+  for (const t of ctx.oversize) if (typeof t === "string" && t) out.add(t);
+  for (const t of unresolvedTokens(ctx.tries, triesMax)) out.add(t);
+  return [...out].slice(0, Math.max(max, 0));
 }
 
 /**

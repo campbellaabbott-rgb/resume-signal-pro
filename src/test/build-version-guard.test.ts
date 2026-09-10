@@ -272,6 +272,14 @@ const PINNED = {
   // head row carries sourcesFacet and the facets action forwards it as
   // `sources` + `sourcesAt` for the vendor dropdown's inventory; the coverage
   // disclosure emits workMode for the legacy remote=1 binding as well.
+  // 2026-09-09.71: index.ts + stale-lane.ts — sources.ts UNCHANGED (the hash
+  // below still pins the .68 dedupe; no board waits on the bootstrap lane).
+  // The stale lane's window was 59 oversize boards + 'constructor' on every
+  // pass; it now sends p_exclude (prototype names ∪ OVERSIZE_BOARDS ∪
+  // unresolved, ≤ 400) to get_stalest_boards as revised by migration
+  // 20260909222000, which filters inside its capped scan and drops the
+  // (integer, integer) signature so the .70 bundle's two-argument call
+  // resolves to one candidate across the deploy gap.
   sourcesHash: "bf3535d300ace24f",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
@@ -1178,7 +1186,7 @@ const PINNED = {
   //   isLight is token-keyed, so enrolling greenhouse `antenna` turned the
   //   WORKABLE `antenna` light too. Plus fix C, so the descriptions a refused
   //   board defers have a lane that fills them.
-  buildVersion: "2026-09-09.70",
+  buildVersion: "2026-09-09.71",
 };
 
 /**
