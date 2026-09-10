@@ -4565,7 +4565,11 @@ export type Database = {
       get_size_segments: { Args: never; Returns: Json }
       get_stale_board_count: { Args: never; Returns: number }
       get_stalest_boards: {
-        Args: { p_limit?: number; p_min_age_hours?: number }
+        Args: {
+          p_exclude?: string[]
+          p_limit?: number
+          p_min_age_hours?: number
+        }
         Returns: {
           age_min: number
           live_rows: number
