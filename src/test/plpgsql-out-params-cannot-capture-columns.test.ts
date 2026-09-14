@@ -38,6 +38,10 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   api_keys: ["id", "key_hash", "key_prefix", "name", "owner_email", "tier", "rate_per_min", "daily_quota", "created_at", "last_used_at", "revoked_at", "notes", "user_id"],
   api_usage: ["key_id", "day", "endpoint", "calls"],
   api_rate: ["key_id", "minute", "calls"],
+  // The Other-bucket anchor table (20260909224500): category_knn RETURNS TABLE
+  // (id, field, title, sim) over exactly these column names -- the third
+  // function in the repo with this collision shape.
+  job_board_category_anchors: ["id", "version", "field", "title", "embedding", "loaded_at"],
 };
 
 /** Strip SQL comments so prose about a name is never mistaken for a reference. */
@@ -123,6 +127,66 @@ describe("plpgsql OUT parameters cannot silently capture a column", () => {
       unaliased,
       `every table must carry an alias so its columns can be qualified: ${unaliased.join(", ")}`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * THIRD SHAPE, 2026-09-14: category_knn (20260909225000) RETURNS TABLE (id,
+ * field, title, sim) and reads job_board_category_anchors, whose columns ARE
+ * id, field and title. It ships fully alias-qualified; this block is what
+ * catches the regression, because the harness that executes the body is a
+ * script nobody re-runs. A mutated copy with the select list unqualified
+ * raises 42702 in pglite at CALL time and must turn this red.
+ */
+function unqualifiedCollisions(fn: string, sqlText: string): { outNames: string[]; colliding: string[]; offenders: string[] } {
+  const defAt = sqlText.indexOf(`FUNCTION public.${fn}(`);
+  const after = sqlText.slice(defAt);
+  const outs = /RETURNS TABLE \(([\s\S]*?)\)\s*\nLANGUAGE/.exec(after)?.[1] ?? "";
+  // One line or many: split on commas, first token of each is the OUT name.
+  const outNames = outs.split(/,|\n/).map((l) => l.trim().split(/\s+/)[0]).filter(Boolean);
+  // The plpgsql body alone: from AS $$ to the FIRST $$; -- the COMMENT ON
+  // FUNCTION string and the DO blocks after it are not the body, and the
+  // COMMENT legitimately says "as (id, field, title, sim)".
+  const bodyStart = after.indexOf("AS $$");
+  const bodyEnd = after.indexOf("$$;", bodyStart + 5);
+  const body = stripComments(after.slice(bodyStart + 5, bodyEnd));
+  const tablesRead = Object.keys(COLUMNS_BY_TABLE).filter((t) => new RegExp(`public\\.${t}\\b`).test(body));
+  const colliding = outNames.filter((n) => tablesRead.some((t) => COLUMNS_BY_TABLE[t].includes(n)));
+  const offenders: string[] = [];
+  for (const name of colliding) {
+    const bare = new RegExp(`(?<![\\w.])${name}(?![\\w])`, "g");
+    for (const m of body.matchAll(bare)) {
+      const before = body.slice(Math.max(0, m.index! - 40), m.index!);
+      if (/INSERT INTO[\s\S]*\($/.test(before)) continue;
+      offenders.push(`${name} @ "...${before.slice(-32).replace(/\s+/g, " ")}[${name}]"`);
+    }
+  }
+  return { outNames, colliding, offenders };
+}
+
+describe("category_knn qualifies every OUT name that is also an anchor column", () => {
+  const { file, sql } = newestDefining("category_knn");
+
+  it("is defined by a migration we can find, and its OUT names collide with the anchor table by construction", () => {
+    expect(file, "no migration defines category_knn").toBeTruthy();
+    const r = unqualifiedCollisions("category_knn", sql);
+    expect(r.outNames).toEqual(["id", "field", "title", "sim"]);
+    expect(r.colliding.sort()).toEqual(["field", "id", "title"]);
+  });
+
+  it("every colliding name is alias-qualified in the body", () => {
+    const r = unqualifiedCollisions("category_knn", sql);
+    expect(r.offenders, `42702 at CALL time -- qualify through the alias a.: ${r.offenders.join("\n  ")}`).toEqual([]);
+  });
+
+  it("teeth: an unqualified select list is reported", () => {
+    const bad = sql.replace("SELECT a.id, a.field, a.title, (1 - (a.embedding <=> q))::real", "SELECT id, field, title, (1 - (a.embedding <=> q))::real");
+    expect(bad).not.toBe(sql);
+    const r = unqualifiedCollisions("category_knn", bad);
+    expect(r.offenders.length).toBe(3);
+    // and a copy that only unqualifies the ORDER BY is caught too
+    const bad2 = sql.replace("ORDER BY a.embedding <=> q, a.id", "ORDER BY a.embedding <=> q, id");
+    expect(unqualifiedCollisions("category_knn", bad2).offenders.length).toBe(1);
   });
 });
 

@@ -180,6 +180,23 @@ describe("locale files", () => {
    * working — so both lists are empty. The guard that keeps a future pass from
    * half-landing is in src/test/a-percentage-that-reads-the-same-on-every-
    * field-is-not-a-field-percentage.test.tsx. */
+  /* ── 2026-09-14, the new-postings half joins "Actively hiring" ────────────
+   * CLOSED the same day. migration 20260909227000 (get_company_growth) made
+   * the sentence "that joins once we hold enough days of our own counts"
+   * true, so every string that stated the basis of "Actively hiring" changed
+   * MEANING — the label now means takedowns OR a rise in roles served on the
+   * board's own daily series — and took a NEW key (the *3 family), with the
+   * growth surfaces' copy minted beside it (29 keys, then signalReading,
+   * growthWhyReplaced and growthReasonReplaced in the review pass). The
+   * English build shipped them in en and en-GB with the other seven listed
+   * here; the locale pass landed all of them in the seven the same day, and
+   * the assertion below flagged every one the moment it did — which is the
+   * mechanism working — so the list is empty again. The six retired keys
+   * (hiringFilterTip2, hiringBadgeTip2, hiringBasis2, hiringSetAside2,
+   * savedWithoutHiringFilter2, takedownReading) came out of all nine in the
+   * same changes, so RETIRED_PENDING stays empty. The label-beside-its-basis
+   * guard is src/test/we-could-not-observe-it-is-not-they-are-not-hiring
+   * .test.ts (BASIS_PENDING_LOCALES, closed the same way). */
   const PENDING_TRANSLATION: string[] = [];
   const RETIRED_PENDING: string[] = [];
   const PARITY_EXEMPTION_CAP = 40;

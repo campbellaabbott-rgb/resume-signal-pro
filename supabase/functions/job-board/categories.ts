@@ -8,6 +8,26 @@
 // the stored "other" rows through the current rules — so categorization
 // improvements reach the existing corpus, not just newly inserted rows
 // (the insert-only refresh never rewrites them otherwise).
+// v10 (2026-09-14): THE OTHER BUCKET, PHASE 1 — A PROPOSAL PATH, NOT A MOVE.
+//   categorize() is byte-for-byte the v9 function: RULES is frozen (the v9
+//   header below says why rules growth stopped) and nothing in this version
+//   changes what any existing caller receives. What v10 adds sits BESIDE it:
+//   proposeCategory() runs the same frozen rules over a NORMALISED title and
+//   then, only for titles the frozen rules leave in "other", a closed list of
+//   19 gate-passing nouns (V10_TERMS) — and returns a PROPOSAL (field, basis
+//   'rule', per-term category_key), never a category. The stored-row sweep
+//   that writes `category` still calls categorize(), so the version bump
+//   alone moves nothing; a proposal reaches `category` only through
+//   promote_category after a written audit (see shadow.ts).
+//   Provenance: the 2,576-row stratified sample of the 172,619-row bucket
+//   (scratchpad/other-bucket/, 2026-09-10): normalisation replays and 24
+//   terms move 416 sample rows, hand-judged 98.6% hard-wrong-free; each term
+//   has >= 8 judged matches all correct, >= 2 employers, zero non-target hits
+//   on the 3,060 labelled rows when appended last (mechC-gate.txt). WITHHELD,
+//   measured: the Mgr/Svc/Dir abbreviation expansion (7 rows, 5/7 — both
+//   misses are known misfire classes) and Tech -> Technician (Rad/ER/CT/Med
+//   Tech would fall to the bare-technician operations fallback). Refuted
+//   terms are a negative test set, not a comment (see the v10 test file).
 // v9 (2026-08-23): the ~400-term residue audit, survivors only. Every term
 // shipped with a live count inside category=other, a mapped category argued
 // against every other reading, and 8+ hand-judged real matches; ambiguity
@@ -73,7 +93,7 @@
 // produce 16, team member ~53, shopper 13), single-word "Salesperson" (18 —
 // \bsales\b never matches inside the compound), delivery associates, and
 // Spanish-language titles (ejecutivo 16). "Other" outnumbered engineering.
-export const CATEGORIZE_VERSION = 9;
+export const CATEGORIZE_VERSION = 10;
 
 // Shared with public-api via ../_shared/board-domains.ts — see that file.
 export { JOB_CATEGORIES } from "../_shared/board-domains.ts";
@@ -346,4 +366,185 @@ export function categorize(title: string, department?: string | null): JobCatego
   }
   for (const [cat, re] of RULES) if (re.test(title)) return cat;
   return "other";
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// v10 — THE PROPOSAL PATH. Everything below is reachable ONLY through
+// proposeCategory(); categorize() above neither calls nor reads any of it.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** The basis every proposal from this file carries. */
+export const RULE_BASIS = "rule" as const;
+/**
+ * A rule proposal's confidence. A term or a normalisation replay is a
+ * deterministic match, not a probability — the audit bar for a rule key is
+ * 8 judged / 0 wrong (shadow.ts PROMOTE_MIN_JUDGED_PER_KEY, PROMOTE_MAX_WRONG),
+ * so the confidence column carries 1 and the judged figures live in the audit.
+ */
+export const RULE_CONFIDENCE = 1;
+
+/**
+ * Title normalisation, replayed against the FROZEN rules. Three stages, tried
+ * in order, each cumulative on the last; the first stage at which the v9 rules
+ * fire names the proposal's key so an audit and a revert stay per stage.
+ *   norm_nfkc       NFKC, `&amp;` -> `&`, whitespace collapse (the escaped
+ *                   ampersand is live in titles: "Press &amp; Content").
+ *   norm_underscore `_` -> ` ` (PwC "IN_Senior Associate_SAP ABAP_…": 35 of
+ *                   the sample's 47 structural moves; `_` is a \w character,
+ *                   so every \b-anchored rule is blind to it).
+ *   norm_plural     plural -> singular for the EXACT rule nouns below, no
+ *                   others (12 sample moves: "Cashiers - Seasonal", "Process
+ *                   Technicians", "CT Technologists"). NOT "Tech" ->
+ *                   "Technician": withheld (Rad/ER/CT/Med Tech would fall to
+ *                   the bare-technician operations fallback). NOT the
+ *                   Mgr/Svc/Dir abbreviation expansion: withheld (7 sample
+ *                   rows, 5/7, both misses known misfire classes — "Program
+ *                   Mgr Wholesale Digital" -> product, "CUSTOMER SVC/DEPT
+ *                   MANAGER" -> customer).
+ * Provenance: mechC-gate.ts / mechC-gate.txt (2026-09-10). The noun list is
+ * the gate's PLURAL alternation verbatim.
+ */
+const PLURAL_RULE_NOUNS =
+  /\b(scientists|technologists|chefs|cooks|hosts|cashiers|servers|tellers|bankers|receptionists|clerks|stockers|dishwashers|electricians|plumbers|welders|carpenters|machinists|dispatchers|installers|buyers|teachers|instructors|professors|paralegals|attorneys|lawyers|adjusters|artists|physicians|doctors|nurses|services|technicians)\b/gi;
+
+export type NormalisationStage = "norm_nfkc" | "norm_underscore" | "norm_plural";
+
+export const NORMALISATION_STAGES: ReadonlyArray<[NormalisationStage, (t: string) => string]> = [
+  ["norm_nfkc", (t) => t.normalize("NFKC").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim()],
+  ["norm_underscore", (t) => t.replace(/_/g, " ").replace(/\s+/g, " ").trim()],
+  ["norm_plural", (t) => t.replace(PLURAL_RULE_NOUNS, (m) => m.replace(/s$/i, ""))],
+];
+
+/** The fully normalised title (all three stages) — the input the v10 terms see. */
+export function normalizeTitle(title: string): string {
+  return NORMALISATION_STAGES.reduce((t, [, step]) => step(t), title);
+}
+
+/**
+ * THE 19 GATE-PASSING TERMS, regexes verbatim from mechC-gate.ts PASS. Each
+ * carries its own category_key so promotion, audit and revert are per term.
+ * mechC-gate.ts listed 24; five of its own PASS entries fail the criterion its
+ * header states (>= 8 sample matches, >= 2 employers) and are WITHHELD here --
+ * see the end of this comment.
+ *
+ * Figures per term are "sample n / distinct employers" from mechC-gate.txt
+ * (the 2,576-row stratified sample, every match counted whether or not an
+ * earlier term claimed the row) and then the hand-judged employer-page rows
+ * in judgments.json (src/test/fixtures/other-bucket-judgments.json) that the
+ * term fires on. Both are RECOMPUTED by the v10 test from the fixtures; the
+ * numbers here are for the reader.
+ *
+ * hospitality_retail — commis 27/3 (53 judged); guest service/services/
+ *   relations/experience/arrival/environment 27/9 (20 judged); F&B / food
+ *   and beverage 16/3 (13 judged); banquet 8/3 (5 judged); bartender 18/10
+ *   (17 judged); food runner 30/2 (61 judged); food service worker/
+ *   assistant/supervisor/aide 9/4 (6 judged); dietary aide 14/7 (5 judged;
+ *   house convention role-not-setting: the food-service role files here,
+ *   the hospital is the setting, not the job — cf. the refuted UHS default);
+ *   valet 8/6 (4 judged; the v9 "(parking) attendant" precedent read as a
+ *   guest-facing hotel role, per mechC-gate.ts); stock(ing) associate 15/5
+ *   (12 judged); selling advisor/assistant/associate 24/2 (24 judged — a
+ *   convention split with sales: retail floor selling files retail, and the
+ *   embed basis says sales for the same Saks rows, which the resolver stamps
+ *   as a conflict, not a move); beauty consultant/lead/manager/counter
+ *   manager 33/2 (33 judged); baker 11/3 (12 judged); store supervisor/
+ *   director/assistant/administrator 9/5 (3 judged + 1 ambiguous "Store
+ *   Administrator" -> A:admin).
+ * sales — representante (de) ventas/vendas 23/2 (AutoZone counter reps and
+ *   Sherwin-Williams field reps; the employer-page judge filed AutoZone's
+ *   under its retail default, 17 rows, and Sherwin-Williams' as sales, 6 —
+ *   the term files the ROLE, sales, the house convention every "Sales
+ *   Associate" already follows).
+ * healthcare — behavioral health 12/4 (11 judged); medication aide/
+ *   assistant + med tech 12/7 (0 employer-page judged: tail-only, senior-
+ *   living employers); modality tech 31/6 (19 judged: Rad/CT/X-Ray/Echo/ER/
+ *   ED/Monitor/Endoscopy/Sterile Process/OR Room/Pulmonary Function/
+ *   Cardiovascular Invasive — enumerated on purpose, bare Tech is NOT
+ *   expanded); NP/PA, PMHNP, advanced practice 9/3 (23 judged; bare "app" is
+ *   a refuted term and is not in the alternation).
+ *
+ * WITHHELD (in mechC-gate.ts PASS, but under the gate's own bar -- the v10
+ * test asserts every shipped term clears RULE_TERM_MIN_JUDGED and
+ * RULE_TERM_MIN_EMPLOYERS and that these five get NO proposal):
+ *   cake decorator 8/1 (Albertsons only), caissier/caissière 10/1 (Myview
+ *   only), repartidor 9/1 (AutoZone only), controlador de inventario 7/1
+ *   (AutoZone only; also one below RULE_TERM_MIN_JUDGED), and épicerie 0/0 --
+ *   the gate's spelling `\b[ée]picerie\b` cannot match a title that starts
+ *   with É (no ASCII word boundary before a non-ASCII letter), so it claimed
+ *   no sample row; a re-spelled regex is an unmeasured regex. Each would need
+ *   a second employer (or, for épicerie, a fresh measurement) before it is
+ *   admitted; "Épicerie Commis" still files by commis.
+ *
+ * Order within the list is the mechC-gate.ts order; every term is tried only
+ * AFTER the frozen rules have declined the normalised title, so no v9 claim
+ * can shift. Cross-term overlaps ("Banquet Bartender", "Épicerie Commis")
+ * share a target.
+ */
+export interface RuleTerm {
+  /** category_key for rows this term proposes; unique per term. */
+  key: string;
+  target: Exclude<JobCategory, "other">;
+  re: RegExp;
+}
+
+export const V10_TERMS: ReadonlyArray<RuleTerm> = [
+  { key: "commis", target: "hospitality_retail", re: /\bcommis\b/i },
+  { key: "guest_facing", target: "hospitality_retail", re: /\bguest (service|services|relations|experience|arrival|environment)s?\b/i },
+  { key: "f_and_b", target: "hospitality_retail", re: /\bf ?& ?b\b|\bfood (and|&) (beverage|drinks?)\b/i },
+  { key: "banquet", target: "hospitality_retail", re: /\bbanquets?\b/i },
+  { key: "bartender", target: "hospitality_retail", re: /\bbartenders?\b/i },
+  { key: "food_runner", target: "hospitality_retail", re: /\bfood runners?\b/i },
+  { key: "food_service_worker", target: "hospitality_retail", re: /\bfood services? (worker|assistant|supervisor|aide)s?\b/i },
+  { key: "dietary_aide", target: "hospitality_retail", re: /\bdietary aides?\b/i },
+  { key: "valet", target: "hospitality_retail", re: /\bvalets?\b/i },
+  { key: "stock_associate", target: "hospitality_retail", re: /\bstock(ing)? associates?\b/i },
+  { key: "selling_advisor", target: "hospitality_retail", re: /\bselling (advisor|assistant|associate)s?\b/i },
+  { key: "beauty_consultant", target: "hospitality_retail", re: /\bbeauty (consultant|lead|manager|counter manager)s?\b/i },
+  { key: "baker", target: "hospitality_retail", re: /\bbakers?\b/i },
+  { key: "store_supervisor", target: "hospitality_retail", re: /\bstore (supervisor|director|assistant|administrator)s?\b|\bmulti-store supervisor\b|\bassistant store director\b/i },
+  { key: "representante_ventas", target: "sales", re: /\brepresentante (de )?(ventas|vendas)\b/i },
+  { key: "behavioral_health", target: "healthcare", re: /\bbehaviou?ral health\b/i },
+  { key: "medication_aide", target: "healthcare", re: /\bmedication (aide|assistant)s?\b|\bmed tech\b/i },
+  { key: "modality_tech", target: "healthcare", re: /\b(rad|ct|x-?ray|echo|er|ed|pet\/ct|monitor|endoscopy|or room|sterile process(ing)?|pulmonary function|cardiovascular invasive) techs?\b|\btech - (er|monitor|mh\/bh)\b/i },
+  { key: "advanced_practice", target: "healthcare", re: /\bnp\/pa\b|\bnp or pa\b|\bpmhnp\b|\badvanced? practi(ce|tioner)\b/i },
+];
+
+/**
+ * A rule-basis proposal for a row the frozen rules leave in "other". The
+ * shape is the shadow proposal shadow.ts resolves (basis / key / target /
+ * confidence) plus the rules version that produced it.
+ */
+export interface RuleProposal {
+  basis: typeof RULE_BASIS;
+  /** A normalisation stage name or a V10_TERMS key. */
+  key: NormalisationStage | string;
+  target: Exclude<JobCategory, "other">;
+  confidence: typeof RULE_CONFIDENCE;
+  /** The rules version that produced the proposal. */
+  version: number;
+}
+
+/**
+ * The v10 proposal path. Returns null whenever categorize() already has an
+ * answer (the frozen rules keep first claim — callers must never call this
+ * for a row that is not stored as "other") and null when nothing in v10
+ * fires. It never returns "other" and never writes anything: the result is a
+ * proposal for the shadow columns, resolved against the employer and embed
+ * mechanisms by shadow.ts.
+ */
+export function proposeCategory(title: string, department?: string | null): RuleProposal | null {
+  const raw = title ?? "";
+  if (categorize(raw, department) !== "other") return null;
+  // Stage replays against the frozen rules: the first stage that makes them
+  // fire names the key.
+  let t = raw;
+  for (const [stage, step] of NORMALISATION_STAGES) {
+    t = step(t);
+    const cat = categorize(t, department);
+    if (cat !== "other") return { basis: RULE_BASIS, key: stage, target: cat, confidence: RULE_CONFIDENCE, version: CATEGORIZE_VERSION };
+  }
+  // Only now the 19 terms, over the fully normalised title.
+  for (const term of V10_TERMS) {
+    if (term.re.test(t)) return { basis: RULE_BASIS, key: term.key, target: term.target, confidence: RULE_CONFIDENCE, version: CATEGORIZE_VERSION };
+  }
+  return null;
 }

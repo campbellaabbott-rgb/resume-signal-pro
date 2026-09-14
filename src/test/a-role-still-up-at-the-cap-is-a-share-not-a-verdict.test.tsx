@@ -376,10 +376,17 @@ describe("a role still up at the cap is a share, not a verdict — the copy", ()
     });
   }
 
-  it("changelog.ts lists the four at the top, dated 2026-09-10, with the tags the entries claim", () => {
-    expect(changelog.slice(0, 4).map((e) => e.id)).toEqual(NEW_IDS);
-    for (const e of changelog.slice(0, 4)) expect(e.date).toBe("2026-09-10");
-    const tags = Object.fromEntries(changelog.slice(0, 4).map((e) => [e.id, e.tags]));
+  it("changelog.ts lists the four together, dated 2026-09-10, with the tags the entries claim", () => {
+    // Newest first: entries shipped after 2026-09-10 sit above these four
+    // (the new-postings half of "Actively hiring" joined on 2026-09-14), so
+    // the four are anchored on the first of them, not on index 0, and every
+    // entry above them must be dated later.
+    const at = changelog.findIndex((e) => e.id === NEW_IDS[0]);
+    expect(at, `${NEW_IDS[0]} is missing from changelog.ts`).toBeGreaterThanOrEqual(0);
+    for (const e of changelog.slice(0, at)) expect(e.date > "2026-09-10", `${e.id} sits above the 2026-09-10 entries but is not newer`).toBe(true);
+    expect(changelog.slice(at, at + 4).map((e) => e.id)).toEqual(NEW_IDS);
+    for (const e of changelog.slice(at, at + 4)) expect(e.date).toBe("2026-09-10");
+    const tags = Object.fromEntries(changelog.slice(at, at + 4).map((e) => [e.id, e.tags]));
     expect(tags).toEqual({
       oneRequisitionIsOnePosting: ["fixed"],
       staleBoardsAreNamed: ["fixed"],

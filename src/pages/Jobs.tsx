@@ -492,6 +492,262 @@ export function partitionByHiringRecord<T extends { token?: string | null }>(
   }
   return { shown, setAside, setAsideEmployers: setAsideTokens.size, noPattern };
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE OTHER HALF: A BOARD THAT GREW IS A RATE WITH GATES, NOT A COUNT.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Since 2026-09-09 every basis sentence on this page said the new-postings
+ * half of "Actively hiring" joins "once we hold enough days of our own
+ * counts". migration 20260909227000 (get_company_growth) is that half, and
+ * this block is its only reading on the client.
+ *
+ * WHAT THE RPC MEASURES. Per BOARD (company_token is the vendor tenant, never
+ * summed across an employer): the served count on the series' latest day
+ * against the served count seven days earlier, from OUR daily 02:30 snapshot.
+ * snapshot_date is our observation date and carries no posting age. A rise is
+ * roles opened net of roles that came down, on one board; it is never a hire
+ * and never a headcount, and every sentence that renders it says BOARD.
+ *
+ * THE RPC OWNS THE VERDICT. `verdict` is grew / no-growth / unknown and
+ * `unknown_reason` names the gate that refused — a windowed or failed read on
+ * any day of the window, a gap in the series, a board too new (first snapshot
+ * fewer than 21 days before the baseline), too small (fewer than 10 served on
+ * the baseline day), not in the read ledger, or set aside by us. The client
+ * NEVER re-derives the bar from net and rate: the constants below exist for
+ * copy only, and the guard pins them to the migration's k CTE so a bar moved
+ * in SQL cannot leave nine languages printing the old one.
+ *
+ * THREE STATES, AND THE THIRD IS NOT A NO — the same shape as
+ * hiringRecordVerdict, for the same reason: "we could not read it" and "it did
+ * not grow" were one return value in every naive draft, and the surface
+ * published the second. The unknown bucket is counted on screen WITH ITS
+ * REASON, exactly as partitionByHiringRecord does for takedowns.
+ *
+ * AND THE TWO HALVES COMBINE IN EXACTLY ONE PLACE. "Actively hiring" is now
+ * closes OR grew. A three-valued OR: positive if either half is positive;
+ * unknown if neither is positive and either is unread (the unread half could
+ * have flipped it); negative only when both halves were read and both said
+ * no. Folding unknown into negative at the combination is the original defect
+ * one indirection out, and the guard's teeth test hands this file that fold.
+ */
+/** One row of get_company_growth. Field names are the RPC's own. */
+export interface GrowthRow {
+  company_token: string;
+  window_days: number;
+  /** OUR observation dates (ISO), never posting dates. */
+  baseline_day: string | null;
+  baseline_served: number | null;
+  latest_day: string | null;
+  latest_served: number | null;
+  net: number | null;
+  /** (latest − baseline) / baseline, 0-centred; NULL when the baseline is 0. */
+  rate: number | null;
+  days_observed: number;
+  days_expected: number;
+  /** The ledger runs one day earlier than the series (the snapshot dated D is
+   *  the product of the read dated D-1), so this is days_expected + 1. */
+  ledger_days_expected: number;
+  board_days_ok: number;
+  board_days_bad: number;
+  first_snapshot_day: string | null;
+  /** Days from the board's first snapshot to the baseline — a FLOOR when
+   *  tenure_censored (the first snapshot is the table's own first day and is
+   *  not an onboarding date; no surface may print it as one). */
+  tenure_days: number | null;
+  tenure_censored: boolean;
+  /** Our own removals across the window (the dedupe of 2026-09-10 exited
+   *  14,652 rows). NULL when no flow row exists. A fall is never "shrinking". */
+  untracked_departures: number | null;
+  /** The employer's own removals and our observed arrivals over the window
+   *  (job_board_company_flow). Returned for calibration only; the RPC refuses
+   *  a pool that turned over entirely (pool_replaced) and no surface reads
+   *  either figure. NULL when no flow row exists. */
+  removed_departures: number | null;
+  observed_arrivals: number | null;
+  verdict: string;
+  unknown_reason: string | null;
+}
+
+// MIRRORS OF THE MIGRATION'S k CTE, FOR COPY ONLY. Every basis sentence prints
+// the window and both bars beside the claim (a rate with no window and no bar
+// reads as a raw leaderboard, and it is not one). The guard pins each of these
+// to migration 20260909227000; none of them is compared against a row here.
+export const GROWTH_WINDOW_DAYS = 7;
+export const GROWTH_MIN_BASELINE_SERVED = 10;
+export const GROWTH_MIN_NET_ADD = 4;
+export const GROWTH_MIN_RATE = 0.25;
+export const GROWTH_MIN_TENURE_DAYS = 21;
+
+export type GrowthVerdict = "grew" | "no-growth" | "unknown";
+/** The RPC's reasons, plus `unread` for "no row reached the client" — the
+ *  batch in flight, the token past the cap, the RPC failed, or a vocabulary
+ *  this build does not know. All of those are our side. */
+export type GrowthUnknownReason =
+  | "excluded" | "series_stale" | "no_series" | "too_new" | "series_gap" | "too_small"
+  | "pool_replaced" | "not_in_ledger" | "windowed_read" | "failed_read" | "ledger_gap" | "unread";
+const GROWTH_REASONS: readonly GrowthUnknownReason[] = [
+  "excluded", "series_stale", "no_series", "too_new", "series_gap", "too_small",
+  "pool_replaced", "not_in_ledger", "windowed_read", "failed_read", "ledger_gap",
+];
+/** How the set-aside sentence groups the reasons: the seven families a reader
+ *  can act on, each with its own sentence. */
+export type GrowthReasonFamily = "read" | "series" | "tooNew" | "tooSmall" | "replaced" | "excluded" | "unread";
+export function growthReasonFamily(r: GrowthUnknownReason): GrowthReasonFamily {
+  switch (r) {
+    case "not_in_ledger": case "windowed_read": case "failed_read": case "ledger_gap": return "read";
+    case "no_series": case "series_gap": case "series_stale": return "series";
+    case "too_new": return "tooNew";
+    case "too_small": return "tooSmall";
+    case "pool_replaced": return "replaced";
+    case "excluded": return "excluded";
+    default: return "unread";
+  }
+}
+
+/**
+ * THE ONLY PLACE THE GROWTH VERDICT IS READ. It reads the RPC's word and
+ * nothing else: no row is unknown, a word outside the vocabulary (an older or
+ * newer function still deployed) is unknown, and neither is ever no-growth.
+ */
+export function growthVerdict(g: Pick<GrowthRow, "verdict"> | null | undefined): GrowthVerdict {
+  if (!g) return "unknown";
+  if (g.verdict === "grew" || g.verdict === "no-growth") return g.verdict;
+  return "unknown";
+}
+export function growthUnknownReason(g: Pick<GrowthRow, "verdict" | "unknown_reason"> | null | undefined): GrowthUnknownReason | null {
+  if (growthVerdict(g) !== "unknown") return null;
+  const r = g?.unknown_reason;
+  return (GROWTH_REASONS as readonly string[]).includes(r ?? "") ? (r as GrowthUnknownReason) : "unread";
+}
+
+/** THE COMBINATION, ONCE. See the block comment above for the three-valued OR. */
+export type ActivelyHiringVerdict = "positive" | "negative" | "unknown";
+export function activelyHiringVerdict(closes: HiringRecordVerdict, growth: GrowthVerdict): ActivelyHiringVerdict {
+  if (closes === "closes" || growth === "grew") return "positive";
+  if (closes === "unknown" || growth === "unknown") return "unknown";
+  return "negative";
+}
+/** Which half admitted a positive row, so the copy can say so. */
+export type AdmittedBy = "closes" | "grew" | "both";
+export function admittedBy(closes: HiringRecordVerdict, growth: GrowthVerdict): AdmittedBy | null {
+  const c = closes === "closes";
+  const g = growth === "grew";
+  return c && g ? "both" : c ? "closes" : g ? "grew" : null;
+}
+
+/** What the filter kept, what it set aside, and why — BOTH halves counted. */
+export interface HiringSignalPartition<T> extends HiringRecordPartition<T> {
+  /** Of `shown`: rows admitted by takedowns alone, by growth alone, by both. */
+  admitted: { closes: number; grew: number; both: number };
+  /** Of `setAside`: distinct employers whose closure record is unread. */
+  noClosureEmployers: number;
+  /** Of `setAside`: distinct employers whose growth reading is unknown. */
+  growthUnreadEmployers: number;
+  /** Of `setAside`: distinct employers per growth reason family. */
+  growthReasons: Record<GrowthReasonFamily, number>;
+}
+
+/**
+ * THE FILTER, AS AN ACCOUNTING, OVER BOTH HALVES. Verdicts are combined by
+ * activelyHiringVerdict and nowhere else; the piles are the same three as
+ * partitionByHiringRecord, and the set-aside pile is broken out by which half
+ * was unread and, for growth, by why — so the sentence under the results can
+ * count each reason rather than gesture at "some employers".
+ */
+export function partitionByHiringSignal<T extends { token?: string | null }>(
+  rows: readonly T[],
+  closesOf: (tok?: string | null) => HiringRecordVerdict,
+  growthOf: (tok?: string | null) => Pick<GrowthRow, "verdict" | "unknown_reason"> | null | undefined,
+): HiringSignalPartition<T> {
+  const shown: T[] = [];
+  const setAside: T[] = [];
+  const setAsideTokens = new Set<string>();
+  const noClosure = new Set<string>();
+  const growthUnread = new Set<string>();
+  const byFamily: Record<GrowthReasonFamily, Set<string>> = {
+    read: new Set(), series: new Set(), tooNew: new Set(), tooSmall: new Set(), replaced: new Set(), excluded: new Set(), unread: new Set(),
+  };
+  const admitted = { closes: 0, grew: 0, both: 0 };
+  let noPattern = 0;
+  for (const r of rows) {
+    const closes = closesOf(r.token);
+    const g = growthOf(r.token);
+    const growth = growthVerdict(g);
+    const v = activelyHiringVerdict(closes, growth);
+    if (v === "positive") {
+      shown.push(r);
+      const by = admittedBy(closes, growth);
+      if (by) admitted[by] += 1;
+      continue;
+    }
+    if (v === "unknown") {
+      setAside.push(r);
+      if (r.token) {
+        setAsideTokens.add(r.token);
+        if (closes === "unknown") noClosure.add(r.token);
+        if (growth === "unknown") {
+          growthUnread.add(r.token);
+          byFamily[growthReasonFamily(growthUnknownReason(g) ?? "unread")].add(r.token);
+        }
+      }
+      continue;
+    }
+    noPattern += 1;
+  }
+  const growthReasons = Object.fromEntries(
+    (Object.keys(byFamily) as GrowthReasonFamily[]).map((k) => [k, byFamily[k].size]),
+  ) as Record<GrowthReasonFamily, number>;
+  return {
+    shown, setAside, setAsideEmployers: setAsideTokens.size, noPattern,
+    admitted, noClosureEmployers: noClosure.size, growthUnreadEmployers: growthUnread.size, growthReasons,
+  };
+}
+
+/** COERCE AT THE BOUNDARY, ONCE — the same rule as normaliseCurve. `numeric`
+ *  reaches the client as a string on some PostgREST builds and every render
+ *  below multiplies or compares it. A column that arrives absent reads as
+ *  null, never as 0: a missing number is not a zero. */
+function normaliseGrowth(row: GrowthRow): GrowthRow {
+  const n = (v: unknown): number | null => {
+    if (v === null || v === undefined) return null;
+    const x = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(x) ? x : null;
+  };
+  return {
+    ...row,
+    baseline_served: n(row.baseline_served),
+    latest_served: n(row.latest_served),
+    net: n(row.net),
+    rate: n(row.rate),
+    tenure_days: n(row.tenure_days),
+    untracked_departures: n(row.untracked_departures),
+    removed_departures: n(row.removed_departures),
+    observed_arrivals: n(row.observed_arrivals),
+    days_observed: n(row.days_observed) ?? 0,
+    days_expected: n(row.days_expected) ?? 0,
+    ledger_days_expected: n(row.ledger_days_expected) ?? 0,
+    board_days_ok: n(row.board_days_ok) ?? 0,
+    board_days_bad: n(row.board_days_bad) ?? 0,
+    tenure_censored: row.tenure_censored === true,
+  };
+}
+/** An ISO observation day as a short calendar label in the reader's language.
+ *  UTC on both ends: snapshot_date is a date, and shifting it through the
+ *  browser's zone would print the day before for every reader west of it. */
+export function dayLabel(iso: string | null | undefined, lang: string): string {
+  if (!iso) return "";
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  try {
+    return d.toLocaleDateString(lang, { month: "short", day: "numeric", timeZone: "UTC" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+/** A signed growth rate as whole percent for copy. */
+const growthPct = (g: Pick<GrowthRow, "rate">) => Math.round((g.rate ?? 0) * 100);
 // The horizon the curve is read at, everywhere. It is not a threshold on a
 // midpoint any more — it is the day the fill rate is quoted for, and the day a
 // posting has to outlive before this page will say it has been up a long time.
@@ -2524,6 +2780,9 @@ export default function Jobs() {
   };
   // Company-page fill curve (lifecycle-derived; only fetched on a company page).
   const [hiringCurve, setHiringCurve] = useState<FillCurve | null>(null);
+  // The company page's growth row (get_company_growth, one token), beside the
+  // curve: the health panel prints the rate with its window and both dates.
+  const [landerGrowth, setLanderGrowth] = useState<GrowthRow | null>(null);
   // The employer's OWN advertised posting total at our last fetch, which the
   // curve RPC does not carry. When it exceeds our stored rows the fetch was
   // windowed and open_roles is a floor, so the panel prints "N+" rather than a
@@ -2571,6 +2830,14 @@ export default function Jobs() {
   // quieter one. Surfaces that ASSERT the gap wait for this to clear; surfaces
   // that merely withhold praise do not have to.
   const [healthPending, setHealthPending] = useState(false);
+  // THE OTHER HALF'S PLUMBING, ONE-FOR-ONE WITH THE CURVE'S: a per-token row
+  // from get_company_growth, the dedupe ref, and the same two flags with the
+  // same meaning. A growth read still in flight is not a board that did not
+  // grow, and a failed one is our side. See growthVerdict.
+  const growthAttempted = useRef<Set<string>>(new Set());
+  const [growthByToken, setGrowthByToken] = useState<Record<string, GrowthRow>>({});
+  const [growthFailed, setGrowthFailed] = useState(false);
+  const [growthPending, setGrowthPending] = useState(false);
   // Apply-agent: the posting whose questions we're drafting (with its fetched JD
   // and whether the user already applied — the dedup guard), and which card is
   // currently loading its description.
@@ -2884,7 +3151,7 @@ export default function Jobs() {
       title: t("jobsPage.searchSaved", "Search saved"),
       description: [
         t("jobsPage.searchSavedDesc", "Your account shows how many new postings match since your last look."),
-        activelyHiringOnly ? t("jobsPage.savedWithoutHiringFilter2", "The \u201cActively hiring\u201d filter \u2014 employers we have watched take roles down and leave them down, which is not a count of hires and not yet a count of new postings \u2014 is applied in your browser, not on the board, so this saved search does not include it.") : "",
+        activelyHiringOnly ? t("jobsPage.savedWithoutHiringFilter3", "The “Actively hiring” filter — employers we have watched take roles down and leave them down, or whose board served at least {{minNet}} more roles ({{minRate}}%+) than {{gdays}} days earlier, counted from our own daily observation; not a count of hires and not a headcount — is applied in your browser, not on the board, so this saved search does not include it.", { minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS }) : "",
         // THE FILTERS THE NIGHTLY RUNNER CANNOT REPRODUCE, NAMED RATHER THAN
         // SAVED. send-search-digest builds its board call from a hand-listed
         // set of params; anything outside that list is stored and ignored, and
@@ -4496,6 +4763,53 @@ export default function Jobs() {
     };
   }, [jobs]);
 
+  // THE OTHER HALF, FETCHED THE SAME WAY: get_company_growth for the visible
+  // tokens, batched, deduped, cancel-safe. Same cap, same `settled` rule (only
+  // an ANSWERED read keeps its tokens), same explicit read of `error`, because
+  // every reason the curve effect gives for each of those applies here
+  // unchanged. A row per token asked comes back, so a missing row means we
+  // did not ask — never that the board did not grow.
+  useEffect(() => {
+    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x)))
+      .filter((tok) => !growthAttempted.current.has(tok))
+      .slice(0, 200);
+    if (batch.length === 0) { setGrowthPending(false); return; }
+    batch.forEach((t) => growthAttempted.current.add(t));
+    setGrowthFailed(false);
+    setGrowthPending(true);
+    let cancelled = false;
+    let settled = false;
+    const giveUp = () => {
+      if (cancelled) return;
+      setGrowthFailed(true);
+      setGrowthPending(false);
+      settled = true;
+      batch.forEach((tok) => growthAttempted.current.delete(tok));
+    };
+    (async () => {
+      try {
+        const { data, error } = await (supabase as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+        }).rpc("get_company_growth", { p_tokens: batch });
+        if (cancelled) return;
+        if (error || !Array.isArray(data)) { giveUp(); return; }
+        setGrowthByToken((prev) => {
+          const next = { ...prev };
+          for (const row of data as GrowthRow[]) {
+            if (row?.company_token) next[row.company_token] = normaliseGrowth(row);
+          }
+          return next;
+        });
+        settled = true;
+        setGrowthPending(false);
+      } catch { giveUp(); }
+    })();
+    return () => {
+      cancelled = true;
+      if (!settled) batch.forEach((tok) => growthAttempted.current.delete(tok));
+    };
+  }, [jobs]);
+
   /** THE PAGE'S ONE READING OF THE CLOSURE RECORD. Three answers, and every
    *  surface below branches on all three — see hiringRecordVerdict for why the
    *  third one exists and what it cost to not have it. */
@@ -4504,23 +4818,84 @@ export default function Jobs() {
       hiringRecordVerdict(tok ? curveByToken[tok] : undefined),
     [curveByToken],
   );
+  /** THE PAGE'S ONE READING OF THE GROWTH ROW: the row itself, so a surface can
+   *  print the dates and counts, and growthVerdict / growthUnknownReason read
+   *  the verdict out of it. No surface reads `verdict` bare. */
+  const growthOf = useCallback(
+    (tok?: string | null): GrowthRow | undefined => (tok ? growthByToken[tok] : undefined),
+    [growthByToken],
+  );
+  /** The combined answer for one employer, through activelyHiringVerdict and
+   *  nothing else. */
+  const hiringSignalOf = useCallback(
+    (tok?: string | null): ActivelyHiringVerdict =>
+      activelyHiringVerdict(hiringRecordOf(tok), growthVerdict(growthOf(tok))),
+    [hiringRecordOf, growthOf],
+  );
 
-  /** Kept, and kept to ONE meaning: the positive verdict and nothing else. It
-   *  is a convenience over hiringRecordOf, never a second definition of the bar
-   *  — and because it is a boolean it may only ever gate a POSITIVE render. Any
-   *  site that needs to know what the false side meant must call
-   *  hiringRecordOf, which is why the guard enumerates both names. */
+  /** Kept, and kept to ONE meaning: the positive combined verdict and nothing
+   *  else. It is a convenience over hiringSignalOf, never a second definition
+   *  of the bar — and because it is a boolean it may only ever gate a POSITIVE
+   *  render. Any site that needs to know what the false side meant must call
+   *  hiringSignalOf (or the two halves), which is why the guard enumerates all
+   *  of these names. */
   const isActivelyHiring = useCallback(
-    (tok?: string) => hiringRecordOf(tok) === "closes",
-    [hiringRecordOf],
+    (tok?: string) => hiringSignalOf(tok) === "positive",
+    [hiringSignalOf],
   );
 
-  /** The filter's three piles, computed once. `setAside` is the exclusion the
-   *  copy under the results states out loud. */
+  /** The filter's three piles, computed once over BOTH halves. `setAside` is
+   *  the exclusion the copy under the results states out loud, and it now
+   *  carries which half was unread and, for growth, why. */
   const hiringPartition = useMemo(
-    () => partitionByHiringRecord(jobs, hiringRecordOf),
-    [jobs, hiringRecordOf],
+    () => partitionByHiringSignal(jobs, hiringRecordOf, growthOf),
+    [jobs, hiringRecordOf, growthOf],
   );
+  /** Both reads in flight or one: the finding half of the disclosure waits for
+   *  BOTH, because a sentence about employers may only be said about a read
+   *  that finished, and there are two reads now. */
+  const signalPending = healthPending || growthPending;
+
+  /** WHY A GROWTH READING IS UNKNOWN, as one sentence, for every tooltip and
+   *  clause on the page. Every branch names OUR gap; no branch says or implies
+   *  the employer is not hiring, and the cause is only ever the RPC's own
+   *  reason — never a guess about the board. */
+  const growthWhy = useCallback((reason: GrowthUnknownReason | null): string => {
+    switch (growthReasonFamily(reason ?? "unread")) {
+      case "read": return t("jobsPage.growthWhyRead", "we could only read part of this board, or the read failed, on at least one day of the window");
+      case "series": return t("jobsPage.growthWhySeries", "our own daily series has a gap inside the window");
+      case "tooNew": return t("jobsPage.growthWhyTooNew", "we have tracked this board for fewer than {{minTenure}} days", { minTenure: GROWTH_MIN_TENURE_DAYS });
+      case "tooSmall": return t("jobsPage.growthWhyTooSmall", "this board served fewer than {{minBaseline}} roles at the start of the window — too few for a rate", { minBaseline: GROWTH_MIN_BASELINE_SERVED });
+      case "replaced": return t("jobsPage.growthWhyReplaced", "more roles left this board during the window than it served at the start — its listings changed under us, so the two counts are not the same pool");
+      case "excluded": return t("jobsPage.growthWhyExcluded", "we set this board aside ourselves");
+      default: return t("jobsPage.growthWhyUnread", "the read has not finished, or did not answer");
+    }
+  }, [t]);
+  /** The figures a growth sentence prints: OUR two observation dates in the
+   *  reader's language, the two served counts, and the rate as whole percent. */
+  const growthFigures = useCallback((g: GrowthRow) => ({
+    latest: (g.latest_served ?? 0).toLocaleString(),
+    baseline: (g.baseline_served ?? 0).toLocaleString(),
+    latestDay: dayLabel(g.latest_day, i18n.language),
+    baselineDay: dayLabel(g.baseline_day, i18n.language),
+    pct: growthPct(g),
+  }), [i18n.language]);
+  /** THE BADGE'S TOOLTIP, BUILT IN ONE PLACE: which half admitted THIS employer
+   *  (the figures behind it), then the shared basis sentence that states both
+   *  halves, the window and the bars, and what neither is. Every "Actively
+   *  hiring" badge on the page renders through this, so the label never
+   *  stands on a surface without its basis. */
+  const hiringBadgeTip = useCallback((closes: HiringRecordVerdict, growth: GrowthVerdict, curve: FillCurve | null | undefined, g: GrowthRow | null | undefined): string => {
+    const by = admittedBy(closes, growth);
+    const basis = t("jobsPage.hiringBadgeTip3", "“Actively hiring” here means either of two things observed on an employer's own board: we watched at least {{min}} of their roles come off the board in the last {{days}} days and stay off, or the board served at least {{minNet}} more roles — at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation on days we read it in full. A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and more roles served is roles opened net of roles that came down, on one board, never a headcount.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS, minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS });
+    const n = curve?.fills_90d ?? 0;
+    const lead = by === "both" && g
+      ? t("jobsPage.hiringAdmittedBoth", "This one clears both halves: we watched {{n}} of its roles come off the board in the last {{days}} days and stay off, and its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation.", { n, days: ACTIVELY_HIRING_WINDOW_DAYS, ...growthFigures(g) })
+      : by === "grew" && g
+        ? t("jobsPage.hiringAdmittedGrew", "This one: its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation.", growthFigures(g))
+        : t("jobsPage.hiringAdmittedCloses", "This one: we watched {{n}} of its roles come off the board in the last {{days}} days and stay off.", { n, days: ACTIVELY_HIRING_WINDOW_DAYS });
+    return `${lead} ${basis}`;
+  }, [t, growthFigures]);
 
   useEffect(() => { jobsCount.current = jobs.length; }, [jobs]);
 
@@ -4924,7 +5299,7 @@ export default function Jobs() {
   // silently turn a floor into an exact number, so the older health RPC is
   // still asked for that one field, for one token, on the company page alone.
   useEffect(() => {
-    if (!landerCompany) { setHiringCurve(null); setLanderFeedTotal(null); return; }
+    if (!landerCompany) { setHiringCurve(null); setLanderFeedTotal(null); setLanderGrowth(null); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -4953,6 +5328,20 @@ export default function Jobs() {
         // Absent feed_total means "no evidence the fetch was windowed", which
         // is exactly how the panel already renders a missing value.
         if (!cancelled) setLanderFeedTotal(null);
+      }
+    })();
+    (async () => {
+      try {
+        // The growth row for this one board. `error` read explicitly for the
+        // same reason as the curve above; a failure renders as "no growth
+        // reading" (our side), never as no-growth.
+        const { data: rows, error } = await (supabase as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+        }).rpc("get_company_growth", { p_tokens: [landerCompany] });
+        const row = error || !Array.isArray(rows) ? undefined : (rows[0] as GrowthRow | undefined);
+        if (!cancelled) setLanderGrowth(row ? normaliseGrowth(row) : null);
+      } catch {
+        if (!cancelled) setLanderGrowth(null);
       }
     })();
     return () => { cancelled = true; };
@@ -5468,7 +5857,7 @@ export default function Jobs() {
       // and the count>0 filter below drops the button — correctly, because
       // switching a browser-side filter off cannot surface rows the server
       // did not send. When THIS toggle is what emptied a served page, the
-      // rescue never runs (jobs.length > 0) and the hiringSetAside2 /
+      // rescue never runs (jobs.length > 0) and the hiringSetAside3 /
       // takedownEmpty disclosure offers the way out instead — it now states the
       // exclusion whenever the filter is on, not only when the page empties. The entry exists so the chip key is
       // accounted for here rather than silently reaching the same {} through
@@ -5918,19 +6307,26 @@ export default function Jobs() {
                   // takes the unreadable branch below.
                   const detailCurve = detailJob.token ? curveByToken[detailJob.token] : undefined;
                   if (!detailCurve) return null;
-                  const slot = hiringRecordSlot(hiringRecordVerdict(detailCurve));
-                  if (slot === "positive") {
+                  // BOTH HALVES, COMBINED ONCE. The closure verdict and the
+                  // growth verdict meet in activelyHiringVerdict; the badge
+                  // says which half admitted this employer, and the unread
+                  // branches say which half we could not read.
+                  const detailGrowth = growthOf(detailJob.token);
+                  const closes = hiringRecordVerdict(detailCurve);
+                  const growth = growthVerdict(detailGrowth);
+                  const combined = activelyHiringVerdict(closes, growth);
+                  if (combined === "positive") {
                     return (
                       <span
                         className="inline-flex items-center gap-1 text-success"
-                        title={t("jobsPage.hiringBadgeTip2", "We watched at least {{min}} of this employer's roles come off the board in the last {{days}} days and stay off. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles they are posting is not yet part of it; that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+                        title={hiringBadgeTip(closes, growth, detailCurve, detailGrowth)}
                       >
                         <Activity className="w-3 h-3" />
                         {t("jobsPage.hiringBadge2", "Actively hiring")}
                       </span>
                     );
                   }
-                  if (slot === "unreadable") {
+                  if (combined === "unknown" && hiringRecordSlot(closes) === "unreadable") {
                     return (
                       <span
                         className="inline-flex items-center gap-1 text-muted-foreground"
@@ -5938,6 +6334,19 @@ export default function Jobs() {
                       >
                         <Info className="w-3 h-3" />
                         {t("jobsPage.noRecordBadge", "No closure record")}
+                      </span>
+                    );
+                  }
+                  if (combined === "unknown" && growth === "unknown") {
+                    // The closure half was read and found no pattern; the
+                    // growth half could not be read. That is still not a no.
+                    return (
+                      <span
+                        className="inline-flex items-center gap-1 text-muted-foreground"
+                        title={t("jobsPage.growthUnreadBadgeTip", "We could not read this board's posting rate: {{reason}}. That is a gap in our record, not a sign they are not hiring.", { reason: growthWhy(growthUnknownReason(detailGrowth)) })}
+                      >
+                        <Info className="w-3 h-3" />
+                        {t("jobsPage.growthUnreadBadge", "Posting rate unread")}
                       </span>
                     );
                   }
@@ -6416,6 +6825,17 @@ export default function Jobs() {
                 // windowing and a quiet fully-read board are indistinguishable
                 // from here.
                 if (hh && verdict === "unknown") clauses.push(t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched"));
+                // THE GROWTH CLAUSE, on the same three-state rule. "grew"
+                // prints both of OUR observation dates and both counts beside
+                // the rate, and says board, not employer; "unknown" names the
+                // gate that refused (and needs a row, for the same reason the
+                // closure clause does); "no-growth" is the one reading a clause
+                // may keep silent about — and if it were said, it would never
+                // be said as "shrinking".
+                const dg = growthOf(detailJob.token);
+                const dgv = growthVerdict(dg);
+                if (dg && dgv === "grew") clauses.push(t("jobsPage.verdictGrew", "its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation", growthFigures(dg)));
+                if (dg && dgv === "unknown") clauses.push(t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(dg)) }));
                 // "at least": the collector logs a relisted title once a day per
                 // company, so this count is a floor and never an exact tally.
                 if (hh && churn > fills && churn >= 10) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
@@ -7123,10 +7543,10 @@ export default function Jobs() {
                     every other surface. The open-roles condition stays: a
                     closure record with a dead board behind it is not a reason to
                     say anything encouraging. */}
-                {hiringCurve.open_roles > 0 && hiringRecordVerdict(hiringCurve) === "closes" && (
+                {hiringCurve.open_roles > 0 && activelyHiringVerdict(hiringRecordVerdict(hiringCurve), growthVerdict(landerGrowth)) === "positive" && (
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success"
-                    title={t("jobsPage.hiringBadgeTip2", "We watched at least {{min}} of this employer's roles come off the board in the last {{days}} days and stay off. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles they are posting is not yet part of it; that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+                    title={hiringBadgeTip(hiringRecordVerdict(hiringCurve), growthVerdict(landerGrowth), hiringCurve, landerGrowth)}
                   >
                     {t("jobsPage.hiringBadge2", "Actively hiring")}
                   </span>
@@ -7136,8 +7556,34 @@ export default function Jobs() {
                     {t("jobsPage.noRecordBadge", "No closure record")}
                   </span>
                 )}
+                {hiringRecordVerdict(hiringCurve) !== "unknown" && growthVerdict(landerGrowth) === "unknown" && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {t("jobsPage.growthUnreadBadge", "Posting rate unread")}
+                  </span>
+                )}
               </div>
               <ul className="space-y-1 text-[13px] text-muted-foreground">
+                {/* THE RATE, WITH ITS WINDOW AND BOTH OF OUR DATES. Three
+                    states and no fourth. A rise is roles opened net of roles
+                    that came down on this board; a fall is never rendered as
+                    shrinking, because our own de-duplication lowers a served
+                    count without the employer doing anything; and a gate that
+                    refused is named as our gap. */}
+                {landerGrowth && growthVerdict(landerGrowth) === "grew" && (
+                  <li>
+                    {t("jobsPage.hhGrowthGrew", "{{latest}} roles served on this board on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more over {{gdays}} days, counted from our own daily observation on days we read the board in full. More roles served is roles opened net of roles that came down: one board, not a headcount.", { ...growthFigures(landerGrowth), gdays: GROWTH_WINDOW_DAYS })}
+                  </li>
+                )}
+                {landerGrowth && growthVerdict(landerGrowth) === "no-growth" && (
+                  <li>
+                    {t("jobsPage.hhGrowthNone", "No rise in roles served on this board between {{baselineDay}} ({{baseline}}) and {{latestDay}} ({{latest}}), counted from our own daily observation. A lower count can be our own de-duplication and is not a claim that they are shrinking.", growthFigures(landerGrowth))}
+                  </li>
+                )}
+                {growthVerdict(landerGrowth) === "unknown" && (
+                  <li className="italic text-muted-foreground/80">
+                    {t("jobsPage.hhGrowthUnread", "No posting rate for this board yet: {{reason}}. A gap in our record, not a sign they are not hiring.", { reason: growthWhy(growthUnknownReason(landerGrowth)) })}
+                  </li>
+                )}
                 {hiringCurve.open_roles > 0 && (
                   <li>
                     {/* The employer's own advertised total exceeding our stored
@@ -8065,21 +8511,18 @@ export default function Jobs() {
               className={`hidden lg:inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 activelyHiringOnly ? "border-success bg-success/10 text-success font-semibold" : "border-border text-muted-foreground hover:text-foreground"
               }`}
-              // THE LABEL IS "ACTIVELY HIRING" AGAIN, BY OWNER DECISION ON
-              // 2026-09-09, AND THE MEASURE HAS NOT CHANGED. The predicate is
-              // still fills_90d >= ACTIVELY_HIRING_MIN_CLOSED over closures WE
-              // watched, with the same three verdicts and the same counted
-              // set-aside pile. So the label is a claim the measure does not yet
-              // fully support, and the honest way to carry it is to say, on the
-              // same surface, exactly what is measured today: takedowns, which
-              // are not hires — and NOT the rate at which an employer posts new
-              // roles. That half joins once the openings series (collecting
-              // since migration 20260909212000) holds enough days to compute a
-              // rate; no calendar date is printed because the code cannot
-              // verify one. The two older corrections still stand — it filters
-              // the rows already fetched, not the board, and a closure is not a
-              // hire.
-              title={t("jobsPage.hiringFilterTip2", "Keeps the openings already loaded on this page (not the whole board) whose employer we have watched take at least {{min}} roles down in the last {{days}} days and leave them down. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles an employer is posting is not yet part of it; that joins once we hold enough days of our own counts. Employers we hold no closure record for are set aside and counted underneath, never treated as not hiring — that can be a feed bigger than one visit can read, where no closure of theirs is observable to us, or simply nothing coming down while we watched.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+              // THE LABEL IS "ACTIVELY HIRING" AND, SINCE MIGRATION
+              // 20260909227000, BOTH HALVES OF THE CLAIM ARE MEASURED. The
+              // predicate is closes OR grew: fills_90d >= ACTIVELY_HIRING_MIN_
+              // CLOSED over closures WE watched, or a served count on the
+              // board's own series that rose by the migration's bars over its
+              // window with every read in the window whole. Three verdicts on
+              // each half, combined once in activelyHiringVerdict, and the
+              // set-aside pile is still counted — now by which half was
+              // unread. The two older corrections still stand — it filters the
+              // rows already fetched, not the board, and a closure is not a
+              // hire — and a rise in roles served is not a headcount.
+              title={t("jobsPage.hiringFilterTip3", "Keeps the openings already loaded on this page (not the whole board) whose employer clears either half of what “Actively hiring” measures: we watched at least {{min}} of their roles come off the board in the last {{days}} days and stay off, or their board served at least {{minNet}} more roles — and at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation of that board on days we read it in full. A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and a rise in roles served is roles opened net of roles that came down, on one board, not a headcount. Employers we could not read for are set aside and counted underneath with the reason, never treated as not hiring — that can be a feed bigger than one visit can read, a board too new or too small for a rate, a gap in our own daily series, or simply nothing coming down while we watched.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS, minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS })}
             >
               <Activity className="w-3 h-3" />
               {t("jobsPage.hiringFilter2", "Actively hiring")}
@@ -8308,19 +8751,32 @@ export default function Jobs() {
                 label is on screen under every one of those conditions. */}
             {activelyHiringOnly && (
               <span className="text-[11px] text-muted-foreground">
-                {t("jobsPage.hiringBasis2", "“Actively hiring” here means employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down. A takedown is not a hire, and how many new roles an employer is posting is not yet part of it — that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+                {t("jobsPage.hiringBasis3", "“Actively hiring” here means either half: employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down, or a board that served at least {{minNet}} more roles — at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation on days we read it in full. A takedown is not a hire, and a rise in roles served is roles opened net of roles that came down — one board, not a headcount.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS, minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS })}
               </span>
             )}
             {activelyHiringOnly && (healthFailed
-              || (healthPending && jobs.length > 0)
-              || (!healthPending && (hiringPartition.setAside.length > 0 || (jobs.length > 0 && hiringPartition.shown.length === 0)))) && (
+              || (signalPending && jobs.length > 0)
+              || (!signalPending && (growthFailed || hiringPartition.setAside.length > 0 || (jobs.length > 0 && hiringPartition.shown.length === 0)))) && (
               <span className="text-[11px] text-muted-foreground">
                 {healthFailed ? (
                   t("jobsPage.activelyHiringUnavailable", "We could not read hiring-pace data just now, so this filter has nothing to match on — that is our side, not the market's. Turn it off to see all verified roles.")
-                ) : healthPending ? (
-                  t("jobsPage.takedownReading", "Still reading our closure record for these employers. An unfinished read is not an empty one, so nothing on screen yet is a finding about anybody.")
+                ) : signalPending ? (
+                  /* Both reads are waited for here (signalPending is the
+                     union), so the sentence names both: once the closure
+                     batch has settled and only get_company_growth is in
+                     flight, "still reading our closure record" would name
+                     the wrong read. New key, retired the old one in nine. */
+                  t("jobsPage.signalReading", "Still reading our closure record and posting rates for these employers. An unfinished read is not an empty one, so nothing on screen yet is a finding about anybody.")
                 ) : (
                   <>
+                    {/* A FAILED GROWTH READ IS OURS AND IS SAID FIRST. The
+                        closure half still matches, so the page is not empty
+                        by our doing; but every employer the growth half would
+                        have admitted is in the set-aside pile below under
+                        "not read yet", and this sentence says why. */}
+                    {growthFailed && (
+                      <>{t("jobsPage.growthUnavailable", "We could not read posting rates just now — that is our side, not the market's — so only the takedown half of this filter can match until it comes back.")}{" "}</>
+                    )}
                     {hiringPartition.setAside.length > 0 && (
                       <>
                         {/* "AT LEAST {{c}}": setAsideEmployers is a DEDUPE on
@@ -8328,17 +8784,35 @@ export default function Jobs() {
                             list but cannot be attributed to an employer at all,
                             so the employer count is a floor and never an
                             equality — the same rule the relist counts follow.
-                            THE CAUSE IS NOT ASSERTED. This said their boards are
-                            bigger than one visit can read. Nothing the client
-                            holds can tell that apart from an employer on a board
-                            we read to the end every visit who simply took
-                            nothing down, and naming a cause we did not measure
-                            is the original defect with the sign flipped. */}
-                        {t("jobsPage.hiringSetAside2", "Set aside: {{n}} openings at at least {{c}} employers we hold no closure record for — we have never watched a posting of theirs come off the board. That can be a board bigger than one visit can read, where no closure of theirs is observable to us at all, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. Either way it is a gap in our record, not evidence about their hiring. What “Actively hiring” measures today is only employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down — a takedown is not a hire, and how many new roles an employer is posting is not yet part of it.", {
+                            THE CAUSE IS NOT ASSERTED for the closure half:
+                            nothing the client holds can tell a windowed board
+                            from a fully-read one that simply took nothing
+                            down. FOR THE GROWTH HALF THE CAUSE IS THE RPC'S OWN
+                            REASON, counted per family — the read, the series,
+                            too new, too small, set aside by us, not yet read —
+                            never a guess. Both buckets are counted here. */}
+                        {t("jobsPage.hiringSetAside3", "Set aside: {{n}} openings at at least {{c}} employers we cannot answer for — at least one of the two halves is unread for each, and nothing we did read cleared the bar. {{noClosure}} we hold no closure record for: we have never watched a posting of theirs come off the board, which can be a board bigger than one visit can read, where no closure of theirs is observable to us at all, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. {{growthUnread}} we could not read a posting rate for: {{reasons}}. All of it is a gap in our record, not evidence about their hiring. What “Actively hiring” measures is employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down, or a board that served at least {{minNet}} more roles — at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation on days we read it in full. A takedown is not a hire, and more roles served is not a headcount.", {
                           n: hiringPartition.setAside.length.toLocaleString(),
                           c: hiringPartition.setAsideEmployers.toLocaleString(),
+                          noClosure: hiringPartition.noClosureEmployers.toLocaleString(),
+                          growthUnread: hiringPartition.growthUnreadEmployers.toLocaleString(),
                           min: ACTIVELY_HIRING_MIN_CLOSED,
                           days: ACTIVELY_HIRING_WINDOW_DAYS,
+                          minNet: GROWTH_MIN_NET_ADD,
+                          minRate: Math.round(GROWTH_MIN_RATE * 100),
+                          gdays: GROWTH_WINDOW_DAYS,
+                          reasons: ([
+                            ["read", t("jobsPage.growthReasonRead", "{{c}} on boards we could only read part of, or failed to read, on some day of the window", { c: hiringPartition.growthReasons.read.toLocaleString() })],
+                            ["series", t("jobsPage.growthReasonSeries", "{{c}} with a gap in our own daily series", { c: hiringPartition.growthReasons.series.toLocaleString() })],
+                            ["tooNew", t("jobsPage.growthReasonTooNew", "{{c}} on boards we have tracked for fewer than {{minTenure}} days", { c: hiringPartition.growthReasons.tooNew.toLocaleString(), minTenure: GROWTH_MIN_TENURE_DAYS })],
+                            ["tooSmall", t("jobsPage.growthReasonTooSmall", "{{c}} on boards serving fewer than {{minBaseline}} roles at the window's start", { c: hiringPartition.growthReasons.tooSmall.toLocaleString(), minBaseline: GROWTH_MIN_BASELINE_SERVED })],
+                            ["replaced", t("jobsPage.growthReasonReplaced", "{{c}} on boards whose listings turned over entirely inside the window", { c: hiringPartition.growthReasons.replaced.toLocaleString() })],
+                            ["excluded", t("jobsPage.growthReasonExcluded", "{{c}} set aside by us", { c: hiringPartition.growthReasons.excluded.toLocaleString() })],
+                            ["unread", t("jobsPage.growthReasonUnread", "{{c}} not read yet", { c: hiringPartition.growthReasons.unread.toLocaleString() })],
+                          ] as const)
+                            .filter(([fam]) => hiringPartition.growthReasons[fam] > 0)
+                            .map(([, s]) => s)
+                            .join("; ") || t("jobsPage.growthReasonNone", "none"),
                         })}{" "}
                         <button
                           type="button"
@@ -9910,13 +10384,13 @@ export default function Jobs() {
                                 return (
                                   <span
                                     className="inline-flex items-center gap-1 font-medium text-success whitespace-nowrap"
-                                    /* No tenure floor: a feed cycling roles
-                                       every three days clears this count. The
-                                       label is "Actively hiring" again (owner
-                                       decision), so the tooltip is the shared
-                                       basis sentence: what we watched, not a
-                                       hire, new postings not yet counted. */
-                                    title={t("jobsPage.hiringBadgeTip2", "We watched at least {{min}} of this employer's roles come off the board in the last {{days}} days and stay off. That is the whole of what “Actively hiring” measures today: a takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and how many new roles they are posting is not yet part of it; that joins once we hold enough days of our own counts.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS })}
+                                    /* No tenure floor on the closure half: a
+                                       feed cycling roles every three days
+                                       clears that count. The tooltip is built
+                                       once, in hiringBadgeTip: which half
+                                       admitted THIS employer, with its figures,
+                                       then the shared basis sentence. */
+                                    title={hiringBadgeTip(hiringRecordOf(job.token), growthVerdict(growthOf(job.token)), hh, growthOf(job.token))}
                                   >
                                     <Activity className="w-3 h-3 shrink-0" />
                                     {t("jobsPage.hiringBadge2", "Actively hiring")}
@@ -9932,6 +10406,9 @@ export default function Jobs() {
                               // It is now a muted, explicitly non-committal
                               // chip, and it is deliberately the LAST branch —
                               // a caution or a measured pace still outranks it.
+                              // Two unread shapes, and the closure one wins the
+                              // slot when both are unread: it is the older gap
+                              // and the one a reader has learnt to expect.
                               if (hiringRecordSlot(hiringRecordOf(job.token)) === "unreadable") {
                                 return (
                                   <span
@@ -9940,6 +10417,17 @@ export default function Jobs() {
                                   >
                                     <Info className="w-3 h-3 shrink-0" />
                                     {t("jobsPage.noRecordBadge", "No closure record")}
+                                  </span>
+                                );
+                              }
+                              if (hiringSignalOf(job.token) === "unknown" && growthVerdict(growthOf(job.token)) === "unknown") {
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-muted-foreground whitespace-nowrap"
+                                    title={t("jobsPage.growthUnreadBadgeTip", "We could not read this board's posting rate: {{reason}}. That is a gap in our record, not a sign they are not hiring.", { reason: growthWhy(growthUnknownReason(growthOf(job.token))) })}
+                                  >
+                                    <Info className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.growthUnreadBadge", "Posting rate unread")}
                                   </span>
                                 );
                               }
@@ -10929,6 +11417,18 @@ export default function Jobs() {
                       {hh && hiringRecordVerdict(hh) === "unknown" && (
                         <li className="text-muted-foreground">{t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched")}</li>
                       )}
+                      {/* THE GROWTH ROW, side by side. Both of OUR dates and
+                          both counts travel with the rate, so two employers'
+                          rises are compared on the same window; an unread
+                          reading is a neutral line naming our gap, and needs
+                          a row for the same reason the closure line does. */}
+                      {(() => {
+                        const cg = growthOf(j.token);
+                        const cgv = growthVerdict(cg);
+                        if (cg && cgv === "grew") return <li className="text-success">{t("jobsPage.verdictGrew", "its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation", growthFigures(cg))}</li>;
+                        if (cg && cgv === "unknown") return <li className="text-muted-foreground">{t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(cg)) })}</li>;
+                        return null;
+                      })()}
                       {hh && hh.relists_90d > hh.fills_90d && hh.relists_90d >= 10 && (
                         <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relists_90d })}</li>
                       )}

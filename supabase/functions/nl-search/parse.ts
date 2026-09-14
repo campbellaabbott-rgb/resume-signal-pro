@@ -340,15 +340,18 @@ export const NL_FILTERS: readonly NlFilter[] = [
     // THE MODEL'S WORDS COME BACK ON SCREEN. Jobs.tsx renders the parser's
     // `interpreted` chips verbatim beside the results, so the prompt has to
     // carry the same words and the same honesty as the chip it maps to. The
-    // chip reads "Actively hiring" again (owner decision, 2026-09-09) and the
-    // measure behind it is unchanged: postings we watched come off the board
-    // and stay off. So the prompt names the label AND its basis in one breath,
-    // and says outright that a takedown is not a hire and that new-posting
-    // counts are not yet part of it — "fill" and "proven hirers" stay out,
-    // because either would reassert a hire that a closure can never evidence.
-    prompt: "true when the user asks for employers that are actively hiring. On this board that means one observed thing: employers whose postings we have watched come off the board and stay off — a takedown is not a hire, and how many new roles an employer posts is not yet part of it. Also true for: employers that move their roles / no ghost jobs.",
+    // chip reads "Actively hiring" again (owner decision, 2026-09-09) and since
+    // migration 20260909227000 the measure behind it has two halves, combined
+    // once in Jobs.tsx activelyHiringVerdict: postings we watched come off the
+    // board and stay off, OR a board serving more roles than it did seven days
+    // earlier on our own daily observation. So the prompt names the label AND
+    // both halves in one breath, and says outright that a takedown is not a
+    // hire and a rise in roles served is not a headcount — "fill" and "proven
+    // hirers" stay out, because either would reassert a hire that neither
+    // observation can evidence.
+    prompt: "true when the user asks for employers that are actively hiring. On this board that means one of two observed things: employers whose postings we have watched come off the board and stay off — a takedown is not a hire — or a board serving more roles than it did seven days earlier, on our own daily observation of that board, which is not a headcount. Also true for: employers that move their roles / no ghost jobs / teams that are growing.",
     type: "boolean",
-    schema: "true only when the user wants employers that are actively hiring — meaning, here, employers whose postings we have watched come down and stay down",
+    schema: "true only when the user wants employers that are actively hiring — meaning, here, employers whose postings we have watched come down and stay down, or whose board serves more roles than it did seven days earlier",
     take: flag,
   },
   {

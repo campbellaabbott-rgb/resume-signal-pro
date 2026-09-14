@@ -99,6 +99,43 @@ const numOr = (v: unknown): number | null => {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : null;
 };
+/** THE LEADERBOARD AS THE HOURLY CACHE CARRIES IT (20260909228000).
+ *
+ *  get_actively_hiring_companies(20) answered in 13.8-25.7s across five live
+ *  runs on 2026-09-14, one of them brushing the function's own 25s header,
+ *  and this page read it LIVE on every visit -- so the section that gives the
+ *  page its name arrived last or not at all, while the six figures beside it
+ *  came off a 0.24s cache. The refresh that writes those six now writes this
+ *  as a seventh part: `{ computed_at, rows }`, carried forward whole and
+ *  named in stale_parts when the hourly recomputation fails.
+ *
+ *  What this reader refuses, and why each refusal falls back to the live RPC
+ *  rather than rendering: a missing key (the refresh has not run since the
+ *  migration, or an older row is still being served); a JSON null (the first
+ *  run failed with nothing to carry); a part with no stamp (a statistic names
+ *  its date basis, and a list that cannot say when it was computed is not
+ *  published here); an empty list (the refresh never writes one -- it carries
+ *  instead -- so an empty array is a shape we do not recognise, not a
+ *  finding that nobody is hiring). `carried` is the refresh's own word for
+ *  it: the part is in stale_parts, so these rows are older than the row they
+ *  arrived in, and the page must say so beside the date. */
+export interface CachedLeaderboard {
+  rows: Leader[];
+  /** The part's OWN stamp -- the run that produced these rows, which on a
+   *  carried run is not the run that wrote the cache row. Never the row's
+   *  top-level computed_at, never ghost_stats'. */
+  computedAt: string;
+  carried: boolean;
+}
+export const readCachedLeaderboard = (cache: Record<string, unknown> | null): CachedLeaderboard | null => {
+  const part = cache?.actively_hiring;
+  if (!part || typeof part !== "object" || Array.isArray(part)) return null;
+  const { computed_at, rows } = part as { computed_at?: unknown; rows?: unknown };
+  if (typeof computed_at !== "string" || Number.isNaN(new Date(computed_at).getTime())) return null;
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const stale = Array.isArray(cache?.stale_parts) ? (cache!.stale_parts as unknown[]) : [];
+  return { rows: rows as Leader[], computedAt: computed_at, carried: stale.includes("actively_hiring") };
+};
 /** The two columns of get_company_fill_curve this page uses to re-state the
  *  leaderboard's count on the SAME population the curve publishes.
  *
@@ -305,6 +342,21 @@ export default function GhostJobIndex() {
    *  in, so the rows degrade to a count-free badge rather than to a stale one. */
   const [leaderCurve, setLeaderCurve] = useState<Record<string, LeaderCurve>>({});
   const [curveGuardRan, setCurveGuardRan] = useState(false);
+  /** When the leaderboard's rows were computed -- the cache part's OWN stamp.
+   *  Null when the rows were read live, exactly as statsComputedAt is null
+   *  for live figures: a live read has no stamp to print and borrows none. */
+  const [leaderboardComputedAt, setLeaderboardComputedAt] = useState<string | null>(null);
+  /** The refresh named 'actively_hiring' in stale_parts: the rows are a
+   *  carry-forward from an earlier run, and the date beside them says so. */
+  const [leaderboardCarried, setLeaderboardCarried] = useState(false);
+  /** The cache held no leaderboard AND the live read failed. Distinguished
+   *  from "no rows" so the section renders its unavailable state rather than
+   *  nothing -- an absent list under a heading about who is hiring reads as
+   *  a finding, and this is not one. */
+  const [leadersUnavailable, setLeadersUnavailable] = useState(false);
+  const leaderboardStaleHours = leaderboardComputedAt
+    ? (Date.now() - new Date(leaderboardComputedAt).getTime()) / 3_600_000
+    : null;
   // WAS get_employer_benchmarks — a median over "roles that stayed posted at
   // least a week", which is to say a median drawn from a window of [7, 30]
   // days by construction. It could not have come out anywhere but ~15 whatever
@@ -328,7 +380,9 @@ export default function GhostJobIndex() {
       try {
         // Fast path: the hourly stats cache supplies the two slow aggregates
         // (ghost_stats ~4.9s live, date_coverage which otherwise 500s). The
-        // fast calls (leaders, freshness, audit) always run live below.
+        // fast calls (freshness, audit) run live below; the leaderboard reads
+        // the cache's seventh part first (20260909228000) and goes live only
+        // when that part is unusable.
         const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
         const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
         // THE STATS TILES DO NOT WAIT FOR THE LEADERBOARD. They used to sit
@@ -345,15 +399,45 @@ export default function GhostJobIndex() {
           const early = Array.isArray(s.data) ? (s.data[0] as Stats) : null;
           if (early) { setStats(early); setStatsLoading(false); }
         }
-        const [l, a, f, b] = await Promise.all([
-          // THE ONE CALL IN THIS ARRAY WITH NO .catch. Every sibling is wrapped
-          // in Promise.resolve(...).catch(() => ({ data: null })) for the reason
+        // THE LEADERBOARD COMES OFF THE HOURLY CACHE, LIKE THE TILES DO.
+        //
+        // It sat in the Promise.all below as the one live call that took
+        // 13.8-25.7s (five runs, 2026-09-14), so the section that names this
+        // page painted last, or not at all when the RPC's own 25s header
+        // fired. The refresh that computes the six cached parts now computes
+        // this one too (20260909228000); the page reads it first, with the
+        // part's OWN computed_at, and only when the cache carries no usable
+        // leaderboard -- key absent, part null, unstamped or empty -- does it
+        // fall back to the live RPC. That fallback is deliberately DETACHED:
+        // it is not awaited by anything, so neither the tiles (already
+        // painted above) nor the audit, freshness and field-curve reads below
+        // wait on it. It resolves into the same state the cache would have
+        // filled, minus the stamp, and a failed fallback marks the section
+        // unavailable rather than leaving it absent.
+        const cachedBoard = readCachedLeaderboard(cache);
+        if (cachedBoard) {
+          setLeaders(cachedBoard.rows);
+          setLeaderboardComputedAt(cachedBoard.computedAt);
+          setLeaderboardCarried(cachedBoard.carried);
+        } else {
+          // Promise.resolve first: a PostgREST builder is a thenable WITHOUT
+          // .catch, and calling .catch on one throws synchronously.
+          void Promise.resolve(rpc("get_actively_hiring_companies", { p_limit: 20 }))
+            .catch(() => ({ data: null }))
+            .then((l) => {
+              if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
+              else setLeadersUnavailable(true);
+            });
+        }
+        const [a, f, b] = await Promise.all([
+          // EVERY CALL IN THIS ARRAY CARRIES ITS OWN .catch, wrapped in
+          // Promise.resolve(...).catch(() => ({ data: null })) for the reason
           // the comment two entries down records: a PostgREST thenable that
           // rejects kills the whole Promise.all, and "verified live: every tile
-          // went —". This one was left bare, so a single failed leaderboard read
-          // blanked total_open, total_companies and median_days_open — three
-          // numbers that were sitting in the stats cache the whole time.
-          Promise.resolve(rpc("get_actively_hiring_companies", { p_limit: 20 })).catch(() => ({ data: null })),
+          // went —". The leaderboard read used to sit here bare, so a single
+          // failed leaderboard read blanked total_open, total_companies and
+          // median_days_open — three numbers that were sitting in the stats
+          // cache the whole time. It has since left this array altogether.
           // The daily self-audit result. This was a direct table read on
           // job_board_meta, under a comment asserting the table was
           // public-read. It is not — anon gets 42501 permission denied — so
@@ -397,7 +481,6 @@ export default function GhostJobIndex() {
           srow = Array.isArray(s2.data) ? (s2.data[0] as Stats) : null;
         }
         if (srow) setStats(srow);
-        if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
         if (Array.isArray(b.data)) setFillCurve(b.data as FillCurveRow[]);
         const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
@@ -865,6 +948,24 @@ export default function GhostJobIndex() {
               <Briefcase className="w-4 h-4 text-primary" /> Actively hiring
               <span className="text-xs font-normal text-muted-foreground">— measured as roles taken down and not re-listed</span>
             </h2>
+            {/* THE LEADERBOARD'S OWN DATE. These rows come off the hourly
+                cache with the stamp of the run that computed THEM, which on a
+                carried run is not the run that wrote the row and can sit
+                hours behind the tiles above. So the line prints
+                leaderboardComputedAt and nothing else: not the row's
+                computed_at, not the tiles' statsComputedAt. A live read has
+                no stamp and prints no line. When the refresh named the part
+                stale the sentence says "carried" beside the date, because an
+                older list served under a fresh-looking heading is the shape
+                the stats tiles were caught in for four days in August. */}
+            {leaderboardComputedAt && (
+              <p className="text-[11px] text-muted-foreground mb-2">
+                {`Ranking as of ${new Date(leaderboardComputedAt).toLocaleString()}`}
+                {leaderboardCarried
+                  ? " — carried forward from that earlier run: the latest hourly recomputation of this ranking did not finish, so these rows date from that earlier run, not from the latest hourly refresh."
+                  : " — recomputed hourly; the open-roles count on each row is from the same run."}
+              </p>
+            )}
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               {shownLeaders.map((c, i) => (
                 <Link
@@ -894,7 +995,15 @@ export default function GhostJobIndex() {
                       </span>
                     );
                   })()}
-                  <span className="text-[11px] text-muted-foreground shrink-0 w-24 text-right">{c.open_roles} open now</span>
+                  {/* "now" is the tiles' rule applied here: true off a
+                      cache under three hours old, and dropped once the list
+                      is older than that or carried, when the count is dated
+                      by the line above instead. */}
+                  <span className="text-[11px] text-muted-foreground shrink-0 w-24 text-right">
+                    {leaderboardCarried || (leaderboardStaleHours !== null && leaderboardStaleHours >= 3)
+                      ? `${c.open_roles} open then`
+                      : `${c.open_roles} open now`}
+                  </span>
                 </Link>
               ))}
             </div>
@@ -919,9 +1028,32 @@ export default function GhostJobIndex() {
               inactivity. The heading says “Actively hiring”, and here that means exactly one observed thing:
               roles we watched taken down and not re-listed. A takedown is not a hire — a filled role, a
               cancelled one and a withdrawn one look identical from here — and how many new roles an employer
-              is posting is not yet part of this ranking; that joins once we hold enough days of our own
-              counts. Until then the employers above are the ones whose takedowns we could see, not the ones
-              hiring most.
+              is posting is no part of this ranking: that is read per board on /jobs, beside each employer,
+              as a rate with its own gates, and it stays there. The employers above are the ones whose
+              takedowns we could see, not the ones hiring most.
+            </p>
+          </div>
+        )}
+        {/* THE SECTION'S UNAVAILABLE STATE, rendered instead of nothing. The
+            cache carried no usable leaderboard and the live read failed, so
+            there is no list; but a heading about who is hiring that simply
+            does not appear is indistinguishable from a page that found
+            nobody, and this page's subject is whether numbers can be
+            trusted. Same heading, so the reader knows which section is
+            missing; a sentence that says we could not read the list, which is
+            not a finding about anyone. Not shown for a list the live read
+            answered EMPTY -- that is an answer, and the section stays absent
+            as it always has. */}
+        {shownLeaders.length === 0 && leadersUnavailable && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+              <Briefcase className="w-4 h-4 text-primary" /> Actively hiring
+              <span className="text-xs font-normal text-muted-foreground">— measured as roles taken down and not re-listed</span>
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              This ranking is unavailable at the moment: the hourly cache holds no copy of it and the live
+              recomputation did not answer. That is a fact about our read, not about any employer — an
+              unreadable list is not an empty one.
             </p>
           </div>
         )}

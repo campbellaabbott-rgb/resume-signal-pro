@@ -69,15 +69,32 @@ describe("the two exposed functions are revoked by NAME", () => {
 describe("the pattern, so the next one is not written the same way", () => {
   // A service-role-only function must revoke from anon and authenticated BY
   // NAME. Revoking from PUBLIC alone is necessary and not sufficient here.
-  const SERVICE_ONLY = ["record_tenant_wall", "reconcile_stripe_tick"];
+  // category_knn and load_category_anchors (20260909224500 / 225000): a
+  // definer reader and writer over the RLS-on anchor table of the Other-
+  // bucket classifier; promote_category and revert_category (225500 /
+  // 226000): the definer writers of job_board_postings.category -- all four
+  // service-role only by design.
+  const SERVICE_ONLY = ["record_tenant_wall", "reconcile_stripe_tick", "category_knn", "load_category_anchors", "promote_category", "revert_category"];
 
-  it("every service-role-only function names anon and authenticated in a revoke", () => {
+  // PER STATEMENT: the phrase must sit on the function's own REVOKE, not
+  // anywhere in a file that happens to hold it (a table REVOKE in the same
+  // migration carried the phrase and satisfied a whole-file match while the
+  // function's own REVOKE said FROM PUBLIC alone).
+  const revokedByName = (fn: string) =>
+    new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}\\([^)]*\\)\\s*FROM PUBLIC, anon, authenticated;`);
+
+  it("every service-role-only function names anon and authenticated in ITS OWN revoke statement", () => {
+    const all = files.map(read).join("\n");
     for (const fn of SERVICE_ONLY) {
-      const revokes = files.map(read)
-        .filter((t) => t.includes(`REVOKE ALL ON FUNCTION public.${fn}`))
-        .join("\n");
-      expect(revokes, `${fn} is never revoked from anon by name`).toMatch(/FROM PUBLIC, anon, authenticated/);
+      expect(all, `${fn} is never revoked from anon by name in its own REVOKE statement`).toMatch(revokedByName(fn));
     }
+  });
+
+  it("teeth: a function REVOKE that says FROM PUBLIC alone is not rescued by a table REVOKE in the same file", () => {
+    const mutated = "REVOKE ALL ON public.some_table FROM PUBLIC, anon, authenticated;\nREVOKE ALL ON FUNCTION public.load_category_anchors(text, jsonb, jsonb, text, boolean) FROM PUBLIC;\n";
+    expect(mutated).toMatch(/FROM PUBLIC, anon, authenticated/); // the old whole-file match would have passed
+    expect(mutated).not.toMatch(revokedByName("load_category_anchors"));
+    expect("REVOKE ALL ON FUNCTION public.load_category_anchors(text, jsonb, jsonb, text, boolean)\n  FROM PUBLIC, anon, authenticated;").toMatch(revokedByName("load_category_anchors"));
   });
 
   it("does NOT touch the functions that are anon-readable on purpose", () => {
