@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909225000_the_neighbours_are_exact_and_the_reader_is_not_public.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909225000_the_neighbours_are_exact_and_the_reader_is_not_public.sql';

@@ -3706,6 +3706,15 @@ export type Database = {
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_sitemap_day_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
+      category_knn: {
+        Args: { k?: number; q: string }
+        Returns: {
+          field: string
+          id: string
+          sim: number
+          title: string
+        }[]
+      }
       check_global_rate_limit: {
         Args: {
           p_ip: string
