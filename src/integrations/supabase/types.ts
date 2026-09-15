@@ -1567,6 +1567,30 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_board_watch: {
+        Row: {
+          company_token: string
+          first_observed_basis: string
+          first_observed_on: string
+          is_censored: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_token: string
+          first_observed_basis: string
+          first_observed_on: string
+          is_censored?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_token?: string
+          first_observed_basis?: string
+          first_observed_on?: string
+          is_censored?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       job_board_category_anchors: {
         Row: {
           embedding: string
@@ -1789,6 +1813,78 @@ export type Database = {
           roles_stored?: number
           snapshot_date?: string
           value?: string
+        }
+        Relationships: []
+      }
+      job_board_company_flow: {
+        Row: {
+          arrivals_corroborated: number
+          arrivals_dated: number
+          arrivals_observed: number
+          collected_at: string
+          company_token: string
+          departures_aged_out: number
+          departures_backdated: number
+          departures_dormant: number
+          departures_removed: number
+          departures_total: number
+          departures_untracked: number
+          feed_total: number | null
+          flow_date: string
+          prev_observed_on: string | null
+          read_state: string | null
+          served_start: number | null
+          source: string | null
+          stored_start: number | null
+          watch_basis: string | null
+          watch_censored: boolean | null
+          watch_since: string | null
+        }
+        Insert: {
+          arrivals_corroborated?: number
+          arrivals_dated?: number
+          arrivals_observed?: number
+          collected_at?: string
+          company_token: string
+          departures_aged_out?: number
+          departures_backdated?: number
+          departures_dormant?: number
+          departures_removed?: number
+          departures_total?: number
+          departures_untracked?: number
+          feed_total?: number | null
+          flow_date: string
+          prev_observed_on?: string | null
+          read_state?: string | null
+          served_start?: number | null
+          source?: string | null
+          stored_start?: number | null
+          watch_basis?: string | null
+          watch_censored?: boolean | null
+          watch_since?: string | null
+        }
+        Update: {
+          arrivals_corroborated?: number
+          arrivals_dated?: number
+          arrivals_observed?: number
+          collected_at?: string
+          company_token?: string
+          departures_aged_out?: number
+          departures_backdated?: number
+          departures_dormant?: number
+          departures_removed?: number
+          departures_total?: number
+          departures_untracked?: number
+          feed_total?: number | null
+          flow_date?: string
+          prev_observed_on?: string | null
+          read_state?: string | null
+          served_start?: number | null
+          source?: string | null
+          stored_start?: number | null
+          watch_basis?: string | null
+          watch_censored?: boolean | null
+          watch_since?: string | null
         }
         Relationships: []
       }
@@ -3747,6 +3843,7 @@ export type Database = {
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
+      collect_company_flow: { Args: { p_date?: string }; Returns: number }
       compare_cohorts: {
         Args: {
           p_cohort_a: string
