@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909228000_a_leaderboard_read_live_on_every_visit_joins_the_hourly_cache.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909228000_a_leaderboard_read_live_on_every_visit_joins_the_hourly_cache.sql';

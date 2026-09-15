@@ -225,6 +225,13 @@
       "when": 1789480851253,
       "tag": "0031_apply_20260909227000_growth_is_a_rate_with_gates_retry",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789480866627,
+      "tag": "0032_apply_20260909228000_leaderboard_joins_hourly_cache",
+      "breakpoints": true
     }
   ]
 }
