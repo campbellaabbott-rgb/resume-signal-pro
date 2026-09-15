@@ -1567,6 +1567,33 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_category_anchors: {
+        Row: {
+          embedding: string
+          field: string
+          id: string
+          loaded_at: string
+          title: string
+          version: string
+        }
+        Insert: {
+          embedding: string
+          field: string
+          id: string
+          loaded_at?: string
+          title: string
+          version: string
+        }
+        Update: {
+          embedding?: string
+          field?: string
+          id?: string
+          loaded_at?: string
+          title?: string
+          version?: string
+        }
+        Relationships: []
+      }
       job_board_click_rollup: {
         Row: {
           apply_clicks: number
@@ -4686,6 +4713,16 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      load_category_anchors: {
+        Args: {
+          p_anchors_sha256?: string
+          p_final?: boolean
+          p_loo?: Json
+          p_rows: Json
+          p_version: string
+        }
+        Returns: number
+      }
       log_alert_sent: {
         Args: {
           p_actual: number
