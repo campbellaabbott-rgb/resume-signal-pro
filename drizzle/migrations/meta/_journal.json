@@ -253,6 +253,13 @@
       "when": 1789497262138,
       "tag": "0035_a_staging_table_anyone_can_rewrite_runs_as_the_definer",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1789499468091,
+      "tag": "0036_a_staging_table_anyone_can_rewrite_runs_as_the_definer",
+      "breakpoints": true
     }
   ]
 }
