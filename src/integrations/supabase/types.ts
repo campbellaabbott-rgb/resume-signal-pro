@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      _mig_probe: {
+        Row: {
+          k: string
+          v: string | null
+        }
+        Insert: {
+          k: string
+          v?: string | null
+        }
+        Update: {
+          k?: string
+          v?: string | null
+        }
+        Relationships: []
+      }
       _mig_stage: {
         Row: {
           applied_at: string | null
@@ -1567,6 +1582,57 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_board_watch: {
+        Row: {
+          company_token: string
+          first_observed_basis: string
+          first_observed_on: string
+          is_censored: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_token: string
+          first_observed_basis: string
+          first_observed_on: string
+          is_censored?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_token?: string
+          first_observed_basis?: string
+          first_observed_on?: string
+          is_censored?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_board_category_anchors: {
+        Row: {
+          embedding: string
+          field: string
+          id: string
+          loaded_at: string
+          title: string
+          version: string
+        }
+        Insert: {
+          embedding: string
+          field: string
+          id: string
+          loaded_at?: string
+          title: string
+          version: string
+        }
+        Update: {
+          embedding?: string
+          field?: string
+          id?: string
+          loaded_at?: string
+          title?: string
+          version?: string
+        }
+        Relationships: []
+      }
       job_board_click_rollup: {
         Row: {
           apply_clicks: number
@@ -1762,6 +1828,78 @@ export type Database = {
           roles_stored?: number
           snapshot_date?: string
           value?: string
+        }
+        Relationships: []
+      }
+      job_board_company_flow: {
+        Row: {
+          arrivals_corroborated: number
+          arrivals_dated: number
+          arrivals_observed: number
+          collected_at: string
+          company_token: string
+          departures_aged_out: number
+          departures_backdated: number
+          departures_dormant: number
+          departures_removed: number
+          departures_total: number
+          departures_untracked: number
+          feed_total: number | null
+          flow_date: string
+          prev_observed_on: string | null
+          read_state: string | null
+          served_start: number | null
+          source: string | null
+          stored_start: number | null
+          watch_basis: string | null
+          watch_censored: boolean | null
+          watch_since: string | null
+        }
+        Insert: {
+          arrivals_corroborated?: number
+          arrivals_dated?: number
+          arrivals_observed?: number
+          collected_at?: string
+          company_token: string
+          departures_aged_out?: number
+          departures_backdated?: number
+          departures_dormant?: number
+          departures_removed?: number
+          departures_total?: number
+          departures_untracked?: number
+          feed_total?: number | null
+          flow_date: string
+          prev_observed_on?: string | null
+          read_state?: string | null
+          served_start?: number | null
+          source?: string | null
+          stored_start?: number | null
+          watch_basis?: string | null
+          watch_censored?: boolean | null
+          watch_since?: string | null
+        }
+        Update: {
+          arrivals_corroborated?: number
+          arrivals_dated?: number
+          arrivals_observed?: number
+          collected_at?: string
+          company_token?: string
+          departures_aged_out?: number
+          departures_backdated?: number
+          departures_dormant?: number
+          departures_removed?: number
+          departures_total?: number
+          departures_untracked?: number
+          feed_total?: number | null
+          flow_date?: string
+          prev_observed_on?: string | null
+          read_state?: string | null
+          served_start?: number | null
+          source?: string | null
+          stored_start?: number | null
+          watch_basis?: string | null
+          watch_censored?: boolean | null
+          watch_since?: string | null
         }
         Relationships: []
       }
@@ -2063,6 +2201,12 @@ export type Database = {
           agency: boolean
           apply_url: string
           category: string
+          category_basis: string | null
+          category_confidence: number | null
+          category_key: string | null
+          category_proposed: string | null
+          category_proposed_at: string | null
+          category_proposed_v: number | null
           company: string
           company_token: string
           country: string | null
@@ -2098,6 +2242,12 @@ export type Database = {
           agency?: boolean
           apply_url: string
           category?: string
+          category_basis?: string | null
+          category_confidence?: number | null
+          category_key?: string | null
+          category_proposed?: string | null
+          category_proposed_at?: string | null
+          category_proposed_v?: number | null
           company: string
           company_token: string
           country?: string | null
@@ -2133,6 +2283,12 @@ export type Database = {
           agency?: boolean
           apply_url?: string
           category?: string
+          category_basis?: string | null
+          category_confidence?: number | null
+          category_key?: string | null
+          category_proposed?: string | null
+          category_proposed_at?: string | null
+          category_proposed_v?: number | null
           company?: string
           company_token?: string
           country?: string | null
@@ -3661,6 +3817,15 @@ export type Database = {
       build_missing_since_index_oneshot: { Args: never; Returns: undefined }
       build_sitemap_day_index_oneshot: { Args: never; Returns: undefined }
       build_speed_indexes_oneshot: { Args: never; Returns: undefined }
+      category_knn: {
+        Args: { k?: number; q: string }
+        Returns: {
+          field: string
+          id: string
+          sim: number
+          title: string
+        }[]
+      }
       check_global_rate_limit: {
         Args: {
           p_ip: string
@@ -3693,6 +3858,7 @@ export type Database = {
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
+      collect_company_flow: { Args: { p_date?: string }; Returns: number }
       compare_cohorts: {
         Args: {
           p_cohort_a: string
@@ -4090,6 +4256,32 @@ export type Database = {
         }[]
       }
       get_company_financials: { Args: { p_token: string }; Returns: Json }
+      get_company_growth: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          baseline_day: string
+          baseline_served: number
+          board_days_bad: number
+          board_days_ok: number
+          company_token: string
+          days_expected: number
+          days_observed: number
+          first_snapshot_day: string
+          latest_day: string
+          latest_served: number
+          ledger_days_expected: number
+          net: number
+          observed_arrivals: number
+          rate: number
+          removed_departures: number
+          tenure_censored: boolean
+          tenure_days: number
+          unknown_reason: string
+          untracked_departures: number
+          verdict: string
+          window_days: number
+        }[]
+      }
       get_company_hiring_health: {
         Args: { p_tokens: string[] }
         Returns: {
@@ -4668,6 +4860,16 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      load_category_anchors: {
+        Args: {
+          p_anchors_sha256?: string
+          p_final?: boolean
+          p_loo?: Json
+          p_rows: Json
+          p_version: string
+        }
+        Returns: number
+      }
       log_alert_sent: {
         Args: {
           p_actual: number
@@ -4849,6 +5051,15 @@ export type Database = {
           stuck: number
         }[]
       }
+      promote_category: {
+        Args: {
+          p_basis: string
+          p_key: string
+          p_limit?: number
+          p_target: string
+        }
+        Returns: number
+      }
       rate_budget_state: {
         Args: { p_function?: string; p_ip: string; p_window_minutes?: number }
         Returns: {
@@ -4920,6 +5131,10 @@ export type Database = {
       repair_oracle_subsite_duplicates: {
         Args: { p_max_rows?: number; p_restart?: boolean }
         Returns: Json
+      }
+      revert_category: {
+        Args: { p_basis: string; p_key: string; p_target?: string }
+        Returns: number
       }
       roll_up_and_prune_closures: {
         Args: { p_keep_days?: number }

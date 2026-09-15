@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909224500_an_anchor_is_a_title_and_a_field_and_nothing_else.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909224500_an_anchor_is_a_title_and_a_field_and_nothing_else.sql';

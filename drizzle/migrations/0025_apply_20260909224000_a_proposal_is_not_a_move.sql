@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909224000_a_proposal_is_not_a_move.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909224000_a_proposal_is_not_a_move.sql';

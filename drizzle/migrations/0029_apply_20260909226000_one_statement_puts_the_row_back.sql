@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909226000_one_statement_puts_the_row_back.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909226000_one_statement_puts_the_row_back.sql';

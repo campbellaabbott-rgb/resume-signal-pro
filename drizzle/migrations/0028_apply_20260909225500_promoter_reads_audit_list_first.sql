@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909225500_the_only_hand_that_moves_a_row_reads_the_audit_list_first.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909225500_the_only_hand_that_moves_a_row_reads_the_audit_list_first.sql';

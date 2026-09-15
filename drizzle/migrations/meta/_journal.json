@@ -176,6 +176,76 @@
       "when": 1789073690637,
       "tag": "0024_the_stale_window_fills_with_what_it_cannot_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789480714434,
+      "tag": "0025_apply_20260909224000_a_proposal_is_not_a_move",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789480737024,
+      "tag": "0026_apply_20260909224500_anchor_is_title_and_field",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789480752569,
+      "tag": "0027_apply_20260909225000_neighbours_exact_reader_not_public",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789480766265,
+      "tag": "0028_apply_20260909225500_promoter_reads_audit_list_first",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789480778122,
+      "tag": "0029_apply_20260909226000_one_statement_puts_the_row_back",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1789480833710,
+      "tag": "0030_apply_20260909212000_prereq_company_flow_clock",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1789480851253,
+      "tag": "0031_apply_20260909227000_growth_is_a_rate_with_gates_retry",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789480866627,
+      "tag": "0032_apply_20260909228000_leaderboard_joins_hourly_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789480916781,
+      "tag": "0033_probe_category_and_leaderboard_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1789480979409,
+      "tag": "0034_lock_down_mig_probe",
+      "breakpoints": true
     }
   ]
 }
