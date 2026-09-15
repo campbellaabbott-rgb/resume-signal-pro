@@ -239,6 +239,13 @@
       "when": 1789480916781,
       "tag": "0033_probe_category_and_leaderboard_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1789480979409,
+      "tag": "0034_lock_down_mig_probe",
+      "breakpoints": true
     }
   ]
 }
