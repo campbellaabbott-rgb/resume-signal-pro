@@ -2063,6 +2063,12 @@ export type Database = {
           agency: boolean
           apply_url: string
           category: string
+          category_basis: string | null
+          category_confidence: number | null
+          category_key: string | null
+          category_proposed: string | null
+          category_proposed_at: string | null
+          category_proposed_v: number | null
           company: string
           company_token: string
           country: string | null
@@ -2098,6 +2104,12 @@ export type Database = {
           agency?: boolean
           apply_url: string
           category?: string
+          category_basis?: string | null
+          category_confidence?: number | null
+          category_key?: string | null
+          category_proposed?: string | null
+          category_proposed_at?: string | null
+          category_proposed_v?: number | null
           company: string
           company_token: string
           country?: string | null
@@ -2133,6 +2145,12 @@ export type Database = {
           agency?: boolean
           apply_url?: string
           category?: string
+          category_basis?: string | null
+          category_confidence?: number | null
+          category_key?: string | null
+          category_proposed?: string | null
+          category_proposed_at?: string | null
+          category_proposed_v?: number | null
           company?: string
           company_token?: string
           country?: string | null

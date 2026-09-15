@@ -176,6 +176,13 @@
       "when": 1789073690637,
       "tag": "0024_the_stale_window_fills_with_what_it_cannot_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789480714434,
+      "tag": "0025_apply_20260909224000_a_proposal_is_not_a_move",
+      "breakpoints": true
     }
   ]
 }
