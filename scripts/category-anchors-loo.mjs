@@ -29,7 +29,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 
-const ANCHORS = "supabase/functions/job-board/data/category-anchors.json";
+const ANCHORS = "scripts/data/category-anchors.json";
 const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const WRITE = args.includes("--write");
