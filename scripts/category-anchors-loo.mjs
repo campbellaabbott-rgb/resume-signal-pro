@@ -1,6 +1,6 @@
 // THE LEAVE-ONE-OUT GATE for the embed classifier's anchor set.
 //
-// Embeds every anchor title in data/category-anchors.json with gte-small under
+// Embeds every anchor title in scripts/data/category-anchors.json with gte-small under
 // the SAME recipe the edge runtime uses (index.ts embedText: mean pooling,
 // L2-normalised, 384 dims), scores each anchor against all the others with the
 // module's own kNN vote (embed-classify.ts looAgreement — the code that ships),

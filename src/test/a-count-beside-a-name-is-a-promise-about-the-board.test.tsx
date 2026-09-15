@@ -68,6 +68,16 @@ import Jobs, { vendorOptionsWithCounts } from "../pages/Jobs";
 import { readBoardFacets } from "../lib/board-facets";
 import { ATS_VENDORS, NON_ATS_SOURCES, UNMEASURED_ATS_SOURCES } from "../config/ats-vendors";
 
+// A CASE THAT CHAINS SEVERAL WAITS NEEDS A BUDGET LARGER THAN THEIR SUM. Every
+// wait below is bounded (SLOW, 4 s), but vitest's default per-test budget is
+// 5 s for the WHOLE case, and a case that clicks six chips in sequence can
+// spend that under load without any single wait failing. Three gate runs on
+// 2026-09-15 each timed out a different case of this kind at 4 workers while
+// the same file passed alone every time. The budget is set here, per file,
+// rather than in vitest.config.ts, so it names the reason and covers only the
+// click-through files that chain waits.
+vi.setConfig({ testTimeout: 30_000 });
+
 const ROOT = resolve(__dirname, "../..");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const FN = strip(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));

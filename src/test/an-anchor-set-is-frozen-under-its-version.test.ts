@@ -1,7 +1,7 @@
 /**
  * AN ANCHOR SET IS FROZEN UNDER ITS VERSION.
  *
- * The embed classifier votes over data/category-anchors.json: 2,272 (title,
+ * The embed classifier votes over scripts/data/category-anchors.json: 2,272 (title,
  * field) pairs whose leave-one-out kNN agreement (1,959 / 2,272 = 86.2%) and
  * F2 precision (141R / 5W / 14A of 160 judged draws) were measured on THAT
  * list (scratchpad/other-bucket/mechA, 2026-09-10). Every embed promotion is

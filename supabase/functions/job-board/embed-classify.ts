@@ -94,7 +94,8 @@ export const EMBED_NORMALIZE = true;
 export const EMBED_DIM = 384;
 
 /**
- * The frozen anchor set: data/category-anchors.json, built by
+ * The frozen anchor set: scripts/data/category-anchors.json (moved out of the
+ * function directory 2026-09-15 — the bundler admits only TS there), built by
  * scripts/build-category-anchors.mjs from other-bucket/labelled-basis.jsonl
  * (3,060 labelled rows, 2,650 title-decided, 2,272 distinct (title, field)).
  * EMBED_ANCHORS_SHA256 is sha256(JSON.stringify(anchors)) of that file's
