@@ -4994,6 +4994,10 @@ export type Database = {
         Args: { p_max_rows?: number; p_restart?: boolean }
         Returns: Json
       }
+      revert_category: {
+        Args: { p_basis: string; p_key: string; p_target?: string }
+        Returns: number
+      }
       roll_up_and_prune_closures: {
         Args: { p_keep_days?: number }
         Returns: {
