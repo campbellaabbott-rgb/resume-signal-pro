@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      _mig_probe: {
+        Row: {
+          k: string
+          v: string | null
+        }
+        Insert: {
+          k: string
+          v?: string | null
+        }
+        Update: {
+          k?: string
+          v?: string | null
+        }
+        Relationships: []
+      }
       _mig_stage: {
         Row: {
           applied_at: string | null

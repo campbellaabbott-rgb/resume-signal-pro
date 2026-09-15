@@ -232,6 +232,13 @@
       "when": 1789480866627,
       "tag": "0032_apply_20260909228000_leaderboard_joins_hourly_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789480916781,
+      "tag": "0033_probe_category_and_leaderboard_checks",
+      "breakpoints": true
     }
   ]
 }
