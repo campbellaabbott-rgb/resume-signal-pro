@@ -218,6 +218,13 @@
       "when": 1789480833710,
       "tag": "0030_apply_20260909212000_prereq_company_flow_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1789480851253,
+      "tag": "0031_apply_20260909227000_growth_is_a_rate_with_gates_retry",
+      "breakpoints": true
     }
   ]
 }

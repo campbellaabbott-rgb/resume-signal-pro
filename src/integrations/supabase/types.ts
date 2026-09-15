@@ -4241,6 +4241,32 @@ export type Database = {
         }[]
       }
       get_company_financials: { Args: { p_token: string }; Returns: Json }
+      get_company_growth: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          baseline_day: string
+          baseline_served: number
+          board_days_bad: number
+          board_days_ok: number
+          company_token: string
+          days_expected: number
+          days_observed: number
+          first_snapshot_day: string
+          latest_day: string
+          latest_served: number
+          ledger_days_expected: number
+          net: number
+          observed_arrivals: number
+          rate: number
+          removed_departures: number
+          tenure_censored: boolean
+          tenure_days: number
+          unknown_reason: string
+          untracked_departures: number
+          verdict: string
+          window_days: number
+        }[]
+      }
       get_company_hiring_health: {
         Args: { p_tokens: string[] }
         Returns: {

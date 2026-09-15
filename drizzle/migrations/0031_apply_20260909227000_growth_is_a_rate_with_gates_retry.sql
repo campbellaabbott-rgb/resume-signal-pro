@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260909227000_a_board_that_grew_is_a_rate_with_gates_not_a_count.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260909227000_a_board_that_grew_is_a_rate_with_gates_not_a_count.sql';
