@@ -61,6 +61,16 @@ export const MCP_TOOLS: readonly McpTool[] = [
     body: "Live board statistics from cache: servable and tracked posting totals, the count of company job boards with open roles (boards, not employers — one employer can run several), the category set, and the freshness stamp.",
   },
   {
+    name: "employer_hiring_record",
+    tier: "read",
+    body: "An employer's record on its own board, from the closure ledger no other board keeps: roles open now, roles watched coming down in the last 90 days with re-lists counted separately, medians from the employer's own stated dates, and how long that board has been watched — per board, never summed across an employer's boards, and a takedown is never called a hire; a board with no closure observed answers unknown with the reason, never a verdict.",
+  },
+  {
+    name: "employer_growth",
+    tier: "read",
+    body: "Whether an employer's board served more roles than a week earlier, judged by the board itself from our own daily observation and passed through untouched: grew, no-growth, or unknown with the gate that refused named — an unknown is never a no, one board is never summed with another, and nothing here ranks employers.",
+  },
+  {
     name: "key_status",
     tier: "read",
     body: "What this key is and may do: tier, requests left this minute, calls left today, whether the paid tools are open on it, and whether the apply tools would work — with any blocker named, so nothing has to be discovered by refusal.",
@@ -69,6 +79,16 @@ export const MCP_TOOLS: readonly McpTool[] = [
     name: "debug_search",
     tier: "read",
     body: "Explain why a search returns what it does: the parsed query, which filters were applied or ignored and why, the route and ranking regime chosen, timings and count basis. Takes the same arguments as search_jobs.",
+  },
+  {
+    name: "search",
+    tier: "read",
+    body: "An alias of search_jobs in the fixed shape ChatGPT's deep-research and company-knowledge connectors call: one query in, a list of {id, title, url} out, the same page size as an unkeyed search. Every other client should call search_jobs, which takes every filter.",
+  },
+  {
+    name: "fetch",
+    tier: "read",
+    body: "An alias of get_job in the same ChatGPT research shape: one id in, {id, title, text, url, metadata} out — the full description as text and the card's structured fields as metadata. A dead id answers with what the board knows, never a stale card.",
   },
   {
     name: "fit_resume",
@@ -93,9 +113,27 @@ export const MCP_PAID_TOOLS = MCP_TOOLS.filter((t) => t.tier === "paid");
 export const MCP_APPLY_TOOLS = MCP_TOOLS.filter((t) => t.tier === "apply");
 
 /**
+ * THE UNKEYED TIER, mirrored from the server's ANON_TOOLS and the caps beside
+ * it. These tools answer a tools/call that carries no Authorization header at
+ * all, which is what makes claude.ai, Claude Desktop and ChatGPT — hosts whose
+ * connector dialogs have no field for a key — usable on a first call. The
+ * caps are per address per UTC day and across every unkeyed caller per day
+ * (both, because those hosts share egress addresses), and an unkeyed search
+ * is one page. Pinned to the Deno constants, and the free-key quota to the
+ * minting function's own constant, by
+ * src/test/a-first-call-with-no-key-gets-an-answer-not-a-wall.test.ts.
+ */
+export const MCP_ANON_TOOL_NAMES: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"];
+export const MCP_ANON_TOOLS = MCP_TOOLS.filter((t) => MCP_ANON_TOOL_NAMES.includes(t.name));
+export const MCP_ANON_CAPS = { perAddressPerDay: 25, globalPerDay: 2000, searchRows: 10 } as const;
+/** Calls a day on a free key — api_key_issue's c_quota (migration 20260826214700), mirrored. */
+export const MCP_FREE_KEY_DAILY_QUOTA = 1000;
+
+/**
  * Which MCP hosts can present this server's credential today, measured
- * against each vendor's own documentation on 2026-09-15 — every tool call
- * needs `Authorization: Bearer rb_live_…`, and only some hosts can send it.
+ * against each vendor's own documentation on 2026-09-15 — every KEYED tool
+ * call needs `Authorization: Bearer rb_live_…`, and only some hosts can send
+ * it. The unkeyed tools (MCP_ANON_TOOLS) answer from any host.
  *
  *   - Claude Code: `claude mcp add --transport http … --header` (code.claude.com/docs/en/mcp).
  *   - Cursor: `headers` in mcp.json.
@@ -103,15 +141,18 @@ export const MCP_APPLY_TOOLS = MCP_TOOLS.filter((t) => t.tier === "apply");
  *     optional OAuth client credentials; a static request header is "in beta
  *     and available to a limited set of organizations", entered by the org
  *     administrator (claude.com/docs/connectors/custom/remote-mcp). Without
- *     that beta, discovery works and every tool call refuses.
+ *     that beta, discovery works and only the unkeyed tools answer.
  *   - ChatGPT developer mode: the connector's auth options are OAuth, No
  *     Authentication, and Mixed; there is no field for an API key
  *     (developers.openai.com/apps-sdk/build/auth — "you are expected to
- *     implement an OAuth 2.1 flow"). Discovery works and every tool call refuses.
+ *     implement an OAuth 2.1 flow"). Discovery works and only the unkeyed
+ *     tools answer.
  *
  * `header` is the property the page renders from: true means the host can
  * carry the key and therefore reach every tool its key tier allows; false
- * means the host can list the tools and call none of them today.
+ * means the host can list the tools and call only the unkeyed ones today —
+ * the keyed tools stay behind a host that carries the key until an
+ * authorization server exists.
  */
 export interface McpHost {
   name: string;
@@ -124,6 +165,6 @@ export const MCP_HOSTS: readonly McpHost[] = [
   { name: "Claude Code", header: true, how: "the --header flag on claude mcp add, or ${API_KEY} expansion in .mcp.json" },
   { name: "Cursor", header: true, how: "the headers block in ~/.cursor/mcp.json" },
   { name: "Any custom MCP client", header: true, how: "an Authorization header on each POST — Streamable HTTP, stateless" },
-  { name: "claude.ai and Claude Desktop", header: false, how: "the custom-connector dialog takes a URL and optional OAuth client credentials only; a static header is an org-admin beta for a limited set of organizations" },
-  { name: "ChatGPT (developer mode)", header: false, how: "connector auth is OAuth, No Authentication or Mixed — there is no field for an API key" },
+  { name: "claude.ai and Claude Desktop", header: false, how: "connect with No sign-in and use the unkeyed tools; the custom-connector dialog takes a URL and optional OAuth client credentials only, and a static header is an org-admin beta for a limited set of organizations" },
+  { name: "ChatGPT (developer mode)", header: false, how: "connect with No Authentication and use the unkeyed tools (search and fetch are the names its research connector calls); connector auth is OAuth, No Authentication or Mixed — there is no field for an API key" },
 ];

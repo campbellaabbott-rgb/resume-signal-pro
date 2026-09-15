@@ -79,8 +79,84 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // 09-04.3: copy only — search_jobs no longer spells a corpus figure (the
 // board outgrew it; board_stats carries the live totals) and board_stats
 // describes its second figure as the count of boards its runner returns.
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.3" };
+// 09-04.4: employer_hiring_record and employer_growth — the closure ledger's
+// per-board record and the board's own growth verdict, each one existing RPC
+// translated through the service client and metered like every other tool.
+// The same version also opens the unkeyed read tier (ANON_TOOLS below, metered
+// in mcp_anon_rate, never in rate_limits), adds the search/fetch aliases in
+// the fixed shape ChatGPT's research connector calls, declares an outputSchema
+// on every tool, and rewrites initialize.instructions to name the four tiers.
+const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.4" };
 const DOCS_URL = "https://resumebooster.work/agents";
+/** Where a free key is minted — the page every refusal in this file points at. */
+const MINT_URL = "https://resumebooster.work/data-api";
+/** A posting's address on the site: the board opens ?job= in its detail panel (Jobs.tsx jobHref). */
+const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${encodeURIComponent(id)}`;
+
+// ── The unkeyed read tier ───────────────────────────────────────────────────
+//
+// Measured 2026-09-15: a keyless tools/call answered 200 + isError, which
+// Claude passes to the model as a tool failure and moves on — no prompt, no
+// card. claude.ai, Claude Desktop and ChatGPT all offer a no-auth connect path
+// and none of their dialogs has a field for a bearer key, so for every user of
+// those hosts the first thing this server did was refuse. These four tools
+// answer with no key at all; everything else keeps refusing in band with the
+// mint URL (a 401 + resource metadata pointer is a different project, and
+// shipping it with no authorization server behind it would break the clients
+// that honour it).
+//
+// Why FOUR: board_stats is a cache read and the honest first answer; search
+// is the thing every board sells; `search` and `fetch` are the same two
+// runners under the names ChatGPT's research connector requires. Nothing in
+// this set touches a key's row, an account, or the paid scorer.
+const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"];
+/** Rows an unkeyed search may return — a page of the board, not a dump of it. */
+const ANON_SEARCH_LIMIT = 10;
+// TWO CAPS, AND WHAT EACH ONE ACTUALLY BOUNDS. The address cap bounds one
+// caller — to the extent the address is the platform's word and not the
+// caller's (see callerAddress: a header no proxy appended is the caller's own
+// claim, and a caller who can rotate it has a fresh allowance per value; the
+// global cap is then the only bound against a script). For claude.ai and
+// ChatGPT, whose users all arrive from a handful of shared egress addresses,
+// the address cap is NOT per user: it is a per-host allowance of the cap
+// times that host's egress addresses per day, and the second user of the day
+// behind one address can still meet the wall. Neither cap fixes that — only
+// an authorization server would — and it is accepted until one exists. The
+// global cap bounds one thing only: what the unkeyed tier can cost the board
+// in a day, whoever spends it. Both are counted by mcp_anon_check (migration
+// 20260915100000) in its own table; NEVER through check_rate_limit or
+// rate_limits, the budget that once 429'd résumé upload and checkout when
+// board traffic fed it. The address is never stored: the bucket is a 16-hex
+// prefix of its SHA-256.
+const ANON_GLOBAL_CAP_PER_DAY = 2000;
+const ANON_IP_CAP_PER_DAY = 25;
+/**
+ * What a free key raises the daily allowance to. key_status reads a key's
+ * quota off the api_key_check decision, which api_key_issue set at minting
+ * from its own c_quota constant (migration 20260826214700); an unkeyed call
+ * has no decision to read, so this is that constant's mirror, pinned to the
+ * migration by src/test/a-first-call-with-no-key-gets-an-answer-not-a-wall.
+ */
+const FREE_KEY_DAILY_QUOTA = 1000;
+
+/** Field names mirror mcp_anon_check's OUT parameters (20260915100000). */
+type AnonDecision = { allowed: boolean; global_used: number; ip_used: number; ip_cap: number; global_cap: number };
+
+/**
+ * The caller's address as the PLATFORM saw it, never as the caller wrote it.
+ * cf-connecting-ip is set by the edge in front of this runtime and cannot be
+ * supplied from outside it; failing that, the LAST hop of x-forwarded-for is
+ * the one the nearest proxy appended, while the first hop is whatever the
+ * caller put there (a forged leading entry is pushed left, not trusted).
+ * "unknown" when neither header exists — every such caller then shares one
+ * bucket, which is the honest reading of an address we were never told.
+ */
+function callerAddress(headers: Headers): string {
+  const cf = headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+  const hops = String(headers.get("x-forwarded-for") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+  return hops.at(-1) || "unknown";
+}
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT — same lesson public-api learned:
 // a browser-side MCP client cannot read rate headers absent from
@@ -90,7 +166,7 @@ const cors = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, mcp-protocol-version",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Expose-Headers":
-    "Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining",
+    "Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Unkeyed-Remaining",
 };
 
 // Field names mirror api_key_check's OUT parameters, which were RENAMED in
@@ -176,6 +252,18 @@ const toolErr = (message: string, fix?: string) => ({
 class ScorerLimited extends Error {
   constructor(public readonly limit: number | null) {
     super("scorer daily allowance reached");
+  }
+}
+
+/**
+ * The caller's arguments cannot be answered as sent — too many tokens, none at
+ * all. Its own class so the dispatcher can hand back the message and the fix
+ * in band, instead of the generic "internal error, try again shortly" that
+ * would tell an agent to retry a call that cannot succeed until it is changed.
+ */
+class ToolArgumentError extends Error {
+  constructor(message: string, public readonly fix: string) {
+    super(message);
   }
 }
 
@@ -392,8 +480,8 @@ const DISCLOSURE_SCHEMA = {
  * TOOL ANNOTATIONS (2025-06-18).
  *
  * Without them a client has to assume the worst of every tool and ask its
- * human before each call — including board_stats, which reads a cache. Nine of
- * the eleven tools here only read; saying so is what lets an agent search,
+ * human before each call — including board_stats, which reads a cache. All but
+ * one of the tools here only read; saying so is what lets an agent search,
  * page and verify without interrupting anyone, and what makes the ONE
  * interruption (request_application) mean something.
  *
@@ -407,6 +495,145 @@ const DISCLOSURE_SCHEMA = {
  */
 const READS_THE_BOARD = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
 const READS_THE_KEY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+
+// ── The moat, as two read tools ─────────────────────────────────────────────
+//
+// The search every board offers was the only thing this server sold. The one
+// asset no other board can serve is the lifecycle record — postings observed
+// opening AND coming down on the employer's own board, logged since 2026-07-14
+// — and it reaches clients only through SECURITY DEFINER aggregates that
+// already exist. Both tools below translate one such RPC one-to-one through
+// the service client: no second derivation, no new SQL, no direct ledger read.
+//
+// A token may be asked about in a batch, and a batch is one metered call. The
+// cap is the same order as get_jobs: the RPCs seek per token into the closure
+// ledger and the daily snapshot series, and a list past it is refused with the
+// count named rather than silently trimmed.
+const EMPLOYER_TOKENS_MAX = 20;
+
+/**
+ * THE GROWTH BARS, MIRRORED FROM THE MIGRATION THAT JUDGES THEM.
+ *
+ * get_company_growth owns the verdict; these numbers exist here so the tool's
+ * description can SAY what the verdict measures, and for nothing else — no
+ * runner compares a row against them. They are pinned to the migration's own
+ * bar CTE by src/test/the-bars-an-agent-is-told-are-the-bars-the-verdict-uses
+ * (mirror constant + cross-runtime test, the claim-drift lesson: copy goes
+ * false when the thing it describes moves runtimes). Jobs.tsx carries the same
+ * mirror for the site's copy, pinned by its own guard.
+ */
+const GROWTH_BARS = {
+  windowDays: 7,
+  minBaselineServed: 10,
+  minNetAdd: 4,
+  minRate: 0.25,
+  minTenureDays: 21,
+} as const;
+
+/**
+ * WHY A GROWTH READING IS UNKNOWN — the migration's own vocabulary, in the
+ * order its CASE tests them. Pinned to the migration's arms by the same guard.
+ * An unknown is a fact about our instrument, never about the employer, and it
+ * always carries one of these; the two readings that ARE about the employer
+ * (grew, no-growth) carry null.
+ */
+const GROWTH_UNKNOWN_REASONS = [
+  "excluded", "series_stale", "no_series", "too_new", "series_gap", "too_small",
+  "pool_replaced", "not_in_ledger", "windowed_read", "failed_read", "ledger_gap",
+] as const;
+
+/** The closure window get_company_hiring_health counts over, and the cap on tracking_days. */
+const HIRING_RECORD_WINDOW_DAYS = 90;
+
+/**
+ * WHAT THE RECORD IS AND IS NOT, in the words the site uses for the same half
+ * of its "Actively hiring" basis (src/i18n/locales/en.json, keys
+ * jobsPage.hiringBasis3 and jobsPage.hiringBadgeTip3) — copied, not rewritten,
+ * so an agent and a person reading the site are told the same thing about the
+ * same ledger. Never a hire: a filled role, a cancelled one and a withdrawn one
+ * look identical from here.
+ */
+const HIRING_RECORD_BASIS =
+  `A record of one BOARD (a vendor tenant), never summed across an employer's boards, and never a headcount. ` +
+  `closed_${HIRING_RECORD_WINDOW_DAYS}d counts postings we watched come off this board in the last ${HIRING_RECORD_WINDOW_DAYS} days ` +
+  `on a board read to the end — in one visit or across a provable full lap — excluding re-lists (an identical title still live within a day, counted separately in ` +
+  `superseded_${HIRING_RECORD_WINDOW_DAYS}d, which is a floor), excluding takedowns the collector marked as its own ` +
+  `collection failure, and excluding takedowns first observable on a big board's first laps. A takedown is not a hire ` +
+  `— a filled role, a cancelled one and a withdrawn one look identical from here. tracking_days is how long we have ` +
+  `watched THIS board (capped at ${HIRING_RECORD_WINDOW_DAYS}), not the age of the ledger. median_days_open and ` +
+  `median_days_to_close are measured from the employer's own stated posting dates only, and both are LOWER BOUNDS: ` +
+  `serving stops at 30 days, so no closure can be observed later than that, and neither is a typical time-to-fill. ` +
+  `The site's "Actively hiring" chip is judged from a stricter read of the same ledger and this tool does not ` +
+  `reproduce that judgement; these figures are the record itself.`;
+
+const HIRING_RECORD_UNKNOWN = {
+  no_record:
+    "This board holds no open posting, no closure and no feed check for this token — either it is not a token this " +
+    "board carries (take companyToken from job cards or search_jobs), or nothing has been observed yet.",
+  no_closures_observed:
+    "Not one closure-ledger entry for this board in the window. On a board we do read in full, it means nothing came " +
+    "down while we watched; on a board bigger than one visit can read, no closure is observable to us until we complete " +
+    "a provable full pass and then watch a role go after it. The two cannot be told apart from here — so this is " +
+    "unknown, not a verdict about the employer.",
+} as const;
+
+const HIRING_RECORD_ROW_SCHEMA = {
+  type: "object",
+  properties: {
+    company_token: { type: "string" },
+    record: {
+      type: "string", enum: ["observed", "unknown"],
+      description: "observed: the ledger holds at least one closure for this board in the window, so the figures speak. unknown: it holds none, with unknown_reason saying why that is not a finding.",
+    },
+    unknown_reason: { type: ["string", "null"], enum: [...Object.keys(HIRING_RECORD_UNKNOWN), null] },
+    open_roles: { type: "integer", description: "Postings served from this board right now, under the same two serving rules as search." },
+    [`closed_${HIRING_RECORD_WINDOW_DAYS}d`]: { type: "integer", description: "Watched takedowns in the window, re-lists excluded. Never a count of hires." },
+    [`superseded_${HIRING_RECORD_WINDOW_DAYS}d`]: { type: "integer", description: "Re-lists in the window — a FLOOR, one logged per title per day." },
+    median_days_open: { type: ["number", "null"], description: "Median age of the roles served now, from the employer's stated dates only. Null when none carry one." },
+    median_days_to_close: { type: ["number", "null"], description: "Median stated-date-to-takedown over the window's dated closures. A lower bound; null when no closure carries a date." },
+    tracking_days: { type: ["integer", "null"], description: "Days this board has been watched, capped." },
+    feed_total: { type: ["integer", "null"], description: "What the employer's feed advertised at the last verification. Null when never verified." },
+    basis: { type: "string" },
+    note: { type: "string", description: "Present on an unknown row: what the absence means and does not mean." },
+  },
+  required: ["company_token", "record", "basis"],
+  additionalProperties: true,
+};
+
+const GROWTH_ROW_SCHEMA = {
+  type: "object",
+  properties: {
+    company_token: { type: "string" },
+    verdict: {
+      type: "string", enum: ["grew", "no-growth", "unknown"],
+      description: "The board's own judgement, passed through untouched. unknown is NOT no-growth: it is a reading we could not take, and unknown_reason says why.",
+    },
+    unknown_reason: {
+      type: ["string", "null"], enum: [...GROWTH_UNKNOWN_REASONS, null],
+      description: "Null for grew and no-growth. Otherwise the gate that refused, in the migration's own words.",
+    },
+    window_days: { type: "integer" },
+    baseline_day: { type: ["string", "null"], description: "Our observation date at the window's start." },
+    baseline_served: { type: ["integer", "null"], description: "Roles served on this board on baseline_day." },
+    latest_day: { type: ["string", "null"], description: "Our latest observation date." },
+    latest_served: { type: ["integer", "null"] },
+    net: { type: ["integer", "null"], description: "latest_served minus baseline_served: roles opened net of roles that came down. Not a headcount." },
+    rate: { type: ["number", "null"], description: "net over baseline_served. Null when the baseline is zero or unread." },
+    days_observed: { type: "integer" },
+    days_expected: { type: "integer" },
+    ledger_days_expected: { type: "integer" },
+    board_days_ok: { type: "integer", description: "Days in the read-quality ledger whose read of this board was whole." },
+    board_days_bad: { type: "integer" },
+    first_snapshot_day: { type: ["string", "null"] },
+    tenure_days: { type: ["integer", "null"], description: "Days between the board's first daily observation and the window's start." },
+    tenure_censored: { type: ["boolean", "null"], description: "True when the board is as old as the series itself, so its real tenure is longer than we can say." },
+    untracked_departures: { type: ["integer", "null"], description: "OUR removals over the window — never counted as the employer shrinking." },
+    removed_departures: { type: ["integer", "null"] },
+    observed_arrivals: { type: ["integer", "null"] },
+  },
+  required: ["company_token", "verdict", "unknown_reason"],
+  additionalProperties: true,
+};
 
 const TOOLS = [
   {
@@ -550,6 +777,18 @@ const TOOLS = [
       properties: { id: { type: "string" } },
       required: ["id"],
     },
+    outputSchema: {
+      type: "object",
+      properties: {
+        jobId: { type: "string" },
+        agentReady: { type: "boolean", description: "True when the posting's hiring system is one the apply agent can submit to." },
+        vendor: { type: ["string", "null"], description: "The hiring-system prefix of the id, e.g. 'greenhouse'. Null when the id carries none." },
+        applyUrl: { type: "string", description: "The employer's own apply page. ABSENT when the board could not read the posting." },
+        requirements: { type: "array", items: { type: "string" }, description: "What applying through the agent needs — or, on a non-supported system, the one line saying the human applies at applyUrl." },
+      },
+      required: ["jobId", "agentReady", "vendor", "requirements"],
+      additionalProperties: true,
+    },
   },
   {
     name: "request_application",
@@ -582,6 +821,33 @@ const TOOLS = [
       },
       required: ["jobId"],
     },
+    outputSchema: {
+      // A UNION, and the schema says so: the runner answers one of three
+      // shapes, and `accepted` is the one key every branch carries.
+      type: "object",
+      properties: {
+        accepted: { type: "boolean", description: "False when a gate refused; true when the request is in the agent's queue (or already was)." },
+        refusedBy: { type: "string", description: "Refused only: the gate — key, jobId, mandate, resume, plan, posting, scope-country, scope-category, scope-age, scope-salary." },
+        error: { type: "string", description: "Refused only: what the gate said." },
+        fix: { type: "string", description: "Refused only: what would change the answer." },
+        alreadyQueued: { type: "boolean", description: "Accepted only: this job was already in the queue — nothing duplicated." },
+        queueStatus: { type: "string", description: "With alreadyQueued: the existing row's status." },
+        jobId: { type: "string" },
+        title: { type: "string" },
+        company: { type: "string" },
+        fitPct: { type: ["number", "null"], description: "Keyword fit of the résumé on file to this posting, 0-100; null when the posting has no text to score." },
+        warning: { type: "string", description: "Accepted but flagged: below the release floor, or a system the agent prepares for rather than submits to." },
+        whatHappensNext: { type: "string" },
+        note: { type: "string" },
+      },
+      required: ["accepted"],
+      oneOf: [
+        { required: ["accepted", "refusedBy", "error", "fix"] },
+        { required: ["accepted", "alreadyQueued"] },
+        { required: ["accepted", "jobId", "fitPct", "whatHappensNext"] },
+      ],
+      additionalProperties: true,
+    },
   },
   {
     name: "application_status",
@@ -591,6 +857,47 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: { limit: { type: "number", description: "Most recent N, default 20, max 50." } },
+    },
+    outputSchema: {
+      // A UNION: a key with no account answers {error, fix} in band rather
+      // than throwing, and an account answers its two lists plus the legend.
+      type: "object",
+      properties: {
+        queued: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: { postingId: { type: "string" }, title: { type: "string" }, company: { type: "string" }, status: { type: "string" } },
+            required: ["postingId", "status"],
+            additionalProperties: true,
+          },
+          description: "Requests waiting for the hourly preparer, newest first.",
+        },
+        applications: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              postingId: { type: "string" }, title: { type: "string" }, company: { type: "string" }, vendor: { type: "string" },
+              status: { type: "string" },
+              notReleasedBecause: { type: "string", description: "Present when release was refused: the gate, named." },
+              needsHumanFor: { type: "array", items: { type: "string" }, description: "Present when blocked: the kinds of answer the classifier would not invent." },
+              submittedAt: { type: "string" }, submittedVia: { type: "string" },
+            },
+            required: ["postingId", "status"],
+            additionalProperties: true,
+          },
+          description: "Prepared packets and their outcome, newest first.",
+        },
+        statusKey: { type: "object", additionalProperties: { type: "string" }, description: "What each status word means." },
+        error: { type: "string", description: "Only when this key is not linked to an account." },
+        fix: { type: "string" },
+      },
+      oneOf: [
+        { required: ["queued", "applications", "statusKey"] },
+        { required: ["error", "fix"] },
+      ],
+      additionalProperties: true,
     },
   },
   {
@@ -644,9 +951,118 @@ const TOOLS = [
   {
     name: "board_stats",
     title: "Board statistics",
-    description: "Live board statistics from cache (cheap to call): servable and tracked posting totals, the count of company job boards with open roles (boards, not employers — one employer can run several), the category set, freshness stamp.",
+    description:
+      "Live board statistics from cache (cheap to call): servable and tracked posting totals, the count of company job boards with open roles (boards, not employers — one employer can run several), the category set, freshness stamp. " +
+      "Answers with no key too, with a withKey block saying what a free key adds.",
     annotations: READS_THE_BOARD,
     inputSchema: { type: "object", properties: {} },
+    outputSchema: {
+      type: "object",
+      properties: {
+        servablePostings: { type: ["integer", "null"], description: "Postings the board serves right now: not withdrawn, dated within the freshness window. Null when the pass did not compute it." },
+        trackedPostings: { type: ["integer", "null"], description: "Every posting the board holds, including ones outside the serving rules." },
+        openCompanyBoards: { type: ["integer", "null"], description: "Company job boards with at least one servable posting. BOARDS, not employers — read openCompanyBoardsBasis." },
+        openCompanyBoardsBasis: { type: "string" },
+        categories: { type: "array", items: { type: "string" }, description: "The category slugs search_jobs accepts." },
+        freshnessWindowDays: { type: "integer" },
+        refreshedAt: { type: ["string", "null"], description: "When the cache these figures come from was last written." },
+        note: { type: "string" },
+        withKey: {
+          type: "object",
+          properties: {
+            mintUrl: { type: "string" },
+            dailyCalls: { type: "integer", description: "Calls a day on a free key." },
+            adds: { type: "string", description: "What a free key opens beyond the unkeyed tools." },
+          },
+          required: ["mintUrl", "dailyCalls", "adds"],
+          description: "Present on an unkeyed call: where a free key comes from and what it adds.",
+        },
+      },
+      required: ["servablePostings", "openCompanyBoards", "openCompanyBoardsBasis", "categories", "freshnessWindowDays"],
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "employer_hiring_record",
+    title: "An employer's hiring record on this board",
+    description:
+      "The closure ledger no other board keeps, per employer: one row per companyToken with open_roles now, " +
+      `closed_${HIRING_RECORD_WINDOW_DAYS}d (postings we watched come off this board in the last ${HIRING_RECORD_WINDOW_DAYS} days, re-lists excluded), ` +
+      `superseded_${HIRING_RECORD_WINDOW_DAYS}d (the re-lists, a floor), the two medians from the employer's own stated dates (lower bounds), ` +
+      `tracking_days (how long we have watched THIS board, capped at ${HIRING_RECORD_WINDOW_DAYS}) and feed_total (what its feed advertised at the last check). ` +
+      "What it is NOT: A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — " +
+      "and it is a record of one BOARD, never summed across an employer's boards, never a headcount. A board with no closure " +
+      "observed answers record:'unknown' with the reason, never a verdict about the employer: on a board bigger than one visit " +
+      "can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it, " +
+      "so silence there is about our instrument. " +
+      `Up to ${EMPLOYER_TOKENS_MAX} tokens per call; every row carries its basis. Pair with employer_growth for the other half of what the site calls "Actively hiring".`,
+    annotations: READS_THE_BOARD,
+    inputSchema: {
+      type: "object",
+      properties: {
+        companyTokens: {
+          type: "array", items: { type: "string" }, minItems: 1, maxItems: EMPLOYER_TOKENS_MAX,
+          description: `companyToken values from job cards or search_jobs (a vendor tenant, e.g. 'acme' or 'gici~wd5~Careers'). Up to ${EMPLOYER_TOKENS_MAX}; more is refused with the count named.`,
+        },
+      },
+      required: ["companyTokens"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        employers: { type: "array", items: HIRING_RECORD_ROW_SCHEMA, description: "One row per token asked, in the order asked. A token the board does not carry still answers, as unknown." },
+        asked: { type: "integer" },
+        window_days: { type: "integer" },
+        basis: { type: "string" },
+      },
+      required: ["employers", "basis"],
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "employer_growth",
+    title: "Did this employer's board grow?",
+    description:
+      "Whether an employer's board served more roles than it did a week earlier, judged by the board itself from our own " +
+      `daily observation: one row per companyToken, roles served on the latest day against ${GROWTH_BARS.windowDays} days earlier. ` +
+      "Three verdicts, passed through untouched — grew, no-growth, unknown — and unknown ALWAYS carries unknown_reason " +
+      "(a feed bigger than one visit can read, a board too new or too small for a rate, a gap in our own series, a pool " +
+      "that was replaced rather than grown…): an unknown is a reading we could not take, never a no. The bars the verdict " +
+      `uses: at least ${GROWTH_BARS.minBaselineServed} roles served at the window's start; then BOTH at least ${GROWTH_BARS.minNetAdd} more roles ` +
+      `AND at least ${Math.round(GROWTH_BARS.minRate * 100)}% more, on a board tracked for at least ${GROWTH_BARS.minTenureDays} days, ` +
+      "with every read in the window whole. Per BOARD (a vendor tenant), never summed across an employer's boards; more " +
+      "roles served is roles opened net of roles that came down — not a headcount and not a hire. " +
+      `Up to ${EMPLOYER_TOKENS_MAX} tokens per call. This tool never ranks employers, and no list of growing employers exists here or anywhere on the board.`,
+    annotations: READS_THE_BOARD,
+    inputSchema: {
+      type: "object",
+      properties: {
+        companyTokens: {
+          type: "array", items: { type: "string" }, minItems: 1, maxItems: EMPLOYER_TOKENS_MAX,
+          description: `companyToken values from job cards or search_jobs. Up to ${EMPLOYER_TOKENS_MAX}; more is refused with the count named.`,
+        },
+      },
+      required: ["companyTokens"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        employers: { type: "array", items: GROWTH_ROW_SCHEMA, description: "One row per token asked, in the order asked. A token with no daily series answers unknown with its reason." },
+        asked: { type: "integer" },
+        bars: {
+          type: "object",
+          properties: {
+            window_days: { type: "integer" }, min_baseline_served: { type: "integer" }, min_net_add: { type: "integer" },
+            min_rate: { type: "number" }, min_tenure_days: { type: "integer" },
+          },
+          required: ["window_days", "min_baseline_served", "min_net_add", "min_rate", "min_tenure_days"],
+          description: "What the verdict measured against — for reading a row, never for re-judging one.",
+        },
+        basis: { type: "string" },
+      },
+      required: ["employers", "bars", "basis"],
+      additionalProperties: true,
+    },
   },
   {
     name: "key_status",
@@ -742,8 +1158,117 @@ const TOOLS = [
       type: "object",
       properties: SEARCH_PROPERTIES,
     },
+    outputSchema: {
+      type: "object",
+      properties: {
+        decision: {
+          type: "object", additionalProperties: true,
+          description: "The board's own explain trace for this query: parsed terms, filters applied or ignored and why, route, retriever and ranking regime. Its keys are the board's and change as the board's decisions do.",
+        },
+        outcome: {
+          type: "object",
+          properties: {
+            rowsServed: { type: "integer" },
+            topTitles: { type: "array", items: { type: ["string", "null"] }, description: "The first five titles served, for a glance at ranking." },
+            ...DISCLOSURE_SCHEMA,
+            phaseMs: { type: ["object", "null"], additionalProperties: true, description: "Per-phase timings when the board reports them." },
+            tookMs: { type: ["number", "null"] },
+            rankedFellBack: { type: ["boolean", "null"], description: "True when the ranked path failed and the run fell back." },
+          },
+          required: ["rowsServed", "topTitles", "phaseMs", "tookMs", "rankedFellBack"],
+          additionalProperties: true,
+        },
+      },
+      required: ["decision", "outcome"],
+      additionalProperties: true,
+    },
+  },
+  // ── ChatGPT's research connector calls exactly two names ────────────────
+  // Deep research and company knowledge in ChatGPT call tools named `search`
+  // and `fetch` in a fixed shape and nothing else. Both below are the same
+  // runners as search_jobs and get_job under those names — wrappers, never a
+  // second reader — and they answer with no key like the tools they wrap.
+  {
+    name: "search",
+    title: "Search (alias of search_jobs, in ChatGPT's research shape)",
+    description:
+      "An ALIAS of search_jobs in the fixed shape ChatGPT's deep-research and company-knowledge connectors call: " +
+      "one query string in, {results:[{id,title,url}]} out. Every result's id is the job id fetch and every other tool take; " +
+      "url is the employer's own apply page when the board holds one, else the posting's page on the site. " +
+      `Same board, same ranking, same limit as an unkeyed search_jobs (${ANON_SEARCH_LIMIT} rows); the disclosures ride beside the results. ` +
+      "Any other client should call search_jobs, which takes every filter.",
+    annotations: READS_THE_BOARD,
+    inputSchema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Free text — title, skills, a place, exclusions with a leading minus." } },
+      required: ["query"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        results: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "The job id — pass it to fetch, get_job, check_jobs_open." },
+              title: { type: "string", description: "Title and employer, one line." },
+              url: { type: "string" },
+            },
+            required: ["id", "title", "url"],
+            additionalProperties: true,
+          },
+        },
+        note: { type: "string" },
+        ...DISCLOSURE_SCHEMA,
+      },
+      required: ["results"],
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "fetch",
+    title: "Fetch (alias of get_job, in ChatGPT's research shape)",
+    description:
+      "An ALIAS of get_job in the fixed shape ChatGPT's deep-research and company-knowledge connectors call: " +
+      "one id in (from search), {id,title,text,url,metadata} out. text is the posting's full description; metadata carries the " +
+      "job card's structured fields (pay, experience, location, workMode, postedAt, companyToken, agentReady). A dead id answers " +
+      "with what the board knows — a watched closure, an aged-out stub, or not found — in text and metadata, never a stale card. " +
+      "Any other client should call get_job.",
+    annotations: READS_THE_BOARD,
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string", description: "A job id from search." } },
+      required: ["id"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        title: { type: ["string", "null"], description: "Null when there is no posting to return; read metadata.closed / agedOut / notFound." },
+        text: { type: "string", description: "The description, or the board's one-line reason when there is none." },
+        url: { type: "string" },
+        metadata: { type: "object", additionalProperties: true, description: "The compact job card without the description; on a dead id, the board's closed/agedOut/notFound record." },
+        note: { type: "string" },
+      },
+      required: ["id", "title", "text", "url", "metadata"],
+      additionalProperties: true,
+    },
   },
 ];
+
+/**
+ * THE TIERS, DERIVED FROM THE REGISTRY rather than typed into a sentence:
+ * initialize.instructions and board_stats' withKey block name what a free key
+ * opens, and a list typed there would be the six-tools page again. The paid
+ * and account sets are the two gates callTool applies (isPaidTier; a runner
+ * that refuses a key with no owner) — pinned to the page's mirror, which is
+ * pinned to that dispatch, by the guards named in src/config/mcp-tools.ts.
+ */
+const PAID_TOOLS: readonly string[] = ["fit_resume"];
+const ACCOUNT_TOOLS: readonly string[] = ["request_application", "application_status"];
+const KEY_ONLY_READ_TOOLS: readonly string[] = TOOLS.map((t) => t.name)
+  .filter((n) => !ANON_TOOLS.includes(n) && !PAID_TOOLS.includes(n) && !ACCOUNT_TOOLS.includes(n));
 
 /**
  * AN ARRAY, ALWAYS — the board reads `companies` with Array.isArray and pushes
@@ -1069,6 +1594,63 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
   };
 }
 
+// ── The two names ChatGPT's research connector calls ────────────────────────
+//
+// Wrappers over runSearchJobs and runGetJob — the board is read by the same
+// two calls, through the same anon-key POST, and nothing here holds a second
+// reader. Only the SHAPE is ChatGPT's.
+
+/** One line for a research listing: the title and the employer. */
+const aliasTitle = (card: Record<string, unknown>): string =>
+  [card.title, card.company].filter((x) => typeof x === "string" && x).join(" — ") || String(card.id ?? "");
+/** The employer's own apply page when the board holds one, else the posting's page on the site. */
+const aliasUrl = (card: Record<string, unknown>): string =>
+  typeof card.applyUrl === "string" && card.applyUrl ? card.applyUrl : SITE_JOB_URL(String(card.id ?? ""));
+
+async function runSearchAlias(args: Record<string, unknown>): Promise<unknown> {
+  const query = String(args.query ?? "").trim();
+  if (!query) {
+    throw new ToolArgumentError("search needs a query string.", "Send {query: 'what you are looking for'}; every other filter lives on search_jobs.");
+  }
+  // The unkeyed page size on every call, keyed or not: this shape exists for
+  // a research listing, and a client that wants sixty rows and filters has
+  // search_jobs.
+  const r = await runSearchJobs({ query, limit: ANON_SEARCH_LIMIT }) as Record<string, unknown>;
+  const { jobs, ...disclosed } = r;
+  const cards = (Array.isArray(jobs) ? jobs : []) as Array<Record<string, unknown>>;
+  return {
+    results: cards.map((c) => ({ id: String(c.id ?? ""), title: aliasTitle(c), url: aliasUrl(c) })),
+    ...disclosed,
+  };
+}
+
+async function runFetchAlias(args: Record<string, unknown>): Promise<unknown> {
+  const id = String(args.id ?? "").trim();
+  if (!id) throw new ToolArgumentError("fetch needs an id.", "Pass the id of a search result.");
+  const r = await runGetJob({ id }) as Record<string, unknown>;
+  if (r.job === null) {
+    // A dead id: get_job's own honesty (closed / agedOut / notFound, with its
+    // note) becomes the text and the metadata, so a research client is told
+    // the posting came down rather than handed an empty page.
+    const { note, fix, job: _none, ...record } = r;
+    return {
+      id,
+      title: null,
+      text: String(note ?? "No posting with that id."),
+      url: SITE_JOB_URL(id),
+      metadata: { ...record, ...(typeof fix === "string" ? { fix } : {}) },
+    };
+  }
+  const { description, ...card } = r;
+  return {
+    id,
+    title: typeof card.title === "string" ? card.title : null,
+    text: String(description ?? ""),
+    url: aliasUrl(card),
+    metadata: card,
+  };
+}
+
 async function runBoardStats(): Promise<unknown> {
   const r = await board({ action: "list", limit: 1, includeFacets: true });
   return {
@@ -1095,6 +1677,113 @@ async function runBoardStats(): Promise<unknown> {
     freshnessWindowDays: 30,
     refreshedAt: r.refreshedAt ?? null,
     note: "Postings come from employers' own hiring-system feeds; nothing is scraped from aggregators.",
+  };
+}
+
+/**
+ * The token list both employer tools take: an array (or a comma list — agents
+ * type them), trimmed, de-duplicated, order kept, and REFUSED past the cap
+ * rather than trimmed. A silently shortened list is an employer the agent
+ * believes it asked about.
+ */
+function employerTokensArg(args: Record<string, unknown>, tool: string): string[] {
+  const tokens = [...new Set(companyTokens(args.companyTokens))];
+  if (!tokens.length) {
+    throw new ToolArgumentError(
+      `${tool} needs companyTokens — an array of companyToken values from job cards (up to ${EMPLOYER_TOKENS_MAX}).`,
+      "Take companyToken off any search_jobs card, or from the site's employer pages.",
+    );
+  }
+  if (tokens.length > EMPLOYER_TOKENS_MAX) {
+    throw new ToolArgumentError(
+      `${tool} takes at most ${EMPLOYER_TOKENS_MAX} companyTokens per call; ${tokens.length} were sent.`,
+      `Split the list — each call is one metered request, so ${tokens.length} tokens is ${Math.ceil(tokens.length / EMPLOYER_TOKENS_MAX)} calls, not ${tokens.length}.`,
+    );
+  }
+  return tokens;
+}
+
+/**
+ * ONE RPC, ONE ROW PER TOKEN, NOTHING RE-DERIVED.
+ *
+ * get_company_hiring_health answers with a row for every token asked (it
+ * unnests the list and LEFT JOINs everything else), so a token this board has
+ * never seen comes back zero and null — and a row is therefore not evidence.
+ * Evidence is a closure-ledger entry. The `record` field says which of the two
+ * a row is, and `unknown` is never rendered as a finding about the employer:
+ * on a board bigger than one visit can read, no closure is observable until a
+ * provable full pass completes and a role then goes, and the silence of a
+ * board still short of that pass must not be published as its own.
+ *
+ * The RPC's column names are kept verbatim (its own header explains each), so
+ * this surface and the site's employer pages cannot start disagreeing about
+ * what a number is called.
+ */
+async function runEmployerHiringRecord(client: SupabaseClient, args: Record<string, unknown>): Promise<unknown> {
+  const tokens = employerTokensArg(args, "employer_hiring_record");
+  const { data, error } = await client.rpc("get_company_hiring_health", { p_tokens: tokens });
+  if (error) throw new Error(`get_company_hiring_health: ${error.message}`);
+  const rows = new Map<string, Record<string, unknown>>();
+  for (const r of (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>) rows.set(String(r.company_token), r);
+  const closedCol = `closed_${HIRING_RECORD_WINDOW_DAYS}d`;
+  const supersededCol = `superseded_${HIRING_RECORD_WINDOW_DAYS}d`;
+  const employers = tokens.map((tok) => {
+    const r = rows.get(tok);
+    // The RPC answers every token by construction; a missing row is a fault in
+    // the read, not a fact about the employer, and is thrown rather than filled.
+    if (!r) throw new Error(`get_company_hiring_health answered no row for ${tok}`);
+    const closed = Number(r[closedCol] ?? 0);
+    const superseded = Number(r[supersededCol] ?? 0);
+    const openRoles = Number(r.open_roles ?? 0);
+    const nothingAtAll = openRoles === 0 && closed + superseded === 0 && Number(r.tracking_days ?? 0) === 0 && r.feed_total == null;
+    const unknownReason = nothingAtAll ? "no_record" : closed + superseded === 0 ? "no_closures_observed" : null;
+    return {
+      ...r,
+      record: unknownReason ? "unknown" : "observed",
+      unknown_reason: unknownReason,
+      basis: HIRING_RECORD_BASIS,
+      ...(unknownReason ? { note: HIRING_RECORD_UNKNOWN[unknownReason] } : {}),
+    };
+  });
+  return { employers, asked: tokens.length, window_days: HIRING_RECORD_WINDOW_DAYS, basis: HIRING_RECORD_BASIS };
+}
+
+/**
+ * THE RPC OWNS THE VERDICT. Every row is get_company_growth's own answer with
+ * verdict and unknown_reason exactly as it wrote them — three states, and the
+ * third one is not a no. Nothing here compares net or rate against a bar; the
+ * bars travel beside the rows so an agent can read them, and the description
+ * names them from the same constant so it cannot describe a different test.
+ * The RPC answers a row for every token (a token with no daily series is
+ * unknown/no_series), so a missing row is a fault in the read and is thrown.
+ */
+async function runEmployerGrowth(client: SupabaseClient, args: Record<string, unknown>): Promise<unknown> {
+  const tokens = employerTokensArg(args, "employer_growth");
+  const { data, error } = await client.rpc("get_company_growth", { p_tokens: tokens });
+  if (error) throw new Error(`get_company_growth: ${error.message}`);
+  const rows = new Map<string, Record<string, unknown>>();
+  for (const r of (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>) rows.set(String(r.company_token), r);
+  const employers = tokens.map((tok) => {
+    const r = rows.get(tok);
+    if (!r) throw new Error(`get_company_growth answered no row for ${tok}`);
+    return { ...r, verdict: r.verdict, unknown_reason: r.unknown_reason ?? null };
+  });
+  return {
+    employers,
+    asked: tokens.length,
+    bars: {
+      window_days: GROWTH_BARS.windowDays,
+      min_baseline_served: GROWTH_BARS.minBaselineServed,
+      min_net_add: GROWTH_BARS.minNetAdd,
+      min_rate: GROWTH_BARS.minRate,
+      min_tenure_days: GROWTH_BARS.minTenureDays,
+    },
+    basis:
+      "Per BOARD (a vendor tenant), from our own daily observation of roles served, latest day against the window's start, " +
+      "on days we read the board in full — never summed across an employer's boards. More roles served is roles opened net " +
+      "of roles that came down: not a headcount, not a hire. unknown carries its reason and is a reading we could not take, " +
+      "never a no. The verdict is the board's own and is passed through untouched; the bars beside it are what it measured " +
+      "against, for reading a row and never for re-judging one. Employers are never ranked by this.",
   };
 }
 
@@ -1499,6 +2188,8 @@ async function callTool(
     case "get_jobs": return toolOk(await runGetJobs(args));
     case "check_jobs_open": return toolOk(await runCheckJobsOpen(args));
     case "board_stats": return toolOk(await runBoardStats());
+    case "employer_hiring_record": return toolOk(await runEmployerHiringRecord(client, args));
+    case "employer_growth": return toolOk(await runEmployerGrowth(client, args));
     case "fit_resume": {
       // Gated exactly as POST /v1/fit is: the same feature was paid on the
       // API and free here, and the free path drained the paid customers'
@@ -1514,8 +2205,101 @@ async function callTool(
     case "check_apply_support": return toolOk(await runCheckApplySupport(client, args));
     case "request_application": return toolOk(await runRequestApplication(client, apiKeyId, args));
     case "application_status": return toolOk(await runApplicationStatus(client, apiKeyId, args));
+    case "search": return toolOk(await runSearchAlias(args));
+    case "fetch": return toolOk(await runFetchAlias(args));
     default: return null;
   }
+}
+
+/**
+ * THE FIRST CALL WITH NO KEY GETS AN ANSWER, NOT A WALL.
+ *
+ * One of ANON_TOOLS, called with no Authorization header. The caller is
+ * counted by mcp_anon_check under a hash of its first x-forwarded-for hop
+ * and under the global bucket; both must be at or under their caps after
+ * counting. A refusal is in band with the caps named and the mint URL — the
+ * same shape every other refusal here takes — and a Retry-After that says
+ * when the day turns. An answer is the tool's ordinary result with the search
+ * limit clamped, plus a `note` saying how many unkeyed calls are left and
+ * what a free key raises that to, and an `unkeyed` block with the same
+ * figures as numbers. board_stats additionally carries `withKey`: where a key
+ * comes from and what it adds, so the cheapest tool here is also the one
+ * that explains the rest.
+ *
+ * Never metered through api_key_check's tables (there is no key) and never
+ * through the cross-function rate budget (that starved résumé upload once).
+ */
+async function answerUnkeyed(
+  client: SupabaseClient,
+  req: Request,
+  rpcId: unknown,
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<{ rpc: unknown; headers: Record<string, string> }> {
+  const ipHash = (await sha256Hex(callerAddress(req.headers))).slice(0, 16);
+  const { data, error } = await client
+    .rpc("mcp_anon_check", { p_ip_hash: ipHash, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: ANON_IP_CAP_PER_DAY })
+    .maybeSingle();
+  if (error || !data) {
+    console.error("[AGENT-MCP] unkeyed allowance check failed:", error?.message?.slice(0, 160));
+    return { rpc: rpcError(rpcId, -32603, "the unkeyed allowance is temporarily unavailable — retry shortly, or send a free key"), headers: {} };
+  }
+  const a = data as AnonDecision;
+  const keyRaisesTo = FREE_KEY_DAILY_QUOTA.toLocaleString("en-US");
+  if (!a.allowed) {
+    const which = a.ip_used >= a.ip_cap
+      ? `${a.ip_cap} unkeyed calls a day from one address`
+      : `${a.global_cap} unkeyed calls a day across every caller`;
+    return {
+      rpc: rpcResult(rpcId, toolErr(
+        `The unkeyed allowance is spent — ${which} (${a.ip_used} of ${a.ip_cap} from this address, ${a.global_used} of ${a.global_cap} overall today). It resets at midnight UTC.`,
+        `Get a free key at ${MINT_URL} — ${keyRaisesTo} calls a day, no account — and send it as Authorization: Bearer <key>.`,
+      )),
+      headers: { "Retry-After": String(secondsToMidnightUtc()) },
+    };
+  }
+  // The sentence names the address cap as its denominator, so its numerator
+  // is the address figure; when the world is the tighter bucket that is said
+  // in its own clause, and the header carries whichever binds first.
+  const ipLeft = Math.max(0, a.ip_cap - a.ip_used);
+  const globalLeft = Math.max(0, a.global_cap - a.global_used);
+  const left = Math.min(ipLeft, globalLeft);
+  const worldClause = globalLeft < ipLeft ? `; ${globalLeft} across every unkeyed caller` : "";
+  const note = `unkeyed: ${ipLeft} of ${a.ip_cap} anonymous calls left today${worldClause}; a free key raises this to ${keyRaisesTo}`;
+  const unkeyed = {
+    callsLeftToday: ipLeft,
+    ipCap: a.ip_cap,
+    globalLeftToday: globalLeft,
+    globalCap: a.global_cap,
+    resetsInSeconds: secondsToMidnightUtc(),
+    mintUrl: MINT_URL,
+    keyRaisesTo: FREE_KEY_DAILY_QUOTA,
+  };
+  const clamped = { ...args, limit: Math.max(1, Math.min(ANON_SEARCH_LIMIT, Number(args.limit ?? ANON_SEARCH_LIMIT) || ANON_SEARCH_LIMIT)) };
+  let out: Record<string, unknown>;
+  switch (toolName) {
+    case "search_jobs": out = { ...(await runSearchJobs(clamped) as Record<string, unknown>), note }; break;
+    case "search": out = { ...(await runSearchAlias(clamped) as Record<string, unknown>), note }; break;
+    case "fetch": out = { ...(await runFetchAlias(args) as Record<string, unknown>), note }; break;
+    case "board_stats": {
+      const stats = await runBoardStats() as Record<string, unknown>;
+      out = {
+        ...stats,
+        note: `${note}. ${String(stats.note ?? "")}`.trim(),
+        withKey: {
+          mintUrl: MINT_URL,
+          dailyCalls: FREE_KEY_DAILY_QUOTA,
+          adds:
+            `${keyRaisesTo} calls a day instead of ${a.ip_cap}, search_jobs pages up to 60 rows instead of ${ANON_SEARCH_LIMIT}, ` +
+            `and every other read tool: ${KEY_ONLY_READ_TOOLS.join(", ")}. ${PAID_TOOLS.join(", ")} needs a paid key; ` +
+            `${ACCOUNT_TOOLS.join(", ")} need a key minted while signed in (${DOCS_URL}).`,
+        },
+      };
+      break;
+    }
+    default: return { rpc: rpcError(rpcId, -32602, `unknown tool: ${toolName}`), headers: {} };
+  }
+  return { rpc: rpcResult(rpcId, toolOk({ ...out, unkeyed })), headers: { "X-Unkeyed-Remaining": String(left) } };
 }
 
 Deno.serve(async (req) => {
@@ -1568,15 +2352,21 @@ Deno.serve(async (req) => {
       protocolVersion,
       capabilities: { tools: { listChanged: false } },
       serverInfo: SERVER_INFO,
+      // ONE PARAGRAPH, FOUR TIERS, every tool name read off the registry.
+      // The sentence on the ledger uses the site's own words for it — a
+      // takedown is a takedown here, and nothing in this paragraph calls it
+      // anything else.
       instructions:
-        "Job search over employers' own hiring feeds. Read tools (search_jobs, get_job, board_stats, check_apply_support) " +
-        "need any free API key from https://resumebooster.work/data-api" +
-        " — and so do get_jobs, check_jobs_open, debug_search and key_status. " +
-        "Call key_status first: it says what this key's tier, limits and powers are, so nothing has to be discovered by refusal. " +
-        "Verify a shortlist with check_jobs_open (200 ids per call) and read it with get_jobs (10) rather than one get_job each — " +
-        "the daily quota counts calls, not ids. " +
-        "fit_resume needs a paid key, like POST /v1/fit. The apply tools additionally need an " +
-        "account-linked key, an Agent plan, and a standing mandate — see " + DOCS_URL + ". " +
+        "Job search over employers' own hiring feeds, in four tiers. " +
+        `No key: ${ANON_TOOLS.join(", ")} answer with no Authorization header at all — search capped at ${ANON_SEARCH_LIMIT} rows, ` +
+        `${ANON_IP_CAP_PER_DAY} calls a day per address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller, each answer saying how many are left ` +
+        "(search and fetch are search_jobs and get_job under the names ChatGPT's research connector calls). " +
+        `Free key, no account (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, search_jobs with every filter and up to 60 rows, ` +
+        `and every other read tool — ${KEY_ONLY_READ_TOOLS.join(", ")}; call key_status first, it says what the key may do so nothing is discovered by refusal, ` +
+        "and verify a shortlist with check_jobs_open (200 ids per call) and read it with get_jobs (10) rather than one get_job each — the quota counts calls, not ids. " +
+        `Paid key: ${PAID_TOOLS.join(", ")}, exactly like POST /v1/fit. ` +
+        `Account-linked key (${DOCS_URL}) with an Agent plan and a standing mandate: ${ACCOUNT_TOOLS.join(", ")}. ` +
+        "This board watches postings come down and can say which employers take roles down and leave them down — employer_hiring_record and employer_growth carry that record per employer, with every unknown named as unknown. " +
         "Counts are honest: countUnavailable means the board refuses to guess, and ignoredFilters names any filter it could not apply.",
     }));
   }
@@ -1601,52 +2391,69 @@ Deno.serve(async (req) => {
 
   const auth = req.headers.get("authorization") ?? "";
   const raw = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
-  if (!raw) {
+  const client = db();
+  // A keyed-only tool with no key keeps the in-band refusal — the wording the
+  // page and the docs quote — until an authorization server exists to point
+  // a 401 at. The unkeyed tools go on to answer.
+  if (!raw && !ANON_TOOLS.includes(toolName)) {
     return json(rpcResult(id, toolErr(
       "No API key. Send it as: Authorization: Bearer <key>.",
       "Get a free key at https://resumebooster.work/data-api — search tools work with it immediately.",
     )));
   }
 
-  const client = db();
-  const { data: dec, error: decErr } = await client
-    .rpc("api_key_check", { p_key_hash: await sha256Hex(raw), p_endpoint: `/mcp/${toolName}` })
-    .maybeSingle();
-  if (decErr) {
-    console.error("[AGENT-MCP] key check failed:", decErr.message?.slice(0, 160));
-    return json(rpcError(id, -32603, "key verification temporarily unavailable — retry shortly"));
-  }
-  const d = (dec ?? null) as Decision | null;
-  // Rate/quota headers are computed from whatever the check returned, so they
-  // ride the DENY response too — that is the response a client most needs them
-  // on. Retry-After is in Expose-Headers; a deny that omitted it advertised a
-  // header it never sent.
-  const rateHeaders: Record<string, string> = d
-    ? {
-        "X-RateLimit-Limit": String(d.rate_limit),
-        "X-RateLimit-Remaining": String(Math.max(0, d.rate_limit - d.rate_used)),
-        "X-Quota-Limit": String(d.quota_limit),
-        "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
-      }
-    : {};
-  if (!d || !d.is_allowed) {
-    const reason = d?.deny_reason ?? "unknown_key";
-    const friendly: Record<string, [string, string]> = {
-      rate_limited: [`Over ${d?.rate_limit ?? 60} requests/minute.`, "Wait a minute, then continue."],
-      quota_exceeded: [`Daily quota of ${d?.quota_limit ?? 1000} requests used.`, "Quota resets at midnight UTC."],
-      revoked: ["This key has been revoked.", "Mint a new one at https://resumebooster.work/data-api."],
-      unknown_key: ["That key is not recognised.", "Check for truncation; keys start with rb_live_."],
-    };
-    const [message, fix] = friendly[reason] ?? friendly.unknown_key;
-    const retry: Record<string, string> = reason === "rate_limited"
-      ? { "Retry-After": "60" }
-      : reason === "quota_exceeded"
-      ? { "Retry-After": String(secondsToMidnightUtc()) }
+  // Keyed: checked and metered per tool, here. Unkeyed (one of ANON_TOOLS):
+  // `d` stays null and the call is counted by mcp_anon_check inside the try
+  // below, before any runner runs — so a call whose arguments are refused
+  // there was counted first, the same order the keyed path keeps.
+  let d: Decision | null = null;
+  let rateHeaders: Record<string, string> = {};
+  if (raw) {
+    const { data: dec, error: decErr } = await client
+      .rpc("api_key_check", { p_key_hash: await sha256Hex(raw), p_endpoint: `/mcp/${toolName}` })
+      .maybeSingle();
+    if (decErr) {
+      console.error("[AGENT-MCP] key check failed:", decErr.message?.slice(0, 160));
+      return json(rpcError(id, -32603, "key verification temporarily unavailable — retry shortly"));
+    }
+    d = (dec ?? null) as Decision | null;
+    // Rate/quota headers are computed from whatever the check returned, so they
+    // ride the DENY response too — that is the response a client most needs them
+    // on. Retry-After is in Expose-Headers; a deny that omitted it advertised a
+    // header it never sent.
+    rateHeaders = d
+      ? {
+          "X-RateLimit-Limit": String(d.rate_limit),
+          "X-RateLimit-Remaining": String(Math.max(0, d.rate_limit - d.rate_used)),
+          "X-Quota-Limit": String(d.quota_limit),
+          "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
+        }
       : {};
-    return json(rpcResult(id, toolErr(message, fix)), 200, { ...rateHeaders, ...retry });
+    if (!d || !d.is_allowed) {
+      const reason = d?.deny_reason ?? "unknown_key";
+      const friendly: Record<string, [string, string]> = {
+        rate_limited: [`Over ${d?.rate_limit ?? 60} requests/minute.`, "Wait a minute, then continue."],
+        quota_exceeded: [`Daily quota of ${d?.quota_limit ?? 1000} requests used.`, "Quota resets at midnight UTC."],
+        revoked: ["This key has been revoked.", "Mint a new one at https://resumebooster.work/data-api."],
+        unknown_key: ["That key is not recognised.", "Check for truncation; keys start with rb_live_."],
+      };
+      const [message, fix] = friendly[reason] ?? friendly.unknown_key;
+      const retry: Record<string, string> = reason === "rate_limited"
+        ? { "Retry-After": "60" }
+        : reason === "quota_exceeded"
+        ? { "Retry-After": String(secondsToMidnightUtc()) }
+        : {};
+      return json(rpcResult(id, toolErr(message, fix)), 200, { ...rateHeaders, ...retry });
+    }
   }
 
   try {
+    if (!d) {
+      // No key, one of ANON_TOOLS: counted by mcp_anon_check first, then
+      // answered with the unkeyed note. See answerUnkeyed.
+      const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs);
+      return json(rpc, 200, headers);
+    }
     // key_status is answered HERE and not in callTool because what it reports
     // IS `d` — the decision this call was allowed by. See runKeyStatus.
     const result = toolName === "key_status"
@@ -1662,6 +2469,12 @@ Deno.serve(async (req) => {
         `This key's daily fit-scoring allowance (${e.limit ?? 1000} calls) is used; it resets 24 hours after the first scored call.`,
         "Wait for the window, or keep using search_jobs meanwhile — the scorer does not meter it.",
       )), 200, { ...rateHeaders, "Retry-After": "3600" });
+    }
+    if (e instanceof ToolArgumentError) {
+      // The call as sent cannot be answered, and the agent can change it: say
+      // what was wrong and what to send instead, in band, metered like any
+      // other answered call.
+      return json(rpcResult(id, toolErr(e.message, e.fix)), 200, rateHeaders);
     }
     // A tool failure is a RESULT with isError, not a protocol error — agents
     // read it and adapt; a JSON-RPC error tears down some clients' sessions.

@@ -122,8 +122,19 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeLessThan(MCP_RAW.indexOf('case "check_apply_support":'));
     const tool = between(MCP, 'name: "fit_resume"', 'name: "board_stats"');
     expect(tool).toMatch(/PAID — needs a paid API key, exactly like POST \/v1\/fit/);
-    expect(MCP, "initialize must not list it among the free read tools").toMatch(/Read tools \(search_jobs, get_job, board_stats, check_apply_support\)/);
-    expect(MCP).toMatch(/"fit_resume needs a paid key, like POST \/v1\/fit\. /);
+    // initialize derives its free-key list from KEY_ONLY_READ_TOOLS, which
+    // excludes PAID_TOOLS by construction, and names the paid tier from that
+    // same constant beside the /v1/fit pointer — so fit_resume cannot be
+    // listed as free without the derivation itself changing. (This replaced
+    // two pinned spellings of the old typed sentence, 2026-09-15.)
+    const instructions = between(MCP, "instructions:", "}));");
+    expect(instructions, "the free-key list is derived, never typed").toMatch(/\$\{KEY_ONLY_READ_TOOLS\.join\(", "\)\}/);
+    // The paid tier is named from PAID_TOOLS in the same sentence as the
+    // /v1/fit pointer — the property, not the sentence's spelling.
+    expect(instructions, "PAID_TOOLS interpolated beside the /v1/fit pointer").toMatch(/\$\{PAID_TOOLS\.join\(", "\)\}[^.]*POST \/v1\/fit/);
+    expect(instructions.replace(/\$\{[^}]*\}/g, ""), "a typed fit_resume in the prose is a second list").not.toMatch(/fit_resume/);
+    expect(MCP).toMatch(/const PAID_TOOLS: readonly string\[\] = \["fit_resume"\];/);
+    expect(MCP).toMatch(/const KEY_ONLY_READ_TOOLS: readonly string\[\] = TOOLS\.map\(\(t\) => t\.name\)\s*\.filter\(\(n\) => !ANON_TOOLS\.includes\(n\) && !PAID_TOOLS\.includes\(n\) && !ACCOUNT_TOOLS\.includes\(n\)\)/);
   });
 
   it("the live probe, holding a free key, expects the in-band refusal — never a score", () => {

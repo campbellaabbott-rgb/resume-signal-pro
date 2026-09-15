@@ -42,6 +42,11 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   // (id, field, title, sim) over exactly these column names -- the third
   // function in the repo with this collision shape.
   job_board_category_anchors: ["id", "version", "field", "title", "embedding", "loaded_at"],
+  // The MCP server's unkeyed meter (20260915100000): mcp_anon_check RETURNS
+  // TABLE five names over a three-column table, and its body writes the
+  // table through ON CONFLICT -- the api_key_check shape exactly, so it is
+  // held to the same zero-collision rule below.
+  mcp_anon_rate: ["day", "bucket", "calls"],
 };
 
 /** Strip SQL comments so prose about a name is never mistaken for a reference. */
@@ -211,7 +216,10 @@ describe("category_knn qualifies every OUT name that is also an anchor column", 
  * column of every table the body touches, and the answer must be none.
  */
 describe("the API key functions do not name a column in their return shape", () => {
-  for (const fn of ["api_key_check", "api_key_issue", "api_key_issue_agent"]) {
+  // mcp_anon_check (20260915100000) meters the MCP server's unkeyed tier
+  // the way api_key_check meters keys -- an ON CONFLICT upsert per bucket --
+  // so the same stricter rule applies: no OUT name may be a column at all.
+  for (const fn of ["api_key_check", "api_key_issue", "api_key_issue_agent", "mcp_anon_check"]) {
     it(`${fn}: no OUT parameter shares a name with a column it touches`, () => {
       const { file, sql } = newestDefining(fn);
       expect(file, `no migration defines ${fn}`).toBeTruthy();

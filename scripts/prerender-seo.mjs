@@ -47,7 +47,7 @@ export { getAllProducts } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { BOARD_SOURCE_LIST } from "../src/config/ats-vendors";
-export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS } from "../src/config/mcp-tools";
+export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS } from "../src/config/mcp-tools";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
@@ -1668,6 +1668,10 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       const paidSentence = D.MCP_PAID_TOOLS.length
         ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code>POST /v1/fit</code> on the data API.`
         : "";
+      // The unkeyed tier: names and caps from the same mirror the server's
+      // constants are pinned to (a-first-call-with-no-key guard), never typed.
+      const unkeyedNames = codes(D.MCP_ANON_TOOLS);
+      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
@@ -1679,18 +1683,18 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           <p class="text-muted-foreground mb-8">Point an MCP-capable agent — Claude Code, Cursor, or one you built — at our MCP server. It can search ${countClause} pulled from employers' own hiring systems, read full descriptions, re-verify a shortlist, and, on the Agent plan, ask your apply agent to submit applications for you. It gets the same ranked search and the same honest disclosures the site gets — there is no second search engine behind this endpoint.</p>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">The endpoint</h2>
             ${mcpUrl ? `<p class="text-sm mb-2"><code>${h(mcpUrl)}</code></p>` : ""}
-            <p class="text-sm text-muted-foreground">Streamable HTTP transport, stateless, POST-only. Every tool call carries the key as <code>Authorization: Bearer rb_live_…</code>; tool discovery (initialize, tools/list) works without one, so an agent can see what is here before anyone mints anything, and a call without a key is refused in-band with the link to get one.</p>
+            <p class="text-sm text-muted-foreground">Streamable HTTP transport, stateless, POST-only. Tool discovery (initialize, tools/list) works with no key, so an agent can see what is here before anyone mints anything. ${unkeyedNames} answer with no key at all — ${unkeyedCaps}, each answer saying how many are left. Every other tool call carries the key as <code>Authorization: Bearer rb_live_…</code>, and a call without one is refused in-band with the link to get one.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
             <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
             <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> and the mandate set up in Account. Read-only keys stay read-only by design. Both kinds meter identically: 60 requests/minute, 1,000/day per key.</p>
           </section>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach the tools today</h2>
-            <p class="text-sm text-muted-foreground mb-2">Every tool call carries the key in an Authorization header, and not every host has a place to put one. From ${h(withHeader)}: every tool your key's tier allows. From ${h(withoutHeader)}: the server lists its tools and refuses every call — outside an org-admin beta there is no field for the key, and each host's own note below says which — stated here rather than promising a connector that fails on its first call.</p>
-            <ul class="space-y-1.5">${D.MCP_HOSTS.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${x.header ? "reaches the tools" : "lists the tools, cannot call them"}: ${h(x.how)}.</li>`).join("")}</ul>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools today</h2>
+            <p class="text-sm text-muted-foreground mb-2">Every keyed tool call carries the key in an Authorization header, and not every host has a place to put one. From ${h(withHeader)}: every tool your key's tier allows. From ${h(withoutHeader)}: connect with no auth and use the unkeyed tools — ${unkeyedNames} — ${unkeyedCaps}; the keyed tools still need ${h(withHeader)} carrying the key until an authorization server exists, because outside an org-admin beta there is no field for the key, and each host's own note below says which — stated here rather than promising a connector that fails on its first keyed call.</p>
+            <ul class="space-y-1.5">${D.MCP_HOSTS.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${x.header ? "reaches every tool" : "unkeyed tools only"}: ${h(x.how)}.</li>`).join("")}</ul>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">All ${D.MCP_TOOLS.length} tools</h2>
-            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}) — ${h(t.body)}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per address` : ""}) — ${h(t.body)}</li>`).join("")}</ul>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">What your agent can and cannot do</h2>
             <p class="text-sm text-muted-foreground mb-2">Applications requested here go through the exact same pipeline as the signed-in flow — the MCP layer is a translator, never a bypass. Your agent can do at most what you could do yourself, signed in.</p>
@@ -2023,7 +2027,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(`- Companies on the board: ${SITE}/companies — every employer with open roles, A–Z, each with its live count and a link to its own page.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (60 requests/minute, 1,000/day): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, on the same free keys, over Streamable HTTP. The apply tools additionally need an account-linked key, an Agent plan and a standing mandate. The key travels in an Authorization header, so today it is reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))}; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header).map((x) => x.name))} can list the tools but, outside an org-admin beta, have no field for the key and cannot call them.`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so ${andHosts(D.MCP_HOSTS.filter((x) => !x.header).map((x) => x.name))} connect with no authentication and use those; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan and a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable today from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))}; the hosts without a header field can list them but, outside an org-admin beta, cannot call them until an authorization server exists.`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;

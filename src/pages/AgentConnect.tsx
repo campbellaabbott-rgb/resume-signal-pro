@@ -1,20 +1,25 @@
 // Connect your agent — the human-facing page for the MCP server at
-// supabase/functions/agent-mcp. Any MCP-capable agent that can send an
-// Authorization header can search the board with a free /data-api key; the
-// apply tools additionally need an account-linked agent key minted here, an
-// Agent plan, and a standing mandate. The page states the boundary plainly:
-// the MCP layer is a translator over the existing apply pipeline, never a
-// bypass — an agent can do at most what its owner could do signed in.
+// supabase/functions/agent-mcp. A few read tools answer with no key at all,
+// under a daily allowance, so a host whose connector dialog has no field for
+// a key still gets an answer on its first call; any MCP-capable agent that
+// can send an Authorization header can use every read tool with a free
+// /data-api key; the apply tools additionally need an account-linked agent
+// key minted here, an Agent plan, and a standing mandate. The page states the
+// boundary plainly: the MCP layer is a translator over the existing apply
+// pipeline, never a bypass — an agent can do at most what its owner could do
+// signed in.
 //
 // EVERY LIST ON THIS PAGE IS RENDERED FROM A MIRROR CONSTANT, never typed
-// here: the tools from src/config/mcp-tools.ts (pinned to the server's TOOLS
-// registration by the-page-says-six-and-the-server-says-eleven.test.ts), the
-// sendable vendors from src/config/sendable-vendors.ts (pinned to the Deno
-// list), the posting count from the live board. This page once said "six
-// tools" against a server registering eleven, called a count of boards an
-// employer count, and told two hosts to enter a header their dialogs have no
-// field for — each a sentence that was true when written and false when the
-// thing it described moved.
+// here: the tools, the unkeyed set and its caps from src/config/mcp-tools.ts
+// (pinned to the server's TOOLS registration and its constants by
+// the-page-says-six-and-the-server-says-eleven.test.ts and
+// a-first-call-with-no-key-gets-an-answer-not-a-wall.test.ts), the sendable
+// vendors from src/config/sendable-vendors.ts (pinned to the Deno list), the
+// posting count from the live board. This page once said "six tools" against
+// a server registering eleven, called a count of boards an employer count,
+// and told two hosts to enter a header their dialogs have no field for — each
+// a sentence that was true when written and false when the thing it
+// described moved.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -25,7 +30,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
-import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS } from "@/config/mcp-tools";
+import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS } from "@/config/mcp-tools";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 
 // Same convention as DataApi's API_BASE: read the env the client is built
@@ -229,8 +234,11 @@ export default function AgentConnect() {
                 <p className="text-sm text-muted-foreground mt-3">
                   Streamable HTTP transport, stateless, POST-only. Your agent sends its key as{" "}
                   <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
-                  without one, so an agent can see what's here before you decide to mint anything. Every
-                  tool call needs the key; a call without one is refused in-band with the link to get one.
+                  without one, so an agent can see what's here before you decide to mint anything.{" "}
+                  {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
+                  day per address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
+                  many are left; every other tool call needs the key, and a call without one is refused
+                  in-band with the link to get one.
                 </p>
               </div>
             </div>
@@ -292,9 +300,11 @@ export default function AgentConnect() {
             a limited set of organizations entered by an org admin
             (claude.com/docs/connectors/custom/remote-mcp); ChatGPT developer
             mode offers OAuth, No Authentication or Mixed and has no field for an
-            API key (developers.openai.com/apps-sdk/build/auth). The per-host
-            facts live in MCP_HOSTS so this section and the crawler copy say
-            the same thing. */}
+            API key (developers.openai.com/apps-sdk/build/auth). What those two
+            hosts CAN do is connect with no auth and use the unkeyed tools — the
+            set and the caps come from the same mirror the server's constants
+            are pinned to. The per-host facts live in MCP_HOSTS so this section
+            and the crawler copy say the same thing. */}
         <section className="py-16 border-t border-border">
           <div className="container">
             <div className="max-w-3xl mx-auto">
@@ -312,20 +322,23 @@ export default function AgentConnect() {
                   <CopyBlock code={CURSOR_JSON} label="Cursor mcp.json config" />
                 </div>
                 <div className="p-6 rounded-2xl bg-card border border-border">
-                  <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach the tools today</h3>
+                  <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach which tools today</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Every tool call carries the key in an Authorization header, and not every host has a
+                    Every keyed tool call carries the key in an Authorization header, and not every host has a
                     place to put one. From {andList(hostsWithHeader.map((h) => h.name))}: every tool your
-                    key's tier allows. From {andList(hostsWithout.map((h) => h.name))}: the server lists its
-                    tools and refuses every call — outside an org-admin beta there is no field for the key,
-                    and each host's own note below says which — we say so rather than promise a connector
-                    that fails on its first call.
+                    key's tier allows. From {andList(hostsWithout.map((h) => h.name))}: connect with no auth
+                    and use the unkeyed tools — {names(MCP_ANON_TOOLS)} — {MCP_ANON_CAPS.perAddressPerDay} calls
+                    a day per address, search capped at {MCP_ANON_CAPS.searchRows} rows; the keyed tools still
+                    need {andList(hostsWithHeader.map((h) => h.name))} carrying the key until an authorization
+                    server exists, because outside an org-admin beta there is no field for the key, and each
+                    host's own note below says which — we say so rather than promise a connector that fails
+                    on its first keyed call.
                   </p>
                   <ul className="text-sm text-muted-foreground space-y-2">
                     {MCP_HOSTS.map((h) => (
                       <li key={h.name} className="flex gap-2">
                         <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
-                          {h.header ? "reaches the tools" : "lists, cannot call"}
+                          {h.header ? "reaches every tool" : "unkeyed tools only"}
                         </span>
                         <span><span className="text-foreground font-medium">{h.name}</span> — {h.how}.</span>
                       </li>
@@ -350,6 +363,11 @@ export default function AgentConnect() {
                       <span className={`text-xs px-2 py-0.5 rounded-full border ${t.tier === "read" ? "border-border bg-muted text-muted-foreground" : "border-primary/30 bg-primary/10 text-primary"}`}>
                         {TIER_BADGE[t.tier]}
                       </span>
+                      {MCP_ANON_TOOL_NAMES.includes(t.name) && (
+                        <span className="text-xs px-2 py-0.5 rounded-full border border-success/40 bg-success/10 text-success">
+                          answers with no key ({MCP_ANON_CAPS.perAddressPerDay}/day per address)
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{t.body}</p>
                   </div>
