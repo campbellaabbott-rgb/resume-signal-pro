@@ -1,4 +1,4 @@
-// Builds supabase/functions/job-board/data/category-anchors.json — the frozen
+// Builds scripts/data/category-anchors.json — the frozen
 // anchor list the embed classifier votes over — from the hand-labelled pass
 // (other-bucket/labelled-basis.jsonl, 3,060 rows whose stored category was
 // re-derived and attributed to a basis).
@@ -23,7 +23,7 @@ import { createHash } from "node:crypto";
 
 const src = process.argv[2];
 if (!src) { console.error("usage: node scripts/build-category-anchors.mjs <labelled-basis.jsonl>"); process.exit(2); }
-const OUT = "supabase/functions/job-board/data/category-anchors.json";
+const OUT = "scripts/data/category-anchors.json";
 const VERSION = "embed_knn_v1";
 const FIELDS = new Set(["engineering","data_ai","design","product","marketing","sales","customer","finance","legal","people_hr","operations","healthcare","science","education","hospitality_retail","security","admin"]);
 

@@ -40,7 +40,7 @@ import {
 } from "../../supabase/functions/job-board/embed-classify";
 
 const ROOT = resolve(__dirname, "../..");
-const ANCHORS_PATH = resolve(ROOT, "supabase/functions/job-board/data/category-anchors.json");
+const ANCHORS_PATH = resolve(ROOT, "scripts/data/category-anchors.json");
 const BUILD_SCRIPT = resolve(ROOT, "scripts/build-category-anchors.mjs");
 
 /**
