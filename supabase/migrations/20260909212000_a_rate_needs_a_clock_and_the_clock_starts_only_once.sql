@@ -1,3 +1,11 @@
+-- APPLIED TEXT NOTE (2026-09-15). This file was applied to production by the
+-- Lovable runner as the staged row `20260909212000_fixed`, whose only change
+-- was quoting the CTE named `both` -- BOTH is a reserved word in the server's
+-- PostgreSQL and the unquoted name fails to parse there, though the pglite the
+-- harnesses run accepted it. The repo text below now matches the applied text
+-- byte for byte in those two lines; nothing else was changed. The guard that
+-- refuses a reserved word as a CTE name lives in
+-- src/test/a-reserved-word-is-not-a-cte-name.test.ts.
 -- A RATE NEEDS A CLOCK, AND THE CLOCK CAN ONLY BE STARTED ONCE.
 --
 -- The owner wants a hiring signal that surfaces SMALL GROWING employers --
@@ -766,7 +774,7 @@ BEGIN
     SELECT company_token, min(snapshot_date) AS d
     FROM public.job_board_company_snapshots GROUP BY company_token
   ),
-  both AS (
+  "both" AS (
     SELECT COALESCE(bs.company_token, sn.company_token) AS company_token,
            bs.d AS bs_d, sn.d AS sn_d
     FROM bs FULL OUTER JOIN sn ON sn.company_token = bs.company_token
@@ -787,7 +795,7 @@ BEGIN
               THEN b.sn_d <= v_snap_series
               ELSE b.bs_d <= v_bs_series END,
          now()
-  FROM both b
+  FROM "both" b
   WHERE COALESCE(b.bs_d, b.sn_d) IS NOT NULL
   ON CONFLICT (company_token) DO NOTHING;
 
