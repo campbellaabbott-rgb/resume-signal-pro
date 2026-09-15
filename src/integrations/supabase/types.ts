@@ -4913,6 +4913,15 @@ export type Database = {
           stuck: number
         }[]
       }
+      promote_category: {
+        Args: {
+          p_basis: string
+          p_key: string
+          p_limit?: number
+          p_target: string
+        }
+        Returns: number
+      }
       rate_budget_state: {
         Args: { p_function?: string; p_ip: string; p_window_minutes?: number }
         Returns: {
