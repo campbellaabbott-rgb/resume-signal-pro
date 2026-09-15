@@ -4065,7 +4065,8 @@
       "department": "विभाग",
       "vendor": "स्रोत",
       "employmentType": "रोज़गार प्रकार",
-      "excludeAgencies": "एजेंसियाँ छिपाएँ"
+      "excludeAgencies": "एजेंसियाँ छिपाएँ",
+      "includeUnstatedPay": "बिना वेतन बताए गई पोस्टिंग"
     },
     "companiesChip": "{{n}} कंपनियाँ",
     "firstSeenToday": "पहली बार आज देखी गई",

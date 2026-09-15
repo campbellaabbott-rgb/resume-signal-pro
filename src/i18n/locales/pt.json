@@ -4065,7 +4065,8 @@
       "department": "departamento",
       "vendor": "fonte",
       "employmentType": "tipo de emprego",
-      "excludeAgencies": "ocultar agências"
+      "excludeAgencies": "ocultar agências",
+      "includeUnstatedPay": "vagas sem remuneração indicada"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista pela primeira vez hoje",

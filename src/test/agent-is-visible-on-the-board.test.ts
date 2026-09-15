@@ -54,11 +54,17 @@ describe("the apply agent is visible on the board, with countable claims", () =>
     expect(SRC).toMatch(/7 days free/);
   });
 
-  it("states the scope limit rather than implying whole-board coverage", () => {
-    // The agent drives four hiring systems, ~6% of the board. Implying more is
-    // the overstatement this codebase keeps paying for.
-    expect(SRC).toMatch(/four hiring systems/);
-    expect(SRC).toMatch(/about 6% of the board/);
+  it("states the scope limit rather than implying whole-board coverage, as a derived figure", () => {
+    // The scope sentence names a vendor count and a board share; both are
+    // INTERPOLATED from the deployed bundle's own status read (use-agent-reach),
+    // never typed — the typed version said "four … 6%" while the list held
+    // five and the live share was 8.2%. Judged over comment-stripped source:
+    // the previous spelling pins here were satisfied by a comment alone after
+    // the copy moved to the hook (project_guard_literals).
+    const code = SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    expect(code).toMatch(/\{\{n\}\} hiring systems — about \{\{pct\}\}% of the board/);
+    expect(code, "a typed vendor count on the board's pitch").not.toMatch(/\b(?:four|five|six|seven|\d+) hiring systems/);
+    expect(code, "a typed board share on the board's pitch").not.toMatch(/about \d+% of the board/);
   });
 
   it("states the CAPTCHA boundary as a promise, not an omission", () => {

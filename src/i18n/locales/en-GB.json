@@ -4065,7 +4065,8 @@
       "department": "department",
       "vendor": "source",
       "employmentType": "employment type",
-      "excludeAgencies": "hide staffing agencies"
+      "excludeAgencies": "hide staffing agencies",
+      "includeUnstatedPay": "postings that don't state pay"
     },
     "companiesChip": "{{n}} companies",
     "firstSeenToday": "first seen today",

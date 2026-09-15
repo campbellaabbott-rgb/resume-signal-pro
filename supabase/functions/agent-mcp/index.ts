@@ -76,7 +76,10 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // pay/experience/department on every card, outputSchema + structuredContent,
 // tool annotations, key_status, check_jobs_open + get_jobs, and the last four
 // board filters (experience, companies, postedAfter, includeUnstatedPay).
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.2" };
+// 09-04.3: copy only — search_jobs no longer spells a corpus figure (the
+// board outgrew it; board_stats carries the live totals) and board_stats
+// describes its second figure as the count of boards its runner returns.
+const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.3" };
 const DOCS_URL = "https://resumebooster.work/agents";
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT — same lesson public-api learned:
@@ -410,7 +413,7 @@ const TOOLS = [
     name: "search_jobs",
     title: "Search jobs",
     description:
-      "Search the live job board (700k+ postings pulled directly from employers' own hiring systems, 30-day freshness cap). " +
+      "Search the live job board (postings pulled directly from employers' own hiring systems, 30-day freshness cap; board_stats carries the live totals). " +
       "Returns compact job cards — including the board's own parsed pay (salaryMinAnnual/salaryMaxAnnual/salaryPeriod), " +
       "experience band and minYears, so pay and seniority never have to be re-read out of prose — plus the board's honesty " +
       "disclosures: exact totals when knowable (countUnavailable otherwise), filters it could not honour (ignoredFilters), " +
@@ -641,7 +644,7 @@ const TOOLS = [
   {
     name: "board_stats",
     title: "Board statistics",
-    description: "Live board statistics from cache (cheap to call): posting totals, employer count, category set, freshness stamp.",
+    description: "Live board statistics from cache (cheap to call): servable and tracked posting totals, the count of company job boards with open roles (boards, not employers — one employer can run several), the category set, freshness stamp.",
     annotations: READS_THE_BOARD,
     inputSchema: { type: "object", properties: {} },
   },

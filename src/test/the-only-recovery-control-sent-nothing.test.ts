@@ -42,7 +42,13 @@ describe("the only recovery control sent nothing", () => {
   });
 
   it("the industry rail reads the filtered facet, so it survives other filters", () => {
-    expect(JOBS).toMatch(/const railCounts = filteredCats \?\? data\?\.categories \?\? null;/);
+    // PROPERTY: the rail's counts read the filtered facet FIRST and fall back
+    // to an exact facet, never to a literal. The fallback's name is not
+    // pinned — it moved when the field-only state started reading the kept
+    // unfiltered facet — only its position after filteredCats and before null.
+    const m = /const railCounts = filteredCats \?\? ([A-Za-z?.]+) \?\? null;/.exec(JOBS);
+    expect(m, "railCounts no longer reads filteredCats first with an exact-facet fallback").toBeTruthy();
+    expect(m![1], "the rail's fallback is a literal, not a facet").toMatch(/[Cc]at/);
     // .37: reading a MISSING count as zero deleted every category the server's
     // facet deadline never reached — see an-uncounted-industry-is-not-an-empty-one,
     // which owns the behaviour. Here, only that the old spelling stays dead.

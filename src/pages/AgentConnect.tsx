@@ -1,32 +1,36 @@
 // Connect your agent — the human-facing page for the MCP server at
-// supabase/functions/agent-mcp. Any MCP-capable agent (Claude, ChatGPT,
-// Cursor, custom) can search the board with a free /data-api key; the apply
-// tools additionally need an account-linked agent key minted here, an Agent
-// plan, and a standing mandate. The page states the boundary plainly: the MCP
-// layer is a translator over the existing apply pipeline, never a bypass —
-// an agent can do at most what its owner could do signed in.
+// supabase/functions/agent-mcp. Any MCP-capable agent that can send an
+// Authorization header can search the board with a free /data-api key; the
+// apply tools additionally need an account-linked agent key minted here, an
+// Agent plan, and a standing mandate. The page states the boundary plainly:
+// the MCP layer is a translator over the existing apply pipeline, never a
+// bypass — an agent can do at most what its owner could do signed in.
+//
+// EVERY LIST ON THIS PAGE IS RENDERED FROM A MIRROR CONSTANT, never typed
+// here: the tools from src/config/mcp-tools.ts (pinned to the server's TOOLS
+// registration by the-page-says-six-and-the-server-says-eleven.test.ts), the
+// sendable vendors from src/config/sendable-vendors.ts (pinned to the Deno
+// list), the posting count from the live board. This page once said "six
+// tools" against a server registering eleven, called a count of boards an
+// employer count, and told two hosts to enter a header their dialogs have no
+// field for — each a sentence that was true when written and false when the
+// thing it described moved.
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send } from "lucide-react";
+import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
+import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS } from "@/config/mcp-tools";
+import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 
 // Same convention as DataApi's API_BASE: read the env the client is built
 // with, so the documented URL cannot drift from the project serving it.
 const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-mcp`;
-
-const TOOLS: Array<{ name: string; tier: "read" | "apply"; body: string }> = [
-  { name: "search_jobs", tier: "read", body: "Search the live board. Returns compact job cards plus the board's honesty disclosures: exact totals when knowable, filters it couldn't honour, words it read as filters, spelling suggestions." },
-  { name: "get_job", tier: "read", body: "Full detail for one job id, including the complete description text and when the employer's feed last confirmed it open." },
-  { name: "board_stats", tier: "read", body: "Live board statistics from cache: posting totals, employer count, the category set, freshness stamp." },
-  { name: "check_apply_support", tier: "read", body: "Whether the apply agent can submit to this job on your behalf, and what that requires. Non-supported jobs still return their direct apply URL for you to use." },
-  { name: "request_application", tier: "apply", body: "Ask your apply agent to submit an application to a job. Passes through every gate of the signed-in flow — mandate, honesty classifier, vendor boundary, daily cap." },
-  { name: "application_status", tier: "apply", body: "Status of the applications your agent has requested — queued, submitted, refused (with the refusing gate named), or failed." },
-];
 
 const CLAUDE_CODE_CMD = `claude mcp add --transport http resumebooster ${MCP_URL} --header "Authorization: Bearer rb_live_...your key..."`;
 
@@ -38,6 +42,14 @@ const CURSOR_JSON = `{
     }
   }
 }`;
+
+const TIER_BADGE: Record<string, string> = { read: "any free key", paid: "paid key", apply: "agent key" };
+
+/** "a, b and c" from a list of tool names, for prose. */
+const names = (list: ReadonlyArray<{ name: string }>) => {
+  const n = list.map((t) => t.name);
+  return n.length > 1 ? `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}` : n.join("");
+};
 
 /** A code block with a copy button — every setup snippet on this page uses it. */
 function CopyBlock({ code, label }: { code: string; label: string }) {
@@ -162,11 +174,24 @@ function MintAgentKey() {
 }
 
 export default function AgentConnect() {
+  // THE POSTING COUNT IS READ, NOT TYPED. The same hook and the same floor
+  // the homepage head uses; null until the board answers, and then every
+  // sentence below has a variant that needs no number at all.
+  const totals = useBoardTotals();
+  const countClause = totals
+    ? `${roundedFloor(totals.jobs).toLocaleString("en-US")}+ live postings`
+    : "the live postings";
+  const hostsWithHeader = MCP_HOSTS.filter((h) => h.header);
+  const hostsWithout = MCP_HOSTS.filter((h) => !h.header);
+  // Host names carry their own "and" (claude.ai and Claude Desktop), so the
+  // list is joined with commas and one final "and", never "and … and".
+  const andList = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+
   return (
     <>
       <SEO
         title="Connect Your Agent — MCP Server for the Live Job Board"
-        description="Point any MCP-capable AI agent at 700k+ live postings pulled from employers' own hiring systems. Free keys for search; on the Agent plan, it can request applications."
+        description={`Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Free keys for search; the Agent plan can request applications.`}
         path="/agents"
       />
       <Header />
@@ -184,11 +209,11 @@ export default function AgentConnect() {
                 Your AI agent can use <span className="text-primary">this job board directly</span>
               </h1>
               <p className="text-xl text-muted-foreground">
-                Point any MCP-capable agent — Claude, ChatGPT, Cursor, or one you built — at our MCP server.
-                It can search 700k+ live postings pulled from employers' own hiring systems, read full
-                descriptions, and, on the Agent plan, ask your apply agent to submit applications for you.
-                It gets the same ranked search and the same honest disclosures the site gets — there is no
-                second search engine behind this endpoint.
+                Point an MCP-capable agent — Claude Code, Cursor, or one you built — at our MCP server.
+                It can search {countClause} pulled from employers' own hiring systems, read full
+                descriptions, re-verify a shortlist, and, on the Agent plan, ask your apply agent to submit
+                applications for you. It gets the same ranked search and the same honest disclosures the
+                site gets — there is no second search engine behind this endpoint.
               </p>
             </div>
           </div>
@@ -204,14 +229,15 @@ export default function AgentConnect() {
                 <p className="text-sm text-muted-foreground mt-3">
                   Streamable HTTP transport, stateless, POST-only. Your agent sends its key as{" "}
                   <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
-                  without one, so an agent can see what's here before you decide to mint anything.
+                  without one, so an agent can see what's here before you decide to mint anything. Every
+                  tool call needs the key; a call without one is refused in-band with the link to get one.
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Keys — two tiers, stated honestly */}
+        {/* Keys — the tiers the server enforces, stated from the mirror */}
         <section className="py-16 border-t border-border">
           <div className="container">
             <div className="text-center mb-12">
@@ -223,11 +249,15 @@ export default function AgentConnect() {
             </div>
             <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
               <div className="p-6 rounded-2xl bg-card border border-border">
-                <h3 className="font-semibold mb-2 flex items-center gap-2"><Search className="w-4 h-4 text-primary" /> Search tools — any free key</h3>
+                <h3 className="font-semibold mb-2 flex items-center gap-2"><Search className="w-4 h-4 text-primary" /> Read tools — any free key</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  <code className="text-xs">search_jobs</code>, <code className="text-xs">get_job</code>,{" "}
-                  <code className="text-xs">board_stats</code> and <code className="text-xs">check_apply_support</code>{" "}
+                  {MCP_READ_TOOLS.map((t, i) => (
+                    <span key={t.name}>{i > 0 && (i === MCP_READ_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{t.name}</code></span>
+                  ))}{" "}
                   work with any free API key — the same ones the data API issues. No account, no card.
+                  {MCP_PAID_TOOLS.length > 0 && (
+                    <> {names(MCP_PAID_TOOLS)} {MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code className="text-xs">POST /v1/fit</code> on the data API.</>
+                  )}
                 </p>
                 <Link
                   to="/data-api"
@@ -239,7 +269,9 @@ export default function AgentConnect() {
               <div className="p-6 rounded-2xl bg-card border border-border">
                 <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> Apply tools — an agent key</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  <code className="text-xs">request_application</code> and <code className="text-xs">application_status</code>{" "}
+                  {MCP_APPLY_TOOLS.map((t, i) => (
+                    <span key={t.name}>{i > 0 && (i === MCP_APPLY_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{t.name}</code></span>
+                  ))}{" "}
                   act on your account, so they need a key minted from your signed-in session. The key alone
                   isn't enough — applying also requires an active{" "}
                   <Link to="/agent" className="text-primary hover:underline">Agent plan</Link> and the mandate
@@ -252,7 +284,17 @@ export default function AgentConnect() {
           </div>
         </section>
 
-        {/* Setup */}
+        {/* Setup — per host, and honest about which hosts can carry the key.
+            The claim this replaced said claude.ai/Claude Desktop and ChatGPT
+            "both configure the Authorization header in their own UI". Neither
+            can: Claude's custom-connector dialog takes a URL plus optional
+            OAuth client credentials, and a static request header is a beta for
+            a limited set of organizations entered by an org admin
+            (claude.com/docs/connectors/custom/remote-mcp); ChatGPT developer
+            mode offers OAuth, No Authentication or Mixed and has no field for an
+            API key (developers.openai.com/apps-sdk/build/auth). The per-host
+            facts live in MCP_HOSTS so this section and the crawler copy say
+            the same thing. */}
         <section className="py-16 border-t border-border">
           <div className="container">
             <div className="max-w-3xl mx-auto">
@@ -270,28 +312,43 @@ export default function AgentConnect() {
                   <CopyBlock code={CURSOR_JSON} label="Cursor mcp.json config" />
                 </div>
                 <div className="p-6 rounded-2xl bg-card border border-border">
-                  <h3 className="font-semibold mb-1">Claude Desktop / ChatGPT</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Add a custom connector with the URL above — both configure the Authorization header in their own UI.
+                  <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach the tools today</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Every tool call carries the key in an Authorization header, and not every host has a
+                    place to put one. From {andList(hostsWithHeader.map((h) => h.name))}: every tool your
+                    key's tier allows. From {andList(hostsWithout.map((h) => h.name))}: the server lists its
+                    tools and refuses every call — outside an org-admin beta there is no field for the key,
+                    and each host's own note below says which — we say so rather than promise a connector
+                    that fails on its first call.
                   </p>
+                  <ul className="text-sm text-muted-foreground space-y-2">
+                    {MCP_HOSTS.map((h) => (
+                      <li key={h.name} className="flex gap-2">
+                        <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
+                          {h.header ? "reaches the tools" : "lists, cannot call"}
+                        </span>
+                        <span><span className="text-foreground font-medium">{h.name}</span> — {h.how}.</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Tools */}
+        {/* Tools — rendered from the mirror, counted off it */}
         <section className="py-16 border-t border-border">
           <div className="container">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-10 text-center">The six tools</h2>
+              <h2 className="text-3xl font-bold mb-10 text-center">All {MCP_TOOLS.length} tools</h2>
               <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-                {TOOLS.map((t) => (
+                {MCP_TOOLS.map((t) => (
                   <div key={t.name} className="p-5">
                     <div className="flex items-center gap-3 flex-wrap">
                       <code className="text-sm font-semibold text-primary">{t.name}</code>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${t.tier === "apply" ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground"}`}>
-                        {t.tier === "apply" ? "agent key" : "any free key"}
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${t.tier === "read" ? "border-border bg-muted text-muted-foreground" : "border-primary/30 bg-primary/10 text-primary"}`}>
+                        {TIER_BADGE[t.tier]}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{t.body}</p>
@@ -319,7 +376,7 @@ export default function AgentConnect() {
                 <ul className="text-sm text-muted-foreground space-y-2.5">
                   <li>• <span className="text-foreground font-medium">Your mandate's off switch always wins.</span> Agent switched off or paused in Account? Every request refuses, including from this endpoint.</li>
                   <li>• <span className="text-foreground font-medium">The honesty classifier never invents answers.</span> Application answers are drawn from your own profile; any answer it can't support blocks the send and waits for you.</li>
-                  <li>• <span className="text-foreground font-medium">Only five hiring systems are agent-submittable today:</span> Breezy, Oracle, Personio, Pinpoint, and Teamtailor. Jobs on other systems get prepared for you to send yourself — <code className="text-xs">check_apply_support</code> tells you which is which before you ask.</li>
+                  <li>• <span className="text-foreground font-medium">Only {SENDABLE_VENDOR_LABELS.length} hiring systems are agent-submittable today:</span> {SENDABLE_VENDOR_SENTENCE}. Jobs on other systems get prepared for you to send yourself — <code className="text-xs">check_apply_support</code> tells you which is which before you ask.</li>
                   <li>• <span className="text-foreground font-medium">Daily caps apply.</span> The same release caps as the signed-in agent — a connected agent doesn't get a bigger allowance.</li>
                   <li>• <span className="text-foreground font-medium">Every refusal is named.</span> A request that doesn't go out shows up in <code className="text-xs">application_status</code> with the refusing gate stated, not a silent disappearance.</li>
                 </ul>

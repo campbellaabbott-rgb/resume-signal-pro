@@ -4065,7 +4065,8 @@
       "department": "service",
       "vendor": "source",
       "employmentType": "type d'emploi",
-      "excludeAgencies": "masquer les agences"
+      "excludeAgencies": "masquer les agences",
+      "includeUnstatedPay": "offres sans rémunération indiquée"
     },
     "companiesChip": "{{n}} entreprises",
     "firstSeenToday": "vue pour la première fois aujourd'hui",

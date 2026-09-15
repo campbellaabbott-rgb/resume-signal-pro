@@ -4065,7 +4065,8 @@
       "department": "afdeling",
       "vendor": "bron",
       "employmentType": "dienstverband",
-      "excludeAgencies": "bureaus verbergen"
+      "excludeAgencies": "bureaus verbergen",
+      "includeUnstatedPay": "vacatures zonder vermeld salaris"
     },
     "companiesChip": "{{n}} bedrijven",
     "firstSeenToday": "voor het eerst gezien vandaag",

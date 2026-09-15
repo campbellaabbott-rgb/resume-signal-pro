@@ -40,6 +40,109 @@ const SITE = "https://resumebooster.work";
 /** Routes whose file is written by the fallback branch, not as a page. */
 const FALLBACK_FILE = resolve(ROOT, "dist/index.html");
 
+/**
+ * ROUND THREE, 2026-09-15: /agents. The MCP server's human page had a correct
+ * <SEO> component, a footer link, and an App.tsx route — and served the
+ * 17,411-byte homepage shell to a Googlebot user-agent, because nothing above
+ * this line runs without a dist/ and nothing anywhere compared the ROUTER's
+ * public routes to the prerender's page list. The build-gated checks below
+ * catch a sitemap URL with no file; they cannot catch a route that was never
+ * put in the sitemap in the first place, which is how every one of the three
+ * rounds began.
+ *
+ * So this block reads App.tsx and prerender-seo.mjs as SOURCE and needs no
+ * build: every public route in the router must have a page entry in the
+ * prerender script, or it is served as the homepage to every crawler. Routes
+ * that are private, parameterised (their pages are written in loops from data
+ * modules) or deliberately unindexed are named below, each with its reason —
+ * an allowlist that grows silently would be a mute button, so it is explicit
+ * and every entry must still exist in the router.
+ */
+const APP_ROUTES = (): string[] => {
+  const src = readFileSync(resolve(ROOT, "src/App.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/[^\n]*/gm, " ").replace(/\{\/\*[\s\S]*?\*\/\}/g, " ");
+  return [...src.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
+};
+
+/** Private, session-bound, or operator-only: never meant for a crawler. */
+const PRIVATE_ROUTES = [
+  "/auth", "/account", "/success", "/product-success", "/payment-failed",
+  "/analytics", "/errors", "/health-check", "/scan-metrics",
+];
+/** Route families whose every member is private (dev tooling, admin, affiliate redirects). */
+const PRIVATE_PREFIXES = ["/dev/", "/admin/", "/r/"];
+/**
+ * Public routes the prerender does not write and the sitemap does not list.
+ * Each one is a debt, named so it cannot hide: legal pages whose text lives
+ * only in the component. Adding to this list is a decision, not a default.
+ */
+const KNOWN_FALLBACK_ROUTES = ["/privacy", "/terms"];
+
+const PRERENDERED_PATHS = (): Set<string> => {
+  const src = readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8")
+    .replace(/^\s*\/\/[^\n]*/gm, " ").replace(/\/\*[\s\S]*?\*\//g, " ");
+  // ONLY the write() sites count as pages. A bare `path: "/x"` literal also
+  // appears in STATIC_ROUTES (the sitemap list) and in breadcrumb arguments,
+  // and a route added to STATIC_ROUTES alone puts the fallback shell in the
+  // sitemap — the exact trap this describe exists for — so the match is
+  // anchored to the head of a write() object (the homepage's write leads with
+  // its fallback flag, hence the bounded head rather than `write({ path`).
+  const literal = [...src.matchAll(/write\(\{[\s\S]{0,60}?path:\s*"(\/[^"$]*)"/g)].map((m) => m[1]);
+  // Tool landings are written from their data module (`path: cfg.path`), so
+  // their routes count as written only if the script really iterates them.
+  const landings = /path:\s*cfg\.path/.test(src)
+    ? [...readFileSync(resolve(ROOT, "src/data/tool-landings.ts"), "utf8").matchAll(/path:\s*"(\/[^"]+)"/g)].map((m) => m[1])
+    : [];
+  return new Set([...literal, ...landings]);
+};
+
+describe("every public route in the router has a prerendered page", () => {
+  const routes = APP_ROUTES();
+  const isPublicStatic = (r: string) =>
+    !r.includes(":") && r !== "*" &&
+    !PRIVATE_ROUTES.includes(r) &&
+    !PRIVATE_PREFIXES.some((p) => r.startsWith(p));
+
+  it("reads a non-trivial router (an empty match would pass everything below vacuously)", () => {
+    expect(routes.length).toBeGreaterThan(20);
+    expect(routes).toContain("/");
+  });
+
+  it("names on its allowlists only routes that still exist", () => {
+    // An entry for a route that was deleted is an entry that will quietly
+    // exempt whatever is created under that path next.
+    for (const r of [...PRIVATE_ROUTES, ...KNOWN_FALLBACK_ROUTES]) {
+      expect(routes, `${r} is on an allowlist but not in App.tsx`).toContain(r);
+    }
+    for (const p of PRIVATE_PREFIXES) {
+      expect(routes.some((r) => r.startsWith(p)), `no route under ${p} — drop the prefix`).toBe(true);
+    }
+  });
+
+  it("gives every public static route a page entry in scripts/prerender-seo.mjs", () => {
+    const written = PRERENDERED_PATHS();
+    const missing = routes
+      .filter(isPublicStatic)
+      .filter((r) => !KNOWN_FALLBACK_ROUTES.includes(r))
+      .filter((r) => !written.has(r));
+    expect(
+      missing,
+      `Public routes with no write({ path }) in scripts/prerender-seo.mjs — the host ` +
+        `serves each one the HOMEPAGE to every crawler, and the build-gated checks ` +
+        `above cannot see it because the route never reached the sitemap.\n` +
+        `  Fix: add a write({ path: … }) entry (and the sitemap picks it up from ` +
+        `writtenPaths), or, for a genuinely private route, name it in PRIVATE_ROUTES ` +
+        `with its reason.\n  Missing: ${missing.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("keeps the known-fallback list honest: none of its routes is actually prerendered", () => {
+    const written = PRERENDERED_PATHS();
+    const stale = KNOWN_FALLBACK_ROUTES.filter((r) => written.has(r));
+    expect(stale, "these routes are prerendered now — remove them from KNOWN_FALLBACK_ROUTES").toEqual([]);
+  });
+});
+
 const sitemapPaths = (): string[] => {
   const xml = readFileSync(resolve(ROOT, "public/sitemap.xml"), "utf8");
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]

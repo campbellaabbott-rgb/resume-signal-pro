@@ -590,8 +590,9 @@ export function normalizeFilters(
   const hasStatedPay = body.hasStatedPay === true;
   // Literal true only, same contract as includeUncategorised — and like it,
   // this WIDENS. It relaxes an active floor to admit rows with no stated pay;
-  // with no floor set there is nothing to relax and it is inert.
-  const includeUnstatedPay = body.includeUnstatedPay === true;
+  // with no floor set there is nothing to relax and it is inert. This is what
+  // the caller ASKED; whether it binds is decided below, against hasStatedPay.
+  const unstatedPayAsked = body.includeUnstatedPay === true;
   if (body.hasStatedPay !== undefined && body.hasStatedPay !== null && typeof body.hasStatedPay !== "boolean") {
     ignored.push("hasStatedPay");
   }
@@ -602,6 +603,31 @@ export function normalizeFilters(
   if (body.includeUnstatedPay !== undefined && body.includeUnstatedPay !== null && typeof body.includeUnstatedPay !== "boolean") {
     ignored.push("includeUnstatedPay");
   }
+  // STATES PAY AND THE UNSTATED WIDENING CANNOT BOTH BIND. hasStatedPay ANDs
+  // `salary_min_annual IS NOT NULL` into the row query; the widening ORs
+  // `salary_rank_usd IS NULL` back into the floor and ceiling arms. Under that
+  // AND, every row the OR-arm re-admits for stating NO pay is thrown straight
+  // back out — so the page could light both controls, send both keys, and get
+  // a result the widening did not widen, with nothing naming it (the body the
+  // controls guard's C12 case records). A request this file cannot honour is
+  // named, never carried silently: the widening is dropped here and reported.
+  //
+  // THIS CHANGES RESULTS; IT IS NOT PURE DISCLOSURE. salary_rank_usd is a
+  // GENERATED column — salary_min_annual times a per-currency factor for the
+  // currencies the table can convert, ELSE NULL. A posting that states pay in
+  // a currency it cannot convert has salary_min_annual set (it passes the AND)
+  // and salary_rank_usd NULL (it fails a bare floor) — and the OR-arm WAS
+  // admitting that slice: stated, unconvertible, above nobody's floor. Binding
+  // false drops it. Its size is unmeasured (a subset of the roughly one in
+  // five postings that state a figure at all); the trade is that slice for a
+  // body whose every key means what the control beside it says.
+  //
+  // Neither public-api nor nl-search imports this function: public-api
+  // proxies job-board's list over HTTP, and nl-search hands its wire filters
+  // back to the client, which sends them here. Both inherit this rule through
+  // the one list action, which is where every filter is decided.
+  const includeUnstatedPay = unstatedPayAsked && !hasStatedPay;
+  if (unstatedPayAsked && hasStatedPay) ignored.push("includeUnstatedPay");
 
   // 1..20, REFUSED OUTSIDE IT RATHER THAN CLAMPED, which is the opposite of
   // what maxAgeDays does one block below — and the difference is deliberate.

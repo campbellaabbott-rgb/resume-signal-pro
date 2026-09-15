@@ -2221,6 +2221,20 @@ export default function Jobs() {
   const fmtFacet = (n: number) => (n === BOARD_COUNT_CAP ? `${n.toLocaleString()}+` : n.toLocaleString());
   const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
   const catFacetSeq = useRef(0);
+  // THE LAST UNFILTERED FACET, KEPT. The list reply carries the whole
+  // board-wide categories facet only while nothing is bound; once a field is
+  // chosen it carries that field's entry alone (visibleCategories). So the
+  // moment a reader clicked an industry chip, the rail and the fields menu
+  // lost every other number and — because the click made the body look
+  // filtered — asked the counted probe instead, which capped the very chip
+  // just clicked: 138,308 became "10,000+" on the click that selected it,
+  // with no filter on the board but the chip (controls guard F1, 2026-09-15).
+  // A chip is the only filter that can never change these numbers, because
+  // the facet is per-field already. Keep the exact facet from the last
+  // unfiltered reply (or the mount-time facets read, for a deep link that
+  // arrives with a field bound) and read it whenever the field is the only
+  // thing bound. A ref, not state: the reply that fills it re-renders anyway.
+  const unfilteredCatsRef = useRef<Record<string, number> | null>(null);
 
   // THE DIRECT FACET IS THE PRIMARY SOURCE OF COUNTRY COUNTS AGAIN.
   //
@@ -2820,6 +2834,34 @@ export default function Jobs() {
   }), [q, location, remoteOnly, workMode, category, inclUncat, sortMode, agentOnly, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType, hideAgencies]);
+  /**
+   * IS THE FIELD THE ONLY THING BOUND? Derived from the same body the request
+   * is, with the field and its unsorted opt-in taken out: an empty body then
+   * means nothing else narrows the board, and the board-wide per-field facet
+   * still answers exactly — for the chip just clicked and for every other
+   * one. True when nothing at all is bound, too, which is the state the
+   * facet was read in.
+   */
+  const categoryOnly = useMemo(
+    () => Object.keys(boardFilterBody({ ...filterState, category: "", inclUncat: false })).length === 0,
+    [filterState],
+  );
+  /**
+   * THE EXACT PER-FIELD COUNTS THIS PAGE MAY PRINT. Under any other filter
+   * the list reply's own facet (one entry, the active field) is all there is
+   * and the counted probe fills the rest; in the field-only state the kept
+   * unfiltered facet is the answer, and the reply's single entry is only the
+   * fallback for a deep link whose facet has not arrived yet.
+   *
+   * A résumé-ranked browse is NOT a filter here, by decision: fit mode
+   * narrows the LIST to scoreable rows (hasDescription, sent outside
+   * boardFilterBody), never the board, and the rail's figures are board-wide
+   * there as under every other state — the counted probe under a chip in fit
+   * mode has always omitted that narrowing too. The server withholds the
+   * list reply's facet on a described-only page (visibleCategories), so this
+   * kept copy is what lets the rail keep its numbers instead of going blank.
+   */
+  const exactCats = categoryOnly ? (unfilteredCatsRef.current ?? data?.categories) : data?.categories;
   const healthAttempted = useRef<Set<string>>(new Set());
   const [healthFailed, setHealthFailed] = useState(false);
   // A READ STILL IN FLIGHT IS NOT AN EMPTY RECORD. The curve batch was measured
@@ -3216,7 +3258,14 @@ export default function Jobs() {
     // filters, which is a list that goes stale the first time a twelfth is
     // added — and then the effect asks a board-wide question underneath a
     // narrowed page, which is the exact defect this whole file guards.
-    const activeFilters = Object.keys(boardFilterBody(filterState)).length > 0;
+    //
+    // AND THE FIELD ITSELF DOES NOT COUNT. This read the full body, so a
+    // click on an industry chip — the one filter the per-field facet already
+    // answers — fired eighteen counted queries under a four-second deadline
+    // to replace an exact 138,308 with a capped "10,000+" beside the chip
+    // just clicked. With only the field bound, the kept unfiltered facet is
+    // the answer and no probe is sent (controls guard F1).
+    const activeFilters = !categoryOnly;
     if (!activeFilters) { setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
@@ -3236,7 +3285,7 @@ export default function Jobs() {
       } catch { /* counts are an enhancement — the dropdown works without them */ }
     }, 400);
     return () => clearTimeout(timer);
-  }, [q, filterState]);
+  }, [q, filterState, categoryOnly]);
 
   /**
    * A fit-ranked BROWSE is the one case where the rows on screen were chosen
@@ -3347,6 +3396,15 @@ export default function Jobs() {
           return;
         }
         listSig.current = sig;
+        // An unfiltered page-0 reply carries the whole board-wide facet; keep
+        // it for the field-only state (see unfilteredCatsRef). Judged by the
+        // body's own keys, the same test isUnfiltered applies server-side.
+        // Written BEFORE the state update that schedules the render, so the
+        // render that reads the ref sees the facet this reply carried.
+        if (offset === 0 && Object.keys(boardFilterBody(filterState)).length === 0
+          && br.categories && Object.keys(br.categories).length > 0) {
+          unfilteredCatsRef.current = br.categories;
+        }
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -3541,7 +3599,17 @@ export default function Jobs() {
     let live = true;
     void (async () => {
       const f = await readBoardFacets();
-      if (!live || !f || !f.sources) return;
+      if (!live || !f) return;
+      // A deep link that arrives with a field already bound never sees an
+      // unfiltered list reply, so the kept facet would stay empty and the
+      // rail would print the one entry the filtered reply carries. The same
+      // stored facet row this read already fetches for the vendor menu is
+      // the board-wide per-field facet; seed from it when nothing has yet.
+      // Set BEFORE setVendorInventory so that state's render reads it.
+      if (!unfilteredCatsRef.current && f.categories && Object.values(f.categories).some((n) => n > 0)) {
+        unfilteredCatsRef.current = f.categories;
+      }
+      if (!f.sources) return;
       // AN EMPTY MAP IS NOT AN INVENTORY. refresh_job_board_facets COALESCEs
       // an empty aggregate to '{}' and the reader keeps that distinct from
       // null (an older function), so `{}` DOES reach here — a cold or empty
@@ -7834,8 +7902,8 @@ export default function Jobs() {
               options={CATEGORY_IDS.map((c) => ({
                 value: c,
                 label: t(`jobsPage.categories.${c}`, c),
-                count: filteredCats?.[c] ?? data?.categories?.[c],
-                capped: (filteredCats?.[c] ?? data?.categories?.[c]) === BOARD_COUNT_CAP,
+                count: filteredCats?.[c] ?? exactCats?.[c],
+                capped: (filteredCats?.[c] ?? exactCats?.[c]) === BOARD_COUNT_CAP,
               }))}
               allLabel={t("jobsPage.allFields", "All fields")}
               ariaLabel={t("jobsPage.allFields", "All fields")}
@@ -7899,9 +7967,22 @@ export default function Jobs() {
                   className="accent-[hsl(var(--primary))]"
                 />
                 {t("jobsPage.inclUncat", "+ unsorted")}
-                {data?.categories?.other ? (
-                  <span className="text-muted-foreground/70">({data.categories.other.toLocaleString()})</span>
-                ) : null}
+                {/* THE NUMBER THAT NEVER PRINTED. This read the list reply's
+                    facet, which carries only the active field once one is
+                    bound — the only time this control renders — so the
+                    promised count was withheld exactly when the control that
+                    names it was on screen (controls guard F2). The bucket is
+                    a category like any other: under another filter the
+                    counted probe answers for it, capped like the rest; in the
+                    field-only state the kept board-wide facet is exact.
+                    Nothing when neither has it (the probe's deadline drops
+                    the bucket first — it is last in the loop), never "0". */}
+                {(() => {
+                  const otherN = filteredCats?.other ?? exactCats?.other;
+                  return typeof otherN === "number" && otherN > 0 ? (
+                    <span className="text-muted-foreground/70">({fmtFacet(otherN)})</span>
+                  ) : null;
+                })()}
               </label>
             )}
             {/* THE TWO WAYS A POSTING STATES WHAT IT WANTS FROM YOU, named as
@@ -8378,7 +8459,9 @@ export default function Jobs() {
               // `data.categories` as empty and rendered no pills at all — and
               // one pill after its own click (audit 2026-09-03). The filtered
               // facet the dropdown already uses answers the same question.
-              const railCounts = filteredCats ?? data?.categories ?? null;
+              // And in the field-only state the kept unfiltered facet — the
+              // same exact numbers the reader clicked on (see exactCats).
+              const railCounts = filteredCats ?? exactCats ?? null;
               // ABSENT IS NOT ZERO — AND THE SERVER RETURNS ABSENT ON PURPOSE.
               //
               // The facet handler counts the eighteen categories in chunks
@@ -8915,7 +8998,7 @@ export default function Jobs() {
                 {t("jobsPage.orientSub", "Pick a field, drop your résumé below for personal ranking, or just browse the newest.")}
               </p>
               <div className="flex flex-wrap gap-2 mb-3">
-                {Object.entries(data?.categories ?? {})
+                {Object.entries(exactCats ?? {})
                   .filter(([c]) => c !== "other")
                   .sort(([, a], [, b]) => (b as number) - (a as number))
                   .slice(0, 8)
@@ -9008,7 +9091,12 @@ export default function Jobs() {
                   {(() => {
                     const ig = Array.isArray(data?.ignoredFilters) ? data.ignoredFilters : [];
                     if (!ig.length) return null;
-                    const WIDENING = new Set(["includeUncategorised"]);
+                    // Mirrors WIDENING_FILTERS in job-board/filters.ts (not
+                    // imported: that module would pull the catalogue into
+                    // this bundle). includeUnstatedPay is dropped and named
+                    // when "States pay" is also sent — the unstated postings
+                    // it asked to ADD are exactly what that box excludes.
+                    const WIDENING = new Set(["includeUncategorised", "includeUnstatedPay"]);
                     const narrowed = ig.filter((f) => !WIDENING.has(f));
                     const widened = ig.filter((f) => WIDENING.has(f));
                     const name = (f: string) => t(`jobsPage.filterName.${f}`, f);

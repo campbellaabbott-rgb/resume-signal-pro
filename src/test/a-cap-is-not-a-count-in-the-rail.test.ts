@@ -46,7 +46,14 @@ describe("a cap is not a count — in the rail either", () => {
   });
 
   it("the dropdown carries the flag and renders the plus", () => {
-    expect(JOBS).toMatch(/capped: \(filteredCats\?\.\[c\] \?\? data\?\.categories\?\.\[c\]\) === BOARD_COUNT_CAP,/);
+    // PROPERTY, not spelling: the menu's count and its capped flag are
+    // derived from ONE expression, and that expression reads the filtered
+    // facet first. Whatever the fallback is (it moved when the field-only
+    // state started reading the kept unfiltered facet), a count that was
+    // capped must be flagged from the same source it was read from.
+    const m = /count: (filteredCats\?\.\[c\] \?\? [A-Za-z?.]+\?\.\[c\]),\s*capped: \(([^)]+)\) === BOARD_COUNT_CAP,/.exec(JOBS);
+    expect(m, "the menu option's count and capped flag were not found side by side").toBeTruthy();
+    expect(m![2], "the capped flag reads a different expression than the count").toBe(m![1]);
     expect(MULTI).toMatch(/count\?: number; capped\?: boolean/);
     expect(MULTI).toMatch(/\{o\.count\.toLocaleString\(\)\}\{o\.capped \? "\+" : ""\}/);
   });

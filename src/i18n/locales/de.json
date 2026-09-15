@@ -4065,7 +4065,8 @@
       "department": "Abteilung",
       "vendor": "Quelle",
       "employmentType": "Anstellungsart",
-      "excludeAgencies": "Personaldienstleister ausblenden"
+      "excludeAgencies": "Personaldienstleister ausblenden",
+      "includeUnstatedPay": "Anzeigen ohne Gehaltsangabe"
     },
     "companiesChip": "{{n}} Unternehmen",
     "firstSeenToday": "zuerst gesehen: heute",

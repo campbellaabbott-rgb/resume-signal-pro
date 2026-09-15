@@ -80,6 +80,8 @@ describe("filtered category counts are computed, not guessed or dropped", () => 
   });
 
   it("prefers the filter-aware count but still falls back to the board-wide one", () => {
-    expect(UI).toMatch(/filteredCats\?\.\[c\] \?\? data\?\.categories\?\.\[c\]/);
+    // exactCats: the list reply's facet, or — with only a field bound — the
+    // kept unfiltered facet, since the reply then carries one entry.
+    expect(UI).toMatch(/filteredCats\?\.\[c\] \?\? exactCats\?\.\[c\]/);
   });
 });

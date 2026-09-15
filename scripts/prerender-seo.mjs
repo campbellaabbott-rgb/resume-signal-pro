@@ -46,6 +46,9 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
 export { getAllProducts } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
+export { BOARD_SOURCE_LIST } from "../src/config/ats-vendors";
+export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS } from "../src/config/mcp-tools";
+export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -1363,7 +1366,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
         description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; no dated posting older than 30 days.`,
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.BOARD_SOURCE_LIST}. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
         `,
@@ -1371,7 +1374,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Live job board",
-          description: "Live openings from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR), re-verified throughout the day — no aggregators, no dated posting older than 30 days.",
+          description: `Live openings from companies' official job boards (${D.BOARD_SOURCE_LIST}), re-verified throughout the day — no aggregators, no dated posting older than 30 days.`,
           url: `${SITE}/jobs`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }],
@@ -1474,24 +1477,42 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       });
     }
 
-    // Hiring Data & API — the B2B data-licensing page. Static shell; the few
-    // live stats hydrate client-side.
+    // Hiring Data & API — the self-serve /v1 API first, the licensing tiers
+    // after, in the order the page itself puts them. The copy below mirrors
+    // the page's sections (hero, what is in it, "Query it yourself", access
+    // tiers, cross-links); until 2026-09-15 the crawler read only the old
+    // licensing pitch and never learned that a free key, /v1, or the MCP
+    // server existed. The live stats hydrate client-side.
     {
       write({
         path: "/data-api",
         title: "Hiring Data & API — lifecycle-tracked job posting data",
-        description: "License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine fills vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution.",
+        description: "A read-only JSON API over the live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing, stated pay. Free keys.",
         content: `
           <h1>Hiring Data &amp; API</h1>
-          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely filled or quietly re-listed under a new ID, and what the company itself said it paid. Everything is collected from companies' own official career sites — never aggregators — and audited against them daily.</p>
+          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is collected from companies' own official career sites — never aggregators — and audited against them daily.</p>
           <p>The dataset contains zero jobseeker data: resumes are never stored on Resume Booster, so there is nothing about job seekers to license. And no license, at any price, changes what the data says about any company — including the licensee.</p>
-          <p>Access is free for journalists with attribution, at cost for academic and nonprofit research, and custom-priced for commercial feeds. A live slice is already public: see the <a href="/ghost-job-index">Ghost Job Index</a>, <a href="/hiring-trends">Weekly Hiring Trends</a>, and the <a href="/entry-level-index">Entry-Level Index</a>.</p>
+          <h2>Query it yourself</h2>
+          <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address; it is shown once and only its hash is stored. Every key meters at 60 requests a minute and 1,000 calls a day. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
+          <ul>
+            <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
+            <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
+            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id (30 days back on a free key, 180 on a paid one).</li>
+            <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
+            <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
+            <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
+            <li><code>POST /v1/fit</code> (paid) — a résumé in, the board's best matches out, scored with matched and missing terms; stores nothing.</li>
+          </ul>
+          <p>Pointing an AI agent at this data instead of writing code? The same free keys work on the <a href="/agents">MCP server</a>, which serves the same board to Claude Code, Cursor and any MCP client that can send a header.</p>
+          <h2>Access beyond the free tier</h2>
+          <p>Free for journalists with attribution, at cost for academic and nonprofit research, and custom-priced for commercial feeds — volume, history and bulk export. Every request gets a human reply.</p>
+          <p>A live slice is already public: see the <a href="/ghost-job-index">Ghost Job Index</a>, <a href="/hiring-trends">Weekly Hiring Trends</a>, the <a href="/entry-level-index">Entry-Level Index</a> and the <a href="/pay-transparency">Pay Transparency Index</a>.</p>
         `,
         jsonLd: [{
           "@context": "https://schema.org",
           "@type": "WebPage",
           name: "Hiring Data & API",
-          description: "Lifecycle-tracked job posting data from official company career sites: fills vs re-listing churn, stated salaries, daily audits. Free for journalists with attribution.",
+          description: "A read-only JSON API (/v1) over the live board and the lifecycle-tracked dataset behind it: takedowns vs re-listing, stated pay, daily audits. Free self-serve keys; free for journalists with attribution.",
           url: `${SITE}/data-api`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }],
@@ -1599,7 +1620,12 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     write({
       path: "/agent",
       title: "Apply Agent — $99/mo, Applications Sent For You",
-      description: "The agent matches fresh postings to your resume and submits real applications on four hiring systems. $99/mo, 7 days free. It never solves CAPTCHAs.",
+      // The vendor count is RENDERED from the sendable mirror (pinned to the
+      // Deno list by the-page-says-six guard), never typed: this line said
+      // "four" for weeks while the list held five (project_claim_drift). The
+      // board share is not on hand at bake time (no per-vendor facet here),
+      // so it is absent rather than a stale figure — the SPA derives it live.
+      description: `The agent matches fresh postings to your resume and submits real applications on ${D.SENDABLE_VENDOR_LABELS.length} hiring systems. $99/mo, 7 days free. It never solves CAPTCHAs.`,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
@@ -1610,11 +1636,75 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
           <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">The limits, stated up front</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">Four hiring systems — about 6% of the board</p><p class="text-xs text-muted-foreground">The agent submits only where it can complete a real application end to end. The board labels every posting it can send to, so the scope is countable on the page, not a claim.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">${D.SENDABLE_VENDOR_LABELS.length} hiring systems: ${D.SENDABLE_VENDOR_SENTENCE}</p><p class="text-xs text-muted-foreground">The agent submits only where it can complete a real application end to end. The board labels every posting it can send to, so the scope is countable on the page, not a claim.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">It never solves CAPTCHAs or evades bot checks</p><p class="text-xs text-muted-foreground">Where a site gates applying, the agent prepares the application — answers, resume, cover note — and you press send. That boundary is permanent.</p></div>
         </section>
         ${cta("Set up the agent", "Upload a resume, pick your targets, and the first morning queue is ready tomorrow. 7 days free.", "Start free week")}`,
     });
+
+    // ---- /agents: the MCP server's human page ----
+    // Measured 2026-09-15 with a Googlebot user-agent: /agents served the
+    // homepage shell — not prerendered, not in the sitemap, absent from
+    // llms.txt — while the SPA version listed six tools against a server
+    // registering eleven. Everything countable below is rendered from the
+    // same mirrors the page itself reads: D.MCP_TOOLS (pinned to the
+    // server's registration by the-page-says-six-and-the-server-says-eleven
+    // guard), D.MCP_HOSTS, the sendable-vendor mirror (pinned to the Deno
+    // list), and the board's own total through plusClaim. Nothing is typed.
+    {
+      const envText3 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+      const supaUrl3 = process.env.VITE_SUPABASE_URL
+        || (envText3.match(/^VITE_SUPABASE_URL=(.*)$/m) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+      const mcpUrl = supaUrl3 ? `${supaUrl3}/functions/v1/agent-mcp` : null;
+      const h = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const badge = { read: "any free key", paid: "paid key", apply: "agent key" };
+      const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
+      const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings` : "the live postings";
+      // Host names carry their own "and" (claude.ai and Claude Desktop): commas
+      // and one final "and", the same joiner the SPA page uses.
+      const andList = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+      const withHeader = andList(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name));
+      const withoutHeader = andList(D.MCP_HOSTS.filter((x) => !x.header).map((x) => x.name));
+      const paidSentence = D.MCP_PAID_TOOLS.length
+        ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code>POST /v1/fit</code> on the data API.`
+        : "";
+      write({
+        path: "/agents",
+        title: "Connect Your Agent — MCP Server for the Live Job Board",
+        description: `Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Free keys for search; the Agent plan can request applications.`,
+        jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }])],
+        content: `
+          ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Connect your agent" }])}
+          <h1 class="text-3xl font-bold mb-3">Your AI agent can use this job board directly</h1>
+          <p class="text-muted-foreground mb-8">Point an MCP-capable agent — Claude Code, Cursor, or one you built — at our MCP server. It can search ${countClause} pulled from employers' own hiring systems, read full descriptions, re-verify a shortlist, and, on the Agent plan, ask your apply agent to submit applications for you. It gets the same ranked search and the same honest disclosures the site gets — there is no second search engine behind this endpoint.</p>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">The endpoint</h2>
+            ${mcpUrl ? `<p class="text-sm mb-2"><code>${h(mcpUrl)}</code></p>` : ""}
+            <p class="text-sm text-muted-foreground">Streamable HTTP transport, stateless, POST-only. Every tool call carries the key as <code>Authorization: Bearer rb_live_…</code>; tool discovery (initialize, tools/list) works without one, so an agent can see what is here before anyone mints anything, and a call without a key is refused in-band with the link to get one.</p>
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
+            <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
+            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> and the mandate set up in Account. Read-only keys stay read-only by design. Both kinds meter identically: 60 requests/minute, 1,000/day per key.</p>
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach the tools today</h2>
+            <p class="text-sm text-muted-foreground mb-2">Every tool call carries the key in an Authorization header, and not every host has a place to put one. From ${h(withHeader)}: every tool your key's tier allows. From ${h(withoutHeader)}: the server lists its tools and refuses every call — outside an org-admin beta there is no field for the key, and each host's own note below says which — stated here rather than promising a connector that fails on its first call.</p>
+            <ul class="space-y-1.5">${D.MCP_HOSTS.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${x.header ? "reaches the tools" : "lists the tools, cannot call them"}: ${h(x.how)}.</li>`).join("")}</ul>
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">All ${D.MCP_TOOLS.length} tools</h2>
+            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}) — ${h(t.body)}</li>`).join("")}</ul>
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">What your agent can and cannot do</h2>
+            <p class="text-sm text-muted-foreground mb-2">Applications requested here go through the exact same pipeline as the signed-in flow — the MCP layer is a translator, never a bypass. Your agent can do at most what you could do yourself, signed in.</p>
+            <ul class="space-y-1.5">
+              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Your mandate's off switch always wins.</strong> Agent switched off or paused in Account? Every request refuses, including from this endpoint.</li>
+              <li class="text-sm text-muted-foreground"><strong class="text-foreground">The honesty classifier never invents answers.</strong> Application answers are drawn from your own profile; any answer it cannot support blocks the send and waits for you.</li>
+              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Only ${D.SENDABLE_VENDOR_LABELS.length} hiring systems are agent-submittable today:</strong> ${h(D.SENDABLE_VENDOR_SENTENCE)}. Jobs on other systems get prepared for you to send yourself — <code>check_apply_support</code> tells you which is which before you ask.</li>
+              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Daily caps apply.</strong> The same release caps as the signed-in agent — a connected agent does not get a bigger allowance.</li>
+              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Every refusal is named.</strong> A request that does not go out shows up in <code>application_status</code> with the refusing gate stated, not a silent disappearance.</li>
+            </ul>
+          </section>
+          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The board itself is at <a href="/jobs">/jobs</a>; the apply agent is described at <a href="/agent">/agent</a>.</p>`,
+      });
+    }
 
     write({
       path: "/freelance-boost",
@@ -1882,7 +1972,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
     if (BOARD_TOTAL) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.BOARD_SOURCE_LIST}) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -1916,6 +2006,24 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
     lines.push(`- ATS vendor guides: ${Object.keys(D.VENDORS).map((v) => `${SITE}/ats/${v}`).join(", ")} — documented parsing behaviors.`);
     lines.push(`- CV standards by country: ${SITE}/cv-standards — photo, length, and personal-data norms for ${Object.keys(D.COUNTRY_SLUGS).length} countries (the scanner's own market rules), with localized pages in Spanish, French, German, Portuguese, and Dutch.`);
     lines.push(`- Honest comparisons: ${Object.values(D.COMPETITORS).map((c) => `${SITE}/vs/${c.slug}`).join(", ")} — each names where the competitor wins.`);
+    lines.push("");
+    // ---- The board's own data pages, the API and the MCP server ----
+    // Measured 2026-09-15: this file had zero mentions of the Ghost Job
+    // Index, /v1, /data-api, closure or MCP — the board's data pages were
+    // invisible to every AI engine reading it. Counts here are derived from
+    // the same mirrors the pages render from; none is typed.
+    // Host names carry their own "and" (claude.ai and Claude Desktop): commas
+    // and one final "and", the same joiner the /agents page and its prerender use.
+    const andHosts = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+    lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
+    lines.push(`- Live job board: ${SITE}/jobs — every posting read from the employer's own hiring system (${D.BOARD_SOURCE_LIST}); no aggregators; no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
+    lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
+    lines.push(`- Weekly Hiring Trends: ${SITE}/hiring-trends — counted postings per week by each posting's own stated date, which fields are hiring, entry-level and remote shares, and closures per week from the lifecycle log; newly catalogued employers are excluded from weekly counts so coverage growth never reads as a hiring spike.`);
+    lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
+    lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
+    lines.push(`- Companies on the board: ${SITE}/companies — every employer with open roles, A–Z, each with its live count and a link to its own page.`);
+    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (60 requests/minute, 1,000/day): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, on the same free keys, over Streamable HTTP. The apply tools additionally need an account-linked key, an Agent plan and a standing mandate. The key travels in an Authorization header, so today it is reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))}; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header).map((x) => x.name))} can list the tools but, outside an org-admin beta, have no field for the key and cannot call them.`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
@@ -1980,6 +2088,11 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       }
       sub(/\b\d+ industries, 10 languages\b/, `${NIND} industries, 10 languages`);
       sub(/\b\d+ industry pages\b/, `${NIND} industry pages`);
+      // The source list is a CONFIG fact, not a live count, so it refreshes
+      // on every bake from the same constant the board's own source note
+      // renders — the committed file had fourteen systems typed by hand while
+      // the board served more, the shape published-claims guards on /jobs.
+      sub(/own hiring system \([^)]+\) — never an aggregator/, `own hiring system (${D.BOARD_SOURCE_LIST}) — never an aggregator`);
       if (missed.length) {
         // Not fatal to the bake, but never silent: an orphaned figure is a
         // number nothing updates, which is how a true "+" claim rots into a
@@ -2005,6 +2118,7 @@ export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
       { path: "/agent", changefreq: "weekly", priority: "0.9" }, // the money page — was fallback-only and sitemap-absent until 2026-08-18
+      { path: "/agents", changefreq: "weekly", priority: "0.7" }, // the MCP page — fallback-only and sitemap-absent until 2026-09-15
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       // /shortlist deliberately absent: it is an auth wall with no public
       // content and now ships noindex. See its write() above.

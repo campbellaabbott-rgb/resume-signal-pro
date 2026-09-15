@@ -4065,7 +4065,8 @@
       "department": "departamento",
       "vendor": "pinagmulan",
       "employmentType": "uri ng trabaho",
-      "excludeAgencies": "itago ang mga ahensya"
+      "excludeAgencies": "itago ang mga ahensya",
+      "includeUnstatedPay": "mga anunsyong walang nakasaad na sahod"
     },
     "companiesChip": "{{n}} kumpanya",
     "firstSeenToday": "unang nakita ngayong araw",
