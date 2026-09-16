@@ -267,6 +267,69 @@
       "when": 1789567020219,
       "tag": "0037_a_shared_egress_makes_a_per_address_bucket_a_global_one_so_both_exist",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1789585058498,
+      "tag": "0038_a_pass_is_a_row_with_its_own_clock",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1789585087970,
+      "tag": "0039_agent_pass_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789585118072,
+      "tag": "0040_api_key_check_honours_a_live_pass",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1789585142544,
+      "tag": "0041_an_oauth_token_names_the_server_it_was_minted_for",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1789585164369,
+      "tag": "0042_an_application_is_paid_for_when_it_is_queued",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1789585185226,
+      "tag": "0043_a_send_that_never_happened_gives_its_application_back",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1789585213510,
+      "tag": "0044_the_pass_is_judged_by_its_own_numbers",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1789585233900,
+      "tag": "0045_a_pass_refund_is_the_pipelines_to_give",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1789585244335,
+      "tag": "0046_an_owner_may_decide_a_row_but_never_which_pass_paid_for_it",
+      "breakpoints": true
     }
   ]
 }

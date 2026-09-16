@@ -419,6 +419,72 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_passes: {
+        Row: {
+          activated_at: string | null
+          activated_user_agent: string | null
+          activated_via: string | null
+          amount_cents: number
+          applications_total: number
+          applications_used: number
+          close_reason: string | null
+          closed_at: string | null
+          created_at: string
+          daily_quota: number
+          expires_at: string | null
+          id: string
+          purchased_at: string
+          rate_per_min: number
+          session_hours: number
+          shelf_expires_at: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_user_agent?: string | null
+          activated_via?: string | null
+          amount_cents: number
+          applications_total: number
+          applications_used?: number
+          close_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          daily_quota: number
+          expires_at?: string | null
+          id?: string
+          purchased_at?: string
+          rate_per_min: number
+          session_hours: number
+          shelf_expires_at: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id: string
+          user_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_user_agent?: string | null
+          activated_via?: string | null
+          amount_cents?: number
+          applications_total?: number
+          applications_used?: number
+          close_reason?: string | null
+          closed_at?: string | null
+          created_at?: string
+          daily_quota?: number
+          expires_at?: string | null
+          id?: string
+          purchased_at?: string
+          rate_per_min?: number
+          session_hours?: number
+          shelf_expires_at?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_pending_questions: {
         Row: {
           answer_kind: string
@@ -475,6 +541,7 @@ export type Database = {
           fit_pct: number | null
           id: number
           location: string
+          pass_id: string | null
           posted_at: string | null
           posting_id: string
           reasons: Json
@@ -495,6 +562,7 @@ export type Database = {
           fit_pct?: number | null
           id?: never
           location?: string
+          pass_id?: string | null
           posted_at?: string | null
           posting_id: string
           reasons?: Json
@@ -515,6 +583,7 @@ export type Database = {
           fit_pct?: number | null
           id?: never
           location?: string
+          pass_id?: string | null
           posted_at?: string | null
           posting_id?: string
           reasons?: Json
@@ -526,6 +595,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_queue_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "agent_passes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_queue_search_id_fkey"
             columns: ["search_id"]
@@ -612,6 +688,8 @@ export type Database = {
           fields: Json
           fit_pct: number | null
           id: number
+          pass_id: string | null
+          pass_refunded_at: string | null
           posting_id: string
           prepared_at: string | null
           questions: Json
@@ -645,6 +723,8 @@ export type Database = {
           fields?: Json
           fit_pct?: number | null
           id?: never
+          pass_id?: string | null
+          pass_refunded_at?: string | null
           posting_id: string
           prepared_at?: string | null
           questions?: Json
@@ -678,6 +758,8 @@ export type Database = {
           fields?: Json
           fit_pct?: number | null
           id?: never
+          pass_id?: string | null
+          pass_refunded_at?: string | null
           posting_id?: string
           prepared_at?: string | null
           questions?: Json
@@ -695,7 +777,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_submissions_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "agent_passes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agent_subscribers: {
         Row: {
@@ -3691,6 +3781,8 @@ export type Database = {
           fields: Json
           fit_pct: number | null
           id: number
+          pass_id: string | null
+          pass_refunded_at: string | null
           posting_id: string
           prepared_at: string | null
           questions: Json
@@ -3746,7 +3838,65 @@ export type Database = {
         Returns: undefined
       }
       agent_note_auto_release: { Args: { p_user_id: string }; Returns: number }
+      agent_pass_grant: {
+        Args: {
+          p_amount_cents: number
+          p_applications_total: number
+          p_daily_quota: number
+          p_payment_intent_id: string
+          p_rate_per_min: number
+          p_session_hours: number
+          p_shelf_days: number
+          p_stripe_session_id: string
+          p_user_id: string
+        }
+        Returns: {
+          grant_reason: string
+          granted_ok: boolean
+          granted_pass_id: string
+          was_duplicate: boolean
+        }[]
+      }
+      agent_pass_metrics: {
+        Args: { p_days: number }
+        Returns: {
+          activated_via_key: number
+          activated_via_oauth: number
+          activation_lag_p50_minutes: number
+          activation_lag_p95_minutes: number
+          applications_queued: number
+          applications_refunded: number
+          applications_submitted: number
+          calls_per_pass_median: number
+          calls_total: number
+          moat_calls_total: number
+          paid_undelivered: number
+          passes_activated: number
+          passes_closed_unused: number
+          passes_exhausted: number
+          passes_sold: number
+          second_day_returns: number
+          sessions_claimed: number
+          shelf_expired_unused: number
+          unactivated_backlog: number
+          window_days: number
+        }[]
+      }
       agent_prepare_now: { Args: never; Returns: boolean }
+      agent_queue_enqueue: {
+        Args: {
+          p_pass_funded: boolean
+          p_posting_id: string
+          p_row: Json
+          p_user_id: string
+        }
+        Returns: {
+          enqueue_reason: string
+          enqueued_ok: boolean
+          pass_apps_left: number
+          queued_row_id: number
+        }[]
+      }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
@@ -3775,6 +3925,8 @@ export type Database = {
           deny_reason: string
           is_allowed: boolean
           key_tier: string
+          pass_apps_left: number
+          pass_ends_at: string
           quota_limit: number
           quota_used: number
           rate_limit: number
@@ -3922,6 +4074,7 @@ export type Database = {
           n: number
         }[]
       }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
