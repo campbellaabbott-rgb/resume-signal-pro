@@ -3857,6 +3857,31 @@ export type Database = {
           was_duplicate: boolean
         }[]
       }
+      agent_pass_metrics: {
+        Args: { p_days: number }
+        Returns: {
+          activated_via_key: number
+          activated_via_oauth: number
+          activation_lag_p50_minutes: number
+          activation_lag_p95_minutes: number
+          applications_queued: number
+          applications_refunded: number
+          applications_submitted: number
+          calls_per_pass_median: number
+          calls_total: number
+          moat_calls_total: number
+          paid_undelivered: number
+          passes_activated: number
+          passes_closed_unused: number
+          passes_exhausted: number
+          passes_sold: number
+          second_day_returns: number
+          sessions_claimed: number
+          shelf_expired_unused: number
+          unactivated_backlog: number
+          window_days: number
+        }[]
+      }
       agent_prepare_now: { Args: never; Returns: boolean }
       agent_queue_enqueue: {
         Args: {
