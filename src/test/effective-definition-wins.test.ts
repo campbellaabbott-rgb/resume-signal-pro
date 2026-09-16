@@ -140,3 +140,147 @@ describe("re-emitted definer functions keep their REVOKE", () => {
     });
   }
 });
+
+/**
+ * THE PASS (2026-09-17): api_key_check now starts a paid clock and serves a
+ * pass's limits, and four new definer functions grant, spend, refund and
+ * measure it. Each is pinned on its WINNING definition, for the same reason
+ * as the claim gate above: the deploy pipeline re-emits migrations under
+ * fresh stamps, and a re-emitted copy of the pre-pass api_key_check would
+ * silently serve every pass holder the free key's limits. Properties, not
+ * spellings — each is the clause whose loss changes what a customer gets.
+ */
+describe("api_key_check — the pass overlay and its clock, on the winning definition", () => {
+  const { file, sql } = effectiveDefinition("api_key_check");
+  const code = bare(sql);
+
+  it(`the winning definition is a real file (${file})`, () => {
+    expect(file).toMatch(/^\d{14}_/);
+  });
+
+  for (const [what, re] of [
+    ["the overlay applies to /mcp/ endpoints only", /p_endpoint LIKE '\/mcp\/%'/],
+    ["the rate ceiling is COMPARED against the overlay, not merely returned", /IF v_rate > v_rate_limit THEN/],
+    ["the quota ceiling is COMPARED against the overlay", /IF v_day_used > v_quota_limit THEN/],
+    ["the tier answers the pass while an open pass exists", /v_tier\s*:= CASE WHEN v_pass_id IS NOT NULL THEN 'pass'/],
+    ["key_status never starts the clock", /p_endpoint <> '\/mcp\/key_status'/],
+    ["the clock is the ROW's own session_hours", /make_interval\(hours => ap\.session_hours\)/],
+    ["activation happens once — only a pass not yet activated", /WHERE ap\.id = v_pass_id AND ap\.activated_at IS NULL/],
+    ["the shared lazy close runs before the overlay read", /coalesce\(ap\.expires_at, ap\.shelf_expires_at\) <= now\(\)/],
+    ["the two pass columns are appended to the return shape", /pass_ends_at timestamptz,\s*pass_apps_left integer/],
+  ] as const) {
+    it(`still enforces ${what}`, () => {
+      expect(code, `${what} is absent from ${file}, the definition that wins`).toMatch(re);
+    });
+  }
+
+  it("activation sits on the allowed path — after every refusal has returned", () => {
+    const activate = code.indexOf("p_endpoint <> '/mcp/key_status'");
+    for (const refusal of ["'rate_limited'", "'revoked'", "'quota_exceeded'"]) {
+      expect(code.indexOf(refusal), `${refusal} must return before activation`).toBeLessThan(activate);
+    }
+    expect(code.indexOf("RETURN QUERY SELECT true, 'ok'")).toBeGreaterThan(activate);
+  });
+});
+
+describe("agent_queue_enqueue — accept and pay in one statement, on the winning definition", () => {
+  const { file, sql } = effectiveDefinition("agent_queue_enqueue");
+  const code = bare(sql);
+
+  for (const [what, re] of [
+    ["the pass row is LOCKED before it is judged", /FOR UPDATE/],
+    ["a duplicate writes nothing", /ON CONFLICT \(user_id, posting_id\) DO NOTHING/],
+    ["a duplicate spends nothing", /'already_queued'/],
+    ["an exhausted pass is refused with nothing written", /'pass_exhausted'/],
+    ["a pass that is not live is refused", /'pass_not_live'/],
+    ["the account comes from the parameter, never the row", /VALUES \(\s*p_user_id,/],
+    ["the increment is on the locked row", /SET applications_used = ap\.applications_used \+ 1/],
+  ] as const) {
+    it(`still enforces ${what}`, () => {
+      expect(code, `${what} is absent from ${file}, the definition that wins`).toMatch(re);
+    });
+  }
+
+  it("the increment follows the insert, never precedes it", () => {
+    expect(code.indexOf("INSERT INTO public.agent_queue")).toBeLessThan(code.indexOf("applications_used + 1"));
+  });
+});
+
+describe("agent_pass_refund_on_failure — gives back only what the code actually writes", () => {
+  const { file, sql } = effectiveDefinition("agent_pass_refund_on_failure");
+  const code = bare(sql);
+
+  for (const [what, re] of [
+    ["refunds a stale packet", /NEW\.status = 'stale'/],
+    ["refunds a blocked packet only when the send gave up or errored", /NEW\.status = 'blocked' AND \(NEW\.attempts >= 99 OR coalesce\(NEW\.error, ''\) <> ''\)/],
+    ["floors at zero", /greatest\(ap\.applications_used - 1, 0\)/],
+    ["fires once — the stamp is the idempotency", /NEW\.pass_refunded_at IS NULL/],
+    ["fires on INSERT as well (stale is insert-only)", /AFTER INSERT OR UPDATE OF status ON public\.agent_submissions/],
+  ] as const) {
+    it(`still enforces ${what}`, () => {
+      expect(code, `${what} is absent from ${file}, the definition that wins`).toMatch(re);
+    });
+  }
+
+  it("never refunds on 'failed' (no code path writes it) or on a plain preparation-time 'blocked'", () => {
+    expect(code).not.toMatch(/NEW\.status = 'failed'/);
+    expect(code).not.toMatch(/NEW\.status = 'blocked' THEN/);
+  });
+});
+
+describe("agent_pass_grant — one row per paid session, on the winning definition", () => {
+  const { file, sql } = effectiveDefinition("agent_pass_grant");
+  const code = bare(sql);
+
+  for (const [what, re] of [
+    ["idempotent on the session id", /ON CONFLICT \(stripe_session_id\) DO NOTHING/],
+    ["a second open pass is refused, never stacked", /'pass_already_open'/],
+    ["the refusal is keyed on the partial UNIQUE's own name", /agent_passes_one_open_pass_per_user/],
+    ["every number is copied in from a parameter", /p_session_hours, p_applications_total, p_rate_per_min, p_daily_quota,/],
+    ["the shelf is the parameter's days", /make_interval\(days => p_shelf_days\)/],
+    ["an unknown unique violation is re-raised, never swallowed", /RAISE;/],
+  ] as const) {
+    it(`still enforces ${what}`, () => {
+      expect(code, `${what} is absent from ${file}, the definition that wins`).toMatch(re);
+    });
+  }
+});
+
+describe("the pass functions keep their REVOKE on their winning definitions", () => {
+  for (const [fn, args] of [
+    ["api_key_check", "text, text"],
+    ["agent_pass_grant", "uuid, text, text, integer, integer, integer, integer, integer, integer"],
+    ["agent_queue_enqueue", "uuid, text, jsonb, boolean"],
+    ["agent_pass_refund_on_failure", ""],
+    ["agent_pass_metrics", "integer"],
+  ] as const) {
+    it(`${fn} is revoked from PUBLIC, anon AND authenticated by name, and granted only to service_role`, () => {
+      const { file, sql } = effectiveDefinition(fn);
+      const code = bare(sql);
+      const sig = args.replace(/[()]/g, "\\$&").replace(/, /g, ",\\s*");
+      expect(code, `${fn} lost its REVOKE in ${file}`).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}\\(${sig}\\) FROM PUBLIC, anon, authenticated`),
+      );
+      expect(code).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${fn}\\(${sig}\\) TO service_role`));
+      expect(code).not.toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${fn}\\([^)]*\\) TO (?:anon|authenticated|PUBLIC)`));
+      expect(code).toMatch(/SECURITY DEFINER/);
+      expect(code).toMatch(/SET search_path = public/);
+    });
+  }
+});
+
+describe("teeth: a re-emitted copy of the PRE-PASS api_key_check would fail the overlay pins", () => {
+  it("the previous definition, which a re-stamped copy would restore, lacks the overlay", () => {
+    const hits = readdirSync(DIR)
+      .filter((f) => f.endsWith(".sql"))
+      .filter((f) => readFileSync(resolve(DIR, f), "utf8").includes("FUNCTION public.api_key_check("))
+      .sort();
+    expect(hits.length).toBeGreaterThan(1);
+    const previous = bare(readFileSync(resolve(DIR, hits[hits.length - 2]), "utf8"));
+    const winner = bare(readFileSync(resolve(DIR, hits[hits.length - 1]), "utf8"));
+    for (const re of [/p_endpoint LIKE '\/mcp\/%'/, /IF v_rate > v_rate_limit THEN/, /p_endpoint <> '\/mcp\/key_status'/, /make_interval\(hours => ap\.session_hours\)/]) {
+      expect(previous, `the pin ${re} must discriminate the previous definition`).not.toMatch(re);
+      expect(winner).toMatch(re);
+    }
+  });
+});

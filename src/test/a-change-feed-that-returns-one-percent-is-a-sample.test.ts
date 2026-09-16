@@ -51,7 +51,7 @@ describe("a change feed that returns one percent is a sample", () => {
     // between a free key and a paid one was requests per minute — the weakest
     // pitch available for a dataset whose value is its history.
     expect(API).toMatch(/const CHANGES_MAX_DAYS_PAID = \d+;/);
-    expect(API).toMatch(/const paid = tier != null && tier !== "free" && tier !== "trial";/);
+    expect(API).toMatch(/const paid = isPaidKeyTier\(tier\);/);
     expect(API).toMatch(/changes\(client, url, rateHeaders, d\.key_tier\)/);
     // And the depth is published, so a customer can see what they have.
     expect(API).toMatch(/closureHistoryDays: maxDays,/);

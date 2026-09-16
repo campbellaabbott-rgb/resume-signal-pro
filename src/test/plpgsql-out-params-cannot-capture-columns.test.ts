@@ -47,7 +47,72 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   // table through ON CONFLICT -- the api_key_check shape exactly, so it is
   // held to the same zero-collision rule below.
   mcp_anon_rate: ["day", "bucket", "calls"],
+  // The six-hour pass (20260917100000 onwards). api_key_check reads
+  // agent_passes for its overlay; agent_pass_grant writes it;
+  // agent_queue_enqueue writes agent_queue and increments the pass;
+  // agent_pass_metrics reads all of these plus the two Stripe ledgers. Every
+  // one of them is held to the zero-collision rule below.
+  api_quota: ["key_id", "day", "calls"],
+  agent_passes: [
+    "id", "user_id", "stripe_session_id", "stripe_payment_intent_id", "amount_cents", "session_hours",
+    "applications_total", "applications_used", "rate_per_min", "daily_quota", "purchased_at", "shelf_expires_at",
+    "activated_at", "expires_at", "activated_via", "activated_user_agent", "closed_at", "close_reason", "created_at",
+  ],
+  agent_queue: [
+    "id", "user_id", "posting_id", "title", "company", "company_token", "location", "apply_url", "salary",
+    "category", "posted_at", "fit_pct", "reasons", "status", "created_at", "decided_at", "search_id", "search_label", "pass_id",
+  ],
+  agent_submissions: [
+    "id", "user_id", "posting_id", "title", "company", "company_token", "apply_url", "source", "status",
+    "fields", "questions", "questions_are_real", "answers", "blockers", "resume_version_id", "cover_letter", "fit_pct",
+    "prepared_at", "submitted_at", "submitted_via", "error", "created_at", "updated_at", "released_at", "release_refusal",
+    "claimed_at", "claimed_by", "attempts", "claimable_at", "sent_answers", "sent_evidence", "pass_id", "pass_refunded_at",
+  ],
+  used_stripe_sessions: ["session_id", "used_at", "ip_address", "product_type"],
+  product_deliveries: [
+    "id", "created_at", "stripe_session_id", "customer_email", "product_type", "product_name", "amount_cents",
+    "payment_completed_at", "content_generation_started_at", "content_generation_completed_at", "email_sent_at",
+    "email_delivered_at", "status", "generation_success", "generation_error", "email_success", "email_error",
+    "ai_response_valid", "ai_parse_error", "generation_duration_ms", "metadata", "ai_model_used", "max_retries",
+    "next_retry_at", "retry_count",
+  ],
 };
+
+/**
+ * THE SILENT SKIP, ENDED. `tablesTouched` used to be "the tables in the map
+ * that the body names" — so a body reading a table nobody had mapped was
+ * checked against nothing and passed. That is how api_quota went unmapped
+ * for three weeks under a guard written for the very function that reads
+ * it. Now every `public.<name>` a checked body references must be a mapped
+ * table (or a function it calls, or itself), or the test fails and names
+ * the table to add.
+ */
+const FUNCTIONS_KNOWN = new Set<string>();
+function unmappedTablesIn(body: string, self: string): string[] {
+  const out = new Set<string>();
+  for (const m of body.matchAll(/(?<!FUNCTION\s)(?<!PERFORM\s)public\.([a-z_][a-z0-9_]*)/g)) {
+    const name = m[1];
+    if (name === self || name in COLUMNS_BY_TABLE || FUNCTIONS_KNOWN.has(name)) continue;
+    // A call — `public.fn(` — is not a table read; but `INSERT INTO
+    // public.t (cols)` and `UPDATE public.t` are, whatever follows them.
+    const before = body.slice(Math.max(0, (m.index ?? 0) - 12), m.index ?? 0);
+    const after = body.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 2);
+    const tableKeyword = /\b(?:INTO|FROM|UPDATE|JOIN|TABLE|ON)\s+$/i.test(before);
+    if (!tableKeyword && /^\s*\(/.test(after)) { FUNCTIONS_KNOWN.add(name); continue; }
+    out.add(name);
+  }
+  return [...out].sort();
+}
+
+/** The plpgsql body of one function: from its AS $$ to the matching $$;. */
+function bodyOfFunction(sql: string, fn: string): string {
+  const defAt = sql.indexOf(`FUNCTION public.${fn}(`);
+  if (defAt < 0) return "";
+  const after = sql.slice(defAt);
+  const bodyStart = after.indexOf("AS $$");
+  const bodyEnd = after.indexOf("$$;", bodyStart + 5);
+  return stripComments(after.slice(bodyStart + 5, bodyEnd < 0 ? after.length : bodyEnd));
+}
 
 /** Strip SQL comments so prose about a name is never mistaken for a reference. */
 function stripComments(sql: string): string {
@@ -215,11 +280,24 @@ describe("category_knn qualifies every OUT name that is also an anchor column", 
  * stricter and simpler: DO NOT COLLIDE. Every OUT name is checked against every
  * column of every table the body touches, and the answer must be none.
  */
+/**
+ * The pass RPCs (20260917110000 / 140000 / 160000) join the same loop: each
+ * RETURNS TABLE over tables whose columns are exactly the words a naive
+ * author would pick as OUT names (id, user_id, status, expires_at,
+ * applications_used, pass_id …), and agent_queue_enqueue writes through ON
+ * CONFLICT like api_key_check does. agent_pass_refund_on_failure returns a
+ * trigger, not a table, and has no OUT names to collide.
+ */
+const STRICT_FUNCTIONS = [
+  "api_key_check", "api_key_issue", "api_key_issue_agent", "mcp_anon_check",
+  "agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics",
+];
+
 describe("the API key functions do not name a column in their return shape", () => {
   // mcp_anon_check (20260915100000) meters the MCP server's unkeyed tier
   // the way api_key_check meters keys -- an ON CONFLICT upsert per bucket --
   // so the same stricter rule applies: no OUT name may be a column at all.
-  for (const fn of ["api_key_check", "api_key_issue", "api_key_issue_agent", "mcp_anon_check"]) {
+  for (const fn of STRICT_FUNCTIONS) {
     it(`${fn}: no OUT parameter shares a name with a column it touches`, () => {
       const { file, sql } = newestDefining(fn);
       expect(file, `no migration defines ${fn}`).toBeTruthy();
@@ -229,7 +307,15 @@ describe("the API key functions do not name a column in their return shape", () 
       const outNames = outs.split("\n").map((l) => l.trim().split(/\s+/)[0].replace(/,$/, "")).filter(Boolean);
       expect(outNames.length, "parsed no OUT names — the check would be vacuous").toBeGreaterThan(3);
 
-      const body = stripComments(sql.slice(defAt));
+      // The function's OWN body, not the rest of the file: a migration that
+      // defines two functions must not have the second one's tables read as
+      // the first one's.
+      const body = bodyOfFunction(sql, fn);
+      expect(body.length, "body not found").toBeGreaterThan(100);
+      expect(
+        unmappedTablesIn(body, fn),
+        `${fn} references a table absent from COLUMNS_BY_TABLE — an unmapped table is a silent skip; add its columns:`,
+      ).toEqual([]);
       const tablesTouched = Object.keys(COLUMNS_BY_TABLE).filter((t) => new RegExp(`public\\.${t}\\b`).test(body));
       expect(tablesTouched.length, "body touches no known table — update COLUMNS_BY_TABLE").toBeGreaterThan(0);
 
@@ -242,4 +328,35 @@ describe("the API key functions do not name a column in their return shape", () 
       ).toEqual([]);
     });
   }
+});
+
+describe("teeth: an unmapped table is a failure, not a skip", () => {
+  it("a body reading a table the map does not know is reported by name", () => {
+    const { sql } = newestDefining("agent_queue_enqueue");
+    const body = bodyOfFunction(sql, "agent_queue_enqueue");
+    expect(unmappedTablesIn(body, "agent_queue_enqueue")).toEqual([]);
+    const mutated = body.replace("public.agent_queue (", "public.agent_queue_shadow (");
+    expect(mutated).not.toBe(body);
+    expect(unmappedTablesIn(mutated, "agent_queue_enqueue")).toEqual(["agent_queue_shadow"]);
+  });
+
+  it("a function call, the function itself, and a comment are not table reads", () => {
+    const body = stripComments(
+      "-- public.commentary is prose\n" +
+      "PERFORM public.agent_prepare_now();\n" +
+      "SELECT public.some_fn(1) INTO v;\n" +
+      "SELECT ap.id FROM public.agent_passes ap;",
+    );
+    expect(unmappedTablesIn(body, "agent_prepare_now")).toEqual([]);
+  });
+
+  it("the strict loop covers every pass RPC that returns a table", () => {
+    for (const fn of ["agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics", "api_key_check"]) {
+      expect(STRICT_FUNCTIONS).toContain(fn);
+    }
+    // api_key_check now reads agent_passes: the overlay must be visible to
+    // the collision check, or a future OUT name like expires_at slips by.
+    const { sql } = newestDefining("api_key_check");
+    expect(bodyOfFunction(sql, "api_key_check")).toMatch(/public\.agent_passes\b/);
+  });
 });

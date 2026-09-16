@@ -141,10 +141,13 @@ describe("a key can be asked what it is", () => {
     expect(fn, "the rate window is a clock minute, not a rolling 60s — reporting 60 would be a guess")
       .toMatch(/resetsInSeconds: secondsToNextMinute\(\)/);
     expect(fn).toMatch(/resetsInSeconds: secondsToMidnightUtc\(\)/);
-    // The same predicate the paid gates use, so the advance answer cannot
-    // disagree with the refusal.
-    expect(fn).toMatch(/const paid = isPaidTier\(d\.key_tier\)/);
-    expect(fn).toMatch(/fit_resume: paid,/);
+    // The same predicates the paid gates use (shared with public-api through
+    // key-tier.ts), so the advance answer cannot disagree with the refusal:
+    // fit_resume follows the fit predicate (open on a pass), rankedEngine the
+    // paid one (never on a pass).
+    expect(fn).toMatch(/const paid = isPaidKeyTier\(d\.key_tier\)/);
+    expect(fn).toMatch(/const fit = hasFitAccess\(d\.key_tier\)/);
+    expect(fn).toMatch(/fit_resume: fit,/);
     expect(fn).toMatch(/rankedEngine: paid,/);
     expect(fn).toMatch(/request_application: apply\.ready === true,/);
     expect(MCP, "the key itself is only ever held as a hash — never echo one").not.toMatch(/key: raw/);

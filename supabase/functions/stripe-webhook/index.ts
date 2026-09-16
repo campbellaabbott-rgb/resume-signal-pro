@@ -8,6 +8,19 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 // Static import: the dynamic one inside the handler typechecked as `any`,
 // which is how a rename would have reached production silently.
 import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced } from "../_shared/agent.ts";
+// The six-hour pass: identified by product_type ONLY (Freelance Boost bills
+// the same amount), granted through one idempotent RPC with every number
+// copied in from this module — never spelled here, never matched on.
+import {
+  PASS_APPLICATIONS,
+  PASS_PRICE_CENTS,
+  PASS_PRODUCT_TYPE,
+  PASS_QUOTA_PER_DAY,
+  PASS_RATE_PER_MIN,
+  PASS_SESSION_HOURS,
+  PASS_SHELF_LIFE_DAYS,
+} from "../_shared/pass.ts";
+import { passSessionSettled } from "../_shared/pass-settlement.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -136,12 +149,80 @@ async function refreshAgentEntitlement(
   }
 }
 
+/**
+ * GRANT THE SIX-HOUR PASS — the one write that turns a paid session into an
+ * entitlement row, and the place the price-amount lesson is applied.
+ *
+ * The pass is recognised by metadata.product_type and nothing else. The $99
+ * plan matches on unit_amount because it has no Price ID, and that rule
+ * already means any $99 subscription on the account reads as the agent;
+ * the pass bills the same amount as Freelance Boost, so an amount match here
+ * would be a live collision, not a hypothetical.
+ *
+ * Bound to user_id (client_reference_id, with metadata.user_id as the
+ * second copy create-pass-checkout wrote), never to the email: applications
+ * key to agent_mandates.user_id and agent_queue.user_id, and an address is a
+ * claim. A session carrying neither is refused and logged — money was taken,
+ * so nothing here is allowed to be quiet.
+ *
+ * Idempotency is the pass row itself: stripe_session_id UNIQUE (a webhook
+ * retry, or the success page racing this delivery) and
+ * stripe_payment_intent_id UNIQUE (Stripe's "two separate Event objects"
+ * case). NOT webhook_events (its RPC records, it does not deduplicate) and
+ * NOT used_stripe_sessions (purged after thirty days).
+ *
+ * Returns what happened; it writes no delivery row itself. The handler hands
+ * the result to triggerProductDelivery, whose pass branch closes the ONE
+ * product_deliveries row per session as delivered or — for a refused grant
+ * (the partial UNIQUE: this user already holds an open pass, two checkouts
+ * paid before either was granted) or an errored one — as generation_failed
+ * under the pass's product_type, so the existing paid-but-undelivered
+ * projection surfaces it for a human. The success page repeats the same
+ * idempotent grant from the session id, so a transient error still delivers.
+ */
+// deno-lint-ignore no-explicit-any
+async function grantAgentPass(session: Stripe.Checkout.Session, supabase: SupabaseClient<any, any, any>) {
+  const userId = session.client_reference_id ?? session.metadata?.user_id ?? "";
+  const customerEmail = session.customer_details?.email ?? session.customer_email ?? session.metadata?.customer_email ?? null;
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) {
+    logStep("Agent pass refused: no user id on the session", { sessionId: session.id, customerEmail });
+    return { granted: false, reason: "no_user_id: the pass is bound to an account, not an address", passId: null };
+  }
+  const intent = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? "";
+  const { data, error } = await supabase.rpc("agent_pass_grant", {
+    p_user_id: userId,
+    p_stripe_session_id: session.id,
+    p_payment_intent_id: intent,
+    // What was actually charged (a promotion code lowers it); the constant
+    // only fills a session Stripe answered without a total.
+    p_amount_cents: session.amount_total ?? PASS_PRICE_CENTS,
+    p_session_hours: PASS_SESSION_HOURS,
+    p_applications_total: PASS_APPLICATIONS,
+    p_rate_per_min: PASS_RATE_PER_MIN,
+    p_daily_quota: PASS_QUOTA_PER_DAY,
+    p_shelf_days: PASS_SHELF_LIFE_DAYS,
+  }).maybeSingle();
+  const r = error
+    ? null
+    : data as { granted_ok?: boolean; grant_reason?: string; granted_pass_id?: string | null; was_duplicate?: boolean } | null;
+  const reason = error ? `rpc_error: ${error.message}` : (r?.grant_reason ?? "unknown");
+  logStep("Agent pass grant", {
+    sessionId: session.id, userId,
+    granted: r?.granted_ok === true, reason,
+    passId: r?.granted_pass_id ?? null, duplicate: r?.was_duplicate === true,
+  });
+  return { granted: r?.granted_ok === true, reason, passId: r?.granted_pass_id ?? null };
+}
+
 // Trigger product delivery for a completed checkout
 // deno-lint-ignore no-explicit-any
 async function triggerProductDelivery(
   session: Stripe.Checkout.Session,
   supabase: SupabaseClient<any, any, any>,
-  supabaseUrl: string
+  supabaseUrl: string,
+  passGrant: { granted: boolean; reason: string } | null = null,
 ) {
   const sessionId = session.id;
   const productType = session.metadata?.product_type;
@@ -239,6 +320,37 @@ async function triggerProductDelivery(
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
     return { success: true, productType, deferred: 'freelance_intake' };
+  }
+
+  // The six-hour pass has no résumé session and nothing to generate: its
+  // delivery IS the agent_passes row, written by grantAgentPass in the
+  // handler before this runs. Recognised here, exactly as the freelance
+  // products are, so it never reaches the "No resume session ID" failure
+  // below and never lands in the generation-failed retry queue. The
+  // used_stripe_sessions claim above has already happened, so reconcile-
+  // stripe stops seeing the session as an orphan.
+  if (productType === PASS_PRODUCT_TYPE) {
+    // Close the delivery row from what the grant actually did: 'delivered'
+    // when the pass row exists, 'generation_failed' with the reason when it
+    // does not — a 'payment_received' left behind would read as stuck after
+    // two hours, and a refusal left unrecorded would read as nothing at all.
+    const granted = passGrant?.granted === true;
+    if (deliveryRecord.data?.id) {
+      await supabase.from('product_deliveries')
+        .update(granted
+          ? { status: 'delivered', generation_success: true, content_generation_completed_at: new Date().toISOString() }
+          // max_retries 0: retry-failed-deliveries selects generation_failed rows
+          // with retry_count < max_retries and, for a product with no resume
+          // session, overwrites generation_error with its own "Resume session
+          // ID not available" — the one string that said WHY money was taken
+          // with no pass. Nothing about a refused grant is retryable by that
+          // sweeper (the success page repeats the grant itself), so the row is
+          // written outside its selection and keeps its reason.
+          : { status: 'generation_failed', generation_success: false, max_retries: 0, generation_error: `agent_pass_grant: ${passGrant?.reason ?? 'not attempted'}` })
+        .eq('id', deliveryRecord.data.id);
+    }
+    logStep("Agent pass — the entitlement row is the delivery; no generation", { productType, granted, reason: passGrant?.reason ?? null });
+    return { success: granted, productType, deferred: PASS_PRODUCT_TYPE, ...(granted ? {} : { error: passGrant?.reason ?? 'not attempted' }) };
   }
 
   // For content products, need resume data
@@ -543,7 +655,10 @@ serve(async (req) => {
           logStep("Agent entitlement seeding failed (Account page will repair)", { error: String(err) });
         }
 
-        if (session.payment_status === 'paid') {
+        // The paid gate, widened for exactly one shape: a pass whose whole price
+        // a promotion code covered (payment mode, zero total) — settled with
+        // nothing owed, judged by the shared predicate the success page uses.
+        if (session.payment_status === 'paid' || passSessionSettled(session)) {
           // GRANT THE APPLY AGENT ENTITLEMENT HERE, at the event that means
           // "they paid". Nothing else did.
           //
@@ -567,9 +682,27 @@ serve(async (req) => {
           // page still repairs the row on next load, exactly as before — this
           // removes the dependency on that visit, it does not replace it.
 
+          // THE PASS, by product_type only. Granted BEFORE triggerProductDelivery
+          // claims the session, and non-fatal like everything else in this
+          // block (the handler answers 200 whatever processingError holds, so a
+          // throw here would not buy a Stripe retry — it would only skip the
+          // claim). A grant that fails leaves its alert row, and the success
+          // page repeats the same idempotent grant from the session id. Inside
+          // the paid gate on purpose: a pass is a one-time charge with nothing
+          // due later, unlike the trial subscription seeded above it.
+          let passGrant: { granted: boolean; reason: string } | null = null;
+          if (session.metadata?.product_type === PASS_PRODUCT_TYPE) {
+            try {
+              passGrant = await grantAgentPass(session, supabase);
+            } catch (err) {
+              passGrant = { granted: false, reason: `threw: ${String(err).slice(0, 200)}` };
+              processingError = String(err);
+              logStep("Agent pass grant failed", { error: processingError });
+            }
+          }
 
           try {
-            const result = await triggerProductDelivery(session, supabase, supabaseUrl);
+            const result = await triggerProductDelivery(session, supabase, supabaseUrl, passGrant);
             logStep("Delivery result", result);
             
             // Affiliate conversion (background)

@@ -7,13 +7,36 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 
+/**
+ * WHERE TO GO AFTER SIGNING IN. Every sign-in path used to hard-navigate to
+ * /account, which is wrong for the two pages that send a person to sign in
+ * mid-task: the OAuth consent page (an agent host is waiting on the other
+ * side of it) and the post-purchase pass page (the receipt is in the URL).
+ * Both pass `?next=` to /auth, and /auth hands it back to every sign-in
+ * method here.
+ *
+ * ONLY A SAME-ORIGIN RELATIVE PATH IS HONOURED. `next` arrives in a URL
+ * anyone can write, so an absolute URL, a scheme, a protocol-relative
+ * `//host` or a backslash (browsers read `/\host` as `//host`) would turn
+ * the sign-in page into an open redirect. Anything that is not a plain path
+ * starting with a single slash falls back to the account page.
+ */
+export const DEFAULT_AFTER_AUTH = "/account";
+export function safeNextPath(raw: string | null | undefined): string {
+  if (typeof raw !== "string") return DEFAULT_AFTER_AUTH;
+  const s = raw.trim();
+  if (!s.startsWith("/") || s.startsWith("//") || /[\\\s]/.test(s) || /^\/[^/?#]*:/.test(s)) return DEFAULT_AFTER_AUTH;
+  return s;
+}
+
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  /** `next` is where a confirmation link should land — see safeNextPath. */
+  signUp: (email: string, password: string, next?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithGoogle: (next?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   /** True when a previously-active session disappeared (token expiry/revocation) */
   sessionExpired: boolean;
@@ -59,11 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, next?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/account` },
+      options: { emailRedirectTo: `${window.location.origin}${safeNextPath(next)}` },
     });
     return { error: error?.message ?? null };
   };
@@ -73,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signInWithGoogle = async () => {
-    sessionStorage.setItem("auth_redirect_after_login", "/account");
+  const signInWithGoogle = async (next?: string) => {
+    sessionStorage.setItem("auth_redirect_after_login", safeNextPath(next));
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });

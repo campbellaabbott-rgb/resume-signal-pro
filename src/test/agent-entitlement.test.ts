@@ -369,6 +369,9 @@ describe("effectiveDailyCap clamps the candidate's choice to their tier", () => 
       resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
     expect(agent, "the raw user-chosen cap is still being passed through")
       .not.toMatch(/dailyCap: m\.auto_apply_daily_cap\s*,/);
-    expect(agent).toMatch(/dailyCap: effectiveDailyCap\(m\.auto_apply_daily_cap, sub\?\.status\)/);
+    // A subscriber's tier is the subscriber row's status; a pass-funded
+    // mandate has none, so its tier is the pass — whose ceiling is its own
+    // application count (TIER_SEND_CEILING[PASS_TIER]).
+    expect(agent).toMatch(/dailyCap: effectiveDailyCap\(m\.auto_apply_daily_cap, subscribed \? sub\?\.status : PASS_TIER\)/);
   });
 });

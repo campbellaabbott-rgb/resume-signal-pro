@@ -35,6 +35,8 @@ const Explore = lazy(() => import("./pages/Explore"));
 const HiringTrends = lazy(() => import("./pages/HiringTrends"));
 const DataApi = lazy(() => import("./pages/DataApi"));
 const AgentConnect = lazy(() => import("./pages/AgentConnect"));
+const AgentPass = lazy(() => import("./pages/AgentPass"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const PayTransparencyIndex = lazy(() => import("./pages/PayTransparencyIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
@@ -95,6 +97,11 @@ const App = () => (
           <Route path="/hiring-trends" element={<HiringTrends />} />
           <Route path="/data-api" element={<DataApi />} />
           <Route path="/agents" element={<AgentConnect />} />
+          {/* Post-purchase pass page (Stripe's success_url) and the OAuth
+              consent route Supabase's authorization server sends hosts to —
+              both session-bound, noindex, and named in PRIVATE_ROUTES. */}
+          <Route path="/agents/pass" element={<AgentPass />} />
+          <Route path="/oauth/consent" element={<OAuthConsent />} />
           <Route path="/pay-transparency" element={<PayTransparencyIndex />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />

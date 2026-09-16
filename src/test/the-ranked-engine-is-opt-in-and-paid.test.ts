@@ -18,7 +18,9 @@ describe("the ranked engine is opt-in and paid", () => {
   });
 
   it("ranked is gated to the paid tier, default stays open", () => {
-    expect(API).toMatch(/const paid = tier != null && tier !== "free" && tier !== "trial";/);
+    // The predicate is the shared one (key-tier.ts) — a live pass on the
+    // key's account is NOT paid here, only on the MCP scorer.
+    expect(API).toMatch(/const paid = isPaidKeyTier\(tier\);/);
     expect(API).toMatch(/402, "upgrade_required"/);
     // The default engine must be reachable BEFORE any ranked branch — the
     // ranked check returns early, leaving the rest of listJobs the default.

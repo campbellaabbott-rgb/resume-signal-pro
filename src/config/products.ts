@@ -271,3 +271,24 @@ export const SUBSCRIPTIONS = {
   pro: { key: 'pro', name: 'Pro', priceUsd: 45, interval: 'month' as const },
   agent: { key: 'agent', name: 'Morning Queue', priceUsd: 99, interval: 'month' as const },
 };
+
+// The six-hour Agent Pass. A third way to hold ONE entitlement (beside the two
+// recurring plans), not a fourteenth one-time SKU — so it lives here beside
+// SUBSCRIPTIONS and never inside PRODUCTS, whose wall of resume deliverables
+// converts approximately nobody. Mirrors supabase/functions/_shared/pass.ts,
+// the only runtime that charges; src/test/pricing-truth.test.ts reads that file
+// and fails if a single one of these numbers or strings drifts from it. Copy
+// interpolates these (passPrice, passHours, passApplications, ...) and never
+// types a digit.
+export const PASS = {
+  key: 'pass',
+  name: 'Resume Booster Agent Pass — six hours',
+  priceUsd: 29,
+  sessionHours: 6,
+  applications: 10,
+  quotaPerDay: 10000,
+  ratePerMin: 300,
+  shelfLifeDays: 30,
+  productType: 'agent_pass',
+  tier: 'pass',
+} as const;

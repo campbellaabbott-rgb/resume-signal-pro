@@ -71,11 +71,12 @@ describe("stop means stop, at every gate", () => {
 
   it("is checked BEFORE the entitlement query, so a stop costs no extra work", () => {
     const c = code(broker);
-    // Anchor on the CALL, not the identifier: `rowIsEntitled` also appears in
+    // Anchor on the CALL, not the identifier: the predicate also appears in
     // the import at the top of the file, and matching that made this assertion
-    // compare the gate against line 1 and fail for the wrong reason.
+    // compare the gate against line 1 and fail for the wrong reason. The call
+    // is packetIsFunded — a live subscription OR the pass stamped on the row.
     const gate = c.indexOf("mandate.active !== true");
-    const entitlementCall = c.indexOf("if (!rowIsEntitled(");
+    const entitlementCall = c.indexOf("if (!packetIsFunded(");
     expect(gate, "the active gate is gone").toBeGreaterThan(-1);
     expect(entitlementCall, "the entitlement call site moved or was renamed").toBeGreaterThan(-1);
     expect(gate).toBeLessThan(entitlementCall);

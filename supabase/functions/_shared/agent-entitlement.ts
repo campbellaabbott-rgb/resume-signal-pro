@@ -25,10 +25,12 @@
  * unreachable looks exactly like a gate that is closed, right up until the day
  * you connect the thing behind it.
  *
- * So: a pure predicate, no imports, importable by both the Deno functions and
- * the Node test suite. The point is that there is nowhere left to write a
- * FIFTH, subtly different check.
+ * So: a pure predicate, importable by both the Deno functions and the Node
+ * test suite. The point is that there is nowhere left to write a FIFTH,
+ * subtly different check. Its one import is the pass module, for the pass
+ * tier's send ceiling — a number this file must read, never spell.
  */
+import { PASS_APPLICATIONS, PASS_TIER } from "./pass.ts";
 
 /** Stripe statuses that mean "this subscription is live right now". */
 export const ACTIVE_SUBSCRIBER_STATUSES = new Set(["active", "trialing"]);
@@ -81,6 +83,75 @@ export function entitledFromRows(rows: SubscriberRow[] | null | undefined, now: 
 }
 
 /**
+ * THE SECOND WAY TO BE ALLOWED, BESIDE — NEVER INSIDE — rowIsEntitled.
+ *
+ * A six-hour pass lets an agent request applications without a subscription.
+ * It is deliberately NOT folded into rowIsEntitled: that predicate has six
+ * call sites in five functions, and two of them (agent-runner's nightly pick,
+ * send-agent-digest's morning email) are subscription products. Extending the
+ * one predicate would have turned a $29 session into a one-night subscription
+ * for free. So the pass gets its own predicate, and only the apply path — the
+ * places that act on a request the buyer's own agent made — may ask it. A
+ * guard pins that the two subscription-only functions never import these.
+ *
+ * Two different questions, because they are asked at two different moments:
+ *   mayApply       "may a NEW request be accepted right now" — the pass must be
+ *                  live: activated, not closed, clock still running, and an
+ *                  application left to spend.
+ *   packetIsFunded "was THIS row paid for" — asked by the preparer and the
+ *                  broker hours later. A request accepted at 5:50 and sent at
+ *                  hour seven is honoured: the row carries the pass that paid
+ *                  for it, and nothing downstream re-checks the clock. Doing
+ *                  otherwise is exactly how the day-8 lapse unclaimed paid work.
+ */
+export type PassRow = {
+  activated_at?: string | null;
+  expires_at?: string | null;
+  closed_at?: string | null;
+  applications_total?: number | null;
+  applications_used?: number | null;
+};
+
+/** Live: activated, not closed, clock still running, at least one application left. */
+export function passIsLive(p: PassRow | null | undefined, now: number = Date.now()): boolean {
+  if (!p) return false;
+  if (!p.activated_at) return false;
+  if (p.closed_at) return false;
+  if (!p.expires_at) return false;
+  const ends = new Date(p.expires_at).getTime();
+  // An unparseable clock is not evidence of a running one.
+  if (!Number.isFinite(ends) || ends <= now) return false;
+  const total = Number(p.applications_total ?? 0);
+  const used = Number(p.applications_used ?? 0);
+  if (!Number.isFinite(total) || !Number.isFinite(used)) return false;
+  return total - used > 0;
+}
+
+/** A new request may be accepted: a live subscription OR a live pass. */
+export function mayApply(
+  sub: SubscriberRow | null | undefined,
+  pass: PassRow | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  return rowIsEntitled(sub, now) || passIsLive(pass, now);
+}
+
+/**
+ * This queue row or packet was paid for: by a live subscription, or by the
+ * pass stamped on it at accept. The pass window is NOT re-checked here — the
+ * row IS the receipt.
+ */
+export function packetIsFunded(
+  sub: SubscriberRow | null | undefined,
+  packet: { pass_id?: string | null } | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  if (rowIsEntitled(sub, now)) return true;
+  const id = packet?.pass_id;
+  return typeof id === "string" && id.length > 0;
+}
+
+/**
  * HOW MANY APPLICATIONS A DAY THIS TIER MAY SEND.
  *
  * auto_apply_daily_cap is chosen by the candidate, 1–20, with no relationship
@@ -102,6 +173,10 @@ export function entitledFromRows(rows: SubscriberRow[] | null | undefined, now: 
 export const TIER_SEND_CEILING: Readonly<Record<string, number>> = {
   active: 20,
   trialing: 5,
+  // The pass: its applications ARE its ceiling, read from the one module
+  // that spells them. Without this entry tierCeiling answers 0 for a pass
+  // holder and nothing they paid for ever releases.
+  [PASS_TIER]: PASS_APPLICATIONS,
 };
 
 /** Tiers with no entry send nothing — rowIsEntitled has already refused them. */

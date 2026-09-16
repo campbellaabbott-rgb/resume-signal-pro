@@ -103,16 +103,21 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(handled, "an isError tool result, like every other refusal here").toMatch(/rpcResult\(id, toolErr\(/);
   });
 
-  it("agent-mcp gates fit_resume on tier with public-api's own predicate, before any search runs, and says so", () => {
-    expect(MCP).toMatch(/const isPaidTier = \(tier: string \| null\) => tier != null && tier !== "free" && tier !== "trial";/);
-    expect(API, "the predicate must be the one /v1/fit applies").toMatch(/const paid = tier != null && tier !== "free" && tier !== "trial";/);
+  it("agent-mcp gates fit_resume on tier with the predicate module public-api shares, before any search runs, and says so", () => {
+    // ONE module answers "is this key paid" for both runtimes (key-tier.ts);
+    // the MCP gate is the fit variant, which /v1/fit's paid predicate implies
+    // and a live pass additionally satisfies — walked by value in
+    // a-pass-is-your-agent-not-your-script.test.ts.
+    expect(MCP).toMatch(/import \{ hasFitAccess, isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
+    expect(API, "the predicate must be the one /v1/fit applies").toMatch(/import \{ isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
+    expect(API).toMatch(/const paid = isPaidKeyTier\(tier\);/);
     expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs\)/);
     expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*\): Promise<unknown>/);
     const dispatch = between(MCP, 'case "fit_resume":', 'case "check_apply_support":');
-    expect(dispatch).toMatch(/if \(!isPaidTier\(tier\)\)/);
+    expect(dispatch).toMatch(/if \(!hasFitAccess\(tier\)\)/);
     expect(dispatch).toMatch(/return toolErr\(\s*"fit_resume is a paid feature/);
     expect(dispatch).toMatch(/return toolOk\(await runFitResume\(args, apiKeyId\)\);/);
-    expect(dispatch.indexOf("isPaidTier(tier)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
+    expect(dispatch.indexOf("hasFitAccess(tier)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
     // The upgrade pointer holds a `//`, which the stripper would eat; it is
     // checked on the raw line that opens the string — a line of code, not a
     // comment — and that line must sit inside the dispatch case.

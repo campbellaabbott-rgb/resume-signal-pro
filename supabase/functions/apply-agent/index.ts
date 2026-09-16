@@ -24,7 +24,8 @@ import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } 
 import { decideRelease } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
-import { ENTITLEMENT_COLUMNS, effectiveDailyCap, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ENTITLEMENT_COLUMNS, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { PASS_TIER } from "../_shared/pass.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
 
 // Bumped whenever this function's behaviour changes. It rides along in the run
@@ -72,6 +73,8 @@ interface MandateRow {
 interface QueueRow {
   id: number; user_id: string; posting_id: string; title: string; company: string;
   company_token: string; apply_url: string; fit_pct: number | null; status: string;
+  /** The pass that paid for this row at accept; NULL on a subscription-funded or runner-picked row. */
+  pass_id: string | null;
 }
 
 serve(async (req) => {
@@ -260,6 +263,11 @@ serve(async (req) => {
     // not a statistic, because every one of these is a customer whose agent
     // silently stopped.
     skippedPaused: 0, skippedBlockedCompany: 0, skippedEmployerCooldown: 0, skippedNotEntitled: 0,
+    // Rows prepared for a mandate with NO subscription, funded row by row by a
+    // pass at accept. Counted apart from `prepared` so a pass buyer's packets
+    // are visible as such, and so that a zero here with passes sold is a
+    // question rather than a quiet night.
+    passRowsPrepared: 0,
     // Both, not just the successes. A tailoring feature that is switched on and
     // silently rejects every draft looks identical to one nobody enabled, and
     // the only visible symptom would be an absence of tailored notes — which is
@@ -315,9 +323,28 @@ serve(async (req) => {
     // {mandates: N, prepared: 0}: byte-identical to "nobody matched any jobs
     // today". That is precisely the shape the day-8 expiry took, and it is why
     // it went unnoticed — the instrument that would have shown it did not exist.
+    // THE SECOND WAY TO BE FUNDED. A mandate with no live subscription may
+    // still hold queue rows a pass paid for at accept (pass_id stamped by
+    // agent_queue_enqueue). Those rows — and only those — are prepared for
+    // it; the pass window is NOT re-checked here, because the row is the
+    // receipt and re-asking "is the pass live now" is how the day-8 lapse
+    // unclaimed paid work. Runner-picked rows carry NULL and stay skipped.
+    // A mandate with neither is the skip that leaves no trace, still counted.
+    const subscribed = rowIsEntitled(sub);
+    const wanted = m.apply_mode === "auto" ? ["ready", "approved"] : ["approved"];
+    const queueRows = (passOnly: boolean) => {
+      let q = client
+        .from("agent_queue")
+        .select("id,user_id,posting_id,title,company,company_token,apply_url,fit_pct,status,pass_id")
+        .eq("user_id", m.user_id).in("status", wanted);
+      if (passOnly) q = q.not("pass_id", "is", null);
+      return q.order("created_at", { ascending: false }).limit(PACKETS_PER_MANDATE);
+    };
+    let rows: QueueRow[] | null = null;
     if (!rowIsEntitled(sub)) {
-      summary.skippedNotEntitled++;
-      continue;
+      const { data: passRows } = await queueRows(true);
+      if (!passRows?.length) { summary.skippedNotEntitled++; continue; }
+      rows = passRows as unknown as QueueRow[];
     }
 
     // Normalised once per mandate rather than per posting. Case- and
@@ -332,14 +359,12 @@ serve(async (req) => {
 
     // In auto mode the agent works its own picks; in review mode it only
     // prepares what the candidate approved. The queue is the same table either
-    // way — the mode decides which rows are its business.
-    const wanted = m.apply_mode === "auto" ? ["ready", "approved"] : ["approved"];
-    const { data: rows } = await client
-      .from("agent_queue")
-      .select("id,user_id,posting_id,title,company,company_token,apply_url,fit_pct,status")
-      .eq("user_id", m.user_id).in("status", wanted)
-      .order("created_at", { ascending: false })
-      .limit(PACKETS_PER_MANDATE);
+    // way — the mode decides which rows are its business. A subscriber gets
+    // every row; the pass-only read above already ran for everyone else.
+    if (rows === null) {
+      const { data: allRows } = await queueRows(false);
+      rows = (allRows ?? []) as unknown as QueueRow[];
+    }
     if (!rows?.length) continue;
 
     // Read the day's sends ONCE and count locally as we release. Re-reading per
@@ -364,6 +389,12 @@ serve(async (req) => {
 
     for (const q of (rows as unknown as QueueRow[])) {
       if (outOfTime()) { summary.stoppedEarly = true; break; }
+
+      // Was THIS row paid for — by the live subscription, or by the pass
+      // stamped on it at accept? The pass-only read above already filtered
+      // for the unsubscribed case; asking the shared predicate per row is
+      // what keeps that filter and the broker's gate the same question.
+      if (!packetIsFunded(sub, q)) { summary.skippedNotEntitled++; continue; }
 
       // NEVER apply here. Checked before any query, because it is the cheapest
       // guard and the most consequential one: for anyone currently employed, an
@@ -589,7 +620,10 @@ serve(async (req) => {
           // unattended sends a day as a subscriber. A limit the customer sets
           // for themselves is a suggestion. `sub` is the subscriber row this
           // loop already fetched to check entitlement, so the tier is free.
-          dailyCap: effectiveDailyCap(m.auto_apply_daily_cap, sub?.status),
+          // A pass-funded mandate has no subscriber status to read; its tier
+          // is the pass, whose ceiling is its own application count. Without
+          // that entry tierCeiling answers 0 and nothing paid for releases.
+          dailyCap: effectiveDailyCap(m.auto_apply_daily_cap, subscribed ? sub?.status : PASS_TIER),
           alreadySubmitted: false,
           fitPct: q.fit_pct,
           minFitPct: MIN_FIT_PCT,
@@ -620,6 +654,11 @@ serve(async (req) => {
           questions, questions_are_real: real,
           answers: drafted, blockers: packet.blockers,
           fit_pct: q.fit_pct, prepared_at: new Date().toISOString(),
+          // THE RECEIPT TRAVELS WITH THE PACKET. The broker asks packetIsFunded
+          // of this row, and the refund trigger gives an application back to
+          // this pass when the send never happens — neither can see a pass the
+          // row does not name.
+          pass_id: q.pass_id ?? null,
           // PERSIST THE RELEASE DECISION. It used to exist only as a counter in
           // the run summary and a log line, which meant the worker had no way to
           // tell "prepared, awaiting review" from "prepared, approved, send it".
@@ -656,6 +695,7 @@ serve(async (req) => {
         }
 
         summary.prepared++;
+        if (q.pass_id) summary.passRowsPrepared++;
         if (status === "ready") summary.ready++;
         if (status === "blocked") summary.blocked++;
         if (decision.release) { summary.released++; sentToday++; }

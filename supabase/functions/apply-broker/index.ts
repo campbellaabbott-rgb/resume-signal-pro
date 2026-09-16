@@ -14,7 +14,7 @@
 // Those are different situations and they get different responses, deliberately.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ENTITLEMENT_COLUMNS, normalizeEmail, packetIsFunded } from "../_shared/agent-entitlement.ts";
 
 const BUILD_VERSION = "2026-08-10.1";
 const LEASE_MINUTES = 10;
@@ -179,7 +179,7 @@ serve(async (req) => {
          */
         if (mandate.active !== true) { await unclaim(); continue; }
 
-        // Entitlement, checked at claim time rather than at prepare time: a
+        // Funding, checked at claim time rather than at prepare time: a
         // lapsed subscriber must stop being applied for the day they lapse.
         //
         // Checked status, not merely row existence — see the note in
@@ -187,10 +187,18 @@ serve(async (req) => {
         // is handed to a worker that will type it into an employer's form, so
         // it is the worst possible place to ask an easier question than the one
         // that was intended.
+        //
+        // TWO WAYS TO BE FUNDED, one question: "was THIS packet paid for" — by
+        // a live subscription, or by the pass stamped on the row at accept
+        // (pass_id, copied from the queue row by apply-agent). The pass window
+        // is deliberately NOT re-checked: a request accepted at 5:50 and sent
+        // at hour seven is honoured, because the row is the receipt. Asking
+        // "is the pass live now" here is exactly the shape that unclaimed paid
+        // work in the day-8 lapse.
         const { data: sub } = await client
           .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
           .eq("email", normalizeEmail(mandate.email)).maybeSingle();
-        if (!rowIsEntitled(sub)) { await unclaim(); continue; }
+        if (!packetIsFunded(sub, row as { pass_id?: string | null })) { await unclaim(); continue; }
 
         const { data: learnedRows } = await client
           .from("agent_learned_answers")

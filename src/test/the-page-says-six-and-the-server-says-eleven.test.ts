@@ -92,7 +92,9 @@ const runnerBody = (fnName: string) => {
 };
 const serverTier = (name: string): "read" | "paid" | "apply" => {
   const chunk = caseChunk(name);
-  if (/isPaidTier\(/.test(chunk)) return "paid";
+  // The paid gate is the shared fit predicate (key-tier.ts): paid tiers and
+  // a live pass — what the mirror's "paid" tier describes.
+  if (/\b(?:hasFitAccess|isPaidKeyTier)\(/.test(chunk)) return "paid";
   const runner = /await (run[A-Za-z]+)\(/.exec(chunk)?.[1];
   if (!runner) return "read";
   const body = runnerBody(runner);

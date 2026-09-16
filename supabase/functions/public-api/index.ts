@@ -22,6 +22,12 @@ import { resumeRoleTerms } from "../_shared/fit-score.ts";
 // API traffic has always been recorded as if a candidate typed it into the
 // site. The header says which it was. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+// "Is this key paid" comes from ONE shared module, so this API and the MCP
+// server cannot answer it differently. The six-hour pass answers key_tier =
+// 'pass' on /mcp/ endpoints and must read as UNPAID to every gate here —
+// the pass is sold as "your agent", never "your script" — which the shared
+// predicate guarantees and three inline copies could not.
+import { isPaidKeyTier } from "../_shared/key-tier.ts";
 // THE CLOSED DOMAINS, IMPORTED RATHER THAN RETYPED. A hand-copied list of
 // vendors or categories is a second list, and every filter defect this board
 // has shipped was two lists disagreeing. These are the same constants the
@@ -46,7 +52,7 @@ import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../
 // time-to-close needs to know the field exists, and the version string is the
 // only thing they can diff. scripts/api-contract-probe.mjs pins this literal
 // and moves with it.
-const API_VERSION = "2026-09-09.1";
+const API_VERSION = "2026-09-17.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -169,6 +175,9 @@ const cors = {
 type Decision = {
   is_allowed: boolean; deny_reason: string; api_key_id: string | null; key_tier: string | null;
   rate_limit: number; rate_used: number; quota_limit: number; quota_used: number;
+  // Appended in 20260917120000 for the MCP server's pass overlay; on a /v1/
+  // endpoint both are always null and the tier is the key's own.
+  pass_ends_at?: string | null; pass_apps_left?: number | null;
 };
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
@@ -661,7 +670,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     return fail(400, "invalid_value", `engine must be "simple" (default) or "ranked", got "${engine}".`, headers);
   }
   if (engine === "ranked") {
-    const paid = tier != null && tier !== "free" && tier !== "trial";
+    const paid = isPaidKeyTier(tier);
     if (!paid) {
       return fail(402, "upgrade_required", "engine=ranked is a paid feature — the site's full relevance/rescue engine. The default engine stays available on your key. See https://resumebooster.work/data-api.", headers);
     }
@@ -1141,7 +1150,7 @@ async function changes(
   // Opened postings are still bounded by the serving window whatever the tier:
   // the board does not serve a posting older than that, so it cannot report one
   // as newly opened either.
-  const paid = tier != null && tier !== "free" && tier !== "trial";
+  const paid = isPaidKeyTier(tier);
   const maxDays = paid ? CHANGES_MAX_DAYS_PAID : FRESH_WINDOW_DAYS;
   const oldest = Date.now() - maxDays * 86_400_000;
   if (since < oldest) {
@@ -1411,7 +1420,7 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
  * Retry-After shape their key's own limits use.
  */
 async function fitResume(req: Request, headers: Record<string, string>, tier: string | null, apiKeyId: string | null) {
-  const paid = tier != null && tier !== "free" && tier !== "trial";
+  const paid = isPaidKeyTier(tier);
   if (!paid) {
     return fail(402, "upgrade_required", "POST /v1/fit is a paid feature — résumé-to-job fit scoring. See https://resumebooster.work/data-api.", headers);
   }

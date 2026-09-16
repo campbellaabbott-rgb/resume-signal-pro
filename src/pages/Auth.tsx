@@ -2,11 +2,11 @@
 // time and surface credits + purchases — no gating of the free scan itself.
 
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Mail, Lock, Loader2, UserPlus, LogIn, Eye, EyeOff } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, safeNextPath } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 // Auth funnel telemetry — signups fail silently in the wild otherwise.
@@ -26,6 +26,12 @@ function trackAuth(event: string, detail?: string) {
 export default function Auth() {
   const { session, signIn, signUp, sessionExpired } = useAuth();
   const navigate = useNavigate();
+  // Where to land once signed in. /oauth/consent and /agents/pass send people
+  // here mid-task with ?next=<their own URL>; anything else lands on /account
+  // as before. Sanitised once (same-origin relative paths only — see
+  // safeNextPath) and used for every sign-in method on this page.
+  const [params] = useSearchParams();
+  const next = safeNextPath(params.get("next"));
   const [mode, setMode] = useState<"signin" | "signup">("signup");
   // Prefill from anything the user already gave us: their session history,
   // scan-pack purchase, or report email — one less field to mistype.
@@ -60,7 +66,7 @@ export default function Auth() {
     setBusy(true);
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/account` },
+      options: { emailRedirectTo: `${window.location.origin}${next}` },
     });
     setBusy(false);
     if (err) setError(/rate limit/i.test(err.message)
@@ -76,8 +82,8 @@ export default function Auth() {
   };
 
   useEffect(() => {
-    if (session) navigate("/account", { replace: true });
-  }, [session, navigate]);
+    if (session) navigate(next, { replace: true });
+  }, [session, navigate, next]);
 
   useEffect(() => {
     if (sessionExpired) {
@@ -99,8 +105,9 @@ export default function Auth() {
     }
     setBusy(true);
     trackAuth(`${mode}_attempt`);
-    const fn = mode === "signup" ? signUp : signIn;
-    const { error: err } = await fn(email.trim(), password);
+    const { error: err } = mode === "signup"
+      ? await signUp(email.trim(), password, next)
+      : await signIn(email.trim(), password);
     setBusy(false);
     if (err) {
       trackAuth(`${mode}_failure`, err);

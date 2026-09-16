@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { SUBSCRIPTIONS } from "@/config/products";
+import { PASS, SUBSCRIPTIONS } from "@/config/products";
+import * as passModule from "../../supabase/functions/_shared/pass.ts";
 
 // The homepage FAQ answered "Is this a subscription?" with "There are no
 // subscriptions, recurring charges, or upsells." — in all nine languages —
@@ -17,11 +18,16 @@ import { SUBSCRIPTIONS } from "@/config/products";
 
 const root = resolve(__dirname, "../..");
 
-function centsFrom(relPath: string, constName: string): number {
-  const src = readFileSync(resolve(root, relPath), "utf8");
+// Split so the pass guard below can feed the SAME parser a mutated copy of the
+// source and prove which expectation fires — teeth, not coverage.
+function numberConstOfSource(src: string, constName: string, where: string): number {
   const m = src.match(new RegExp(`${constName}\\s*=\\s*(\\d+)`));
-  if (!m) throw new Error(`${constName} not found in ${relPath}`);
+  if (!m) throw new Error(`${constName} not found in ${where}`);
   return Number(m[1]);
+}
+
+function centsFrom(relPath: string, constName: string): number {
+  return numberConstOfSource(readFileSync(resolve(root, relPath), "utf8"), constName, relPath);
 }
 
 describe("subscription prices match the checkout functions", () => {
@@ -133,4 +139,92 @@ describe("commerce copy never denies subscriptions, in any language", () => {
       });
     });
   }
+});
+
+// The pass is the third way to hold the one agent entitlement, and it carries
+// SIX numbers, not one — price, hours, applications, quota, rate, shelf life —
+// every one of which reaches a page as {{passX}} and a Stripe line as cents.
+// Six numbers in two runtimes is six ways for the copy to go false while the
+// charge stays true, so the mirror is pinned property by property, never by
+// re-reading. The numbers are READ from the Deno file; this test spells none.
+describe("the Agent Pass mirrors _shared/pass.ts, number for number", () => {
+  const PASS_SOURCE = "supabase/functions/_shared/pass.ts";
+  const passSrc = readFileSync(resolve(root, PASS_SOURCE), "utf8");
+
+  // Frontend field → Deno constant, and the factor between them (cents).
+  const NUMBER_MIRROR: ReadonlyArray<readonly [keyof typeof PASS, string, number]> = [
+    ["priceUsd", "PASS_PRICE_CENTS", 100],
+    ["sessionHours", "PASS_SESSION_HOURS", 1],
+    ["applications", "PASS_APPLICATIONS", 1],
+    ["quotaPerDay", "PASS_QUOTA_PER_DAY", 1],
+    ["ratePerMin", "PASS_RATE_PER_MIN", 1],
+    ["shelfLifeDays", "PASS_SHELF_LIFE_DAYS", 1],
+  ];
+
+  // The names of every constant whose frontend mirror disagrees with `src`.
+  function mirrorMismatches(src: string): string[] {
+    return NUMBER_MIRROR
+      .filter(([field, constName, factor]) =>
+        (PASS[field] as number) * factor !== numberConstOfSource(src, constName, PASS_SOURCE))
+      .map(([, constName]) => constName);
+  }
+
+  it("price: PASS.priceUsd * 100 === PASS_PRICE_CENTS", () => {
+    expect(PASS.priceUsd * 100).toBe(centsFrom(PASS_SOURCE, "PASS_PRICE_CENTS"));
+  });
+
+  it.each(NUMBER_MIRROR.filter(([, , f]) => f === 1))(
+    "PASS.%s mirrors %s",
+    (field, constName) => {
+      expect(PASS[field]).toBe(centsFrom(PASS_SOURCE, constName));
+    },
+  );
+
+  it("every number agrees at once", () => {
+    expect(mirrorMismatches(passSrc)).toEqual([]);
+  });
+
+  // The regex reads the live declaration and not a comment: the module's own
+  // runtime value must equal what the parser found for every constant.
+  it.each(NUMBER_MIRROR)("the parser reads the declaration of %s (%s)", (_field, constName) => {
+    expect((passModule as Record<string, unknown>)[constName])
+      .toBe(numberConstOfSource(passSrc, constName, PASS_SOURCE));
+  });
+
+  // The strings are identity, not price — but a drifted product_type is a
+  // purchase the webhook never delivers, and a drifted tier is a key the gates
+  // read as free. Imported from the module, so the comparison is by value.
+  it("product type, tier and name are the Deno module's, by value", () => {
+    expect(PASS.productType).toBe(passModule.PASS_PRODUCT_TYPE);
+    expect(PASS.tier).toBe(passModule.PASS_TIER);
+    expect(PASS.name).toBe(passModule.PASS_PRODUCT_NAME);
+    expect(PASS.key).toBe(passModule.PASS_TIER);
+  });
+
+  // TEETH. A guard that cannot fail reads as coverage. Feed the parser a copy
+  // of pass.ts with exactly one number changed — a trailing digit appended to
+  // one declaration, nothing else — and the mismatch it reports must name that
+  // constant and only that constant. Done for each of the six, so no single
+  // mirror line can be dropped from the table without this noticing.
+  it.each(NUMBER_MIRROR)("fails on a copy of pass.ts where only %s's %s is changed", (_field, constName) => {
+    const declaration = new RegExp(`(${constName}\\s*=\\s*\\d+)`);
+    expect(passSrc).toMatch(declaration);
+    const mutated = passSrc.replace(declaration, (decl) => `${decl}1`);
+    expect(mutated).not.toBe(passSrc);
+    expect(mirrorMismatches(mutated)).toEqual([constName]);
+  });
+
+  // Written first and watched fail against an empty pass.ts: the parser refuses
+  // to answer from a file that does not declare the constant, so an empty or
+  // renamed source is a loud failure, never a silent zero.
+  it("fails loudly against an empty pass.ts", () => {
+    expect(() => mirrorMismatches("")).toThrow(/PASS_PRICE_CENTS not found/);
+  });
+
+  it("the pass sits beside SUBSCRIPTIONS, never inside PRODUCTS", async () => {
+    const { PRODUCTS } = await import("@/config/products");
+    const skus = Object.values(PRODUCTS) as Array<{ name?: string; priceUsd?: number }>;
+    expect(skus.some((p) => p.name === PASS.name)).toBe(false);
+    expect(Object.keys(PRODUCTS)).not.toContain(PASS.key);
+  });
 });

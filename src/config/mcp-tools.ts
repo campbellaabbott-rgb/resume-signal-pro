@@ -16,8 +16,10 @@
 //
 // `tier` is what the SERVER enforces, mirrored from its dispatch:
 //   read  — any free data-API key; nothing about the caller's account.
-//   paid  — the same paid-tier gate as POST /v1/fit.
-//   apply — refuses a key that is not linked to an account.
+//   paid  — the same paid-tier gate as POST /v1/fit, OR a live pass on the
+//           key's account (the pass opens the scorer and nothing on /v1).
+//   apply — refuses a key that is not linked to an account; funded by an
+//           Agent plan or a live pass.
 
 export type McpToolTier = "read" | "paid" | "apply";
 
@@ -93,12 +95,12 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "fit_resume",
     tier: "paid",
-    body: "Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Paid keys only, exactly like POST /v1/fit.",
+    body: "Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Paid keys, exactly like POST /v1/fit — and a live pass.",
   },
   {
     name: "request_application",
     tier: "apply",
-    body: "Ask your apply agent to submit an application to a job. Passes through every gate of the signed-in flow — mandate, honesty classifier, vendor boundary, daily cap.",
+    body: "Ask your apply agent to submit an application to a job — on an Agent plan, or on a live pass that pays for it at accept. Passes through every gate of the signed-in flow — mandate, honesty classifier, vendor boundary, daily cap.",
   },
   {
     name: "application_status",
@@ -141,30 +143,51 @@ export const MCP_FREE_KEY_DAILY_QUOTA = 1000;
  *     optional OAuth client credentials; a static request header is "in beta
  *     and available to a limited set of organizations", entered by the org
  *     administrator (claude.com/docs/connectors/custom/remote-mcp). Without
- *     that beta, discovery works and only the unkeyed tools answer.
+ *     that beta the host holds only an OAuth token, so the pass reaches a
+ *     call from here through sign-in (`oauth` below), never through a key.
  *   - ChatGPT developer mode: the connector's auth options are OAuth, No
  *     Authentication, and Mixed; there is no field for an API key
  *     (developers.openai.com/apps-sdk/build/auth — "you are expected to
- *     implement an OAuth 2.1 flow"). Discovery works and only the unkeyed
- *     tools answer.
+ *     implement an OAuth 2.1 flow"). Same: OAuth or the unkeyed tools.
  *
- * `header` is the property the page renders from: true means the host can
- * carry the key and therefore reach every tool its key tier allows; false
- * means the host can list the tools and call only the unkeyed ones today —
- * the keyed tools stay behind a host that carries the key until an
- * authorization server exists.
+ * Two properties the page renders from. `header`: the host can carry the
+ * key and therefore reach every tool its key tier allows. `oauth`: the host
+ * can sign a person in to the server, so a keyed tool reaches their own
+ * account-linked key (and any pass or plan on it) without a key ever being
+ * pasted. A host with neither can list the tools and call only the unkeyed
+ * ones.
  */
 export interface McpHost {
   name: string;
   header: boolean;
+  /**
+   * Whether this host can sign a person in to the server through OAuth —
+   * the ONLY way a host with no header field can present a per-user paid
+   * credential (an Agent Pass or an Agent plan). True for the connector
+   * hosts now that the server answers its protected-resource metadata and
+   * a keyed tool called with no credential answers a sign-in challenge the
+   * host turns into its Connect card; the consent route on this site
+   * completes the round trip. A host marked true is told to "choose Sign in
+   * when needed"; a host marked false keeps the unkeyed tools only. The
+   * key-carrying hosts stay on the key (their primary path) and are not
+   * marked, so the page never sends a Claude Code or Cursor user through a
+   * browser when a pasted key already works.
+   */
+  oauth: boolean;
   /** How the key travels, or why it cannot. */
   how: string;
+  /**
+   * Which hand-off block the post-purchase page renders for this host:
+   * the Claude Code one-liner, the Cursor mcp.json, a paste-the-URL walk
+   * for connector dialogs, or the bare header for a custom client.
+   */
+  handoff: "claude-code" | "cursor" | "connector" | "header";
 }
 
 export const MCP_HOSTS: readonly McpHost[] = [
-  { name: "Claude Code", header: true, how: "the --header flag on claude mcp add, or ${API_KEY} expansion in .mcp.json" },
-  { name: "Cursor", header: true, how: "the headers block in ~/.cursor/mcp.json" },
-  { name: "Any custom MCP client", header: true, how: "an Authorization header on each POST — Streamable HTTP, stateless" },
-  { name: "claude.ai and Claude Desktop", header: false, how: "connect with No sign-in and use the unkeyed tools; the custom-connector dialog takes a URL and optional OAuth client credentials only, and a static header is an org-admin beta for a limited set of organizations" },
-  { name: "ChatGPT (developer mode)", header: false, how: "connect with No Authentication and use the unkeyed tools (search and fetch are the names its research connector calls); connector auth is OAuth, No Authentication or Mixed — there is no field for an API key" },
+  { name: "Claude Code", header: true, oauth: false, handoff: "claude-code", how: "the --header flag on claude mcp add, or ${API_KEY} expansion in .mcp.json" },
+  { name: "Cursor", header: true, oauth: false, handoff: "cursor", how: "the headers block in ~/.cursor/mcp.json" },
+  { name: "Any custom MCP client", header: true, oauth: false, handoff: "header", how: "an Authorization header on each POST — Streamable HTTP, stateless" },
+  { name: "claude.ai and Claude Desktop", header: false, oauth: true, handoff: "connector", how: "paste the URL as a custom connector and choose Sign in when needed — the first keyed tool shows a Connect card that signs you in through OAuth; the dialog has no field for a key (a static header is an org-admin beta), and with No sign-in only the unkeyed tools answer" },
+  { name: "ChatGPT (developer mode)", header: false, oauth: true, handoff: "connector", how: "add the URL as a connector with OAuth (or Mixed, so search and fetch keep answering before sign-in) and Allow on the consent page; there is no field for an API key, and with No Authentication only the unkeyed tools answer (search and fetch are the names its research connector calls)" },
 ];

@@ -158,8 +158,11 @@ project_id = "bwhdazbotpblihdxcmho"
   [functions.agent-mcp]
     verify_jwt = false
   # Public by necessity, same argument as public-api: an MCP client
-  # authenticates with an rb_live_ key of ours, not a Supabase JWT it could
-  # not have. initialize/tools/list are open discovery; every tools/call is
-  # key-checked and metered through api_key_check, and the two tools that can
-  # act on an account additionally require a key minted from a signed-in
-  # session (agent-connect), an Agent plan, and a mandate.
+  # authenticates with an rb_live_ key of ours, or with an OAuth token the
+  # function verifies itself (issuer, audience bound to the server, client_id)
+  # and maps to the account's key — never a gateway-checked session JWT, which
+  # the function refuses. initialize/tools/list are open discovery; every
+  # tools/call is key-checked and metered through api_key_check, and the two
+  # tools that can act on an account additionally require a key minted from
+  # a signed-in session (agent-connect), an Agent plan or a live Agent Pass,
+  # and a mandate.

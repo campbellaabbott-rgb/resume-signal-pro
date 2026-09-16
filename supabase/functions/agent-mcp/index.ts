@@ -58,10 +58,37 @@ import { computeFit, resumeRoleTerms } from "../_shared/fit-score.ts";
 import { applyServingFences, parseCountries } from "../_shared/mandate-reach.ts";
 import {
   ENTITLEMENT_COLUMNS,
+  mayApply,
   normalizeEmail,
+  passIsLive,
   rowIsEntitled,
+  type PassRow,
   type SubscriberRow,
 } from "../_shared/agent-entitlement.ts";
+// The pass's vocabulary — its tier string and product identity — read from
+// the one module that spells them. No number from that module is needed
+// here: every figure key_status reports about a pass comes off the pass row
+// api_key_check already read, never off a constant.
+import { PASS_TIER } from "../_shared/pass.ts";
+// "Is this key paid" and "may this key score a résumé" are two questions,
+// answered by one shared module so public-api and this server cannot
+// disagree; a live pass is fit-capable and NOT paid (see key-tier.ts).
+import { hasFitAccess, isPaidKeyTier } from "../_shared/key-tier.ts";
+// OAuth for the hosts that hold only a token (claude.ai, ChatGPT): the token
+// is verified by the module, its subject mapped to the account's one live
+// key, and that key is metered by the same api_key_check a pasted key is.
+// The sign-in challenge and the metadata document are built there too; this
+// file only decides WHEN each is answered.
+import {
+  OAUTH_SCOPE,
+  isProtectedResourceMetadataPath,
+  looksLikeApiKey,
+  oauthVia,
+  protectedResourceResponse,
+  subToKeyHash,
+  unauthorized,
+  verifyOAuthBearer,
+} from "./oauth.ts";
 
 // One version, honestly. Advertising 2025-03-26 / 2024-11-05 — whose specs
 // REQUIRE receivers to accept JSON-RPC batches — while this stateless server
@@ -86,10 +113,19 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // in mcp_anon_rate, never in rate_limits), adds the search/fetch aliases in
 // the fixed shape ChatGPT's research connector calls, declares an outputSchema
 // on every tool, and rewrites initialize.instructions to name the four tiers.
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.4" };
+// 09-04.5: the Agent Pass (a live pass answers as its own tier through
+// api_key_check; request_application consumes through one RPC; key_status
+// reports the pass off its row) and OAuth for the hosts that hold only a
+// token: the protected-resource metadata on GET, a sign-in challenge for a
+// keyed tool called with no credential, a verified token mapped to the
+// account's key so it meters through the same check, and per-tool
+// securitySchemes on tools/list for the hosts that read them.
+const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.5" };
 const DOCS_URL = "https://resumebooster.work/agents";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
+/** Where a pass is bought, signed in — the fix every pass refusal names. */
+const PASS_URL = "https://resumebooster.work/agents/pass";
 /** A posting's address on the site: the board opens ?job= in its detail panel (Jobs.tsx jobHref). */
 const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${encodeURIComponent(id)}`;
 
@@ -100,10 +136,11 @@ const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${enco
 // card. claude.ai, Claude Desktop and ChatGPT all offer a no-auth connect path
 // and none of their dialogs has a field for a bearer key, so for every user of
 // those hosts the first thing this server did was refuse. These four tools
-// answer with no key at all; everything else keeps refusing in band with the
-// mint URL (a 401 + resource metadata pointer is a different project, and
-// shipping it with no authorization server behind it would break the clients
-// that honour it).
+// answer with no key at all; everything else, called with no credential,
+// answers the sign-in challenge the OAuth module builds — the response a
+// host turns into its Connect card — now that an authorization server
+// stands behind it. A key in the slot is still checked and metered exactly
+// as before.
 //
 // Why FOUR: board_stats is a cache read and the honest first answer; search
 // is the thing every board sells; `search` and `fetch` are the same two
@@ -120,8 +157,9 @@ const ANON_SEARCH_LIMIT = 10;
 // ChatGPT, whose users all arrive from a handful of shared egress addresses,
 // the address cap is NOT per user: it is a per-host allowance of the cap
 // times that host's egress addresses per day, and the second user of the day
-// behind one address can still meet the wall. Neither cap fixes that — only
-// an authorization server would — and it is accepted until one exists. The
+// behind one address can still meet the wall. Neither cap fixes that; a
+// signed-in user on those hosts is metered by their own key row instead
+// (the OAuth path below), and the unkeyed remainder is accepted as is. The
 // global cap bounds one thing only: what the unkeyed tier can cost the board
 // in a day, whoever spends it. Both are counted by mcp_anon_check (migration
 // 20260915100000) in its own table; NEVER through check_rate_limit or
@@ -171,9 +209,14 @@ const cors = {
 
 // Field names mirror api_key_check's OUT parameters, which were RENAMED in
 // 20260826161200 after the 42702 outage — see that migration before touching.
+// The two pass columns were appended in 20260917120000: while an open pass
+// exists on an /mcp/ endpoint the row answers key_tier = the pass tier and
+// the pass's own limits; pass_ends_at is NULL until the pass is activated
+// (which the first allowed call other than key_status does, in SQL).
 type Decision = {
   is_allowed: boolean; deny_reason: string; api_key_id: string | null; key_tier: string | null;
   rate_limit: number; rate_used: number; quota_limit: number; quota_used: number;
+  pass_ends_at?: string | null; pass_apps_left?: number | null;
 };
 
 const db = (): SupabaseClient =>
@@ -795,8 +838,8 @@ const TOOLS = [
     title: "Request an application",
     description:
       "Ask the board's apply agent to submit an application to this job on behalf of the key's owner. " +
-      "Requires an account-linked key (mint one at " + DOCS_URL + "), an active Agent plan, and a standing mandate — " +
-      "key_status says whether this key has all three before you spend a call finding out. " +
+      "Requires an account-linked key (mint one at " + DOCS_URL + "), an active Agent plan OR a live pass (bought signed-in at " + PASS_URL + "), and a standing mandate — " +
+      "key_status says whether this key has all three before you spend a call finding out, and on a pass how many applications and how much time are left. " +
       "Every application passes the same gates as the signed-in flow — including the honesty classifier: answers are drawn from the owner's own profile and never invented.",
     annotations: {
       // THE ONE TOOL HERE THAT ACTS, and the annotations say so plainly.
@@ -827,10 +870,11 @@ const TOOLS = [
       type: "object",
       properties: {
         accepted: { type: "boolean", description: "False when a gate refused; true when the request is in the agent's queue (or already was)." },
-        refusedBy: { type: "string", description: "Refused only: the gate — key, jobId, mandate, resume, plan, posting, scope-country, scope-category, scope-age, scope-salary." },
+        refusedBy: { type: "string", description: "Refused only: the gate — key, jobId, mandate, resume, plan (no Agent plan and no live pass), pass (the pass has no applications left or its clock ended), posting, scope-country, scope-category, scope-age, scope-salary." },
         error: { type: "string", description: "Refused only: what the gate said." },
         fix: { type: "string", description: "Refused only: what would change the answer." },
-        alreadyQueued: { type: "boolean", description: "Accepted only: this job was already in the queue — nothing duplicated." },
+        alreadyQueued: { type: "boolean", description: "Accepted only: this job was already in the queue — nothing duplicated, and on a pass nothing spent." },
+        passApplicationsLeft: { type: ["integer", "null"], description: "Accepted on a pass: applications left on it after this one. Null when a subscription funded the request." },
         queueStatus: { type: "string", description: "With alreadyQueued: the existing row's status." },
         jobId: { type: "string" },
         title: { type: "string" },
@@ -904,7 +948,7 @@ const TOOLS = [
     name: "fit_resume",
     title: "Score a résumé against the board",
     description:
-      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API; a free key gets an in-band refusal with the upgrade link. " +
+      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API, or a live pass on the key's account; a free key gets an in-band refusal with the upgrade link. " +
       "Do what the site's résumé drop does, for an agent holding a CV: read the occupation out of resumeText, search the board " +
       "for it (or for `query` if given), and score up to 20 of the results against the résumé — keyword fit 0-100, plus the " +
       "matched and missing terms per job. A null fit means the posting has no stored description to score. Returns the terms " +
@@ -1069,8 +1113,9 @@ const TOOLS = [
     title: "This key's limits and powers",
     description:
       "What THIS key is and what it may do — tier, requests left this minute, calls left today (both including this call), " +
-      "whether the paid tools (fit_resume, and engine=ranked on the data API) are available on it, and whether the apply " +
-      "tools would work: account link, Agent plan, mandate, résumé on file, with any blocker named. " +
+      "whether the paid tools (fit_resume, and engine=ranked on the data API) are available on it, whether the apply " +
+      "tools would work: account link, Agent plan or live pass, mandate, résumé on file, with any blocker named — " +
+      "and, on a pass, when the clock ends and how many applications are left (a pass starts at the first call other than this one). " +
       "None of this was askable before: rate and quota travelled only in HTTP headers an MCP client never surfaces, and " +
       "apply-readiness could only be discovered by attempting an application and reading the refusal. " +
       "Call it first in a session, and after a 'quota' or 'rate' refusal.",
@@ -1111,11 +1156,26 @@ const TOOLS = [
         features: {
           type: "object",
           properties: {
-            fit_resume: { type: "boolean", description: "Paid tiers only, exactly as POST /v1/fit." },
-            rankedEngine: { type: "boolean", description: "/v1/jobs?engine=ranked on the data API, same key. Paid tiers only." },
+            fit_resume: { type: "boolean", description: "Paid tiers and a live pass, exactly as POST /v1/fit plus the pass." },
+            rankedEngine: { type: "boolean", description: "/v1/jobs?engine=ranked on the data API, same key. Paid tiers only — never the pass." },
             request_application: { type: "boolean", description: "True only when every apply gate below already passes." },
           },
           required: ["fit_resume", "rankedEngine", "request_application"],
+          additionalProperties: true,
+        },
+        pass: {
+          type: "object",
+          description: "The account's pass, if any. Every figure is read off the pass row; nothing here is a constant.",
+          properties: {
+            state: { type: "string", enum: ["none", "unactivated", "live", "closed"] },
+            endsAt: { type: ["string", "null"], description: "When the clock ends. Null until the pass starts." },
+            endsInSeconds: { type: ["integer", "null"] },
+            applicationsLeft: { type: ["integer", "null"] },
+            applicationsTotal: { type: ["integer", "null"] },
+            startsOn: { type: "string" },
+            buy: { type: "string", description: "Where a pass is bought, signed in." },
+          },
+          required: ["state", "startsOn", "buy"],
           additionalProperties: true,
         },
         apply: {
@@ -1123,7 +1183,9 @@ const TOOLS = [
           properties: {
             ready: { type: "boolean" },
             accountLinked: { type: "boolean" },
-            planActive: { type: "boolean" },
+            planActive: { type: "boolean", description: "An active Agent plan OR a live pass — either funds a new request." },
+            subscribed: { type: "boolean", description: "An active Agent plan specifically." },
+            passLive: { type: "boolean", description: "A live pass with an application left, specifically." },
             mandateActive: { type: "boolean" },
             resumeOnFile: { type: "boolean" },
             pausedUntil: { type: "string" },
@@ -1137,7 +1199,7 @@ const TOOLS = [
         counted: { type: "string" },
         docs: { type: "string" },
       },
-      required: ["key", "rate", "quota", "features", "apply"],
+      required: ["key", "rate", "quota", "features", "pass", "apply"],
       additionalProperties: true,
     },
   },
@@ -1261,7 +1323,7 @@ const TOOLS = [
  * THE TIERS, DERIVED FROM THE REGISTRY rather than typed into a sentence:
  * initialize.instructions and board_stats' withKey block name what a free key
  * opens, and a list typed there would be the six-tools page again. The paid
- * and account sets are the two gates callTool applies (isPaidTier; a runner
+ * and account sets are the two gates callTool applies (hasFitAccess; a runner
  * that refuses a key with no owner) — pinned to the page's mirror, which is
  * pinned to that dispatch, by the guards named in src/config/mcp-tools.ts.
  */
@@ -1819,9 +1881,61 @@ async function keyOwner(client: SupabaseClient, apiKeyId: string): Promise<strin
 function applyRequirements(): string[] {
   return [
     "An account-linked key (mint at " + DOCS_URL + " while signed in).",
-    "An active Agent plan on the account.",
+    "An active Agent plan OR a live pass on the account (a pass is bought signed-in at " + PASS_URL + "; its clock starts at the first call other than key_status).",
     "An active mandate (Account → set up your agent) with a resume on file.",
   ];
+}
+
+/**
+ * THE ACCOUNT'S OPEN PASS, if any — the row api_key_check reads for the
+ * overlay, read once more here for the apply gates and key_status. The
+ * columns are exactly what passIsLive judges plus what key_status reports;
+ * every number an agent hears about its pass is one of these, never a
+ * constant. Nothing is written: the readers' lazy close has already run
+ * inside api_key_check on the call that got us here.
+ */
+type OpenPassRow = PassRow & { shelf_expires_at?: string | null; activated_via?: string | null };
+async function openPassOf(client: SupabaseClient, userId: string): Promise<OpenPassRow | null> {
+  const { data } = await client.from("agent_passes")
+    .select("activated_at, expires_at, closed_at, shelf_expires_at, applications_total, applications_used, activated_via")
+    .eq("user_id", userId).is("closed_at", null).maybeSingle();
+  return (data as OpenPassRow | null) ?? null;
+}
+
+/** What key_status says about the pass: state and figures off the row, the fix off one constant URL. */
+function describePass(p: OpenPassRow | null, now: number = Date.now()): Record<string, unknown> {
+  const startsOn = "your first call other than key_status";
+  if (!p) return { state: "none", endsAt: null, endsInSeconds: null, applicationsLeft: null, applicationsTotal: null, startsOn, buy: PASS_URL };
+  const total = Number(p.applications_total ?? 0);
+  const used = Number(p.applications_used ?? 0);
+  const left = Math.max(0, total - used);
+  if (!p.activated_at) {
+    return {
+      state: "unactivated", endsAt: null, endsInSeconds: null,
+      applicationsLeft: left, applicationsTotal: total,
+      ...(p.shelf_expires_at ? { expiresUnusedOn: p.shelf_expires_at } : {}),
+      startsOn, buy: PASS_URL,
+    };
+  }
+  const ends = p.expires_at ? Date.parse(p.expires_at) : NaN;
+  const running = Number.isFinite(ends) && ends > now;
+  return {
+    state: running ? "live" : "closed",
+    endsAt: p.expires_at ?? null,
+    endsInSeconds: running ? Math.floor((ends - now) / 1000) : 0,
+    applicationsLeft: left, applicationsTotal: total,
+    ...(p.activated_via ? { activatedVia: p.activated_via } : {}),
+    startsOn, buy: PASS_URL,
+  };
+}
+
+/** Why an activated pass no longer funds a request: no applications left, or the clock ended. */
+function passBlockerReason(p: PassRow): string {
+  const left = Number(p.applications_total ?? 0) - Number(p.applications_used ?? 0);
+  const ends = p.expires_at ? Date.parse(p.expires_at) : NaN;
+  if (Number.isFinite(ends) && ends <= Date.now()) return "ended";
+  if (left <= 0) return "no applications left";
+  return "closed";
 }
 
 /**
@@ -1842,7 +1956,11 @@ function applyRequirements(): string[] {
  * Reports booleans and blockers, never the owner's data: no email, no resume
  * text, no plan identifiers leave this function.
  */
-async function applyReadiness(client: SupabaseClient, userId: string | null): Promise<Record<string, unknown>> {
+async function applyReadiness(
+  client: SupabaseClient,
+  userId: string | null,
+  passRow?: OpenPassRow | null,
+): Promise<Record<string, unknown>> {
   const note =
     "Account-level readiness only. Each job is still checked against the mandate's own reach — countries, field, " +
     "freshness, salary floor — and request_application names the fence when one refuses.";
@@ -1867,19 +1985,35 @@ async function applyReadiness(client: SupabaseClient, userId: string | null): Pr
   const email = normalizeEmail(userRes?.user?.email ?? "");
   const { data: subRow } = await client.from("agent_subscribers")
     .select(ENTITLEMENT_COLUMNS).eq("email", email).maybeSingle();
-  const planActive = rowIsEntitled(subRow as SubscriberRow | null);
+  // Two ways to be allowed, asked separately so the answer can name which one
+  // holds — and combined by the same predicate the seam refuses on.
+  const subscribed = rowIsEntitled(subRow as SubscriberRow | null);
+  const pass = passRow === undefined ? await openPassOf(client, userId) : passRow;
+  const passLive = passIsLive(pass);
+  // An open pass that has not started is reported as funding, because the
+  // request_application call that would spend it is itself the first call
+  // that starts it (api_key_check activates on the allowed path, in SQL,
+  // before the tool runs). key_status does not start it, and says so.
+  const passUnstarted = !!pass && !pass.activated_at && !pass.closed_at &&
+    Number(pass.applications_total ?? 0) - Number(pass.applications_used ?? 0) > 0;
+  const planActive = mayApply(subRow as SubscriberRow | null, pass) || passUnstarted;
 
   const blockers: string[] = [];
   if (!m) blockers.push("No agent mandate on this account — set your agent up in Account.");
   else if (m.active !== true) blockers.push("Your agent is switched off.");
   else if (pausedUntil) blockers.push(`Your agent is paused until ${pausedUntil}.`);
   if (!resumeOnFile) blockers.push("No resume on file — the agent refuses to apply blind.");
-  if (!planActive) blockers.push("The apply agent needs an active Agent plan.");
+  if (!planActive) {
+    blockers.push(pass && !subscribed
+      ? `The pass on this account has ${passBlockerReason(pass)} — buy another at ${PASS_URL} when its clock ends, or subscribe to the Agent plan.`
+      : `No live pass and no Agent plan — buy a pass at ${PASS_URL} or subscribe at https://resumebooster.work/agent.`);
+  }
 
   return {
     ready: blockers.length === 0,
     accountLinked: true,
-    planActive, mandateActive, resumeOnFile,
+    planActive, subscribed, passLive, mandateActive, resumeOnFile,
+    ...(passUnstarted ? { passStartsOnFirstCall: true } : {}),
     ...(pausedUntil ? { pausedUntil } : {}),
     blockers,
     ...(blockers.length ? { requirements: applyRequirements() } : {}),
@@ -1952,7 +2086,7 @@ async function enqueueApplication(
   }
 
   const { data: mandate } = await client.from("agent_mandates")
-    .select("active, paused_until, resume_text, apply_mode, daily_count, countries, category, include_uncategorised, max_age_days, salary_min")
+    .select("active, paused_until, resume_text, apply_mode, daily_count, countries, category, include_uncategorised, max_age_days, salary_min, last_prepare_kick_at")
     .eq("user_id", userId).maybeSingle();
   if (!mandate) {
     return refuse("mandate", "No agent mandate on this account.", "Set up your agent in Account — that is where you authorize what it may do and hand it your details.");
@@ -1960,7 +2094,7 @@ async function enqueueApplication(
   const m = mandate as {
     active?: boolean; paused_until?: string | null; resume_text?: string | null; apply_mode?: string;
     countries?: string | null; category?: string | null; include_uncategorised?: boolean | null;
-    max_age_days?: number | null; salary_min?: number | null;
+    max_age_days?: number | null; salary_min?: number | null; last_prepare_kick_at?: string | null;
   };
   if (m.active !== true) {
     return refuse("mandate", "Your agent is switched off.", "Turn it on in Account — the off switch always wins, including over this tool.");
@@ -1973,15 +2107,30 @@ async function enqueueApplication(
     return refuse("resume", "No resume on file — the agent refuses to apply blind.", "Add your resume in Account → Apply profile.");
   }
 
-  // Entitlement, by the ACCOUNT's address — for the error message; the
-  // pipeline re-checks at preparation and again at claim.
+  // TWO WAYS TO BE ALLOWED. The subscription, by the ACCOUNT's address, is
+  // asked first and wins: consumption never draws on a pass while a plan is
+  // live. Otherwise the pass — activated, not closed, clock running, an
+  // application left — funds THIS request, and the enqueue RPC below spends
+  // one of its applications in the same statement that writes the row. The
+  // pipeline re-checks the subscription at preparation and again at claim,
+  // and for a pass-funded row asks only "was this row paid for" (pass_id).
   const { data: userRes } = await client.auth.admin.getUserById(userId);
   const email = normalizeEmail(userRes?.user?.email ?? "");
   const { data: subRow } = await client.from("agent_subscribers")
     .select(ENTITLEMENT_COLUMNS).eq("email", email).maybeSingle();
-  if (!rowIsEntitled(subRow as SubscriberRow | null)) {
-    return refuse("plan", "The apply agent needs an active Agent plan.", "Subscribe at https://resumebooster.work/agent — search tools keep working without it.");
+  const subscribed = rowIsEntitled(subRow as SubscriberRow | null);
+  const pass = subscribed ? null : await openPassOf(client, userId);
+  if (!mayApply(subRow as SubscriberRow | null, pass)) {
+    if (pass) {
+      return refuse("pass",
+        `The pass on this account has ${passBlockerReason(pass)}.`,
+        pass.expires_at && Date.parse(pass.expires_at) > Date.now()
+          ? `No applications left on this pass — ${Math.max(1, Math.round((Date.parse(pass.expires_at) - Date.now()) / 3_600_000))} hours remain for search and scoring. Buy another at ${PASS_URL} when the clock ends.`
+          : `Buy a pass at ${PASS_URL}, or subscribe at https://resumebooster.work/agent — search tools keep working without either.`);
+    }
+    return refuse("plan", "The apply agent needs an active Agent plan or a live pass.", `Buy a pass at ${PASS_URL} or subscribe at https://resumebooster.work/agent — search tools keep working without either.`);
   }
+  const passFunded = !subscribed;
 
   // The posting, through the SAME serving fences selection uses — this is the
   // only moment the pipeline checks them, so the request must too.
@@ -2030,6 +2179,10 @@ async function enqueueApplication(
     }
   }
 
+  // The pre-read for the alreadyQueued note (the existing row's status). Not
+  // the duplicate guard: that is the RPC's ON CONFLICT, which is what makes a
+  // duplicate cost nothing on a pass — a race between two identical requests
+  // ends with one row and one application spent.
   const { data: existing } = await client.from("agent_queue")
     .select("status").eq("user_id", userId).eq("posting_id", jobId).maybeSingle();
   if (existing) {
@@ -2041,9 +2194,9 @@ async function enqueueApplication(
   // means the requester learns the outlook NOW instead of a silent non-release.
   const fit = computeFit(`${String(p.title ?? "")} ${String(p.description ?? "")}`, resume);
 
+  // user_id and posting_id travel as the RPC's own parameters, never inside
+  // the row, so the row can only land on the account this key acts for.
   const row = {
-    user_id: userId,
-    posting_id: jobId,
     title: String(p.title ?? "").slice(0, 300),
     company: String(p.company ?? ""),
     company_token: String(p.company_token ?? ""),
@@ -2060,9 +2213,50 @@ async function enqueueApplication(
     search_id: null,
     search_label: "Connected agent",
   };
-  const { error: insErr } = await client.from("agent_queue")
-    .upsert([row], { onConflict: "user_id,posting_id", ignoreDuplicates: true });
-  if (insErr) throw new Error(`queue write failed: ${insErr.message}`);
+  // THE ONE STATEMENT THAT ACCEPTS AND PAYS. agent_queue_enqueue inserts the
+  // row ON CONFLICT (user_id, posting_id) DO NOTHING and, when the pass funds
+  // it, increments the pass's applications_used on the same locked row —
+  // together, or not at all. A duplicate answers already_queued and spends
+  // nothing; an exhausted or ended pass answers with nothing written. Never
+  // a counter beside the write: the refuter proved that over-consumes on a
+  // duplicate race.
+  const { data: enq, error: enqErr } = await client
+    .rpc("agent_queue_enqueue", { p_user_id: userId, p_posting_id: jobId, p_row: row, p_pass_funded: passFunded })
+    .maybeSingle();
+  if (enqErr) throw new Error(`queue write failed: ${enqErr.message}`);
+  const e = (enq ?? null) as { enqueued_ok?: boolean; enqueue_reason?: string; queued_row_id?: number | null; pass_apps_left?: number | null } | null;
+  if (!e?.enqueued_ok) {
+    const reason = e?.enqueue_reason ?? "unknown";
+    console.log(`[AGENT-MCP] request_application refused by the enqueue RPC: ${reason}`);
+    if (reason === "pass_exhausted") {
+      return refuse("pass", "No applications left on this pass.", `Search and scoring keep working until the clock ends; buy another pass at ${PASS_URL} after that.`);
+    }
+    if (reason === "pass_not_live") {
+      return refuse("pass", "The pass on this account is not live.", `Buy a pass at ${PASS_URL}, or subscribe at https://resumebooster.work/agent.`);
+    }
+    throw new Error(`queue write refused: ${reason}`);
+  }
+  if (e.enqueue_reason === "already_queued") {
+    return { accepted: true, alreadyQueued: true, note: "This job was already in your agent's queue — nothing duplicated, nothing spent." };
+  }
+
+  // THE HEAD START, BOUND TO THE RIGHT EVENT THIS TIME. The preparer runs at
+  // :23; a pass buyer whose request lands at :24 would otherwise wait an
+  // hour of a six-hour clock. Kick it now, throttled per mandate through the
+  // same column the on-save trigger uses, and never fatal: the cron remains
+  // the floor, this only removes waiting.
+  if (passFunded) {
+    const last = m.last_prepare_kick_at ? Date.parse(m.last_prepare_kick_at) : NaN;
+    if (!Number.isFinite(last) || last < Date.now() - 5 * 60_000) {
+      try {
+        await client.from("agent_mandates").update({ last_prepare_kick_at: new Date().toISOString() }).eq("user_id", userId);
+        const { data: kicked, error: kickErr } = await client.rpc("agent_prepare_now");
+        console.log(`[AGENT-MCP] prepare kicked for a pass-funded request: ${kicked === true}${kickErr ? ` (${kickErr.message.slice(0, 120)})` : ""}`);
+      } catch (kickE) {
+        console.error(`[AGENT-MCP] prepare kick failed: ${String((kickE as Error)?.message ?? kickE).slice(0, 160)}`);
+      }
+    }
+  }
 
   const vendor = parts[0];
   const agentReady = SENDABLE_VENDORS.includes(vendor);
@@ -2072,11 +2266,13 @@ async function enqueueApplication(
     title: row.title,
     company: row.company,
     fitPct: fit.pct,
+    passApplicationsLeft: passFunded ? (e.pass_apps_left ?? null) : null,
     ...(fit.pct !== null && fit.pct < 55 ? { warning: "Fit is below the 55% release floor — the packet will be prepared but refused release unless the resume covers more of this posting's terms." } : {}),
     ...(agentReady ? {} : { warning: `This employer's system (${vendor}) is not agent-submittable — the packet will be prepared for one-click manual sending instead.` }),
     whatHappensNext: m.apply_mode === "auto"
-      ? "The hourly preparer builds the application from your profile (answers are grounded — nothing is invented), then releases it within your daily cap and vendor allow-list. Track it with application_status."
+      ? "The preparer builds the application from your profile (answers are grounded — nothing is invented), then releases it within your daily cap and vendor allow-list. Track it with application_status."
       : "The application is prepared and waits in your morning queue for your review — you approve the actual send. Track it with application_status.",
+    ...(passFunded ? { funding: "This request was paid for by your pass; it is honoured even if the clock ends before it is sent." } : {}),
   };
 }
 
@@ -2114,9 +2310,6 @@ async function readApplicationStatus(client: SupabaseClient, userId: string, lim
 
 // ── Dispatch ────────────────────────────────────────────────────────────────
 
-/** The same predicate public-api applies to engine=ranked and POST /v1/fit. */
-const isPaidTier = (tier: string | null) => tier != null && tier !== "free" && tier !== "trial";
-
 /**
  * WHAT THIS KEY IS AND WHAT IT MAY DO — the question the server could answer
  * for itself all along and had no way to say.
@@ -2135,10 +2328,22 @@ const isPaidTier = (tier: string | null) => tier != null && tier !== "free" && t
  * a tool that does not need it.
  */
 async function runKeyStatus(client: SupabaseClient, d: Decision): Promise<unknown> {
-  const paid = isPaidTier(d.key_tier);
+  // Two questions, one shared module: "paid" opens the /v1 gates (ranked,
+  // the long changes window) and stays false on a pass; "fit" opens
+  // fit_resume and is true on a pass. The tier itself is the decision's —
+  // api_key_check answers the pass tier while an open pass exists.
+  const paid = isPaidKeyTier(d.key_tier);
+  const fit = hasFitAccess(d.key_tier);
   const apiKeyId = d.api_key_id ?? "";
   const userId = apiKeyId ? await keyOwner(client, apiKeyId) : null;
-  const apply = await applyReadiness(client, userId);
+  // The pass row, read once and shared with the readiness block; its state
+  // and figures come off the row, its clock off the decision that allowed
+  // this call (pass_ends_at is what api_key_check will enforce).
+  const pass = userId ? await openPassOf(client, userId) : null;
+  const apply = await applyReadiness(client, userId, pass);
+  const passBlock = describePass(pass);
+  if (d.pass_ends_at) passBlock.endsAt = d.pass_ends_at;
+  if (typeof d.pass_apps_left === "number") passBlock.applicationsLeft = d.pass_apps_left;
   return {
     key: {
       tier: d.key_tier ?? "free",
@@ -2163,15 +2368,50 @@ async function runKeyStatus(client: SupabaseClient, d: Decision): Promise<unknow
       resetsInSeconds: secondsToMidnightUtc(),
     },
     features: {
-      fit_resume: paid,
+      fit_resume: fit,
       rankedEngine: paid,
       request_application: apply.ready === true,
     },
+    pass: passBlock,
     apply,
     counted: "These figures include this call — key_status is metered like every other tool.",
-    ...(paid ? {} : { upgrade: "https://resumebooster.work/data-api" }),
+    // Where to go next: a pass-holder is not told to upgrade the key; a key
+    // with neither pass nor plan is pointed at the pass first (the shortest
+    // path to applying), the data-API page for a paid /v1 key.
+    ...(paid ? {} : d.key_tier === PASS_TIER ? {} : {
+      upgrade: apply.planActive === true ? "https://resumebooster.work/data-api" : PASS_URL,
+    }),
     docs: DOCS_URL,
   };
+}
+
+/**
+ * HOW THE PASS WAS ACTIVATED — the per-host adoption segment, written after
+ * the fact. api_key_check starts the clock in SQL and cannot know the
+ * transport; this stamps the row once (first writer wins, an already-stamped
+ * row matches nothing) with the way the credential arrived and the client's
+ * user agent, so "who buys a pass and from which host" is measurable rather
+ * than guessed. Memoised per isolate so a live pass costs the two reads once,
+ * not on every call; never fatal — a missing stamp is a missing metric, not a
+ * refused tool. `via` is "key" here; the OAuth path passes "oauth:<client_id>".
+ */
+const activatedViaStamped = new Set<string>();
+async function noteActivatedVia(client: SupabaseClient, d: Decision, via: string, userAgent: string): Promise<void> {
+  if (d.key_tier !== PASS_TIER || !d.pass_ends_at || !d.api_key_id) return;
+  // Keyed by the clock as well as the key: the same key carries the next
+  // pass this account buys, and that one needs its own stamp.
+  const memo = `${d.api_key_id}:${d.pass_ends_at}`;
+  if (activatedViaStamped.has(memo)) return;
+  activatedViaStamped.add(memo);
+  try {
+    const userId = await keyOwner(client, d.api_key_id);
+    if (!userId) return;
+    await client.from("agent_passes")
+      .update({ activated_via: via, activated_user_agent: userAgent.slice(0, 200) })
+      .eq("user_id", userId).is("closed_at", null).not("activated_at", "is", null).is("activated_via", null);
+  } catch (e) {
+    console.error(`[AGENT-MCP] activated_via stamp failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+  }
 }
 
 async function callTool(
@@ -2194,10 +2434,10 @@ async function callTool(
       // Gated exactly as POST /v1/fit is: the same feature was paid on the
       // API and free here, and the free path drained the paid customers'
       // shared scorer allowance. Refused in-band, before any search runs.
-      if (!isPaidTier(tier)) {
+      if (!hasFitAccess(tier)) {
         return toolErr(
-          "fit_resume is a paid feature — résumé-to-job fit scoring, the same feature as POST /v1/fit.",
-          "Upgrade the key at https://resumebooster.work/data-api — the search tools keep working on a free key.",
+          "fit_resume is a paid feature — résumé-to-job fit scoring, the same feature as POST /v1/fit — open on a paid key or a live pass.",
+          "Upgrade the key at https://resumebooster.work/data-api, or buy a pass at " + PASS_URL + " — the search tools keep working on a free key.",
         );
       }
       return toolOk(await runFitResume(args, apiKeyId));
@@ -2305,6 +2545,12 @@ async function answerUnkeyed(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") {
+    // The protected-resource metadata — matched on the pathname AFTER the
+    // runtime's function prefix is stripped, because the production pathname
+    // carries the function name and a route compared to the raw pathname
+    // passes every local check and matches nothing in prod
+    // (project_edge_path_prefix).
+    if (isProtectedResourceMetadataPath(new URL(req.url).pathname)) return protectedResourceResponse(cors);
     // No SSE stream to offer — spec-legal for a stateless server. The body
     // says where the humans go.
     return json({ error: "This MCP endpoint is POST-only (stateless).", docs: DOCS_URL }, 405);
@@ -2365,7 +2611,8 @@ Deno.serve(async (req) => {
         `and every other read tool — ${KEY_ONLY_READ_TOOLS.join(", ")}; call key_status first, it says what the key may do so nothing is discovered by refusal, ` +
         "and verify a shortlist with check_jobs_open (200 ids per call) and read it with get_jobs (10) rather than one get_job each — the quota counts calls, not ids. " +
         `Paid key: ${PAID_TOOLS.join(", ")}, exactly like POST /v1/fit. ` +
-        `Account-linked key (${DOCS_URL}) with an Agent plan and a standing mandate: ${ACCOUNT_TOOLS.join(", ")}. ` +
+        `Account-linked key (${DOCS_URL}) with an Agent plan OR a live pass (bought signed-in at ${PASS_URL}) and a standing mandate: ${ACCOUNT_TOOLS.join(", ")} — ` +
+        "a pass also opens the paid scorer; call key_status for the time and applications left on it (the pass starts at the first call other than key_status). " +
         "This board watches postings come down and can say which employers take roles down and leave them down — employer_hiring_record and employer_growth carry that record per employer, with every unknown named as unknown. " +
         "Counts are honest: countUnavailable means the board refuses to guess, and ignoredFilters names any filter it could not apply.",
     }));
@@ -2374,7 +2621,19 @@ Deno.serve(async (req) => {
     return new Response(null, { status: 202, headers: cors });
   }
   if (method === "ping") return json(rpcResult(id, {}));
-  if (method === "tools/list") return json(rpcResult(id, { tools: TOOLS }));
+  // Per-tool security schemes, for the hosts that read them (ChatGPT's
+  // "Mixed" connector auth keeps search and fetch answering before sign-in
+  // only when each tool says so): an unkeyed tool answers with no auth or
+  // with a token; every other tool with a token. Derived from ANON_TOOLS, so
+  // the list a host reads and the gate the dispatcher applies are one set.
+  if (method === "tools/list") {
+    const withToken = { type: "oauth2", scopes: [OAUTH_SCOPE] };
+    const tools = TOOLS.map((t) => ({
+      ...t,
+      securitySchemes: ANON_TOOLS.includes(t.name) ? [{ type: "noauth" }, withToken] : [withToken],
+    }));
+    return json(rpcResult(id, { tools }));
+  }
 
   if (method !== "tools/call") {
     return isNotification
@@ -2390,27 +2649,70 @@ Deno.serve(async (req) => {
   }
 
   const auth = req.headers.get("authorization") ?? "";
-  const raw = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  // A pasted key by its prefix; anything else in the slot is an OAuth token.
+  const raw = looksLikeApiKey(bearer) ? bearer : "";
   const client = db();
-  // A keyed-only tool with no key keeps the in-band refusal — the wording the
-  // page and the docs quote — until an authorization server exists to point
-  // a 401 at. The unkeyed tools go on to answer.
-  if (!raw && !ANON_TOOLS.includes(toolName)) {
-    return json(rpcResult(id, toolErr(
-      "No API key. Send it as: Authorization: Bearer <key>.",
-      "Get a free key at https://resumebooster.work/data-api — search tools work with it immediately.",
-    )));
+  // A keyed tool with nothing in the slot answers the sign-in challenge —
+  // the response a host turns into its Connect card, built in the OAuth
+  // module and reached from here only. The unkeyed tools go on to answer.
+  if (!bearer && !ANON_TOOLS.includes(toolName)) {
+    return unauthorized(cors);
+  }
+  // An OAuth token: verified by the module (issuer, audience bound to this
+  // server, the client_id a website session token never carries, a uuid
+  // subject, expiry, signature), then mapped to the account's one live key
+  // so the SAME api_key_check meters it — one row, one quota, one tier,
+  // shared with a key the same person pasted elsewhere. A token that fails
+  // on a keyed tool is challenged; on an unkeyed tool the call proceeds
+  // unkeyed. The token itself goes no further than the verifier.
+  let oauthSub: string | null = null;
+  let oauthClient = "";
+  let keyHash = "";
+  if (bearer && !raw) {
+    const verdict = await verifyOAuthBearer(bearer);
+    if (!verdict.ok) {
+      if (!ANON_TOOLS.includes(toolName)) {
+        console.log(`[AGENT-MCP] oauth refused (${verdict.reason}) on ${toolName}`);
+        return unauthorized(cors);
+      }
+    } else {
+      oauthSub = verdict.sub;
+      oauthClient = verdict.clientId;
+      const mapped = await subToKeyHash(client, oauthSub);
+      if (!mapped) {
+        // The token was valid, so this is never a challenge: the account
+        // could not be given a key (no email on it, or the mint refused).
+        // A keyed tool is refused in band; an unkeyed tool goes on to
+        // answer unkeyed, exactly as a refused token does above — the tier
+        // the page promises always answers is never walled for a valid
+        // token either.
+        if (!ANON_TOOLS.includes(toolName)) {
+          return json(rpcResult(id, toolErr(
+            "Your account could not be given an agent key.",
+            `Sign in at ${DOCS_URL} and mint one there, then reconnect.`,
+          )));
+        }
+        oauthSub = null;
+        oauthClient = "";
+      } else {
+        keyHash = mapped.keyHash;
+      }
+    }
+  } else if (raw) {
+    keyHash = await sha256Hex(raw);
   }
 
-  // Keyed: checked and metered per tool, here. Unkeyed (one of ANON_TOOLS):
-  // `d` stays null and the call is counted by mcp_anon_check inside the try
-  // below, before any runner runs — so a call whose arguments are refused
-  // there was counted first, the same order the keyed path keeps.
+  // Keyed (a pasted key or a mapped token): checked and metered per tool,
+  // here. Unkeyed (one of ANON_TOOLS): `d` stays null and the call is
+  // counted by mcp_anon_check inside the try below, before any runner runs —
+  // so a call whose arguments are refused there was counted first, the same
+  // order the keyed path keeps.
   let d: Decision | null = null;
   let rateHeaders: Record<string, string> = {};
-  if (raw) {
+  if (keyHash) {
     const { data: dec, error: decErr } = await client
-      .rpc("api_key_check", { p_key_hash: await sha256Hex(raw), p_endpoint: `/mcp/${toolName}` })
+      .rpc("api_key_check", { p_key_hash: keyHash, p_endpoint: `/mcp/${toolName}` })
       .maybeSingle();
     if (decErr) {
       console.error("[AGENT-MCP] key check failed:", decErr.message?.slice(0, 160));
@@ -2454,6 +2756,10 @@ Deno.serve(async (req) => {
       const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs);
       return json(rpc, 200, headers);
     }
+    // A live pass on a key: record how it was activated, once — by the key
+    // itself or by the OAuth client that minted the token. One helper for
+    // both paths; first writer wins.
+    await noteActivatedVia(client, d, oauthSub ? oauthVia(oauthClient) : "key", req.headers.get("user-agent") ?? "");
     // key_status is answered HERE and not in callTool because what it reports
     // IS `d` — the decision this call was allowed by. See runKeyStatus.
     const result = toolName === "key_status"

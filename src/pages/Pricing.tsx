@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Send, Briefcase, ChevronDown } from "lucide-react";
-import { PRODUCTS, ProductId, isProductHidden } from "@/config/products";
+import { PRODUCTS, SUBSCRIPTIONS, PASS, ProductId, isProductHidden } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
@@ -68,6 +68,18 @@ export default function Pricing() {
   // Track time on page for engagement analysis
   useTimeOnPage('pricing');
 
+  // The JSON-LD price range is DERIVED from the catalog it describes — every
+  // visible one-time product, both recurring plans and the one-off pass — so
+  // the offer can never state a ceiling the catalog has outgrown (it once
+  // typed a high price while the catalog's ceiling sat above it).
+  const visibleProducts = (Object.keys(PRODUCTS) as ProductId[]).filter((k) => !isProductHidden(k));
+  const offerPrices = [
+    ...visibleProducts.map((k) => PRODUCTS[k].priceUsd),
+    ...Object.values(SUBSCRIPTIONS).map((s) => s.priceUsd),
+    PASS.priceUsd,
+  ];
+  const passCopy = { passPrice: PASS.priceUsd, passHours: PASS.sessionHours, passApplications: PASS.applications };
+
   const handlePurchase = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
     if ('useMainCheckout' in product && product.useMainCheckout) {
@@ -101,13 +113,13 @@ export default function Pricing() {
         url: "https://resumebooster.work",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        description: "Free diagnostic resume scan plus one-time paid tools and an optional all-access subscription.",
+        description: "Free diagnostic resume scan plus one-time paid tools, two optional subscriptions and a one-off pass for your own AI agent.",
         offers: {
           "@type": "AggregateOffer",
           priceCurrency: "USD",
           lowPrice: "0",
-          highPrice: "59",
-          offerCount: (Object.keys(PRODUCTS) as ProductId[]).filter((k) => !isProductHidden(k)).length + 1,
+          highPrice: String(Math.max(...offerPrices)),
+          offerCount: offerPrices.length + 1,
         },
       }) }} />
       <Header />
@@ -188,10 +200,17 @@ export default function Pricing() {
           {/* The two recurring plans, side by side. The agent is a superset of
               Pro and priced accordingly, so they belong next to each other —
               seeing $45 alone invites the question this answers. */}
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12 items-start">
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-4 items-start">
             <ProSubscriptionCard />
             <AgentSubscriptionCard />
           </div>
+          {/* The pass: one line beside the two recurring cards, never on the
+              SKU wall — it is a third way to hold one entitlement, not a
+              fourteenth deliverable. Numbers from the PASS mirror. */}
+          <p className="text-center text-sm text-muted-foreground max-w-4xl mx-auto mb-12">
+            {t('pricingPage.passLine', 'Or a one-off pass for your own AI agent: ${{passPrice}} for {{passHours}} hours and {{passApplications}} applications. Never renews.', passCopy)}{' '}
+            <Link to="/agents" className="text-primary hover:underline">{t('pricingPage.passLink', 'Connect your agent')}</Link>
+          </p>
 
           {/* Which platforms, and what happens on each. Directly under the
               plans because "it applies for you" immediately raises "where?" */}

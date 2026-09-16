@@ -68,6 +68,12 @@ const APP_ROUTES = (): string[] => {
 const PRIVATE_ROUTES = [
   "/auth", "/account", "/success", "/product-success", "/payment-failed",
   "/analytics", "/errors", "/health-check", "/scan-metrics",
+  // The Agent Pass receipt page: Stripe's success_url, signed-in only, marked
+  // noindex, reads the buyer's own pass row — nothing to bake for a crawler.
+  "/agents/pass",
+  // The OAuth consent route: exists only for an authorization request from an
+  // agent host (?authorization_id=), signed-in only, noindex, no prerender.
+  "/oauth/consent",
 ];
 /** Route families whose every member is private (dev tooling, admin, affiliate redirects). */
 const PRIVATE_PREFIXES = ["/dev/", "/admin/", "/r/"];

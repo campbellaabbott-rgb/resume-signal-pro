@@ -40,13 +40,24 @@ describe("auth and metering ride the existing rails", () => {
 });
 
 describe("the apply seam is agent_queue and nothing later", () => {
-  it("inserts the queue row exactly as the runner does: approved, fit scored, deduped", () => {
-    expect(MCP).toMatch(/\.from\("agent_queue"\)\s*\n?\s*\.upsert/);
+  it("inserts the queue row exactly as the runner does: approved, fit scored, deduped — through the one RPC that also pays", () => {
+    // The write is agent_queue_enqueue (20260917140000): it inserts ON
+    // CONFLICT (user_id, posting_id) DO NOTHING and, when a pass funds the
+    // request, spends one of its applications on the same locked row. A
+    // direct upsert beside a counter over-consumed on a duplicate race, so
+    // no direct write to agent_queue may remain here.
+    expect(MCP).toMatch(/\.rpc\("agent_queue_enqueue", \{ p_user_id: userId, p_posting_id: jobId, p_row: row, p_pass_funded: passFunded \}\)/);
+    expect(stripped(MCP)).not.toMatch(/from\("agent_queue"\)\s*\.\s*(insert|upsert)/);
     expect(MCP, "'approved' is read in BOTH review and auto mode, and is the true statement")
       .toMatch(/status: "approved",/);
     expect(MCP, "a null fit_pct is a packet that silently never releases")
       .toMatch(/fit_pct: fit\.pct,/);
-    expect(MCP).toMatch(/onConflict: "user_id,posting_id", ignoreDuplicates: true/);
+    // The account is the RPC's parameter, never a field of the row an agent
+    // could influence.
+    const rowAt = MCP.indexOf("const row = {");
+    const row = MCP.slice(rowAt, MCP.indexOf("};", rowAt));
+    expect(rowAt).toBeGreaterThan(-1);
+    expect(stripped(row)).not.toMatch(/user_id|posting_id/);
   });
 
   it("never writes agent_submissions — that table refuses client inserts for exactly this reason", () => {

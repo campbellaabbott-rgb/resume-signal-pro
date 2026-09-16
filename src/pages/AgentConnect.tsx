@@ -4,10 +4,20 @@
 // a key still gets an answer on its first call; any MCP-capable agent that
 // can send an Authorization header can use every read tool with a free
 // /data-api key; the apply tools additionally need an account-linked agent
-// key minted here, an Agent plan, and a standing mandate. The page states the
-// boundary plainly: the MCP layer is a translator over the existing apply
-// pipeline, never a bypass — an agent can do at most what its owner could do
-// signed in.
+// key minted here, an Agent plan OR a live Agent Pass, and a standing
+// mandate. The page states the boundary plainly: the MCP layer is a
+// translator over the existing apply pipeline, never a bypass — an agent can
+// do at most what its owner could do signed in.
+//
+// THE PASS CARD beside the mint is the third way to hold that one
+// entitlement: a one-off purchase, never a renewal. Every number on it is
+// read off the PASS mirror in src/config/products.ts (pinned to
+// supabase/functions/_shared/pass.ts by pricing-truth.test.ts) and every
+// sentence is an i18n key — a locale value beats an inline default, so a
+// typed digit anywhere would be nine stale digits the day the price moves.
+// The Buy button only renders once agent-pass-status has answered for the
+// signed-in visitor: the two pass functions deploy on a slower cadence than
+// this page, and a button that 404s after the click is worse than none.
 //
 // EVERY LIST ON THIS PAGE IS RENDERED FROM A MIRROR CONSTANT, never typed
 // here: the tools, the unkeyed set and its caps from src/config/mcp-tools.ts
@@ -21,9 +31,10 @@
 // a sentence that was true when written and false when the thing it
 // described moved.
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug, Ticket } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -32,21 +43,118 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS } from "@/config/mcp-tools";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
+import { PASS } from "@/config/products";
 
 // Same convention as DataApi's API_BASE: read the env the client is built
 // with, so the documented URL cannot drift from the project serving it.
-const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-mcp`;
+export const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-mcp`;
 
-const CLAUDE_CODE_CMD = `claude mcp add --transport http resumebooster ${MCP_URL} --header "Authorization: Bearer rb_live_...your key..."`;
+/** The placeholder a person pastes their key over; never a real key. */
+export const KEY_PLACEHOLDER = "rb_live_...your key...";
 
-const CURSOR_JSON = `{
+/** The Claude Code one-liner, with the key filled in when there is one. */
+export const claudeCodeCommand = (key: string = KEY_PLACEHOLDER) =>
+  `claude mcp add --transport http resumebooster ${MCP_URL} --header "Authorization: Bearer ${key}"`;
+
+/** The Cursor mcp.json block, with the key filled in when there is one. */
+export const cursorConfig = (key: string = KEY_PLACEHOLDER) => `{
   "mcpServers": {
     "resumebooster": {
       "url": "${MCP_URL}",
-      "headers": { "Authorization": "Bearer rb_live_...your key..." }
+      "headers": { "Authorization": "Bearer ${key}" }
     }
   }
 }`;
+
+const CLAUDE_CODE_CMD = claudeCodeCommand();
+const CURSOR_JSON = cursorConfig();
+
+/** The interpolation every pass sentence uses — read off the mirror, never typed. */
+export const PASS_COPY = {
+  passPrice: PASS.priceUsd,
+  passHours: PASS.sessionHours,
+  passApplications: PASS.applications,
+  passShelfDays: PASS.shelfLifeDays,
+} as const;
+
+/**
+ * What agent-pass-status answers for the signed-in user. The pass block is
+ * DERIVED from the row's timestamps by the function; the page never decides
+ * liveness itself. `key` says whether a live agent key already exists, so
+ * the post-purchase page can say "your key already carries the pass" instead
+ * of minting a new one and revoking it.
+ */
+export interface PassStatus {
+  pass:
+    | { state: "none" }
+    | {
+        state: "unactivated" | "live" | "closed";
+        purchasedAt: string;
+        shelfExpiresAt: string;
+        activatedAt: string | null;
+        expiresAt: string | null;
+        endsInSeconds?: number;
+        sessionHours: number;
+        applicationsTotal: number;
+        applicationsUsed: number;
+        applicationsLeft: number;
+        activatedVia: string | null;
+        closeReason?: string;
+      };
+  key: { live: false } | { live: true; prefix: string | null; createdAt: string | null };
+  repair?: string;
+}
+
+/**
+ * One read of agent-pass-status for the signed-in session; `null` until it
+ * answers, `failed` when it cannot (a 404 before the function deploys, a 503,
+ * a network fault). Callers render the Buy control ONLY off an answer.
+ */
+export function usePassStatus(sessionId?: string | null) {
+  const { session } = useAuth();
+  const [status, setStatus] = useState<PassStatus | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => { setStatus(null); setFailed(false); setTick((n) => n + 1); }, []);
+  useEffect(() => {
+    if (!session) { setStatus(null); setFailed(false); return; }
+    let live = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("agent-pass-status", {
+          body: sessionId ? { session_id: sessionId } : {},
+        });
+        if (!live) return;
+        const d = data as PassStatus | null;
+        if (error || !d?.pass || !d?.key) { setFailed(true); return; }
+        setStatus(d);
+      } catch {
+        if (live) setFailed(true);
+      }
+    })();
+    return () => { live = false; };
+  }, [session, sessionId, tick]);
+  return { status, failed, refresh };
+}
+
+/**
+ * Start the Stripe checkout for a pass. Resolves to the function's refusal
+ * text when it refuses (alreadySubscribed, alreadyLive — each sentence
+ * written by the function off the row, never typed here), to null once the
+ * browser is on its way to Stripe, or to a generic failure line.
+ */
+export async function startPassCheckout(): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: {} });
+  if (error) {
+    const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+    let message: string | null = null;
+    try { message = ((await ctx?.json?.()) as { error?: string } | null)?.error ?? null; } catch { /* body unreadable */ }
+    return message ?? "";
+  }
+  const d = data as { url?: string; error?: string; alreadySubscribed?: boolean; alreadyLive?: boolean } | null;
+  if (d?.url) { window.location.href = d.url; return null; }
+  return d?.error ?? "";
+}
 
 const TIER_BADGE: Record<string, string> = { read: "any free key", paid: "paid key", apply: "agent key" };
 
@@ -57,7 +165,7 @@ const names = (list: ReadonlyArray<{ name: string }>) => {
 };
 
 /** A code block with a copy button — every setup snippet on this page uses it. */
-function CopyBlock({ code, label }: { code: string; label: string }) {
+export function CopyBlock({ code, label }: { code: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative">
@@ -79,7 +187,7 @@ function CopyBlock({ code, label }: { code: string; label: string }) {
  * The key is shown once — only its hash is stored — and minting again
  * revokes the previous one (the function says so via `rotated`).
  */
-function MintAgentKey() {
+export function MintAgentKey({ onMinted, next }: { onMinted?: (key: string) => void; next?: string } = {}) {
   const { session, loading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [minted, setMinted] = useState<{ key: string; rotated: boolean } | null>(null);
@@ -107,6 +215,7 @@ function MintAgentKey() {
       const d = data as { key?: string; rotated?: boolean } | null;
       if (!d?.key) { setErr("Could not mint a key. Try again shortly."); return; }
       setMinted({ key: d.key, rotated: !!d.rotated });
+      onMinted?.(d.key);
     } catch {
       setErr("Could not reach the key service. Try again shortly.");
     } finally { setBusy(false); }
@@ -153,7 +262,7 @@ function MintAgentKey() {
             : "Agent keys are minted from a signed-in session, because they act on your account."}
         </p>
         <Link
-          to="/auth"
+          to={next ? `/auth?next=${encodeURIComponent(next)}` : "/auth"}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
         >
           Sign in to mint an agent key
@@ -178,6 +287,96 @@ function MintAgentKey() {
   );
 }
 
+/**
+ * THE PASS CARD. Sign-in sits before the buy button, always: the pass binds
+ * to user_id, never to an email or a key, and the sign-in link carries
+ * ?next=/agents?buy=pass so the buyer lands back here with the button armed.
+ * Signed in, the Buy control appears only once agent-pass-status has
+ * answered (so nothing here can 404 ahead of the function deploy), and it
+ * reads the answer: an open pass links to /agents/pass instead of selling a
+ * second one. A refusal from create-pass-checkout (already subscribed, a
+ * pass already open) is rendered from the function's own JSON — those
+ * sentences state hours and applications off the row and are never typed
+ * here. Cancelled checkouts come back to /agents?pass=cancelled and are
+ * said so.
+ */
+export function PassCard() {
+  const { t } = useTranslation();
+  const { session, loading } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const cancelled = params.get("pass") === "cancelled";
+  const wantsBuy = params.get("buy") === "pass";
+  const { status } = usePassStatus();
+  const [busy, setBusy] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const autoFired = useRef(false);
+
+  const buy = useCallback(async () => {
+    setBusy(true); setRefusal(null);
+    try {
+      const r = await startPassCheckout();
+      if (r !== null) setRefusal(r || t("agentPass.checkoutFailed", "Could not open checkout — please try again."));
+    } finally { setBusy(false); }
+  }, [t]);
+
+  // The buyer who clicked Buy signed out and came back through /auth: fire
+  // the checkout once, and only once the status endpoint has answered that
+  // there is nothing open on the account.
+  useEffect(() => {
+    if (!wantsBuy || !session || !status || autoFired.current) return;
+    if (status.pass.state === "unactivated" || status.pass.state === "live") return;
+    autoFired.current = true;
+    const p = new URLSearchParams(params); p.delete("buy"); setParams(p, { replace: true });
+    void buy();
+  }, [wantsBuy, session, status, params, setParams, buy]);
+
+  const open = status && (status.pass.state === "unactivated" || status.pass.state === "live");
+
+  return (
+    <div className="p-6 rounded-2xl bg-card border border-primary/30">
+      <h3 className="font-semibold mb-2 flex items-center gap-2"><Ticket className="w-4 h-4 text-primary" /> {t("agentPass.cardTitle", "A pass for your agent")}</h3>
+      <p className="text-lg font-medium mb-2">
+        {t("agentPass.cardBody", "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.", PASS_COPY)}
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        {t("agentPass.cardClock", "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for {{passShelfDays}} days.", PASS_COPY)}
+      </p>
+      <p className="text-sm text-muted-foreground mb-4">
+        {t("agentPass.cardIncludes", "Includes the résumé scorer while it runs. Reading the board stays free; the Agent plan does the same every month and renews — the pass never does.")}
+      </p>
+      {cancelled && <p className="text-sm text-warning mb-3">{t("agentPass.cancelled", "Checkout cancelled — nothing was charged.")}</p>}
+      {refusal && <p className="text-sm text-destructive mb-3">{refusal}</p>}
+      {loading ? (
+        <p className="text-sm text-muted-foreground">{t("agentPass.checkingSignIn", "Checking sign-in…")}</p>
+      ) : !session ? (
+        <div>
+          <p className="text-sm text-muted-foreground mb-3">{t("agentPass.signInWhy", "A pass is bound to your account — not to an email address, not to a key.")}</p>
+          <Link
+            to={`/auth?next=${encodeURIComponent("/agents?buy=pass")}`}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <Ticket className="w-4 h-4" /> {t("agentPass.signInToBuy", "Sign in to buy the pass")}
+          </Link>
+        </div>
+      ) : !status ? null : open ? (
+        <Link
+          to="/agents/pass"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-primary/40 text-sm font-semibold hover:bg-primary/5 transition-colors"
+        >
+          <Ticket className="w-4 h-4" /> {t("agentPass.holdOpen", "You hold a pass — open it")}
+        </Link>
+      ) : (
+        <button
+          type="button" onClick={buy} disabled={busy}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+        >
+          {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("agentPass.buying", "Opening checkout…")}</> : <><Ticket className="w-4 h-4" /> {t("agentPass.buy", "Buy the pass — ${{passPrice}}", PASS_COPY)}</>}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AgentConnect() {
   // THE POSTING COUNT IS READ, NOT TYPED. The same hook and the same floor
   // the homepage head uses; null until the board answers, and then every
@@ -187,7 +386,11 @@ export default function AgentConnect() {
     ? `${roundedFloor(totals.jobs).toLocaleString("en-US")}+ live postings`
     : "the live postings";
   const hostsWithHeader = MCP_HOSTS.filter((h) => h.header);
-  const hostsWithout = MCP_HOSTS.filter((h) => !h.header);
+  // A host that signs you in reaches the keyed tools through your own key
+  // row; only a host with neither a header field nor sign-in is limited to
+  // the unkeyed tools.
+  const hostsWithSignIn = MCP_HOSTS.filter((h) => !h.header && h.oauth);
+  const hostsWithout = MCP_HOSTS.filter((h) => !h.header && !h.oauth);
   // Host names carry their own "and" (claude.ai and Claude Desktop), so the
   // list is joined with commas and one final "and", never "and … and".
   const andList = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
@@ -196,7 +399,7 @@ export default function AgentConnect() {
     <>
       <SEO
         title="Connect Your Agent — MCP Server for the Live Job Board"
-        description={`Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Free keys for search; the Agent plan can request applications.`}
+        description={`Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Free keys for search; the Agent plan or a one-off pass can request applications.`}
         path="/agents"
       />
       <Header />
@@ -216,8 +419,8 @@ export default function AgentConnect() {
               <p className="text-xl text-muted-foreground">
                 Point an MCP-capable agent — Claude Code, Cursor, or one you built — at our MCP server.
                 It can search {countClause} pulled from employers' own hiring systems, read full
-                descriptions, re-verify a shortlist, and, on the Agent plan, ask your apply agent to submit
-                applications for you. It gets the same ranked search and the same honest disclosures the
+                descriptions, re-verify a shortlist, and, on the Agent plan or a live pass, ask your apply agent
+                to submit applications for you. It gets the same ranked search and the same honest disclosures the
                 site gets — there is no second search engine behind this endpoint.
               </p>
             </div>
@@ -237,8 +440,10 @@ export default function AgentConnect() {
                   without one, so an agent can see what's here before you decide to mint anything.{" "}
                   {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
                   day per address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
-                  many are left; every other tool call needs the key, and a call without one is refused
-                  in-band with the link to get one.
+                  many are left; every other tool call needs a credential — the key, or the sign-in a
+                  connector host performs for you — and a call without one answers a sign-in challenge
+                  (an HTTP 401 with a WWW-Authenticate header naming this server's metadata), which is
+                  what claude.ai and ChatGPT turn into their Connect card.
                 </p>
               </div>
             </div>
@@ -282,12 +487,18 @@ export default function AgentConnect() {
                   ))}{" "}
                   act on your account, so they need a key minted from your signed-in session. The key alone
                   isn't enough — applying also requires an active{" "}
-                  <Link to="/agent" className="text-primary hover:underline">Agent plan</Link> and the mandate
-                  you set up in <Link to="/account" className="text-primary hover:underline">Account</Link>.
+                  <Link to="/agent" className="text-primary hover:underline">Agent plan</Link> or a live pass
+                  (below), and the mandate you set up in{" "}
+                  <Link to="/account" className="text-primary hover:underline">Account</Link>.
                   Read-only keys stay read-only by design.
                 </p>
                 <MintAgentKey />
               </div>
+            </div>
+            {/* The pass, beside the mint: the one-off way to hold the same
+                entitlement the Agent plan holds monthly. */}
+            <div className="max-w-5xl mx-auto mt-6">
+              <PassCard />
             </div>
           </div>
         </section>
@@ -301,10 +512,13 @@ export default function AgentConnect() {
             (claude.com/docs/connectors/custom/remote-mcp); ChatGPT developer
             mode offers OAuth, No Authentication or Mixed and has no field for an
             API key (developers.openai.com/apps-sdk/build/auth). What those two
-            hosts CAN do is connect with no auth and use the unkeyed tools — the
-            set and the caps come from the same mirror the server's constants
-            are pinned to. The per-host facts live in MCP_HOSTS so this section
-            and the crawler copy say the same thing. */}
+            hosts CAN do is sign a person in: the server answers a keyed tool
+            called with no credential with a sign-in challenge, the host shows
+            its Connect card, and the call then runs on the account's own key
+            row — or, with no sign-in, use the unkeyed tools, whose set and
+            caps come from the same mirror the server's constants are pinned
+            to. The per-host facts live in MCP_HOSTS so this section and the
+            crawler copy say the same thing. */}
         <section className="py-16 border-t border-border">
           <div className="container">
             <div className="max-w-3xl mx-auto">
@@ -324,21 +538,35 @@ export default function AgentConnect() {
                 <div className="p-6 rounded-2xl bg-card border border-border">
                   <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach which tools today</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Every keyed tool call carries the key in an Authorization header, and not every host has a
-                    place to put one. From {andList(hostsWithHeader.map((h) => h.name))}: every tool your
-                    key's tier allows. From {andList(hostsWithout.map((h) => h.name))}: connect with no auth
-                    and use the unkeyed tools — {names(MCP_ANON_TOOLS)} — {MCP_ANON_CAPS.perAddressPerDay} calls
-                    a day per address, search capped at {MCP_ANON_CAPS.searchRows} rows; the keyed tools still
-                    need {andList(hostsWithHeader.map((h) => h.name))} carrying the key until an authorization
-                    server exists, because outside an org-admin beta there is no field for the key, and each
-                    host's own note below says which — we say so rather than promise a connector that fails
-                    on its first keyed call.
+                    Every keyed tool call carries a credential, and hosts hold it two ways. From{" "}
+                    {andList(hostsWithHeader.map((h) => h.name))}: the key in an Authorization header — every
+                    tool your key's tier allows.
+                    {hostsWithSignIn.length > 0 && (
+                      <>
+                        {" "}From {andList(hostsWithSignIn.map((h) => h.name))}: paste the URL as a custom
+                        connector and choose Sign in when needed — the first keyed tool shows a Connect card,
+                        you sign in to this site and Allow, and the call runs on your own account key (the
+                        same row, quota and pass a pasted key would use). Before sign-in, the unkeyed tools
+                        — {names(MCP_ANON_TOOLS)} — still answer, {MCP_ANON_CAPS.perAddressPerDay} calls a
+                        day per address, search capped at {MCP_ANON_CAPS.searchRows} rows.
+                      </>
+                    )}
+                    {hostsWithout.length > 0 && (
+                      <>
+                        {" "}From {andList(hostsWithout.map((h) => h.name))}: the unkeyed tools only, under
+                        the same caps — there is no field for the key and no sign-in.
+                      </>
+                    )}
+                    {" "}Each host's own note below says which.
                   </p>
                   <ul className="text-sm text-muted-foreground space-y-2">
                     {MCP_HOSTS.map((h) => (
                       <li key={h.name} className="flex gap-2">
-                        <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
-                          {h.header ? "reaches every tool" : "unkeyed tools only"}
+                        {/* The badge is the host table's two flags: a header
+                            field reaches every tool, sign-in reaches them through
+                            the account's own key, neither means unkeyed only. */}
+                        <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header || h.oauth ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
+                          {h.header ? "reaches every tool" : h.oauth ? "sign in when needed" : "unkeyed tools only"}
                         </span>
                         <span><span className="text-foreground font-medium">{h.name}</span> — {h.how}.</span>
                       </li>
