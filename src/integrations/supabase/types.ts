@@ -3759,6 +3759,36 @@ export type Database = {
         Args: { p_credits: number; p_email: string }
         Returns: boolean
       }
+      agent_adoption_metrics: {
+        Args: { p_days: number }
+        Returns: {
+          keys_active_mcp: number
+          keys_minted_agent: number
+          keys_minted_other: number
+          mcp_calls_total: number
+          mcp_key_usage: Json
+          mcp_prompt_calls_total: number
+          mcp_prompt_usage: Json
+          mcp_resource_calls_total: number
+          mcp_resource_usage: Json
+          mcp_searches: number
+          mcp_searches_zero_results: number
+          mcp_tool_calls_total: number
+          mcp_tool_usage: Json
+          metric_day: string
+          passes_activated: number
+          passes_activated_via_detail: Json
+          passes_activated_via_key: number
+          passes_activated_via_oauth: number
+          passes_activated_via_unstamped: number
+          passes_exhausted: number
+          passes_sold: number
+          unkeyed_address_calls_max: number
+          unkeyed_addresses: number
+          unkeyed_addresses_at_max: number
+          unkeyed_calls: number
+        }[]
+      }
       agent_cancel_pending: {
         Args: { p_submission_id: number }
         Returns: boolean
