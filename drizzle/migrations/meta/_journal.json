@@ -330,6 +330,13 @@
       "when": 1789585244335,
       "tag": "0046_an_owner_may_decide_a_row_but_never_which_pass_paid_for_it",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1789596785319,
+      "tag": "0047_a_channel_cannot_be_judged_until_someone_can_read_it",
+      "breakpoints": true
     }
   ]
 }
