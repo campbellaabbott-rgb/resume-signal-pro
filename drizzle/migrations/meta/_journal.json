@@ -281,6 +281,13 @@
       "when": 1789585087970,
       "tag": "0039_agent_pass_grant",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789585118072,
+      "tag": "0040_api_key_check_honours_a_live_pass",
+      "breakpoints": true
     }
   ]
 }

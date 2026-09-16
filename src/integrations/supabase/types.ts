@@ -3886,6 +3886,8 @@ export type Database = {
           deny_reason: string
           is_allowed: boolean
           key_tier: string
+          pass_apps_left: number
+          pass_ends_at: string
           quota_limit: number
           quota_used: number
           rate_limit: number
