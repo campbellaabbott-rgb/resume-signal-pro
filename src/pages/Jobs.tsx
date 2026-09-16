@@ -32,7 +32,7 @@ import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
-import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -63,6 +63,8 @@ import { accentFor } from "@/lib/category-accent";
 import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type PaletteAction } from "@/components/JobsCommandPalette";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { honourPendingSkipLink } from "@/lib/skip-link";
+import { agentPrompt, agentDeepLink, toSearchJobsArgs, searchPrompt, copyText, rememberedHostName, rememberHostName, type HandoffJob, type SearchSort } from "@/lib/agent-handoff";
+import { MCP_HOSTS } from "@/config/mcp-tools";
 
 // user_applications gained board columns after the last typegen — untyped
 // access until Lovable regenerates types.ts.
@@ -1950,6 +1952,81 @@ const LD_EMPLOYMENT_TYPE: Record<EmploymentTypeKey, string> = {
   full_time: "FULL_TIME", part_time: "PART_TIME", contract: "CONTRACTOR",
   temporary: "TEMPORARY", internship: "INTERN",
 };
+
+/**
+ * "OPEN IN YOUR AGENT" — the posting handed to the person's own agent.
+ *
+ * Share copies a URL for humans. This copies the sentence an agent needs:
+ * the MCP server's URL, the tool to call first and the job id verbatim
+ * (src/lib/agent-handoff.ts builds it; the guard proves it carries the id
+ * and the URL and never a key). The full control also asks which agent —
+ * remembered in the same storage key the pass receipt page uses — and, for
+ * the one vendor whose prefill link is documented, offers to open the
+ * conversation there (prefilled, never auto-sent). The compact form on a
+ * card copies for the remembered host and asks nothing.
+ *
+ * Judged by the request body, not the pixels: every click fires a
+ * job_board event through trackBoard — agent_handoff_job {host, id,
+ * sendable} on a copy, agent_deeplink_job {host, id} on the link — and the
+ * behavioural guard reads the JSON that reaches the transport.
+ */
+function JobAgentHandoff({ job, compact, track }: {
+  job: HandoffJob;
+  compact?: boolean;
+  track: (variant: string, metadata?: Record<string, unknown>) => void;
+}) {
+  const { t } = useTranslation();
+  const [host, setHost] = useState<string>(() => rememberedHostName());
+  const prompt = agentPrompt(job);
+  const deep = agentDeepLink(host, prompt);
+  const copy = () => {
+    track("agent_handoff_job", { host, id: job.id, sendable: job.sendable });
+    void copyText(prompt).then((ok) => toast({
+      title: ok
+        ? t("jobsPage.agentPromptCopied", "Prompt copied — paste it to your agent. It names this posting and our MCP server.")
+        : t("jobsPage.agentPromptFailed", "Couldn't copy the prompt"),
+    }));
+  };
+  const button = (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); copy(); }}
+      className={compact
+        ? "inline-flex items-center gap-1 text-muted-foreground hover:text-foreground whitespace-nowrap"
+        : "inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"}
+      title={t("jobsPage.openInAgentTip", "Copy a one-line prompt for your own AI agent: it names this posting's id and our MCP server, and asks the agent to read the posting and say whether it can apply.")}
+    >
+      <Bot className={compact ? "w-3 h-3 shrink-0" : "w-3.5 h-3.5"} />
+      {t("jobsPage.openInAgent", "Open in your agent")}
+    </button>
+  );
+  if (compact) return button;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      {button}
+      {/* WHICH AGENT? Read off the host mirror, never a typed list; the pick
+          is remembered in the browser and shared with the pass receipt page. */}
+      <select
+        value={host}
+        onChange={(e) => { setHost(e.target.value); rememberHostName(e.target.value); }}
+        aria-label={t("jobsPage.whichAgent", "Which agent?")}
+        className="text-[11px] px-1.5 py-0.5 rounded-md border border-border bg-background text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        {MCP_HOSTS.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}
+      </select>
+      {deep && (
+        <a
+          href={deep}
+          onClick={() => track("agent_deeplink_job", { host, id: job.id })}
+          className="text-primary hover:underline"
+          title={t("jobsPage.agentOpenThereTip", "Opens a new conversation there with the prompt filled in. Nothing is sent until you press send.")}
+        >
+          {t("jobsPage.agentOpenThere", "Open there (prefilled, not sent)")}
+        </a>
+      )}
+    </span>
+  );
+}
 
 export default function Jobs() {
   const { t, i18n } = useTranslation();
@@ -4383,6 +4460,23 @@ export default function Jobs() {
     const visitorId = getVisitorId();
     postTrackEvent({ testName: "job_board", variant, eventType: "view", visitorId, metadata });
   };
+  // THE ORDER THE SORT CONTROL SHOWS, computed once: the select's value and
+  // the search handed to an agent read the same expression, so the two
+  // cannot disagree about which order the person was looking at.
+  const shownSort: SearchSort = sortMode === "salary" ? "salary" : (q.trim() && !searchNewestFirst ? "relevance" : "newest");
+  const sendSearchToAgent = () => {
+    const args = toSearchJobsArgs(boardFilterBody(filterState), shownSort);
+    const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly });
+    trackBoard("agent_handoff_search", { keys: Object.keys(args), host: rememberedHostName() });
+    void copyText(prompt).then((ok) => toast({
+      title: ok
+        ? t("jobsPage.searchPromptCopied", "Search copied as a prompt — paste it to your agent.")
+        : t("jobsPage.agentPromptFailed", "Couldn't copy the prompt"),
+      description: activelyHiringOnly
+        ? t("jobsPage.savedWithoutHiringFilter3", "The “Actively hiring” filter — employers we have watched take roles down and leave them down, or whose board served at least {{minNet}} more roles ({{minRate}}%+) than {{gdays}} days earlier, counted from our own daily observation; not a count of hires and not a headcount — is applied in your browser, not on the board, so this saved search does not include it.", { minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS })
+        : undefined,
+    }));
+  };
   /**
    * The click half of the relevance loop.
    *
@@ -6355,6 +6449,10 @@ export default function Jobs() {
                   <Link2 className="w-3.5 h-3.5" />
                   {t("jobsPage.share", "Share")}
                 </button>
+                {/* The same posting, handed to the person's own agent — see
+                    JobAgentHandoff. Beside Share because both are "take this
+                    posting somewhere": one to a person, one to an agent. */}
+                <JobAgentHandoff job={{ id: detailJob.id, sendable: isSendableVendor(detailJob.id) }} track={trackBoard} />
                 {/* THE PANEL'S CLOSURE-RECORD LINE, IN THREE STATES.
                     "Actively hiring" was never what the bar measures, and its
                     ABSENCE was the worse half: on a windowed tenant — a feed too
@@ -6712,10 +6810,19 @@ export default function Jobs() {
                       <Link
                         to="/agent"
                         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                        title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
+                        title={t("jobsPage.agentAppliesTip2", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Agent plan or a live pass.")}
                       >
                         <Sparkles className="w-3.5 h-3.5" />
                         {t("jobsPage.agentAppliesChip", "Agent can apply")}
+                      </Link>
+                      {/* THE OTHER WAY TO HOLD THE SAME ENTITLEMENT. The chip
+                          reaches the monthly plan; a person who already runs
+                          an agent reaches the pass and the MCP server here,
+                          and the prompt above names request_application for
+                          this one card because it is the card the agent can
+                          finish. */}
+                      <Link to="/agents" className="ml-2 text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2">
+                        {t("jobsPage.bringYourOwnAgent", "or bring your own agent")}
                       </Link>
                     </dd>
                   </>
@@ -8672,7 +8779,7 @@ export default function Jobs() {
                 selected whenever it is what's happening; choosing Newest
                 routes through the existing searchNewestFirst toggle. */}
             <select
-              value={sortMode === "salary" ? "salary" : (q.trim() && !searchNewestFirst ? "relevance" : "newest")}
+              value={shownSort}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "salary") { setSortMode("salary"); return; }
@@ -8686,6 +8793,23 @@ export default function Jobs() {
               <option value="newest">{t("jobsPage.sortNewest", "Newest first")}</option>
               <option value="salary">{t("jobsPage.sortSalary", "Highest stated salary")}</option>
             </select>
+            {/* "SEND THIS SEARCH TO MY AGENT" — the board's own request body,
+                renamed into search_jobs arguments (src/lib/agent-handoff.ts;
+                the guard proves the emitted keys are ones the server's
+                SEARCH_PROPERTIES declares) with the order on screen beside
+                them, copied as a one-line prompt. The client-side "Actively
+                hiring" filter is named as not included, as the saved-search
+                toast already does. Beside the sort because the sort is part
+                of what is being handed over. */}
+            <button
+              type="button"
+              onClick={sendSearchToAgent}
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
+              title={t("jobsPage.sendSearchTip", "Copy a one-line prompt for your own AI agent: the filters and order you are looking at, as the arguments our MCP server's search takes.")}
+            >
+              <Bot className="w-3.5 h-3.5" />
+              {t("jobsPage.sendSearchToAgent", "Send this search to my agent")}
+            </button>
             {/* Why this order: the board explains its data everywhere else —
                 the ranking shouldn't be the one unexplained thing. */}
             <span className="hidden sm:inline text-[11px] text-muted-foreground">
@@ -9873,6 +9997,15 @@ export default function Jobs() {
                     className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
                     {t("jobsPage.welcomeStatedPay", "Stated pay only")}
                   </button>
+                  {/* THE FOURTH WAY IN: a person who already runs an agent.
+                      Measured 2026-09-16: no link to /agents anywhere on
+                      /jobs, for a crawler or a visitor. A Link, not a filter
+                      — it leaves the board, so the welcome is not dismissed. */}
+                  <Link to="/agents" onClick={() => trackBoard("welcome_agent")}
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                    <Bot className="w-3 h-3" />
+                    {t("jobsPage.welcomeAgent", "Bring your own agent")}
+                  </Link>
                   <button type="button" onClick={dismissWelcome} aria-label={t("jobsPage.welcomeDismiss", "Dismiss")}
                     className="text-muted-foreground/60 hover:text-foreground text-sm px-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded">
                     ×
@@ -10573,12 +10706,16 @@ export default function Jobs() {
                                 to="/agent"
                                 onClick={(e) => e.stopPropagation()}
                                 className="inline-flex items-center gap-1 font-medium text-primary hover:underline whitespace-nowrap"
-                                title={t("jobsPage.agentAppliesTip", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.")}
+                                title={t("jobsPage.agentAppliesTip2", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Agent plan or a live pass.")}
                               >
                                 <Sparkles className="w-3 h-3 shrink-0" />
                                 {t("jobsPage.agentAppliesChip", "Agent can apply")}
                               </Link>
                             )}
+                            {/* The card's copy of the hand-off: one click, the
+                                remembered host, no chooser — the panel has the
+                                full control. */}
+                            <JobAgentHandoff compact job={{ id: job.id, sendable: isSendableVendor(job.id) }} track={trackBoard} />
                           </div>
                           {/* Explainable fit, in ONE line rather than two
                               paragraphs. The strengths and the gaps were

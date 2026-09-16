@@ -34,16 +34,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug, Ticket } from "lucide-react";
+import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug, Ticket, MessageSquareText, FileText } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
-import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS } from "@/config/mcp-tools";
+import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "@/config/mcp-tools";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 import { PASS } from "@/config/products";
+import { FREE_KEY_RATE_PER_MIN } from "@/config/free-key-limits";
 
 // Same convention as DataApi's API_BASE: read the env the client is built
 // with, so the documented URL cannot drift from the project serving it.
@@ -51,6 +52,9 @@ export const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-
 
 /** The placeholder a person pastes their key over; never a real key. */
 export const KEY_PLACEHOLDER = "rb_live_...your key...";
+
+/** The interpolation every rate sentence uses — read off the two mirrors, never typed. */
+export const RATE_COPY = { ratePerMin: FREE_KEY_RATE_PER_MIN, dailyQuota: MCP_FREE_KEY_DAILY_QUOTA } as const;
 
 /** The Claude Code one-liner, with the key filled in when there is one. */
 export const claudeCodeCommand = (key: string = KEY_PLACEHOLDER) =>
@@ -378,6 +382,7 @@ export function PassCard() {
 }
 
 export default function AgentConnect() {
+  const { t } = useTranslation();
   // THE POSTING COUNT IS READ, NOT TYPED. The same hook and the same floor
   // the homepage head uses; null until the board answers, and then every
   // sentence below has a variant that needs no number at all.
@@ -457,7 +462,8 @@ export default function AgentConnect() {
               <h2 className="text-3xl font-bold mb-4">Two kinds of key</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
                 Reading the board is free and needs no account. Acting on your account needs a key that
-                knows whose account it acts on. Both meter identically: 60 requests/minute, 1,000/day per key.
+                knows whose account it acts on.{" "}
+                {t("agentConnect.rateLine", "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.", RATE_COPY)}
               </p>
             </div>
             <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
@@ -605,6 +611,54 @@ export default function AgentConnect() {
           </div>
         </section>
 
+        {/* THE ATTACH MENU — what a host lists beside the tools. Rendered
+            from MCP_PROMPTS and MCP_RESOURCES, the mirrors pinned to the
+            server's registries by the-attach-menu-lists-what-the-server-
+            registers; nothing here is typed, and no copy claims a host
+            renders a job's resource link (host rendering is undocumented). */}
+        <section className="py-16 border-t border-border">
+          <div className="container">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-3xl font-bold mb-3 text-center">{t("agentConnect.attachTitle", "Prompts and resources your host can list")}</h2>
+              <p className="text-muted-foreground text-center mb-10">
+                {t("agentConnect.attachLead", "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.")}
+              </p>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="rounded-2xl bg-card border border-border divide-y divide-border">
+                  <div className="p-4 font-semibold flex items-center gap-2"><MessageSquareText className="w-4 h-4 text-primary" /> {t("agentConnect.promptsHeading", "Prompts")}</div>
+                  {MCP_PROMPTS.map((p) => (
+                    <div key={p.name} className="p-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <code className="text-sm font-semibold text-primary">{p.name}</code>
+                        <span className="text-xs text-muted-foreground">{p.title}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{p.body}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-2xl bg-card border border-border divide-y divide-border">
+                  <div className="p-4 font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> {t("agentConnect.resourcesHeading", "Resources")}</div>
+                  {MCP_RESOURCES.map((r) => (
+                    <div key={r.uri} className="p-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <code className="text-sm font-semibold text-primary">{r.uri}</code>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${r.keyed ? "border-primary/30 bg-primary/10 text-primary" : "border-success/40 bg-success/10 text-success"}`}>
+                          {r.keyed ? t("agentConnect.resourceKeyed", "needs a key or sign-in") : t("agentConnect.resourceUnkeyed", "reads with no key")}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{r.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mt-6 text-center">
+                {t("agentConnect.handoffLead", "On the board, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.")}{" "}
+                <Link to="/jobs" className="text-primary hover:underline">{t("agentConnect.handoffCta", "Open the board")}</Link>
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* The boundary — the load-bearing section */}
         <section className="py-16 border-t border-border bg-muted/20">
           <div className="container">
@@ -627,7 +681,8 @@ export default function AgentConnect() {
                   <li>• <span className="text-foreground font-medium">Every refusal is named.</span> A request that doesn't go out shows up in <code className="text-xs">application_status</code> with the refusing gate stated, not a silent disappearance.</li>
                 </ul>
                 <p className="text-xs text-muted-foreground mt-5">
-                  Rate limits: 60 requests/minute, 1,000/day per key. How the agent decides what it may send
+                  {t("agentConnect.rateLine", "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.", RATE_COPY)}{" "}
+                  How the agent decides what it may send
                   is documented on the <Link to="/trust" className="text-primary hover:underline">trust page</Link>.
                 </p>
               </div>

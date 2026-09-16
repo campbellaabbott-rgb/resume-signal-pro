@@ -1,11 +1,19 @@
 # Search engines.
 # Private / transactional routes are deliberately absent from sitemap.xml AND
-# disallowed here: /auth, the per-user /account dashboard, and the post-checkout
-# pages (/success, /product-success, /payment-failed) have zero search value and
-# must never be indexed. (Lovable's route-vs-sitemap checker flags these as
-# "missing" — that is expected; do NOT add them to the sitemap.)
+# disallowed here: /auth, the per-user /account dashboard, the post-checkout
+# pages (/success, /product-success, /payment-failed), the owner-only dashboards
+# (/analytics, /errors, /health-check, /scan-metrics), the Agent Pass receipt
+# (/agents/pass — signed-in only, reads the buyer's own row) and the OAuth
+# consent route (/oauth/consent — exists only for an agent host's authorization
+# request) have zero search value and must never be indexed. (Lovable's
+# route-vs-sitemap checker flags these as "missing" — that is expected; do NOT
+# add them to the sitemap.)
 # Disallow is repeated per named group on purpose: a crawler obeys only its own
-# most-specific User-agent block and never inherits rules from "*".
+# most-specific User-agent block and never inherits rules from "*". The list is
+# the PRIVATE_ROUTES allowlist in src/test/sitemap-prerender-parity.test.ts,
+# and src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx fails
+# when any of those routes is missing from any block here.
+
 User-agent: Googlebot
 Allow: /
 Disallow: /auth
@@ -13,6 +21,12 @@ Disallow: /account
 Disallow: /success
 Disallow: /product-success
 Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: Bingbot
 Allow: /
@@ -21,46 +35,188 @@ Disallow: /account
 Disallow: /success
 Disallow: /product-success
 Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 # AI / answer engines — explicitly welcome. Our pages are prerendered static
-# HTML with cited sources; being read and cited by these is the point.
+# HTML with cited sources; being read and cited by these is the point. The
+# private routes above are private to these readers too: the receipt and
+# consent pages serve the app shell with nothing to read.
 # See also: /llms.txt (overview) and /llms-full.txt (full guide text).
+
 User-agent: GPTBot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: Claude-Web
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: anthropic-ai
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: Applebot-Extended
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: CCBot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 # Social preview fetchers
+
 User-agent: Twitterbot
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: facebookexternalhit
 Allow: /
+Disallow: /auth
+Disallow: /account
+Disallow: /success
+Disallow: /product-success
+Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 User-agent: *
 Allow: /
@@ -69,6 +225,12 @@ Disallow: /account
 Disallow: /success
 Disallow: /product-success
 Disallow: /payment-failed
+Disallow: /analytics
+Disallow: /errors
+Disallow: /health-check
+Disallow: /scan-metrics
+Disallow: /agents/pass
+Disallow: /oauth/consent
 
 Sitemap: https://resumebooster.work/sitemap.xml
 # Per-posting sitemap INDEX, served live by the board function (cross-host

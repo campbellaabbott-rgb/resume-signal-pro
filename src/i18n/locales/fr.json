@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Navigation principale",
     "guides": "Guides",
     "jobs": "Offres",
-    "explore": "Explorer"
+    "explore": "Explorer",
+    "agents": "Agents"
   },
   "hero": {
     "badge": "Tableau d'offres en direct — chaque annonce vérifiée sur le système de l'entreprise",
@@ -411,6 +412,10 @@
       "vsChatGPT": {
         "question": "Pourquoi est-ce mieux que ChatGPT ?",
         "answer": "Resume Booster est conçu spécifiquement pour l'optimisation ATS avec un système de scoring en 5 catégories, 14 modèles sectoriels et un feedback calibré par des recruteurs."
+      },
+      "bringYourAgent": {
+        "question": "Mon propre agent IA peut-il s'en servir ?",
+        "answer": "Oui. Lire le tableau ne demande aucune clé pour un premier appel, et une clé gratuite ouvre tous les outils de lecture. Pour que votre agent demande des candidatures, un pass à {{passPrice}} $ lui donne {{passHours}} heures et {{passApplications}} candidatures, à partir de son premier appel et sans jamais se renouveler ; le plan Agent fait la même chose chaque mois et se renouvelle. Chaque offre et chaque recherche du tableau a une commande qui copie une consigne pour votre agent, et la configuration de chaque hôte est sur /agents."
       }
     },
     "stillHaveQuestions": "Encore des questions ?"
@@ -4095,7 +4100,6 @@
     "chipAgentOnly": "L'agent peut postuler",
     "chipInclUncat": "+ non classées",
     "deadLinkDocTitle": "Offre n'est plus disponible — Resume Booster",
-    "agentAppliesTip": "Le formulaire de candidature de cet employeur fait partie de ceux que notre agent peut remplir et envoyer seul — sans CAPTCHA ni compte. Si l'employeur pose une question à laquelle votre profil ne répond pas, il vous rend la candidature. Nécessite l'abonnement Apply Agent.",
     "agentAppliesChip": "L'agent peut postuler",
     "descFailed": "Impossible de charger cette description pour le moment.",
     "agentOnlyTip": "N'afficher que les offres dont notre agent peut remplir et envoyer le formulaire. Le badge Sparkles sur une carte signifie la même chose — ceci filtre tout le tableau sur celles-ci.",
@@ -4266,7 +4270,20 @@
     "pastFieldHorizonTipNoCount": "Mesuré depuis notre propre journal de cycle de vie : parmi les postes en {{field}} suivis ces {{window}} derniers jours, {{gone}}% avaient quitté le tableau en {{d}} jours. Celui-ci en est au jour {{age}} selon la date publiée par l'entreprise. Un poste ouvert longtemps n'est pas un poste mort — mais mieux vaut le savoir avant d'investir une candidature.",
     "compareFillRateBounded": "jusqu'à {{pct}}% de ses postes sont retirés définitivement en {{d}} j ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} offres en ligne — chacune issue directement du système de recrutement de l'entreprise.",
-    "uncatCountLine2": "{{total}} offres actives que nous n'avons pas pu classer dans un domaine — des postes ordinaires que nos propres règles de domaine ne reconnaissent pas, toutes issues directement du système de recrutement de l'entreprise."
+    "uncatCountLine2": "{{total}} offres actives que nous n'avons pas pu classer dans un domaine — des postes ordinaires que nos propres règles de domaine ne reconnaissent pas, toutes issues directement du système de recrutement de l'entreprise.",
+    "openInAgent": "Ouvrir dans votre agent",
+    "openInAgentTip": "Copie une consigne d'une ligne pour votre propre agent IA : elle nomme l'identifiant de cette offre et notre serveur MCP, et demande à l'agent de lire l'offre et de dire s'il peut postuler.",
+    "agentPromptCopied": "Consigne copiée — collez-la dans votre agent. Elle nomme cette offre et notre serveur MCP.",
+    "agentPromptFailed": "Impossible de copier la consigne",
+    "whichAgent": "Quel agent ?",
+    "agentOpenThere": "Ouvrir là-bas (prérempli, non envoyé)",
+    "agentOpenThereTip": "Ouvre une nouvelle conversation là-bas avec la consigne préremplie. Rien n'est envoyé tant que vous n'appuyez pas sur envoyer.",
+    "agentAppliesTip2": "Le formulaire de candidature de cet employeur est de ceux que notre agent de candidature peut remplir et envoyer seul — sans CAPTCHA et sans compte. Il vous rend tout de même la candidature si l'employeur pose une question à laquelle votre profil ne permet pas de répondre. Nécessite le plan Agent ou un pass actif.",
+    "bringYourOwnAgent": "ou amenez votre propre agent",
+    "sendSearchToAgent": "Envoyer cette recherche à mon agent",
+    "sendSearchTip": "Copie une consigne d'une ligne pour votre propre agent IA : les filtres et l'ordre que vous regardez, sous la forme des arguments que prend la recherche de notre serveur MCP.",
+    "searchPromptCopied": "Recherche copiée sous forme de consigne — collez-la dans votre agent.",
+    "welcomeAgent": "Amenez votre propre agent"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
@@ -4911,5 +4928,19 @@
     "passLive": "Pass en cours · {{left}} candidatures restantes",
     "passBuy": "Acheter un pass",
     "passOpen": "Votre pass"
+  },
+  "agentPage": {
+    "connectInstead": "Vous avez déjà un agent ? Connectez-le plutôt — {{passHours}} heures pour {{passPrice}} $, sans renouvellement ; le plan Agent, lui, se renouvelle."
+  },
+  "agentConnect": {
+    "rateLine": "Une clé gratuite est limitée à {{ratePerMin}} requêtes par minute et {{dailyQuota}} appels par jour ; un pass actif relève les deux pendant ses heures.",
+    "attachTitle": "Consignes et ressources que votre hôte peut lister",
+    "attachLead": "À côté des outils, le serveur enregistre des consignes prêtes à l'emploi et quelques documents lisibles. Les hôtes qui les listent (le menu Joindre de claude.ai, la liste de commandes de Claude Code, le panneau de Cursor) les affichent sous le nom du serveur ; les lister ne coûte aucun appel et ne demande aucune clé.",
+    "promptsHeading": "Consignes",
+    "resourcesHeading": "Ressources",
+    "resourceKeyed": "nécessite une clé ou une connexion",
+    "resourceUnkeyed": "se lit sans clé",
+    "handoffLead": "Sur le tableau, chaque offre et chaque recherche a une commande qui copie une consigne pour votre agent — elle nomme l'identifiant de l'offre ou les arguments de la recherche et l'URL de ce serveur.",
+    "handoffCta": "Ouvrir le tableau"
   }
 }

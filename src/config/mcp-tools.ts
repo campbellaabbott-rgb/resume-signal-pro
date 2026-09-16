@@ -23,6 +23,15 @@
 
 export type McpToolTier = "read" | "paid" | "apply";
 
+/**
+ * The two caps a keyed read carries — rows per search page and ids per
+ * check_jobs_open call — mirrored from the server's KEYED_SEARCH_LIMIT and
+ * CHECK_JOBS_OPEN_MAX (pinned by the-attach-menu test). Declared above the
+ * tool list because a body below reads it (a const cannot be read above its
+ * line).
+ */
+export const MCP_KEYED_CAPS = { searchRows: 60, checkJobsOpenIds: 200 } as const;
+
 export interface McpTool {
   /** The `name` the server registers — the string an agent calls. */
   name: string;
@@ -50,7 +59,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "check_jobs_open",
     tier: "read",
-    body: "Are these postings still on the board? Up to 200 ids per call, answered from the board's index rather than the employer's site at that instant — it names that basis so a shortlist is re-verified honestly.",
+    body: `Are these postings still on the board? Up to ${MCP_KEYED_CAPS.checkJobsOpenIds} ids per call, answered from the board's index rather than the employer's site at that instant — it names that basis so a shortlist is re-verified honestly.`,
   },
   {
     name: "check_apply_support",
@@ -191,3 +200,104 @@ export const MCP_HOSTS: readonly McpHost[] = [
   { name: "claude.ai and Claude Desktop", header: false, oauth: true, handoff: "connector", how: "paste the URL as a custom connector and choose Sign in when needed — the first keyed tool shows a Connect card that signs you in through OAuth; the dialog has no field for a key (a static header is an org-admin beta), and with No sign-in only the unkeyed tools answer" },
   { name: "ChatGPT (developer mode)", header: false, oauth: true, handoff: "connector", how: "add the URL as a connector with OAuth (or Mixed, so search and fetch keep answering before sign-in) and Allow on the consent page; there is no field for an API key, and with No Authentication only the unkeyed tools answer (search and fetch are the names its research connector calls)" },
 ];
+
+/**
+ * THE ATTACH MENU, MIRRORED: the prompts and resources the server registers
+ * beside its tools (agent-mcp 2026-09-04.6), one entry each, for every
+ * surface that describes them. Pinned to the Deno registries — name, order,
+ * count, title, URI, mime type and gate — by
+ * src/test/the-attach-menu-lists-what-the-server-registers.test.ts, the
+ * same mirror-constant pattern as MCP_TOOLS above. Never spell either count;
+ * read `.length`.
+ *
+ * A prompt is an entry point a host lists (claude.ai's attach menu, Claude
+ * Code's slash list, Cursor's panel — ChatGPT has none): its body on the
+ * server is a function of the tool registry and names gates, never prices.
+ * Listing and reading a prompt is free for every caller, keyed or not — a
+ * prompt is never metered and never starts a pass.
+ */
+export interface McpPrompt {
+  /** The `name` the server registers — what a host lists and calls. */
+  name: string;
+  /** The display title the server sends. */
+  title: string;
+  /** One sentence for a human reading the page. */
+  body: string;
+}
+
+export const MCP_PROMPTS: readonly McpPrompt[] = [
+  {
+    name: "find_roles_for_my_cv",
+    title: "Find roles that fit my CV",
+    body: "Reads the occupation out of a CV, searches the live board without a key, then verifies the shortlist is still open — the one step that needs a key or a sign-in. Never invents a CV and never requests an application without a yes per job.",
+  },
+  {
+    name: "apply_to_my_shortlist",
+    title: "Apply to my shortlist",
+    body: "Asks what this connection may do first (plan or pass, mandate, résumé on file, applications left), checks each job's hiring system, shows the cards, and requests one application per job only after the person confirms it.",
+  },
+  {
+    name: "what_can_my_key_do",
+    title: "What can this connection do right now",
+    body: "One status call, explained in plain words: tier, calls left, whether the paid scorer and the apply tools would answer, and what would change each closed answer — the gate, never a price.",
+  },
+];
+
+export const MCP_PROMPT_NAMES = MCP_PROMPTS.map((p) => p.name);
+
+/**
+ * A resource is a document a host can attach or @-mention (listed resources
+ * only — no host documents surfacing templates, so the server declares none).
+ * `keyed` mirrors the server's gate: false answers with no credential (the
+ * statistics through the unkeyed tier, counted exactly as an unkeyed
+ * board_stats call; the guide free), true needs a key or a sign-in. Reading
+ * a keyed resource is metered like a tool.
+ */
+export interface McpResource {
+  /** The URI the server registers — what a host reads. */
+  uri: string;
+  /** The short name the server lists it under. */
+  name: string;
+  title: string;
+  mimeType: string;
+  keyed: boolean;
+  /** One sentence for a human reading the page. */
+  body: string;
+}
+
+export const MCP_RESOURCES: readonly McpResource[] = [
+  {
+    uri: "resumebooster://guide",
+    name: "guide",
+    title: "How this board answers an agent",
+    mimeType: "text/markdown",
+    keyed: false,
+    body: "The tiers, which tools answer unkeyed, how to verify a shortlist cheaply, and what the closure ledger can and cannot say — built from the tool registry at request time, so it cannot describe a tool the server does not have.",
+  },
+  {
+    uri: "resumebooster://board/stats",
+    name: "board-stats",
+    title: "Board statistics (live cache)",
+    mimeType: "application/json",
+    keyed: false,
+    body: "The same payload as board_stats: servable and tracked totals, open company boards, the category set, the freshness stamp.",
+  },
+  {
+    uri: "resumebooster://me/key",
+    name: "my-key",
+    title: "This key's limits and powers",
+    mimeType: "application/json",
+    keyed: true,
+    body: "The same payload as key_status: tier, calls left, which tools would answer, and the pass if the account holds one.",
+  },
+];
+
+export const MCP_RESOURCE_URIS = MCP_RESOURCES.map((r) => r.uri);
+
+/**
+ * Every job card on search_jobs and get_jobs also carries a resource link
+ * under this prefix plus the job id — a URI resources/read resolves to the
+ * posting (unkeyed, through the fetch alias's allowance; keyed, metered).
+ * No copy may claim a host renders the link: host rendering is undocumented.
+ */
+export const MCP_JOB_RESOURCE_PREFIX = "resumebooster://job/";

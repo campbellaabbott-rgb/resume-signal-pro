@@ -1,4 +1,4 @@
-import { Sparkles, CreditCard, Package, Shield, Megaphone, BookOpen, Briefcase, Compass } from "lucide-react";
+import { Sparkles, CreditCard, Package, Shield, Megaphone, BookOpen, Briefcase, Compass, Bot } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -10,6 +10,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { ScanCreditsCounter } from "@/components/ScanCreditsCounter";
 import { ProductSelectionModal } from "@/components/ProductSelectionModal";
+import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 
 export function Header() {
   const { t } = useTranslation();
@@ -18,6 +19,13 @@ export function Header() {
   const location = useLocation();
   const [showScanPackModal, setShowScanPackModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
+  // The one nav item with an event. /agents was reachable from no page a
+  // visitor lands on (the footer only, beneath "Load more"), so its arrival
+  // here is measured: nav_agents → ab_test_events, read in the owner's SQL
+  // editor, never judged from an anon read. Fire-and-forget, no-op locally.
+  const trackNavAgents = () => {
+    postTrackEvent({ testName: "nav", variant: "nav_agents", eventType: "view", visitorId: getVisitorId() });
+  };
   
   const scrollToUpload = () => {
     // If not on home page, navigate there first with hash
@@ -78,6 +86,22 @@ export function Header() {
                   {t('header.jobs', 'Jobs')}
                 </Link>
               </Button>
+              {/* AGENTS, right after Jobs: the hand-off from the board (a
+                  posting or a search handed to the person's own agent) is
+                  board-adjacent, and /agents is the page every audience —
+                  seeker, developer, the agent itself — is sent to. It was in
+                  no header at all; one letter from /agent, the $99 plan. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Link to="/agents" onClick={trackNavAgents}>
+                  <Bot className="w-3.5 h-3.5" />
+                  {t('header.agents', 'Agents')}
+                </Link>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -136,6 +160,23 @@ export function Header() {
           {/* Right: Actions */}
           <div className="flex items-center gap-1 sm:gap-2">
             <LanguageSwitcher variant="compact" />
+            {/* UNDER 640px THE NAV ABOVE DOES NOT RENDER and the app has no
+                hamburger (Footer.tsx records this), so a destination missing
+                from this cluster is reachable on a phone only from the footer,
+                beneath "Load more". The smallest honest affordance: the same
+                /agents link, icon-only, shown only where the nav is hidden —
+                one item, not a menu, and named for a screen reader. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="sm:hidden text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] touch-manipulation"
+              aria-label={t('header.agents', 'Agents')}
+            >
+              <Link to="/agents" onClick={trackNavAgents}>
+                <Bot className="w-4 h-4" aria-hidden="true" />
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="sm"

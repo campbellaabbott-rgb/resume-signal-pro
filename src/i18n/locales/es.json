@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Navegación principal",
     "guides": "Guías",
     "jobs": "Empleo",
-    "explore": "Explorar"
+    "explore": "Explorar",
+    "agents": "Agentes"
   },
   "hero": {
     "badge": "Tablón de empleo en vivo — cada oferta verificada en el sistema de la propia empresa",
@@ -411,6 +412,10 @@
       "vsChatGPT": {
         "question": "¿Por qué es mejor que ChatGPT o plantillas de currículum?",
         "answer": "Resume Booster está diseñado específicamente para optimización ATS con un sistema de puntuación ponderado de 5 categorías, 14 plantillas específicas por industria y feedback calibrado por reclutadores. A diferencia de ChatGPT, obtienes una salida estructurada de 10 secciones sin necesidad de crear prompts. A diferencia de las plantillas, proporcionamos reescrituras personalizadas, análisis de LinkedIn y alineación con descripciones de trabajo. Tus datos se descartan inmediatamente, nunca se usan para entrenamiento."
+      },
+      "bringYourAgent": {
+        "question": "¿Puede usarlo mi propio agente de IA?",
+        "answer": "Sí. Leer la bolsa de empleo no requiere ninguna clave en una primera llamada, y una clave gratuita abre todas las herramientas de lectura. Para que tu agente solicite postulaciones, un pase de ${{passPrice}} le da {{passHours}} horas y {{passApplications}} postulaciones, desde su primera llamada y sin renovarse nunca; el plan Agent hace lo mismo cada mes y se renueva. Cada oferta y cada búsqueda de la bolsa tiene un control que copia una instrucción para tu agente, y la configuración de cada host está en /agents."
       }
     },
     "stillHaveQuestions": "¿Aún tienes preguntas?"
@@ -4096,7 +4101,6 @@
     "chipAgentOnly": "El agente puede postular",
     "chipInclUncat": "+ sin clasificar",
     "deadLinkDocTitle": "Oferta ya no disponible — Resume Booster",
-    "agentAppliesTip": "El formulario de solicitud de este empleador es uno que nuestro agente puede rellenar y enviar por su cuenta: sin CAPTCHA y sin cuenta. Si el empleador pregunta algo que no podemos responder desde tu perfil, te devuelve la solicitud. Requiere la suscripción Apply Agent.",
     "agentAppliesChip": "El agente puede postular",
     "descFailed": "No pudimos cargar esta descripción ahora mismo.",
     "agentOnlyTip": "Mostrar solo ofertas cuyo formulario pueda rellenar y enviar nuestro agente. La insignia Sparkles en una tarjeta significa lo mismo: esto filtra todo el tablón a esas.",
@@ -4266,7 +4270,20 @@
     "urgencyTipRateDated": "Medido sobre las {{n}} vacantes de esta empresa que llevan su propia fecha de publicación: hasta un {{pct}}% se retiró definitivamente en {{d}} días desde su publicación ({{lo}}–{{hi}}% en cualquier dirección). Las vacantes que siguen abiertas, y las que superaron nuestro límite de 30 días, cuentan como no terminadas en lugar de excluirse. Conviene postular pronto.",
     "pastFieldHorizonTipNoCount": "Medido desde nuestro propio registro de ciclo de vida: de las vacantes de {{field}} que seguimos en los últimos {{window}} días, el {{gone}}% salió del tablón en {{d}} días. Esta lleva {{age}} días según la fecha publicada por la empresa. Una vacante abierta mucho tiempo no está muerta — pero conviene saberlo antes de invertir una postulación.",
     "compareFillRateBounded": "hasta un {{pct}}% de sus vacantes se retira definitivamente en {{d}}d ({{lo}}–{{hi}}%)",
-    "countLineNoFeeds": "{{total}} vacantes activas — todas directo del sistema de contratación de cada empresa."
+    "countLineNoFeeds": "{{total}} vacantes activas — todas directo del sistema de contratación de cada empresa.",
+    "openInAgent": "Abrir en tu agente",
+    "openInAgentTip": "Copia una instrucción de una línea para tu propio agente de IA: nombra el id de esta oferta y nuestro servidor MCP, y pide al agente que lea la oferta y diga si puede postularse.",
+    "agentPromptCopied": "Instrucción copiada — pégala en tu agente. Nombra esta oferta y nuestro servidor MCP.",
+    "agentPromptFailed": "No se pudo copiar la instrucción",
+    "whichAgent": "¿Qué agente?",
+    "agentOpenThere": "Abrir allí (rellenado, no enviado)",
+    "agentOpenThereTip": "Abre allí una conversación nueva con la instrucción ya escrita. No se envía nada hasta que pulses enviar.",
+    "agentAppliesTip2": "El formulario de solicitud de este empleador es uno que nuestro agente de postulación puede rellenar y enviar por sí solo — sin CAPTCHA y sin cuenta. Aun así te devuelve la solicitud si el empleador pregunta algo que no podemos responder desde tu perfil. Requiere el plan Agent o un pase activo.",
+    "bringYourOwnAgent": "o trae tu propio agente",
+    "sendSearchToAgent": "Enviar esta búsqueda a mi agente",
+    "sendSearchTip": "Copia una instrucción de una línea para tu propio agente de IA: los filtros y el orden que estás viendo, como los argumentos que acepta la búsqueda de nuestro servidor MCP.",
+    "searchPromptCopied": "Búsqueda copiada como instrucción — pégala en tu agente.",
+    "welcomeAgent": "Trae tu propio agente"
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",
@@ -4911,5 +4928,19 @@
     "passLive": "Pase en marcha · quedan {{left}} candidaturas",
     "passBuy": "Comprar un pase",
     "passOpen": "Tu pase"
+  },
+  "agentPage": {
+    "connectInstead": "¿Ya tienes un agente? Conéctalo en su lugar — {{passHours}} horas por ${{passPrice}}, nunca se renueva; el plan Agent sí."
+  },
+  "agentConnect": {
+    "rateLine": "Una clave gratuita se limita a {{ratePerMin}} solicitudes por minuto y {{dailyQuota}} llamadas al día; un pase activo eleva ambas durante sus horas.",
+    "attachTitle": "Instrucciones y recursos que tu host puede listar",
+    "attachLead": "Junto a las herramientas, el servidor registra instrucciones listas para usar y algunos documentos legibles. Los hosts que las listan (el menú de adjuntar de claude.ai, la lista de comandos de Claude Code, el panel de Cursor) las muestran bajo el nombre del servidor; listarlas no cuesta ninguna llamada y no requiere clave.",
+    "promptsHeading": "Instrucciones",
+    "resourcesHeading": "Recursos",
+    "resourceKeyed": "requiere clave o inicio de sesión",
+    "resourceUnkeyed": "se lee sin clave",
+    "handoffLead": "En la bolsa de empleo, cada oferta y cada búsqueda tiene un control que copia una instrucción para tu agente — nombra el id de la oferta o los argumentos de la búsqueda y la URL de este servidor.",
+    "handoffCta": "Abrir la bolsa de empleo"
   }
 }

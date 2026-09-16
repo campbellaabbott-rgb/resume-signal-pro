@@ -81,6 +81,7 @@ import { hasFitAccess, isPaidKeyTier } from "../_shared/key-tier.ts";
 // file only decides WHEN each is answered.
 import {
   OAUTH_SCOPE,
+  bearerChallenge,
   isProtectedResourceMetadataPath,
   looksLikeApiKey,
   oauthVia,
@@ -120,8 +121,27 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // keyed tool called with no credential, a verified token mapped to the
 // account's key so it meters through the same check, and per-tool
 // securitySchemes on tools/list for the hosts that read them.
-const SERVER_INFO = { name: "resumebooster-job-board", version: "2026-09-04.5" };
-const DOCS_URL = "https://resumebooster.work/agents";
+// 09-04.6: the attach menu. Three prompts (prompts/list, prompts/get) whose
+// bodies are functions of the registry; three static resources
+// (resources/list, resources/read) — a guide derived from the registry, the
+// board's statistics, this key's status — plus a per-card resource_link on
+// search results that resources/read resolves; serverInfo gains a title,
+// the human page and an icon; the opening of initialize.instructions says
+// what the server is and what to call first (it opened with the rate caps)
+// and states that a /jobs?job=<id> link's id is the argument the detail
+// tools take; and, for a host that reads its sign-in cue out of a result's
+// _meta rather than the transport, the same challenge in band (a GUESS at
+// ChatGPT's behaviour, labelled so at the site).
+const SERVER_INFO = {
+  name: "resumebooster-job-board",
+  version: "2026-09-04.6",
+  // 2025-11-25 Implementation fields, additive: a display name, the human
+  // page, and an icon a host may show beside the connector.
+  title: "Resume Booster job board",
+  websiteUrl: "https://resumebooster.work/agents",
+  icons: [{ src: "https://resumebooster.work/icons/icon-192.png", mimeType: "image/png", sizes: ["192x192"] }],
+};
+const DOCS_URL = SERVER_INFO.websiteUrl;
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -149,6 +169,15 @@ const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${enco
 const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"];
 /** Rows an unkeyed search may return — a page of the board, not a dump of it. */
 const ANON_SEARCH_LIMIT = 10;
+/**
+ * Rows a keyed search may return per page, and ids check_jobs_open answers
+ * in one call. Each is read here by the runner that clamps to it, the
+ * schema that declares it, the unkeyed note and the instructions that name
+ * it — one constant per cap, never typed twice (the guard renders the
+ * instructions with these and the mirror pins them cross-runtime).
+ */
+const KEYED_SEARCH_LIMIT = 60;
+const CHECK_JOBS_OPEN_MAX = 200;
 // TWO CAPS, AND WHAT EACH ONE ACTUALLY BOUNDS. The address cap bounds one
 // caller — to the extent the address is the platform's word and not the
 // caller's (see callerAddress: a header no proxy appended is the caller's own
@@ -459,7 +488,7 @@ const SEARCH_PROPERTIES = {
   excludeAgencies: { type: "boolean", description: "Hide postings from staffing/recruiting agencies (their job cards carry agency:true). Agencies are served by default; this is an opt-in narrowing." },
   agentReadyOnly: { type: "boolean", description: "Only jobs the apply agent can submit to on the user's behalf." },
   sort: { type: "string", enum: ["relevance", "newest", "salary"], description: "Default relevance." },
-  limit: { type: "number", description: "Rows per page, 1-60. Default 20." },
+  limit: { type: "number", description: `Rows per page, 1-${KEYED_SEARCH_LIMIT}. Default 20.` },
   offset: { type: "number", description: "Paging offset — pass back the previous response's nextOffset." },
 };
 
@@ -704,7 +733,10 @@ const TOOLS = [
   {
     name: "get_job",
     title: "Get one job",
-    description: "Full detail for one job id (from search_jobs), including the complete description text and when the employer's feed last confirmed it open. For several ids at once, use get_jobs — it costs ONE call against the daily quota instead of one per posting.",
+    description:
+      "Full detail for one job id (from search_jobs), including the complete description text and when the employer's feed last confirmed it open. " +
+      "A resumebooster.work/jobs?job=<id> link's id is this argument (and fetch's, check_apply_support's and request_application's). " +
+      "For several ids at once, use get_jobs — it costs ONE call against the daily quota instead of one per posting.",
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -779,7 +811,7 @@ const TOOLS = [
     name: "check_jobs_open",
     title: "Check which jobs are still open",
     description:
-      "Are these postings still on the board? Answers up to 200 ids in one call — the tool for re-verifying a saved shortlist " +
+      `Are these postings still on the board? Answers up to ${CHECK_JOBS_OPEN_MAX} ids in one call — the tool for re-verifying a saved shortlist ` +
       "before acting on it, instead of spending a metered get_job per posting. Returns open:{id:boolean} plus the closed ids, " +
       "and names the basis of the answer: it reads the board's index (a closed posting is one the employer's feed stopped " +
       "listing), not the employer's site at this instant, and it is a weaker test than get_job's — read `basis` before " +
@@ -788,7 +820,7 @@ const TOOLS = [
     inputSchema: {
       type: "object",
       properties: {
-        ids: { type: "array", items: { type: "string" }, maxItems: 200, description: "Job ids from search_jobs. Up to 200 per call; anything past that is named in notChecked rather than silently dropped." },
+        ids: { type: "array", items: { type: "string" }, maxItems: CHECK_JOBS_OPEN_MAX, description: `Job ids from search_jobs. Up to ${CHECK_JOBS_OPEN_MAX} per call; anything past that is named in notChecked rather than silently dropped.` },
       },
       required: ["ids"],
     },
@@ -1333,6 +1365,357 @@ const KEY_ONLY_READ_TOOLS: readonly string[] = TOOLS.map((t) => t.name)
   .filter((n) => !ANON_TOOLS.includes(n) && !PAID_TOOLS.includes(n) && !ACCOUNT_TOOLS.includes(n));
 
 /**
+ * A registered tool's name, or a thrown error. The prompts, the guide and the
+ * opening of initialize.instructions reach a tool's name ONLY through this,
+ * so none of them can spell a tool the registry does not hold — a name typed
+ * into prose is a second list, and the second list is the one that drifts.
+ * Thrown at module load for the static texts and at the first request for
+ * the bodies built per call; src/test guards read the same call sites.
+ */
+const tool = (name: string): string => {
+  if (!TOOLS.some((t) => t.name === name)) throw new Error(`an unregistered tool is named: ${name}`);
+  return name;
+};
+
+// ── Prompts: three entry points, every tool name read off the registry ─────
+//
+// Surfaced by claude.ai's attach menu, Claude Code's slash list and Cursor's
+// panel; ChatGPT has no prompt UI. Three, not four: the fourth the lanes
+// proposed was a per-field list of growing employers, the leaderboard shape
+// employer_growth's own description refuses. Every body is a FUNCTION of the
+// registry at request time — a name reaches a body only through tool() — and
+// names gates, never prices. The résumé prompt STARTS with the unkeyed path,
+// so a caller with no key gets a result rather than a sign-in dead end, and
+// names the verification step as the one that needs a key. resume_text is
+// optional because Claude Code splits slash-command arguments on whitespace
+// and a CV cannot travel that way; the body asks for it in the conversation.
+//
+// prompts/list and prompts/get are free and unmetered, with or without a
+// credential — discovery must not spend a real call, and a body is a
+// function of the registry, not of the caller's key. Neither reaches
+// api_key_check or mcp_anon_check, so no api_usage row and no pass clock
+// can come of reading one (the adoption reader's prompt family therefore
+// reads zero by construction).
+type PromptArgs = Record<string, string>;
+type Prompt = {
+  name: string;
+  title: string;
+  description: string;
+  arguments: { name: string; description: string; required: boolean }[];
+  body: (args: PromptArgs) => string;
+};
+
+const PROMPTS: readonly Prompt[] = [
+  {
+    name: "find_roles_for_my_cv",
+    title: "Find roles that fit my CV",
+    description:
+      "Read the occupation out of a CV, search the live board, then verify the shortlist is still open (needs a key or sign-in for that step).",
+    arguments: [
+      { name: "resume_text", description: "The CV as plain text; leave empty in a slash command and paste it in the conversation.", required: false },
+      { name: "location", description: "City, state, country or 'remote'.", required: false },
+    ],
+    body: (a) =>
+      `1) If no CV text is in this conversation, ask for it — never invent one. ` +
+      `2) Read the most recent job title out of the CV and call ${tool("search_jobs")} with query = that title, ` +
+      `location = ${a.location ? `"${a.location}"` : "the place the CV or the person names (omit it if neither does)"}, limit = ${ANON_SEARCH_LIMIT}, and show the cards — this step needs no key. ` +
+      `3) To verify the shortlist is still open call ${tool("check_jobs_open")} with the ids — that step needs a key or a sign-in; if this connection has neither, say so and stop. ` +
+      `4) Answer as a table: title, employer, location, pay only when the card states it (salaryMinAnnual/salaryMaxAnnual, never re-read from prose), agentReady; ` +
+      `then relay the board's own disclosures — ignoredFilters (a filter it could not apply) and countUnavailable (it refused to guess a total). ` +
+      `Never request an application without an explicit yes per job.` +
+      (a.resume_text ? `\n\nCV:\n${a.resume_text}` : ""),
+  },
+  {
+    name: "apply_to_my_shortlist",
+    title: "Apply to my shortlist",
+    description:
+      `${tool("key_status")} first (plan or pass, mandate, résumé on file, applications left), then one ${tool("request_application")} per job id after the person confirms each.`,
+    arguments: [
+      { name: "job_ids", description: `Comma-separated job ids from ${tool("search_jobs")}.`, required: true },
+    ],
+    body: (a) =>
+      `1) Call ${tool("key_status")} first: it says whether this connection may apply at all — an account-linked key, an Agent plan or a live pass, ` +
+      `a standing mandate, a résumé on file — and, on a pass, how many applications are left. If any gate in apply.blockers is closed, name it and stop; ` +
+      `never call ${tool("request_application")} to find out. ` +
+      `2) For each of these ids — ${a.job_ids || "(none given: ask for them)"} — call ${tool("check_apply_support")}; where the hiring system is one the agent cannot submit to, ` +
+      `give the person the applyUrl instead. ` +
+      `3) Read the remaining cards with ${tool("get_jobs")} (up to ${GET_JOBS_MAX} ids per call) and ask for an explicit yes for EACH job. ` +
+      `4) Only after a yes, call ${tool("request_application")} with that jobId, and report accepted, alreadyQueued or refusedBy exactly as answered. ` +
+      `Never apply without a yes per job, and never invent an answer to an employer's question: the pipeline draws every answer from the owner's own profile.`,
+  },
+  {
+    name: "what_can_my_key_do",
+    title: "What can this connection do right now",
+    description:
+      `One call to ${tool("key_status")}, explained: tier, calls left, whether ${tool("fit_resume")} and the apply tools would answer, and what would change the answer.`,
+    arguments: [],
+    body: () =>
+      `Call ${tool("key_status")} once and explain the answer in plain words: the tier; requests left this minute and calls left today (both include that call); ` +
+      `whether ${tool("fit_resume")} would answer (features.fit_resume) and whether the apply tools would (features.request_application, with every entry of apply.blockers named); ` +
+      `on a pass, when its clock ends and how many applications remain — or that it has not started yet (it starts at the first call other than ${tool("key_status")}). ` +
+      `Then say what would change each closed answer, as the response's own fix and upgrade fields put it — name the gate, never a price. ` +
+      `If the call answers a sign-in challenge instead, this connection holds no key: say that the unkeyed tools (${ANON_TOOLS.join(", ")}) still answer, and stop.`,
+  },
+];
+
+/** The prompts/get answer: one user message, the body rendered for these arguments. */
+function promptMessages(p: Prompt, args: PromptArgs): { description: string; messages: { role: "user"; content: { type: "text"; text: string } }[] } {
+  return { description: p.description, messages: [{ role: "user", content: { type: "text", text: p.body(args) } }] };
+}
+
+// ── Resources: the static pair, this key, and a card's own link ────────────
+//
+// Surfaced by claude.ai's attach menu and Claude Code's @-mention list
+// (listed resources only — no host documents surfacing templates, so none is
+// declared). Three static URIs: the guide, derived from the registry at
+// request time; the board's statistics, the board_stats runner's payload;
+// and this key's status, the key_status runner's payload. Search results
+// additionally carry one resource_link per card — a URI a host MAY render as
+// an attachable object, and which resources/read resolves to the posting's
+// detail — with no copy anywhere claiming a host does render it.
+//
+// resources/list is free and unmetered. resources/read follows the gate of
+// the tool it wraps: the guide and the statistics answer with no credential
+// (the statistics through the unkeyed tier, counted exactly as an unkeyed
+// board_stats call; the guide free, it is documentation), the key's status
+// and a card's link need one. A keyed read is metered through the one
+// api_key_check call under the resource family (RESOURCE_ENDPOINT).
+const RESOURCE_SCHEME = "resumebooster://";
+const GUIDE_URI = `${RESOURCE_SCHEME}guide`;
+const BOARD_STATS_URI = `${RESOURCE_SCHEME}board/stats`;
+const MY_KEY_URI = `${RESOURCE_SCHEME}me/key`;
+/** A posting's URI: the id every other tool takes, under the scheme. */
+const JOB_URI_PREFIX = `${RESOURCE_SCHEME}job/`;
+const jobUri = (id: string) => `${JOB_URI_PREFIX}${id}`;
+
+type Resource = { uri: string; name: string; title: string; mimeType: string; description: string; keyed: boolean };
+const RESOURCES: readonly Resource[] = [
+  {
+    uri: GUIDE_URI, name: "guide", title: "How this board answers an agent", mimeType: "text/markdown", keyed: false,
+    description: "The tiers, which tools answer unkeyed, how to verify a shortlist cheaply, what the closure ledger can and cannot say. Derived from the tool registry at request time.",
+  },
+  {
+    uri: BOARD_STATS_URI, name: "board-stats", title: "Board statistics (live cache)", mimeType: "application/json", keyed: false,
+    description: `Same payload as ${tool("board_stats")}.`,
+  },
+  {
+    uri: MY_KEY_URI, name: "my-key", title: "This key's limits and powers", mimeType: "application/json", keyed: true,
+    description: `Same payload as ${tool("key_status")}: tier, calls left, which tools would answer, and the pass if the account holds one. Needs a key or a sign-in.`,
+  },
+];
+
+/**
+ * A card's resource_link: the posting under its own URI, named as a person
+ * would read it. Appended to the content of search_jobs and get_jobs beside
+ * the JSON text — the structured half is untouched, so a client validating
+ * structuredContent against the outputSchema sees exactly what it did.
+ */
+const cardLink = (card: Record<string, unknown>) => ({
+  type: "resource_link",
+  uri: jobUri(String(card.id ?? "")),
+  name: `${String(card.title ?? "(untitled)")} — ${String(card.company ?? "(employer not stated)")}`,
+  mimeType: "application/json",
+});
+const withCardLinks = (result: Record<string, unknown>, cards: unknown): Record<string, unknown> => ({
+  ...result,
+  content: [...(result.content as unknown[]), ...(Array.isArray(cards) ? cards : []).map((c) => cardLink(c as Record<string, unknown>))],
+});
+
+/** The resources/read answer: one contents entry, text or JSON. */
+const contentsOf = (uri: string, mimeType: string, data: unknown) => ({
+  contents: [{ uri, mimeType, text: typeof data === "string" ? data : JSON.stringify(data, null, 1) }],
+});
+
+/**
+ * The guide, as markdown, from the same constants the tools and the
+ * instructions read: no tier, cap, count or name in it is typed.
+ */
+function guideText(): string {
+  const by = (names: readonly string[]) => names.map((n) => `\`${n}\``).join(", ");
+  return [
+    `# How this board answers an agent`,
+    ``,
+    `Live job search over employers' own hiring feeds (${DOCS_URL}). Streamable HTTP, POST only, stateless. Nothing is scraped from aggregators; postings come from the employer's own hiring system and leave when its feed stops listing them.`,
+    ``,
+    `## Four tiers`,
+    ``,
+    `- **No key.** ${by(ANON_TOOLS)} answer with no Authorization header at all: search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller; every answer says how many are left. \`${tool("search")}\` and \`${tool("fetch")}\` are \`${tool("search_jobs")}\` and \`${tool("get_job")}\` under the names ChatGPT's research connector calls.`,
+    `- **Free key, no account** (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, every filter, and every other read tool — ${by(KEY_ONLY_READ_TOOLS)}.`,
+    `- **Paid key:** ${by(PAID_TOOLS)}, exactly like POST /v1/fit on the data API.`,
+    `- **Account-linked key** (${DOCS_URL}) with an Agent plan or a live pass (${PASS_URL}) and a standing mandate: ${by(ACCOUNT_TOOLS)}. A pass also opens the paid scorer.`,
+    ``,
+    `## Call order`,
+    ``,
+    `1. \`${tool("board_stats")}\` — cheap, unkeyed, and it says what a key adds.`,
+    `2. On a keyed session, \`${tool("key_status")}\` — tier, calls left, which tools would answer, every apply blocker named. Nothing has to be discovered by refusal.`,
+    `3. \`${tool("search_jobs")}\`; then verify a shortlist with \`${tool("check_jobs_open")}\` (many ids, one call) and read it with \`${tool("get_jobs")}\` (${GET_JOBS_MAX} ids a call) rather than one \`${tool("get_job")}\` each — the quota counts calls, not ids.`,
+    `4. A resumebooster.work/jobs?job=<id> link's id is the argument to \`${tool("get_job")}\`, \`${tool("fetch")}\`, \`${tool("check_apply_support")}\` and \`${tool("request_application")}\`; the same id is the tail of a card's \`${JOB_URI_PREFIX}<id>\` resource link.`,
+    ``,
+    `## What the answers mean`,
+    ``,
+    `- \`countUnavailable\` means the board refuses to guess a total; \`ignoredFilters\` names any filter it could not apply — the results answer a wider question than was asked.`,
+    `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
+    `- \`agentReady\` is true when \`${tool("request_application")}\` can submit to that hiring system; every application passes the same gates as the signed-in flow, and answers are never invented.`,
+    ``,
+    `## The ledger`,
+    ``,
+    `This board watches postings come down. \`${tool("employer_hiring_record")}\` and \`${tool("employer_growth")}\` carry that record per employer board — a takedown is a takedown, never an outcome (the board cannot tell why a role came down), one board is never summed with another, and an unknown always names its reason. No list of growing employers exists here or anywhere on the board.`,
+    ``,
+    `## Prompts and resources`,
+    ``,
+    `Prompts: ${PROMPTS.map((p) => `\`${p.name}\``).join(", ")}. Resources: ${RESOURCES.map((r) => `\`${r.uri}\``).join(", ")}. Listing either is free; reading one follows the gate of the tool it wraps.`,
+  ].join("\n");
+}
+
+// ── What a keyed discovery read is metered as ───────────────────────────────
+//
+// api_usage's endpoint is free text. A keyed tool call meters as the MCP
+// prefix plus the tool name (the one api_key_check call in the dispatcher);
+// a keyed prompt read and a keyed resource read meter under their own
+// families so the adoption reader (agent_adoption_metrics) can tell the
+// three apart. Each family is spelled once, as a full endpoint, and the name
+// the key check receives is that endpoint less the shared prefix — the
+// check itself spells the prefix. Neither family starts a pass: the
+// activation clause in api_key_check exempts both (migration
+// 20260917230000), because reading the guide or a prompt is looking, and a
+// pass starts at the first call that does something.
+const MCP_ENDPOINT_PREFIX = "/mcp/";
+const RESOURCE_ENDPOINT = (name: string) => `/mcp/resource/${name}`;
+const meteredNameOf = (endpoint: string) => endpoint.slice(MCP_ENDPOINT_PREFIX.length);
+
+/**
+ * A prompts/get or resources/read, resolved: what it is, what it meters as,
+ * and — for a resource — the gate it inherits. A prompt has no endpoint:
+ * it is never metered, with or without a credential (discovery does not
+ * spend a real call), so it never reaches the key check. Null for any other
+ * method; an `error` for a name or URI this server does not hold.
+ */
+type Read =
+  | { kind: "prompt"; prompt: Prompt }
+  | { kind: "resource"; resource: Resource; endpoint: string; keyed: boolean }
+  | { kind: "job"; id: string; uri: string; endpoint: string; keyed: true }
+  | { kind: "error"; code: number; message: string };
+type MeteredRead = Exclude<Read, { kind: "prompt" } | { kind: "error" }>;
+function readOf(method: string | undefined, params: Record<string, unknown>): Read | null {
+  if (method === "prompts/get") {
+    const name = String(params.name ?? "");
+    const prompt = PROMPTS.find((p) => p.name === name);
+    if (!prompt) return { kind: "error", code: -32602, message: `unknown prompt: ${name}` };
+    return { kind: "prompt", prompt };
+  }
+  if (method === "resources/read") {
+    const uri = String(params.uri ?? "");
+    const resource = RESOURCES.find((r) => r.uri === uri);
+    if (resource) return { kind: "resource", resource, endpoint: RESOURCE_ENDPOINT(resource.name), keyed: resource.keyed };
+    if (uri.startsWith(JOB_URI_PREFIX) && uri.length > JOB_URI_PREFIX.length) {
+      return { kind: "job", id: uri.slice(JOB_URI_PREFIX.length), uri, endpoint: RESOURCE_ENDPOINT("job"), keyed: true };
+    }
+    return { kind: "error", code: -32002, message: `unknown resource: ${uri}` };
+  }
+  return null;
+}
+
+/**
+ * A tool result, re-shaped as a resources/read answer: the structured half
+ * becomes the JSON text under the resource's URI; an in-band tool refusal
+ * becomes the JSON-RPC error a read must answer with (a read has no
+ * isError shape of its own).
+ */
+function asContents(rpcId: unknown, uri: string, mimeType: string, rpc: unknown): unknown {
+  const r = rpc as { result?: { structuredContent?: unknown; isError?: boolean; content?: { text?: string }[] }; error?: unknown };
+  if (r.error) return rpc;
+  if (r.result?.isError) return rpcError(rpcId, -32000, String(r.result.content?.[0]?.text ?? "refused"));
+  return rpcResult(rpcId, contentsOf(uri, mimeType, r.result?.structuredContent ?? {}));
+}
+
+/**
+ * A keyed refusal (rate, quota, revoked, unknown key) on a discovery read:
+ * the same words the tool refusal carries, as the JSON-RPC error a read
+ * answers with, and the same headers.
+ */
+const readRefused = (rpcId: unknown, message: string, fix: string, headers: Record<string, string>) =>
+  json(rpcError(rpcId, -32000, `${message} ${fix}`), 200, headers);
+
+/**
+ * A runner failure behind a resources/read, on either tier: an argument the
+ * caller can change (a blank job id) is named as such; anything else is the
+ * generic internal line the tool path gives, the detail kept server-side.
+ * Always a JSON-RPC error with a body and the CORS headers — a read that
+ * threw out of the handler answered a bare 500 with neither.
+ */
+function readFailed(rpcId: unknown, read: MeteredRead, e: unknown, headers: Record<string, string>): Response {
+  const what = read.kind === "job" ? "job" : read.resource.name;
+  if (e instanceof ToolArgumentError) return readRefused(rpcId, e.message, e.fix, headers);
+  console.error(`[AGENT-MCP] resource ${what} failed:`, String((e as Error)?.message ?? e).slice(0, 300));
+  return json(rpcError(rpcId, -32603, `The ${what} resource hit an internal error. Try again shortly.`), 200, headers);
+}
+
+// ── The ChatGPT-shaped sign-in hedge — a GUESS, labelled ───────────────────
+//
+// OpenAI documents BOTH a transport-level challenge with the WWW-Authenticate
+// header and, for the tool-level "Mixed" UI, the same challenge string inside
+// a tool result's `_meta["mcp/www_authenticate"]` on a 200 with isError. Which
+// of the two a Mixed connector reacts to at the transport level is
+// undocumented, and no ChatGPT run can exist while the authorization server
+// is off. So: the HTTP challenge stays for everyone, and ONLY a caller whose
+// tools/call carries an `openai/`-prefixed key in params._meta (the marker
+// ChatGPT stamps on its calls) gets the in-band form instead — the exact
+// challenge string the OAuth module builds for the header, so the two can
+// never say different things. GUESS: that ChatGPT reads the in-band form on
+// a transport-level call. The log line is the measurement.
+const OPENAI_META_PREFIX = "openai/";
+const hedgeInBand = (params: Record<string, unknown>): boolean => {
+  const meta = params._meta;
+  return !!meta && typeof meta === "object" && Object.keys(meta as object).some((k) => k.startsWith(OPENAI_META_PREFIX));
+};
+/** The caller's own `openai/subject` from _meta, when it is a non-empty string; logged hashed, never a key to anything. */
+const openaiSubjectOf = (params: Record<string, unknown>): string => {
+  const meta = params._meta;
+  const v = meta && typeof meta === "object" ? (meta as Record<string, unknown>)[`${OPENAI_META_PREFIX}subject`] : undefined;
+  return typeof v === "string" ? v.trim() : "";
+};
+function inBandChallenge(toolName: string) {
+  console.log(`[AGENT-MCP] oauth challenge via _meta on ${toolName}`);
+  return {
+    ...toolErr("Sign in to use this tool.", `Connect this server through its sign-in, or send a key as Authorization: Bearer <key> (${MINT_URL}).`),
+    _meta: { "mcp/www_authenticate": [bearerChallenge()] },
+  };
+}
+
+/** prompts/get arguments: strings only, as the spec shapes them; anything else is dropped rather than rendered. */
+function promptArgsOf(params: Record<string, unknown>): PromptArgs {
+  const raw = params.arguments;
+  const out: PromptArgs = {};
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === "string") out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * A credentialed resources/read, after the key check allowed and metered
+ * it: each resource is the runner of the tool it wraps, under
+ * the resource's own URI and mime type. Never a second reader: the guide is
+ * built from the registry, the statistics and the posting come from the
+ * board runners (a posting in the fetch alias's document shape, the same one
+ * the unkeyed read answers), the key's status from the decision this call
+ * was allowed by.
+ */
+async function answerRead(client: SupabaseClient, read: MeteredRead, d: Decision): Promise<unknown> {
+  switch (read.kind) {
+    case "job": return contentsOf(read.uri, "application/json", await runFetchAlias({ id: read.id }));
+    case "resource": {
+      const r = read.resource;
+      if (r.uri === GUIDE_URI) return contentsOf(r.uri, r.mimeType, guideText());
+      if (r.uri === BOARD_STATS_URI) return contentsOf(r.uri, r.mimeType, await runBoardStats());
+      if (r.uri === MY_KEY_URI) return contentsOf(r.uri, r.mimeType, await runKeyStatus(client, d));
+      throw new Error(`no runner for resource ${r.uri}`);
+    }
+    default: throw new Error("unreachable read");
+  }
+}
+
+/**
  * AN ARRAY, ALWAYS — the board reads `companies` with Array.isArray and pushes
  * a bare string straight into ignoredFilters. A comma list would therefore
  * arrive as an employer scope that never bound, and the caller would read a
@@ -1349,7 +1732,7 @@ const companyTokens = (v: unknown): string[] =>
 
 /** The board `list` body for a tool's args — one mapping, shared by search and debug. */
 function searchBody(args: Record<string, unknown>): Record<string, unknown> {
-  const limit = Math.max(1, Math.min(60, Number(args.limit ?? 20) || 20));
+  const limit = Math.max(1, Math.min(KEYED_SEARCH_LIMIT, Number(args.limit ?? 20) || 20));
   const companies = companyTokens(args.companies);
   return {
     action: "list", limit, includeFacets: false,
@@ -1583,9 +1966,9 @@ async function runCheckJobsOpen(args: Record<string, unknown>): Promise<unknown>
     (Array.isArray(args.ids) ? args.ids : [args.ids])
       .map((x) => String(x ?? "").trim()).filter(Boolean),
   )];
-  if (!asked.length) throw new Error("ids is required — an array of job ids from search_jobs (up to 200).");
-  const ids = asked.slice(0, 200);
-  const notChecked = asked.slice(200);
+  if (!asked.length) throw new Error(`ids is required — an array of job ids from search_jobs (up to ${CHECK_JOBS_OPEN_MAX}).`);
+  const ids = asked.slice(0, CHECK_JOBS_OPEN_MAX);
+  const notChecked = asked.slice(CHECK_JOBS_OPEN_MAX);
   const r = await board({ action: "exists", ids });
   const raw = (r.open && typeof r.open === "object" ? r.open : {}) as Record<string, unknown>;
   const open: Record<string, boolean> = {};
@@ -1597,7 +1980,7 @@ async function runCheckJobsOpen(args: Record<string, unknown>): Promise<unknown>
     checked: ids.length,
     openCount: ids.length - closed.length,
     closedCount: closed.length,
-    ...(notChecked.length ? { notChecked, note: "Only the first 200 ids were checked — send the rest in another call." } : {}),
+    ...(notChecked.length ? { notChecked, note: `Only the first ${CHECK_JOBS_OPEN_MAX} ids were checked — send the rest in another call.` } : {}),
     basis:
       "Open means the board still holds a row for this posting — its employer's feed listed it at the last refresh and the " +
       "board has not confirmed it gone. It is not a live probe of the employer's site at this instant, and it is a WEAKER " +
@@ -2422,10 +2805,16 @@ async function callTool(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   switch (name) {
-    case "search_jobs": return toolOk(await runSearchJobs(args));
+    case "search_jobs": {
+      const r = await runSearchJobs(args) as Record<string, unknown>;
+      return withCardLinks(toolOk(r), r.jobs);
+    }
     case "debug_search": return toolOk(await runDebugSearch(args));
     case "get_job": return toolOk(await runGetJob(args));
-    case "get_jobs": return toolOk(await runGetJobs(args));
+    case "get_jobs": {
+      const r = await runGetJobs(args) as Record<string, unknown>;
+      return withCardLinks(toolOk(r), r.jobs);
+    }
     case "check_jobs_open": return toolOk(await runCheckJobsOpen(args));
     case "board_stats": return toolOk(await runBoardStats());
     case "employer_hiring_record": return toolOk(await runEmployerHiringRecord(client, args));
@@ -2475,8 +2864,18 @@ async function answerUnkeyed(
   rpcId: unknown,
   toolName: string,
   args: Record<string, unknown>,
+  params: Record<string, unknown> = {},
 ): Promise<{ rpc: unknown; headers: Record<string, string> }> {
   const ipHash = (await sha256Hex(callerAddress(req.headers))).slice(0, 16);
+  // A ChatGPT caller stamps its user as `openai/subject` in _meta. It is
+  // caller-written, so it is NEVER the allowance's key (the address bucket
+  // stays the bound); it is logged beside the bucket, hashed to the same
+  // 16-hex prefix, so the edge log can say how many distinct subjects share
+  // one address per day — the measurement that decides whether the shared
+  // egress wall is ever met by real users. Until the adoption reader carries
+  // it, that count is a grep of this line.
+  const subject = openaiSubjectOf(params);
+  if (subject) console.log(`[AGENT-MCP] unkeyed subject ${(await sha256Hex(subject)).slice(0, 16)} on address ${ipHash} (${toolName})`);
   const { data, error } = await client
     .rpc("mcp_anon_check", { p_ip_hash: ipHash, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: ANON_IP_CAP_PER_DAY })
     .maybeSingle();
@@ -2530,7 +2929,7 @@ async function answerUnkeyed(
           mintUrl: MINT_URL,
           dailyCalls: FREE_KEY_DAILY_QUOTA,
           adds:
-            `${keyRaisesTo} calls a day instead of ${a.ip_cap}, search_jobs pages up to 60 rows instead of ${ANON_SEARCH_LIMIT}, ` +
+            `${keyRaisesTo} calls a day instead of ${a.ip_cap}, search_jobs pages up to ${KEYED_SEARCH_LIMIT} rows instead of ${ANON_SEARCH_LIMIT}, ` +
             `and every other read tool: ${KEY_ONLY_READ_TOOLS.join(", ")}. ${PAID_TOOLS.join(", ")} needs a paid key; ` +
             `${ACCOUNT_TOOLS.join(", ")} need a key minted while signed in (${DOCS_URL}).`,
         },
@@ -2539,7 +2938,7 @@ async function answerUnkeyed(
     }
     default: return { rpc: rpcError(rpcId, -32602, `unknown tool: ${toolName}`), headers: {} };
   }
-  return { rpc: rpcResult(rpcId, toolOk({ ...out, unkeyed })), headers: { "X-Unkeyed-Remaining": String(left) } };
+  return { rpc: rpcResult(rpcId, withCardLinks(toolOk({ ...out, unkeyed }), out.jobs)), headers: { "X-Unkeyed-Remaining": String(left) } };
 }
 
 Deno.serve(async (req) => {
@@ -2596,25 +2995,37 @@ Deno.serve(async (req) => {
     const protocolVersion = MCP_PROTOCOL_VERSIONS.includes(asked) ? asked : MCP_PROTOCOL_VERSIONS[0];
     return json(rpcResult(id, {
       protocolVersion,
-      capabilities: { tools: { listChanged: false } },
+      // Tools, prompts and resources, none of which changes while a session
+      // lasts: this server is stateless and holds no stream to notify on,
+      // so listChanged is false everywhere and subscribe is not offered.
+      capabilities: {
+        tools: { listChanged: false },
+        prompts: { listChanged: false },
+        resources: { listChanged: false, subscribe: false },
+      },
       serverInfo: SERVER_INFO,
-      // ONE PARAGRAPH, FOUR TIERS, every tool name read off the registry.
-      // The sentence on the ledger uses the site's own words for it — a
-      // takedown is a takedown here, and nothing in this paragraph calls it
-      // anything else.
+      // ONE PARAGRAPH, every tool name read off the registry. It opens with
+      // what the server is and what to call first — a host that shows only
+      // the first few hundred characters shows that, not the rate caps —
+      // then states what a job link's id is the argument to, then the four
+      // tiers. The sentence on the ledger uses the site's own words for it:
+      // a takedown is a takedown here, and nothing in this paragraph calls it
+      // anything else. Kept under two kilobytes, which is where one host
+      // truncates; the guard measures the rendered text.
       instructions:
-        "Job search over employers' own hiring feeds, in four tiers. " +
-        `No key: ${ANON_TOOLS.join(", ")} answer with no Authorization header at all — search capped at ${ANON_SEARCH_LIMIT} rows, ` +
+        `Live job search over employers' own hiring feeds, for an agent. Call ${tool("board_stats")} first — it answers with no key and says what a key adds — then ${tool("search_jobs")}; on a keyed session call ${tool("key_status")} first, it says what the key may do so nothing is discovered by refusal. ` +
+        `A resumebooster.work/jobs?job=<id> link's id is the argument to ${tool("get_job")}, ${tool("fetch")}, ${tool("check_apply_support")} and ${tool("request_application")}. ` +
+        `Four tiers. No key: ${ANON_TOOLS.join(", ")} answer with no Authorization header at all — search capped at ${ANON_SEARCH_LIMIT} rows, ` +
         `${ANON_IP_CAP_PER_DAY} calls a day per address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller, each answer saying how many are left ` +
         "(search and fetch are search_jobs and get_job under the names ChatGPT's research connector calls). " +
-        `Free key, no account (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, search_jobs with every filter and up to 60 rows, ` +
-        `and every other read tool — ${KEY_ONLY_READ_TOOLS.join(", ")}; call key_status first, it says what the key may do so nothing is discovered by refusal, ` +
-        "and verify a shortlist with check_jobs_open (200 ids per call) and read it with get_jobs (10) rather than one get_job each — the quota counts calls, not ids. " +
+        `Free key, no account (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, search_jobs with every filter and up to ${KEYED_SEARCH_LIMIT} rows, ` +
+        `and every other read tool — ${KEY_ONLY_READ_TOOLS.join(", ")}; verify a shortlist with check_jobs_open (${CHECK_JOBS_OPEN_MAX} ids per call) and read it with get_jobs (${GET_JOBS_MAX}) rather than one get_job each — the quota counts calls, not ids. ` +
         `Paid key: ${PAID_TOOLS.join(", ")}, exactly like POST /v1/fit. ` +
         `Account-linked key (${DOCS_URL}) with an Agent plan OR a live pass (bought signed-in at ${PASS_URL}) and a standing mandate: ${ACCOUNT_TOOLS.join(", ")} — ` +
-        "a pass also opens the paid scorer; call key_status for the time and applications left on it (the pass starts at the first call other than key_status). " +
+        "a pass also opens the paid scorer; key_status reports the time and applications left on it (the pass starts at the first call other than key_status). " +
         "This board watches postings come down and can say which employers take roles down and leave them down — employer_hiring_record and employer_growth carry that record per employer, with every unknown named as unknown. " +
-        "Counts are honest: countUnavailable means the board refuses to guess, and ignoredFilters names any filter it could not apply.",
+        "Counts are honest: countUnavailable means the board refuses to guess, and ignoredFilters names any filter it could not apply. " +
+        `The guide: ${GUIDE_URI}.`,
     }));
   }
   if (method === "notifications/initialized" || method === "notifications/cancelled") {
@@ -2626,26 +3037,22 @@ Deno.serve(async (req) => {
   // only when each tool says so): an unkeyed tool answers with no auth or
   // with a token; every other tool with a token. Derived from ANON_TOOLS, so
   // the list a host reads and the gate the dispatcher applies are one set.
+  // Mirrored into each tool's _meta as well, for the host that reads its
+  // scheme there (the same hedge as the in-band challenge below).
   if (method === "tools/list") {
     const withToken = { type: "oauth2", scopes: [OAUTH_SCOPE] };
-    const tools = TOOLS.map((t) => ({
-      ...t,
-      securitySchemes: ANON_TOOLS.includes(t.name) ? [{ type: "noauth" }, withToken] : [withToken],
-    }));
+    const tools = TOOLS.map((t) => {
+      const securitySchemes = ANON_TOOLS.includes(t.name) ? [{ type: "noauth" }, withToken] : [withToken];
+      return { ...t, securitySchemes, _meta: { securitySchemes } };
+    });
     return json(rpcResult(id, { tools }));
   }
-
-  if (method !== "tools/call") {
-    return isNotification
-      ? new Response(null, { status: 202, headers: cors })
-      : json(rpcError(id, -32601, `method not found: ${String(method)}`));
+  // The two listings: free, unmetered, one page each (no nextCursor).
+  if (method === "prompts/list") {
+    return json(rpcResult(id, { prompts: PROMPTS.map(({ name, title, description, arguments: args }) => ({ name, title, description, arguments: args })) }));
   }
-
-  // ── tools/call: authenticated + metered per tool ──────────────────────────
-  const toolName = String((params as { name?: unknown }).name ?? "");
-  const toolArgs = ((params as { arguments?: unknown }).arguments ?? {}) as Record<string, unknown>;
-  if (!TOOLS.some((t) => t.name === toolName)) {
-    return json(rpcError(id, -32602, `unknown tool: ${toolName}`));
+  if (method === "resources/list") {
+    return json(rpcResult(id, { resources: RESOURCES.map(({ uri, name, title, mimeType, description }) => ({ uri, name, title, mimeType, description })) }));
   }
 
   const auth = req.headers.get("authorization") ?? "";
@@ -2653,9 +3060,76 @@ Deno.serve(async (req) => {
   // A pasted key by its prefix; anything else in the slot is an OAuth token.
   const raw = looksLikeApiKey(bearer) ? bearer : "";
   const client = db();
+
+  // ── prompts/get: free for everyone ────────────────────────────────────────
+  // A prompt body is a function of the registry and the arguments, never of
+  // the caller's key, and discovery must not spend a real call: answered
+  // here for every caller, keyed or not, before the credential is read and
+  // through neither meter.
+  const resolved = readOf(method, params);
+  if (resolved?.kind === "error") return json(rpcError(id, resolved.code, resolved.message));
+  if (resolved?.kind === "prompt") {
+    return json(rpcResult(id, promptMessages(resolved.prompt, promptArgsOf(params))));
+  }
+  const read: MeteredRead | null = resolved;
+
+  // ── resources/read with NO credential ─────────────────────────────────────
+  // The guide is documentation and free. The statistics are the unkeyed
+  // board_stats answer, counted as one — the same runner, the same
+  // allowance, re-shaped as contents; a card's link is the unkeyed fetch
+  // answer the same way (the document shape, on either tier). The key's
+  // status has no unkeyed form and goes on to the gate below, which
+  // challenges it exactly as it challenges the tool it wraps. A runner
+  // failure here answers the JSON-RPC error a read must answer with (the
+  // shape the metered path's catch gives the same failure), never a bare
+  // 500 with no body and no CORS.
+  if (read && !bearer) {
+    try {
+      if (read.kind === "resource" && read.resource.uri === GUIDE_URI) {
+        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText())));
+      }
+      if (read.kind === "resource" && read.resource.uri === BOARD_STATS_URI) {
+        const { rpc, headers } = await answerUnkeyed(client, req, id, tool("board_stats"), {});
+        return json(asContents(id, BOARD_STATS_URI, read.resource.mimeType, rpc), 200, headers);
+      }
+      if (read.kind === "job") {
+        const { rpc, headers } = await answerUnkeyed(client, req, id, tool("fetch"), { id: read.id });
+        return json(asContents(id, read.uri, "application/json", rpc), 200, headers);
+      }
+    } catch (e) {
+      return readFailed(id, read, e, {});
+    }
+  }
+
+  if (method !== "tools/call") {
+    if (!read) {
+      return isNotification
+        ? new Response(null, { status: 202, headers: cors })
+        : json(rpcError(id, -32601, `method not found: ${String(method)}`));
+    }
+  }
+
+  // ── tools/call, and a credentialed resources/read: ────────────────────────
+  // authenticated + metered per name. A read is metered under the resource
+  // family's endpoint through the same check as a tool; `toolName` is the name the
+  // check receives — a tool's own, or the read's endpoint less the prefix —
+  // and the gate below reads it like any tool's: only the unkeyed set
+  // answers with nothing in the slot.
+  const toolName = read ? meteredNameOf(read.endpoint) : String((params as { name?: unknown }).name ?? "");
+  const toolArgs = read ? {} : ((params as { arguments?: unknown }).arguments ?? {}) as Record<string, unknown>;
+  if (!read && !TOOLS.some((t) => t.name === toolName)) {
+    return json(rpcError(id, -32602, `unknown tool: ${toolName}`));
+  }
+
   // A keyed tool with nothing in the slot answers the sign-in challenge —
   // the response a host turns into its Connect card, built in the OAuth
   // module and reached from here only. The unkeyed tools go on to answer.
+  // The caller that reads its sign-in cue out of a result's _meta gets the
+  // same challenge in band first (the hedge above, a GUESS); every other
+  // caller gets the transport form.
+  if (!bearer && !read && !ANON_TOOLS.includes(toolName) && hedgeInBand(params)) {
+    return json(rpcResult(id, inBandChallenge(toolName)));
+  }
   if (!bearer && !ANON_TOOLS.includes(toolName)) {
     return unauthorized(cors);
   }
@@ -2672,6 +3146,10 @@ Deno.serve(async (req) => {
   if (bearer && !raw) {
     const verdict = await verifyOAuthBearer(bearer);
     if (!verdict.ok) {
+      if (!read && !ANON_TOOLS.includes(toolName) && hedgeInBand(params)) {
+        console.log(`[AGENT-MCP] oauth refused (${verdict.reason}) on ${toolName}`);
+        return json(rpcResult(id, inBandChallenge(toolName)));
+      }
       if (!ANON_TOOLS.includes(toolName)) {
         console.log(`[AGENT-MCP] oauth refused (${verdict.reason}) on ${toolName}`);
         return unauthorized(cors);
@@ -2688,10 +3166,8 @@ Deno.serve(async (req) => {
         // the page promises always answers is never walled for a valid
         // token either.
         if (!ANON_TOOLS.includes(toolName)) {
-          return json(rpcResult(id, toolErr(
-            "Your account could not be given an agent key.",
-            `Sign in at ${DOCS_URL} and mint one there, then reconnect.`,
-          )));
+          const [why, how] = ["Your account could not be given an agent key.", `Sign in at ${DOCS_URL} and mint one there, then reconnect.`];
+          return read ? readRefused(id, why, how, {}) : json(rpcResult(id, toolErr(why, how)));
         }
         oauthSub = null;
         oauthClient = "";
@@ -2745,6 +3221,7 @@ Deno.serve(async (req) => {
         : reason === "quota_exceeded"
         ? { "Retry-After": String(secondsToMidnightUtc()) }
         : {};
+      if (read) return readRefused(id, message, fix, { ...rateHeaders, ...retry });
       return json(rpcResult(id, toolErr(message, fix)), 200, { ...rateHeaders, ...retry });
     }
   }
@@ -2753,13 +3230,17 @@ Deno.serve(async (req) => {
     if (!d) {
       // No key, one of ANON_TOOLS: counted by mcp_anon_check first, then
       // answered with the unkeyed note. See answerUnkeyed.
-      const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs);
+      const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params);
       return json(rpc, 200, headers);
     }
     // A live pass on a key: record how it was activated, once — by the key
     // itself or by the OAuth client that minted the token. One helper for
     // both paths; first writer wins.
     await noteActivatedVia(client, d, oauthSub ? oauthVia(oauthClient) : "key", req.headers.get("user-agent") ?? "");
+    // A credentialed read, metered above like a tool, answered in its own
+    // shape: a prompt's messages, or a resource's contents from the runner
+    // the resource wraps (the key's status reads `d`, as the tool does).
+    if (read) return json(rpcResult(id, await answerRead(client, read, d)), 200, rateHeaders);
     // key_status is answered HERE and not in callTool because what it reports
     // IS `d` — the decision this call was allowed by. See runKeyStatus.
     const result = toolName === "key_status"
@@ -2776,6 +3257,10 @@ Deno.serve(async (req) => {
         "Wait for the window, or keep using search_jobs meanwhile — the scorer does not meter it.",
       )), 200, { ...rateHeaders, "Retry-After": "3600" });
     }
+    // A read has no isError shape: a failed runner behind a resource answers
+    // the JSON-RPC error a read must answer with (the same words, the same
+    // headers), never a tool-shaped result.
+    if (read) return readFailed(id, read, e, rateHeaders);
     if (e instanceof ToolArgumentError) {
       // The call as sent cannot be answered, and the agent can change it: say
       // what was wrong and what to send instead, in band, metered like any

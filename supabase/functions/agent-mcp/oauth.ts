@@ -121,20 +121,32 @@ const UNAUTHORIZED_DESCRIPTION = "Sign in to use this tool";
 export const RESOURCE_METADATA_URL = `${MCP_URL}${PRM_PATH}`;
 
 /**
- * Exactly the response a spec client parses into a sign-in: 401, a Bearer
- * challenge naming where the metadata is and which scope to ask for, the
- * same CORS headers every other answer carries, and a JSON body a client
- * that ignores the header can still read. The caller decides WHEN — this
- * builder never learns the tool name or the deny reason, so it cannot be
- * reached for a rate or quota refusal by accident: those paths never call it.
+ * The challenge itself, as one string: a Bearer challenge naming where the
+ * metadata is and which scope to ask for. Built ONCE here and reached two
+ * ways — as the header of the HTTP challenge below, and, for a host that
+ * reads its sign-in cue out of a tool result's `_meta` instead of the
+ * transport (the ChatGPT-shaped hedge in index.ts), as the same string in
+ * band. Two spellings of one challenge would be two challenges.
+ */
+export function bearerChallenge(): string {
+  return (
+    `Bearer error="invalid_token", error_description="${UNAUTHORIZED_DESCRIPTION}", ` +
+    `resource_metadata="${RESOURCE_METADATA_URL}", scope="${OAUTH_SCOPE}"`
+  );
+}
+
+/**
+ * Exactly the response a spec client parses into a sign-in: 401, the Bearer
+ * challenge above, the same CORS headers every other answer carries, and a
+ * JSON body a client that ignores the header can still read. The caller
+ * decides WHEN — this builder never learns the tool name or the deny reason,
+ * so it cannot be reached for a rate or quota refusal by accident: those
+ * paths never call it.
  */
 export function unauthorized(cors: Record<string, string>): Response {
-  const challenge =
-    `Bearer error="invalid_token", error_description="${UNAUTHORIZED_DESCRIPTION}", ` +
-    `resource_metadata="${RESOURCE_METADATA_URL}", scope="${OAUTH_SCOPE}"`;
   return new Response(JSON.stringify({ error: "invalid_token", error_description: UNAUTHORIZED_DESCRIPTION }), {
     status: 401,
-    headers: { "Content-Type": "application/json", "WWW-Authenticate": challenge, ...cors },
+    headers: { "Content-Type": "application/json", "WWW-Authenticate": bearerChallenge(), ...cors },
   });
 }
 

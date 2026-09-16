@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Hauptnavigation",
     "guides": "Ratgeber",
     "jobs": "Jobs",
-    "explore": "Entdecken"
+    "explore": "Entdecken",
+    "agents": "Agenten"
   },
   "hero": {
     "badge": "Live-Jobbörse — jede Stelle direkt im System des Unternehmens verifiziert",
@@ -411,6 +412,10 @@
       "vsChatGPT": {
         "question": "Warum ist das besser als ChatGPT?",
         "answer": "Resume Booster ist speziell für ATS-Optimierung gebaut mit einem 5-Kategorien-Scoring-System, 14 branchenspezifischen Vorlagen und Recruiter-kalibriertem Feedback."
+      },
+      "bringYourAgent": {
+        "question": "Kann mein eigener KI-Agent das nutzen?",
+        "answer": "Ja. Zum Lesen der Jobbörse braucht ein erster Aufruf gar keinen Schlüssel, und ein kostenloser Schlüssel öffnet jedes Lese-Tool. Damit dein Agent Bewerbungen anfordern kann, gibt ihm ein Pass für {{passPrice}} $ {{passHours}} Stunden und {{passApplications}} Bewerbungen, ab seinem ersten Aufruf und ohne Verlängerung; der Agent-Plan bietet dasselbe monatlich und verlängert sich. Jede Stelle und jede Suche auf der Jobbörse hat ein Bedienelement, das einen Prompt für deinen Agenten kopiert, und die Einrichtung je Host steht unter /agents."
       }
     },
     "stillHaveQuestions": "Noch Fragen?"
@@ -4095,7 +4100,6 @@
     "chipAgentOnly": "Agent kann bewerben",
     "chipInclUncat": "+ unsortiert",
     "deadLinkDocTitle": "Anzeige nicht mehr verfügbar — Resume Booster",
-    "agentAppliesTip": "Das Bewerbungsformular dieses Arbeitgebers kann unser Bewerbungs-Agent eigenständig ausfüllen und absenden — ohne CAPTCHA und ohne Konto. Fragt der Arbeitgeber etwas, das wir aus deinem Profil nicht beantworten können, gibt er die Bewerbung an dich zurück. Erfordert das Apply-Agent-Abo.",
     "agentAppliesChip": "Agent kann bewerben",
     "descFailed": "Diese Beschreibung ließ sich gerade nicht laden.",
     "agentOnlyTip": "Nur Anzeigen zeigen, deren Bewerbungsformular unser Agent für dich ausfüllen und absenden kann. Das Sparkles-Abzeichen auf einer Karte bedeutet dasselbe — dies filtert das gesamte Board darauf.",
@@ -4266,7 +4270,20 @@
     "pastFieldHorizonTipNoCount": "Gemessen aus unserem eigenen Lebenszyklus-Protokoll: von den Stellen in {{field}}, die wir in den letzten {{window}} Tagen beobachtet haben, waren {{gone}}% binnen {{d}} Tagen vom Board. Diese hier ist nach dem Datum des Unternehmens an Tag {{age}}. Eine lange offene Stelle ist keine tote Stelle — aber es lohnt sich, das zu wissen, bevor Sie eine Bewerbung investieren.",
     "compareFillRateBounded": "bis zu {{pct}}% seiner Stellen werden binnen {{d}} Tagen endgültig heruntergenommen ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} offene Stellen — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens.",
-    "uncatCountLine2": "{{total}} offene Stellen, die wir keinem Bereich zuordnen konnten — ganz gewöhnliche Stellen, die unsere eigenen Bereichsregeln nicht kennen, jede direkt aus dem Bewerbersystem des Unternehmens."
+    "uncatCountLine2": "{{total}} offene Stellen, die wir keinem Bereich zuordnen konnten — ganz gewöhnliche Stellen, die unsere eigenen Bereichsregeln nicht kennen, jede direkt aus dem Bewerbersystem des Unternehmens.",
+    "openInAgent": "In deinem Agenten öffnen",
+    "openInAgentTip": "Kopiert einen einzeiligen Prompt für deinen eigenen KI-Agenten: Er nennt die ID dieser Stelle und unseren MCP-Server und bittet den Agenten, die Stelle zu lesen und zu sagen, ob er sich bewerben kann.",
+    "agentPromptCopied": "Prompt kopiert — füge ihn bei deinem Agenten ein. Er nennt diese Stelle und unseren MCP-Server.",
+    "agentPromptFailed": "Prompt konnte nicht kopiert werden",
+    "whichAgent": "Welcher Agent?",
+    "agentOpenThere": "Dort öffnen (vorausgefüllt, nicht gesendet)",
+    "agentOpenThereTip": "Öffnet dort eine neue Unterhaltung mit dem ausgefüllten Prompt. Nichts wird gesendet, bis du auf Senden drückst.",
+    "agentAppliesTip2": "Das Bewerbungsformular dieses Arbeitgebers kann unser Bewerbungsagent selbstständig ausfüllen und absenden — kein CAPTCHA, kein Konto nötig. Er gibt die Bewerbung trotzdem an dich zurück, wenn der Arbeitgeber etwas fragt, das wir aus deinem Profil nicht beantworten können. Benötigt den Agent-Plan oder einen laufenden Pass.",
+    "bringYourOwnAgent": "oder bring deinen eigenen Agenten mit",
+    "sendSearchToAgent": "Diese Suche an meinen Agenten senden",
+    "sendSearchTip": "Kopiert einen einzeiligen Prompt für deinen eigenen KI-Agenten: die Filter und die Reihenfolge, die du gerade siehst, als die Argumente, die die Suche unseres MCP-Servers annimmt.",
+    "searchPromptCopied": "Suche als Prompt kopiert — füge ihn bei deinem Agenten ein.",
+    "welcomeAgent": "Bring deinen eigenen Agenten mit"
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
@@ -4911,5 +4928,19 @@
     "passLive": "Pass läuft · noch {{left}} Bewerbungen",
     "passBuy": "Pass kaufen",
     "passOpen": "Dein Pass"
+  },
+  "agentPage": {
+    "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon."
+  },
+  "agentConnect": {
+    "rateLine": "Ein kostenloser Schlüssel ist auf {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag begrenzt; ein laufender Pass hebt beides für seine Stunden an.",
+    "attachTitle": "Prompts und Ressourcen, die dein Host auflisten kann",
+    "attachLead": "Neben den Tools registriert der Server fertige Prompts und einige lesbare Dokumente. Hosts, die sie auflisten (das Anhängen-Menü von claude.ai, die Slash-Liste von Claude Code, das Panel von Cursor), zeigen sie unter dem Namen des Servers; das Auflisten kostet keinen Aufruf und braucht keinen Schlüssel.",
+    "promptsHeading": "Prompts",
+    "resourcesHeading": "Ressourcen",
+    "resourceKeyed": "braucht einen Schlüssel oder eine Anmeldung",
+    "resourceUnkeyed": "lesbar ohne Schlüssel",
+    "handoffLead": "Auf der Jobbörse hat jede Stelle und jede Suche ein Bedienelement, das einen Prompt für deinen Agenten kopiert — er nennt die ID der Stelle oder die Argumente der Suche und die URL dieses Servers.",
+    "handoffCta": "Jobbörse öffnen"
   }
 }

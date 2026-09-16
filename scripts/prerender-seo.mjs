@@ -47,12 +47,19 @@ export { getAllProducts, PASS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { BOARD_SOURCE_LIST } from "../src/config/ats-vendors";
-export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS } from "../src/config/mcp-tools";
+export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
+export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
   const D = await import(bundle + `?t=${Date.now()}`);
+  // THE FREE KEY'S TWO NUMBERS, SPELLED ONCE. The rate and the quota were
+  // typed here three times and on the page twice — a fifth spelling of two
+  // migration constants, and false for a pass holder. Every sentence
+  // below that states the free key's limits reads this, and the pass clause
+  // rides with it because the row is what api_key_check enforces.
+  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key; a live pass raises both for its hours`;
 
   // ---- Live benchmark numbers for llms-full.txt (GEO: AI engines cite
   // numbers with provenance). Graceful skip offline/CI — the build never
@@ -1381,6 +1388,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.BOARD_SOURCE_LIST}. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
+          <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
         `,
         jsonLd: [{
           "@context": "https://schema.org",
@@ -1505,7 +1513,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is collected from companies' own official career sites — never aggregators — and audited against them daily.</p>
           <p>The dataset contains zero jobseeker data: resumes are never stored on Resume Booster, so there is nothing about job seekers to license. And no license, at any price, changes what the data says about any company — including the licensee.</p>
           <h2>Query it yourself</h2>
-          <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address; it is shown once and only its hash is stored. Every key meters at 60 requests a minute and 1,000 calls a day. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
+          <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address; it is shown once and only its hash is stored. A free key meters at ${FREE_KEY_RATE_SENTENCE}. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
@@ -1718,7 +1726,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
             <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
-            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> or a live pass (sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. Both kinds meter identically: 60 requests/minute, 1,000/day per key.</p>
+            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> or a live pass (sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools today</h2>
             <p class="text-sm text-muted-foreground mb-2">Every keyed tool call carries a credential, and hosts hold it two ways. From ${h(withHeader)}: the key in an Authorization header — every tool your key's tier allows.${signInSentence}${unkeyedOnlySentence} Each host's own note below says which.</p>
@@ -1726,6 +1734,14 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">All ${D.MCP_TOOLS.length} tools</h2>
             <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per address` : ""}) — ${h(t.body)}</li>`).join("")}</ul>
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
+            <p class="text-sm text-muted-foreground mb-2">Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them show them under the server's name; listing costs no call and needs no key.</p>
+            <h3 class="text-sm font-semibold mt-3 mb-1">Prompts</h3>
+            <ul class="space-y-1.5">${D.MCP_PROMPTS.map((p) => `<li class="text-sm text-muted-foreground"><code>${p.name}</code> — ${h(p.title)}: ${h(p.body)}</li>`).join("")}</ul>
+            <h3 class="text-sm font-semibold mt-3 mb-1">Resources</h3>
+            <ul class="space-y-1.5">${D.MCP_RESOURCES.map((r) => `<li class="text-sm text-muted-foreground"><code>${h(r.uri)}</code> (${r.keyed ? "needs a key or sign-in" : "reads with no key"}) — ${h(r.body)}</li>`).join("")}</ul>
+            <p class="text-sm text-muted-foreground mt-3">On the <a href="/jobs">board</a>, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">What your agent can and cannot do</h2>
             <p class="text-sm text-muted-foreground mb-2">Applications requested here go through the exact same pipeline as the signed-in flow — the MCP layer is a translator, never a bypass. Your agent can do at most what you could do yourself, signed in.</p>
@@ -2057,7 +2073,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(`- Companies on the board: ${SITE}/companies — every employer with open roles, A–Z, each with its live count and a link to its own page.`);
-    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (60 requests/minute, 1,000/day): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
+    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
     lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key or a live Agent Pass, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — a keyed tool called with no credential answers HTTP 401 with a WWW-Authenticate challenge naming the server's protected-resource metadata, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${AGENT_OFFER.pass}`);
     lines.push("");
     if (insights?.overall?.n) {

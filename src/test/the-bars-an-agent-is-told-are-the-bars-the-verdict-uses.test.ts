@@ -379,9 +379,12 @@ describe("the hiring record says what it is and is not, in the site's own words"
     expect(MCP).toMatch(/if \(e instanceof ToolArgumentError\) \{[\s\S]*?toolErr\(e\.message, e\.fix\)/);
     // And the refused call was still metered: the class is caught inside the
     // try that follows the key check, never before it.
+    // (The dispatcher's catch is the LAST site that names the class — a
+    // resource read's helper names it earlier, before the handler.)
     const keyCheck = MCP.indexOf("p_endpoint: `/mcp/${toolName}`");
-    const caught = MCP.indexOf("if (e instanceof ToolArgumentError)");
+    const caught = MCP.lastIndexOf("if (e instanceof ToolArgumentError)");
     expect(caught).toBeGreaterThan(keyCheck);
+    expect(MCP.slice(caught - 1200, caught)).toMatch(/\} catch \(e\) \{/);
   });
 
   it("both tools are read-only translations of anon-granted definer aggregates — the ledger itself is never read here", () => {

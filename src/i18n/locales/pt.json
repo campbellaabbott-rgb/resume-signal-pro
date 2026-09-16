@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Navegação principal",
     "guides": "Guias",
     "jobs": "Vagas",
-    "explore": "Explorar"
+    "explore": "Explorar",
+    "agents": "Agentes"
   },
   "hero": {
     "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",
@@ -412,6 +413,10 @@
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
         "answer": "O Resume Booster é construído especificamente para otimização ATS com um sistema de pontuação ponderado de 5 categorias, 14 modelos específicos por indústria e feedback calibrado por recrutadores. Ao contrário do ChatGPT, obtém uma saída estruturada consistente de 10 secções sem engenharia de prompts. Ao contrário dos modelos, fornecemos reescritas personalizadas, análise do LinkedIn e alinhamento com descrições de emprego. Os seus dados são imediatamente descartados — nunca usados para treino."
+      },
+      "bringYourAgent": {
+        "question": "O meu próprio agente de IA pode usar isto?",
+        "answer": "Sim. Ler o quadro de vagas não exige nenhuma chave numa primeira chamada, e uma chave gratuita abre todas as ferramentas de leitura. Para que o seu agente solicite candidaturas, um passe de ${{passPrice}} dá a ele {{passHours}} horas e {{passApplications}} candidaturas, a partir da primeira chamada e sem nunca renovar; o plano Agent faz o mesmo mensalmente e renova. Cada vaga e cada busca no quadro tem um controle que copia um prompt para o seu agente, e a configuração de cada host está em /agents."
       }
     }
   },
@@ -4095,7 +4100,6 @@
     "chipAgentOnly": "O agente pode candidatar-se",
     "chipInclUncat": "+ não classificadas",
     "deadLinkDocTitle": "Vaga já não disponível — Resume Booster",
-    "agentAppliesTip": "O formulário de candidatura deste empregador é um dos que o nosso agente consegue preencher e enviar sozinho — sem CAPTCHA e sem conta. Se o empregador perguntar algo que não conseguimos responder a partir do teu perfil, devolve-te a candidatura. Requer a subscrição Apply Agent.",
     "agentAppliesChip": "O agente pode candidatar-se",
     "descFailed": "Não conseguimos carregar esta descrição agora.",
     "agentOnlyTip": "Mostrar apenas vagas cujo formulário o nosso agente consiga preencher e enviar por ti. O emblema Sparkles num cartão significa o mesmo — isto filtra todo o quadro para essas.",
@@ -4266,7 +4270,20 @@
     "pastFieldHorizonTipNoCount": "Medido a partir do nosso próprio registo de ciclo de vida: das vagas de {{field}} que acompanhámos nos últimos {{window}} dias, {{gone}}% saíram do quadro em {{d}} dias. Esta está no dia {{age}} pela data publicada pela própria empresa. Uma vaga aberta há muito tempo não é uma vaga morta — mas vale a pena saber antes de investir uma candidatura.",
     "compareFillRateBounded": "até {{pct}}% das suas vagas são retiradas em definitivo em {{d}}d ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} ofertas ativas — todas diretamente do sistema de recrutamento de cada empresa.",
-    "uncatCountLine2": "{{total}} vagas ativas que não conseguimos classificar numa área — funções correntes que as nossas próprias regras de área não reconhecem, todas diretamente do próprio sistema de recrutamento da empresa."
+    "uncatCountLine2": "{{total}} vagas ativas que não conseguimos classificar numa área — funções correntes que as nossas próprias regras de área não reconhecem, todas diretamente do próprio sistema de recrutamento da empresa.",
+    "openInAgent": "Abrir no seu agente",
+    "openInAgentTip": "Copia um prompt de uma linha para o seu próprio agente de IA: ele nomeia o id desta vaga e o nosso servidor MCP, e pede ao agente que leia a vaga e diga se consegue candidatar-se.",
+    "agentPromptCopied": "Prompt copiado — cole-o no seu agente. Ele nomeia esta vaga e o nosso servidor MCP.",
+    "agentPromptFailed": "Não foi possível copiar o prompt",
+    "whichAgent": "Qual agente?",
+    "agentOpenThere": "Abrir lá (pré-preenchido, não enviado)",
+    "agentOpenThereTip": "Abre lá uma nova conversa com o prompt já preenchido. Nada é enviado até você pressionar enviar.",
+    "agentAppliesTip2": "O formulário de candidatura deste empregador é um que o nosso agente de candidatura consegue preencher e enviar sozinho — sem CAPTCHA e sem conta. Ele ainda devolve a candidatura a você se o empregador perguntar algo que não conseguimos responder a partir do seu perfil. Requer o plano Agent ou um passe ativo.",
+    "bringYourOwnAgent": "ou traga o seu próprio agente",
+    "sendSearchToAgent": "Enviar esta busca ao meu agente",
+    "sendSearchTip": "Copia um prompt de uma linha para o seu próprio agente de IA: os filtros e a ordem que você está vendo, como os argumentos que a busca do nosso servidor MCP aceita.",
+    "searchPromptCopied": "Busca copiada como prompt — cole-o no seu agente.",
+    "welcomeAgent": "Traga o seu próprio agente"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
@@ -4911,5 +4928,19 @@
     "passLive": "Passe a decorrer · faltam {{left}} candidaturas",
     "passBuy": "Comprar um passe",
     "passOpen": "O seu passe"
+  },
+  "agentPage": {
+    "connectInstead": "Já tem um agente? Conecte-o em vez disso — {{passHours}} horas por ${{passPrice}}, nunca renova; o plano Agent sim."
+  },
+  "agentConnect": {
+    "rateLine": "Uma chave gratuita é limitada a {{ratePerMin}} solicitações por minuto e {{dailyQuota}} chamadas por dia; um passe ativo eleva ambos durante as suas horas.",
+    "attachTitle": "Prompts e recursos que o seu host pode listar",
+    "attachLead": "Além das ferramentas, o servidor registra prompts prontos e alguns documentos legíveis. Os hosts que os listam (o menu de anexar do claude.ai, a lista de comandos do Claude Code, o painel do Cursor) mostram-nos sob o nome do servidor; listar não custa nenhuma chamada e não exige chave.",
+    "promptsHeading": "Prompts",
+    "resourcesHeading": "Recursos",
+    "resourceKeyed": "exige chave ou login",
+    "resourceUnkeyed": "lê-se sem chave",
+    "handoffLead": "No quadro de vagas, cada vaga e cada busca tem um controle que copia um prompt para o seu agente — ele nomeia o id da vaga ou os argumentos da busca e a URL deste servidor.",
+    "handoffCta": "Abrir o quadro de vagas"
   }
 }

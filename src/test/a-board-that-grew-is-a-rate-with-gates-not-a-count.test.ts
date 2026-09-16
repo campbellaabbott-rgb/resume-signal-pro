@@ -465,8 +465,14 @@ describe("a board that grew is a rate with gates, not a count", () => {
     expect(text, "the bars are modelled and may move — said, not hidden").toMatch(/if the bars move an entry here will say so/);
     const entry = changelog.find((x) => x.id === "newPostingsJoinActivelyHiring");
     expect(entry).toEqual({ id: "newPostingsJoinActivelyHiring", date: "2026-09-14", tags: ["new", "improved"] });
-    // And it sits at the top: newest first.
-    expect(changelog[0].id).toBe("newPostingsJoinActivelyHiring");
+    // And the list is newest first around it: nothing older sits above it,
+    // nothing newer below. (It was pinned to index 0, which every later entry
+    // — the first came two days on — necessarily broke; the property is the
+    // order, not the slot.)
+    const at = changelog.findIndex((x) => x.id === "newPostingsJoinActivelyHiring");
+    expect(at).toBeGreaterThanOrEqual(0);
+    for (const x of changelog.slice(0, at)) expect(x.date >= entry!.date, `${x.id} (${x.date}) sits above a newer entry`).toBe(true);
+    for (const x of changelog.slice(at + 1)) expect(x.date <= entry!.date, `${x.id} (${x.date}) sits below an older entry`).toBe(true);
     // en-GB carries it too (the English build owns both).
     const GB = JSON.parse(read("src/i18n/changelog/en-GB.json")) as typeof CL;
     expect(GB.changelogEntries.newPostingsJoinActivelyHiring?.description).toBe(e.description);

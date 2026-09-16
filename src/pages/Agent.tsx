@@ -31,7 +31,8 @@ import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Sparkles, Send, SlidersHorizontal, ArrowLeft } from "lucide-react";
+import { Sparkles, Send, SlidersHorizontal, ArrowLeft, Bot } from "lucide-react";
+import { PASS } from "@/config/products";
 
 import { AgentStatusBand } from "@/components/account/AgentStatusBand";
 import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
@@ -148,6 +149,20 @@ export default function Agent() {
             {t("agent.howItWorks", "How it works")}
           </Link>
         </div>
+
+        {/* ONE LETTER APART, TWO AUDIENCES, NO LINK BETWEEN THEM. /agent is
+            the monthly plan's console; /agents is where a person who already
+            runs an agent connects it — and holds the same entitlement for a
+            few hours through the pass, which never renews. A subscriber on
+            this page never learned the pass existed. Every number is the
+            PASS mirror (pinned to the Deno pass module by pricing-truth),
+            interpolated, never typed; the guard walks this key's locales. */}
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Bot className="inline h-3.5 w-3.5 -mt-0.5 mr-1 text-primary" aria-hidden="true" />
+          <Link to="/agents" className="text-primary hover:underline">
+            {t("agentPage.connectInstead", "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.", { passHours: PASS.sessionHours, passPrice: PASS.priceUsd })}
+          </Link>
+        </p>
 
         <div className="mt-4">
           <AgentStatusBand userId={userId} email={email} />

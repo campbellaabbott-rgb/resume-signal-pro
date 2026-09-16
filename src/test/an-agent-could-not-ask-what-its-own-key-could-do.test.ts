@@ -214,7 +214,15 @@ describe("a shortlist costs one call, not twenty", () => {
   it("check_jobs_open rides the board's ids-based liveness path — the read-only one", () => {
     const fn = between(MCP, "async function runCheckJobsOpen(", "async function runFitResume(");
     expect(fn).toMatch(/board\(\{ action: "exists", ids \}\)/);
-    expect(fn, "200 is the board's own cap for that action, echoed rather than re-chosen").toMatch(/asked\.slice\(0, 200\)/);
+    // The cap is ONE constant here, and it is the board's own cap for that
+    // action (the exists handler's slice), echoed rather than re-chosen —
+    // pinned cross-function so neither side can move alone.
+    expect(fn).toMatch(/asked\.slice\(0, CHECK_JOBS_OPEN_MAX\)/);
+    const ours = Number(/const CHECK_JOBS_OPEN_MAX = (\d+);/.exec(MCP)?.[1]);
+    const existsAt = BOARD_RAW.indexOf('if (action === "exists")');
+    expect(existsAt).toBeGreaterThan(0);
+    const boards = Number(/\.slice\(0, (\d+)\)/.exec(BOARD_RAW.slice(existsAt, existsAt + 1500))?.[1]);
+    expect(ours, "check_jobs_open's cap is the board's exists cap").toBe(boards);
     expect(fn, "ids past the cap are NAMED — a silently truncated list is a shortlist believed verified")
       .toMatch(/notChecked/);
     // `verify` probes each vendor live, is capped at 12 for that reason, and
@@ -229,7 +237,7 @@ describe("a shortlist costs one call, not twenty", () => {
     // that disagree about whether a posting is live must say which is stricter.
     expect(fn, "the gap against get_job's test has to be stated, not glossed")
       .toMatch(/WEAKER[\s\S]{0,300}freshness cap[\s\S]{0,120}get_job declines to serve it/);
-    expect(block("check_jobs_open")).toMatch(/maxItems: 200/);
+    expect(block("check_jobs_open")).toMatch(/maxItems: CHECK_JOBS_OPEN_MAX/);
   });
 
   it("get_jobs is bounded by the vendor fetch, and one dead id never costs the others", () => {

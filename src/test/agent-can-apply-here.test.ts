@@ -47,7 +47,12 @@ describe("both surfaces ask the shared predicate", () => {
 });
 
 describe("the claim is about the form, not about the outcome", () => {
-  const tip = jobs.match(/jobsPage\.agentAppliesTip", "([^"]+)"/)?.[1] ?? "";
+  // agentAppliesTip2: the key was re-minted when its last sentence changed
+  // meaning — "Needs the Apply Agent subscription" went false the day the
+  // pass shipped (a live pass holds the same entitlement for its hours), and
+  // a locale value beats an inline default, so the old key came out of all
+  // nine files rather than being edited in place.
+  const tip = jobs.match(/jobsPage\.agentAppliesTip2", "([^"]+)"/)?.[1] ?? "";
 
   it("has a tooltip at all", () => {
     expect(tip.length).toBeGreaterThan(40);
@@ -59,8 +64,9 @@ describe("the claim is about the form, not about the outcome", () => {
     expect(tip).toMatch(/hands the application back to you/i);
   });
 
-  it("says it needs the subscription, rather than implying it is free", () => {
-    expect(tip).toMatch(/Apply Agent subscription/i);
+  it("says it needs the plan or a live pass, rather than implying it is free — and never that the plan is the only way", () => {
+    expect(tip).toMatch(/Agent plan or a live pass/i);
+    expect(tip).not.toMatch(/Apply Agent subscription|only way/i);
   });
 
   it("never promises the application will be sent", () => {

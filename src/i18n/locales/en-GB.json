@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Main navigation",
     "guides": "Guides",
     "jobs": "Jobs",
-    "explore": "Explore"
+    "explore": "Explore",
+    "agents": "Agents"
   },
   "hero": {
     "badge": "Live job board — every posting verified from the company's own system",
@@ -411,6 +412,10 @@
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or CV templates?",
         "answer": "CV Booster is purpose-built for ATS optimisation with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalised rewrites, LinkedIn analysis, and job description alignment. Your data is immediately discarded—never used for training."
+      },
+      "bringYourAgent": {
+        "question": "Can my own AI agent use this?",
+        "answer": "Yes. Reading the board needs no key at all for a first call, and a free key opens every read tool. To have your agent request applications, a ${{passPrice}} pass gives it {{passHours}} hours and {{passApplications}} applications, starting at its first call and never renewing; the Agent plan does the same monthly and renews. Every posting and every search on the board has a control that copies a prompt for your agent, and the setup for each host is at /agents."
       }
     },
     "stillHaveQuestions": "Still have questions?"
@@ -4095,7 +4100,6 @@
     "chipAgentOnly": "Agent can apply",
     "chipInclUncat": "+ unsorted",
     "deadLinkDocTitle": "Posting no longer available — Resume Booster",
-    "agentAppliesTip": "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Apply Agent subscription.",
     "agentAppliesChip": "Agent can apply",
     "descFailed": "We couldn't load this description just now.",
     "agentOnlyTip": "Show only postings whose application form our apply agent can fill and submit for you. The Sparkles badge on a job card means the same thing — this filters the whole board to those.",
@@ -4266,7 +4270,20 @@
     "pastFieldHorizonTipNoCount": "Measured from our own lifecycle log: of the {{field}} roles we watched over the last {{window}} days, {{gone}}% were off the board within {{d}} days. This one is on day {{age}} by the company's own posted date. A long-open role is not a dead one — but it is worth knowing before you spend an application.",
     "compareFillRateBounded": "up to {{pct}}% of its roles come down for good within {{d}}d ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} live openings — every one straight from the company's own hiring system.",
-    "uncatCountLine2": "{{total}} live openings we could not sort into a field — ordinary roles our own field rules do not recognise, every one straight from the company's own hiring system."
+    "uncatCountLine2": "{{total}} live openings we could not sort into a field — ordinary roles our own field rules do not recognise, every one straight from the company's own hiring system.",
+    "openInAgent": "Open in your agent",
+    "openInAgentTip": "Copy a one-line prompt for your own AI agent: it names this posting's id and our MCP server, and asks the agent to read the posting and say whether it can apply.",
+    "agentPromptCopied": "Prompt copied — paste it to your agent. It names this posting and our MCP server.",
+    "agentPromptFailed": "Couldn't copy the prompt",
+    "whichAgent": "Which agent?",
+    "agentOpenThere": "Open there (prefilled, not sent)",
+    "agentOpenThereTip": "Opens a new conversation there with the prompt filled in. Nothing is sent until you press send.",
+    "agentAppliesTip2": "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Agent plan or a live pass.",
+    "bringYourOwnAgent": "or bring your own agent",
+    "sendSearchToAgent": "Send this search to my agent",
+    "sendSearchTip": "Copy a one-line prompt for your own AI agent: the filters and order you are looking at, as the arguments our MCP server's search takes.",
+    "searchPromptCopied": "Search copied as a prompt — paste it to your agent.",
+    "welcomeAgent": "Bring your own agent"
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
@@ -4911,5 +4928,19 @@
     "passLive": "Pass running · {{left}} applications left",
     "passBuy": "Buy a pass",
     "passOpen": "Your pass"
+  },
+  "agentPage": {
+    "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does."
+  },
+  "agentConnect": {
+    "rateLine": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.",
+    "attachTitle": "Prompts and resources your host can list",
+    "attachLead": "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.",
+    "promptsHeading": "Prompts",
+    "resourcesHeading": "Resources",
+    "resourceKeyed": "needs a key or sign-in",
+    "resourceUnkeyed": "reads with no key",
+    "handoffLead": "On the board, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.",
+    "handoffCta": "Open the board"
   }
 }

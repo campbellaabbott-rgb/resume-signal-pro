@@ -270,16 +270,26 @@ describe("the pass functions keep their REVOKE on their winning definitions", ()
 });
 
 describe("teeth: a re-emitted copy of the PRE-PASS api_key_check would fail the overlay pins", () => {
-  it("the previous definition, which a re-stamped copy would restore, lacks the overlay", () => {
+  it("the last definition before the overlay first appeared, which a re-stamped copy would restore, lacks it", () => {
+    // Not "the second-newest file": the overlay has been carried forward
+    // into later definitions (20260917230000 exempts two read families from
+    // activation and keeps everything else), and the pipeline re-emits
+    // applied files under fresh stamps, so the file before the winner can be
+    // an overlay definition too. The copy that would silently revert a pass
+    // holder to free limits is the last one WITHOUT the overlay — found by
+    // the pin, then checked against every other pin.
     const hits = readdirSync(DIR)
       .filter((f) => f.endsWith(".sql"))
       .filter((f) => readFileSync(resolve(DIR, f), "utf8").includes("FUNCTION public.api_key_check("))
       .sort();
     expect(hits.length).toBeGreaterThan(1);
-    const previous = bare(readFileSync(resolve(DIR, hits[hits.length - 2]), "utf8"));
+    const overlay = /p_endpoint LIKE '\/mcp\/%'/;
+    const firstWithOverlay = hits.findIndex((f) => overlay.test(bare(readFileSync(resolve(DIR, f), "utf8"))));
+    expect(firstWithOverlay, "no definition carries the overlay").toBeGreaterThan(0);
+    const previous = bare(readFileSync(resolve(DIR, hits[firstWithOverlay - 1]), "utf8"));
     const winner = bare(readFileSync(resolve(DIR, hits[hits.length - 1]), "utf8"));
-    for (const re of [/p_endpoint LIKE '\/mcp\/%'/, /IF v_rate > v_rate_limit THEN/, /p_endpoint <> '\/mcp\/key_status'/, /make_interval\(hours => ap\.session_hours\)/]) {
-      expect(previous, `the pin ${re} must discriminate the previous definition`).not.toMatch(re);
+    for (const re of [overlay, /IF v_rate > v_rate_limit THEN/, /p_endpoint <> '\/mcp\/key_status'/, /make_interval\(hours => ap\.session_hours\)/]) {
+      expect(previous, `the pin ${re} must discriminate the pre-pass definition`).not.toMatch(re);
       expect(winner).toMatch(re);
     }
   });

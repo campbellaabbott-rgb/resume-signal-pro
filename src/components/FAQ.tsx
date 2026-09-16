@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
-import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
+import { PRODUCTS, SUBSCRIPTIONS, PASS } from "@/config/products";
 import {
   Accordion,
   AccordionContent,
@@ -17,6 +17,9 @@ const faqKeys = [
   "whoWrites",
   "dataStorage",
   "vsChatGPT",
+  // Bringing your own agent: the pass and the board's hand-off controls.
+  // Every number in the answer is the PASS mirror, interpolated below.
+  "bringYourAgent",
 ];
 
 export function FAQ() {
@@ -32,6 +35,9 @@ export function FAQ() {
     let answer = t(`faq.questions.${key}.answer`, {
       proPrice: SUBSCRIPTIONS.pro.priceUsd,
       agentPrice: SUBSCRIPTIONS.agent.priceUsd,
+      passPrice: PASS.priceUsd,
+      passHours: PASS.sessionHours,
+      passApplications: PASS.applications,
     });
     // Replace any hardcoded $25 references with actual price
     if (answer.includes('$25')) {

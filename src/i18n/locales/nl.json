@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Hoofdnavigatie",
     "guides": "Gidsen",
     "jobs": "Vacatures",
-    "explore": "Ontdek"
+    "explore": "Ontdek",
+    "agents": "Agents"
   },
   "hero": {
     "badge": "Live vacaturebord — elke vacature geverifieerd in het systeem van het bedrijf zelf",
@@ -411,6 +412,10 @@
       "vsChatGPT": {
         "question": "Waarom is dit beter dan ChatGPT?",
         "answer": "Resume Booster is specifiek gebouwd voor ATS-optimalisatie met een 5-categorie scoring systeem, 14 branchespecifieke templates, en recruiter-gekalibreerde feedback."
+      },
+      "bringYourAgent": {
+        "question": "Kan mijn eigen AI-agent dit gebruiken?",
+        "answer": "Ja. Het vacaturebord lezen vereist bij een eerste aanroep helemaal geen sleutel, en een gratis sleutel opent elke leestool. Om je agent sollicitaties te laten aanvragen geeft een pas van ${{passPrice}} hem {{passHours}} uur en {{passApplications}} sollicitaties, vanaf zijn eerste aanroep en zonder ooit te verlengen; het Agent-abonnement doet hetzelfde maandelijks en verlengt wel. Elke vacature en elke zoekopdracht op het bord heeft een knop die een prompt voor je agent kopieert, en de instelling per host staat op /agents."
       }
     },
     "stillHaveQuestions": "Nog vragen?"
@@ -4095,7 +4100,6 @@
     "chipAgentOnly": "Agent kan solliciteren",
     "chipInclUncat": "+ ongesorteerd",
     "deadLinkDocTitle": "Vacature niet meer beschikbaar — Resume Booster",
-    "agentAppliesTip": "Het sollicitatieformulier van deze werkgever kan onze agent zelfstandig invullen en versturen — zonder CAPTCHA en zonder account. Vraagt de werkgever iets dat we niet uit je profiel kunnen beantwoorden, dan geeft hij de sollicitatie aan jou terug. Vereist het Apply Agent-abonnement.",
     "agentAppliesChip": "Agent kan solliciteren",
     "descFailed": "We konden deze beschrijving nu even niet laden.",
     "agentOnlyTip": "Toon alleen vacatures waarvan onze agent het formulier voor je kan invullen en versturen. De Sparkles-badge op een kaart betekent hetzelfde — dit filtert het hele bord daarop.",
@@ -4266,7 +4270,20 @@
     "pastFieldHorizonTipNoCount": "Gemeten uit ons eigen levenscyclus-logboek: van de {{field}}-functies die we de afgelopen {{window}} dagen volgden, was {{gone}}% binnen {{d}} dagen van het bord. Deze staat op dag {{age}} volgens de datum van het bedrijf zelf. Een functie die lang openstaat is niet dood — maar het is goed om te weten voordat je een sollicitatie investeert.",
     "compareFillRateBounded": "tot {{pct}}% van zijn functies wordt binnen {{d}} dagen definitief weggehaald ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} actuele vacatures — stuk voor stuk rechtstreeks uit het eigen wervingssysteem van het bedrijf.",
-    "uncatCountLine2": "{{total}} openstaande functies die we niet in een vakgebied konden indelen — doodgewone functies die onze eigen vakgebiedregels niet herkennen, allemaal rechtstreeks uit het wervingssysteem van het bedrijf zelf."
+    "uncatCountLine2": "{{total}} openstaande functies die we niet in een vakgebied konden indelen — doodgewone functies die onze eigen vakgebiedregels niet herkennen, allemaal rechtstreeks uit het wervingssysteem van het bedrijf zelf.",
+    "openInAgent": "Openen in je agent",
+    "openInAgentTip": "Kopieer een prompt van één regel voor je eigen AI-agent: hij noemt het id van deze vacature en onze MCP-server, en vraagt de agent de vacature te lezen en te zeggen of hij kan solliciteren.",
+    "agentPromptCopied": "Prompt gekopieerd — plak hem in je agent. Hij noemt deze vacature en onze MCP-server.",
+    "agentPromptFailed": "Kon de prompt niet kopiëren",
+    "whichAgent": "Welke agent?",
+    "agentOpenThere": "Daar openen (vooraf ingevuld, niet verzonden)",
+    "agentOpenThereTip": "Opent daar een nieuw gesprek met de prompt ingevuld. Er wordt niets verzonden tot je op verzenden drukt.",
+    "agentAppliesTip2": "Het sollicitatieformulier van deze werkgever kan onze sollicitatie-agent zelf invullen en versturen — geen CAPTCHA en geen account nodig. Hij geeft de sollicitatie alsnog aan jou terug als de werkgever iets vraagt wat we niet uit je profiel kunnen beantwoorden. Vereist het Agent-abonnement of een actieve pas.",
+    "bringYourOwnAgent": "of neem je eigen agent mee",
+    "sendSearchToAgent": "Deze zoekopdracht naar mijn agent sturen",
+    "sendSearchTip": "Kopieer een prompt van één regel voor je eigen AI-agent: de filters en de volgorde die je nu ziet, als de argumenten die de zoekfunctie van onze MCP-server aanneemt.",
+    "searchPromptCopied": "Zoekopdracht als prompt gekopieerd — plak hem in je agent.",
+    "welcomeAgent": "Neem je eigen agent mee"
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
@@ -4911,5 +4928,19 @@
     "passLive": "Pas loopt · nog {{left}} sollicitaties",
     "passBuy": "Koop een pas",
     "passOpen": "Je pas"
+  },
+  "agentPage": {
+    "connectInstead": "Heb je al een agent? Verbind die dan — {{passHours}} uur voor ${{passPrice}}, verlengt nooit; het Agent-abonnement wel."
+  },
+  "agentConnect": {
+    "rateLine": "Een gratis sleutel is begrensd op {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag; een actieve pas verhoogt beide voor de duur van zijn uren.",
+    "attachTitle": "Prompts en bronnen die je host kan tonen",
+    "attachLead": "Naast de tools registreert de server kant-en-klare prompts en enkele leesbare documenten. Hosts die ze tonen (het bijvoegmenu van claude.ai, de slash-lijst van Claude Code, het paneel van Cursor) laten ze zien onder de naam van de server; tonen kost geen aanroep en vereist geen sleutel.",
+    "promptsHeading": "Prompts",
+    "resourcesHeading": "Bronnen",
+    "resourceKeyed": "vereist een sleutel of aanmelding",
+    "resourceUnkeyed": "leesbaar zonder sleutel",
+    "handoffLead": "Op het vacaturebord heeft elke vacature en elke zoekopdracht een knop die een prompt voor je agent kopieert — hij noemt het id van de vacature of de argumenten van de zoekopdracht en de URL van deze server.",
+    "handoffCta": "Vacaturebord openen"
   }
 }

@@ -69,6 +69,14 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
     "claimed_at", "claimed_by", "attempts", "claimable_at", "sent_answers", "sent_evidence", "pass_id", "pass_refunded_at",
   ],
   used_stripe_sessions: ["session_id", "used_at", "ip_address", "product_type"],
+  // The adoption reader (20260917200000) reads api_keys, api_usage,
+  // mcp_anon_rate, agent_passes and this search log; it is held to the
+  // zero-collision rule below, and this table's columns are the words a
+  // naive per-day reader would pick (total, results, at, caller).
+  job_board_search_events: [
+    "id", "search_id", "q", "location", "filters", "route", "rescued", "results", "total", "offset_n", "at",
+    "took_ms", "shown", "caller",
+  ],
   product_deliveries: [
     "id", "created_at", "stripe_session_id", "customer_email", "product_type", "product_name", "amount_cents",
     "payment_completed_at", "content_generation_started_at", "content_generation_completed_at", "email_sent_at",
@@ -290,7 +298,7 @@ describe("category_knn qualifies every OUT name that is also an anchor column", 
  */
 const STRICT_FUNCTIONS = [
   "api_key_check", "api_key_issue", "api_key_issue_agent", "mcp_anon_check",
-  "agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics",
+  "agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics", "agent_adoption_metrics",
 ];
 
 describe("the API key functions do not name a column in their return shape", () => {
@@ -351,12 +359,18 @@ describe("teeth: an unmapped table is a failure, not a skip", () => {
   });
 
   it("the strict loop covers every pass RPC that returns a table", () => {
-    for (const fn of ["agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics", "api_key_check"]) {
+    for (const fn of ["agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics", "api_key_check", "agent_adoption_metrics"]) {
       expect(STRICT_FUNCTIONS).toContain(fn);
     }
     // api_key_check now reads agent_passes: the overlay must be visible to
     // the collision check, or a future OUT name like expires_at slips by.
     const { sql } = newestDefining("api_key_check");
     expect(bodyOfFunction(sql, "api_key_check")).toMatch(/public\.agent_passes\b/);
+    // The adoption reader reads five tables; the collision check is only as
+    // wide as the tables the body names, so all five must be visible to it.
+    const reader = bodyOfFunction(newestDefining("agent_adoption_metrics").sql, "agent_adoption_metrics");
+    for (const t of ["api_keys", "api_usage", "mcp_anon_rate", "agent_passes", "job_board_search_events"]) {
+      expect(reader, `agent_adoption_metrics no longer reads public.${t}`).toMatch(new RegExp(`public\\.${t}\\b`));
+    }
   });
 });

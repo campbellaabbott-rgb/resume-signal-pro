@@ -25,7 +25,8 @@
     "mainNavAriaLabel": "Main navigation",
     "guides": "Mga Gabay",
     "jobs": "Trabaho",
-    "explore": "Tuklasin"
+    "explore": "Tuklasin",
+    "agents": "Mga Agent"
   },
   "hero": {
     "badge": "Live job board — bawat posting verified mula sa sariling sistema ng kumpanya",
@@ -411,6 +412,10 @@
       "vsChatGPT": {
         "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",
         "answer": "Ang Resume Booster ay sadyang ginawa para sa ATS optimization na may 5-kategoryang weighted scoring system, 14 industry-specific na templates, at recruiter-calibrated feedback. Hindi tulad ng ChatGPT, makakakuha ka ng consistent 10-section structured output nang walang prompt engineering. Hindi tulad ng templates, nagbibigay kami ng personalized rewrites, LinkedIn analysis, at job description alignment. Ang iyong data ay agad na itinatapon—hindi ginagamit para sa training."
+      },
+      "bringYourAgent": {
+        "question": "Magagamit ba ito ng sarili kong AI agent?",
+        "answer": "Oo. Ang pagbabasa ng job board ay hindi nangangailangan ng anumang key sa unang tawag, at binubuksan ng libreng key ang bawat read tool. Para makapag-request ng mga application ang iyong agent, ang pass na ${{passPrice}} ay nagbibigay dito ng {{passHours}} oras at {{passApplications}} application, simula sa una nitong tawag at hindi kailanman nagre-renew; ganoon din ang ginagawa ng Agent plan buwan-buwan at nagre-renew ito. Bawat posting at bawat paghahanap sa board ay may kontrol na kumokopya ng prompt para sa iyong agent, at ang setup para sa bawat host ay nasa /agents."
       }
     },
     "stillHaveQuestions": "May iba ka pang tanong?"
@@ -4095,7 +4100,6 @@
     "chipAgentOnly": "Puwedeng mag-apply ang agent",
     "chipInclUncat": "+ hindi nauuri",
     "deadLinkDocTitle": "Hindi na available ang anunsyo — Resume Booster",
-    "agentAppliesTip": "Ang application form ng employer na ito ay kaya nang punan at isumite ng aming apply agent nang mag-isa — walang CAPTCHA at walang account na kailangan. Ibabalik pa rin nito sa iyo ang aplikasyon kung may itatanong ang employer na hindi namin masasagot mula sa iyong profile. Kailangan ang Apply Agent subscription.",
     "agentAppliesChip": "Puwedeng mag-apply ang agent",
     "descFailed": "Hindi namin ma-load ang paglalarawang ito ngayon.",
     "agentOnlyTip": "Ipakita lang ang mga anunsyong kayang punan at isumite ng aming agent para sa iyo. Ganoon din ang ibig sabihin ng Sparkles badge sa isang job card — sinasala nito ang buong board sa mga iyon.",
@@ -4266,7 +4270,20 @@
     "pastFieldHorizonTipNoCount": "Sinukat mula sa sarili naming lifecycle log: sa mga posisyon sa {{field}} na binantayan namin sa nakaraang {{window}} araw, {{gone}}% ang naalis sa board sa loob ng {{d}} araw. Ang isang ito ay nasa araw {{age}} ayon sa sariling petsa ng kompanya. Ang matagal nang bukas na posisyon ay hindi patay — pero mabuting malaman bago ka gumugol ng isang aplikasyon.",
     "compareFillRateBounded": "hanggang {{pct}}% ng mga posisyon nito ang tuluyang naaalis sa loob ng {{d}}d ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} live na opening — bawat isa'y direkta mula sa sariling hiring system ng kumpanya.",
-    "uncatCountLine2": "{{total}} bukas na posisyon na hindi namin naiuri sa isang larangan — karaniwang posisyon na hindi nakikilala ng sarili naming mga panuntunan sa larangan, bawat isa ay direkta mula sa sariling hiring system ng kumpanya."
+    "uncatCountLine2": "{{total}} bukas na posisyon na hindi namin naiuri sa isang larangan — karaniwang posisyon na hindi nakikilala ng sarili naming mga panuntunan sa larangan, bawat isa ay direkta mula sa sariling hiring system ng kumpanya.",
+    "openInAgent": "Buksan sa iyong agent",
+    "openInAgentTip": "Kopyahin ang isang-linyang prompt para sa sarili mong AI agent: pinangangalanan nito ang id ng posting na ito at ang aming MCP server, at hinihiling sa agent na basahin ang posting at sabihin kung maaari itong mag-apply.",
+    "agentPromptCopied": "Nakopya ang prompt — i-paste ito sa iyong agent. Pinangangalanan nito ang posting na ito at ang aming MCP server.",
+    "agentPromptFailed": "Hindi makopya ang prompt",
+    "whichAgent": "Aling agent?",
+    "agentOpenThere": "Buksan doon (naka-prefill, hindi naipadala)",
+    "agentOpenThereTip": "Nagbubukas ng bagong pag-uusap doon na nakalagay na ang prompt. Walang ipapadala hangga't hindi mo pinipindot ang send.",
+    "agentAppliesTip2": "Ang application form ng employer na ito ay kayang punan at isumite mismo ng aming apply agent — walang CAPTCHA at walang kailangang account. Ibabalik pa rin nito sa iyo ang application kung may itatanong ang employer na hindi namin masasagot mula sa iyong profile. Kailangan ng Agent plan o ng aktibong pass.",
+    "bringYourOwnAgent": "o magdala ng sarili mong agent",
+    "sendSearchToAgent": "Ipadala ang paghahanap na ito sa aking agent",
+    "sendSearchTip": "Kopyahin ang isang-linyang prompt para sa sarili mong AI agent: ang mga filter at pagkakasunod-sunod na tinitingnan mo, bilang mga argument na tinatanggap ng paghahanap ng aming MCP server.",
+    "searchPromptCopied": "Nakopya ang paghahanap bilang prompt — i-paste ito sa iyong agent.",
+    "welcomeAgent": "Magdala ng sarili mong agent"
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
@@ -4911,5 +4928,19 @@
     "passLive": "Tumatakbo ang pass · {{left}} aplikasyon na lang",
     "passBuy": "Bumili ng pass",
     "passOpen": "Ang iyong pass"
+  },
+  "agentPage": {
+    "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew."
+  },
+  "agentConnect": {
+    "rateLine": "Ang libreng key ay limitado sa {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw; itinataas ng aktibong pass ang dalawa sa loob ng mga oras nito.",
+    "attachTitle": "Mga prompt at resource na maaaring ilista ng iyong host",
+    "attachLead": "Bukod sa mga tool, nagrerehistro ang server ng mga handa nang prompt at ilang nababasang dokumento. Ang mga host na naglilista ng mga ito (ang attach menu ng claude.ai, ang slash list ng Claude Code, ang panel ng Cursor) ay nagpapakita ng mga ito sa ilalim ng pangalan ng server; walang gastos na tawag ang paglilista at hindi nangangailangan ng key.",
+    "promptsHeading": "Mga prompt",
+    "resourcesHeading": "Mga resource",
+    "resourceKeyed": "kailangan ng key o sign-in",
+    "resourceUnkeyed": "nababasa nang walang key",
+    "handoffLead": "Sa job board, bawat posting at bawat paghahanap ay may kontrol na kumokopya ng prompt para sa iyong agent — pinangangalanan nito ang id ng posting o ang mga argument ng paghahanap at ang URL ng server na ito.",
+    "handoffCta": "Buksan ang job board"
   }
 }
