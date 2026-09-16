@@ -3838,6 +3838,25 @@ export type Database = {
         Returns: undefined
       }
       agent_note_auto_release: { Args: { p_user_id: string }; Returns: number }
+      agent_pass_grant: {
+        Args: {
+          p_amount_cents: number
+          p_applications_total: number
+          p_daily_quota: number
+          p_payment_intent_id: string
+          p_rate_per_min: number
+          p_session_hours: number
+          p_shelf_days: number
+          p_stripe_session_id: string
+          p_user_id: string
+        }
+        Returns: {
+          grant_reason: string
+          granted_ok: boolean
+          granted_pass_id: string
+          was_duplicate: boolean
+        }[]
+      }
       agent_prepare_now: { Args: never; Returns: boolean }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
