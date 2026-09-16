@@ -4035,6 +4035,7 @@ export type Database = {
           n: number
         }[]
       }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
         Returns: boolean
