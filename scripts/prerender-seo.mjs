@@ -1681,6 +1681,18 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       // limited to the unkeyed tools. Both lists come off the host table.
       const withSignIn = andList(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name));
       const withoutHeader = andList(D.MCP_HOSTS.filter((x) => !x.header && !x.oauth).map((x) => x.name));
+      // The unkeyed tier: names and caps from the same mirror the server's
+      // constants are pinned to (a-first-call-with-no-key guard), never typed.
+      // DECLARED BEFORE signInSentence READS THEM. On 2026-09-16 these two sat
+      // twelve lines below the sentence that interpolates them; the ternary
+      // only evaluated that literal once a host carried oauth: true, which
+      // 23e294ac made so, and the read hit the temporal dead zone. The
+      // script's never-throw policy (:2207) then shipped every page from
+      // /agents onward as the homepage shell -- silently, publish green.
+      // src/test/a-const-read-before-its-line-is-a-page-that-never-renders
+      // parses this file and refuses any synchronous read above a declaration.
+      const unkeyedNames = codes(D.MCP_ANON_TOOLS);
+      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
         ? ` From ${h(withSignIn)}: paste the URL as a custom connector and choose Sign in when needed — the first keyed tool shows a Connect card, you sign in to this site and Allow, and the call runs on your own account key (the same row, quota and pass a pasted key would use); before sign-in the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
@@ -1691,10 +1703,6 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       const paidSentence = D.MCP_PAID_TOOLS.length
         ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code>POST /v1/fit</code> on the data API.`
         : "";
-      // The unkeyed tier: names and caps from the same mirror the server's
-      // constants are pinned to (a-first-call-with-no-key guard), never typed.
-      const unkeyedNames = codes(D.MCP_ANON_TOOLS);
-      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
