@@ -295,6 +295,13 @@
       "when": 1789585142544,
       "tag": "0041_an_oauth_token_names_the_server_it_was_minted_for",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1789585164369,
+      "tag": "0042_an_application_is_paid_for_when_it_is_queued",
+      "breakpoints": true
     }
   ]
 }

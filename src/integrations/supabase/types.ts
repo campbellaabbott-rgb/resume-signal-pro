@@ -3858,6 +3858,20 @@ export type Database = {
         }[]
       }
       agent_prepare_now: { Args: never; Returns: boolean }
+      agent_queue_enqueue: {
+        Args: {
+          p_pass_funded: boolean
+          p_posting_id: string
+          p_row: Json
+          p_user_id: string
+        }
+        Returns: {
+          enqueue_reason: string
+          enqueued_ok: boolean
+          pass_apps_left: number
+          queued_row_id: number
+        }[]
+      }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
