@@ -260,6 +260,13 @@
       "when": 1789499468091,
       "tag": "0036_a_staging_table_anyone_can_rewrite_runs_as_the_definer",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1789567020219,
+      "tag": "0037_a_shared_egress_makes_a_per_address_bucket_a_global_one_so_both_exist",
+      "breakpoints": true
     }
   ]
 }

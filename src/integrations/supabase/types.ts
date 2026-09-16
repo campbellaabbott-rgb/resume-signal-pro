@@ -2547,6 +2547,24 @@ export type Database = {
         }
         Relationships: []
       }
+      mcp_anon_rate: {
+        Row: {
+          bucket: string
+          calls: number
+          day: string
+        }
+        Insert: {
+          bucket: string
+          calls?: number
+          day: string
+        }
+        Update: {
+          bucket?: string
+          calls?: number
+          day?: string
+        }
+        Relationships: []
+      }
       parse_failures: {
         Row: {
           created_at: string
@@ -5031,6 +5049,16 @@ export type Database = {
         Returns: Json
       }
       logout_affiliate: { Args: { p_session_token: string }; Returns: boolean }
+      mcp_anon_check: {
+        Args: { p_global_cap: number; p_ip_cap: number; p_ip_hash: string }
+        Returns: {
+          allowed: boolean
+          global_cap: number
+          global_used: number
+          ip_cap: number
+          ip_used: number
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
