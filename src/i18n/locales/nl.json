@@ -4837,6 +4837,13 @@
     "exploreCta": "Verkennen op vakgebied",
     "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures"
   },
+  "homeAgent": {
+    "lead": "Neem je eigen AI-agent mee.",
+    "connectLine": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per adres om op de vacaturebank rond te kijken.",
+    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
+    "connectCta": "Verbind je agent",
+    "passCta": "Pas kopen of openen"
+  },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% van de gedateerde vacatures in {{field}}, geplaatst tussen {{cohortFrom}} en {{cohortTo}}, stond nog online bij het bereiken van onze grens van 30 dagen (n={{n}}, ±{{hw}} punten); hoogstens {{r}}% was definitief verwijderd en minstens {{x}}% opnieuw geplaatst. Alleen geteld op borden die we tot het einde lezen.",
     "stillUp30Unread": "Voor {{n}} van de hier vermelde vakgebieden — {{fields}} — is er geen meting van het aandeel dat bij onze grens van 30 dagen nog online stond: op de borden die we tot het einde kunnen lezen, bereikten te weinig van hun gedateerde vacatures de grens voor een aandeel waar we achter staan.",

@@ -29,7 +29,7 @@
 //   the per-vendor tallies all come from live payloads. Nothing here renders a
 //   literal, and a failed read renders no sentence rather than a stale or zero
 //   one — the rule the rest of this codebase already enforces.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Upload, Briefcase, ArrowRight, ShieldCheck, Bot, Sparkles } from "lucide-react";
@@ -56,7 +56,15 @@ const FIELDS = [
   { id: "healthcare", label: "Healthcare" },
 ] as const;
 
-export function HomeHero() {
+/**
+ * `agentOffer` is the one strip the page hands into this band for the agent
+ * half of the claim — connect your own agent free, or buy it a pass. It
+ * renders last, under the board's proof and its entries, so it never competes
+ * with the single primary action and never pushes the proof strip down; the
+ * copy and its numbers live with the page (src/pages/Index.tsx), where the
+ * pass guard reads them.
+ */
+export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
   const { t, i18n } = useTranslation();
   const totals = useBoardTotals();
   const [sendable, setSendable] = useState<number | null>(null);
@@ -193,6 +201,9 @@ export function HomeHero() {
               {t("homeHero.exploreCta", "Explore employers")}
             </Link>
           </div>
+
+          {/* THE AGENT OFFER, handed in by the page. See the prop's note. */}
+          {agentOffer}
         </div>
       </div>
     </section>

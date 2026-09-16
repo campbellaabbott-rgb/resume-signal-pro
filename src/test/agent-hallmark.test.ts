@@ -36,7 +36,9 @@ describe("the agent opens the page", () => {
     // Two full-height heroes put 6,807px and four competing CTAs between a
     // visitor and any action; the upload tool — the only path to a paying
     // customer — began at 10,546px. Consolidated 2026-08-13 to 3,903px.
-    expect(indexCode, "HomeHero is not on the page").toMatch(/<HomeHero \/>/);
+    // HomeHero may take the page's agent-offer strip as a prop; it is still
+    // the one hero.
+    expect(indexCode, "HomeHero is not on the page").toMatch(/<HomeHero\b[^>]*\/>/);
     expect(indexCode, "the second stacked hero is back").not.toMatch(/<JobBoardHero \/>/);
     expect(indexCode, "the old agent hero is back alongside HomeHero").not.toMatch(/<AgentHero \/>/);
   });

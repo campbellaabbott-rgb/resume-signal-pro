@@ -17,6 +17,14 @@
 //
 // Guard 11 — the two new routes are private: named on the sitemap-prerender
 // parity allowlist, declared in the router, marked noindex, never prerendered.
+//
+// The homepage — the agent offer strip inside the hero band (src/pages/
+// Index.tsx) renders the pass numbers from the same mirror and the free daily
+// allowance from MCP_ANON_CAPS; rendered, it must contain those numbers and
+// no digit sequence the mirrors did not supply, its comment-stripped source
+// must spell none of the pass numbers beside the words pass/hour/application
+// (proven on a mutated copy), and the crawler copy in scripts/prerender-seo.mjs
+// must be the same en.json sentences filled from the same mirrors.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -41,10 +49,10 @@ type Doc = Record<string, Record<string, unknown>>;
 const docOf = (file: string): Doc => JSON.parse(readFileSync(resolve(LOCALE_DIR, file), "utf8"));
 const EN = docOf("en.json");
 
-/** Every key that names the pass: the two pass namespaces plus the pricing line. */
+/** Every key that names the pass: the two pass namespaces, the homepage strip, plus the pricing line. */
 const passKeys = (d: Doc): Array<[string, string]> => {
   const out: Array<[string, string]> = [];
-  for (const ns of ["agentPass", "oauthConsent"]) {
+  for (const ns of ["agentPass", "oauthConsent", "homeAgent"]) {
     for (const [k, v] of Object.entries(d[ns] ?? {})) if (typeof v === "string") out.push([`${ns}.${k}`, v]);
   }
   for (const [k, v] of Object.entries(d.pricingPage ?? {})) {
@@ -77,9 +85,12 @@ describe("every sentence that names the pass interpolates its numbers, in every 
   it("finds the pass copy (an empty walk would pass everything below vacuously)", () => {
     expect(enPass.size).toBeGreaterThan(20);
     const used = new Set([...enPass.values()].flatMap(placeholders));
-    for (const p of ["passPrice", "passHours", "passApplications", "passShelfDays", "holdFirstN"]) {
+    for (const p of ["passPrice", "passHours", "passApplications", "passShelfDays", "holdFirstN", "freeCallsPerDay"]) {
       expect(used.has(p), `no pass string interpolates {{${p}}}`).toBe(true);
     }
+    // The homepage namespace is in the walk (an absent namespace would be
+    // skipped silently by `?? {}` and the strip would go unguarded).
+    expect([...enPass.keys()].filter((k) => k.startsWith("homeAgent.")).length).toBeGreaterThanOrEqual(2);
   });
 
   for (const file of LOCALES) {
@@ -251,6 +262,9 @@ vi.mock("@/integrations/supabase/client", () => ({
     functions: { invoke: (...a: unknown[]) => invoke(...a) },
     from: () => stubTable(),
     auth: { oauth: oauthApi },
+    // The homepage's stat readers (scan totals, scan insights) go through
+    // rpc; they answer nothing here and the strip must not need them.
+    rpc: async () => ({ data: null, error: null }),
   },
 }));
 function stubTable() {
@@ -265,6 +279,8 @@ function stubTable() {
 import { PassCard } from "../pages/AgentConnect";
 import AgentPass from "../pages/AgentPass";
 import OAuthConsent from "../pages/OAuthConsent";
+import Index, { AgentOfferStrip } from "../pages/Index";
+import { MCP_ANON_CAPS } from "../config/mcp-tools";
 
 const USER = { id: "u1", email: "buyer@example.com" };
 const mount = (node: React.ReactNode, at = "/agents") =>
@@ -434,5 +450,158 @@ describe("the consent route /oauth/consent", () => {
     expect(allow).not.toBeDisabled();
     fireEvent.click(allow);
     await waitFor(() => expect(oauthApi.approveAuthorization).toHaveBeenCalledWith("auth_1", { skipBrowserRedirect: true }));
+  });
+});
+
+// ───────────────────────── the homepage strip ─────────────────────────────────
+
+/**
+ * The offences a page source can commit, as a pure function so the teeth can
+ * feed it a mutated copy: any of the pass numbers (read off the mirror, never
+ * spelled here) within one line of the words pass / hour / application, in
+ * either order, with or without a currency sign. Comment-stripped first — a
+ * comment explaining the rule must not fail it.
+ */
+function spelledPassNumbers(code: string): string[] {
+  const nums = [PASS.priceUsd, PASS.sessionHours, PASS.applications].map(String).join("|");
+  const unit = "(?:pass(?:es)?|hours?|applications?)";
+  const re = new RegExp(`(?:\\$\\s*)?\\b(?:${nums})\\b[^\\n]{0,40}?\\b${unit}\\b|\\b${unit}\\b[^\\n]{0,40}?(?:\\$\\s*)?\\b(?:${nums})\\b`, "gi");
+  return strip(code).match(re) ?? [];
+}
+
+describe("the agent offer on the homepage", () => {
+  const INDEX_RAW = read("src/pages/Index.tsx");
+  const allowed = new Set([PASS.priceUsd, PASS.sessionHours, PASS.applications, MCP_ANON_CAPS.perAddressPerDay].map(String));
+  const digitRuns = (s: string) => s.match(/\d+/g) ?? [];
+
+  beforeEach(() => {
+    invoke.mockReset();
+    // The page's live reads (board status, totals) answer nothing; the strip
+    // must stand without them, from the mirrors alone.
+    invoke.mockResolvedValue({ data: null, error: null });
+    auth.session = null; auth.loading = false;
+  });
+
+  it("mounts the whole homepage and renders the strip inside the hero band, every number from a mirror", () => {
+    mount(<Index />, "/");
+    const hero = document.querySelector('section[aria-labelledby="home-hero-heading"]');
+    expect(hero, "the fused hero is on the page").not.toBeNull();
+    const el = hero!.querySelector("[data-agent-offer]");
+    expect(el, "the strip is INSIDE the hero band, not a second hero").not.toBeNull();
+    const text = el!.textContent ?? "";
+    expect(text).toContain(`$${PASS.priceUsd}`);
+    expect(text).toContain(`${PASS.sessionHours} hours`);
+    expect(text).toContain(`${PASS.applications} jobs`);
+    expect(text).toContain(`${MCP_ANON_CAPS.perAddressPerDay} calls a day`);
+    const stray = digitRuns(text).filter((n) => !allowed.has(n));
+    expect(stray, "a digit the mirrors did not supply").toEqual([]);
+    // The strip is one strip: it lives under the hero's single h1 and adds
+    // no heading and no second primary-weight button of its own.
+    expect(el!.querySelector("h1, h2, h3")).toBeNull();
+    expect(el!.querySelector("button")).toBeNull();
+    expect(document.querySelectorAll("h1").length).toBe(1);
+  });
+
+  it("names sign-in as the condition for the pass, never for connecting, and links to /agents for everyone", () => {
+    mount(<AgentOfferStrip />, "/");
+    const el = document.querySelector("[data-agent-offer]")!;
+    const [connect, pass] = Array.from(el.querySelectorAll("p")).map((p) => p.textContent ?? "");
+    expect(connect).toMatch(/no account/i);
+    expect(connect).not.toMatch(/sign in/i);
+    expect(pass).toMatch(/sign in/i);
+    expect(pass).toMatch(/never renews/i);
+    expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
+    expect(screen.queryByRole("link", { name: /pass/i }), "no pass-page link while signed out").toBeNull();
+  });
+
+  it("signed in, adds one link to the pass page and no checkout call", () => {
+    auth.session = { user: USER };
+    mount(<AgentOfferStrip />, "/");
+    expect(screen.getByRole("link", { name: /pass/i }).getAttribute("href")).toBe("/agents/pass");
+    expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
+    expect(calls("create-pass-checkout").length).toBe(0);
+    expect(calls("agent-pass-status").length, "the homepage never asks the status endpoint").toBe(0);
+  });
+
+  it("Index.tsx renders the strip from the mirrors and spells none of the pass numbers beside pass/hour/application", () => {
+    const code = strip(INDEX_RAW);
+    expect(code).toMatch(/from "@\/config\/products"/);
+    expect(code).toMatch(/from "@\/config\/mcp-tools"/);
+    expect(code).toMatch(/passPrice: PASS\.priceUsd/);
+    expect(code).toMatch(/passHours: PASS\.sessionHours/);
+    expect(code).toMatch(/passApplications: PASS\.applications/);
+    expect(code).toMatch(/freeCallsPerDay: MCP_ANON_CAPS\.perAddressPerDay/);
+    expect(code).toMatch(/<HomeHero agentOffer=\{<AgentOfferStrip \/>\} \/>/);
+    // Not vacuous: the placeholders are there to be replaced.
+    for (const p of ["{{passPrice}}", "{{passHours}}", "{{passApplications}}", "{{freeCallsPerDay}}"]) expect(code).toContain(p);
+    expect(spelledPassNumbers(INDEX_RAW)).toEqual([]);
+  });
+
+  it("teeth: a copy of Index.tsx with the price, the hours or the applications spelled fails", () => {
+    const priced = INDEX_RAW.replace("${{passPrice}}", `$${PASS.priceUsd}`);
+    expect(priced).not.toBe(INDEX_RAW);
+    expect(spelledPassNumbers(priced).length).toBeGreaterThan(0);
+    const houred = INDEX_RAW.replace("{{passHours}} hours", `${PASS.sessionHours} hours`);
+    expect(houred).not.toBe(INDEX_RAW);
+    expect(spelledPassNumbers(houred).length).toBeGreaterThan(0);
+    const applied = INDEX_RAW.replace("apply to {{passApplications}} jobs", `apply to ${PASS.applications} jobs — that is ${PASS.applications} applications`);
+    expect(applied).not.toBe(INDEX_RAW);
+    expect(spelledPassNumbers(applied).length).toBeGreaterThan(0);
+    // And a spelling inside a comment alone does NOT fail it — the rule is
+    // about what renders, and a comment is where the reasoning lives.
+    const commented = INDEX_RAW.replace("export function AgentOfferStrip()", `/* the pass costs $${PASS.priceUsd} */\nexport function AgentOfferStrip()`);
+    expect(commented).not.toBe(INDEX_RAW);
+    expect(spelledPassNumbers(commented)).toEqual([]);
+  });
+
+  describe("and the crawler copy for / says the same, from the same mirrors", () => {
+    const BAKE = read("scripts/prerender-seo.mjs");
+    // The block the script evaluates, run here against the real en.json and
+    // the real mirrors — so what a Googlebot-UA curl of / carries is proven,
+    // not inferred from a regex over template text.
+    const offer = (() => {
+      const start = BAKE.indexOf("const AGENT_OFFER = (() => {");
+      expect(start).toBeGreaterThan(-1);
+      const end = BAKE.indexOf("})();", start) + "})();".length;
+      const D = { EN_LOCALE: EN, PASS, MCP_ANON_CAPS };
+      return new Function("D", `${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D) as { lead: string; connect: string; pass: string; cta: string };
+    })();
+    const fill = (s: string) => s.replace(/\{\{(\w+)\}\}/g, (_, k) => String(({ passPrice: PASS.priceUsd, passHours: PASS.sessionHours, passApplications: PASS.applications, freeCallsPerDay: MCP_ANON_CAPS.perAddressPerDay } as Record<string, number>)[k]));
+    const homeAgent = EN.homeAgent as Record<string, string>;
+
+    it("the bundle entry exports the PASS mirror", () => {
+      expect(BAKE).toMatch(/export \{[^}]*\bPASS\b[^}]*\} from "\.\.\/src\/config\/products"/);
+    });
+    it("the sentences are en.json's homeAgent lines with the mirrors filled in", () => {
+      expect(offer.connect).toBe(fill(homeAgent.connectLine));
+      expect(offer.pass).toBe(fill(homeAgent.passLine));
+      expect(offer.lead).toBe(homeAgent.lead);
+      expect(offer.pass).toContain(`$${PASS.priceUsd}`);
+      expect(offer.pass).toContain(`${PASS.sessionHours} hours`);
+      expect(offer.pass).toContain(`${PASS.applications} jobs`);
+      expect(offer.connect).toContain(`${MCP_ANON_CAPS.perAddressPerDay} calls a day`);
+      expect(offer.connect).toMatch(/no account/i);
+      expect(offer.pass).toMatch(/sign in/i);
+    });
+    it("a placeholder with no mirror throws instead of baking a raw brace", () => {
+      const start = BAKE.indexOf("const AGENT_OFFER = (() => {");
+      const end = BAKE.indexOf("})();", start) + "})();".length;
+      const D = { EN_LOCALE: { homeAgent: { ...homeAgent, passLine: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
+      expect(() => new Function("D", `${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D)).toThrow(/no mirror/);
+    });
+    it("the homepage block and the llms-full MCP line both emit them", () => {
+      const home = BAKE.slice(BAKE.indexOf('path: "/",'), BAKE.indexOf('path: "/cv-standards"'));
+      expect(home).toContain("${esc(AGENT_OFFER.connect)}");
+      expect(home).toContain("${esc(AGENT_OFFER.pass)}");
+      expect(home).toContain('<a href="/agents"');
+      const llms = BAKE.slice(BAKE.indexOf('lines.push("## Free tools");'), BAKE.indexOf('writeFileSync(join(dist, "llms-full.txt")'));
+      expect(llms).toContain("${AGENT_OFFER.connect} ${AGENT_OFFER.pass}");
+    });
+    it("no crawler sentence spells a pass number of its own", () => {
+      // The template must interpolate; a typed price beside the pass in the
+      // homepage block would be a second spelling the mirror cannot move.
+      const home = BAKE.slice(BAKE.indexOf('path: "/",'), BAKE.indexOf('path: "/cv-standards"'));
+      expect(spelledPassNumbers(home)).toEqual([]);
+    });
   });
 });

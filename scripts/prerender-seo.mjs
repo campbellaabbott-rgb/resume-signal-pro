@@ -43,7 +43,7 @@ export { GUIDES, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
-export { getAllProducts } from "../src/config/products";
+export { getAllProducts, PASS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { BOARD_SOURCE_LIST } from "../src/config/ats-vendors";
@@ -933,6 +933,17 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
   }
 
   // ---- Homepage (also the SPA fallback — see renderFile notes) ----
+  // THE AGENT OFFER, the same two sentences the hero strip renders
+  // (src/pages/Index.tsx AgentOfferStrip): read from en.json's homeAgent keys
+  // and filled from the PASS and MCP_ANON_CAPS mirrors — never a second
+  // spelling of the price, the hours, the applications or the daily
+  // allowance, so a Googlebot-UA curl of / says exactly what the page says.
+  const AGENT_OFFER = (() => {
+    const A = (D.EN_LOCALE && D.EN_LOCALE.homeAgent) || {};
+    const vals = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications, freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
+    const fillIn = (s) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] homeAgent copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
+    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine), pass: fillIn(A.passLine), cta: fillIn(A.connectCta) };
+  })();
   write({
     isFallback: true,
     path: "/",
@@ -993,6 +1004,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           <li class="text-sm text-muted-foreground">✓ Submits end-to-end where the employer's system permits; never solves a CAPTCHA or evades a bot check</li>
           <li class="text-sm text-muted-foreground">✓ Tracks every application and tells you when a role comes down</li>
         </ul>
+        <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} ${esc(AGENT_OFFER.pass)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
       </section>
       <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
       <p class="text-muted-foreground mb-6">Same document, same score, every time — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reproducible reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
@@ -2038,7 +2050,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(`- Companies on the board: ${SITE}/companies — every employer with open roles, A–Z, each with its live count and a link to its own page.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (60 requests/minute, 1,000/day): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key or a live Agent Pass, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — a keyed tool called with no credential answers HTTP 401 with a WWW-Authenticate challenge naming the server's protected-resource metadata, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key.`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key or a live Agent Pass, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — a keyed tool called with no credential answers HTTP 401 with a WWW-Authenticate challenge naming the server's protected-resource metadata, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${AGENT_OFFER.pass}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;

@@ -4837,6 +4837,13 @@
     "exploreCta": "Explore by field",
     "statCompanyBoards": "company job boards hiring"
   },
+  "homeAgent": {
+    "lead": "Bring your own AI agent.",
+    "connectLine": "Connect it free with no account — {{freeCallsPerDay}} calls a day per address to look around the board.",
+    "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.",
+    "connectCta": "Connect your agent",
+    "passCta": "Buy or open your pass"
+  },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end.",
     "stillUp30Unread": "{{n}} of the fields listed here — {{fields}} — have no reading of the share still advertised at our 30-day cap: on the boards we can read to the end, too few of their dated roles reached the cap for a share we would stand behind.",

@@ -4837,6 +4837,13 @@
     "exploreCta": "Explorar por campo",
     "statCompanyBoards": "portales de empleo de empresas con vacantes"
   },
+  "homeAgent": {
+    "lead": "Trae tu propio agente de IA.",
+    "connectLine": "Conéctalo gratis y sin cuenta — {{freeCallsPerDay}} llamadas al día por dirección para explorar la bolsa de empleo.",
+    "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Nunca se renueva; inicia sesión para comprarlo.",
+    "connectCta": "Conecta tu agente",
+    "passCta": "Comprar o abrir tu pase"
+  },
   "ghostIndex": {
     "stillUp30Row": "El {{pct}}% de las vacantes con fecha de {{field}} publicadas entre {{cohortFrom}} y {{cohortTo}} seguían anunciadas al llegar a nuestro tope de 30 días (n={{n}}, ±{{hw}} puntos); como mucho el {{r}}% había sido retirado definitivamente y al menos el {{x}}% vuelto a publicar. Contado solo en portales que leemos hasta el final.",
     "stillUp30Unread": "{{n}} de los campos listados aquí — {{fields}} — no tienen lectura de la proporción que seguía anunciada en nuestro tope de 30 días: en los portales que podemos leer hasta el final, muy pocas de sus vacantes con fecha llegaron al tope como para dar una proporción que podamos respaldar.",

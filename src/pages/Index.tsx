@@ -45,6 +45,9 @@ import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
 import { HomeHero } from "@/components/HomeHero";
+import { Bot, ArrowRight } from "lucide-react";
+import { PASS } from "@/config/products";
+import { MCP_ANON_CAPS } from "@/config/mcp-tools";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
@@ -371,6 +374,62 @@ interface FreeKeywordResult {
 }
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
+
+/**
+ * THE AGENT OFFER ON THE FRONT PAGE. Two sentences inside the hero band, where
+ * the agent half of the fused hero already speaks: anyone can point their own
+ * AI agent at the board for free with no account (the unkeyed tier), and a
+ * one-off pass buys that agent a fixed session to research at full speed and
+ * apply to a fixed number of jobs. Every number here is interpolated from the
+ * mirrors — the pass from PASS (src/config/products.ts, pinned to the Deno
+ * source by pricing-truth.test.ts) and the free daily allowance from
+ * MCP_ANON_CAPS (pinned to the server by a-first-call-with-no-key…) — and the
+ * copy never types a digit, in any locale; src/test/a-pass-number-on-a-page-
+ * is-a-placeholder.test.tsx renders this strip and reads this file to prove
+ * both. Sign-in is the condition for the PASS (applications are keyed to an
+ * account), never for connecting, and the sentences say so in that order.
+ * The strip is exported so the guard can mount it on its own as well as
+ * inside the page; the copy object is not (a non-component export breaks fast
+ * refresh, and the guard reads these bindings from source, not by import).
+ */
+const AGENT_OFFER_COPY = {
+  passPrice: PASS.priceUsd,
+  passHours: PASS.sessionHours,
+  passApplications: PASS.applications,
+  freeCallsPerDay: MCP_ANON_CAPS.perAddressPerDay,
+} as const;
+
+export function AgentOfferStrip() {
+  const { t } = useTranslation();
+  const { session } = useAuth();
+  return (
+    <div
+      data-agent-offer
+      className="mt-6 mx-auto max-w-2xl rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left sm:flex sm:items-start sm:gap-3"
+    >
+      <Bot className="hidden sm:block w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden />
+      <div className="text-sm text-muted-foreground leading-relaxed">
+        <p>
+          <span className="font-semibold text-foreground">{t("homeAgent.lead", "Bring your own AI agent.")}</span>{" "}
+          {t("homeAgent.connectLine", "Connect it free with no account — {{freeCallsPerDay}} calls a day per address to look around the board.", AGENT_OFFER_COPY)}
+        </p>
+        <p className="mt-1">
+          {t("homeAgent.passLine", "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
+        </p>
+        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
+          <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">
+            {t("homeAgent.connectCta", "Connect your agent")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+          </Link>
+          {session && (
+            <Link to="/agents/pass" className="inline-flex items-center gap-1 text-primary hover:underline">
+              {t("homeAgent.passCta", "Buy or open your pass")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+            </Link>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // `landing` renders this same page (real scanner included) under a head-term
 // SEO route like /resume-checker — unique title/description/FAQ per query
@@ -1801,8 +1860,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 states the three live numbers, offers ONE primary action, and
                 puts the fifteen hiring systems and their counts directly
                 underneath — proof under the claim, where a sceptic can check
-                it without scrolling. */}
-            <HomeHero />
+                it without scrolling. The agent offer — connect free, or
+                buy the pass — is ONE strip handed into that band, not a
+                second hero above the scanner. */}
+            <HomeHero agentOffer={<AgentOfferStrip />} />
           </>
         )}
 

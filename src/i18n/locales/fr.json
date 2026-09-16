@@ -4837,6 +4837,13 @@
     "exploreCta": "Explorer par domaine",
     "statCompanyBoards": "sites carrières d'entreprises qui recrutent"
   },
+  "homeAgent": {
+    "lead": "Amenez votre propre agent IA.",
+    "connectLine": "Connectez-le gratuitement, sans compte — {{freeCallsPerDay}} appels par jour et par adresse pour explorer le tableau des offres.",
+    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Sans reconduction ; connectez-vous pour l'acheter.",
+    "connectCta": "Connecter votre agent",
+    "passCta": "Acheter ou ouvrir votre pass"
+  },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% des postes datés en {{field}} publiés entre {{cohortFrom}} et {{cohortTo}} étaient encore affichés en atteignant notre plafond de 30 jours (n={{n}}, ±{{hw}} points) ; au plus {{r}}% avaient été retirés définitivement et au moins {{x}}% republiés. Compté uniquement sur les sites que nous lisons jusqu'au bout.",
     "stillUp30Unread": "{{n}} des domaines listés ici — {{fields}} — n'ont pas de mesure de la part encore affichée à notre plafond de 30 jours : sur les sites que nous pouvons lire jusqu'au bout, trop peu de leurs postes datés ont atteint le plafond pour une part que nous puissions défendre.",
