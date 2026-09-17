@@ -36,6 +36,7 @@ const HiringTrends = lazy(() => import("./pages/HiringTrends"));
 const DataApi = lazy(() => import("./pages/DataApi"));
 const AgentConnect = lazy(() => import("./pages/AgentConnect"));
 const AgentPass = lazy(() => import("./pages/AgentPass"));
+const McpNotHere = lazy(() => import("./pages/McpNotHere"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const PayTransparencyIndex = lazy(() => import("./pages/PayTransparencyIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
@@ -102,6 +103,10 @@ const App = () => (
               both session-bound, noindex, and named in PRIVATE_ROUTES. */}
           <Route path="/agents/pass" element={<AgentPass />} />
           <Route path="/oauth/consent" element={<OAuthConsent />} />
+          {/* /mcp is NOT the server: a person who types the branded address
+              lands on the sentence that says so and the real address, not on
+              the homepage. noindex, prerendered, in no sitemap. */}
+          <Route path="/mcp" element={<McpNotHere />} />
           <Route path="/pay-transparency" element={<PayTransparencyIndex />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />

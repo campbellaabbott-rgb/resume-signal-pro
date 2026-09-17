@@ -90,6 +90,21 @@ import {
   unauthorized,
   verifyOAuthBearer,
 } from "./oauth.ts";
+// Whether the authorization server behind that challenge is switched on:
+// one probed, cached fact (on / off / unknown), published on the initialize
+// result and read before either challenge is answered — while it is not on,
+// a keyed tool called with no credential is refused in words, for every
+// host, so nobody is sent into a sign-in that cannot finish.
+import {
+  SIGN_IN_META_KEY,
+  cachedSignIn,
+  noCredentialAnswer,
+  noCredentialLog,
+  probeSignIn,
+  signInGuideSection,
+  signInSentence,
+  type SignInVerdict,
+} from "./as-probe.ts";
 
 // One version, honestly. Advertising 2025-03-26 / 2024-11-05 — whose specs
 // REQUIRE receivers to accept JSON-RPC batches — while this stateless server
@@ -132,9 +147,28 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // tools take; and, for a host that reads its sign-in cue out of a result's
 // _meta rather than the transport, the same challenge in band (a GUESS at
 // ChatGPT's behaviour, labelled so at the site).
+// 09-04.7: server honesty about sign-in. A probe of the authorization
+// server's metadata document (as-probe.ts: one cached fact, on / off /
+// unknown) is published on the initialize result under the reverse-DNS
+// _meta key the module names; the sign-in challenge — both the transport
+// form and the in-band cue — is answered ONLY while that fact is on, and in
+// every other state a keyed tool called with no credential is refused in
+// band with the sentence naming the unkeyed tools and the mint page, for
+// every caller. initialize.instructions and the guide carry one sentence
+// for the state; the guide gains a section keyed to the server's refusal
+// strings. Also: every keyed tool's description closes with the credential
+// it needs; an unrecognised key on an unkeyed tool falls through to the
+// unkeyed answer with a note; get_jobs with no ids is an argument error
+// rather than an internal one; and the strings at the transport edge (GET,
+// non-JSON body, unknown tool, unknown method) say what to do next.
+// Repairs before .7 shipped: the unknown-key fall-through skips the deny
+// block (its first cut cleared the decision and was then refused by the
+// very next statement — a guard now executes the gate); the guide's
+// rate-limit row reads the free-key default from one constant and says
+// so; the decision log names the transport the challenge took.
 const SERVER_INFO = {
   name: "resumebooster-job-board",
-  version: "2026-09-04.6",
+  version: "2026-09-04.7",
   // 2025-11-25 Implementation fields, additive: a display name, the human
   // page, and an icon a host may show beside the connector.
   title: "Resume Booster job board",
@@ -142,6 +176,10 @@ const SERVER_INFO = {
   icons: [{ src: "https://resumebooster.work/icons/icon-192.png", mimeType: "image/png", sizes: ["192x192"] }],
 };
 const DOCS_URL = SERVER_INFO.websiteUrl;
+/** What a browser sees at this address: the one string a hurried human meets when they open the server like a page. */
+const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Paste this address into your agent; the how-to is at ${DOCS_URL}.`;
+/** The JSON-RPC methods this server answers, for the error that names them. */
+const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/read"] as const;
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -167,6 +205,14 @@ const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${enco
 // runners under the names ChatGPT's research connector requires. Nothing in
 // this set touches a key's row, an account, or the paid scorer.
 const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"];
+/**
+ * What every tool outside that set needs, said as the closing sentence of
+ * each one's description — so a host that shows a description beside a
+ * refusal shows the credential with it, and a seeker on a host with no key
+ * field learns it is the sign-in they are missing. One spelling; a guard
+ * walks the registry and requires it on every keyed tool.
+ */
+const KEYED_TOOL_SENTENCE = "Needs a key or a sign-in.";
 /** Rows an unkeyed search may return — a page of the board, not a dump of it. */
 const ANON_SEARCH_LIMIT = 10;
 /**
@@ -205,6 +251,32 @@ const ANON_IP_CAP_PER_DAY = 25;
  * migration by src/test/a-first-call-with-no-key-gets-an-answer-not-a-wall.
  */
 const FREE_KEY_DAILY_QUOTA = 1000;
+/** A free key's per-minute rate, the DB column's default; a pass or a paid tier carries its own on the key row. */
+const FREE_KEY_RATE_PER_MIN = 60;
+
+/**
+ * The refusals a RECOGNISED-or-not key gets from the check, one spelling
+ * each: the deny block in the dispatcher answers them and the guide's
+ * refusal section explains them, so the two can never describe different
+ * strings. The first element is the symptom a person sees; the second is
+ * what to do — the tools that still answer with no key, where a key comes
+ * from, and the one thing a mistyped header most often lacks.
+ */
+const KEY_REFUSALS = {
+  rate_limited: (limit: number): [string, string] => [`Over ${limit} requests/minute.`, "Wait a minute, then continue."],
+  quota_exceeded: (limit: number): [string, string] => [
+    `Daily quota of ${limit} requests used.`,
+    `Quota resets at midnight UTC. ${ANON_TOOLS.join(", ")} still answer with no key; a pass raises the limit for its hours (${PASS_URL}).`,
+  ],
+  revoked: [
+    "This key has been revoked.",
+    `A newer key was minted for the same account or email, and only the newest works — use it, or mint one more at ${MINT_URL} and update every app that holds the old one.`,
+  ] as [string, string],
+  unknown_key: [
+    "That key is not recognised.",
+    "Check for truncation; keys start with rb_live_, and the header must read Authorization: Bearer <key> with the space.",
+  ] as [string, string],
+};
 
 /** Field names mirror mcp_anon_check's OUT parameters (20260915100000). */
 type AnonDecision = { allowed: boolean; global_used: number; ip_used: number; ip_cap: number; global_cap: number };
@@ -736,7 +808,8 @@ const TOOLS = [
     description:
       "Full detail for one job id (from search_jobs), including the complete description text and when the employer's feed last confirmed it open. " +
       "A resumebooster.work/jobs?job=<id> link's id is this argument (and fetch's, check_apply_support's and request_application's). " +
-      "For several ids at once, use get_jobs — it costs ONE call against the daily quota instead of one per posting.",
+      "For several ids at once, use get_jobs — it costs ONE call against the daily quota instead of one per posting. " +
+      `${KEYED_TOOL_SENTENCE} With neither, call fetch with the same id.`,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -768,7 +841,7 @@ const TOOLS = [
       "Full detail for up to 10 job ids in ONE call — the shortlist form of get_job. Each id answers with a card plus its " +
       "description; ids that closed, aged out or were never on this board come back in `unavailable` with the reason named, " +
       "so one dead id never costs you the other nine. Set includeDescription=false for cards and freshness only (much smaller, " +
-      "and no vendor fetch).",
+      "and no vendor fetch). " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -815,7 +888,7 @@ const TOOLS = [
       "before acting on it, instead of spending a metered get_job per posting. Returns open:{id:boolean} plus the closed ids, " +
       "and names the basis of the answer: it reads the board's index (a closed posting is one the employer's feed stopped " +
       "listing), not the employer's site at this instant, and it is a weaker test than get_job's — read `basis` before " +
-      "reporting a posting as live to a person.",
+      "reporting a posting as live to a person. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -845,7 +918,7 @@ const TOOLS = [
     description:
       "Whether the apply agent can submit an application for this job on the user's behalf, and what that requires. " +
       "Jobs on non-supported systems still return their direct applyUrl for the human to use. " +
-      "For whether THIS KEY may apply at all, call key_status — this tool answers about the job, not the key.",
+      "For whether THIS KEY may apply at all, call key_status — this tool answers about the job, not the key. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -870,9 +943,10 @@ const TOOLS = [
     title: "Request an application",
     description:
       "Ask the board's apply agent to submit an application to this job on behalf of the key's owner. " +
-      "Requires an account-linked key (mint one at " + DOCS_URL + "), an active Agent plan OR a live pass (bought signed-in at " + PASS_URL + "), and a standing mandate — " +
-      "key_status says whether this key has all three before you spend a call finding out, and on a pass how many applications and how much time are left. " +
-      "Every application passes the same gates as the signed-in flow — including the honesty classifier: answers are drawn from the owner's own profile and never invented.",
+      "Needs an account key (mint one at " + DOCS_URL + "), an active Agent plan OR a live Agent Pass (bought signed-in at " + PASS_URL + "), and a mandate set in Account — " +
+      "call key_status first: it says which of the three is missing, and on a pass how many applications and how much time are left. " +
+      "Every application passes the same gates as the signed-in flow, including the honesty classifier: answers are drawn from the owner's own profile and never invented. " +
+      "Ask the person for a yes on this specific job id before calling. " + KEYED_TOOL_SENTENCE,
     annotations: {
       // THE ONE TOOL HERE THAT ACTS, and the annotations say so plainly.
       readOnlyHint: false,
@@ -928,7 +1002,7 @@ const TOOLS = [
   {
     name: "application_status",
     title: "Application status",
-    description: "Status of applications the key owner's agent has requested — queued, submitted, refused (with the refusing gate named), or failed.",
+    description: "Status of applications the key owner's agent has requested — queued, submitted, refused (with the refusing gate named), or failed. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -980,13 +1054,9 @@ const TOOLS = [
     name: "fit_resume",
     title: "Score a résumé against the board",
     description:
-      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API, or a live pass on the key's account; a free key gets an in-band refusal with the upgrade link. " +
-      "Do what the site's résumé drop does, for an agent holding a CV: read the occupation out of resumeText, search the board " +
-      "for it (or for `query` if given), and score up to 20 of the results against the résumé — keyword fit 0-100, plus the " +
-      "matched and missing terms per job. A null fit means the posting has no stored description to score. Returns the terms " +
-      "it read from the CV so the agent can pick a different one and call again with `query`.",
-    // Scoring changes nothing an agent owns; it does spend this key's daily
-    // scorer allowance, which the description and the 429 line both name.
+      "Score a résumé against open jobs, for an agent holding a CV: reads the occupation out of resumeText (or uses `query` if given), searches the board for it, and scores up to 20 results 0-100 with the matched and missing terms per job. " +
+      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API, or a live Agent Pass on the key's account; a free key gets an in-band refusal naming where to upgrade. " +
+      "A null fit means the posting has no stored description to score. Returns the terms it read from the CV so the agent can pick a different one and call again with `query`. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -1062,16 +1132,16 @@ const TOOLS = [
     name: "employer_hiring_record",
     title: "An employer's hiring record on this board",
     description:
-      "The closure ledger no other board keeps, per employer: one row per companyToken with open_roles now, " +
+      `For each employer handle (companyToken, up to ${EMPLOYER_TOKENS_MAX} per call), that employer's own record on this board: open_roles now, ` +
       `closed_${HIRING_RECORD_WINDOW_DAYS}d (postings we watched come off this board in the last ${HIRING_RECORD_WINDOW_DAYS} days, re-lists excluded), ` +
       `superseded_${HIRING_RECORD_WINDOW_DAYS}d (the re-lists, a floor), the two medians from the employer's own stated dates (lower bounds), ` +
       `tracking_days (how long we have watched THIS board, capped at ${HIRING_RECORD_WINDOW_DAYS}) and feed_total (what its feed advertised at the last check). ` +
-      "What it is NOT: A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — " +
+      "A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — " +
       "and it is a record of one BOARD, never summed across an employer's boards, never a headcount. A board with no closure " +
       "observed answers record:'unknown' with the reason, never a verdict about the employer: on a board bigger than one visit " +
       "can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it, " +
-      "so silence there is about our instrument. " +
-      `Up to ${EMPLOYER_TOKENS_MAX} tokens per call; every row carries its basis. Pair with employer_growth for the other half of what the site calls "Actively hiring".`,
+      "so silence there is about our instrument. Every row carries its basis. " +
+      `Pair with employer_growth for the other half of what the site calls "Actively hiring". ${KEYED_TOOL_SENTENCE}`,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -1099,16 +1169,15 @@ const TOOLS = [
     name: "employer_growth",
     title: "Did this employer's board grow?",
     description:
-      "Whether an employer's board served more roles than it did a week earlier, judged by the board itself from our own " +
-      `daily observation: one row per companyToken, roles served on the latest day against ${GROWTH_BARS.windowDays} days earlier. ` +
-      "Three verdicts, passed through untouched — grew, no-growth, unknown — and unknown ALWAYS carries unknown_reason " +
+      `Did this employer's board serve more roles than it did ${GROWTH_BARS.windowDays} days earlier? One row per companyToken (up to ${EMPLOYER_TOKENS_MAX} per call), ` +
+      "judged by the board itself from our own daily observation and passed through untouched: grew, no-growth, or unknown — and unknown ALWAYS carries unknown_reason " +
       "(a feed bigger than one visit can read, a board too new or too small for a rate, a gap in our own series, a pool " +
       "that was replaced rather than grown…): an unknown is a reading we could not take, never a no. The bars the verdict " +
       `uses: at least ${GROWTH_BARS.minBaselineServed} roles served at the window's start; then BOTH at least ${GROWTH_BARS.minNetAdd} more roles ` +
       `AND at least ${Math.round(GROWTH_BARS.minRate * 100)}% more, on a board tracked for at least ${GROWTH_BARS.minTenureDays} days, ` +
       "with every read in the window whole. Per BOARD (a vendor tenant), never summed across an employer's boards; more " +
       "roles served is roles opened net of roles that came down — not a headcount and not a hire. " +
-      `Up to ${EMPLOYER_TOKENS_MAX} tokens per call. This tool never ranks employers, and no list of growing employers exists here or anywhere on the board.`,
+      "This tool never ranks employers, and no list of growing employers exists here or anywhere on the board. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
       type: "object",
@@ -1144,13 +1213,10 @@ const TOOLS = [
     name: "key_status",
     title: "This key's limits and powers",
     description:
-      "What THIS key is and what it may do — tier, requests left this minute, calls left today (both including this call), " +
-      "whether the paid tools (fit_resume, and engine=ranked on the data API) are available on it, whether the apply " +
-      "tools would work: account link, Agent plan or live pass, mandate, résumé on file, with any blocker named — " +
-      "and, on a pass, when the clock ends and how many applications are left (a pass starts at the first call other than this one). " +
-      "None of this was askable before: rate and quota travelled only in HTTP headers an MCP client never surfaces, and " +
-      "apply-readiness could only be discovered by attempting an application and reading the refusal. " +
-      "Call it first in a session, and after a 'quota' or 'rate' refusal.",
+      "What THIS key is and may do: tier, requests left this minute, calls left today (both including this call), " +
+      "whether fit_resume (and engine=ranked on the data API) answers on it, and whether the apply tools would — with any blocker named: " +
+      "account link, Agent plan or live pass, mandate, résumé on file. On an Agent Pass: when the clock ends and how many applications are left " +
+      "(a pass starts at the first call other than this one). Call it first in a keyed session, and after any 'quota' or 'rate' refusal. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_KEY,
     inputSchema: { type: "object", properties: {} },
     outputSchema: {
@@ -1243,7 +1309,7 @@ const TOOLS = [
       "Shows the parsed query (terms, exclusions, intent-lifts, alias expansions), which filters were applied vs " +
       "IGNORED and why, the route and retriever chosen, the ranking regime (ranked/ring-merged/deep-page and the " +
       "seam), plus the real run's route, timings, count basis and any fallback. Use this when a search returns " +
-      "surprising, empty, or mis-ranked results — it turns 'why?' into one call. Takes the SAME arguments as search_jobs.",
+      "surprising, empty, or mis-ranked results — it turns 'why?' into one call. Takes the SAME arguments as search_jobs. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     // Literally the same object search_jobs declares — see SEARCH_PROPERTIES.
     // "Takes the SAME arguments as search_jobs" is now a fact about the code
@@ -1412,7 +1478,7 @@ const PROMPTS: readonly Prompt[] = [
     description:
       "Read the occupation out of a CV, search the live board, then verify the shortlist is still open (needs a key or sign-in for that step).",
     arguments: [
-      { name: "resume_text", description: "The CV as plain text; leave empty in a slash command and paste it in the conversation.", required: false },
+      { name: "resume_text", description: "Paste the CV text here, or leave this empty and paste it into the chat after choosing the prompt.", required: false },
       { name: "location", description: "City, state, country or 'remote'.", required: false },
     ],
     body: (a) =>
@@ -1429,7 +1495,7 @@ const PROMPTS: readonly Prompt[] = [
     name: "apply_to_my_shortlist",
     title: "Apply to my shortlist",
     description:
-      `${tool("key_status")} first (plan or pass, mandate, résumé on file, applications left), then one ${tool("request_application")} per job id after the person confirms each.`,
+      `Checks first that this connection may apply (plan or pass, mandate, résumé on file, applications left) with ${tool("key_status")}, then asks for a yes per job and requests one application per job id with ${tool("request_application")}.`,
     arguments: [
       { name: "job_ids", description: `Comma-separated job ids from ${tool("search_jobs")}.`, required: true },
     ],
@@ -1535,14 +1601,14 @@ function guideText(): string {
   return [
     `# How this board answers an agent`,
     ``,
-    `Live job search over employers' own hiring feeds (${DOCS_URL}). Streamable HTTP, POST only, stateless. Nothing is scraped from aggregators; postings come from the employer's own hiring system and leave when its feed stops listing them.`,
+    `Live job search over employers' own hiring feeds (${DOCS_URL}). It is a web address your agent talks to (MCP over Streamable HTTP, one POST per message, no session to keep); there is nothing to install. Nothing is scraped from aggregators; postings come from the employer's own hiring system and leave when its feed stops listing them.`,
     ``,
     `## Four tiers`,
     ``,
-    `- **No key.** ${by(ANON_TOOLS)} answer with no Authorization header at all: search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller; every answer says how many are left. \`${tool("search")}\` and \`${tool("fetch")}\` are \`${tool("search_jobs")}\` and \`${tool("get_job")}\` under the names ChatGPT's research connector calls.`,
+    `- **No key.** ${by(ANON_TOOLS)} answer with no Authorization header at all: search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per network address (an office, a home connection or a chat service's own servers count as one address) and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller; every answer says how many are left. \`${tool("search")}\` and \`${tool("fetch")}\` are \`${tool("search_jobs")}\` and \`${tool("get_job")}\` under the names ChatGPT's research connector calls.`,
     `- **Free key, no account** (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, every filter, and every other read tool — ${by(KEY_ONLY_READ_TOOLS)}.`,
     `- **Paid key:** ${by(PAID_TOOLS)}, exactly like POST /v1/fit on the data API.`,
-    `- **Account-linked key** (${DOCS_URL}) with an Agent plan or a live pass (${PASS_URL}) and a standing mandate: ${by(ACCOUNT_TOOLS)}. A pass also opens the paid scorer.`,
+    `- **Account-linked key** (${DOCS_URL}) with an Agent plan or a live Agent Pass (${PASS_URL}) and a mandate (the permission you set up in Account: what roles, where, and whether it may send): ${by(ACCOUNT_TOOLS)}. A pass also opens the paid scorer.`,
     ``,
     `## Call order`,
     ``,
@@ -1550,6 +1616,13 @@ function guideText(): string {
     `2. On a keyed session, \`${tool("key_status")}\` — tier, calls left, which tools would answer, every apply blocker named. Nothing has to be discovered by refusal.`,
     `3. \`${tool("search_jobs")}\`; then verify a shortlist with \`${tool("check_jobs_open")}\` (many ids, one call) and read it with \`${tool("get_jobs")}\` (${GET_JOBS_MAX} ids a call) rather than one \`${tool("get_job")}\` each — the quota counts calls, not ids.`,
     `4. A resumebooster.work/jobs?job=<id> link's id is the argument to \`${tool("get_job")}\`, \`${tool("fetch")}\`, \`${tool("check_apply_support")}\` and \`${tool("request_application")}\`; the same id is the tail of a card's \`${JOB_URI_PREFIX}<id>\` resource link.`,
+    ``,
+    // The sign-in state as of this read: the sentence the instructions
+    // carry and the one refusal row that depends on it, rendered by the
+    // probe module from the verdict the read site probed just before this
+    // call (both guide reads await the probe first, so the cache is warm;
+    // an empty cache renders as the unknown state, which reads as off).
+    signInGuideSection(cachedSignIn()?.state ?? "unknown", ANON_TOOLS.length, { notOn: SIGN_IN_NOT_ON, unkeyedTools: ANON_TOOLS, mintUrl: MINT_URL }),
     ``,
     `## What the answers mean`,
     ``,
@@ -1561,11 +1634,31 @@ function guideText(): string {
     ``,
     `This board watches postings come down. \`${tool("employer_hiring_record")}\` and \`${tool("employer_growth")}\` carry that record per employer board — a takedown is a takedown, never an outcome (the board cannot tell why a role came down), one board is never summed with another, and an unknown always names its reason. No list of growing employers exists here or anywhere on the board.`,
     ``,
+    `## If something refuses`,
+    ``,
+    `Every refusal is a result with \`error\` and \`fix\`; the fix names what to do. The ones a person meets first:`,
+    ``,
+    `- "${KEY_REFUSALS.unknown_key[0]}" — ${KEY_REFUSALS.unknown_key[1]} A key is shown once; a lost one is replaced at ${MINT_URL} (the old one stops working). On ${by(ANON_TOOLS)} the call still runs, unkeyed, and says so.`,
+    `- "${KEY_REFUSALS.revoked[0]}" — ${KEY_REFUSALS.revoked[1]}`,
+    `- "${KEY_REFUSALS.quota_exceeded(FREE_KEY_DAILY_QUOTA)[0]}" (a free key's day) — ${KEY_REFUSALS.quota_exceeded(FREE_KEY_DAILY_QUOTA)[1]}`,
+    `- "${KEY_REFUSALS.rate_limited(FREE_KEY_RATE_PER_MIN)[0]}" (on a free key; a pass or a paid tier names its own number) — ${KEY_REFUSALS.rate_limited(FREE_KEY_RATE_PER_MIN)[1]}`,
+    `- "The unkeyed allowance is spent" — this address used its ${ANON_IP_CAP_PER_DAY} free calls for today (an office or a chat service counts as one address); it resets at midnight UTC, and a free key (${MINT_URL}) raises it to ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")}.`,
+    `- "That is not a job id from this board." — the argument was a link or a title; use the id from a search card, e.g. greenhouse:acme:12345 (the id in a resumebooster.work/jobs?job=<id> link is the same one).`,
+    `- "unknown tool" or "method not found" — call tools/list for the names; the methods are ${SUPPORTED_METHODS.join(", ")}.`,
+    `- "${NOT_A_WEB_PAGE}" — the address was opened in a browser; nothing is wrong.`,
+    `- "${tool("fit_resume")} is a paid feature…" — résumé fit scoring needs a paid key (${MINT_URL}) or a live Agent Pass (${PASS_URL}); search keeps working.`,
+    `- "The apply agent needs an active Agent plan or a live pass." / "No agent mandate on this account." / "Your agent is switched off." / "No resume on file…" — the apply agent is not funded, not set up, off, or has no CV; each answer names the page to fix it. The off switch always wins.`,
+    `- "The pass on this account is not live." / "No applications left on this pass." — the pass ended or its applications are used; search keeps working.`,
+    `- "ids is required…" from ${tool("get_jobs")} or ${tool("check_jobs_open")} — send {ids: [...]}.`,
+    ``,
+    `The sign-in row for today's state is under "Sign-in today" above; this document is free to read, unmetered, so an agent can read it the moment it sees a refusal.`,
+    ``,
     `## Prompts and resources`,
     ``,
     `Prompts: ${PROMPTS.map((p) => `\`${p.name}\``).join(", ")}. Resources: ${RESOURCES.map((r) => `\`${r.uri}\``).join(", ")}. Listing either is free; reading one follows the gate of the tool it wraps.`,
   ].join("\n");
 }
+
 
 // ── What a keyed discovery read is metered as ───────────────────────────────
 //
@@ -1674,6 +1767,19 @@ const openaiSubjectOf = (params: Record<string, unknown>): string => {
   const v = meta && typeof meta === "object" ? (meta as Record<string, unknown>)[`${OPENAI_META_PREFIX}subject`] : undefined;
   return typeof v === "string" ? v.trim() : "";
 };
+/**
+ * The answer a keyed tool gives with no usable credential while sign-in is
+ * NOT on: the state said plainly, then the tools that answer with nothing
+ * and where a key comes from — every name and URL read off the registry.
+ * A tool result with no sign-in cue of any kind: no host shows a card.
+ */
+const SIGN_IN_NOT_ON = "Sign-in through this server is not switched on yet, so this tool needs a key.";
+function signInNotOn(): [string, string] {
+  return [
+    SIGN_IN_NOT_ON,
+    `Tools that answer with no key: ${ANON_TOOLS.join(", ")}. A free key (${MINT_URL}) works from Claude Code, Cursor, VS Code or any client that can send Authorization: Bearer <key>.`,
+  ];
+}
 function inBandChallenge(toolName: string) {
   console.log(`[AGENT-MCP] oauth challenge via _meta on ${toolName}`);
   return {
@@ -1706,7 +1812,10 @@ async function answerRead(client: SupabaseClient, read: MeteredRead, d: Decision
     case "job": return contentsOf(read.uri, "application/json", await runFetchAlias({ id: read.id }));
     case "resource": {
       const r = read.resource;
-      if (r.uri === GUIDE_URI) return contentsOf(r.uri, r.mimeType, guideText());
+      if (r.uri === GUIDE_URI) {
+        await probeSignIn();
+        return contentsOf(r.uri, r.mimeType, guideText());
+      }
       if (r.uri === BOARD_STATS_URI) return contentsOf(r.uri, r.mimeType, await runBoardStats());
       if (r.uri === MY_KEY_URI) return contentsOf(r.uri, r.mimeType, await runKeyStatus(client, d));
       throw new Error(`no runner for resource ${r.uri}`);
@@ -1889,7 +1998,9 @@ async function runGetJobs(args: Record<string, unknown>): Promise<unknown> {
     (Array.isArray(args.ids) ? args.ids : [args.ids])
       .map((x) => String(x ?? "").trim()).filter(Boolean),
   )];
-  if (!asked.length) throw new Error("ids is required — an array of job ids from search_jobs (up to 10).");
+  if (!asked.length) {
+    throw new ToolArgumentError(`ids is required — an array of job ids from search_jobs (up to ${GET_JOBS_MAX}).`, "Send {ids: [...]}.");
+  }
   const ids = asked.slice(0, GET_JOBS_MAX);
   const notFetched = asked.slice(GET_JOBS_MAX);
   const includeDescription = args.includeDescription !== false;
@@ -1966,7 +2077,9 @@ async function runCheckJobsOpen(args: Record<string, unknown>): Promise<unknown>
     (Array.isArray(args.ids) ? args.ids : [args.ids])
       .map((x) => String(x ?? "").trim()).filter(Boolean),
   )];
-  if (!asked.length) throw new Error(`ids is required — an array of job ids from search_jobs (up to ${CHECK_JOBS_OPEN_MAX}).`);
+  if (!asked.length) {
+    throw new ToolArgumentError(`ids is required — an array of job ids from search_jobs (up to ${CHECK_JOBS_OPEN_MAX}).`, "Send {ids: [...]}.");
+  }
   const ids = asked.slice(0, CHECK_JOBS_OPEN_MAX);
   const notChecked = asked.slice(CHECK_JOBS_OPEN_MAX);
   const r = await board({ action: "exists", ids });
@@ -2936,9 +3049,49 @@ async function answerUnkeyed(
       };
       break;
     }
-    default: return { rpc: rpcError(rpcId, -32602, `unknown tool: ${toolName}`), headers: {} };
+    default: return { rpc: rpcError(rpcId, -32602, `unknown tool: ${toolName} — call tools/list for the names`), headers: {} };
   }
   return { rpc: rpcResult(rpcId, withCardLinks(toolOk({ ...out, unkeyed }), out.jobs)), headers: { "X-Unkeyed-Remaining": String(left) } };
+}
+
+/** Carried in the unkeyed block when a key was sent and not recognised, and the call ran without it. */
+const UNKNOWN_KEY_NOTE = "The key sent was not recognised (keys start with rb_live_); this call ran without it.";
+
+/**
+ * The unkeyed answer with a note added to its unkeyed block: the structured
+ * half is rebuilt through the same builder every result uses, so the text
+ * block and structuredContent still agree, and the card links ride along
+ * untouched. A refusal (isError) is returned as it is.
+ */
+function withUnkeyedNote(rpc: unknown, note: string): unknown {
+  const r = rpc as { result?: { content?: unknown[]; structuredContent?: Record<string, unknown>; isError?: boolean } };
+  const sc = r.result?.structuredContent;
+  const unkeyed = sc?.unkeyed;
+  if (!sc || r.result?.isError || !unkeyed || typeof unkeyed !== "object") return rpc;
+  const data = { ...sc, unkeyed: { ...(unkeyed as Record<string, unknown>), note } };
+  const links = (r.result?.content ?? []).filter((c) => (c as { type?: unknown })?.type === "resource_link");
+  const rebuilt = toolOk(data);
+  return { ...r, result: { ...r.result, ...rebuilt, content: [...rebuilt.content, ...links] } };
+}
+
+/**
+ * The initialize result: the negotiated base, the sign-in sentence appended
+ * to its instructions, and the fact itself under the reverse-DNS _meta key
+ * the probe module names. The base's instructions paragraph is written in
+ * the handler so the guard that renders it with the registry's constants
+ * still reads it whole; this wrapper adds only the one sentence whose text
+ * depends on the runtime fact.
+ */
+function initializeResult(
+  rpcId: unknown,
+  signIn: SignInVerdict,
+  base: { protocolVersion: string; capabilities: Record<string, unknown>; serverInfo: typeof SERVER_INFO; instructions: string },
+) {
+  return rpcResult(rpcId, {
+    ...base,
+    instructions: `${base.instructions}\n${signInSentence(signIn.state, ANON_TOOLS.length)}`,
+    _meta: { [SIGN_IN_META_KEY]: signIn },
+  });
 }
 
 Deno.serve(async (req) => {
@@ -2951,16 +3104,17 @@ Deno.serve(async (req) => {
     // (project_edge_path_prefix).
     if (isProtectedResourceMetadataPath(new URL(req.url).pathname)) return protectedResourceResponse(cors);
     // No SSE stream to offer — spec-legal for a stateless server. The body
-    // says where the humans go.
-    return json({ error: "This MCP endpoint is POST-only (stateless).", docs: DOCS_URL }, 405);
+    // is for the human who opened the address in a browser: nothing is
+    // wrong, and it says where to paste it.
+    return json({ error: NOT_A_WEB_PAGE, docs: DOCS_URL }, 405);
   }
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  if (req.method !== "POST") return json({ error: NOT_A_WEB_PAGE, docs: DOCS_URL }, 405);
 
   let msg: RpcReq;
   try {
     msg = await req.json() as RpcReq;
   } catch {
-    return json(rpcError(null, -32700, "parse error"), 400);
+    return json(rpcError(null, -32700, "The request body is not JSON. Send one JSON-RPC 2.0 message per POST."), 400);
   }
   // Batches are removed in 2025-06-18 and rare before it; a stateless server
   // may decline them honestly rather than half-support them.
@@ -2993,7 +3147,10 @@ Deno.serve(async (req) => {
     // JSON-RPC batches those revisions require receivers to support was a
     // conformance lie.
     const protocolVersion = MCP_PROTOCOL_VERSIONS.includes(asked) ? asked : MCP_PROTOCOL_VERSIONS[0];
-    return json(rpcResult(id, {
+    // The sign-in fact rides on this result and closes the instructions:
+    // a cache hit costs nothing, a cold isolate at most one short probe.
+    const signIn = await probeSignIn();
+    return json(initializeResult(id, signIn, {
       protocolVersion,
       // Tools, prompts and resources, none of which changes while a session
       // lasts: this server is stateless and holds no stream to notify on,
@@ -3013,18 +3170,14 @@ Deno.serve(async (req) => {
       // anything else. Kept under two kilobytes, which is where one host
       // truncates; the guard measures the rendered text.
       instructions:
-        `Live job search over employers' own hiring feeds, for an agent. Call ${tool("board_stats")} first — it answers with no key and says what a key adds — then ${tool("search_jobs")}; on a keyed session call ${tool("key_status")} first, it says what the key may do so nothing is discovered by refusal. ` +
-        `A resumebooster.work/jobs?job=<id> link's id is the argument to ${tool("get_job")}, ${tool("fetch")}, ${tool("check_apply_support")} and ${tool("request_application")}. ` +
-        `Four tiers. No key: ${ANON_TOOLS.join(", ")} answer with no Authorization header at all — search capped at ${ANON_SEARCH_LIMIT} rows, ` +
-        `${ANON_IP_CAP_PER_DAY} calls a day per address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller, each answer saying how many are left ` +
-        "(search and fetch are search_jobs and get_job under the names ChatGPT's research connector calls). " +
-        `Free key, no account (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, search_jobs with every filter and up to ${KEYED_SEARCH_LIMIT} rows, ` +
-        `and every other read tool — ${KEY_ONLY_READ_TOOLS.join(", ")}; verify a shortlist with check_jobs_open (${CHECK_JOBS_OPEN_MAX} ids per call) and read it with get_jobs (${GET_JOBS_MAX}) rather than one get_job each — the quota counts calls, not ids. ` +
-        `Paid key: ${PAID_TOOLS.join(", ")}, exactly like POST /v1/fit. ` +
-        `Account-linked key (${DOCS_URL}) with an Agent plan OR a live pass (bought signed-in at ${PASS_URL}) and a standing mandate: ${ACCOUNT_TOOLS.join(", ")} — ` +
-        "a pass also opens the paid scorer; key_status reports the time and applications left on it (the pass starts at the first call other than key_status). " +
-        "This board watches postings come down and can say which employers take roles down and leave them down — employer_hiring_record and employer_growth carry that record per employer, with every unknown named as unknown. " +
-        "Counts are honest: countUnavailable means the board refuses to guess, and ignoredFilters names any filter it could not apply. " +
+        `Live job search over employers' own hiring feeds, for an agent. Call ${tool("board_stats")} first — it answers with no key and says what a key adds — then ${tool("search_jobs")}; on a keyed session call ${tool("key_status")} first: it says what the key may do, so no limit is learned by hitting it. ` +
+        `A resumebooster.work/jobs?job=<id> link's id is the argument to ${tool("get_job")}, ${tool("fetch")}, ${tool("check_apply_support")} and ${tool("request_application")}.\n` +
+        `Four tiers.\n` +
+        `- No key: ${ANON_TOOLS.join(", ")} answer with no Authorization header at all — search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per network address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller, each answer saying how many are left (search and fetch are search_jobs and get_job in the shape ChatGPT's research connector calls).\n` +
+        `- Free key, no account (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, every search filter, up to ${KEYED_SEARCH_LIMIT} rows, and every other read tool: ${KEY_ONLY_READ_TOOLS.join(", ")}. check_jobs_open takes ${CHECK_JOBS_OPEN_MAX} ids a call and get_jobs ${GET_JOBS_MAX} — the quota counts calls, not ids.\n` +
+        `- Paid key, or a live Agent Pass: ${PAID_TOOLS.join(", ")} — résumé fit scoring, as POST /v1/fit.\n` +
+        `- Account key (${DOCS_URL}) with an Agent plan or a live Agent Pass (bought signed-in at ${PASS_URL}), plus a mandate set in Account: ${ACCOUNT_TOOLS.join(", ")}. key_status shows a pass's time and applications left; the clock starts at the first call other than key_status.\n` +
+        `countUnavailable means the board refuses to guess a total; ignoredFilters names any filter it could not apply. This board watches postings come down and can say which employers take roles down and leave them down — employer_hiring_record and employer_growth carry that record per employer, with every unknown named as unknown. ` +
         `The guide: ${GUIDE_URI}.`,
     }));
   }
@@ -3086,6 +3239,7 @@ Deno.serve(async (req) => {
   if (read && !bearer) {
     try {
       if (read.kind === "resource" && read.resource.uri === GUIDE_URI) {
+        await probeSignIn();
         return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText())));
       }
       if (read.kind === "resource" && read.resource.uri === BOARD_STATS_URI) {
@@ -3105,7 +3259,7 @@ Deno.serve(async (req) => {
     if (!read) {
       return isNotification
         ? new Response(null, { status: 202, headers: cors })
-        : json(rpcError(id, -32601, `method not found: ${String(method)}`));
+        : json(rpcError(id, -32601, `method not found: ${String(method)} — supported: ${SUPPORTED_METHODS.join(", ")}`));
     }
   }
 
@@ -3118,15 +3272,27 @@ Deno.serve(async (req) => {
   const toolName = read ? meteredNameOf(read.endpoint) : String((params as { name?: unknown }).name ?? "");
   const toolArgs = read ? {} : ((params as { arguments?: unknown }).arguments ?? {}) as Record<string, unknown>;
   if (!read && !TOOLS.some((t) => t.name === toolName)) {
-    return json(rpcError(id, -32602, `unknown tool: ${toolName}`));
+    return json(rpcError(id, -32602, `unknown tool: ${toolName} — call tools/list for the names`));
   }
 
   // A keyed tool with nothing in the slot answers the sign-in challenge —
   // the response a host turns into its Connect card, built in the OAuth
-  // module and reached from here only. The unkeyed tools go on to answer.
-  // The caller that reads its sign-in cue out of a result's _meta gets the
-  // same challenge in band first (the hedge above, a GUESS); every other
-  // caller gets the transport form.
+  // module and reached from here only — but ONLY while the authorization
+  // server behind it is switched on (the probed fact). In every other state
+  // every caller, the one that reads its cue in band included, is refused
+  // in words with no cue at all: a challenge into a sign-in that cannot
+  // finish strands the person, the sentence does not. The unkeyed tools go
+  // on to answer. While on: the caller that reads its sign-in cue out of a
+  // result's _meta gets the same challenge in band (the hedge above, a
+  // GUESS); every other caller gets the transport form.
+  if (!bearer && !ANON_TOOLS.includes(toolName)) {
+    const { state } = await probeSignIn();
+    console.log(noCredentialLog("no bearer", toolName, state, hedgeInBand(params)));
+    if (noCredentialAnswer(state, hedgeInBand(params)) === "in_band") {
+      const [why, how] = signInNotOn();
+      return read ? readRefused(id, why, how, {}) : json(rpcResult(id, toolErr(why, how)));
+    }
+  }
   if (!bearer && !read && !ANON_TOOLS.includes(toolName) && hedgeInBand(params)) {
     return json(rpcResult(id, inBandChallenge(toolName)));
   }
@@ -3146,12 +3312,20 @@ Deno.serve(async (req) => {
   if (bearer && !raw) {
     const verdict = await verifyOAuthBearer(bearer);
     if (!verdict.ok) {
+      // A refused token on a keyed tool is challenged only while sign-in is
+      // on; otherwise it is refused in words like a call with no token.
+      if (!ANON_TOOLS.includes(toolName)) {
+        const { state } = await probeSignIn();
+        console.log(noCredentialLog(`oauth refused (${verdict.reason})`, toolName, state, hedgeInBand(params)));
+        if (noCredentialAnswer(state, hedgeInBand(params)) === "in_band") {
+          const [why, how] = signInNotOn();
+          return read ? readRefused(id, why, how, {}) : json(rpcResult(id, toolErr(why, how)));
+        }
+      }
       if (!read && !ANON_TOOLS.includes(toolName) && hedgeInBand(params)) {
-        console.log(`[AGENT-MCP] oauth refused (${verdict.reason}) on ${toolName}`);
         return json(rpcResult(id, inBandChallenge(toolName)));
       }
       if (!ANON_TOOLS.includes(toolName)) {
-        console.log(`[AGENT-MCP] oauth refused (${verdict.reason}) on ${toolName}`);
         return unauthorized(cors);
       }
     } else {
@@ -3186,6 +3360,7 @@ Deno.serve(async (req) => {
   // order the keyed path keeps.
   let d: Decision | null = null;
   let rateHeaders: Record<string, string> = {};
+  let unknownKeyNote = "";
   if (keyHash) {
     const { data: dec, error: decErr } = await client
       .rpc("api_key_check", { p_key_hash: keyHash, p_endpoint: `/mcp/${toolName}` })
@@ -3207,13 +3382,24 @@ Deno.serve(async (req) => {
           "X-Quota-Remaining": String(Math.max(0, d.quota_limit - d.quota_used)),
         }
       : {};
-    if (!d || !d.is_allowed) {
+    // A key the check does not recognise — cut off in a config, or the
+    // header missing its space — on a tool that answers with NO key: the
+    // call runs unkeyed, and the unkeyed answer says the key was not
+    // recognised, so a seeker with a bad key still gets the search and
+    // learns why the key did nothing. Rate, quota and revoked refusals stay
+    // refusals: those keys ARE recognised.
+    if (d && !d.is_allowed && d.deny_reason === "unknown_key" && ANON_TOOLS.includes(toolName)) {
+      unknownKeyNote = UNKNOWN_KEY_NOTE;
+      d = null;
+      rateHeaders = {};
+    }
+    if (!unknownKeyNote && (!d || !d.is_allowed)) {
       const reason = d?.deny_reason ?? "unknown_key";
       const friendly: Record<string, [string, string]> = {
-        rate_limited: [`Over ${d?.rate_limit ?? 60} requests/minute.`, "Wait a minute, then continue."],
-        quota_exceeded: [`Daily quota of ${d?.quota_limit ?? 1000} requests used.`, "Quota resets at midnight UTC."],
-        revoked: ["This key has been revoked.", "Mint a new one at https://resumebooster.work/data-api."],
-        unknown_key: ["That key is not recognised.", "Check for truncation; keys start with rb_live_."],
+        rate_limited: KEY_REFUSALS.rate_limited(d?.rate_limit ?? FREE_KEY_RATE_PER_MIN),
+        quota_exceeded: KEY_REFUSALS.quota_exceeded(d?.quota_limit ?? FREE_KEY_DAILY_QUOTA),
+        revoked: KEY_REFUSALS.revoked,
+        unknown_key: KEY_REFUSALS.unknown_key,
       };
       const [message, fix] = friendly[reason] ?? friendly.unknown_key;
       const retry: Record<string, string> = reason === "rate_limited"
@@ -3231,7 +3417,7 @@ Deno.serve(async (req) => {
       // No key, one of ANON_TOOLS: counted by mcp_anon_check first, then
       // answered with the unkeyed note. See answerUnkeyed.
       const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params);
-      return json(rpc, 200, headers);
+      return json(unknownKeyNote ? withUnkeyedNote(rpc, unknownKeyNote) : rpc, 200, headers);
     }
     // A live pass on a key: record how it was activated, once — by the key
     // itself or by the OAuth client that minted the token. One helper for
@@ -3246,7 +3432,7 @@ Deno.serve(async (req) => {
     const result = toolName === "key_status"
       ? toolOk(await runKeyStatus(client, d))
       : await callTool(client, d.api_key_id ?? "", d.key_tier, toolName, toolArgs);
-    if (result === null) return json(rpcError(id, -32602, `unknown tool: ${toolName}`));
+    if (result === null) return json(rpcError(id, -32602, `unknown tool: ${toolName} — call tools/list for the names`));
     return json(rpcResult(id, result), 200, rateHeaders);
   } catch (e) {
     if (e instanceof ScorerLimited) {

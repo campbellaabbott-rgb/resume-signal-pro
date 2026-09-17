@@ -31,7 +31,7 @@
 // has said which agent they use, because a claude:// URL with no app behind
 // it has no documented fallback.
 import { MCP_HOSTS, MCP_TOOL_NAMES } from "@/config/mcp-tools";
-import { MCP_URL } from "@/pages/AgentConnect";
+import { MCP_URL } from "@/lib/mcp-test";
 
 /**
  * Where the browser remembers which agent the person uses. THE SAME LITERAL
@@ -48,6 +48,15 @@ export function rememberedHostName(): string {
     if (v && MCP_HOSTS.some((h) => h.name === v)) return v;
   } catch { /* storage blocked — the first host is the default */ }
   return MCP_HOSTS[0].name;
+}
+
+/** The host the browser remembers, or null when it remembers none (the switchboard opens no panel on a mere default). Never throws. */
+export function rememberedHostChoice(): string | null {
+  try {
+    const v = localStorage.getItem(HOST_STORAGE_KEY);
+    if (v && MCP_HOSTS.some((h) => h.name === v)) return v;
+  } catch { /* storage blocked */ }
+  return null;
 }
 
 /** Remember the pick for the next hand-off. Never throws. */
@@ -74,15 +83,20 @@ export interface HandoffJob {
 }
 
 /**
- * The one-line prompt for a posting. The sendable variant names the apply
- * tool too, because that is the one card where the agent can finish the
- * job — and says the person's yes comes first, which is the pipeline's own
- * rule (a mandate and a per-job confirmation gate every request).
+ * The one-line prompt for a posting. It opens with a tool that answers with
+ * NO key (the fetch alias — get_job needs a key or a sign-in, and a prompt
+ * whose first call walls the person is the wall in a new coat), then names
+ * the keyed check behind an "if this connection holds a key or is signed
+ * in" clause. The sendable variant names the apply tool too, because that
+ * is the one card where the agent can finish the job — and says the
+ * person's yes comes first, which is the pipeline's own rule (a mandate and
+ * a per-job confirmation gate every request). The guard asserts the FIRST
+ * tool each prompt names is in the unkeyed set.
  */
 export function agentPrompt(job: HandoffJob): string {
   const head =
-    `Using the resumebooster MCP server (${MCP_URL}), call ${tool("get_job")} and ${tool("check_apply_support")} ` +
-    `for job id "${job.id}" and tell me whether you can apply and what it needs.`;
+    `Using the resumebooster MCP server (${MCP_URL}), call ${tool("fetch")} with job id "${job.id}" and show me the posting; ` +
+    `then, if this connection holds a key or is signed in, call ${tool("check_apply_support")} for it and tell me whether you can apply and what it needs.`;
   return job.sendable
     ? `${head} If it can be sent for me, ${tool("request_application")} needs my explicit yes first.`
     : head;
@@ -94,7 +108,7 @@ export function agentPrompt(job: HandoffJob): string {
  * mirror carries) rather than silently. Only the two documented schemes.
  */
 const DEEP_LINK_BY_HOST: Readonly<Record<string, (prompt: string) => string>> = {
-  "claude.ai and Claude Desktop": (p) => `claude://claude.ai/new?q=${encodeURIComponent(p)}`,
+  "Claude": (p) => `claude://claude.ai/new?q=${encodeURIComponent(p)}`,
   "Claude Code": (p) => `claude://code/new?q=${encodeURIComponent(p)}`,
 };
 
@@ -154,7 +168,7 @@ export function toSearchJobsArgs(body: Record<string, unknown>, sort?: SearchSor
 export function searchPrompt(args: Record<string, unknown>, opts: { activelyHiring?: boolean } = {}): string {
   const head =
     `Using the resumebooster MCP server (${MCP_URL}), call ${tool("search_jobs")} with ${JSON.stringify(args)} ` +
-    `and show me the top results; then ${tool("check_apply_support")} on the ones I like.`;
+    `and show me the top results; then, if this connection holds a key or is signed in, ${tool("check_apply_support")} on the ones I like.`;
   return opts.activelyHiring
     ? `${head} The board's "Actively hiring" filter is applied in the browser, not by ${tool("search_jobs")}, so it is not included here.`
     : head;

@@ -249,9 +249,28 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   });
 });
 
-describe("a keyless call to a keyed tool answers the sign-in challenge — and nothing else does", () => {
+describe("a keyless call to a keyed tool answers the sign-in challenge while the probe says on, and the in-band answer otherwise — and nothing else challenges", () => {
   const sites = challengeSitesOf(MCP);
   const region = toolsCallRegionOf(MCP);
+
+  it("every challenge site asks the sign-in fact first, under the same unkeyed-set guard, and answers in band unless it is on", () => {
+    // The probe module owns the fact; the site reads it by name and hands
+    // the decision to the module's one function, in a block guarded by the
+    // same unkeyed-set test the challenge is. The full shape of each region
+    // — probe, log, in-band branch, hedge, challenge, in that order — is
+    // walked by a-challenge-is-answered-only-while-the-sign-in-service-is-on.
+    expect(MCP_RAW).toMatch(/import \{[^}]*\bprobeSignIn\b[^}]*\} from "\.\/as-probe\.ts"/);
+    for (const s of sites) {
+      const probeAt = MCP.lastIndexOf("await probeSignIn()", s.at);
+      expect(probeAt, `a challenge at ${s.at} answers without asking the fact`).toBeGreaterThan(region.from);
+      const stretch = MCP.slice(probeAt, s.at);
+      expect(stretch.length).toBeLessThan(1200);
+      expect(stretch).toMatch(/noCredentialAnswer\(state, hedgeInBand\(params\)\) === "in_band"/);
+      expect(stretch).not.toMatch(/api_key_check|answerUnkeyed\(/);
+      const probeGuard = MCP.slice(MCP.lastIndexOf("if (", probeAt), probeAt);
+      expect(probeGuard).toMatch(/!ANON_TOOLS\.includes\(toolName\)\) \{\s*const \{ state \} = $/);
+    }
+  });
 
   it("the challenge is the module's builder, imported by name", () => {
     expect(MCP).toMatch(/from "\.\/oauth\.ts"/);

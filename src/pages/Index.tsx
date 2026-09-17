@@ -411,7 +411,7 @@ export function AgentOfferStrip() {
       <div className="text-sm text-muted-foreground leading-relaxed">
         <p>
           <span className="font-semibold text-foreground">{t("homeAgent.lead", "Bring your own AI agent.")}</span>{" "}
-          {t("homeAgent.connectLine", "Connect it free with no account — {{freeCallsPerDay}} calls a day per address to look around the board.", AGENT_OFFER_COPY)}
+          {t("homeAgent.connectLine2", "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office, a home connection or a chat service's own servers count as one address, so the number left can start below {{freeCallsPerDay}} when others share it).", AGENT_OFFER_COPY)}
         </p>
         <p className="mt-1">
           {t("homeAgent.passLine", "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.", AGENT_OFFER_COPY)}

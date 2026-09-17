@@ -1,77 +1,87 @@
 // Connect your agent — the human-facing page for the MCP server at
-// supabase/functions/agent-mcp. A few read tools answer with no key at all,
-// under a daily allowance, so a host whose connector dialog has no field for
-// a key still gets an answer on its first call; any MCP-capable agent that
-// can send an Authorization header can use every read tool with a free
-// /data-api key; the apply tools additionally need an account-linked agent
-// key minted here, an Agent plan OR a live Agent Pass, and a standing
-// mandate. The page states the boundary plainly: the MCP layer is a
-// translator over the existing apply pipeline, never a bypass — an agent can
-// do at most what its owner could do signed in.
+// supabase/functions/agent-mcp.
 //
-// THE PASS CARD beside the mint is the third way to hold that one
+// THE PAGE OPENS WITH ONE QUESTION: "Which agent do you use?" Six buttons in
+// the owner's order (Claude, ChatGPT, Claude Code, Cursor, VS Code, More…);
+// picking one reveals only that host's numbered steps, its sign-in sentence
+// for TODAY's state, and how you know it worked. The steps come from the
+// `steps` builders on MCP_HOSTS in src/config/mcp-tools.ts, so this page,
+// the pass receipt, the prerender and the install repo render one list.
+// Nothing above the fold names a key, a header, a transport or an HTTP
+// status; the first use of "sign in", "key" and "address" carries its gloss.
+//
+// KEYLESS IS THE DEFAULT STATE of every block. A keyed block exists only
+// after the visitor pastes a key into the field on the page (the field only
+// edits the text on this page — nothing is sent anywhere); no placeholder
+// ever sits inside an Authorization value.
+//
+// THE SIGN-IN STATE IS ONE FACT the server computes and carries on its
+// initialize result (`_meta[MCP_SIGN_IN_META_KEY].state`: on, off, unknown).
+// This page reads it there — once, silently, when a panel opens (a free,
+// unmetered initialize), and again when "Test the server" runs — and
+// branches on `state` only. It never probes the authorization server
+// itself, never bakes a state into the build, and never lets a host table
+// flag decide a sentence on its own: a stale flag was how the page once told
+// two hosts to sign in through a service that was switched off.
+//
+// "TEST THE SERVER" is a manual button (never auto-run — a crawler that runs
+// scripts would spend the shared address allowance for nothing): initialize,
+// tools/list, prompts/list (free) and ONE unkeyed search, and it prints the
+// answer in words, numbers off the responses, and the sign-in state.
+//
+// THE PASS CARD beside the steps is the third way to hold the apply
 // entitlement: a one-off purchase, never a renewal. Every number on it is
 // read off the PASS mirror in src/config/products.ts (pinned to
 // supabase/functions/_shared/pass.ts by pricing-truth.test.ts) and every
-// sentence is an i18n key — a locale value beats an inline default, so a
-// typed digit anywhere would be nine stale digits the day the price moves.
-// The Buy button only renders once agent-pass-status has answered for the
-// signed-in visitor: the two pass functions deploy on a slower cadence than
-// this page, and a button that 404s after the click is worse than none.
+// sentence is an i18n key. The Buy button only renders once
+// agent-pass-status has answered for the signed-in visitor.
 //
 // EVERY LIST ON THIS PAGE IS RENDERED FROM A MIRROR CONSTANT, never typed
-// here: the tools, the unkeyed set and its caps from src/config/mcp-tools.ts
-// (pinned to the server's TOOLS registration and its constants by
-// the-page-says-six-and-the-server-says-eleven.test.ts and
-// a-first-call-with-no-key-gets-an-answer-not-a-wall.test.ts), the sendable
-// vendors from src/config/sendable-vendors.ts (pinned to the Deno list), the
-// posting count from the live board. This page once said "six tools" against
-// a server registering eleven, called a count of boards an employer count,
-// and told two hosts to enter a header their dialogs have no field for — each
-// a sentence that was true when written and false when the thing it
-// described moved.
+// here: the hosts, their steps, the tools, the unkeyed set and its caps from
+// src/config/mcp-tools.ts (pinned to the server's registration and its
+// constants by the-page-says-six-and-the-server-says-eleven.test.ts and
+// a-first-call-with-no-key-gets-an-answer-not-a-wall.test.ts), the
+// troubleshooting rows (pinned to the server's own error strings by
+// which-agent-do-you-use.test.tsx), the sendable vendors from
+// src/config/sendable-vendors.ts, the posting count from the live board.
+// This page once said "six tools" against a server registering eleven, and
+// told two hosts to enter a header their dialogs have no field for — each a
+// sentence that was true when written and false when the thing it described
+// moved.
+//
+// Copy on this page is plain English, as before: the host-UI labels and
+// the commands are the vendors' own words and the same in every language.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug, Ticket, MessageSquareText, FileText } from "lucide-react";
+import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Send, Plug, Ticket, MessageSquareText, FileText, ExternalLink } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
-import { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "@/config/mcp-tools";
+import {
+  MCP_TOOLS, MCP_HOSTS, MCP_MORE_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES,
+  MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES, MCP_HOST_IDS, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS,
+  MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING, troubleRowsFor, stepSegments, hostTakesKey,
+  curlInitialize, SIGN_IN_UNKNOWN, andList,
+  type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
+} from "@/config/mcp-tools";
+import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
+import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
+import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 import { PASS } from "@/config/products";
 import { FREE_KEY_RATE_PER_MIN } from "@/config/free-key-limits";
 
-// Same convention as DataApi's API_BASE: read the env the client is built
-// with, so the documented URL cannot drift from the project serving it.
-export const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-mcp`;
-
-/** The placeholder a person pastes their key over; never a real key. */
-export const KEY_PLACEHOLDER = "rb_live_...your key...";
+// The server address is defined once, beside the client that calls it, and
+// re-exported here for the modules that documented it from this page first.
+export { MCP_URL };
 
 /** The interpolation every rate sentence uses — read off the two mirrors, never typed. */
 export const RATE_COPY = { ratePerMin: FREE_KEY_RATE_PER_MIN, dailyQuota: MCP_FREE_KEY_DAILY_QUOTA } as const;
-
-/** The Claude Code one-liner, with the key filled in when there is one. */
-export const claudeCodeCommand = (key: string = KEY_PLACEHOLDER) =>
-  `claude mcp add --transport http resumebooster ${MCP_URL} --header "Authorization: Bearer ${key}"`;
-
-/** The Cursor mcp.json block, with the key filled in when there is one. */
-export const cursorConfig = (key: string = KEY_PLACEHOLDER) => `{
-  "mcpServers": {
-    "resumebooster": {
-      "url": "${MCP_URL}",
-      "headers": { "Authorization": "Bearer ${key}" }
-    }
-  }
-}`;
-
-const CLAUDE_CODE_CMD = claudeCodeCommand();
-const CURSOR_JSON = cursorConfig();
 
 /** The interpolation every pass sentence uses — read off the mirror, never typed. */
 export const PASS_COPY = {
@@ -80,6 +90,12 @@ export const PASS_COPY = {
   passApplications: PASS.applications,
   passShelfDays: PASS.shelfLifeDays,
 } as const;
+
+/** The analytics test every event on this page lands under; variants are ≤ 30 characters (track-ab-event's cap). */
+const TRACK_TEST = "agents";
+const trackAgents = (variant: string, metadata?: Record<string, unknown>) => {
+  postTrackEvent({ testName: TRACK_TEST, variant, eventType: "view", visitorId: getVisitorId(), metadata });
+};
 
 /**
  * What agent-pass-status answers for the signed-in user. The pass block is
@@ -160,20 +176,39 @@ export async function startPassCheckout(): Promise<string | null> {
   return d?.error ?? "";
 }
 
+/**
+ * The sign-in fact, read from the server's initialize result and nowhere
+ * else. `probe()` runs at most once per page load (free, unmetered); the
+ * test button's own initialize refreshes it through `set`.
+ */
+export function useSignInFact() {
+  const [fact, setFact] = useState<SignInFact>(SIGN_IN_UNKNOWN);
+  const probed = useRef(false);
+  const probe = useCallback(() => {
+    if (probed.current) return;
+    probed.current = true;
+    void readSignInFromServer(MCP_URL).then(setFact);
+  }, []);
+  return { fact, probe, set: setFact };
+}
+
+/**
+ * The fact and the chosen host, for the pass card: provided by the page so
+ * the card can be mounted bare (as its guard does) and read defaults.
+ */
+export const SignInContext = createContext<{ fact: SignInFact; hostName: string | null }>({ fact: SIGN_IN_UNKNOWN, hostName: null });
+
 const TIER_BADGE: Record<string, string> = { read: "any free key", paid: "paid key", apply: "agent key" };
 
 /** "a, b and c" from a list of tool names, for prose. */
-const names = (list: ReadonlyArray<{ name: string }>) => {
-  const n = list.map((t) => t.name);
-  return n.length > 1 ? `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}` : n.join("");
-};
+const names = (list: ReadonlyArray<{ name: string }>) => andList(list.map((t) => t.name));
 
 /** A code block with a copy button — every setup snippet on this page uses it. */
 export function CopyBlock({ code, label }: { code: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative">
-      <pre className="text-xs overflow-x-auto p-3 pr-12 rounded-lg bg-muted"><code>{code}</code></pre>
+      <pre className="text-xs overflow-x-auto p-3 pr-12 rounded-lg bg-muted whitespace-pre-wrap break-all"><code>{code}</code></pre>
       <button
         type="button"
         aria-label={`Copy ${label}`}
@@ -182,6 +217,214 @@ export function CopyBlock({ code, label }: { code: string; label: string }) {
       >
         {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
+    </div>
+  );
+}
+
+/** A step's sentence with its **label** and `code` marks rendered — the same parser the prerender uses. */
+export function StepText({ text, className }: { text: string; className?: string }) {
+  return (
+    <span className={className}>
+      {stepSegments(text).map((s, i) =>
+        s.kind === "strong" ? <strong key={i} className="text-foreground">{s.value}</strong>
+          : s.kind === "code" ? <code key={i} className="text-xs">{s.value}</code>
+          : <span key={i}>{s.value}</span>)}
+    </span>
+  );
+}
+
+/** The numbered steps of one host, each with its copy button when there is something to paste. */
+export function StepList({ steps }: { steps: McpStep[] }) {
+  return (
+    <ol className="list-decimal pl-5 space-y-3 text-sm text-muted-foreground">
+      {steps.map((s, i) => (
+        <li key={i} className="pl-1">
+          <StepText text={s.text} />
+          {s.copy !== undefined && <div className="mt-2"><CopyBlock code={s.copy} label={s.copyLabel ?? "this"} /></div>}
+          {s.note && <p className="text-xs mt-1.5"><StepText text={s.note} /></p>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * The key field. It only edits the text on this page: the value never
+ * leaves the browser, nothing is sent anywhere, and the blocks below it
+ * re-render with the value in the ONE line that carries it.
+ */
+function KeyField({ value, onChange, id }: { value: string; onChange: (v: string) => void; id: string }) {
+  return (
+    <div className="mt-3">
+      <label htmlFor={id} className="block text-xs font-medium text-foreground mb-1">Paste your key here to fill the blocks below</label>
+      <input
+        id={id} type="password" autoComplete="off" spellCheck={false} value={value}
+        onChange={(e) => onChange(e.target.value.trim())}
+        placeholder="rb_live_…"
+        className="w-full max-w-md px-3 py-2 rounded-lg border border-border bg-background text-sm"
+      />
+      <p className="text-xs text-muted-foreground mt-1">Nothing is sent anywhere — the field only edits the text on this page.</p>
+    </div>
+  );
+}
+
+/** One block of the long tail under "More…". */
+function MoreHostBlock({ host, url, keyValue, state }: { host: McpMoreHost; url: string; keyValue: string; state: SignInFact["state"] }) {
+  const ctx = { url, key: keyValue || undefined, signIn: state };
+  return (
+    <div className="p-4 rounded-xl border border-border bg-background/50">
+      <h4 className="font-semibold mb-2">{host.name}{host.caveat && <span className="text-xs font-normal text-muted-foreground"> ({host.caveat})</span>}</h4>
+      <StepList steps={host.steps(ctx)} />
+      {host.keyed && (
+        <details className="mt-3">
+          <summary className="text-sm cursor-pointer text-foreground">{host.keyed.title}</summary>
+          <div className="mt-2"><StepList steps={host.keyed.steps(ctx)} /></div>
+        </details>
+      )}
+      {state === "on" && host.signInOn && <p className="text-xs text-muted-foreground mt-2"><StepText text={host.signInOn} /></p>}
+    </div>
+  );
+}
+
+/**
+ * The chosen host's panel: steps, the sign-in sentence for TODAY's state,
+ * how you know it worked, the deep links, and — for header hosts — the
+ * optional "with a free key" sub-steps behind the key field.
+ */
+export function HostPanel({ host, url, fact, keyValue, onKey }: {
+  host: McpHost; url: string; fact: SignInFact; keyValue: string; onKey: (v: string) => void;
+}) {
+  const ctx = { url, key: keyValue || undefined, signIn: fact.state };
+  const links = host.deeplinks?.(ctx) ?? [];
+  return (
+    <section id={host.id} aria-labelledby={`${host.id}-title`} className="p-6 rounded-2xl bg-card border border-border">
+      <h3 id={`${host.id}-title`} className="text-lg font-semibold mb-1">{host.name}{host.small && <span className="text-sm font-normal text-muted-foreground"> — {host.small}</span>}</h3>
+      {links.length > 0 && (
+        <p className="flex flex-wrap gap-2 my-3">
+          {links.map((l) => (
+            <a key={l.label} href={l.href} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90">
+              <Plug className="w-4 h-4" /> {l.label}
+            </a>
+          ))}
+        </p>
+      )}
+      <StepList steps={host.steps(ctx)} />
+      <p className="text-sm text-muted-foreground mt-4" data-sign-in={fact.state}><StepText text={host.signIn(fact.state)} /></p>
+      <p className="text-sm mt-3"><span className="font-medium text-foreground">How you know it worked:</span> <StepText text={host.verify} className="text-muted-foreground" /></p>
+      <p className="text-xs text-muted-foreground mt-2"><StepText text={MCP_NEEDS_ACCOUNT_LINE} /></p>
+      <p className="text-xs text-muted-foreground mt-2">{MCP_ADDRESS_GLOSS}</p>
+      {host.keyed && (
+        <div className="mt-5 pt-4 border-t border-border">
+          <h4 className="font-medium text-sm mb-1">{host.keyed.title}</h4>
+          {hostTakesKey(host) && <KeyField id={`${host.id}-key`} value={keyValue} onChange={onKey} />}
+          <div className="mt-3"><StepList steps={host.keyed.steps(ctx)} /></div>
+        </div>
+      )}
+      {host.id === "more" && (
+        <div className="mt-5 pt-4 border-t border-border space-y-4">
+          {MCP_MORE_HOSTS.some(hostTakesKey) && <KeyField id="more-key" value={keyValue} onChange={onKey} />}
+          {MCP_MORE_HOSTS.map((m) => <MoreHostBlock key={m.id} host={m} url={url} keyValue={keyValue} state={fact.state} />)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** The host the URL hash names, if it names one. */
+function hostFromHash(): McpHostId | null {
+  try {
+    const h = window.location.hash.replace(/^#/, "");
+    return (MCP_HOST_IDS as readonly string[]).includes(h) ? (h as McpHostId) : null;
+  } catch { return null; }
+}
+
+/**
+ * THE SWITCHBOARD: one question, six buttons, one open panel. The choice is
+ * remembered under the same key /agents/pass and the board's hand-off use,
+ * so the receipt page opens on the host the person chose here; the URL hash
+ * also selects a host, so the README and llms.txt can link straight to one
+ * host's steps.
+ */
+/** The host to open on load: the URL hash first, else a pick this browser remembers — never a default. */
+export function initialHostId(): McpHostId | null {
+  const fromHash = hostFromHash();
+  if (fromHash) return fromHash;
+  const remembered = rememberedHostChoice();
+  return remembered ? (MCP_HOSTS.find((h) => h.name === remembered)?.id ?? null) : null;
+}
+
+export function Switchboard({ fact, probe, picked, onPick }: { fact: SignInFact; probe: () => void; picked: McpHostId | null; onPick: (id: McpHostId) => void }) {
+  const [keyValue, setKeyValue] = useState("");
+  useEffect(() => { if (picked) probe(); }, [picked, probe]);
+  const pick = (h: McpHost) => {
+    onPick(h.id);
+    rememberHostName(h.name);
+    try { window.history.replaceState(null, "", `#${h.id}`); } catch { /* no history — the state still moved */ }
+    trackAgents("agents_host_pick", { host: h.id });
+  };
+  const host = picked ? MCP_HOSTS.find((h) => h.id === picked) ?? null : null;
+  return (
+    <div>
+      <h2 className="text-3xl font-bold mb-2 text-center">Which agent do you use?</h2>
+      <p className="text-muted-foreground text-center mb-6">Pick one. You will see only the steps for that app.</p>
+      <div role="group" aria-label="Which agent do you use?" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+        {MCP_HOSTS.map((h) => (
+          <button
+            key={h.id} type="button" onClick={() => pick(h)} aria-pressed={h.id === picked} data-host={h.id}
+            className={`p-4 rounded-2xl border text-left transition-colors ${h.id === picked ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"}`}
+          >
+            <span className="block text-lg font-semibold text-foreground">{h.name}</span>
+            {h.small && <span className="block text-xs text-muted-foreground mt-0.5">{h.small}</span>}
+          </button>
+        ))}
+      </div>
+      {host && <HostPanel host={host} url={MCP_URL} fact={fact} keyValue={keyValue} onKey={setKeyValue} />}
+    </div>
+  );
+}
+
+/**
+ * "TEST THE SERVER": four calls from this browser, one of them metered, and
+ * the answer in words. Disabled for a minute after a run.
+ */
+export function TestServer({ fact, onFact, hostId }: { fact: SignInFact; onFact: (f: SignInFact) => void; hostId: string | null }) {
+  const [busy, setBusy] = useState(false);
+  const [text, setText] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const report = await runServerTest(MCP_URL);
+      setText(describeTest(report));
+      if (report.reached) onFact(report.signIn);
+      trackAgents("agents_test_server", { host: hostId, state: report.reached ? report.signIn.state : "unreached" });
+    } finally {
+      setBusy(false);
+      setCooldown(true);
+      setTimeout(() => setCooldown(false), 60_000);
+    }
+  };
+  return (
+    <div className="p-6 rounded-2xl bg-card border border-border">
+      <h2 className="font-semibold mb-2 flex items-center gap-2"><Terminal className="w-4 h-4 text-primary" /> Test the server</h2>
+      <p className="text-sm text-muted-foreground mb-3">
+        Asks the server what it is, lists its tools and prompts, and runs one search for "{MCP_TEST_QUERY}" — from this browser, with no key.
+        This spends one of your {MCP_ANON_CAPS.perAddressPerDay} free calls for today.
+      </p>
+      <button
+        type="button" onClick={run} disabled={busy || cooldown}
+        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+      >
+        {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Testing…</> : <><Search className="w-4 h-4" /> Test the server</>}
+      </button>
+      <p role="status" aria-live="polite" data-test-result className="text-sm mt-3 whitespace-pre-wrap">{text ?? "Results appear here."}</p>
+      {fact.state !== "unknown" && text === null && (
+        <p className="text-xs text-muted-foreground mt-1">Sign-in for the chat apps, as the server last reported it: {fact.state}.</p>
+      )}
+      <details className="mt-3">
+        <summary className="text-xs cursor-pointer text-muted-foreground">Copy the same test as a curl command</summary>
+        <div className="mt-2"><CopyBlock code={curlInitialize(MCP_URL)} label="the curl line" /></div>
+      </details>
     </div>
   );
 }
@@ -247,7 +490,7 @@ export function MintAgentKey({ onMinted, next }: { onMinted?: (key: string) => v
           <p className="text-sm text-warning mb-2">Your previous agent key was revoked when this one was minted.</p>
         )}
         <p className="text-sm text-muted-foreground">
-          Paste it into your agent's Authorization header using the setup blocks below.
+          Paste it into the key field of your app's steps above — the blocks fill themselves (VS Code has no field here: it asks for the key itself when the server starts).
         </p>
       </div>
     );
@@ -303,9 +546,15 @@ export function MintAgentKey({ onMinted, next }: { onMinted?: (key: string) => v
  * sentences state hours and applications off the row and are never typed
  * here. Cancelled checkouts come back to /agents?pass=cancelled and are
  * said so.
+ *
+ * When the remembered host is a chat host and the server's sign-in fact is
+ * not `on`, one sentence says the pass is spendable from that host only
+ * once sign-in is switched on — the sentence is gated on the fact, the Buy
+ * button is not (a pass is spendable from a key host on the same account).
  */
 export function PassCard() {
   const { t } = useTranslation();
+  const { fact: signIn, hostName } = useContext(SignInContext);
   const { session, loading } = useAuth();
   const [params, setParams] = useSearchParams();
   const cancelled = params.get("pass") === "cancelled";
@@ -335,6 +584,9 @@ export function PassCard() {
   }, [wantsBuy, session, status, params, setParams, buy]);
 
   const open = status && (status.pass.state === "unactivated" || status.pass.state === "live");
+  const host = hostName ? MCP_HOSTS.find((h) => h.name === hostName) : undefined;
+  const gated = host && !host.header && host.oauth && signIn.state !== "on";
+  const headerHosts = andList(MCP_HOSTS.filter((h) => h.header && h.id !== "more").map((h) => h.name));
 
   return (
     <div className="p-6 rounded-2xl bg-card border border-primary/30">
@@ -348,6 +600,11 @@ export function PassCard() {
       <p className="text-sm text-muted-foreground mb-4">
         {t("agentPass.cardIncludes", "Includes the résumé scorer while it runs. Reading the board stays free; the Agent plan does the same every month and renews — the pass never does.")}
       </p>
+      {gated && (
+        <p className="text-sm text-warning mb-3" data-pass-gate>
+          {t("agentPass.connectorPassGate", "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.", { host: host.name, headerHosts })}
+        </p>
+      )}
       {cancelled && <p className="text-sm text-warning mb-3">{t("agentPass.cancelled", "Checkout cancelled — nothing was charged.")}</p>}
       {refusal && <p className="text-sm text-destructive mb-3">{refusal}</p>}
       {loading ? (
@@ -381,6 +638,32 @@ export function PassCard() {
   );
 }
 
+/** The troubleshooting table for a state: rows keyed to the server's own strings. */
+export function TroubleTable({ rows }: { rows: readonly TroubleRow[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm text-left">
+        <thead>
+          <tr className="text-xs text-muted-foreground border-b border-border">
+            <th className="py-2 pr-3 font-medium">What you see</th>
+            <th className="py-2 pr-3 font-medium">Why</th>
+            <th className="py-2 font-medium">What to do</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id} data-trouble={r.id} className="border-b border-border align-top">
+              <td className="py-2 pr-3 text-foreground"><StepText text={r.see} /></td>
+              <td className="py-2 pr-3 text-muted-foreground"><StepText text={r.why} /></td>
+              <td className="py-2 text-muted-foreground"><StepText text={r.fix} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AgentConnect() {
   const { t } = useTranslation();
   // THE POSTING COUNT IS READ, NOT TYPED. The same hook and the same floor
@@ -390,15 +673,12 @@ export default function AgentConnect() {
   const countClause = totals
     ? `${roundedFloor(totals.jobs).toLocaleString("en-US")}+ live postings`
     : "the live postings";
+  const { fact, probe, set } = useSignInFact();
+  const [picked, setPicked] = useState<McpHostId | null>(initialHostId);
+  const pickedName = picked ? MCP_HOSTS.find((h) => h.id === picked)?.name ?? null : null;
   const hostsWithHeader = MCP_HOSTS.filter((h) => h.header);
-  // A host that signs you in reaches the keyed tools through your own key
-  // row; only a host with neither a header field nor sign-in is limited to
-  // the unkeyed tools.
   const hostsWithSignIn = MCP_HOSTS.filter((h) => !h.header && h.oauth);
-  const hostsWithout = MCP_HOSTS.filter((h) => !h.header && !h.oauth);
-  // Host names carry their own "and" (claude.ai and Claude Desktop), so the
-  // list is joined with commas and one final "and", never "and … and".
-  const andList = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+  const troubleRows = troubleRowsFor(fact.state);
 
   return (
     <>
@@ -410,7 +690,8 @@ export default function AgentConnect() {
       <Header />
 
       <main className="min-h-screen pt-20">
-        {/* Hero */}
+        {/* Hero — two sentences, the count derived, and nothing above the
+            fold that names a key, a header, a transport or a status code. */}
         <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 via-background to-background">
           <div className="container">
             <div className="max-w-3xl mx-auto text-center">
@@ -422,288 +703,260 @@ export default function AgentConnect() {
                 Your AI agent can use <span className="text-primary">this job board directly</span>
               </h1>
               <p className="text-xl text-muted-foreground">
-                Point an MCP-capable agent — Claude Code, Cursor, or one you built — at our MCP server.
-                It can search {countClause} pulled from employers' own hiring systems, read full
-                descriptions, re-verify a shortlist, and, on the Agent plan or a live pass, ask your apply agent
-                to submit applications for you. It gets the same ranked search and the same honest disclosures the
-                site gets — there is no second search engine behind this endpoint.
+                Search {countClause} from employers' own hiring systems, read full postings, check a shortlist is
+                still open, and — on the Agent plan or a live pass — ask your apply agent to submit applications for you.
               </p>
             </div>
           </div>
         </section>
 
-        {/* Endpoint */}
-        <section className="py-16">
+        {/* The switchboard */}
+        <section className="py-12">
           <div className="container">
             <div className="max-w-3xl mx-auto">
-              <div className="p-6 rounded-2xl bg-card border border-border">
-                <h2 className="font-semibold mb-3 flex items-center gap-2"><Terminal className="w-4 h-4 text-primary" /> The endpoint</h2>
-                <CopyBlock code={MCP_URL} label="MCP endpoint URL" />
-                <p className="text-sm text-muted-foreground mt-3">
-                  Streamable HTTP transport, stateless, POST-only. Your agent sends its key as{" "}
-                  <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
-                  without one, so an agent can see what's here before you decide to mint anything.{" "}
-                  {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
-                  day per address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
-                  many are left; every other tool call needs a credential — the key, or the sign-in a
-                  connector host performs for you — and a call without one answers a sign-in challenge
-                  (an HTTP 401 with a WWW-Authenticate header naming this server's metadata), which is
-                  what claude.ai and ChatGPT turn into their Connect card.
-                </p>
-              </div>
+              <Switchboard fact={fact} probe={probe} picked={picked} onPick={setPicked} />
             </div>
           </div>
         </section>
 
-        {/* Keys — the tiers the server enforces, stated from the mirror */}
-        <section className="py-16 border-t border-border">
+        {/* The connection test */}
+        <section className="py-8">
           <div className="container">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Two kinds of key</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Reading the board is free and needs no account. Acting on your account needs a key that
-                knows whose account it acts on.{" "}
-                {t("agentConnect.rateLine", "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.", RATE_COPY)}
-              </p>
-            </div>
-            <div className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
-              <div className="p-6 rounded-2xl bg-card border border-border">
-                <h3 className="font-semibold mb-2 flex items-center gap-2"><Search className="w-4 h-4 text-primary" /> Read tools — any free key</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {MCP_READ_TOOLS.map((t, i) => (
-                    <span key={t.name}>{i > 0 && (i === MCP_READ_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{t.name}</code></span>
-                  ))}{" "}
-                  work with any free API key — the same ones the data API issues. No account, no card.
-                  {MCP_PAID_TOOLS.length > 0 && (
-                    <> {names(MCP_PAID_TOOLS)} {MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code className="text-xs">POST /v1/fit</code> on the data API.</>
-                  )}
-                </p>
-                <Link
-                  to="/data-api"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-semibold hover:border-primary/40 transition-colors"
-                >
-                  <KeyRound className="w-4 h-4" /> Get a free key at Hiring Data &amp; API
-                </Link>
-              </div>
-              <div className="p-6 rounded-2xl bg-card border border-border">
-                <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> Apply tools — an agent key</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {MCP_APPLY_TOOLS.map((t, i) => (
-                    <span key={t.name}>{i > 0 && (i === MCP_APPLY_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{t.name}</code></span>
-                  ))}{" "}
-                  act on your account, so they need a key minted from your signed-in session. The key alone
-                  isn't enough — applying also requires an active{" "}
-                  <Link to="/agent" className="text-primary hover:underline">Agent plan</Link> or a live pass
-                  (below), and the mandate you set up in{" "}
-                  <Link to="/account" className="text-primary hover:underline">Account</Link>.
-                  Read-only keys stay read-only by design.
-                </p>
-                <MintAgentKey />
-              </div>
-            </div>
-            {/* The pass, beside the mint: the one-off way to hold the same
-                entitlement the Agent plan holds monthly. */}
-            <div className="max-w-5xl mx-auto mt-6">
-              <PassCard />
+            <div className="max-w-3xl mx-auto">
+              <TestServer fact={fact} onFact={set} hostId={picked} />
             </div>
           </div>
         </section>
 
-        {/* Setup — per host, and honest about which hosts can carry the key.
-            The claim this replaced said claude.ai/Claude Desktop and ChatGPT
-            "both configure the Authorization header in their own UI". Neither
-            can: Claude's custom-connector dialog takes a URL plus optional
-            OAuth client credentials, and a static request header is a beta for
-            a limited set of organizations entered by an org admin
-            (claude.com/docs/connectors/custom/remote-mcp); ChatGPT developer
-            mode offers OAuth, No Authentication or Mixed and has no field for an
-            API key (developers.openai.com/apps-sdk/build/auth). What those two
-            hosts CAN do is sign a person in: the server answers a keyed tool
-            called with no credential with a sign-in challenge, the host shows
-            its Connect card, and the call then runs on the account's own key
-            row — or, with no sign-in, use the unkeyed tools, whose set and
-            caps come from the same mirror the server's constants are pinned
-            to. The per-host facts live in MCP_HOSTS so this section and the
-            crawler copy say the same thing. */}
-        <section className="py-16 border-t border-border">
+        {/* The pass, beside the steps: the one-off way to hold the same
+            entitlement the Agent plan holds monthly. */}
+        <section className="py-8">
           <div className="container">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-4 text-center">Connect it</h2>
-              <p className="text-muted-foreground text-center mb-10">
-                Paste your key over <code className="text-xs">rb_live_...your key...</code> in whichever block fits your agent.
-              </p>
-              <div className="space-y-6">
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <h3 className="font-semibold mb-3">Claude Code</h3>
-                  <CopyBlock code={CLAUDE_CODE_CMD} label="Claude Code setup command" />
-                </div>
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <h3 className="font-semibold mb-3">Cursor <span className="text-sm font-normal text-muted-foreground">(~/.cursor/mcp.json)</span></h3>
-                  <CopyBlock code={CURSOR_JSON} label="Cursor mcp.json config" />
-                </div>
-                <div className="p-6 rounded-2xl bg-card border border-border">
-                  <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach which tools today</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Every keyed tool call carries a credential, and hosts hold it two ways. From{" "}
-                    {andList(hostsWithHeader.map((h) => h.name))}: the key in an Authorization header — every
-                    tool your key's tier allows.
-                    {hostsWithSignIn.length > 0 && (
-                      <>
-                        {" "}From {andList(hostsWithSignIn.map((h) => h.name))}: paste the URL as a custom
-                        connector and choose Sign in when needed — the first keyed tool shows a Connect card,
-                        you sign in to this site and Allow, and the call runs on your own account key (the
-                        same row, quota and pass a pasted key would use). Before sign-in, the unkeyed tools
-                        — {names(MCP_ANON_TOOLS)} — still answer, {MCP_ANON_CAPS.perAddressPerDay} calls a
-                        day per address, search capped at {MCP_ANON_CAPS.searchRows} rows.
-                      </>
-                    )}
-                    {hostsWithout.length > 0 && (
-                      <>
-                        {" "}From {andList(hostsWithout.map((h) => h.name))}: the unkeyed tools only, under
-                        the same caps — there is no field for the key and no sign-in.
-                      </>
-                    )}
-                    {" "}Each host's own note below says which.
-                  </p>
-                  <ul className="text-sm text-muted-foreground space-y-2">
-                    {MCP_HOSTS.map((h) => (
-                      <li key={h.name} className="flex gap-2">
-                        {/* The badge is the host table's two flags: a header
-                            field reaches every tool, sign-in reaches them through
-                            the account's own key, neither means unkeyed only. */}
-                        <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header || h.oauth ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
-                          {h.header ? "reaches every tool" : h.oauth ? "sign in when needed" : "unkeyed tools only"}
-                        </span>
-                        <span><span className="text-foreground font-medium">{h.name}</span> — {h.how}.</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              <SignInContext.Provider value={{ fact, hostName: pickedName }}>
+                <PassCard />
+              </SignInContext.Provider>
             </div>
           </div>
         </section>
 
-        {/* Tools — rendered from the mirror, counted off it */}
-        <section className="py-16 border-t border-border">
+        {/* If it does not work — rows keyed to the server's own strings */}
+        <section className="py-8">
           <div className="container">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-10 text-center">All {MCP_TOOLS.length} tools</h2>
-              <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-                {MCP_TOOLS.map((t) => (
-                  <div key={t.name} className="p-5">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <code className="text-sm font-semibold text-primary">{t.name}</code>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${t.tier === "read" ? "border-border bg-muted text-muted-foreground" : "border-primary/30 bg-primary/10 text-primary"}`}>
-                        {TIER_BADGE[t.tier]}
-                      </span>
-                      {MCP_ANON_TOOL_NAMES.includes(t.name) && (
-                        <span className="text-xs px-2 py-0.5 rounded-full border border-success/40 bg-success/10 text-success">
-                          answers with no key ({MCP_ANON_CAPS.perAddressPerDay}/day per address)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{t.body}</p>
+              <details className="p-6 rounded-2xl bg-card border border-border" data-trouble-count={troubleRows.length}>
+                <summary className="font-semibold cursor-pointer">If it does not work</summary>
+                <p className="text-sm text-muted-foreground mt-3 mb-3">
+                  Each row quotes what the server or your app actually says. {MCP_TROUBLESHOOTING.length - troubleRows.length > 0 ? "Rows for the other sign-in state are hidden." : ""}
+                </p>
+                <TroubleTable rows={troubleRows} />
+              </details>
+            </div>
+          </div>
+        </section>
+
+        {/* For developers — everything that was on the page before the
+            switchboard, below the fold: the address and its one sentence,
+            the transport, the two kinds of key, the tools, prompts and
+            resources, the boundary, the install repo and the cross-links. */}
+        <section className="py-8 pb-16">
+          <div className="container">
+            <div className="max-w-3xl mx-auto">
+              <details className="p-6 rounded-2xl bg-card border border-border">
+                <summary className="font-semibold cursor-pointer">For developers</summary>
+                <div className="mt-4 space-y-8">
+                  <div>
+                    <h2 className="font-semibold mb-3 flex items-center gap-2"><Terminal className="w-4 h-4 text-primary" /> The server address</h2>
+                    <CopyBlock code={MCP_URL} label="MCP endpoint URL" />
+                    <p className="text-sm text-muted-foreground mt-3">
+                      {MCP_SERVER_ADDRESS_NOTE} Streamable HTTP transport, stateless, POST only. Your agent sends its key as{" "}
+                      <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
+                      without one, so an agent can see what's here before you decide to mint anything.{" "}
+                      {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
+                      day per network address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
+                      many are left; every other tool call needs a credential — the key, or the sign-in a
+                      chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state.
+                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
 
-        {/* THE ATTACH MENU — what a host lists beside the tools. Rendered
-            from MCP_PROMPTS and MCP_RESOURCES, the mirrors pinned to the
-            server's registries by the-attach-menu-lists-what-the-server-
-            registers; nothing here is typed, and no copy claims a host
-            renders a job's resource link (host rendering is undocumented). */}
-        <section className="py-16 border-t border-border">
-          <div className="container">
-            <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-3 text-center">{t("agentConnect.attachTitle", "Prompts and resources your host can list")}</h2>
-              <p className="text-muted-foreground text-center mb-10">
-                {t("agentConnect.attachLead", "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.")}
-              </p>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-                  <div className="p-4 font-semibold flex items-center gap-2"><MessageSquareText className="w-4 h-4 text-primary" /> {t("agentConnect.promptsHeading", "Prompts")}</div>
-                  {MCP_PROMPTS.map((p) => (
-                    <div key={p.name} className="p-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <code className="text-sm font-semibold text-primary">{p.name}</code>
-                        <span className="text-xs text-muted-foreground">{p.title}</span>
+                  <div>
+                    <h2 className="text-2xl font-bold mb-3">Two kinds of key</h2>
+                    <p className="text-muted-foreground mb-6">
+                      Reading the board is free and needs no account. Acting on your account needs a key that
+                      knows whose account it acts on.{" "}
+                      {t("agentConnect.rateLine", "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.", RATE_COPY)}
+                    </p>
+                    <div className="grid lg:grid-cols-2 gap-6">
+                      <div className="p-5 rounded-2xl bg-background border border-border">
+                        <h3 className="font-semibold mb-2 flex items-center gap-2"><Search className="w-4 h-4 text-primary" /> Read tools — any free key</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {MCP_READ_TOOLS.map((tool, i) => (
+                            <span key={tool.name}>{i > 0 && (i === MCP_READ_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{tool.name}</code></span>
+                          ))}{" "}
+                          work with any free API key — the same ones the data API issues. No account, no card.
+                          {MCP_PAID_TOOLS.length > 0 && (
+                            <> {names(MCP_PAID_TOOLS)} {MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code className="text-xs">POST /v1/fit</code> on the data API.</>
+                          )}
+                        </p>
+                        <Link
+                          to="/data-api"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-semibold hover:border-primary/40 transition-colors"
+                        >
+                          <KeyRound className="w-4 h-4" /> Get a free key at Hiring Data &amp; API
+                        </Link>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{p.body}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="rounded-2xl bg-card border border-border divide-y divide-border">
-                  <div className="p-4 font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> {t("agentConnect.resourcesHeading", "Resources")}</div>
-                  {MCP_RESOURCES.map((r) => (
-                    <div key={r.uri} className="p-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <code className="text-sm font-semibold text-primary">{r.uri}</code>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${r.keyed ? "border-primary/30 bg-primary/10 text-primary" : "border-success/40 bg-success/10 text-success"}`}>
-                          {r.keyed ? t("agentConnect.resourceKeyed", "needs a key or sign-in") : t("agentConnect.resourceUnkeyed", "reads with no key")}
-                        </span>
+                      <div className="p-5 rounded-2xl bg-background border border-border">
+                        <h3 className="font-semibold mb-2 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> Apply tools — an agent key</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {MCP_APPLY_TOOLS.map((tool, i) => (
+                            <span key={tool.name}>{i > 0 && (i === MCP_APPLY_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{tool.name}</code></span>
+                          ))}{" "}
+                          act on your account, so they need a key minted from your signed-in session. The key alone
+                          isn't enough — applying also requires an active{" "}
+                          <Link to="/agent" className="text-primary hover:underline">Agent plan</Link> or a live pass
+                          (above), and the mandate you set up in{" "}
+                          <Link to="/account" className="text-primary hover:underline">Account</Link>.
+                          Read-only keys stay read-only by design.
+                        </p>
+                        <MintAgentKey />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{r.body}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mt-6 text-center">
-                {t("agentConnect.handoffLead", "On the board, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.")}{" "}
-                <Link to="/jobs" className="text-primary hover:underline">{t("agentConnect.handoffCta", "Open the board")}</Link>
-              </p>
-            </div>
-          </div>
-        </section>
+                  </div>
 
-        {/* The boundary — the load-bearing section */}
-        <section className="py-16 border-t border-border bg-muted/20">
-          <div className="container">
-            <div className="max-w-3xl mx-auto">
-              <div className="p-6 md:p-8 rounded-2xl bg-card border border-primary/20">
-                <div className="flex items-center gap-2 mb-4">
-                  <ShieldCheck className="w-5 h-5 text-primary" />
-                  <h2 className="text-2xl font-bold">What your agent can and cannot do</h2>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Applications requested here go through the exact same pipeline as the signed-in flow —
-                  the MCP layer is a translator, never a bypass. Your agent can do at most what you could
-                  do yourself, signed in. Concretely:
-                </p>
-                <ul className="text-sm text-muted-foreground space-y-2.5">
-                  <li>• <span className="text-foreground font-medium">Your mandate's off switch always wins.</span> Agent switched off or paused in Account? Every request refuses, including from this endpoint.</li>
-                  <li>• <span className="text-foreground font-medium">The honesty classifier never invents answers.</span> Application answers are drawn from your own profile; any answer it can't support blocks the send and waits for you.</li>
-                  <li>• <span className="text-foreground font-medium">Only {SENDABLE_VENDOR_LABELS.length} hiring systems are agent-submittable today:</span> {SENDABLE_VENDOR_SENTENCE}. Jobs on other systems get prepared for you to send yourself — <code className="text-xs">check_apply_support</code> tells you which is which before you ask.</li>
-                  <li>• <span className="text-foreground font-medium">Daily caps apply.</span> The same release caps as the signed-in agent — a connected agent doesn't get a bigger allowance.</li>
-                  <li>• <span className="text-foreground font-medium">Every refusal is named.</span> A request that doesn't go out shows up in <code className="text-xs">application_status</code> with the refusing gate stated, not a silent disappearance.</li>
-                </ul>
-                <p className="text-xs text-muted-foreground mt-5">
-                  {t("agentConnect.rateLine", "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.", RATE_COPY)}{" "}
-                  How the agent decides what it may send
-                  is documented on the <Link to="/trust" className="text-primary hover:underline">trust page</Link>.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+                  <div>
+                    <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach which tools</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Every keyed tool call carries a credential, and hosts hold it two ways. From{" "}
+                      {andList(hostsWithHeader.map((h) => h.name))}: the key in an Authorization header — every
+                      tool your key's tier allows.
+                      {hostsWithSignIn.length > 0 && (
+                        <>
+                          {" "}From {andList(hostsWithSignIn.map((h) => h.name))}: a sign-in instead of a key, while the
+                          server's sign-in service is on — the call then runs on your own account key (the same row,
+                          quota and pass a pasted key would use). Before sign-in, or while it is off, the unkeyed tools
+                          — {names(MCP_ANON_TOOLS)} — still answer.
+                        </>
+                      )}
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      {MCP_HOSTS.map((h) => (
+                        <li key={h.id} className="flex gap-2">
+                          <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header || h.oauth ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
+                            {h.header ? "reaches every tool" : h.oauth ? "sign in when needed" : "unkeyed tools only"}
+                          </span>
+                          <span><span className="text-foreground font-medium">{h.name}</span> — {h.how}.</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-        {/* Cross-links */}
-        <section className="py-16">
-          <div className="container">
-            <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-2xl font-bold mb-4">Rather integrate with code?</h2>
-              <p className="text-muted-foreground mb-8">
-                The MCP server is for agents. If you're writing software, the plain JSON API covers the
-                same data with cursors and ETags.
-              </p>
-              <div className="flex flex-wrap justify-center gap-3 text-sm">
-                <Link to="/data-api" className="px-4 py-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors">Hiring Data &amp; API</Link>
-                <Link to="/agent" className="px-4 py-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors">The Apply Agent</Link>
-                <Link to="/jobs" className="px-4 py-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors">The live board</Link>
-              </div>
+                  <div>
+                    <h2 className="text-2xl font-bold mb-4">All {MCP_TOOLS.length} tools</h2>
+                    <div className="rounded-2xl bg-background border border-border divide-y divide-border">
+                      {MCP_TOOLS.map((tool) => (
+                        <div key={tool.name} className="p-4">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <code className="text-sm font-semibold text-primary">{tool.name}</code>
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${tool.tier === "read" ? "border-border bg-muted text-muted-foreground" : "border-primary/30 bg-primary/10 text-primary"}`}>
+                              {TIER_BADGE[tool.tier]}
+                            </span>
+                            {MCP_ANON_TOOL_NAMES.includes(tool.name) && (
+                              <span className="text-xs px-2 py-0.5 rounded-full border border-success/40 bg-success/10 text-success">
+                                answers with no key ({MCP_ANON_CAPS.perAddressPerDay}/day per network address)
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{tool.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* THE ATTACH MENU — what a host lists beside the tools. Rendered
+                      from MCP_PROMPTS and MCP_RESOURCES, the mirrors pinned to the
+                      server's registries by the-attach-menu-lists-what-the-server-
+                      registers; nothing here is typed, and no copy claims a host
+                      renders a job's resource link (host rendering is undocumented). */}
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">{t("agentConnect.attachTitle", "Prompts and resources your host can list")}</h2>
+                    <p className="text-muted-foreground mb-6">
+                      {t("agentConnect.attachLead", "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.")}
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="rounded-2xl bg-background border border-border divide-y divide-border">
+                        <div className="p-4 font-semibold flex items-center gap-2"><MessageSquareText className="w-4 h-4 text-primary" /> {t("agentConnect.promptsHeading", "Prompts")}</div>
+                        {MCP_PROMPTS.map((p) => (
+                          <div key={p.name} className="p-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <code className="text-sm font-semibold text-primary">{p.name}</code>
+                              <span className="text-xs text-muted-foreground">{p.title}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{p.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="rounded-2xl bg-background border border-border divide-y divide-border">
+                        <div className="p-4 font-semibold flex items-center gap-2"><FileText className="w-4 h-4 text-primary" /> {t("agentConnect.resourcesHeading", "Resources")}</div>
+                        {MCP_RESOURCES.map((r) => (
+                          <div key={r.uri} className="p-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <code className="text-sm font-semibold text-primary">{r.uri}</code>
+                              <span className={`text-xs px-2 py-0.5 rounded-full border ${r.keyed ? "border-primary/30 bg-primary/10 text-primary" : "border-success/40 bg-success/10 text-success"}`}>
+                                {r.keyed ? t("agentConnect.resourceKeyed", "needs a key or sign-in") : t("agentConnect.resourceUnkeyed", "reads with no key")}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{r.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-4">
+                      {t("agentConnect.handoffLead", "On the board, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.")}{" "}
+                      <Link to="/jobs" className="text-primary hover:underline">{t("agentConnect.handoffCta", "Open the board")}</Link>
+                    </p>
+                  </div>
+
+                  {/* The boundary — the load-bearing section */}
+                  <div className="p-5 rounded-2xl bg-background border border-primary/20">
+                    <div className="flex items-center gap-2 mb-4">
+                      <ShieldCheck className="w-5 h-5 text-primary" />
+                      <h2 className="text-2xl font-bold">What your agent can and cannot do</h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Applications requested here go through the exact same pipeline as the signed-in flow —
+                      the MCP layer is a translator, never a bypass. Your agent can do at most what you could
+                      do yourself, signed in. Concretely:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2.5">
+                      <li>• <span className="text-foreground font-medium">Your mandate's off switch always wins.</span> Agent switched off or paused in Account? Every request refuses, including from this endpoint.</li>
+                      <li>• <span className="text-foreground font-medium">The honesty classifier never invents answers.</span> Application answers are drawn from your own profile; any answer it can't support blocks the send and waits for you.</li>
+                      <li>• <span className="text-foreground font-medium">Only {SENDABLE_VENDOR_LABELS.length} hiring systems are agent-submittable today:</span> {SENDABLE_VENDOR_SENTENCE}. Jobs on other systems get prepared for you to send yourself — <code className="text-xs">check_apply_support</code> tells you which is which before you ask.</li>
+                      <li>• <span className="text-foreground font-medium">Daily caps apply.</span> The same release caps as the signed-in agent — a connected agent doesn't get a bigger allowance.</li>
+                      <li>• <span className="text-foreground font-medium">Every refusal is named.</span> A request that doesn't go out shows up in <code className="text-xs">application_status</code> with the refusing gate stated, not a silent disappearance.</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground mt-5">
+                      {t("agentConnect.rateLine", "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.", RATE_COPY)}{" "}
+                      How the agent decides what it may send
+                      is documented on the <Link to="/trust" className="text-primary hover:underline">trust page</Link>.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-bold mb-3">Rather integrate with code?</h2>
+                    <p className="text-muted-foreground mb-4">
+                      The MCP server is for agents. If you're writing software, the plain JSON API covers the
+                      same data with cursors and ETags. The install blocks above are also published as a repository, with a README
+                      that says the same things in the same order.
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <Link to="/data-api" className="px-4 py-2 rounded-lg bg-background border border-border hover:border-primary/40 transition-colors">Hiring Data &amp; API</Link>
+                      <Link to="/agent" className="px-4 py-2 rounded-lg bg-background border border-border hover:border-primary/40 transition-colors">The Apply Agent</Link>
+                      <Link to="/jobs" className="px-4 py-2 rounded-lg bg-background border border-border hover:border-primary/40 transition-colors">The live board</Link>
+                      <a href={MCP_INSTALL_REPO_URL} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-background border border-border hover:border-primary/40 transition-colors">Install repository <ExternalLink className="w-3.5 h-3.5" /></a>
+                    </div>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         </section>

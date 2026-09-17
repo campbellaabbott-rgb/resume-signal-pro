@@ -48,6 +48,7 @@ export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { BOARD_SOURCE_LIST } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
+export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
 `);
@@ -949,7 +950,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     const A = (D.EN_LOCALE && D.EN_LOCALE.homeAgent) || {};
     const vals = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications, freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
     const fillIn = (s) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] homeAgent copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
-    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine), pass: fillIn(A.passLine), cta: fillIn(A.connectCta) };
+    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine2), pass: fillIn(A.passLine), cta: fillIn(A.connectCta) };
   })();
   write({
     isFallback: true,
@@ -1669,8 +1670,23 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     // registering eleven. Everything countable below is rendered from the
     // same mirrors the page itself reads: D.MCP_TOOLS (pinned to the
     // server's registration by the-page-says-six-and-the-server-says-eleven
-    // guard), D.MCP_HOSTS, the sendable-vendor mirror (pinned to the Deno
-    // list), and the board's own total through plusClaim. Nothing is typed.
+    // guard), D.MCP_HOSTS and their `steps` builders (the switchboard: the
+    // page shows one host's steps after a pick; a crawler sees every host's
+    // panel open, so an agent reading this page finds every step), the
+    // troubleshooting rows (pinned to the server's own strings), the
+    // sendable-vendor mirror (pinned to the Deno list), and the board's own
+    // total through plusClaim. Nothing is typed. The sign-in sentence baked
+    // here is the STATE-NEUTRAL one — true whether the server's sign-in
+    // service is on or off — because a bake cannot know today's state; the
+    // page reads it at runtime off the server's initialize result.
+    //
+    // EVERY CONST IS DECLARED BEFORE THE FIRST SYNCHRONOUS READ OF IT. On
+    // 2026-09-16 two of these sat below the sentence that read them; the
+    // read hit the temporal dead zone, the never-throw policy shipped every
+    // later page as the homepage shell, and the publish was green.
+    // src/test/a-const-read-before-its-line-is-a-page-that-never-renders
+    // parses this file; src/test/which-agent-do-you-use.test.tsx EXECUTES
+    // this block and reads the page it writes.
     {
       const envText3 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
       const supaUrl3 = process.env.VITE_SUPABASE_URL
@@ -1680,29 +1696,19 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       const badge = { read: "any free key", paid: "paid key", apply: "agent key" };
       const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
       const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings` : "the live postings";
-      // Host names carry their own "and" (claude.ai and Claude Desktop): commas
-      // and one final "and", the same joiner the SPA page uses.
-      const andList = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+      // The joiner the mirror exports: commas and one final "and", and
+      // semicolons when an item carries its own "and" — never "and … and".
+      const andList = D.andList;
       const withHeader = andList(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name));
-      // A host that signs a person in reaches the keyed tools through their
-      // own key row; a host with neither a header field nor sign-in is
-      // limited to the unkeyed tools. Both lists come off the host table.
       const withSignIn = andList(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name));
       const withoutHeader = andList(D.MCP_HOSTS.filter((x) => !x.header && !x.oauth).map((x) => x.name));
       // The unkeyed tier: names and caps from the same mirror the server's
       // constants are pinned to (a-first-call-with-no-key guard), never typed.
-      // DECLARED BEFORE signInSentence READS THEM. On 2026-09-16 these two sat
-      // twelve lines below the sentence that interpolates them; the ternary
-      // only evaluated that literal once a host carried oauth: true, which
-      // 23e294ac made so, and the read hit the temporal dead zone. The
-      // script's never-throw policy (:2207) then shipped every page from
-      // /agents onward as the homepage shell -- silently, publish green.
-      // src/test/a-const-read-before-its-line-is-a-page-that-never-renders
-      // parses this file and refuses any synchronous read above a declaration.
+      // DECLARED BEFORE THE TWO SENTENCES THAT READ THEM (the 2026-09-16 bake).
       const unkeyedNames = codes(D.MCP_ANON_TOOLS);
-      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
+      const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address, search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
-        ? ` From ${h(withSignIn)}: paste the URL as a custom connector and choose Sign in when needed — the first keyed tool shows a Connect card, you sign in to this site and Allow, and the call runs on your own account key (the same row, quota and pass a pasted key would use); before sign-in the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
+        ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row, quota and pass a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
       const unkeyedOnlySentence = withoutHeader
         ? ` From ${h(withoutHeader)}: the unkeyed tools only, under the same caps — there is no field for the key and no sign-in.`
@@ -1711,6 +1717,33 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       const paidSentence = D.MCP_PAID_TOOLS.length
         ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code>POST /v1/fit</code> on the data API.`
         : "";
+      // The steps, rendered through the same inline parser the page uses:
+      // **label** → <strong>, `code` → <code>, everything else escaped.
+      const inline = (text) => D.stepSegments(String(text)).map((s) =>
+        s.kind === "strong" ? `<strong class="text-foreground">${h(s.value)}</strong>` : s.kind === "code" ? `<code>${h(s.value)}</code>` : h(s.value)).join("");
+      const stepsHtml = (steps) => `<ol class="list-decimal pl-5 space-y-2">${steps.map((s) =>
+        `<li class="text-sm text-muted-foreground">${inline(s.text)}${s.copy !== undefined ? `<pre class="text-xs overflow-x-auto p-2 rounded bg-muted whitespace-pre-wrap"><code>${h(s.copy)}</code></pre>` : ""}${s.note ? `<p class="text-xs">${inline(s.note)}</p>` : ""}</li>`).join("")}</ol>`;
+      // Keyless, always: the bake never holds a key, so every keyed block
+      // renders its empty export line and the "paste your key" sentence.
+      const ctx = { url: mcpUrl || "https://<the server address on /agents>" };
+      const deeplinksHtml = (host) => (host.deeplinks ? `<p class="my-2">${host.deeplinks(ctx).map((l) => `<a href="${h(l.href)}" class="inline-block px-3 py-1.5 mr-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold">${h(l.label)}</a>`).join("")}</p>` : "");
+      const keyedHtml = (owner) => (owner.keyed ? `<h4 class="text-sm font-semibold mt-3 mb-1">${h(owner.keyed.title)}</h4>${stepsHtml(owner.keyed.steps(ctx))}` : "");
+      const moreHtml = D.MCP_MORE_HOSTS.map((m) => `<div class="mt-4"><h4 class="font-semibold mb-1">${h(m.name)}${m.caveat ? ` <span class="text-xs font-normal text-muted-foreground">(${h(m.caveat)})</span>` : ""}</h4>${stepsHtml(m.steps(ctx))}${keyedHtml(m)}</div>`).join("");
+      const hostPanel = (host) => `
+          <section id="${host.id}" class="mb-8 p-4 rounded-2xl border border-border">
+            <h3 class="text-lg font-semibold mb-2">${h(host.name)}${host.small ? ` <span class="text-sm font-normal text-muted-foreground">— ${h(host.small)}</span>` : ""}</h3>
+            ${deeplinksHtml(host)}
+            ${stepsHtml(host.steps(ctx))}
+            <p class="text-sm text-muted-foreground mt-3">${inline(D.MCP_SIGN_IN_NEUTRAL)}</p>
+            <p class="text-sm mt-2"><strong class="text-foreground">How you know it worked:</strong> ${inline(host.verify)}</p>
+            <p class="text-xs text-muted-foreground mt-2">${inline(D.MCP_NEEDS_ACCOUNT_LINE)}</p>
+            <p class="text-xs text-muted-foreground mt-2">${h(D.MCP_ADDRESS_GLOSS)}</p>
+            ${keyedHtml(host)}
+            ${host.id === "more" ? moreHtml : ""}
+          </section>`;
+      const hostButtons = D.MCP_HOSTS.map((x) => `<a href="#${x.id}" class="block p-3 rounded-2xl border border-border"><span class="block font-semibold text-foreground">${h(x.name)}</span>${x.small ? `<span class="block text-xs text-muted-foreground">${h(x.small)}</span>` : ""}</a>`).join("");
+      const whenLabel = (r) => (r.when === "on" ? " (while sign-in is on)" : r.when === "off" ? " (while sign-in is off)" : "");
+      const troubleRows = D.MCP_TROUBLESHOOTING.map((r) => `<tr class="border-b border-border align-top"><td class="py-2 pr-3 text-foreground">${inline(r.see)}${whenLabel(r)}</td><td class="py-2 pr-3 text-muted-foreground">${inline(r.why)}</td><td class="py-2 text-muted-foreground">${inline(r.fix)}</td></tr>`).join("");
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
@@ -1719,21 +1752,35 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Connect your agent" }])}
           <h1 class="text-3xl font-bold mb-3">Your AI agent can use this job board directly</h1>
-          <p class="text-muted-foreground mb-8">Point an MCP-capable agent — Claude Code, Cursor, or one you built — at our MCP server. It can search ${countClause} pulled from employers' own hiring systems, read full descriptions, re-verify a shortlist, and, on the Agent plan or a live pass, ask your apply agent to submit applications for you. It gets the same ranked search and the same honest disclosures the site gets — there is no second search engine behind this endpoint.</p>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">The endpoint</h2>
+          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings, check a shortlist is still open, and — on the Agent plan or a live pass — ask your apply agent to submit applications for you.</p>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-2">Which agent do you use?</h2>
+            <p class="text-sm text-muted-foreground mb-3">Pick one. You will see only the steps for that app.</p>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">${hostButtons}</div>
+            ${D.MCP_HOSTS.map(hostPanel).join("")}
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-2">Test the server</h2>
+            <p class="text-sm text-muted-foreground">On the live page, a button asks the server what it is, lists its tools and prompts, and runs one search for "${h(D.MCP_TEST_QUERY)}" with no key — one of your ${D.MCP_ANON_CAPS.perAddressPerDay} free calls for today — and prints the answer in words, including whether sign-in for the chat apps is switched on. The same test as a curl line:</p>
+            <pre class="text-xs overflow-x-auto p-2 rounded bg-muted whitespace-pre-wrap"><code>${h(D.curlInitialize(ctx.url))}</code></pre>
+          </section>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">If it does not work</h2>
+            <p class="text-sm text-muted-foreground mb-2">Each row quotes what the server or your app actually says.</p>
+            <div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead><tr class="text-xs text-muted-foreground border-b border-border"><th class="py-2 pr-3">What you see</th><th class="py-2 pr-3">Why</th><th class="py-2">What to do</th></tr></thead><tbody>${troubleRows}</tbody></table></div>
+          </section>
+          <h2 class="text-xl font-bold mb-3">For developers</h2>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">The server address</h2>
             ${mcpUrl ? `<p class="text-sm mb-2"><code>${h(mcpUrl)}</code></p>` : ""}
-            <p class="text-sm text-muted-foreground">Streamable HTTP transport, stateless, POST-only. Tool discovery (initialize, tools/list) works with no key, so an agent can see what is here before anyone mints anything. ${unkeyedNames} answer with no key at all — ${unkeyedCaps}, each answer saying how many are left. Every other tool call needs a credential — the key as <code>Authorization: Bearer rb_live_…</code>, or the sign-in a connector host performs for you — and a call without one answers a sign-in challenge (an HTTP 401 with a WWW-Authenticate header naming this server's metadata), which is what claude.ai and ChatGPT turn into their Connect card.</p>
+            <p class="text-sm text-muted-foreground">${h(D.MCP_SERVER_ADDRESS_NOTE)} Streamable HTTP transport, stateless, POST only. Tool discovery (initialize, tools/list) works with no key, so an agent can see what is here before anyone mints anything. ${unkeyedNames} answer with no key at all — ${unkeyedCaps}, each answer saying how many are left. Every other tool call needs a credential — the key as <code>Authorization: Bearer rb_live_…</code>, or the sign-in a chat host performs for you while the server's sign-in service is on; the live page's Test the server button prints today's state.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
             <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
             <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> or a live pass (sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
           </section>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools today</h2>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools</h2>
             <p class="text-sm text-muted-foreground mb-2">Every keyed tool call carries a credential, and hosts hold it two ways. From ${h(withHeader)}: the key in an Authorization header — every tool your key's tier allows.${signInSentence}${unkeyedOnlySentence} Each host's own note below says which.</p>
             <ul class="space-y-1.5">${D.MCP_HOSTS.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${hostBadge(x)}: ${h(x.how)}.</li>`).join("")}</ul>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">All ${D.MCP_TOOLS.length} tools</h2>
-            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per address` : ""}) — ${h(t.body)}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address` : ""}) — ${h(t.body)}</li>`).join("")}</ul>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
             <p class="text-sm text-muted-foreground mb-2">Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them show them under the server's name; listing costs no call and needs no key.</p>
@@ -1753,7 +1800,27 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
               <li class="text-sm text-muted-foreground"><strong class="text-foreground">Every refusal is named.</strong> A request that does not go out shows up in <code>application_status</code> with the refusing gate stated, not a silent disappearance.</li>
             </ul>
           </section>
-          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The board itself is at <a href="/jobs">/jobs</a>; the apply agent is described at <a href="/agent">/agent</a>.</p>`,
+          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The install blocks above are also published as a repository with a README that says the same things in the same order: <a href="${h(D.MCP_INSTALL_REPO_URL)}">${h(D.MCP_INSTALL_REPO_URL)}</a>. The board itself is at <a href="/jobs">/jobs</a>; the apply agent is described at <a href="/agent">/agent</a>.</p>`,
+      });
+
+      // /mcp is NOT the server address. Measured 2026-09-16: the branded URL
+      // answered 200 with the SPA shell, so a person who "fixed" the odd
+      // Supabase address by typing this one landed on the homepage. No
+      // redirect (it would drop the Authorization header on some hosts) and
+      // no proxy (a second resource identity for the OAuth server): one
+      // page that says so, shows the real address with its sentence, and
+      // links the how-to. noindex, so the sitemap never lists it.
+      write({
+        path: "/mcp",
+        robots: "noindex, follow",
+        title: "This is not the server address",
+        description: "The MCP server for AI agents lives at a Supabase address, not here. The real address and the how-to are one click away.",
+        content: `
+          <h1 class="text-2xl font-bold mb-3">This is not the server address</h1>
+          <p class="text-muted-foreground mb-4">The server your agent talks to is not at this URL. This is the address it needs:</p>
+          ${mcpUrl ? `<p class="text-sm mb-2"><code>${h(mcpUrl)}</code></p>` : ""}
+          <p class="text-sm text-muted-foreground">${h(D.MCP_SERVER_ADDRESS_NOTE)}</p>
+          <p class="text-sm mt-6"><a href="/agents" class="text-primary underline">How to connect your agent, app by app →</a></p>`,
       });
     }
 
@@ -2074,7 +2141,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(`- Companies on the board: ${SITE}/companies — every employer with open roles, A–Z, each with its live count and a link to its own page.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per address, ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key or a live Agent Pass, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — a keyed tool called with no credential answers HTTP 401 with a WWW-Authenticate challenge naming the server's protected-resource metadata, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${AGENT_OFFER.pass}`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office, a home connection or a chat service's own servers count as one — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key or a live Agent Pass, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; every host's steps are at ${SITE}/agents#<host> (${D.MCP_HOSTS.map((x) => x.id).join(", ")}). ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${AGENT_OFFER.pass}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;

@@ -77,7 +77,7 @@ import Jobs, { boardFilterBody, type BoardFilterState } from "../pages/Jobs";
 import { Header } from "../components/Header";
 import { MCP_URL, RATE_COPY } from "../pages/AgentConnect";
 import { FREE_KEY_RATE_PER_MIN } from "../config/free-key-limits";
-import { MCP_HOSTS, MCP_TOOL_NAMES, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../config/mcp-tools";
+import { MCP_HOSTS, MCP_CHOOSER_HOSTS, MCP_TOOL_NAMES, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../config/mcp-tools";
 import { PASS } from "../config/products";
 import { changelog } from "../data/changelog";
 import {
@@ -122,11 +122,14 @@ const FULL_STATE: BoardFilterState = {
 
 describe("1. the posting prompt", () => {
   const JOB = { id: "greenhouse:acme:1", sendable: false };
-  it("carries the id verbatim, the MCP URL, the two tools to call first, and never a key", () => {
+  it("carries the id verbatim, the MCP URL, an unkeyed tool first and the keyed check behind its clause, and never a key", () => {
     const p = agentPrompt(JOB);
     expect(p).toContain(`job id "${JOB.id}"`);
     expect(p).toContain(MCP_URL);
-    expect(p).toMatch(/call get_job and check_apply_support/);
+    // The first call answers with no key (the wall was a prompt whose first
+    // tool needed one); the keyed check follows behind its condition.
+    expect(p).toMatch(/call fetch with job id/);
+    expect(p).toMatch(/if this connection holds a key or is signed in, call check_apply_support/);
     expect(p).not.toMatch(/rb_live_/);
     expect(p).not.toMatch(/request_application/);
     expect(p.length).toBeLessThan(14_000); // the claude:// prefill cap
@@ -327,7 +330,10 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     // The panel is laid out once per breakpoint, so the chooser exists in
     // each copy; every copy is the host mirror, and each is driven below.
     const selects = screen.getAllByLabelText("Which agent?") as HTMLSelectElement[];
-    for (const select of selects) expect(Array.from(select.options).map((o) => o.value)).toEqual(MCP_HOSTS.map((h) => h.name));
+    // Every real app, and never the switchboard's "More…" button: a hand-off cannot open "More…".
+    for (const select of selects) expect(Array.from(select.options).map((o) => o.value)).toEqual(MCP_CHOOSER_HOSTS.map((h) => h.name));
+    expect(MCP_CHOOSER_HOSTS.map((h) => h.id)).not.toContain("more");
+    expect(MCP_CHOOSER_HOSTS.length).toBe(MCP_HOSTS.length - 1);
     // A host with no documented prefill link gets no link at all.
     const plain = MCP_HOSTS.find((h) => !DEEP_LINK_HOST_NAMES.includes(h.name))!.name;
     for (const select of selects) fireEvent.change(select, { target: { value: plain } });

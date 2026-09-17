@@ -9,7 +9,7 @@ import { bearerChallenge, unauthorized } from "../../supabase/functions/agent-mc
 /**
  * THE ATTACH MENU LISTS WHAT THE SERVER REGISTERS.
  *
- * agent-mcp 2026-09-04.6 declares prompts and resources beside its tools.
+ * agent-mcp 2026-09-04.7 declares prompts and resources beside its tools.
  * The page that describes them renders from a mirror in src/config, and a
  * mirror is exactly the thing that goes stale when the other runtime moves
  * — the /agents page once said "six tools" for a server registering eleven.
@@ -482,7 +482,7 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
 
   it("serverInfo names the bump, a title, the human page and an icon that exists", () => {
     const info = between(MCP, "const SERVER_INFO = {", "\n};");
-    expect(info).toMatch(/version: "2026-09-04\.6"/);
+    expect(info).toMatch(/version: "2026-09-04\.7"/);
     expect(info).toMatch(/title: "[^"]+"/);
     expect(info).toMatch(/websiteUrl: "https:\/\/resumebooster\.work\/agents"/);
     const icon = /src: "https:\/\/resumebooster\.work\/([^"]+)"/.exec(info)?.[1];

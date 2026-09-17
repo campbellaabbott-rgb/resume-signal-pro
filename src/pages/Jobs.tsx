@@ -64,7 +64,7 @@ import { JobsCommandPalette, ShortcutsOverlay, useGlobalPaletteKeys, type Palett
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { honourPendingSkipLink } from "@/lib/skip-link";
 import { agentPrompt, agentDeepLink, toSearchJobsArgs, searchPrompt, copyText, rememberedHostName, rememberHostName, type HandoffJob, type SearchSort } from "@/lib/agent-handoff";
-import { MCP_HOSTS } from "@/config/mcp-tools";
+import { MCP_CHOOSER_HOSTS } from "@/config/mcp-tools";
 
 // user_applications gained board columns after the last typegen — untyped
 // access until Lovable regenerates types.ts.
@@ -2012,7 +2012,7 @@ function JobAgentHandoff({ job, compact, track }: {
         aria-label={t("jobsPage.whichAgent", "Which agent?")}
         className="text-[11px] px-1.5 py-0.5 rounded-md border border-border bg-background text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
-        {MCP_HOSTS.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}
+        {MCP_CHOOSER_HOSTS.map((h) => <option key={h.name} value={h.name}>{h.name}</option>)}
       </select>
       {deep && (
         <a

@@ -12,8 +12,9 @@ import { MCP_URL as MODULE_URL, RESOURCE_METADATA_URL, PRM_PATH } from "../../su
  * import each other: the access-token hook (SQL, which binds the audience
  * because the authorization endpoint ignores a resource parameter), the
  * server module (Deno, which checks the audience and publishes the
- * metadata), and the page (React, which builds it from an env variable and
- * shows it to the user). If any one drifts — a trailing slash, a renamed
+ * metadata), and the page (React — the test-button client module the page
+ * imports its URL from — which builds it from an env variable and shows it
+ * to the user). If any one drifts — a trailing slash, a renamed
  * function, a different project — every token is refused or every user
  * pastes a URL the token was not minted for, and nothing else fails.
  *
@@ -48,8 +49,8 @@ function hookUrlOf(sql: string): string {
  * one interpolation is VITE_SUPABASE_URL, read from the repo's .env.
  */
 function pageUrlOf(code: string, env: Record<string, string>): string {
-  const m = /const MCP_URL = `([^`]+)`;/.exec(code);
-  if (!m) throw new Error("AgentConnect.tsx no longer builds MCP_URL from a template");
+  const m = /export const MCP_URL = `([^`]+)`;/.exec(code);
+  if (!m) throw new Error("src/lib/mcp-test.ts no longer builds MCP_URL from a template");
   const holes = [...m[1].matchAll(/\$\{([^}]*)\}/g)].map((h) => h[1]);
   if (holes.length !== 1 || holes[0] !== "import.meta.env.VITE_SUPABASE_URL") {
     throw new Error(`the page template interpolates ${JSON.stringify(holes)}, not import.meta.env.VITE_SUPABASE_URL alone`);
@@ -74,7 +75,9 @@ const hookMigration = readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sor
 
 const MODULE = stripTs(read("supabase/functions/agent-mcp/oauth.ts"));
 const HOOK = hookMigration ? stripSql(read(`supabase/migrations/${hookMigration}`)) : "";
-const PAGE = stripTs(read("src/pages/AgentConnect.tsx"));
+// The page's one spelling lives in the test-button client the page and the
+// hand-off module import it from (the page re-exports it).
+const PAGE = stripTs(read("src/lib/mcp-test.ts"));
 const ENV = envOf(read(".env"));
 const PROJECT_ID = /^project_id = "([a-z]+)"/m.exec(read("supabase/config.toml"))?.[1] ?? "";
 
@@ -92,7 +95,7 @@ describe("three spellings, one URL", () => {
   it("the module, the hook and the page name the same server", () => {
     const s = spellings();
     expect(s.hook, "hook migration vs oauth.ts").toBe(s.module);
-    expect(s.page, "AgentConnect.tsx (env-built) vs oauth.ts").toBe(s.module);
+    expect(s.page, "src/lib/mcp-test.ts (env-built) vs oauth.ts").toBe(s.module);
   });
 
   it("the parsed module constant is the value the module exports at runtime", () => {
@@ -152,7 +155,7 @@ describe("teeth: each parser catches the drift it exists for", () => {
     const otherVar = PAGE.replace("${import.meta.env.VITE_SUPABASE_URL}", "${import.meta.env.VITE_MCP_ORIGIN}");
     expect(otherVar).not.toBe(PAGE);
     expect(() => pageUrlOf(otherVar, ENV)).toThrow(/interpolates/);
-    const literal = PAGE.replace(/const MCP_URL = `[^`]+`;/, 'const MCP_URL = "https://example.test/functions/v1/agent-mcp";');
+    const literal = PAGE.replace(/export const MCP_URL = `[^`]+`;/, 'export const MCP_URL = "https://example.test/functions/v1/agent-mcp";');
     expect(literal).not.toBe(PAGE);
     expect(() => pageUrlOf(literal, ENV)).toThrow(/template/);
   });

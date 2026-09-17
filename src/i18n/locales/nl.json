@@ -4856,10 +4856,10 @@
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "connectLine": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per adres om op de vacaturebank rond te kijken.",
     "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
-    "passCta": "Pas kopen of openen"
+    "passCta": "Pas kopen of openen",
+    "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor, een thuisverbinding of de servers van een chatdienst tellen als één adres, dus het resterende aantal kan onder {{freeCallsPerDay}} beginnen als anderen het delen)."
   },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% van de gedateerde vacatures in {{field}}, geplaatst tussen {{cohortFrom}} en {{cohortTo}}, stond nog online bij het bereiken van onze grens van 30 dagen (n={{n}}, ±{{hw}} punten); hoogstens {{r}}% was definitief verwijderd en minstens {{x}}% opnieuw geplaatst. Alleen geteld op borden die we tot het einde lezen.",
@@ -4899,17 +4899,18 @@
     "keyCarries": "Je bestaande agentsleutel draagt de pas al — niets om te plakken.",
     "keyDetail": "Sleutel {{prefix}}…, aangemaakt op {{date}}.",
     "mintNew": "Een nieuwe aanmaken (trekt de oude in)",
-    "connectorPaste": "Voeg in {{host}} een aangepaste connector toe en plak deze URL:",
     "connectorOauth": "Kies Inloggen wanneer nodig, klik dan in de chat op Verbinden en op Toestaan.",
-    "connectorNoOauth": "Inloggen voor deze host is nog niet actief, dus vanaf hier antwoorden alleen de sleutelloze tools. Om de pas te gebruiken, verbind je via Claude Code, Cursor of een eigen client met je agentsleutel.",
-    "headerHow": "Stuur je sleutel bij elke aanroep mee:",
     "checklistTitle": "Vóór de eerste sollicitatie",
     "expectHold": "Je eerste {{holdFirstN}} verzendingen worden vastgehouden tot je ze goedkeurt in Account.",
     "expectHoldPlain": "Je eerste verzendingen worden vastgehouden tot je ze goedkeurt in Account.",
     "expectPrepare": "Pakketten worden binnen ongeveer een minuut na een aanvraag voorbereid.",
     "expectLapse": "Sollicitaties die je niet gebruikt vervallen als de klok afloopt.",
     "expectFinish": "Al aangevraagde verzendingen worden ook na het aflopen van de klok afgerond.",
-    "toAgent": "Open de agent"
+    "toAgent": "Open de agent",
+    "stepsTitle": "Stappen voor {{host}}:",
+    "keyedTitle": "Voeg dan je agentsleutel toe — die draagt de pas:",
+    "connectorNoOauth2": "Inloggen voor deze host staat nog niet aan, dus vanaf hier antwoorden alleen de tools zonder sleutel. Om de pas te gebruiken, verbind je vanuit {{headerHosts}} met je agentsleutel.",
+    "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel."
   },
   "oauthConsent": {
     "title": "Verbind je agent",

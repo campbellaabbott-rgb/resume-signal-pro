@@ -4856,10 +4856,10 @@
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "connectLine": "Connectez-le gratuitement, sans compte — {{freeCallsPerDay}} appels par jour et par adresse pour explorer le tableau des offres.",
     "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Sans reconduction ; connectez-vous pour l'acheter.",
     "connectCta": "Connecter votre agent",
-    "passCta": "Acheter ou ouvrir votre pass"
+    "passCta": "Acheter ou ouvrir votre pass",
+    "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau, une connexion domestique ou les serveurs d'un service de chat comptent pour une seule adresse, donc le nombre restant peut commencer sous {{freeCallsPerDay}} quand d'autres la partagent)."
   },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% des postes datés en {{field}} publiés entre {{cohortFrom}} et {{cohortTo}} étaient encore affichés en atteignant notre plafond de 30 jours (n={{n}}, ±{{hw}} points) ; au plus {{r}}% avaient été retirés définitivement et au moins {{x}}% republiés. Compté uniquement sur les sites que nous lisons jusqu'au bout.",
@@ -4899,17 +4899,18 @@
     "keyCarries": "Votre clé d'agent existante porte déjà le pass — rien à coller.",
     "keyDetail": "Clé {{prefix}}…, générée le {{date}}.",
     "mintNew": "En générer une nouvelle (révoque l'ancienne)",
-    "connectorPaste": "Ajoutez un connecteur personnalisé dans {{host}} et collez cette URL :",
     "connectorOauth": "Choisissez Se connecter si nécessaire, puis cliquez sur Connecter dans la discussion et Autoriser.",
-    "connectorNoOauth": "La connexion pour cet hôte n'est pas encore active : d'ici, seuls les outils sans clé répondent. Pour utiliser le pass, connectez-vous depuis Claude Code, Cursor ou un client personnalisé avec votre clé d'agent.",
-    "headerHow": "Envoyez votre clé à chaque appel :",
     "checklistTitle": "Avant la première candidature",
     "expectHold": "Vos {{holdFirstN}} premiers envois sont retenus jusqu'à votre approbation dans Compte.",
     "expectHoldPlain": "Vos premiers envois sont retenus jusqu'à votre approbation dans Compte.",
     "expectPrepare": "Les dossiers sont préparés environ une minute après la demande.",
     "expectLapse": "Les candidatures non utilisées sont perdues quand le compteur s'arrête.",
     "expectFinish": "Les envois déjà demandés vont jusqu'au bout même après la fin du compteur.",
-    "toAgent": "Ouvrir l'agent"
+    "toAgent": "Ouvrir l'agent",
+    "stepsTitle": "Étapes pour {{host}} :",
+    "keyedTitle": "Ajoutez ensuite votre clé d'agent — elle porte le pass :",
+    "connectorNoOauth2": "La connexion pour cet hôte n'est pas encore activée, donc depuis ici seuls les outils sans clé répondent. Pour utiliser le pass, connectez-vous depuis {{headerHosts}} avec votre clé d'agent.",
+    "connectorPassGate": "Depuis {{host}}, le pass ne pourra être utilisé qu'une fois la connexion activée ; aujourd'hui, utilisez-le depuis {{headerHosts}} avec votre clé d'agent."
   },
   "oauthConsent": {
     "title": "Connectez votre agent",

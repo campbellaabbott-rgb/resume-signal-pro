@@ -10,10 +10,16 @@
 // What the page then shows, top to bottom, is the SPEC's list and nothing
 // more: the clock (not started until the agent's first call — never at
 // purchase), the applications left, exactly ONE hand-off block for the host
-// the buyer picks (remembered per browser), the agent's two-step setup
-// checklist, and four honest expectation lines. Every number is read off the
-// pass row the function returns or off the PASS mirror; every sentence is an
-// i18n key.
+// the buyer picks (remembered per browser, under the same key /agents and
+// the board use), the agent's two-step setup checklist, and four honest
+// expectation lines. Every number is read off the pass row the function
+// returns or off the PASS mirror; every sentence of the page's own is an
+// i18n key. The hand-off block renders the host's `steps` from the same
+// builders /agents renders (src/config/mcp-tools.ts) — vendor labels and
+// commands, the same words in every language — and its sign-in sentence
+// from the server's runtime fact (read off one free initialize), never from
+// a host-table flag alone: a connector host's "choose Sign in when needed"
+// line renders ONLY while the server says sign-in is on.
 //
 // IT NEVER MINTS A KEY ON LOAD. api_key_issue_agent revokes every live key
 // the account holds, so a returning Claude Code or Cursor buyer would lose
@@ -35,12 +41,12 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { MCP_HOSTS, type McpHost } from "@/config/mcp-tools";
+import { MCP_HOSTS, andList, type McpHost, type SignInFact } from "@/config/mcp-tools";
 import { PASS } from "@/config/products";
 import { AgentSetupChecklist } from "@/components/account/AgentSetupChecklist";
 import {
-  CopyBlock, MintAgentKey, MCP_URL, KEY_PLACEHOLDER, PASS_COPY,
-  claudeCodeCommand, cursorConfig, usePassStatus, startPassCheckout,
+  MintAgentKey, MCP_URL, PASS_COPY, StepList, StepText,
+  usePassStatus, startPassCheckout, useSignInFact,
 } from "./AgentConnect";
 
 const HOST_STORAGE_KEY = "rb_pass_host";
@@ -58,43 +64,39 @@ const fmtDate = (iso: string | null | undefined, lang: string) =>
   iso ? new Date(iso).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" }) : "";
 
 /**
- * The one hand-off block for one host. `key` is the freshly minted key when
- * there is one this session; otherwise the placeholder the person pastes over.
+ * The one hand-off block for one host: the host's steps from the shared
+ * builders, then — for a host that carries a key — the keyed sub-steps
+ * with the freshly minted key filled into the ONE line that takes it (an
+ * empty export line and "paste your key" until then; never a placeholder
+ * inside an Authorization value). For a chat host, the sign-in sentence
+ * follows the server's fact: `oauth` is the host's capability, the fact is
+ * whether it works today, and the "choose Sign in when needed" line renders
+ * only when both hold.
  */
-function HandoffBlock({ host, keyValue }: { host: McpHost; keyValue: string | null }) {
+function HandoffBlock({ host, keyValue, fact }: { host: McpHost; keyValue: string | null; fact: SignInFact }) {
   const { t } = useTranslation();
-  const key = keyValue ?? KEY_PLACEHOLDER;
-  switch (host.handoff) {
-    case "claude-code":
-      return <CopyBlock code={claudeCodeCommand(key)} label="Claude Code setup command" />;
-    case "cursor":
-      return <CopyBlock code={cursorConfig(key)} label="Cursor mcp.json config" />;
-    case "header":
-      return (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">{t("agentPass.headerHow", "Send your key on every call:")}</p>
-          <CopyBlock code={`POST ${MCP_URL}\nAuthorization: Bearer ${key}`} label="MCP endpoint and header" />
+  const ctx = { url: MCP_URL, key: keyValue ?? undefined, signIn: fact.state };
+  const headerHosts = andList(MCP_HOSTS.filter((h) => h.header && h.id !== "more").map((h) => h.name));
+  return (
+    <div className="space-y-3" data-handoff={host.id}>
+      <p className="text-sm text-muted-foreground">{t("agentPass.stepsTitle", "Steps for {{host}}:", { host: host.name })}</p>
+      <StepList steps={host.steps(ctx)} />
+      {host.keyed && (
+        <div className="pt-3 border-t border-border">
+          <p className="text-sm text-muted-foreground mb-2">{t("agentPass.keyedTitle", "Then add your agent key — it carries the pass:")}</p>
+          <StepList steps={host.keyed.steps(ctx)} />
         </div>
-      );
-    case "connector":
-      return (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            {t("agentPass.connectorPaste", "Add a custom connector in {{host}} and paste this URL:", { host: host.name })}
-          </p>
-          <CopyBlock code={MCP_URL} label="MCP endpoint URL" />
-          {/* `oauth` is the host table's word: true means the server answers
-              this host's first keyed call with a sign-in challenge and the
-              consent route completes it; false means only the unkeyed tools
-              answer from here. */}
-          <p className="text-sm text-muted-foreground">
-            {host.oauth
-              ? t("agentPass.connectorOauth", "Choose Sign in when needed, then click Connect in the chat and Allow.")
-              : t("agentPass.connectorNoOauth", "Sign-in for this host is not live yet, so from here only the unkeyed tools answer. To spend the pass, connect from Claude Code, Cursor or a custom client with your agent key.")}
-          </p>
-        </div>
-      );
-  }
+      )}
+      {!host.header && host.oauth && (
+        <p className="text-sm text-muted-foreground" data-sign-in={fact.state}>
+          {fact.state === "on"
+            ? t("agentPass.connectorOauth", "Choose Sign in when needed, then click Connect in the chat and Allow.")
+            : t("agentPass.connectorNoOauth2", "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from {{headerHosts}} with your agent key.", { headerHosts })}
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground"><StepText text={host.verify} /></p>
+    </div>
+  );
 }
 
 export default function AgentPass() {
@@ -117,6 +119,9 @@ export default function AgentPass() {
   }, [loading, session, navigate, location.pathname, location.search]);
 
   const { status, failed, refresh } = usePassStatus(sessionId);
+  // The sign-in fact, read once off a free initialize when the page has a
+  // pass to hand over; unknown until then, which renders as "not on".
+  const { fact, probe } = useSignInFact();
 
   // The clock, re-read once a minute while a pass is live.
   const [now, setNow] = useState(() => Date.now());
@@ -160,6 +165,7 @@ export default function AgentPass() {
 
   const pass = status?.pass;
   const open = pass && (pass.state === "unactivated" || pass.state === "live");
+  useEffect(() => { if (open) probe(); }, [open, probe]);
   // The pass row carries its own numbers (copied in at grant); the mirror
   // fills them only when there is no row to read.
   const passHours = pass && pass.state !== "none" ? pass.sessionHours : PASS.sessionHours;
@@ -270,7 +276,7 @@ export default function AgentPass() {
                   </div>
 
                   {/* The key: never minted on load. */}
-                  {host.handoff !== "connector" && (
+                  {host.header && (
                     <div className="mb-4">
                       {mintedKey ? null : status.key.live && !wantsNewKey ? (
                         <div>
@@ -288,7 +294,7 @@ export default function AgentPass() {
                       )}
                     </div>
                   )}
-                  <HandoffBlock host={host} keyValue={mintedKey} />
+                  <HandoffBlock host={host} keyValue={mintedKey} fact={fact} />
                 </section>
               )}
 

@@ -25,7 +25,7 @@
 // must spell none of the pass numbers beside the words pass/hour/application
 // (proven on a mutated copy), and the crawler copy in scripts/prerender-seo.mjs
 // must be the same en.json sentences filled from the same mirrors.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
@@ -183,9 +183,21 @@ describe("the 'Agent plan only' sentences on /agents now name the pass", () => {
     expect(PAGE).toMatch(/passApplications: PASS\.applications/);
     expect(PAGE).toMatch(/passShelfDays: PASS\.shelfLifeDays/);
   });
-  it("the host table carries the oauth flag and the page reads it", () => {
+  it("the host table carries the oauth flag and the page reads it — and no rendered sentence branches on the flag alone", () => {
     for (const h of MCP_HOSTS) expect(typeof h.oauth, `${h.name} has no oauth flag`).toBe("boolean");
     expect(PAGE).toMatch(/h\.oauth/);
+    // Every sign-in sentence is a function of the server's runtime state.
+    for (const h of MCP_HOSTS) {
+      const on = h.signIn("on"), off = h.signIn("off"), unknown = h.signIn("unknown");
+      expect(on, `${h.name} on`).not.toBe(off);
+      expect(unknown, `${h.name} unknown`).not.toBe(on);
+      expect(off, `${h.name} off names sign-in as off`).toMatch(/not switched on|sign-in is off/i);
+    }
+    // The pass card's gate sentence and the receipt page's line read the fact, not the flag.
+    expect(PAGE).toMatch(/signIn\.state !== "on"/);
+    const pass = strip(read("src/pages/AgentPass.tsx"));
+    expect(pass).toMatch(/fact\.state === "on"/);
+    expect(pass).not.toMatch(/host\.oauth\s*\?/);
   });
   it("a host claims sign-in only when the server answers the handshake: the flag agrees with the dispatcher", () => {
     // The flag was false on every host until the integration lane wired the
@@ -357,7 +369,15 @@ describe("the pass card on /agents", () => {
 });
 
 describe("the post-purchase page /agents/pass", () => {
-  beforeEach(() => { invoke.mockReset(); auth.session = { user: USER }; auth.loading = false; try { localStorage.clear(); } catch { /* blocked */ } });
+  // The page reads the sign-in fact off one free initialize when it has a
+  // pass to hand over; here the "server" answers a result with no _meta, so
+  // the fact is `unknown` and nothing leaves the test runner.
+  beforeEach(() => {
+    invoke.mockReset(); auth.session = { user: USER }; auth.loading = false;
+    try { localStorage.clear(); } catch { /* blocked */ }
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { serverInfo: { name: "stub" } } }), { status: 200 })));
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
 
   it("reads the pass with the session id, never mints a key on load, and shows the row's numbers with one hand-off block", async () => {
     invoke.mockImplementation(async (fn: string) => {
@@ -369,10 +389,16 @@ describe("the post-purchase page /agents/pass", () => {
     expect(calls("agent-pass-status")[0][1]).toEqual({ body: { session_id: "cs_test_123" } });
     expect(calls("agent-connect").length, "the page must never mint a key on load").toBe(0);
     expect(screen.getByText(`${PASS.applications} of ${PASS.applications} applications`)).toBeInTheDocument();
-    // Exactly one copy block for the chosen host.
-    expect(document.querySelectorAll("pre").length).toBe(1);
-    // The mint button is offered, not pressed.
-    expect(screen.getByRole("button", { name: /mint agent key/i })).toBeInTheDocument();
+    // Exactly one hand-off block: the first host's steps (the mirror's
+    // order, so the chat host with no key field), and no keyed block for it.
+    const first = MCP_HOSTS[0];
+    expect(first.header).toBe(false);
+    expect(screen.getByText(`Steps for ${first.name}:`)).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-handoff]").length).toBe(1);
+    expect(document.querySelector("[data-handoff]")!.getAttribute("data-handoff")).toBe(first.id);
+    expect(screen.queryByText(/carries the pass:/)).toBeNull();
+    // A chat host with no key field offers no mint; the key rides on sign-in.
+    expect(screen.queryByRole("button", { name: /mint agent key/i })).toBeNull();
     expect(calls("agent-connect").length).toBe(0);
   });
 
@@ -381,6 +407,7 @@ describe("the post-purchase page /agents/pass", () => {
       if (fn === "agent-pass-status") return { data: { pass: openRow("live", 4), key: { live: true, prefix: "rb_live_ab", createdAt: "2026-09-01T00:00:00Z" } }, error: null };
       return { data: null, error: null };
     });
+    localStorage.setItem("rb_pass_host", MCP_HOSTS.find((h) => h.header)!.name);
     mount(<AgentPass />, "/agents/pass");
     await screen.findByText(/already carries the pass/);
     expect(screen.getByText(`4 of ${PASS.applications} applications`)).toBeInTheDocument();
@@ -390,29 +417,35 @@ describe("the post-purchase page /agents/pass", () => {
     expect(calls("agent-connect").length).toBe(0);
   });
 
-  it("switching host swaps the single block and is remembered", async () => {
+  it("switching host swaps the single block and is remembered; a chat host's sign-in line follows the server's fact, never the flag alone", async () => {
     invoke.mockImplementation(async (fn: string) => {
       if (fn === "agent-pass-status") return { data: { pass: openRow("unactivated", PASS.applications), key: { live: false } }, error: null };
       return { data: null, error: null };
     });
     mount(<AgentPass />, "/agents/pass");
     await screen.findByText(/Not started/);
-    const cursor = MCP_HOSTS.find((h) => h.handoff === "cursor")!;
+    const cursor = MCP_HOSTS.find((h) => h.id === "cursor")!;
     fireEvent.click(screen.getByRole("tab", { name: cursor.name }));
-    expect(document.querySelectorAll("pre").length).toBe(1);
-    expect(document.querySelector("pre")!.textContent).toMatch(/mcpServers/);
+    // The host's own steps from the shared builders, keyless (no key was
+    // minted on this page), and its keyed sub-steps behind them with an
+    // EMPTY export line — never a placeholder inside an Authorization value.
+    const pres = Array.from(document.querySelectorAll("pre")).map((p) => p.textContent ?? "");
+    expect(pres.some((t) => /mcpServers/.test(t))).toBe(true);
+    expect(pres.join("\n")).not.toMatch(/Bearer rb_live_/);
+    expect(pres.join("\n")).toMatch(/export RESUMEBOOSTER_KEY=$/m);
+    expect(screen.getByText(/carries the pass:/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mint agent key/i })).toBeInTheDocument();
     expect(localStorage.getItem("rb_pass_host")).toBe(cursor.name);
-    // A connector host renders the line its oauth flag earns: sign-in when
-    // the server answers the handshake, otherwise today's unkeyed-only truth.
-    const connector = MCP_HOSTS.find((h) => h.handoff === "connector")!;
+    // A chat host: no server answered initialize in this test (the stubbed
+    // fetch is absent), so the fact is `unknown` and the "choose Sign in
+    // when needed" line must NOT render even though the host's oauth flag
+    // is true — the flag is a capability, the fact is today's truth.
+    const connector = MCP_HOSTS.find((h) => !h.header && h.oauth)!;
     fireEvent.click(screen.getByRole("tab", { name: connector.name }));
-    if (connector.oauth) {
-      expect(screen.getByText(/Sign in when needed/)).toBeInTheDocument();
-      expect(screen.queryByText(/only the unkeyed tools answer/)).toBeNull();
-    } else {
-      expect(screen.getByText(/only the unkeyed tools answer/)).toBeInTheDocument();
-      expect(screen.queryByText(/Sign in when needed/)).toBeNull();
-    }
+    expect(screen.getByText(/only the unkeyed tools answer/)).toBeInTheDocument();
+    expect(screen.queryByText(/Choose Sign in when needed/)).toBeNull();
+    expect(document.querySelector("[data-sign-in]")!.getAttribute("data-sign-in")).toBe("unknown");
+    expect(screen.queryByRole("button", { name: /mint agent key/i })).toBeNull();
   });
 
   it("with no pass: offers a purchase and no hand-off block", async () => {
@@ -573,7 +606,7 @@ describe("the agent offer on the homepage", () => {
       expect(BAKE).toMatch(/export \{[^}]*\bPASS\b[^}]*\} from "\.\.\/src\/config\/products"/);
     });
     it("the sentences are en.json's homeAgent lines with the mirrors filled in", () => {
-      expect(offer.connect).toBe(fill(homeAgent.connectLine));
+      expect(offer.connect).toBe(fill(homeAgent.connectLine2));
       expect(offer.pass).toBe(fill(homeAgent.passLine));
       expect(offer.lead).toBe(homeAgent.lead);
       expect(offer.pass).toContain(`$${PASS.priceUsd}`);

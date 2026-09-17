@@ -4856,10 +4856,10 @@
   },
   "homeAgent": {
     "lead": "Bring deinen eigenen KI-Agenten mit.",
-    "connectLine": "Verbinde ihn kostenlos und ohne Konto — {{freeCallsPerDay}} Aufrufe pro Tag und Adresse, um sich auf der Jobbörse umzusehen.",
     "passLine": "Ein Pass für {{passPrice}} $ gibt ihm {{passHours}} Stunden mit voller Geschwindigkeit, um die Jobbörse zu recherchieren und sich für dich auf {{passApplications}} Stellen zu bewerben. Verlängert sich nie; zum Kauf anmelden.",
     "connectCta": "Agenten verbinden",
-    "passCta": "Pass kaufen oder öffnen"
+    "passCta": "Pass kaufen oder öffnen",
+    "connectLine2": "Kostenlos und ohne Konto verbinden — {{freeCallsPerDay}} Aufrufe pro Tag und Netzwerkadresse, um sich auf der Jobbörse umzusehen (ein Büro, ein Heimanschluss oder die Server eines Chat-Dienstes zählen als eine Adresse, daher kann die verbleibende Zahl unter {{freeCallsPerDay}} beginnen, wenn andere sie teilen)."
   },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% der datierten Stellen im Bereich {{field}}, veröffentlicht zwischen {{cohortFrom}} und {{cohortTo}}, waren beim Erreichen unserer 30-Tage-Grenze noch ausgeschrieben (n={{n}}, ±{{hw}} Punkte); höchstens {{r}}% waren endgültig zurückgezogen und mindestens {{x}}% erneut eingestellt worden. Gezählt nur auf Jobbörsen, die wir bis zum Ende lesen.",
@@ -4899,17 +4899,18 @@
     "keyCarries": "Dein bestehender Agentenschlüssel trägt den Pass bereits — nichts zu kopieren.",
     "keyDetail": "Schlüssel {{prefix}}…, erzeugt am {{date}}.",
     "mintNew": "Neuen erzeugen (widerruft den alten)",
-    "connectorPaste": "Füge in {{host}} einen eigenen Connector hinzu und trage diese URL ein:",
     "connectorOauth": "Wähle Bei Bedarf anmelden, klicke dann im Chat auf Verbinden und auf Erlauben.",
-    "connectorNoOauth": "Die Anmeldung für diesen Host ist noch nicht aktiv, daher antworten von hier aus nur die schlüssellosen Werkzeuge. Um den Pass zu nutzen, verbinde dich über Claude Code, Cursor oder einen eigenen Client mit deinem Agentenschlüssel.",
-    "headerHow": "Sende deinen Schlüssel bei jedem Aufruf:",
     "checklistTitle": "Vor der ersten Bewerbung",
     "expectHold": "Deine ersten {{holdFirstN}} Freigaben werden bis zu deiner Bestätigung im Konto zurückgehalten.",
     "expectHoldPlain": "Deine ersten Freigaben werden bis zu deiner Bestätigung im Konto zurückgehalten.",
     "expectPrepare": "Pakete werden etwa eine Minute nach der Anfrage vorbereitet.",
     "expectLapse": "Nicht genutzte Bewerbungen verfallen, wenn die Uhr abläuft.",
     "expectFinish": "Bereits angeforderte Versendungen werden auch nach Ablauf der Uhr abgeschlossen.",
-    "toAgent": "Agent öffnen"
+    "toAgent": "Agent öffnen",
+    "stepsTitle": "Schritte für {{host}}:",
+    "keyedTitle": "Dann Ihren Agenten-Schlüssel hinzufügen — er trägt den Pass:",
+    "connectorNoOauth2": "Die Anmeldung für diesen Host ist noch nicht eingeschaltet, daher antworten von hier aus nur die Werkzeuge ohne Schlüssel. Um den Pass zu nutzen, verbinden Sie sich von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
+    "connectorPassGate": "Von {{host}} aus lässt sich der Pass erst nutzen, wenn die Anmeldung eingeschaltet ist; nutzen Sie ihn heute von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel."
   },
   "oauthConsent": {
     "title": "Verbinde deinen Agenten",

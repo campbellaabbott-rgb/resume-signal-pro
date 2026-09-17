@@ -4856,10 +4856,10 @@
   },
   "homeAgent": {
     "lead": "Bring your own AI agent.",
-    "connectLine": "Connect it free with no account — {{freeCallsPerDay}} calls a day per address to look around the board.",
     "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.",
     "connectCta": "Connect your agent",
-    "passCta": "Buy or open your pass"
+    "passCta": "Buy or open your pass",
+    "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office, a home connection or a chat service's own servers count as one address, so the number left can start below {{freeCallsPerDay}} when others share it)."
   },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end.",
@@ -4899,17 +4899,18 @@
     "keyCarries": "Your existing agent key already carries the pass — nothing to paste.",
     "keyDetail": "Key {{prefix}}…, minted {{date}}.",
     "mintNew": "Mint a new one (revokes the old)",
-    "connectorPaste": "Add a custom connector in {{host}} and paste this URL:",
     "connectorOauth": "Choose Sign in when needed, then click Connect in the chat and Allow.",
-    "connectorNoOauth": "Sign-in for this host is not live yet, so from here only the unkeyed tools answer. To spend the pass, connect from Claude Code, Cursor or a custom client with your agent key.",
-    "headerHow": "Send your key on every call:",
     "checklistTitle": "Before the first application",
     "expectHold": "Your first {{holdFirstN}} releases are held for your approval in Account.",
     "expectHoldPlain": "Your first few releases are held for your approval in Account.",
     "expectPrepare": "Packets are prepared within about a minute of a request.",
     "expectLapse": "Applications you do not use lapse when the clock ends.",
     "expectFinish": "Sends already requested finish even after the clock ends.",
-    "toAgent": "Open the agent"
+    "toAgent": "Open the agent",
+    "stepsTitle": "Steps for {{host}}:",
+    "keyedTitle": "Then add your agent key — it carries the pass:",
+    "connectorNoOauth2": "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from {{headerHosts}} with your agent key.",
+    "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key."
   },
   "oauthConsent": {
     "title": "Connect your agent",

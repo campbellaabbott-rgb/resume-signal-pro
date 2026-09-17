@@ -4856,10 +4856,10 @@
   },
   "homeAgent": {
     "lead": "Dalhin ang sarili mong AI agent.",
-    "connectLine": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} tawag bawat araw bawat address para tumingin-tingin sa job board.",
     "passLine": "Ang ${{passPrice}} na pass ay nagbibigay dito ng {{passHours}} oras sa buong bilis para mag-research sa job board at mag-apply sa {{passApplications}} trabaho para sa iyo. Hindi kailanman nagre-renew; mag-sign in para bumili.",
     "connectCta": "Ikonekta ang iyong agent",
-    "passCta": "Bumili o buksan ang iyong pass"
+    "passCta": "Bumili o buksan ang iyong pass",
+    "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina, koneksyon sa bahay, o ang sariling mga server ng isang chat service ay binibilang bilang isang address, kaya maaaring magsimula sa mas mababa sa {{freeCallsPerDay}} ang natitira kapag may ibang gumagamit nito)."
   },
   "ghostIndex": {
     "stillUp30Row": "{{pct}}% ng mga may-petsang posisyon sa {{field}} na na-post mula {{cohortFrom}} hanggang {{cohortTo}} ay nakapaskil pa rin nang umabot sa aming 30-araw na hangganan (n={{n}}, ±{{hw}} puntos); hindi hihigit sa {{r}}% ang tuluyang naalis at hindi bababa sa {{x}}% ang muling na-post. Binilang lamang sa mga board na nababasa namin hanggang dulo.",
@@ -4899,17 +4899,18 @@
     "keyCarries": "Dala na ng iyong kasalukuyang agent key ang pass — walang kailangang i-paste.",
     "keyDetail": "Key {{prefix}}…, ginawa noong {{date}}.",
     "mintNew": "Gumawa ng bago (babawiin ang luma)",
-    "connectorPaste": "Magdagdag ng custom connector sa {{host}} at i-paste ang URL na ito:",
     "connectorOauth": "Piliin ang Sign in when needed, pagkatapos ay i-click ang Connect sa chat at Allow.",
-    "connectorNoOauth": "Hindi pa aktibo ang sign-in para sa host na ito, kaya mula rito ay ang mga tool na walang key lang ang sumasagot. Para magamit ang pass, kumonekta mula sa Claude Code, Cursor o sariling client gamit ang iyong agent key.",
-    "headerHow": "Ipadala ang iyong key sa bawat tawag:",
     "checklistTitle": "Bago ang unang aplikasyon",
     "expectHold": "Ang iyong unang {{holdFirstN}} release ay pinipigil hanggang aprubahan mo sa Account.",
     "expectHoldPlain": "Ang iyong mga unang release ay pinipigil hanggang aprubahan mo sa Account.",
     "expectPrepare": "Inihahanda ang mga packet sa loob ng humigit-kumulang isang minuto mula sa kahilingan.",
     "expectLapse": "Ang mga aplikasyong hindi mo nagamit ay mawawala kapag natapos ang orasan.",
     "expectFinish": "Ang mga pagpapadalang nahiling na ay natatapos kahit natapos na ang orasan.",
-    "toAgent": "Buksan ang agent"
+    "toAgent": "Buksan ang agent",
+    "stepsTitle": "Mga hakbang para sa {{host}}:",
+    "keyedTitle": "Pagkatapos ay idagdag ang iyong agent key — dala nito ang pass:",
+    "connectorNoOauth2": "Hindi pa naka-on ang sign-in para sa host na ito, kaya mula rito ay ang mga tool lang na walang key ang sumasagot. Para magamit ang pass, kumonekta mula sa {{headerHosts}} gamit ang iyong agent key.",
+    "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key."
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",

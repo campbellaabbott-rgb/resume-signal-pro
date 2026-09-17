@@ -4856,10 +4856,10 @@
   },
   "homeAgent": {
     "lead": "Trae tu propio agente de IA.",
-    "connectLine": "Conéctalo gratis y sin cuenta — {{freeCallsPerDay}} llamadas al día por dirección para explorar la bolsa de empleo.",
     "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Nunca se renueva; inicia sesión para comprarlo.",
     "connectCta": "Conecta tu agente",
-    "passCta": "Comprar o abrir tu pase"
+    "passCta": "Comprar o abrir tu pase",
+    "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina, una conexión doméstica o los servidores de un servicio de chat cuentan como una sola dirección, así que el número restante puede empezar por debajo de {{freeCallsPerDay}} cuando otros la comparten)."
   },
   "ghostIndex": {
     "stillUp30Row": "El {{pct}}% de las vacantes con fecha de {{field}} publicadas entre {{cohortFrom}} y {{cohortTo}} seguían anunciadas al llegar a nuestro tope de 30 días (n={{n}}, ±{{hw}} puntos); como mucho el {{r}}% había sido retirado definitivamente y al menos el {{x}}% vuelto a publicar. Contado solo en portales que leemos hasta el final.",
@@ -4899,17 +4899,18 @@
     "keyCarries": "Tu clave de agente actual ya lleva el pase — no hay nada que pegar.",
     "keyDetail": "Clave {{prefix}}…, generada el {{date}}.",
     "mintNew": "Generar una nueva (revoca la anterior)",
-    "connectorPaste": "Añade un conector personalizado en {{host}} y pega esta URL:",
     "connectorOauth": "Elige Iniciar sesión cuando sea necesario, luego pulsa Conectar en el chat y Permitir.",
-    "connectorNoOauth": "El inicio de sesión para este host aún no está activo, así que desde aquí solo responden las herramientas sin clave. Para gastar el pase, conéctate desde Claude Code, Cursor o un cliente propio con tu clave de agente.",
-    "headerHow": "Envía tu clave en cada llamada:",
     "checklistTitle": "Antes de la primera candidatura",
     "expectHold": "Tus primeros {{holdFirstN}} envíos quedan retenidos hasta que los apruebes en Cuenta.",
     "expectHoldPlain": "Tus primeros envíos quedan retenidos hasta que los apruebes en Cuenta.",
     "expectPrepare": "Los paquetes se preparan en aproximadamente un minuto tras la solicitud.",
     "expectLapse": "Las candidaturas que no uses caducan cuando el reloj termina.",
     "expectFinish": "Los envíos ya solicitados se completan aunque el reloj haya terminado.",
-    "toAgent": "Abrir el agente"
+    "toAgent": "Abrir el agente",
+    "stepsTitle": "Pasos para {{host}}:",
+    "keyedTitle": "Luego añade tu clave de agente — lleva el pase:",
+    "connectorNoOauth2": "El inicio de sesión para este host aún no está activado, así que desde aquí solo responden las herramientas sin clave. Para gastar el pase, conéctate desde {{headerHosts}} con tu clave de agente.",
+    "connectorPassGate": "Desde {{host}} el pase solo podrá usarse cuando el inicio de sesión esté activado; hoy, úsalo desde {{headerHosts}} con tu clave de agente."
   },
   "oauthConsent": {
     "title": "Conecta tu agente",

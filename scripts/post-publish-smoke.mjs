@@ -252,6 +252,88 @@ record("migrations applied (critical DB objects)", dbMissing.length === 0,
     ? `NOT APPLIED: ${dbMissing.join(", ")} — run pending migrations in Lovable's SQL editor, then \`notify pgrst, 'reload schema'\``
     : `${Object.keys(dbObjects).length} objects reachable`);
 
+// ---- 8. The agent server tells the truth about sign-in (verify-deploy "5o") ----
+// agent-mcp 2026-09-04.7 answers a keyed tool called with no credential ONE
+// of two ways, decided by a probe of the authorization server's metadata
+// document: a 401 sign-in challenge while that server is on, the in-band
+// refusal (200 + isError, no WWW-Authenticate) otherwise. The server
+// publishes the same fact on its initialize result. This section reads the
+// document itself, reads the fact, makes ONE unkeyed call to a keyed tool
+// (tools/call key_status, no bearer — both answers return before the
+// unkeyed allowance is counted, so it spends nothing) and requires the
+// three to agree — so a deploy that challenges into a dead sign-in, or that
+// hides a live one, fails here. The URLs, the key and the three checks that
+// make the document "on" are read off the server modules, never typed.
+try {
+  const oauthSrc = readFileSync(join(root, "supabase/functions/agent-mcp/oauth.ts"), "utf8");
+  const probeSrc = readFileSync(join(root, "supabase/functions/agent-mcp/as-probe.ts"), "utf8");
+  const mcpUrl = oauthSrc.match(/export const MCP_URL = "([^"]+)";/)?.[1];
+  const metaKey = probeSrc.match(/export const SIGN_IN_META_KEY = "([^"]+)";/)?.[1];
+  // The issuer path and the well-known prefix, the way the server derives them.
+  const issuerPath = oauthSrc.match(/export const AUTH_ISSUER = `\$\{new URL\(MCP_URL\)\.origin\}(\/[^`]+)`;/)?.[1];
+  const wellKnown = probeSrc.match(/`\$\{issuer\.origin\}(\/\.well-known\/[^$`]+)\$\{issuer\.pathname\}`/)?.[1];
+  // The three things the server requires of a 200 document before it says "on".
+  const requiredMethods = [...probeSrc.matchAll(/includes\(doc\?\.([a-z_]+), "([^"]+)"\)/g)].map((m) => [m[1], m[2]]);
+  if (!mcpUrl || !metaKey || !issuerPath || !wellKnown || requiredMethods.length !== 2) {
+    throw new Error("could not read MCP_URL / SIGN_IN_META_KEY / the metadata URL parts / the document checks off the server modules");
+  }
+  const origin = new URL(mcpUrl).origin;
+  const asUrl = `${origin}${wellKnown}${issuerPath}`;
+  const mcpHeaders = { "Content-Type": "application/json", "mcp-protocol-version": "2025-06-18" };
+  const rpc = (id, method, params) => fetch(mcpUrl, {
+    method: "POST", headers: mcpHeaders, body: JSON.stringify({ jsonrpc: "2.0", id, method, params }), signal: AbortSignal.timeout(20000),
+  });
+
+  const as = await fetch(asUrl, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+  const asBody = await as.json().catch(() => null);
+  // Judged exactly as the server judges it: registration endpoint, then each listed method.
+  const asMissing = as.status !== 200 ? [] : [
+    ...(typeof asBody?.registration_endpoint === "string" && asBody.registration_endpoint.trim() !== "" ? [] : ["registration_endpoint"]),
+    ...requiredMethods.filter(([field, value]) => !(Array.isArray(asBody?.[field]) && asBody[field].includes(value))).map(([field, value]) => `${field}:${value}`),
+  ];
+  const asOn = as.status === 200 && asMissing.length === 0;
+  record("authorization server metadata read", true,
+    `${asUrl} → ${as.status}${asOn ? " with registration_endpoint, S256 and a public-client token endpoint" : as.status === 200 ? ` WITHOUT ${asMissing.join(", ")}` : ` ${asBody?.error_code ?? ""}`.trimEnd()}`);
+
+  const init = await rpc(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "post-publish-smoke", version: "1" } });
+  const initBody = await init.json().catch(() => ({}));
+  const fact = initBody?.result?._meta?.[metaKey];
+  const version = initBody?.result?.serverInfo?.version;
+  const factOk = fact && ["on", "off", "unknown"].includes(fact.state) && typeof fact.checkedAt === "string";
+  record("initialize carries the sign-in fact", !!factOk,
+    factOk ? `version ${version}; ${metaKey} = ${fact.state}${fact.reason ? ` (${fact.reason})` : ""}, checked ${fact.checkedAt}` : `no ${metaKey} on the initialize result (version ${version ?? "?"}) — is .7 deployed?`);
+  // The published fact must agree with the document as this machine reads it
+  // (a state the server cached up to a minute ago may lag; say so, don't fail).
+  if (factOk && ((fact.state === "on") !== asOn)) {
+    record("sign-in fact agrees with the document", false,
+      `server says ${fact.state} but the metadata document says ${asOn ? "on" : "off"} — a cache no older than 60 s explains it; re-run in a minute before believing this`);
+  } else if (factOk) {
+    record("sign-in fact agrees with the document", true, fact.state);
+  }
+
+  // ONE unkeyed call to a keyed tool: key_status with no bearer. Both answers
+  // (the 401, the in-band refusal) return before the allowance is counted.
+  const call = await rpc(2, "tools/call", { name: "key_status", arguments: {} });
+  const www = call.headers.get("www-authenticate");
+  const callBody = await call.json().catch(() => ({}));
+  const inBand = call.status === 200 && callBody?.result?.isError === true;
+  const inBandCue = !!callBody?.result?._meta?.["mcp/www_authenticate"];
+  if (asOn) {
+    const ok = call.status === 401 && !!www && /resource_metadata=/.test(www);
+    record("keyed tool with no key: challenged only while sign-in is on", ok,
+      ok ? `401 with WWW-Authenticate (metadata document 200 with everything a public client needs)`
+         : `expected 401 + WWW-Authenticate while the AS is on; got ${call.status}${www ? " with header" : " without header"}${inBand ? " (in-band refusal)" : ""}`);
+  } else {
+    const ok = inBand && !www && !inBandCue;
+    const text = String(callBody?.result?.content?.[0]?.text ?? "");
+    record("keyed tool with no key: in band while sign-in is off", ok,
+      ok ? `200 + isError, no WWW-Authenticate, no in-band cue — ${text.slice(0, 90)}`
+         : `expected 200 + isError with no challenge while the AS is not on; got ${call.status}${www ? " WITH WWW-Authenticate (a challenge into a dead sign-in)" : ""}${inBandCue ? " with an in-band cue" : ""}${inBand ? "" : " not isError"}`);
+  }
+} catch (e) {
+  record("agent server sign-in honesty", false, String(e));
+}
+
 // ---- Verdict ----
 const failures = results.filter((r) => !r.ok);
 console.log(failures.length === 0
