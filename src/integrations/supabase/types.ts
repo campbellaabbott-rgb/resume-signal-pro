@@ -5483,6 +5483,14 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      layoff_board_names_mirror: {
+        Args: { p_prune?: boolean; p_rows: Json; p_run_started_at?: string }
+        Returns: {
+          lb_pruned: number
+          lb_total: number
+          lb_upserted: number
+        }[]
+      }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
       load_category_anchors: {
         Args: {
