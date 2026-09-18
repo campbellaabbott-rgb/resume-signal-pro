@@ -5491,6 +5491,16 @@ export type Database = {
           lb_upserted: number
         }[]
       }
+      layoff_filings_upsert: {
+        Args: { p_rows: Json }
+        Returns: {
+          lu_inserted: number
+          lu_refused: number
+          lu_refused_ids: string[]
+          lu_refused_reasons: string[]
+          lu_updated: number
+        }[]
+      }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
       load_category_anchors: {
         Args: {
