@@ -5025,6 +5025,31 @@ export type Database = {
           lf_workers: number
         }[]
       }
+      get_employer_layoff_filings_all: {
+        Args: { p_token: string }
+        Returns: {
+          la_company_token: string
+          la_effective_date: string
+          la_event_basis: string
+          la_event_date: string
+          la_event_type: string
+          la_filer: string
+          la_form: string
+          la_headcount: number
+          la_pct: number
+          la_public_basis: string
+          la_public_date: string
+          la_read_at: string
+          la_relation: string
+          la_site: string
+          la_source: string
+          la_source_name: string
+          la_source_url: string
+          la_state: string
+          la_total_n: number
+          la_workers: number
+        }[]
+      }
       get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }
@@ -5213,6 +5238,38 @@ export type Database = {
       }
       get_job_board_facets: { Args: never; Returns: Json }
       get_job_board_facets_cached: { Args: never; Returns: Json }
+      get_layoff_partition: {
+        Args: never
+        Returns: {
+          lp_arm: string
+          lp_cohort_from: string
+          lp_cohort_to: string
+          lp_computed_at: string
+          lp_employers_n: number
+          lp_filings_read_at: string
+          lp_gate_share_30: number
+          lp_half_width_30: number
+          lp_max_employer_share: number
+          lp_max_employer_share_cap: number
+          lp_max_half_width: number
+          lp_min_employers: number
+          lp_min_n: number
+          lp_n_at_risk_30: number
+          lp_newest_filing_event_date: string
+          lp_reason: string
+          lp_relist_rate_30: number
+          lp_separated: boolean
+          lp_stale_hours: number
+          lp_still_open_30: number
+          lp_still_open_30_hi: number
+          lp_still_open_30_lo: number
+          lp_sufficient_30: boolean
+          lp_sum_check_30: number
+          lp_taken_down_30: number
+          lp_warn_lag_n: number
+          lp_warn_lag_p50_days: number
+        }[]
+      }
       get_newest_companies: {
         Args: { p_limit?: number }
         Returns: {
@@ -5811,6 +5868,19 @@ export type Database = {
       refresh_headline_open: { Args: never; Returns: number }
       refresh_job_board_facets: { Args: never; Returns: Json }
       refresh_job_board_stats: { Args: never; Returns: undefined }
+      refresh_layoff_partition: {
+        Args: never
+        Returns: {
+          lw_arm: string
+          lw_employers_n: number
+          lw_insufficient_reason: string
+          lw_ms: number
+          lw_n_at_risk_30: number
+          lw_still_open_30: number
+          lw_sufficient_30: boolean
+          lw_taken_down_30: number
+        }[]
+      }
       refresh_recency_ladder: { Args: never; Returns: Json }
       refresh_stats_cache: { Args: never; Returns: undefined }
       refresh_transparency_cache: { Args: never; Returns: undefined }
@@ -5839,6 +5909,14 @@ export type Database = {
         Returns: {
           months_rolled: number
           rows_pruned: number
+        }[]
+      }
+      roll_up_and_prune_layoff_filings: {
+        Args: { p_keep_days?: number }
+        Returns: {
+          lr_filings_pruned: number
+          lr_log_rows_pruned: number
+          lr_months_rolled: number
         }[]
       }
       roll_up_and_prune_search_demand: {
