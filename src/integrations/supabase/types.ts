@@ -5573,6 +5573,7 @@ export type Database = {
           lb_upserted: number
         }[]
       }
+      layoff_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
       layoff_filings_upsert: {
         Args: { p_rows: Json }
         Returns: {
