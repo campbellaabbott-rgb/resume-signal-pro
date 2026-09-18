@@ -45,6 +45,7 @@ const stripSql = (s: string) => s.replace(/--[^\n]*/g, " ");
 const MCP_RAW = read("supabase/functions/agent-mcp/index.ts");
 const MCP = stripTs(MCP_RAW);
 const PAGE = stripTs(read("src/pages/AgentConnect.tsx"));
+const TEST_CLIENT = stripTs(read("src/lib/mcp-test.ts"));
 const PRERENDER = stripTs(read("scripts/prerender-seo.mjs"));
 const LLMS = read("public/llms.txt");
 const LLMS_AGENTS_LINE = LLMS.split("\n").find((l) => l.includes("(/agents)")) ?? "";
@@ -216,6 +217,18 @@ describe("the caps are named constants, mirrored, and the only numbers the keyle
     const note = /const note = `([^`]*)`/.exec(UNKEYED)?.[1] ?? "";
     expect(note).not.toBe("");
     expect(note.replace(/\$\{[^}]*\}/g, "")).not.toMatch(/\d/);
+  });
+
+  it("the page's test client asks its one metered search for the server's clamp by the mirror's name, so the button shows what an unkeyed search returns", () => {
+    // The meter counts the call before any runner runs and the server clamps
+    // the limit, so asking for the maximum costs what asking for one did —
+    // and the sentence the button prints then matches the panels' "search
+    // shows N results" instead of contradicting it.
+    const call = /"tools\/call",\s*\{\s*name: "search_jobs",\s*arguments:\s*\{([^}]*)\}/.exec(TEST_CLIENT)?.[1];
+    expect(call, "mcp-test.ts no longer sends one search_jobs tools/call").toBeTruthy();
+    expect(call).toMatch(/limit: MCP_ANON_CAPS\.searchRows/);
+    expect(call).toMatch(/query: MCP_TEST_QUERY/);
+    expect(call).not.toMatch(/\d/);
   });
 
   it("the free-key figure the note promises is the minting function's own constant, mirrored", () => {
@@ -600,6 +613,17 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     expect(broken).not.toBe(text);
     expect(broken).toMatch(/\bhired?\b/i);
     expect(broken).not.toContain(MOAT_FRAGMENT);
+  });
+
+  it("a test client that asks for one row, or types the limit, is caught", () => {
+    const call = () => /"tools\/call",\s*\{\s*name: "search_jobs",\s*arguments:\s*\{([^}]*)\}/;
+    const one = TEST_CLIENT.replace("limit: MCP_ANON_CAPS.searchRows", "limit: 1");
+    expect(one).not.toBe(TEST_CLIENT);
+    expect(call().exec(one)![1]).toMatch(/\d/);
+    expect(call().exec(one)![1]).not.toMatch(/limit: MCP_ANON_CAPS\.searchRows/);
+    const typed = TEST_CLIENT.replace("query: MCP_TEST_QUERY", 'query: "nurse"');
+    expect(typed).not.toBe(TEST_CLIENT);
+    expect(call().exec(typed)![1]).not.toMatch(/query: MCP_TEST_QUERY/);
   });
 
   it("a copy whose note numerator is the smaller bucket under the address denominator is caught", () => {

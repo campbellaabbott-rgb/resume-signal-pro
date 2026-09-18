@@ -375,7 +375,7 @@ const windsurfBlock = (url: string, keyed: boolean) =>
 export const initializeMessage = () =>
   json({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: "your-client", version: "1.0" } } });
 
-/** The same test as a curl line: initialize, then the sign-in fact read out of the answer. */
+/** The first of the test's four calls as a curl line: initialize, whose answer carries the sign-in fact under _meta (the button's search, tool and prompt lists are not in it). */
 export const curlInitialize = (url: string) =>
   `curl -s -X POST ${url} -H 'content-type: application/json' -H 'mcp-protocol-version: ${MCP_PROTOCOL_VERSION}' -d '${initializeMessage().replace(/\s+/g, " ")}'`;
 

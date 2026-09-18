@@ -1770,7 +1770,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
             ${D.MCP_PAGE_HOSTS.map(hostPanel).join("")}
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-2">Test the server</h2>
-            <p class="text-sm text-muted-foreground">On the live page, a button asks the server what it is, lists its tools and prompts, and runs one search for "${h(D.MCP_TEST_QUERY)}" with no key — one of your ${D.MCP_ANON_CAPS.perAddressPerDay} free calls for today — and prints the answer in words, including whether sign-in for the chat apps is switched on. The same test as a curl line:</p>
+            <p class="text-sm text-muted-foreground">On the live page, a button asks the server what it is, lists its tools and prompts, and runs one search for "${h(D.MCP_TEST_QUERY)}" with no key — one of your ${D.MCP_ANON_CAPS.perAddressPerDay} free calls for today — and prints the answer in words, including whether sign-in for the chat apps is switched on. The first of those four calls, as a curl line:</p>
             <pre class="text-xs overflow-x-auto p-2 rounded bg-muted whitespace-pre-wrap"><code>${h(D.curlInitialize(ctx.url))}</code></pre>
           </section>
           ${copyThePromptHtml ? `<section class="mb-8">${copyThePromptHtml}</section>` : ""}
@@ -1781,7 +1781,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           <h2 class="text-xl font-bold mb-3">For developers</h2>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">The server address</h2>
             ${mcpUrl ? `<p class="text-sm mb-2"><code>${h(mcpUrl)}</code></p>` : ""}
-            <p class="text-sm text-muted-foreground">${h(D.MCP_SERVER_ADDRESS_NOTE)} Streamable HTTP transport, stateless, POST only. Tool discovery (initialize, tools/list) works with no key, so an agent can see what is here before anyone mints anything. ${unkeyedNames} answer with no key at all — ${unkeyedCaps}, each answer saying how many are left. Every other tool call needs a credential — the key as <code>Authorization: Bearer rb_live_…</code>, or the sign-in a chat host performs for you while the server's sign-in service is on; the live page's Test the server button prints today's state.</p>
+            <p class="text-sm text-muted-foreground">${h(D.MCP_SERVER_ADDRESS_NOTE)} Streamable HTTP transport, stateless, POST only. Tool discovery (initialize, tools/list) works with no key, so an agent can see what is here before anyone mints anything. ${unkeyedNames} answer with no key at all — ${unkeyedCaps}, each answer saying how many are left. Every other tool call needs a credential — the key as <code>Authorization: Bearer rb_live_…</code>, or the sign-in a chat host performs for you while the server's sign-in service is on; the live page's Test the server button prints today's state, and the initialize result carries it under <code>_meta["${h(D.MCP_SIGN_IN_META_KEY)}"].state</code>.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
             <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>

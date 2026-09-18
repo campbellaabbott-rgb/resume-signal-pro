@@ -74,7 +74,7 @@ import {
   MCP_TOOLS, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
   MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
-  troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
+  MCP_SIGN_IN_META_KEY, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
   type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
 } from "@/config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
@@ -446,7 +446,7 @@ export function TestServer({ fact, onFact, hostId }: { fact: SignInFact; onFact:
         <p className="text-xs text-muted-foreground mt-1">Sign-in for the chat apps, as the server last reported it: {fact.state}.</p>
       )}
       <details className="mt-3">
-        <summary className="text-xs cursor-pointer text-muted-foreground">Copy the same test as a curl command</summary>
+        <summary className="text-xs cursor-pointer text-muted-foreground">The first of the four calls, as a curl line</summary>
         <div className="mt-2"><CopyBlock code={curlInitialize(MCP_URL)} label="the curl line" /></div>
       </details>
     </div>
@@ -810,7 +810,8 @@ export default function AgentConnect() {
                       {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
                       day per network address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
                       many are left; every other tool call needs a credential — the key, or the sign-in a
-                      chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state.
+                      chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state;
+                      the initialize result carries it under <code className="text-xs">{`_meta["${MCP_SIGN_IN_META_KEY}"].state`}</code>.
                     </p>
                   </div>
 

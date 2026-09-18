@@ -47,7 +47,7 @@ export interface McpTestReport {
   toolCount: number | null;
   promptCount: number | null;
   signIn: SignInFact;
-  /** The search: rows returned and the allowance left, or the server's own refusal. */
+  /** The search: rows returned (asked for MCP_ANON_CAPS.searchRows) and the allowance left, or the server's own refusal. */
   search:
     | { ok: true; rows: number; left: number | null; ipCap: number | null; globalLeft: number | null }
     | { ok: false; error: string; fix: string | null }
@@ -124,9 +124,14 @@ export async function runServerTest(url: string, fetchImpl: Fetch = (i, init) =>
     if (prompts.body?.error?.message) report.rpcError = prompts.body.error.message;
   } catch { /* the counts stay null; the sentence says what it knows */ }
 
-  // The one metered call.
+  // The one metered call. It asks for the unkeyed maximum, sent explicitly
+  // so the request body says what it asked for: the meter counts the call
+  // before any runner runs and the server clamps the limit, so the cost is
+  // the same as asking for one, and the answer shows what an unkeyed search
+  // from a chat host returns (a bare "1 result" beside the hero's hundreds
+  // of thousands read as a broken search).
   try {
-    const search = await rpc(fetchImpl, url, "tools/call", { name: "search_jobs", arguments: { query: MCP_TEST_QUERY, limit: 1 } }, 4);
+    const search = await rpc(fetchImpl, url, "tools/call", { name: "search_jobs", arguments: { query: MCP_TEST_QUERY, limit: MCP_ANON_CAPS.searchRows } }, 4);
     if (search.body?.error?.message) {
       report.rpcError = search.body.error.message;
     } else {
@@ -190,7 +195,7 @@ export function describeTest(r: McpTestReport): string {
   if (r.search?.ok) {
     const left = r.search.left !== null ? `${r.search.left} of ${r.search.ipCap ?? MCP_ANON_CAPS.perAddressPerDay}` : "an unknown number of";
     const world = r.search.left !== null && r.search.globalLeft !== null && r.search.globalLeft < r.search.left ? ` (${r.search.globalLeft} across every unkeyed caller — that number binds first)` : "";
-    searchLine = `Search works with no key: ${r.search.rows} result(s) for "${MCP_TEST_QUERY}", ${left} free calls left today from your network address${world}.`;
+    searchLine = `Search works with no key: asked for the ${MCP_ANON_CAPS.searchRows} results an unkeyed search allows for "${MCP_TEST_QUERY}" and got ${r.search.rows}; ${left} free calls left today from your network address${world}.`;
   } else if (r.search && r.search.ok === false) {
     const refused = r.search;
     searchLine = `The search was refused: ${refused.error}${refused.fix ? ` ${refused.fix}` : ""}`;

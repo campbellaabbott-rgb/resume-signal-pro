@@ -80,7 +80,7 @@ function stubTable() {
 import {
   MCP_HOSTS, MCP_MORE_HOSTS, MCP_HOST_IDS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE,
   MCP_OTHER_AGENTS_TEXT, MCP_COPY_THE_PROMPT, MCP_INSTALL_REPO_URL, MCP_CHOOSER_HOSTS,
-  MCP_SIGN_IN_META_KEY, MCP_TROUBLESHOOTING, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS,
+  MCP_SIGN_IN_META_KEY, MCP_TROUBLESHOOTING, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_TEST_QUERY,
   MCP_TOOL_NAMES, MCP_KEY_ENV, MCP_SERVER_INFO_NAME, readSignInFact, troubleRowsFor, type McpStep, type SignInState,
 } from "../config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "../lib/mcp-test";
@@ -91,6 +91,21 @@ vi.setConfig({ testTimeout: 30_000 });
 const SLOW = { timeout: 4000 } as const;
 const KEY = "rb_live_0123456789abcdef0123456789abcdef";
 const URL = "https://example.invalid/functions/v1/agent-mcp";
+
+/**
+ * What the test's search clause must say, as a pure function of the
+ * sentence and the number of rows the server answered: the number asked for
+ * (the mirror's unkeyed maximum — never a bare "one" beside the hero's
+ * hundreds of thousands), the number that came back (the response's), and
+ * no count printed as "N result(s)", which reads as the search's yield.
+ */
+const searchClauseOffences = (sentence: string, rows: number): string[] => {
+  const out: string[] = [];
+  if (!sentence.includes(`asked for the ${MCP_ANON_CAPS.searchRows} results`)) out.push("does not say how many results were asked for");
+  if (!new RegExp(`\\bgot ${rows}\\b`).test(sentence)) out.push(`does not say ${rows} came back`);
+  if (/\b\d+ result\(s\)/.test(sentence)) out.push("prints a bare count as if it were the search's yield");
+  return out;
+};
 
 // ───────────────────────── G3: one key, one branch ──────────────────────────
 
@@ -137,16 +152,20 @@ describe("G3: the sign-in fact's key is spelled once per runtime, and the page b
     expect(readSignInFact(null).state).toBe("unknown");
     expect(readSignInFact({}).state).toBe("unknown");
   });
+  /**
+   * A "server" that answers the four messages; the search answers `rows`
+   * postings — the unkeyed maximum unless a case says otherwise.
+   */
+  const answers = (state: string, extra: Record<string, unknown> = {}, rows: number = MCP_ANON_CAPS.searchRows) => async (_u: string, init: RequestInit) => {
+    const { method } = JSON.parse(String(init.body)) as { method: string };
+    const result =
+      method === "initialize" ? { serverInfo: { name: "resumebooster-job-board", version: "t" }, _meta: { [MCP_SIGN_IN_META_KEY]: { state, ...extra } } }
+      : method === "tools/list" ? { tools: [{}, {}, {}] }
+      : method === "prompts/list" ? { prompts: [{}] }
+      : { content: [{ type: "text", text: JSON.stringify({ jobs: Array.from({ length: rows }, () => ({})), unkeyed: { callsLeftToday: 24, ipCap: MCP_ANON_CAPS.perAddressPerDay } }) }] };
+    return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), { status: 200, headers: { "X-Unkeyed-Remaining": "24" } });
+  };
   it("the test client reads the fact off initialize and branches on state only — every other field leaves the sentence unchanged", async () => {
-    const answers = (state: string, extra: Record<string, unknown> = {}) => async (_u: string, init: RequestInit) => {
-      const { method } = JSON.parse(String(init.body)) as { method: string };
-      const result =
-        method === "initialize" ? { serverInfo: { name: "resumebooster-job-board", version: "t" }, _meta: { [MCP_SIGN_IN_META_KEY]: { state, ...extra } } }
-        : method === "tools/list" ? { tools: [{}, {}, {}] }
-        : method === "prompts/list" ? { prompts: [{}] }
-        : { content: [{ type: "text", text: JSON.stringify({ jobs: [{}], unkeyed: { callsLeftToday: 24, ipCap: MCP_ANON_CAPS.perAddressPerDay } }) }] };
-      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), { status: 200, headers: { "X-Unkeyed-Remaining": "24" } });
-    };
     const on = describeTest(await runServerTest(URL, answers("on", { reason: null })));
     const onOtherReason = describeTest(await runServerTest(URL, answers("on", { reason: "anything", authorizationServer: "https://elsewhere" })));
     const off = describeTest(await runServerTest(URL, answers("off", { reason: "feature_disabled" })));
@@ -163,8 +182,51 @@ describe("G3: the sign-in fact's key is spelled once per runtime, and the page b
     expect(on).toContain("3 tools, 1 prompts");
     expect(on).toContain(`24 of ${MCP_ANON_CAPS.perAddressPerDay} free calls left today`);
     expect(on).toContain("resumebooster-job-board, version t");
+    expect(searchClauseOffences(on, MCP_ANON_CAPS.searchRows)).toEqual([]);
     // The silent read a panel makes is the same read.
     expect((await readSignInFromServer(URL, answers("off"))).state).toBe("off");
+  });
+  it("the search asks for the unkeyed maximum by the mirror's name and the sentence says what was asked and what came back — the count is the response's, never a typed digit", async () => {
+    // WHAT HAPPENED: the button asked for ONE row and printed "1 result(s)
+    // for nurse" beside a hero that says 700,000+ and a panel that says an
+    // unkeyed search shows ten; a visitor read a working search as a broken
+    // one. Asking for the maximum costs the same one metered call (the
+    // meter counts before any runner runs; the server clamps the limit).
+    const sent: Array<{ name?: string; arguments?: Record<string, unknown> }> = [];
+    const spy = (rows: number) => async (u: string, init: RequestInit) => {
+      const { method, params } = JSON.parse(String(init.body)) as { method: string; params: { name?: string; arguments?: Record<string, unknown> } };
+      if (method === "tools/call") sent.push(params);
+      return answers("on", {}, rows)(u, init);
+    };
+    const full = describeTest(await runServerTest(URL, spy(MCP_ANON_CAPS.searchRows)));
+    expect(sent).toEqual([{ name: "search_jobs", arguments: { query: MCP_TEST_QUERY, limit: MCP_ANON_CAPS.searchRows } }]);
+    expect(full).toContain(`asked for the ${MCP_ANON_CAPS.searchRows} results`);
+    expect(full).toContain(`got ${MCP_ANON_CAPS.searchRows};`);
+    expect(searchClauseOffences(full, MCP_ANON_CAPS.searchRows)).toEqual([]);
+    // Fewer rows than asked for print as what came back, and the property
+    // knows the difference between the two numbers.
+    const three = describeTest(await runServerTest(URL, spy(3)));
+    expect(three).toMatch(/got 3;/);
+    expect(searchClauseOffences(three, 3)).toEqual([]);
+    expect(searchClauseOffences(three, MCP_ANON_CAPS.searchRows)).toEqual([`does not say ${MCP_ANON_CAPS.searchRows} came back`]);
+    // The limit is the mirror's constant in the source: no digit typed.
+    const src = strip(read("src/lib/mcp-test.ts"));
+    expect(src).toMatch(/limit: MCP_ANON_CAPS\.searchRows/);
+    expect(src).not.toMatch(/limit:\s*\d/);
+  });
+  it("teeth: the pre-fix sentence, a bare count printed as the search's yield, fails the property", () => {
+    const old = `Search works with no key: 1 result(s) for "${MCP_TEST_QUERY}", 24 of ${MCP_ANON_CAPS.perAddressPerDay} free calls left today from your network address. Sign-in for Claude and ChatGPT: switched on.`;
+    expect(searchClauseOffences(old, 1)).toEqual([
+      "does not say how many results were asked for",
+      "does not say 1 came back",
+      "prints a bare count as if it were the search's yield",
+    ]);
+    // A copy that asks for one row and says so still fails: the number asked for is the unkeyed maximum, off the mirror.
+    const one = `Search works with no key: asked for the 1 results an unkeyed search allows for "${MCP_TEST_QUERY}" and got 1; 24 free calls left today.`;
+    expect(searchClauseOffences(one, 1)).toContain("does not say how many results were asked for");
+    // A source copy with the digit typed back in fails.
+    const src = strip(read("src/lib/mcp-test.ts")).replace("limit: MCP_ANON_CAPS.searchRows", "limit: 1");
+    expect(src).toMatch(/limit:\s*\d/);
   });
   it("a server with no _meta (an older version) reads as unknown, a refusal is printed in the server's own words, and a dead server is said so", async () => {
     const noMeta = async () => new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { serverInfo: { name: "x", version: "v" }, tools: [], prompts: [] } }), { status: 200 });
@@ -538,7 +600,7 @@ function hookFetch(state: SignInState) {
         method === "initialize" ? { serverInfo: { name: "resumebooster-job-board", version: "test" }, _meta: { [MCP_SIGN_IN_META_KEY]: { state } } }
         : method === "tools/list" ? { tools: [{}, {}] }
         : method === "prompts/list" ? { prompts: [{}] }
-        : { content: [{ type: "text", text: JSON.stringify({ jobs: [{}], unkeyed: { callsLeftToday: 20, ipCap: MCP_ANON_CAPS.perAddressPerDay } }) }] };
+        : { content: [{ type: "text", text: JSON.stringify({ jobs: Array.from({ length: MCP_ANON_CAPS.searchRows }, () => ({})), unkeyed: { callsLeftToday: 20, ipCap: MCP_ANON_CAPS.perAddressPerDay } }) }] };
       return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), { status: 200, headers: { "X-Unkeyed-Remaining": "20" } });
     }
     return new Response("{}", { status: 200 });
@@ -655,9 +717,11 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
     // One silent initialize for the remembered host's panel, then the four.
     expect(calls.map((c) => c.method)).toEqual(["initialize", "initialize", "tools/list", "prompts/list", "tools/call"]);
     expect(calls.filter((c) => c.method === "tools/call").length).toBe(1);
-    expect(calls.at(-1)!.params).toMatchObject({ name: "search_jobs", arguments: { query: "nurse", limit: 1 } });
+    // The one search asks for the unkeyed maximum, by the mirror's name, and the fixed query.
+    expect(calls.at(-1)!.params).toEqual({ name: "search_jobs", arguments: { query: MCP_TEST_QUERY, limit: MCP_ANON_CAPS.searchRows } });
     const result = document.querySelector("[data-test-result]")!.textContent!;
     expect(result).toContain("resumebooster-job-board, version test — 2 tools, 1 prompts");
+    expect(searchClauseOffences(result, MCP_ANON_CAPS.searchRows)).toEqual([]);
     expect(result).toContain(`20 of ${MCP_ANON_CAPS.perAddressPerDay} free calls left today`);
     expect(result).toMatch(/Sign-in for Claude and ChatGPT: switched on/);
     // The button rests for a minute after a run.
