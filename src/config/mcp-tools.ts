@@ -235,15 +235,26 @@ export const andList = (xs: readonly string[]): string => {
 
 // ───────────────────────── THE HOSTS AND THEIR STEPS ──────────────────────
 //
-// /agents opens with one question — "Which agent do you use?" — and six
-// buttons in the owner's order. Picking one reveals only that host's
-// numbered steps. The steps, the "how you know it worked" line and the
-// sign-in sentence per state live HERE, as builders over the server address,
-// so the page, the pass receipt, the prerender and the install repo's README
-// render one list and the switchboard can never say something the mirror
-// does not. Every host-UI label is quoted from the vendor's own document,
-// named on the host; every command and config block is produced by a
-// builder, never typed in JSX.
+// /agents opens with one question — "Which agent do you use?" — and the
+// tiles flagged `page` below, in the owner's order. Picking one reveals only
+// that host's numbered steps. The steps, the "how you know it worked" line
+// and the sign-in sentence per state live HERE, as builders over the server
+// address, so the page, the pass receipt, the prerender and the install
+// repo's README render one list and the switchboard can never say something
+// the mirror does not. Every host-UI label is quoted from the vendor's own
+// document, named on the host; every command and config block is produced
+// by a builder, never typed in JSX.
+//
+// THE TABLE IS LONGER THAN THE PAGE. The owner's decision (2026-09-18): the
+// people this page is for use a chat app — Claude, ChatGPT — and maybe
+// Claude Code; nobody is being asked to open an editor. So those three are
+// the tiles (`page: true`) and every other host stays in this table with
+// `page: false`: the server's reach and the install repo's README still
+// carry the whole list, and the page sends the rest to GitHub in one line
+// (MCP_OTHER_AGENTS_LINE). Every seeker-facing surface — the tiles, the
+// receipt's picker, the board's chooser, the remembered host — reads
+// MCP_PAGE_HOSTS; every reach sentence ("keyed tools are reachable from …")
+// reads MCP_HOSTS.
 //
 // KEYLESS IS THE DEFAULT of every block. A keyed block exists only after a
 // key is pasted into the page's field (or minted on the receipt page); with
@@ -292,6 +303,13 @@ export interface McpHost {
   id: McpHostId;
   /** The button label, and the option in the board's "Which agent?" chooser. */
   name: string;
+  /**
+   * Whether the host is a tile on /agents (and a choice on the receipt and
+   * the board). The owner's three carry `true`; the rest stay in this table
+   * for the server's reach sentences and the install repo's README, behind
+   * the page's one GitHub line.
+   */
+  page: boolean;
   /** Small print under the button. */
   small?: string;
   /** The host can carry the key in an Authorization header and therefore reach every tool its key tier allows. */
@@ -366,7 +384,8 @@ const ASK_KEY = "call key_status";
 
 const anonNames = () => MCP_ANON_TOOL_NAMES.join(", ");
 const keyOnlyNames = () => MCP_KEY_ONLY_READ_TOOLS.map((t) => t.name).join(", ");
-const headerHostNames = () => MCP_HOSTS.filter((h) => h.header && h.id !== "more").map((h) => h.name);
+/** The key-carrying hosts a person can pick ABOVE on the page — the tiles that carry a header, never a host the page sends to GitHub. */
+const headerHostNames = () => MCP_HOSTS.filter((h) => h.page && h.header).map((h) => h.name);
 
 /** The chat hosts' `off` sentence, one wording with the host's name in it. */
 const chatOff = (host: string) =>
@@ -402,6 +421,7 @@ const cliKeyed = (add: (url: string) => string, reconnect: string): McpKeyed => 
 export const MCP_HOSTS: readonly McpHost[] = [
   {
     id: "claude",
+    page: true,
     name: "Claude",
     small: "claude.ai, Claude Desktop, Claude on your phone",
     header: false,
@@ -429,6 +449,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "chatgpt",
+    page: true,
     name: "ChatGPT",
     small: "developer mode",
     header: false,
@@ -457,6 +478,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "claude-code",
+    page: true,
     name: "Claude Code",
     header: true,
     oauth: false,
@@ -476,6 +498,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "cursor",
+    page: false,
     name: "Cursor",
     header: true,
     oauth: false,
@@ -507,6 +530,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "vscode",
+    page: false,
     name: "VS Code",
     header: true,
     oauth: false,
@@ -541,6 +565,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
   },
   {
     id: "more",
+    page: false,
     name: "More…",
     small: "Gemini CLI, Codex CLI, Cline, Zed, Windsurf, anything else",
     header: true,
@@ -693,8 +718,39 @@ export const MCP_MORE_HOSTS: readonly McpMoreHost[] = [
 /** The hosts that show a key field: every host whose keyed block writes the key's value. */
 export const hostTakesKey = (h: McpHost | McpMoreHost) => !!h.keyed?.takesKey;
 
-/** The hosts a chooser offers by name (the board's "Which agent?"): every real app — "More…" is the switchboard's long-tail button, not an app a hand-off can name. */
-export const MCP_CHOOSER_HOSTS: readonly McpHost[] = MCP_HOSTS.filter((h) => h.id !== "more");
+/**
+ * THE PAGE'S HOSTS: the tiles /agents shows, in the table's order — the
+ * hosts flagged `page`. The receipt's picker, the board's chooser and the
+ * remembered-host reads use this list and nothing wider, so no seeker
+ * surface can name a host the page has no steps for.
+ */
+export const MCP_PAGE_HOSTS: readonly McpHost[] = MCP_HOSTS.filter((h) => h.page);
+export const MCP_PAGE_HOST_IDS: readonly McpHostId[] = MCP_PAGE_HOSTS.map((h) => h.id);
+/** The real apps the table carries that are NOT tiles — named on the page's GitHub line, set up from the install repo's README. */
+export const MCP_OFF_PAGE_HOSTS: readonly McpHost[] = MCP_HOSTS.filter((h) => !h.page && h.id !== "more");
+/**
+ * The one line under the tiles for everyone else. The names are the
+ * off-page hosts, the link is the install repo constant; the page and the
+ * prerender render `lead`, then `link` as the anchor, so the sentence and
+ * its target are spelled once.
+ */
+export const MCP_OTHER_AGENTS_LINE = {
+  lead: `Using a different agent? Setup for ${MCP_OFF_PAGE_HOSTS.map((h) => h.name).join(", ")} and other tools is`,
+  link: "on GitHub →",
+  href: MCP_INSTALL_REPO_URL,
+} as const;
+/** The whole sentence, as a reader sees it. */
+export const MCP_OTHER_AGENTS_TEXT = `${MCP_OTHER_AGENTS_LINE.lead} ${MCP_OTHER_AGENTS_LINE.link}`;
+
+/**
+ * The prose fallback for any agent at all — the long tail's last entry,
+ * rendered on the page under the GitHub line (the only long-tail block the
+ * page keeps: an agent that installs from a sentence needs no host tile).
+ */
+export const MCP_COPY_THE_PROMPT: McpMoreHost | undefined = MCP_MORE_HOSTS.find((m) => m.id === "copy-the-prompt");
+
+/** The hosts a chooser offers by name (the board's "Which agent?"): the page's tiles — a hand-off cannot name a host the page has no steps for. */
+export const MCP_CHOOSER_HOSTS: readonly McpHost[] = MCP_PAGE_HOSTS;
 
 /**
  * The inline marks in a step's text: **label** for a host-UI label as the

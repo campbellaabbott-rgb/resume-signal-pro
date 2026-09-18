@@ -19,6 +19,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -313,8 +314,8 @@ export default function DataApi() {
               <GetAKey />
               <p className="text-sm text-muted-foreground text-center mt-4">
                 Pointing an AI agent at this data instead of writing code? The same free keys work on our{" "}
-                <Link to="/agents" className="text-primary hover:underline">MCP server</Link> — connect Claude,
-                ChatGPT, Cursor, or your own.
+                <Link to="/agents" className="text-primary hover:underline">MCP server</Link> — connect{" "}
+                {andList(MCP_PAGE_HOSTS.map((h) => h.name))}, or any other agent.
               </p>
             </div>
 

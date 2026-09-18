@@ -32,7 +32,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PASS } from "../config/products";
-import { MCP_HOSTS } from "../config/mcp-tools";
+import { MCP_HOSTS, MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS } from "../config/mcp-tools";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
@@ -288,7 +288,7 @@ function stubTable() {
   return th;
 }
 
-import { PassCard } from "../pages/AgentConnect";
+import { PassCard, MCP_URL } from "../pages/AgentConnect";
 import AgentPass from "../pages/AgentPass";
 import OAuthConsent from "../pages/OAuthConsent";
 import Index, { AgentOfferStrip } from "../pages/Index";
@@ -389,9 +389,14 @@ describe("the post-purchase page /agents/pass", () => {
     expect(calls("agent-pass-status")[0][1]).toEqual({ body: { session_id: "cs_test_123" } });
     expect(calls("agent-connect").length, "the page must never mint a key on load").toBe(0);
     expect(screen.getByText(`${PASS.applications} of ${PASS.applications} applications`)).toBeInTheDocument();
-    // Exactly one hand-off block: the first host's steps (the mirror's
+    // Exactly one hand-off block: the first TILE's steps (the page list's
     // order, so the chat host with no key field), and no keyed block for it.
-    const first = MCP_HOSTS[0];
+    // The picker offers the page's tiles and nothing the page sends to GitHub.
+    const tabs = screen.getAllByRole("tab").map((el) => el.textContent);
+    expect(tabs).toEqual(MCP_PAGE_HOSTS.map((h) => h.name));
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(tabs, `${h.name} offered though the page has no tile for it`).not.toContain(h.name);
+    const first = MCP_PAGE_HOSTS[0];
+    expect(first).toBe(MCP_HOSTS[0]);
     expect(first.header).toBe(false);
     expect(screen.getByText(`Steps for ${first.name}:`)).toBeInTheDocument();
     expect(document.querySelectorAll("[data-handoff]").length).toBe(1);
@@ -407,7 +412,7 @@ describe("the post-purchase page /agents/pass", () => {
       if (fn === "agent-pass-status") return { data: { pass: openRow("live", 4), key: { live: true, prefix: "rb_live_ab", createdAt: "2026-09-01T00:00:00Z" } }, error: null };
       return { data: null, error: null };
     });
-    localStorage.setItem("rb_pass_host", MCP_HOSTS.find((h) => h.header)!.name);
+    localStorage.setItem("rb_pass_host", MCP_PAGE_HOSTS.find((h) => h.header)!.name);
     mount(<AgentPass />, "/agents/pass");
     await screen.findByText(/already carries the pass/);
     expect(screen.getByText(`4 of ${PASS.applications} applications`)).toBeInTheDocument();
@@ -424,18 +429,27 @@ describe("the post-purchase page /agents/pass", () => {
     });
     mount(<AgentPass />, "/agents/pass");
     await screen.findByText(/Not started/);
-    const cursor = MCP_HOSTS.find((h) => h.id === "cursor")!;
-    fireEvent.click(screen.getByRole("tab", { name: cursor.name }));
+    // The key-carrying TILE (Claude Code — a host the page sends to GitHub has no tab here).
+    const keyHost = MCP_PAGE_HOSTS.find((h) => h.header)!;
+    fireEvent.click(screen.getByRole("tab", { name: keyHost.name }));
     // The host's own steps from the shared builders, keyless (no key was
     // minted on this page), and its keyed sub-steps behind them with an
     // EMPTY export line — never a placeholder inside an Authorization value.
     const pres = Array.from(document.querySelectorAll("pre")).map((p) => p.textContent ?? "");
-    expect(pres.some((t) => /mcpServers/.test(t))).toBe(true);
+    const firstCopy = keyHost.steps({ url: MCP_URL }).find((st) => st.copy !== undefined)!.copy!;
+    expect(pres.some((t) => t.includes(firstCopy))).toBe(true);
     expect(pres.join("\n")).not.toMatch(/Bearer rb_live_/);
     expect(pres.join("\n")).toMatch(/export RESUMEBOOSTER_KEY=$/m);
     expect(screen.getByText(/carries the pass:/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /mint agent key/i })).toBeInTheDocument();
-    expect(localStorage.getItem("rb_pass_host")).toBe(cursor.name);
+    expect(localStorage.getItem("rb_pass_host")).toBe(keyHost.name);
+    // A remembered host with no tile falls back to the first tile — it is never rendered as the pick.
+    document.body.innerHTML = "";
+    localStorage.setItem("rb_pass_host", MCP_OFF_PAGE_HOSTS[0].name);
+    mount(<AgentPass />, "/agents/pass");
+    await screen.findByText(/Not started/);
+    expect(document.querySelector("[data-handoff]")!.getAttribute("data-handoff")).toBe(MCP_PAGE_HOSTS[0].id);
+    expect(screen.queryByRole("tab", { name: MCP_OFF_PAGE_HOSTS[0].name })).toBeNull();
     // A chat host: no server answered initialize in this test (the stubbed
     // fetch is absent), so the fact is `unknown` and the "choose Sign in
     // when needed" line must NOT render even though the host's oauth flag

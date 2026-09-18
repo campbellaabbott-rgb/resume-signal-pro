@@ -26,9 +26,14 @@
 //       (a row whose string ships with a later server version is required
 //       ABSENT until the source carries that version, so no row can quote a
 //       string the server does not send); every vendor row names its doc;
-//   G8  the hosts render in the owner's order under the six ids; no host's
-//       first step names the jargon a newcomer should never meet; the
-//       prerender block, EXECUTED, writes every host's first step;
+//   G8  the table keeps every host in the owner's order; the TILES are the
+//       owner's three (Claude, ChatGPT, Claude Code — "we're not trying to
+//       have people develop", 2026-09-18) and nothing else, with one line
+//       under them sending every other host to the install repo on GitHub,
+//       its names and its link off the mirror; no host's first step names
+//       the jargon a newcomer should never meet; the prerender block,
+//       EXECUTED, writes every tile's first step and no other host's, the
+//       same GitHub line, and the reach disclosure over the whole table;
 //   G9  the two clicks send what they name — agents_host_pick {host} and
 //       agents_test_server {host, state} — judged by the JSON that leaves
 //       the browser, fetch hooked before the mount;
@@ -73,7 +78,9 @@ function stubTable() {
 }
 
 import {
-  MCP_HOSTS, MCP_MORE_HOSTS, MCP_HOST_IDS, MCP_SIGN_IN_META_KEY, MCP_TROUBLESHOOTING, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS,
+  MCP_HOSTS, MCP_MORE_HOSTS, MCP_HOST_IDS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE,
+  MCP_OTHER_AGENTS_TEXT, MCP_COPY_THE_PROMPT, MCP_INSTALL_REPO_URL, MCP_CHOOSER_HOSTS,
+  MCP_SIGN_IN_META_KEY, MCP_TROUBLESHOOTING, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS,
   MCP_TOOL_NAMES, MCP_KEY_ENV, MCP_SERVER_INFO_NAME, readSignInFact, troubleRowsFor, type McpStep, type SignInState,
 } from "../config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "../lib/mcp-test";
@@ -148,6 +155,9 @@ describe("G3: the sign-in fact's key is spelled once per runtime, and the page b
     expect(on).toMatch(/switched on/);
     expect(off).toMatch(/not available yet/);
     for (const n of MCP_ANON_TOOL_NAMES) expect(off).toContain(n);
+    // "connect from …": the key-carrying TILES, never a host the page sends to GitHub.
+    for (const h of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(off).toContain(h.name);
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(off, `${h.name} is not a tile`).not.toContain(h.name);
     expect(unknown).toMatch(/could not be checked just now \(the server's last check was 2026-09-16T22:41:03Z\)/);
     // The numbers in the sentence are the responses', never typed.
     expect(on).toContain("3 tools, 1 prompts");
@@ -321,15 +331,86 @@ describe("G5: troubleshooting rows quote the server's own strings, or a vendor's
 
 const JARGON = /\b401\b|WWW-Authenticate|\bbearer\b|Streamable|stateless|\bPRM\b|\bmetadata\b/i;
 
-describe("G8: six hosts in the owner's order, a jargon-free first step, and a prerender that carries every host's step 1", () => {
-  it("the hosts render in the owner's order under the six ids", () => {
+/**
+ * THE TILE PROPERTY — the owner's decision as a pure function over whatever
+ * a surface rendered: exactly these hosts, in this order, each flagged
+ * `page` in the table, and nothing else. A fourth tile, a missing tile, a
+ * swapped pair and a tile the table does not flag each produce an offence;
+ * the teeth below call it on such copies.
+ */
+const OWNER_TILES = ["claude", "chatgpt", "claude-code"] as const;
+const tileOffences = (rendered: readonly (string | null)[]): string[] => {
+  const out: string[] = [];
+  if (rendered.length !== OWNER_TILES.length) out.push(`${rendered.length} tiles, not ${OWNER_TILES.length}`);
+  OWNER_TILES.forEach((want, i) => { if (rendered[i] !== want) out.push(`tile ${i + 1} is ${rendered[i]}, not ${want}`); });
+  for (const id of rendered.slice(OWNER_TILES.length)) out.push(`${id} is a tile beyond the owner's three`);
+  for (const id of rendered) if (!MCP_HOSTS.find((h) => h.id === id)?.page) out.push(`${id} is not flagged page in the table`);
+  return out;
+};
+/** THE GITHUB LINE PROPERTY: the off-page hosts by name, in the table's order, then "and other tools", and the install repo as the one link. */
+const githubLineOffences = (text: string, href: string | null): string[] => {
+  const out: string[] = [];
+  const names = MCP_OFF_PAGE_HOSTS.map((h) => h.name).join(", ");
+  if (text !== `Using a different agent? Setup for ${names} and other tools is on GitHub →`) out.push(`line reads "${text}"`);
+  if (href !== MCP_INSTALL_REPO_URL) out.push(`link goes to ${href}`);
+  if (!/^https:\/\/github\.com\/[^?#]+$/.test(href ?? "")) out.push("link is not a bare GitHub URL");
+  if (/rb_live_|[?&]key=/.test(href ?? "")) out.push("link carries a key");
+  return out;
+};
+
+describe("G8: the tiles are the owner's three with one GitHub line under them; the table keeps every host; a jargon-free first step; a prerender that carries the same", () => {
+  it("the table keeps every host in the owner's order (the README's list), and the tiles are the page-flagged three in that order", () => {
     expect(MCP_HOSTS.map((h) => h.id)).toEqual([...MCP_HOST_IDS]);
     expect(MCP_HOST_IDS).toEqual(["claude", "chatgpt", "claude-code", "cursor", "vscode", "more"]);
     expect(MCP_HOSTS.map((h) => h.name)).toEqual(["Claude", "ChatGPT", "Claude Code", "Cursor", "VS Code", "More…"]);
+    for (const h of MCP_HOSTS) expect(typeof h.page, `${h.id} has no page flag`).toBe("boolean");
+    expect(tileOffences(MCP_PAGE_HOST_IDS)).toEqual([]);
+    expect(MCP_PAGE_HOSTS.map((h) => h.name)).toEqual(["Claude", "ChatGPT", "Claude Code"]);
+    // Derived, not a second list: the page hosts are the table filtered, in the table's order.
+    expect(MCP_PAGE_HOSTS).toEqual(MCP_HOSTS.filter((h) => h.page));
+    expect(MCP_OFF_PAGE_HOSTS).toEqual(MCP_HOSTS.filter((h) => !h.page && h.id !== "more"));
+    expect(MCP_OFF_PAGE_HOSTS.map((h) => h.name)).toEqual(["Cursor", "VS Code"]);
+    // Every seeker-facing chooser is the page list.
+    expect(MCP_CHOOSER_HOSTS).toEqual(MCP_PAGE_HOSTS);
+  });
+  it("the GitHub line names the off-page hosts from the table and links the install repo constant — spelled once in the mirror", () => {
+    expect(githubLineOffences(MCP_OTHER_AGENTS_TEXT, MCP_OTHER_AGENTS_LINE.href)).toEqual([]);
+    expect(MCP_OTHER_AGENTS_TEXT).toBe("Using a different agent? Setup for Cursor, VS Code and other tools is on GitHub →");
+    expect(`${MCP_OTHER_AGENTS_LINE.lead} ${MCP_OTHER_AGENTS_LINE.link}`).toBe(MCP_OTHER_AGENTS_TEXT);
+    const cfg = strip(read("src/config/mcp-tools.ts"));
+    expect(cfg.split(MCP_INSTALL_REPO_URL).length - 1, "the repo URL is typed more than once in the mirror").toBe(1);
+    // The line's names are read off the table, never typed: no off-page host name sits inside a string literal in the mirror's derived-list block.
+    const block = cfg.slice(cfg.indexOf("export const MCP_PAGE_HOSTS"), cfg.indexOf("export const MCP_CHOOSER_HOSTS"));
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(block, `${h.name} typed into the GitHub line`).not.toContain(h.name);
+    // The prose fallback the page keeps is the long tail's own entry.
+    expect(MCP_COPY_THE_PROMPT?.id).toBe("copy-the-prompt");
+    expect(MCP_COPY_THE_PROMPT?.name).toBe("Copy the prompt");
+  });
+  it("a page that sends a seeker to /agents names the tiles off the mirror, never by typing them", () => {
+    // /data-api's "connect X, Y and Z" once typed "Claude, ChatGPT, Cursor"
+    // and went stale the day Cursor left the tiles. Now it reads
+    // MCP_PAGE_HOSTS; a host name spelled in that file is a typed list again.
+    for (const page of ["src/pages/DataApi.tsx"]) {
+      const text = strip(read(page));
+      expect(text, `${page} does not read the page hosts`).toMatch(/MCP_PAGE_HOSTS\.map\(\(h\) => h\.name\)/);
+      for (const h of MCP_HOSTS) {
+        // "cursor=" (pagination) is not the host; match the name as a word, capitalised as the table spells it.
+        const typed = new RegExp(`(?<![A-Za-z_.])${h.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z_=])`);
+        expect(text, `${page} types the host name ${h.name}`).not.toMatch(typed);
+      }
+    }
+  });
+  it("the chat hosts' off sentence sends the person to a TILE that carries a key, never to a host the page sends to GitHub", () => {
+    for (const h of MCP_HOSTS.filter((x) => !x.header)) {
+      const off = h.signIn("off");
+      for (const k of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(off, `${h.id} off`).toContain(k.name);
+      for (const o of MCP_OFF_PAGE_HOSTS) expect(off, `${h.id} off names ${o.name}, which is not a tile`).not.toContain(o.name);
+    }
   });
   it("no host's first step names the jargon a newcomer should never meet — walked over steps, not grepped over the file", () => {
-    // The six hosts on the buttons. (Cline, under More…, quotes its vendor's
-    // own transport label in its first step — the word the person must pick.)
+    // Every host in the table (the README renders them all). Cline, in the
+    // long tail, quotes its vendor's own transport label in its first step —
+    // the word the person must pick.
     for (const h of MCP_HOSTS) {
       const first = h.steps({ url: URL })[0];
       expect(`${first.text} ${first.note ?? ""}`, `${h.id} step 1`).not.toMatch(JARGON);
@@ -348,43 +429,89 @@ describe("G8: six hosts in the owner's order, a jargon-free first step, and a pr
       if (h.id !== "more") expect(h.docs.length, `${h.id} names no document`).toBeGreaterThan(0);
     }
   });
-  it("the prerender's /agents block, executed against the real mirrors, writes every host's step 1, the neutral sign-in sentence and the six anchors", async () => {
+  /** The /agents block of the prerender, executed against the real mirrors (or a mutated copy of them). */
+  const bake = async (mutate: (D: Record<string, unknown>) => Record<string, unknown> = (D) => D) => {
     const BAKE = read("scripts/prerender-seo.mjs");
     const start = BAKE.indexOf("      const envText3 = ");
     const end = BAKE.indexOf('      write({\n        path: "/mcp",');
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
     const block = BAKE.slice(start, end);
-    const D = await import("../config/mcp-tools");
+    const D = mutate({ ...(await import("../config/mcp-tools")), SENDABLE_VENDOR_LABELS: ["a", "b"], SENDABLE_VENDOR_SENTENCE: "a and b" });
     const written: Array<{ path: string; content: string; title: string; description: string; robots?: string }> = [];
     const fn = new Function(
       "D", "write", "readFileSync", "join", "root", "process", "BOARD_TOTAL", "plusClaim", "breadcrumbLd", "breadcrumbNav", "FREE_KEY_RATE_SENTENCE",
       `${block}; return true;`,
     );
     fn(
-      { ...D, SENDABLE_VENDOR_LABELS: ["a", "b"], SENDABLE_VENDOR_SENTENCE: "a and b" },
+      D,
       (p: { path: string; content: string; title: string; description: string }) => written.push(p),
       () => "", (...xs: string[]) => xs.join("/"), ROOT, { env: { VITE_SUPABASE_URL: "https://example.invalid" } },
       123456, (n: number) => `${n}+`, () => ({}), () => "", "the rate sentence",
     );
     expect(written.map((w) => w.path)).toEqual(["/agents"]);
-    const html = written[0].content;
+    return written[0].content;
+  };
+  /** The tiles a baked page carries: the anchors of its "Which agent" grid, in order. */
+  const bakedTiles = (html: string) => [...html.slice(html.indexOf("Which agent do you use?")).matchAll(/<a href="#([a-z-]+)" class="block p-3/g)].map((m) => m[1]);
+  const plainStep = (h: { steps: (c: { url: string }) => McpStep[] }) =>
+    h.steps({ url: "https://example.invalid/functions/v1/agent-mcp" })[0].text.replace(/\*\*|`/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  it("the prerender's /agents block, executed against the real mirrors, writes the three tiles and their step 1, the GitHub line, the prose fallback, no other host's panel, and the reach disclosure over the whole table", async () => {
+    const html = await bake();
     // The words a crawler reads: tags off, entities as the bake escapes them.
     const text = html.replace(/<[^>]+>/g, "");
-    for (const h of MCP_HOSTS) {
-      const first = h.steps({ url: "https://example.invalid/functions/v1/agent-mcp" })[0];
-      const plain = first.text.replace(/\*\*|`/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      expect(text, `${h.id} step 1 missing from the bake`).toContain(plain);
+    expect(tileOffences(bakedTiles(html))).toEqual([]);
+    for (const h of MCP_PAGE_HOSTS) {
+      expect(text, `${h.id} step 1 missing from the bake`).toContain(plainStep(h));
       expect(html).toContain(`id="${h.id}"`);
       expect(html).toContain(`href="#${h.id}"`);
     }
-    for (const m of MCP_MORE_HOSTS) expect(html, `${m.id} missing from the bake`).toContain(`<h4 class="font-semibold mb-1">${m.name}`);
+    // The hosts the page sends to GitHub have no panel and no anchor in the bake — the crawler copy says what the page says.
+    for (const h of MCP_OFF_PAGE_HOSTS) {
+      expect(text, `${h.id} step 1 baked for a host the page has no tile for`).not.toContain(plainStep(h));
+      expect(html).not.toContain(`id="${h.id}"`);
+      expect(html).not.toContain(`href="#${h.id}"`);
+    }
+    expect(html).not.toContain('id="more"');
+    // The GitHub line, as the page renders it: lead, then the link.
+    const line = /<p class="text-sm text-muted-foreground text-center mb-6">([^<]*) <a href="([^"]+)">([^<]+)<\/a><\/p>/.exec(html);
+    expect(line, "the GitHub line is not in the bake").not.toBeNull();
+    expect(githubLineOffences(`${line![1]} ${line![3]}`, line![2])).toEqual([]);
+    // The prose fallback is the one long-tail block the bake keeps.
+    expect(html).toContain(`<h4 class="font-semibold mb-1">${MCP_COPY_THE_PROMPT!.name}`);
+    for (const m of MCP_MORE_HOSTS.filter((x) => x.id !== "copy-the-prompt")) expect(html, `${m.id} baked though the page sends it to GitHub`).not.toContain(`<h4 class="font-semibold mb-1">${m.name}`);
+    // The developer disclosure keeps the whole table: the server's reach, not a seeker's choice.
+    for (const h of MCP_HOSTS) expect(html, `${h.id} missing from the reach disclosure`).toContain(`<strong class="text-foreground">${h.name}</strong> — `);
     expect(html).toMatch(/only while the server's sign-in service is switched on/);
     expect(html).not.toMatch(/Bearer rb_live_\.\.\./);
     expect(html).toContain("Which agent do you use?");
     // The bake holds no key: every keyed block shows the empty export line.
     expect(html).toContain(`export ${MCP_KEY_ENV}=</code>`);
     expect(html).not.toContain("undefined");
+  });
+  it("teeth: a bake handed a fourth page host renders a fourth tile and fails the property", async () => {
+    const html = await bake((D) => {
+      const hosts = (D.MCP_HOSTS as typeof MCP_HOSTS).map((h) => (h.id === "cursor" ? { ...h, page: true } : h));
+      return { ...D, MCP_HOSTS: hosts, MCP_PAGE_HOSTS: hosts.filter((h) => h.page) };
+    });
+    const tiles = bakedTiles(html);
+    expect(tiles).toEqual([...OWNER_TILES, "cursor"]);
+    expect(tileOffences(tiles)).not.toEqual([]);
+    expect(html).toContain('id="cursor"');
+  });
+  it("the prose fallback's section exists only when the long tail carries the entry — the bake and the page agree on an absent one", async () => {
+    // The page's CopyThePrompt renders null without the entry; the bake once
+    // wrapped an empty string in a section regardless. Same rule now.
+    const withIt = await bake();
+    expect(withIt).toContain(`<h4 class="font-semibold mb-1">${MCP_COPY_THE_PROMPT!.name}`);
+    expect(withIt).not.toMatch(/<section class="mb-8">\s*<\/section>/);
+    const without = await bake((D) => ({ ...D, MCP_COPY_THE_PROMPT: undefined }));
+    expect(without).not.toContain(`<h4 class="font-semibold mb-1">${MCP_COPY_THE_PROMPT!.name}`);
+    expect(without).not.toMatch(/<section class="mb-8">\s*<\/section>/);
+    expect(without).not.toContain("undefined");
+    // The bake still writes everything else: tiles, the GitHub line, the test section.
+    expect(tileOffences(bakedTiles(without))).toEqual([]);
+    expect(without).toContain("Test the server");
   });
 });
 
@@ -426,12 +553,25 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
   beforeEach(() => { try { localStorage.clear(); } catch { /* blocked */ } window.history.replaceState(null, "", "/agents"); });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-  it("opens with the question and six buttons, no panel, and nothing above the fold names the jargon", () => {
+  it("opens with the question, the owner's three tiles, the GitHub line under them, the prose fallback, no panel, and nothing above the fold names the jargon", () => {
     hookFetch("off");
     mount();
     const group = screen.getByRole("group", { name: "Which agent do you use?" });
     const buttons = Array.from(group.querySelectorAll("button"));
-    expect(buttons.map((b) => b.getAttribute("data-host"))).toEqual([...MCP_HOST_IDS]);
+    expect(tileOffences(buttons.map((b) => b.getAttribute("data-host")))).toEqual([]);
+    expect(buttons.map((b) => b.querySelector("span")!.textContent)).toEqual(["Claude", "ChatGPT", "Claude Code"]);
+    // Not a tile anywhere on the page, under any control.
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(document.querySelector(`[data-host="${h.id}"]`), `${h.id} rendered as a tile`).toBeNull();
+    expect(document.querySelector('[data-host="more"]')).toBeNull();
+    const line = document.querySelector("[data-other-agents]")!;
+    const a = line.querySelector("a")!;
+    expect(githubLineOffences(line.textContent!.replace(/\s+/g, " ").trim(), a.getAttribute("href"))).toEqual([]);
+    expect(a.textContent).toBe(MCP_OTHER_AGENTS_LINE.link);
+    // The prose fallback stays, closed, with the prompt naming the address and no key.
+    const fallback = document.querySelector("[data-copy-the-prompt]")!;
+    expect(fallback.textContent).toContain(MCP_COPY_THE_PROMPT!.name);
+    expect(fallback.querySelector("pre")!.textContent).toContain(MCP_URL);
+    expect(fallback.querySelector("pre")!.textContent).not.toMatch(/rb_live_/);
     expect(document.querySelector("section[id]")).toBeNull();
     const aboveFold = document.querySelector("main")!.textContent!.split("Test the server")[0];
     expect(aboveFold).not.toMatch(JARGON);
@@ -464,16 +604,25 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
     expect(mcpCalls(spy).map((c) => c.method)).toEqual(["initialize"]);
   });
 
-  it("the hash selects a host on load, and a remembered pick opens its panel without a click", () => {
+  it("the hash selects a tile on load, a remembered tile opens its panel without a click, and a host the page sends to GitHub opens nothing either way", () => {
     hookFetch("on");
-    window.history.replaceState(null, "", "/agents#vscode");
+    const tile = MCP_PAGE_HOSTS[MCP_PAGE_HOSTS.length - 1];
+    const off = MCP_OFF_PAGE_HOSTS[0];
+    window.history.replaceState(null, "", `/agents#${tile.id}`);
     mount();
-    expect(document.querySelector("section[id]")!.id).toBe("vscode");
+    expect(document.querySelector("section[id]")!.id).toBe(tile.id);
     document.body.innerHTML = "";
     window.history.replaceState(null, "", "/agents");
-    localStorage.setItem("rb_pass_host", "Cursor");
+    localStorage.setItem("rb_pass_host", tile.name);
     mount();
-    expect(document.querySelector("section[id]")!.id).toBe("cursor");
+    expect(document.querySelector("section[id]")!.id).toBe(tile.id);
+    // A hash or a remembered pick for a host with no tile — the table still carries it for the README — opens no panel and presses no tile.
+    document.body.innerHTML = "";
+    window.history.replaceState(null, "", `/agents#${off.id}`);
+    localStorage.setItem("rb_pass_host", off.name);
+    mount();
+    expect(document.querySelector("section[id]")).toBeNull();
+    expect(document.querySelector('[aria-pressed="true"]')).toBeNull();
   });
 
   it("the key field fills the one line that takes the key, and the deep links never carry it", () => {
@@ -488,9 +637,8 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
     expect(pres().join("\n").split(KEY).length - 1).toBe(1);
     expect(pres().join("\n")).toContain(`export ${MCP_KEY_ENV}=${KEY}`);
     expect(pres().join("\n")).not.toMatch(/Bearer rb_live_/);
-    fireEvent.click(screen.getByRole("button", { name: /^Cursor/ }));
-    fireEvent.change(screen.getByLabelText(/Paste your key here/), { target: { value: KEY } });
-    for (const a of Array.from(document.querySelectorAll("section#cursor a[href^='cursor:']"))) expect(a.getAttribute("href")).not.toContain(KEY);
+    // No link anywhere on the page carries the key — the GitHub line included.
+    for (const a of Array.from(document.querySelectorAll("a[href]"))) expect(a.getAttribute("href")).not.toContain(KEY);
   });
 
   it("Test the server runs initialize, tools/list, prompts/list and ONE search, prints the answer in words, and fires agents_test_server {host, state}", async () => {
@@ -534,8 +682,12 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
     localStorage.setItem("rb_pass_host", "Claude");
     mount();
     await waitFor(() => expect(document.querySelector("[data-pass-gate]")).not.toBeNull(), SLOW);
-    expect(document.querySelector("[data-pass-gate]")!.textContent).toMatch(/From Claude the pass can be used only once sign-in is switched on/);
-    fireEvent.click(screen.getByRole("button", { name: /^Cursor/ }));
+    const gate = document.querySelector("[data-pass-gate]")!.textContent!;
+    expect(gate).toMatch(/From Claude the pass can be used only once sign-in is switched on/);
+    // "use it from …": the key-carrying TILE, never a host the page sends to GitHub.
+    for (const h of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(gate).toContain(h.name);
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(gate, `${h.name} is not a tile`).not.toContain(h.name);
+    fireEvent.click(screen.getByRole("button", { name: /^Claude Code/ }));
     expect(document.querySelector("[data-pass-gate]")).toBeNull();
     // The Buy control itself is never gated on the fact (signed out here: the sign-in link stands).
     expect(screen.getByRole("link", { name: /sign in to buy/i })).toBeInTheDocument();
@@ -604,6 +756,26 @@ describe("teeth: each source property fails on a copy that breaks it", () => {
   });
   it("a host out of order breaks G8", () => {
     expect([...MCP_HOSTS].reverse().map((h) => h.id)).not.toEqual([...MCP_HOST_IDS]);
+    expect(tileOffences([...MCP_PAGE_HOST_IDS].reverse())).not.toEqual([]);
+  });
+  it("a fourth tile, a missing tile, the old six, and a tile the table does not flag each break G8", () => {
+    expect(tileOffences([...MCP_PAGE_HOST_IDS, "cursor"])).toEqual(["4 tiles, not 3", "cursor is a tile beyond the owner's three", "cursor is not flagged page in the table"]);
+    expect(tileOffences(MCP_PAGE_HOST_IDS.slice(0, 2))).not.toEqual([]);
+    expect(tileOffences(MCP_HOST_IDS)).not.toEqual([]);
+    expect(tileOffences(["claude", "chatgpt", "vscode"])).toEqual(["tile 3 is vscode, not claude-code", "vscode is not flagged page in the table"]);
+    // A table copy that flags a fourth host derives a fourth tile.
+    const flagged = MCP_HOSTS.map((h) => (h.id === "vscode" ? { ...h, page: true } : h)).filter((h) => h.page).map((h) => h.id);
+    expect(flagged.length).toBe(4);
+    expect(tileOffences(flagged)).not.toEqual([]);
+  });
+  it("a GitHub line with a typed name, another host, another target or a key breaks G8", () => {
+    const names = MCP_OFF_PAGE_HOSTS.map((h) => h.name).join(", ");
+    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).toEqual([]);
+    expect(githubLineOffences(`Using a different agent? Setup for ${names}, Zed and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).not.toEqual([]);
+    expect(githubLineOffences(`Using a different agent? Setup for Cursor and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).not.toEqual([]);
+    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, "https://github.com/someone-else/resumebooster-mcp")).not.toEqual([]);
+    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, `${MCP_INSTALL_REPO_URL}?key=${KEY}`)).not.toEqual([]);
+    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, null)).not.toEqual([]);
   });
   it("a first step naming the transport breaks G8", () => {
     const first = MCP_HOSTS[0].steps({ url: URL })[0];

@@ -10,7 +10,8 @@
 // What the page then shows, top to bottom, is the SPEC's list and nothing
 // more: the clock (not started until the agent's first call — never at
 // purchase), the applications left, exactly ONE hand-off block for the host
-// the buyer picks (remembered per browser, under the same key /agents and
+// the buyer picks from the page's tiles (MCP_PAGE_HOSTS — the same three
+// /agents shows; remembered per browser, under the same key /agents and
 // the board use), the agent's two-step setup checklist, and four honest
 // expectation lines. Every number is read off the pass row the function
 // returns or off the PASS mirror; every sentence of the page's own is an
@@ -41,24 +42,17 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { MCP_HOSTS, andList, type McpHost, type SignInFact } from "@/config/mcp-tools";
+import { MCP_PAGE_HOSTS, andList, type McpHost, type SignInFact } from "@/config/mcp-tools";
 import { PASS } from "@/config/products";
 import { AgentSetupChecklist } from "@/components/account/AgentSetupChecklist";
+// The remembered host is ONE rule, in src/lib/agent-handoff.ts: the board,
+// /agents and this receipt read and write the same key through the same two
+// functions, so a change to what counts as a page host lands in one place.
+import { rememberedHostName, rememberHostName } from "@/lib/agent-handoff";
 import {
   MintAgentKey, MCP_URL, PASS_COPY, StepList, StepText,
   usePassStatus, startPassCheckout, useSignInFact,
 } from "./AgentConnect";
-
-const HOST_STORAGE_KEY = "rb_pass_host";
-
-/** The host the buyer chose last time, if this browser remembers one. */
-function rememberedHost(): string {
-  try {
-    const v = localStorage.getItem(HOST_STORAGE_KEY);
-    if (v && MCP_HOSTS.some((h) => h.name === v)) return v;
-  } catch { /* storage blocked — the first host is the default */ }
-  return MCP_HOSTS[0].name;
-}
 
 const fmtDate = (iso: string | null | undefined, lang: string) =>
   iso ? new Date(iso).toLocaleString(lang, { dateStyle: "medium", timeStyle: "short" }) : "";
@@ -76,7 +70,8 @@ const fmtDate = (iso: string | null | undefined, lang: string) =>
 function HandoffBlock({ host, keyValue, fact }: { host: McpHost; keyValue: string | null; fact: SignInFact }) {
   const { t } = useTranslation();
   const ctx = { url: MCP_URL, key: keyValue ?? undefined, signIn: fact.state };
-  const headerHosts = andList(MCP_HOSTS.filter((h) => h.header && h.id !== "more").map((h) => h.name));
+  // "Connect from …": the key-carrying TILES, never a host the page sends to GitHub.
+  const headerHosts = andList(MCP_PAGE_HOSTS.filter((h) => h.header).map((h) => h.name));
   return (
     <div className="space-y-3" data-handoff={host.id}>
       <p className="text-sm text-muted-foreground">{t("agentPass.stepsTitle", "Steps for {{host}}:", { host: host.name })}</p>
@@ -132,11 +127,11 @@ export default function AgentPass() {
   }, [status?.pass.state]);
 
   // The host, remembered per browser; the key, only if minted on THIS page.
-  const [hostName, setHostName] = useState(rememberedHost);
-  const host = MCP_HOSTS.find((h) => h.name === hostName) ?? MCP_HOSTS[0];
+  const [hostName, setHostName] = useState(rememberedHostName);
+  const host = MCP_PAGE_HOSTS.find((h) => h.name === hostName) ?? MCP_PAGE_HOSTS[0];
   const pickHost = (name: string) => {
     setHostName(name);
-    try { localStorage.setItem(HOST_STORAGE_KEY, name); } catch { /* per-browser convenience only */ }
+    rememberHostName(name);
   };
   const [mintedKey, setMintedKey] = useState<string | null>(null);
   const [wantsNewKey, setWantsNewKey] = useState(false);
@@ -263,7 +258,7 @@ export default function AgentPass() {
                   <div className="mb-4">
                     <p className="text-xs text-muted-foreground mb-2">{t("agentPass.whichAgent", "Which agent?")}</p>
                     <div role="tablist" className="flex flex-wrap gap-2">
-                      {MCP_HOSTS.map((h) => (
+                      {MCP_PAGE_HOSTS.map((h) => (
                         <button
                           key={h.name} type="button" role="tab" aria-selected={h.name === host.name}
                           onClick={() => pickHost(h.name)}

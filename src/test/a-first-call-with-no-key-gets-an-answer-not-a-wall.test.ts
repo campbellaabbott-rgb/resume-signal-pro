@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_TOOL_NAMES,
   MCP_PAID_TOOLS, MCP_APPLY_TOOLS,
+  MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_MORE_HOSTS, MCP_INSTALL_REPO_URL,
 } from "../config/mcp-tools";
 import {
   MCP_URL, OAUTH_SCOPE, PRM_PATH, RESOURCE_METADATA_URL, isProtectedResourceMetadataPath, unauthorized,
@@ -46,6 +47,46 @@ const MCP = stripTs(MCP_RAW);
 const PAGE = stripTs(read("src/pages/AgentConnect.tsx"));
 const PRERENDER = stripTs(read("scripts/prerender-seo.mjs"));
 const LLMS = read("public/llms.txt");
+const LLMS_AGENTS_LINE = LLMS.split("\n").find((l) => l.includes("(/agents)")) ?? "";
+/**
+ * What the hand-written /agents bullet must and must not say about hosts,
+ * as a pure function of the line. The line also carries a REACH sentence
+ * ("Claude Code, Cursor, VS Code and any client with a header field carry
+ * the key") that names every real host, so containment over the whole line
+ * proves nothing; the property lives in the sentence that carries the repo
+ * URL, whose ";"-separated clauses say (1) whose steps the page has and
+ * (2) whose setup is in the README. Clause 1 names every tile and no
+ * off-page host; the URL clause names every off-page host and no tile; no
+ * long-tail host (Gemini CLI, Cline, …) is named anywhere — those live in
+ * the README and a name here would be a third typed spelling; no key.
+ */
+const hostNames = [...MCP_PAGE_HOSTS, ...MCP_OFF_PAGE_HOSTS].map((h) => h.name);
+/** Whole-name match: "Claude" does not match inside "Claude Code". */
+const namesHost = (text: string, name: string): boolean => {
+  let t = text;
+  for (const o of hostNames) if (o !== name && o.includes(name)) t = t.split(o).join(" ");
+  return new RegExp(`(?<![A-Za-z])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z])`).test(t);
+};
+const llmsAgentsLineOffences = (line: string): string[] => {
+  const out: string[] = [];
+  const sentence = line.split(/(?<=\.)\s+/).find((x) => x.includes(MCP_INSTALL_REPO_URL));
+  if (!sentence) return ["no sentence carries the install repo URL"];
+  const clauses = sentence.split(";").map((c) => c.trim());
+  const steps = clauses[0];
+  const readme = clauses.find((c) => c.includes(MCP_INSTALL_REPO_URL))!;
+  if (steps === readme) return ["the steps clause and the README clause are one clause"];
+  for (const h of MCP_PAGE_HOSTS) {
+    if (!namesHost(steps, h.name)) out.push(`tile ${h.name} not named as the page's steps`);
+    if (namesHost(readme, h.name)) out.push(`tile ${h.name} sent to the README`);
+  }
+  for (const h of MCP_OFF_PAGE_HOSTS) {
+    if (!namesHost(readme, h.name)) out.push(`off-page host ${h.name} not sent to the README`);
+    if (namesHost(steps, h.name)) out.push(`off-page host ${h.name} named as the page's steps`);
+  }
+  if (/rb_live_/.test(line)) out.push("a key in the line");
+  for (const m of MCP_MORE_HOSTS) if (m.id !== "copy-the-prompt" && line.includes(m.name)) out.push(`long-tail host ${m.name} named`);
+  return out;
+};
 const EN = JSON.parse(read("src/i18n/locales/en.json")) as Record<string, Record<string, string>>;
 /**
  * The site's own words for the ledger half of "Actively hiring", read off the
@@ -426,16 +467,43 @@ describe("the page, the prerender and llms.txt derive the tier from the mirror",
   });
 
   it("the hand-written llms.txt spells no tool count, no tool name and no cap — it points at llms-full", () => {
-    const line = LLMS.split("\n").find((l) => l.includes("(/agents)")) ?? "";
-    expect(line, "llms.txt lost its /agents line").not.toBe("");
-    expect(line).not.toMatch(/\b\d+ tools\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen) tools\b/i);
-    expect(line).not.toMatch(/\b\d+ calls/);
-    for (const n of MCP_TOOL_NAMES.filter((x) => x.includes("_"))) expect(line, `${n} typed into llms.txt`).not.toContain(n);
-    expect(line).toMatch(/llms-full\.txt/);
+    expect(LLMS_AGENTS_LINE, "llms.txt lost its /agents line").not.toBe("");
+    expect(LLMS_AGENTS_LINE).not.toMatch(/\b\d+ tools\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen) tools\b/i);
+    expect(LLMS_AGENTS_LINE).not.toMatch(/\b\d+ calls/);
+    for (const n of MCP_TOOL_NAMES.filter((x) => x.includes("_"))) expect(LLMS_AGENTS_LINE, `${n} typed into llms.txt`).not.toContain(n);
+    expect(LLMS_AGENTS_LINE).toMatch(/llms-full\.txt/);
+  });
+  it("the hand-written llms.txt names the page's tiles as the page's steps, the off-page hosts as the README's, the install repo — and no long-tail host", () => {
+    // llms.txt is the ONE surface that cannot read the mirror, so its host
+    // names are typed. This pins them to the same property the page's G8
+    // pins its tiles and GitHub line to: a tile change that leaves this
+    // line behind fails here instead of going stale in silence.
+    expect(llmsAgentsLineOffences(LLMS_AGENTS_LINE)).toEqual([]);
   });
 });
 
 describe("teeth: each property fails on a copy that breaks it", () => {
+  it("a llms.txt line that drops a tile from the steps clause, sends a tile to the README, drops an off-page host, names one as the page's, loses the repo URL, names a long-tail host or carries a key is caught", () => {
+    const line = LLMS_AGENTS_LINE;
+    expect(llmsAgentsLineOffences(line)).toEqual([]);
+    const sentence = line.split(/(?<=\.)\s+/).find((x) => x.includes(MCP_INSTALL_REPO_URL))!;
+    const [steps, readme] = sentence.split(";");
+    const swap = (from: string, to: string) => line.replace(from, to);
+    const tile = MCP_PAGE_HOSTS[MCP_PAGE_HOSTS.length - 1].name;
+    const off = MCP_OFF_PAGE_HOSTS[0].name;
+    // The reach sentence elsewhere in the line still names every host, so each mutation touches only the clause under test.
+    expect(llmsAgentsLineOffences(swap(steps, steps.split(tile).join("Cowork")))).toContain(`tile ${tile} not named as the page's steps`);
+    expect(llmsAgentsLineOffences(swap(readme, readme.replace(off, `${off}, ${tile}`)))).toContain(`tile ${tile} sent to the README`);
+    expect(llmsAgentsLineOffences(swap(readme, readme.split(off).join("Emacs")))).toContain(`off-page host ${off} not sent to the README`);
+    expect(llmsAgentsLineOffences(swap(steps, steps.replace(tile, `${tile}, ${off}`)))).toContain(`off-page host ${off} named as the page's steps`);
+    expect(llmsAgentsLineOffences(line.replace(MCP_INSTALL_REPO_URL, "https://example.invalid/repo"))).toContain("no sentence carries the install repo URL");
+    const tail = MCP_MORE_HOSTS.find((m) => m.id !== "copy-the-prompt")!;
+    expect(llmsAgentsLineOffences(`${line} ${tail.name} works too.`)).toContain(`long-tail host ${tail.name} named`);
+    expect(llmsAgentsLineOffences(`${line} rb_live_abc`)).toContain("a key in the line");
+    // "Claude" alone is not "Claude Code": a steps clause naming only the first tile fails on the third.
+    expect(namesHost("for Claude Code only", "Claude")).toBe(false);
+    expect(namesHost("for Claude only", "Claude")).toBe(true);
+  });
   it("a copy that widens ANON_TOOLS is caught", () => {
     const broken = MCP.replace('const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"]', 'const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch", "get_job"]');
     expect(broken).not.toBe(MCP);

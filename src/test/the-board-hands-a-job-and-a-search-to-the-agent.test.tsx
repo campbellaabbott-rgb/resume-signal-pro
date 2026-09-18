@@ -77,7 +77,7 @@ import Jobs, { boardFilterBody, type BoardFilterState } from "../pages/Jobs";
 import { Header } from "../components/Header";
 import { MCP_URL, RATE_COPY } from "../pages/AgentConnect";
 import { FREE_KEY_RATE_PER_MIN } from "../config/free-key-limits";
-import { MCP_HOSTS, MCP_CHOOSER_HOSTS, MCP_TOOL_NAMES, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../config/mcp-tools";
+import { MCP_HOSTS, MCP_PAGE_HOSTS, MCP_CHOOSER_HOSTS, MCP_TOOL_NAMES, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../config/mcp-tools";
 import { PASS } from "../config/products";
 import { changelog } from "../data/changelog";
 import {
@@ -165,11 +165,36 @@ describe("1. the posting prompt", () => {
     }
     for (const h of MCP_HOSTS) if (!DEEP_LINK_HOST_NAMES.includes(h.name)) expect(agentDeepLink(h.name, p)).toBeNull();
   });
-  it("remembers the host under the same key the pass receipt page writes", () => {
-    const pass = strip(read("src/pages/AgentPass.tsx"));
-    const m = /const HOST_STORAGE_KEY = "([^"]+)";/.exec(pass);
-    expect(m, "AgentPass.tsx no longer declares HOST_STORAGE_KEY").toBeTruthy();
-    expect(HOST_STORAGE_KEY).toBe(m![1]);
+  it("the remembered host is ONE rule: every page that reads or writes it goes through agent-handoff, and the key is spelled once", () => {
+    // The receipt and the switchboard once each kept their own copy of the
+    // read (same key, same "only a page host" rule) — two implementations
+    // that had to be edited in lockstep. Now the key literal lives in
+    // agent-handoff.ts alone and both pages import the functions.
+    const src = (p: string) => strip(read(p));
+    for (const [page, fns] of [
+      ["src/pages/AgentPass.tsx", ["rememberedHostName", "rememberHostName"]],
+      ["src/pages/AgentConnect.tsx", ["rememberedHostChoice", "rememberHostName"]],
+      ["src/pages/Jobs.tsx", ["rememberedHostName", "rememberHostName"]],
+    ] as const) {
+      const text = src(page);
+      expect(text, `${page} spells the storage key itself`).not.toContain(HOST_STORAGE_KEY);
+      expect(text, `${page} declares its own HOST_STORAGE_KEY`).not.toMatch(/const HOST_STORAGE_KEY\b/);
+      expect(text, `${page} reads localStorage for the host itself`).not.toMatch(/localStorage\.(getItem|setItem)\(HOST_STORAGE_KEY/);
+      const imp = /import \{([^}]*)\} from "@\/lib\/agent-handoff"/.exec(text);
+      expect(imp, `${page} does not import from agent-handoff`).toBeTruthy();
+      for (const fn of fns) expect(imp![1].split(",").map((x) => x.trim()), `${page} does not import ${fn}`).toContain(fn);
+    }
+    // The literal itself: once, in the module that owns it — not in a page, a component or a lib beside it.
+    const spelled: string[] = [];
+    const walk = (dir: string) => {
+      for (const f of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
+        const rel = `${dir}/${f.name}`;
+        if (f.isDirectory()) { if (rel !== "src/test") walk(rel); continue; }
+        if (/\.(tsx?|mjs)$/.test(f.name) && read(rel).includes(HOST_STORAGE_KEY)) spelled.push(rel);
+      }
+    };
+    walk("src");
+    expect(spelled).toEqual(["src/lib/agent-handoff.ts"]);
   });
 });
 
@@ -330,12 +355,15 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     // The panel is laid out once per breakpoint, so the chooser exists in
     // each copy; every copy is the host mirror, and each is driven below.
     const selects = screen.getAllByLabelText("Which agent?") as HTMLSelectElement[];
-    // Every real app, and never the switchboard's "More…" button: a hand-off cannot open "More…".
+    // The page's tiles and nothing else: never "More…", never a host the
+    // page sends to GitHub — a hand-off cannot name a host /agents has no
+    // steps for.
     for (const select of selects) expect(Array.from(select.options).map((o) => o.value)).toEqual(MCP_CHOOSER_HOSTS.map((h) => h.name));
+    expect(MCP_CHOOSER_HOSTS).toEqual(MCP_PAGE_HOSTS);
     expect(MCP_CHOOSER_HOSTS.map((h) => h.id)).not.toContain("more");
-    expect(MCP_CHOOSER_HOSTS.length).toBe(MCP_HOSTS.length - 1);
+    for (const h of MCP_HOSTS.filter((x) => !x.page)) expect(MCP_CHOOSER_HOSTS.map((x) => x.name), `${h.name} offered though the page has no tile for it`).not.toContain(h.name);
     // A host with no documented prefill link gets no link at all.
-    const plain = MCP_HOSTS.find((h) => !DEEP_LINK_HOST_NAMES.includes(h.name))!.name;
+    const plain = MCP_CHOOSER_HOSTS.find((h) => !DEEP_LINK_HOST_NAMES.includes(h.name))!.name;
     for (const select of selects) fireEvent.change(select, { target: { value: plain } });
     expect(screen.queryAllByRole("link", { name: /Open there/ })).toEqual([]);
     const host = DEEP_LINK_HOST_NAMES[0];

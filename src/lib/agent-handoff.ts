@@ -30,31 +30,34 @@
 // rather than opening a prompt. The link is rendered only after the person
 // has said which agent they use, because a claude:// URL with no app behind
 // it has no documented fallback.
-import { MCP_HOSTS, MCP_TOOL_NAMES } from "@/config/mcp-tools";
+import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES } from "@/config/mcp-tools";
 import { MCP_URL } from "@/lib/mcp-test";
 
 /**
- * Where the browser remembers which agent the person uses. THE SAME LITERAL
- * AgentPass.tsx writes on its host picker, so a buyer who chose a host on the
- * receipt page is not asked again on the board; the guard reads that file
- * and fails if the two spellings part.
+ * Where the browser remembers which agent the person uses. Spelled ONCE, here:
+ * the receipt page (/agents/pass), the switchboard (/agents) and the board all
+ * read and write it through the two functions below, so a buyer who chose a
+ * host on the receipt is not asked again on the board — and what counts as a
+ * page host is decided in one place. The board guard fails any page that
+ * spells the key or reads the storage itself.
  */
 export const HOST_STORAGE_KEY = "rb_pass_host";
 
-/** The host the browser remembers, or the first in the mirror. Never throws. */
+/**
+ * The host the browser remembers, or the first tile. Never throws. Resolves
+ * ONLY to a page host: a name the page has no tile for (a host the table
+ * carries for the README, or a pick from before the tiles were cut to the
+ * owner's three) reads as no pick, never as a host the page cannot show.
+ */
 export function rememberedHostName(): string {
-  try {
-    const v = localStorage.getItem(HOST_STORAGE_KEY);
-    if (v && MCP_HOSTS.some((h) => h.name === v)) return v;
-  } catch { /* storage blocked — the first host is the default */ }
-  return MCP_HOSTS[0].name;
+  return rememberedHostChoice() ?? MCP_PAGE_HOSTS[0].name;
 }
 
-/** The host the browser remembers, or null when it remembers none (the switchboard opens no panel on a mere default). Never throws. */
+/** The host the browser remembers, or null when it remembers none — or none the page has a tile for (the switchboard opens no panel on a mere default). Never throws. */
 export function rememberedHostChoice(): string | null {
   try {
     const v = localStorage.getItem(HOST_STORAGE_KEY);
-    if (v && MCP_HOSTS.some((h) => h.name === v)) return v;
+    if (v && MCP_PAGE_HOSTS.some((h) => h.name === v)) return v;
   } catch { /* storage blocked */ }
   return null;
 }

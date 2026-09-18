@@ -1,14 +1,22 @@
 // Connect your agent — the human-facing page for the MCP server at
 // supabase/functions/agent-mcp.
 //
-// THE PAGE OPENS WITH ONE QUESTION: "Which agent do you use?" Six buttons in
-// the owner's order (Claude, ChatGPT, Claude Code, Cursor, VS Code, More…);
-// picking one reveals only that host's numbered steps, its sign-in sentence
-// for TODAY's state, and how you know it worked. The steps come from the
-// `steps` builders on MCP_HOSTS in src/config/mcp-tools.ts, so this page,
-// the pass receipt, the prerender and the install repo render one list.
-// Nothing above the fold names a key, a header, a transport or an HTTP
-// status; the first use of "sign in", "key" and "address" carries its gloss.
+// THE PAGE OPENS WITH ONE QUESTION: "Which agent do you use?" The tiles are
+// MCP_PAGE_HOSTS — the hosts the mirror flags `page`, in the owner's order:
+// the two chat apps and Claude Code, because the people this page is for
+// are not being asked to open an editor (the owner's decision, 2026-09-18).
+// Under the tiles, one line sends everyone else to the install repo on
+// GitHub (MCP_OTHER_AGENTS_LINE, names and link off the mirror), and the
+// "Copy the prompt" fallback stays for an agent that installs from prose.
+// Picking a tile reveals only that host's numbered steps, its sign-in
+// sentence for TODAY's state, and how you know it worked. The steps come
+// from the `steps` builders on MCP_HOSTS in src/config/mcp-tools.ts, so
+// this page, the pass receipt, the prerender and the install repo render
+// one list. Nothing above the fold names a key, a header, a transport or an
+// HTTP status; the first use of "sign in", "key" and "address" carries its
+// gloss. The developer disclosure below the fold ("Which hosts can reach
+// which tools") keeps the FULL table: it describes the server's reach, not
+// what a seeker should pick.
 //
 // KEYLESS IS THE DEFAULT STATE of every block. A keyed block exists only
 // after the visitor pastes a key into the field on the page (the field only
@@ -63,10 +71,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import {
-  MCP_TOOLS, MCP_HOSTS, MCP_MORE_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES,
-  MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES, MCP_HOST_IDS, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS,
-  MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING, troubleRowsFor, stepSegments, hostTakesKey,
-  curlInitialize, SIGN_IN_UNKNOWN, andList,
+  MCP_TOOLS, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS,
+  MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
+  MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
+  troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
   type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
 } from "@/config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
@@ -268,7 +276,7 @@ function KeyField({ value, onChange, id }: { value: string; onChange: (v: string
   );
 }
 
-/** One block of the long tail under "More…". */
+/** One block of the long tail — on this page, only the "Copy the prompt" fallback under the tiles. */
 function MoreHostBlock({ host, url, keyValue, state }: { host: McpMoreHost; url: string; keyValue: string; state: SignInFact["state"] }) {
   const ctx = { url, key: keyValue || undefined, signIn: state };
   return (
@@ -320,37 +328,31 @@ export function HostPanel({ host, url, fact, keyValue, onKey }: {
           <div className="mt-3"><StepList steps={host.keyed.steps(ctx)} /></div>
         </div>
       )}
-      {host.id === "more" && (
-        <div className="mt-5 pt-4 border-t border-border space-y-4">
-          {MCP_MORE_HOSTS.some(hostTakesKey) && <KeyField id="more-key" value={keyValue} onChange={onKey} />}
-          {MCP_MORE_HOSTS.map((m) => <MoreHostBlock key={m.id} host={m} url={url} keyValue={keyValue} state={fact.state} />)}
-        </div>
-      )}
     </section>
   );
 }
 
-/** The host the URL hash names, if it names one. */
+/** The host the URL hash names, if it names a tile (a hash for a host the page sends to GitHub opens nothing). */
 function hostFromHash(): McpHostId | null {
   try {
     const h = window.location.hash.replace(/^#/, "");
-    return (MCP_HOST_IDS as readonly string[]).includes(h) ? (h as McpHostId) : null;
+    return (MCP_PAGE_HOST_IDS as readonly string[]).includes(h) ? (h as McpHostId) : null;
   } catch { return null; }
 }
 
 /**
- * THE SWITCHBOARD: one question, six buttons, one open panel. The choice is
- * remembered under the same key /agents/pass and the board's hand-off use,
- * so the receipt page opens on the host the person chose here; the URL hash
- * also selects a host, so the README and llms.txt can link straight to one
- * host's steps.
+ * THE SWITCHBOARD: one question, the page's tiles, one open panel, and one
+ * line to GitHub for everyone else. The choice is remembered under the same
+ * key /agents/pass and the board's hand-off use, so the receipt page opens
+ * on the host the person chose here; the URL hash also selects a tile, so
+ * the README and llms.txt can link straight to one host's steps.
  */
-/** The host to open on load: the URL hash first, else a pick this browser remembers — never a default. */
+/** The host to open on load: the URL hash first, else a pick this browser remembers — never a default, and only ever a tile. */
 export function initialHostId(): McpHostId | null {
   const fromHash = hostFromHash();
   if (fromHash) return fromHash;
   const remembered = rememberedHostChoice();
-  return remembered ? (MCP_HOSTS.find((h) => h.name === remembered)?.id ?? null) : null;
+  return remembered ? (MCP_PAGE_HOSTS.find((h) => h.name === remembered)?.id ?? null) : null;
 }
 
 export function Switchboard({ fact, probe, picked, onPick }: { fact: SignInFact; probe: () => void; picked: McpHostId | null; onPick: (id: McpHostId) => void }) {
@@ -362,13 +364,13 @@ export function Switchboard({ fact, probe, picked, onPick }: { fact: SignInFact;
     try { window.history.replaceState(null, "", `#${h.id}`); } catch { /* no history — the state still moved */ }
     trackAgents("agents_host_pick", { host: h.id });
   };
-  const host = picked ? MCP_HOSTS.find((h) => h.id === picked) ?? null : null;
+  const host = picked ? MCP_PAGE_HOSTS.find((h) => h.id === picked) ?? null : null;
   return (
     <div>
       <h2 className="text-3xl font-bold mb-2 text-center">Which agent do you use?</h2>
       <p className="text-muted-foreground text-center mb-6">Pick one. You will see only the steps for that app.</p>
-      <div role="group" aria-label="Which agent do you use?" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-        {MCP_HOSTS.map((h) => (
+      <div role="group" aria-label="Which agent do you use?" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+        {MCP_PAGE_HOSTS.map((h) => (
           <button
             key={h.id} type="button" onClick={() => pick(h)} aria-pressed={h.id === picked} data-host={h.id}
             className={`p-4 rounded-2xl border text-left transition-colors ${h.id === picked ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"}`}
@@ -378,8 +380,30 @@ export function Switchboard({ fact, probe, picked, onPick }: { fact: SignInFact;
           </button>
         ))}
       </div>
+      {/* Everyone else: one line, names and link off the mirror. The
+          long tail's steps live in the install repo's README. */}
+      <p data-other-agents className="text-sm text-muted-foreground text-center mb-8">
+        {MCP_OTHER_AGENTS_LINE.lead}{" "}
+        <a href={MCP_OTHER_AGENTS_LINE.href} className="text-primary hover:underline">{MCP_OTHER_AGENTS_LINE.link}</a>
+      </p>
       {host && <HostPanel host={host} url={MCP_URL} fact={fact} keyValue={keyValue} onKey={setKeyValue} />}
     </div>
+  );
+}
+
+/**
+ * THE PROSE FALLBACK: the long tail's "Copy the prompt" entry, for an agent
+ * that installs a server from a sentence. Below the test block, not among
+ * the tiles: the prompt is written for the agent and names the transport,
+ * which nothing above the fold may do.
+ */
+export function CopyThePrompt({ fact }: { fact: SignInFact }) {
+  if (!MCP_COPY_THE_PROMPT) return null;
+  return (
+    <details data-copy-the-prompt className="p-6 rounded-2xl bg-card border border-border">
+      <summary className="font-semibold cursor-pointer">{MCP_COPY_THE_PROMPT.name} — for any agent that installs a server from a sentence</summary>
+      <div className="mt-3"><MoreHostBlock host={MCP_COPY_THE_PROMPT} url={MCP_URL} keyValue="" state={fact.state} /></div>
+    </details>
   );
 }
 
@@ -490,7 +514,7 @@ export function MintAgentKey({ onMinted, next }: { onMinted?: (key: string) => v
           <p className="text-sm text-warning mb-2">Your previous agent key was revoked when this one was minted.</p>
         )}
         <p className="text-sm text-muted-foreground">
-          Paste it into the key field of your app's steps above — the blocks fill themselves (VS Code has no field here: it asks for the key itself when the server starts).
+          Paste it into the key field of your app's steps above — the blocks fill themselves.
         </p>
       </div>
     );
@@ -584,9 +608,10 @@ export function PassCard() {
   }, [wantsBuy, session, status, params, setParams, buy]);
 
   const open = status && (status.pass.state === "unactivated" || status.pass.state === "live");
-  const host = hostName ? MCP_HOSTS.find((h) => h.name === hostName) : undefined;
+  const host = hostName ? MCP_PAGE_HOSTS.find((h) => h.name === hostName) : undefined;
   const gated = host && !host.header && host.oauth && signIn.state !== "on";
-  const headerHosts = andList(MCP_HOSTS.filter((h) => h.header && h.id !== "more").map((h) => h.name));
+  // "Use it from …": the key-carrying TILES — a person is sent to an app above, never to one the page sends to GitHub.
+  const headerHosts = andList(MCP_PAGE_HOSTS.filter((h) => h.header).map((h) => h.name));
 
   return (
     <div className="p-6 rounded-2xl bg-card border border-primary/30">
@@ -675,7 +700,8 @@ export default function AgentConnect() {
     : "the live postings";
   const { fact, probe, set } = useSignInFact();
   const [picked, setPicked] = useState<McpHostId | null>(initialHostId);
-  const pickedName = picked ? MCP_HOSTS.find((h) => h.id === picked)?.name ?? null : null;
+  const pickedName = picked ? MCP_PAGE_HOSTS.find((h) => h.id === picked)?.name ?? null : null;
+  // The developer disclosure: the server's reach over the FULL table.
   const hostsWithHeader = MCP_HOSTS.filter((h) => h.header);
   const hostsWithSignIn = MCP_HOSTS.filter((h) => !h.header && h.oauth);
   const troubleRows = troubleRowsFor(fact.state);
@@ -724,6 +750,15 @@ export default function AgentConnect() {
           <div className="container">
             <div className="max-w-3xl mx-auto">
               <TestServer fact={fact} onFact={set} hostId={picked} />
+            </div>
+          </div>
+        </section>
+
+        {/* The prose fallback for any agent at all */}
+        <section className="py-8">
+          <div className="container">
+            <div className="max-w-3xl mx-auto">
+              <CopyThePrompt fact={fact} />
             </div>
           </div>
         </section>
@@ -945,7 +980,7 @@ export default function AgentConnect() {
                     <h2 className="text-2xl font-bold mb-3">Rather integrate with code?</h2>
                     <p className="text-muted-foreground mb-4">
                       The MCP server is for agents. If you're writing software, the plain JSON API covers the
-                      same data with cursors and ETags. The install blocks above are also published as a repository, with a README
+                      same data with cursors and ETags. The install blocks for every host — the apps above and the rest — are published as a repository, with a README
                       that says the same things in the same order.
                     </p>
                     <div className="flex flex-wrap gap-3 text-sm">

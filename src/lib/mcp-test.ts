@@ -16,7 +16,7 @@
 // branch with a stubbed server and never by regex.
 
 import {
-  MCP_ANON_CAPS, MCP_PROTOCOL_VERSION, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, MCP_HOSTS, readSignInFact,
+  MCP_ANON_CAPS, MCP_PROTOCOL_VERSION, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, MCP_HOSTS, MCP_PAGE_HOSTS, readSignInFact,
   andList, MCP_ANON_TOOL_NAMES, type SignInFact, type SignInState,
 } from "@/config/mcp-tools";
 
@@ -28,9 +28,14 @@ import {
  */
 export const MCP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-mcp`;
 
-/** The hosts that sign a person in (no key field) and the ones that carry a key — read off the host mirror, never typed. */
+/**
+ * The hosts that sign a person in (no key field) — the server's fact is
+ * about all of them, so the full table — and the key-carrying hosts the
+ * sentence tells the person to connect FROM: only the page's tiles, never a
+ * host the page sends to GitHub. Read off the host mirror, never typed.
+ */
 const chatHosts = () => andList(MCP_HOSTS.filter((h) => !h.header).map((h) => h.name));
-const keyHosts = () => andList(MCP_HOSTS.filter((h) => h.header && h.id !== "more").map((h) => h.name));
+const keyHosts = () => andList(MCP_PAGE_HOSTS.filter((h) => h.header).map((h) => h.name));
 
 export interface McpTestReport {
   /** Whether initialize answered at all; the sentence below explains either way. */
