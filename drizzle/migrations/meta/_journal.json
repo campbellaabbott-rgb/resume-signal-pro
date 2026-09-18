@@ -344,6 +344,34 @@
       "when": 1789596815603,
       "tag": "0048_a_look_at_the_guide_does_not_start_the_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1789763030032,
+      "tag": "0049_a_filing_is_a_fact_with_two_dates_and_a_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789763064178,
+      "tag": "0050_a_name_is_compared_only_after_both_sides_are_stripped_the_same_way",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1789763086320,
+      "tag": "0051_the_matcher_reads_the_names_the_deploy_mirrored_never_the_live_ones",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789763128762,
+      "tag": "0052_a_filing_row_is_refused_before_it_is_stored_wrong",
+      "breakpoints": true
     }
   ]
 }

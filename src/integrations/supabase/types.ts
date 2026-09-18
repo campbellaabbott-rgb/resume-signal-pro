@@ -2223,6 +2223,78 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_layoff_partition: {
+        Row: {
+          arm: string
+          cohort_from: string | null
+          cohort_to: string | null
+          computed_at: string | null
+          employers_n: number | null
+          filings_read_at: string | null
+          gate_share_30: number | null
+          half_width_30: number | null
+          insufficient_reason: string | null
+          max_employer_share: number | null
+          n_at_risk_30: number | null
+          newest_filing_event_date: string | null
+          relist_rate_30: number | null
+          still_open_30: number | null
+          still_open_30_hi: number | null
+          still_open_30_lo: number | null
+          sufficient_30: boolean
+          sum_check_30: number | null
+          taken_down_30: number | null
+          warn_lag_n: number | null
+          warn_lag_p50_days: number | null
+        }
+        Insert: {
+          arm: string
+          cohort_from?: string | null
+          cohort_to?: string | null
+          computed_at?: string | null
+          employers_n?: number | null
+          filings_read_at?: string | null
+          gate_share_30?: number | null
+          half_width_30?: number | null
+          insufficient_reason?: string | null
+          max_employer_share?: number | null
+          n_at_risk_30?: number | null
+          newest_filing_event_date?: string | null
+          relist_rate_30?: number | null
+          still_open_30?: number | null
+          still_open_30_hi?: number | null
+          still_open_30_lo?: number | null
+          sufficient_30?: boolean
+          sum_check_30?: number | null
+          taken_down_30?: number | null
+          warn_lag_n?: number | null
+          warn_lag_p50_days?: number | null
+        }
+        Update: {
+          arm?: string
+          cohort_from?: string | null
+          cohort_to?: string | null
+          computed_at?: string | null
+          employers_n?: number | null
+          filings_read_at?: string | null
+          gate_share_30?: number | null
+          half_width_30?: number | null
+          insufficient_reason?: string | null
+          max_employer_share?: number | null
+          n_at_risk_30?: number | null
+          newest_filing_event_date?: string | null
+          relist_rate_30?: number | null
+          still_open_30?: number | null
+          still_open_30_hi?: number | null
+          still_open_30_lo?: number | null
+          sufficient_30?: boolean
+          sum_check_30?: number | null
+          taken_down_30?: number | null
+          warn_lag_n?: number | null
+          warn_lag_p50_days?: number | null
+        }
+        Relationships: []
+      }
       job_board_meta: {
         Row: {
           k: string
@@ -2607,6 +2679,356 @@ export type Database = {
           company_token?: string
           feed_total?: number | null
           verified_at?: string
+        }
+        Relationships: []
+      }
+      layoff_board_names: {
+        Row: {
+          company_token: string
+          display_name: string
+          display_norm: string
+          mirrored_at: string
+          vendor: string
+        }
+        Insert: {
+          company_token: string
+          display_name: string
+          display_norm: string
+          mirrored_at: string
+          vendor: string
+        }
+        Update: {
+          company_token?: string
+          display_name?: string
+          display_norm?: string
+          mirrored_at?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
+      layoff_employer_aliases: {
+        Row: {
+          alias_id: number
+          alias_norm: string | null
+          cik: number | null
+          company_token: string
+          decided_at: string
+          decided_by: string
+          decision: string
+          evidence: string
+          relation: string
+          state_scope: string[] | null
+        }
+        Insert: {
+          alias_id?: never
+          alias_norm?: string | null
+          cik?: number | null
+          company_token: string
+          decided_at?: string
+          decided_by: string
+          decision: string
+          evidence: string
+          relation: string
+          state_scope?: string[] | null
+        }
+        Update: {
+          alias_id?: never
+          alias_norm?: string | null
+          cik?: number | null
+          company_token?: string
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          evidence?: string
+          relation?: string
+          state_scope?: string[] | null
+        }
+        Relationships: []
+      }
+      layoff_feed_health: {
+        Row: {
+          etag: string | null
+          extract_failed: boolean | null
+          feed: string
+          last_attempt_at: string | null
+          last_ok_at: string | null
+          latest_public_date: string | null
+          note: string | null
+          rows_last_run: number | null
+          stale: boolean
+          state: string
+        }
+        Insert: {
+          etag?: string | null
+          extract_failed?: boolean | null
+          feed: string
+          last_attempt_at?: string | null
+          last_ok_at?: string | null
+          latest_public_date?: string | null
+          note?: string | null
+          rows_last_run?: number | null
+          stale?: boolean
+          state?: string
+        }
+        Update: {
+          etag?: string | null
+          extract_failed?: boolean | null
+          feed?: string
+          last_attempt_at?: string | null
+          last_ok_at?: string | null
+          latest_public_date?: string | null
+          note?: string | null
+          rows_last_run?: number | null
+          stale?: boolean
+          state?: string
+        }
+        Relationships: []
+      }
+      layoff_filing_rollup: {
+        Row: {
+          filings: number
+          month: string
+          rolled_at: string
+          source: string
+          state: string
+          workers_sum: number | null
+        }
+        Insert: {
+          filings?: number
+          month: string
+          rolled_at?: string
+          source: string
+          state?: string
+          workers_sum?: number | null
+        }
+        Update: {
+          filings?: number
+          month?: string
+          rolled_at?: string
+          source?: string
+          state?: string
+          workers_sum?: number | null
+        }
+        Relationships: []
+      }
+      layoff_filings: {
+        Row: {
+          adsh: string | null
+          amend_unresolved: boolean
+          amends_adsh: string | null
+          bln_hash_id: string | null
+          cik: number | null
+          effective_date: string | null
+          effective_raw: string | null
+          event_basis: string
+          event_date: string
+          event_type: string | null
+          excerpt: string | null
+          feed: string | null
+          filer_norm: string
+          filer_raw: string
+          filing_id: string
+          first_seen_at: string
+          form: string | null
+          headcount: number | null
+          headcount_basis: string | null
+          is_temporary: boolean | null
+          is_workforce_event: boolean | null
+          last_seen_at: string
+          notice_pdf_url: string | null
+          parse_confidence: number | null
+          parser_version: string | null
+          pct: number | null
+          public_basis: string
+          public_date: string
+          section_text: string | null
+          site_city: string | null
+          site_county: string | null
+          site_raw: string | null
+          source: string
+          source_name: string
+          source_read_at: string
+          source_url: string
+          state: string | null
+          status: string
+          supersedes_id: string | null
+          timing_text: string | null
+          workers: number | null
+        }
+        Insert: {
+          adsh?: string | null
+          amend_unresolved?: boolean
+          amends_adsh?: string | null
+          bln_hash_id?: string | null
+          cik?: number | null
+          effective_date?: string | null
+          effective_raw?: string | null
+          event_basis: string
+          event_date: string
+          event_type?: string | null
+          excerpt?: string | null
+          feed?: string | null
+          filer_norm: string
+          filer_raw: string
+          filing_id: string
+          first_seen_at?: string
+          form?: string | null
+          headcount?: number | null
+          headcount_basis?: string | null
+          is_temporary?: boolean | null
+          is_workforce_event?: boolean | null
+          last_seen_at?: string
+          notice_pdf_url?: string | null
+          parse_confidence?: number | null
+          parser_version?: string | null
+          pct?: number | null
+          public_basis: string
+          public_date: string
+          section_text?: string | null
+          site_city?: string | null
+          site_county?: string | null
+          site_raw?: string | null
+          source: string
+          source_name: string
+          source_read_at: string
+          source_url: string
+          state?: string | null
+          status?: string
+          supersedes_id?: string | null
+          timing_text?: string | null
+          workers?: number | null
+        }
+        Update: {
+          adsh?: string | null
+          amend_unresolved?: boolean
+          amends_adsh?: string | null
+          bln_hash_id?: string | null
+          cik?: number | null
+          effective_date?: string | null
+          effective_raw?: string | null
+          event_basis?: string
+          event_date?: string
+          event_type?: string | null
+          excerpt?: string | null
+          feed?: string | null
+          filer_norm?: string
+          filer_raw?: string
+          filing_id?: string
+          first_seen_at?: string
+          form?: string | null
+          headcount?: number | null
+          headcount_basis?: string | null
+          is_temporary?: boolean | null
+          is_workforce_event?: boolean | null
+          last_seen_at?: string
+          notice_pdf_url?: string | null
+          parse_confidence?: number | null
+          parser_version?: string | null
+          pct?: number | null
+          public_basis?: string
+          public_date?: string
+          section_text?: string | null
+          site_city?: string | null
+          site_county?: string | null
+          site_raw?: string | null
+          source?: string
+          source_name?: string
+          source_read_at?: string
+          source_url?: string
+          state?: string | null
+          status?: string
+          supersedes_id?: string | null
+          timing_text?: string | null
+          workers?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "layoff_filings_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "layoff_filings"
+            referencedColumns: ["filing_id"]
+          },
+        ]
+      }
+      layoff_matches: {
+        Row: {
+          alias_id: number | null
+          company_token: string
+          filing_id: string
+          matched_at: string
+          matched_norm: string
+          matched_via: string
+          relation: string
+        }
+        Insert: {
+          alias_id?: number | null
+          company_token: string
+          filing_id: string
+          matched_at?: string
+          matched_norm: string
+          matched_via: string
+          relation: string
+        }
+        Update: {
+          alias_id?: number | null
+          company_token?: string
+          filing_id?: string
+          matched_at?: string
+          matched_norm?: string
+          matched_via?: string
+          relation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "layoff_matches_alias_id_fkey"
+            columns: ["alias_id"]
+            isOneToOne: false
+            referencedRelation: "layoff_employer_aliases"
+            referencedColumns: ["alias_id"]
+          },
+          {
+            foreignKeyName: "layoff_matches_filing_id_fkey"
+            columns: ["filing_id"]
+            isOneToOne: false
+            referencedRelation: "layoff_filings"
+            referencedColumns: ["filing_id"]
+          },
+        ]
+      }
+      layoff_read_log: {
+        Row: {
+          fetched: number | null
+          id: number
+          kept: number | null
+          kind: string
+          ms: number | null
+          new_rows: number | null
+          note: string | null
+          ok: boolean
+          read_at: string
+        }
+        Insert: {
+          fetched?: number | null
+          id?: never
+          kept?: number | null
+          kind: string
+          ms?: number | null
+          new_rows?: number | null
+          note?: string | null
+          ok: boolean
+          read_at?: string
+        }
+        Update: {
+          fetched?: number | null
+          id?: never
+          kept?: number | null
+          kind?: string
+          ms?: number | null
+          new_rows?: number | null
+          note?: string | null
+          ok?: boolean
+          read_at?: string
         }
         Relationships: []
       }
@@ -5061,6 +5483,25 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      layoff_board_names_mirror: {
+        Args: { p_prune?: boolean; p_rows: Json; p_run_started_at?: string }
+        Returns: {
+          lb_pruned: number
+          lb_total: number
+          lb_upserted: number
+        }[]
+      }
+      layoff_filings_upsert: {
+        Args: { p_rows: Json }
+        Returns: {
+          lu_inserted: number
+          lu_refused: number
+          lu_refused_ids: string[]
+          lu_refused_reasons: string[]
+          lu_updated: number
+        }[]
+      }
+      layoff_norm: { Args: { p_raw: string }; Returns: string }
       load_category_anchors: {
         Args: {
           p_anchors_sha256?: string
