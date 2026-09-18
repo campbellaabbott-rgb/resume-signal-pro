@@ -5501,6 +5501,20 @@ export type Database = {
           lu_updated: number
         }[]
       }
+      layoff_matches_rebuild: {
+        Args: never
+        Returns: {
+          lm_alias: number
+          lm_exact_multitoken: number
+          lm_filings: number
+          lm_ms: number
+          lm_refused_ambiguous: number
+          lm_refused_rejected: number
+          lm_refused_single: number
+          lm_refused_state_gate: number
+          lm_unmatched: number
+        }[]
+      }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
       load_category_anchors: {
         Args: {
