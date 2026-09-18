@@ -589,7 +589,7 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
   });
 
   it("the version names the release with the switch in it", () => {
-    expect(between(MCP, "const SERVER_INFO = {", "\n};")).toMatch(/version: "2026-09-04\.7"/);
+    expect(between(MCP, "const SERVER_INFO = {", "\n};")).toMatch(/version: "2026-09-04\.8"/);
   });
 });
 

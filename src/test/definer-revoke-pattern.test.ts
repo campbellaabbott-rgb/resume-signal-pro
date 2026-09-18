@@ -73,8 +73,16 @@ describe("the pattern, so the next one is not written the same way", () => {
   // definer reader and writer over the RLS-on anchor table of the Other-
   // bucket classifier; promote_category and revert_category (225500 /
   // 226000): the definer writers of job_board_postings.category -- all four
-  // service-role only by design.
-  const SERVICE_ONLY = ["record_tenant_wall", "reconcile_stripe_tick", "category_knn", "load_category_anchors", "promote_category", "revert_category"];
+  // service-role only by design. The six layoff writers (20260918100200 ..
+  // 101000): the board-name mirror, the filings upsert, the matcher, the
+  // partition writer, the monthly rollup-then-prune and the cron-key check --
+  // every one reaches a table with no policy, and an anonymous call to any
+  // of them would write the record the card reads or delete it.
+  const SERVICE_ONLY = [
+    "record_tenant_wall", "reconcile_stripe_tick", "category_knn", "load_category_anchors", "promote_category", "revert_category",
+    "layoff_board_names_mirror", "layoff_filings_upsert", "layoff_matches_rebuild", "refresh_layoff_partition",
+    "roll_up_and_prune_layoff_filings", "layoff_cron_key_matches",
+  ];
 
   // PER STATEMENT: the phrase must sit on the function's own REVOKE, not
   // anywhere in a file that happens to hold it (a table REVOKE in the same
@@ -95,6 +103,24 @@ describe("the pattern, so the next one is not written the same way", () => {
     expect(mutated).toMatch(/FROM PUBLIC, anon, authenticated/); // the old whole-file match would have passed
     expect(mutated).not.toMatch(revokedByName("load_category_anchors"));
     expect("REVOKE ALL ON FUNCTION public.load_category_anchors(text, jsonb, jsonb, text, boolean)\n  FROM PUBLIC, anon, authenticated;").toMatch(revokedByName("load_category_anchors"));
+  });
+
+  it("every layoff writer is also locked by a pg_proc loop in its own file, so an overload cannot slip past the literal", () => {
+    // The 20260730070000 shape: the literal REVOKE names one signature; the
+    // loop covers every signature the name has. Both, in the same file.
+    for (const fn of SERVICE_ONLY.filter((n) => /layoff/.test(n))) {
+      const own = files.map(read).filter((t) => revokedByName(fn).test(t));
+      expect(own.length, `${fn}: no migration carries its own REVOKE`).toBeGreaterThanOrEqual(1);
+      expect(own.some((t) => new RegExp(`proname = '${fn}'[\\s\\S]*?REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated`).test(t)),
+        `${fn}: the pg_proc loop is missing from the file that revokes it by name`).toBe(true);
+    }
+  });
+
+  it("the three layoff readers are granted to anon on purpose -- one NULL-source row per token is the answer, never a 42501", () => {
+    const all = files.map(read).join("\n");
+    expect(all).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_employer_layoff_filings\(text\[\]\) TO anon, authenticated, service_role/);
+    expect(all).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_employer_layoff_filings_all\(text\) TO anon, authenticated, service_role/);
+    expect(all).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_layoff_partition\(\) TO anon, authenticated, service_role/);
   });
 
   it("does NOT touch the functions that are anon-readable on purpose", () => {

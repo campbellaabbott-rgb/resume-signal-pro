@@ -110,7 +110,132 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-08-29.6"; // .6: 4h degraded cooldown (one incident, one email) + news slots stamped only when actually announced
+const BUILD_VERSION = "2026-09-18.7"; // .7: layoff_feeds check (read-log liveness, EDGAR completeness, filing plausibility; skips with a reason on empty or unmigrated tables)
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYOFF FEEDS: A FILING THE CARD PRINTS IS ONLY AS GOOD AS THE READ BEHIND IT.
+//
+// The layoff-filings poller reads SEC EDGAR hourly and the state WARN feeds
+// nightly, and two SQL crons (the matcher, the partition writer) run daily.
+// Each run leaves a row in layoff_read_log. Nothing on a card says "live";
+// every line prints the filing's own date and OUR read time -- and that read
+// time only stays honest while the crons keep running. A poller that dies
+// leaves every card printing "read 3 days ago" with nobody told.
+//
+// So this check reads the TABLES (never the function's log lines) and asks:
+//   liveness      every kind has an ok=true run inside its bound -- the
+//                 EDGAR read inside LAYOFF_STALE_HOURS.edgar, the nightly and
+//                 daily kinds inside LAYOFF_STALE_HOURS.warn (twice the
+//                 nightly cadence; the same bound after which a card stops
+//                 printing a relative age). The one-time backfill kind is not
+//                 required to recur.
+//   completeness  the latest full-text audit found nothing the Atom feed had
+//                 missed (Atom >= FTS; FTS < Atom is expected -- the index
+//                 runs ~97.7% -- so only the other direction alerts).
+//   plausibility  no row is dated after today; every SEC row carries its
+//                 Item 2.05 section; every 8-K/A names what it amends or is
+//                 flagged unresolved; both partition arms exist; a sufficient
+//                 arm's S(30) sits inside [0.02, 0.98] and a sufficient filed
+//                 arm spans at least LAYOFF_MIN_ARM_EMPLOYERS employers.
+//
+// THE SKIP PATH: when the tables are not there yet (the migration has not
+// applied) or hold nothing at all (the poller has never run), the check is
+// recorded as skipped WITH THAT REASON -- never as passing, never absent.
+// The bounds mirror src/config/layoffs.ts; the cross-runtime guard reads
+// them from this file by regex and fails on drift.
+// ─────────────────────────────────────────────────────────────────────────────
+const LAYOFF_STALE_HOURS = { edgar: 6, warn: 48 } as const;
+const LAYOFF_MIN_ARM_EMPLOYERS = 10;
+/** The read-log kinds that must recur, each with the hours inside which it needs an ok run. */
+const LAYOFF_LIVE_KINDS: Record<string, number> = {
+  edgar_atom: LAYOFF_STALE_HOURS.edgar,
+  edgar_fts_audit: LAYOFF_STALE_HOURS.warn,
+  warn: LAYOFF_STALE_HOURS.warn,
+  matcher: LAYOFF_STALE_HOURS.warn,
+  partition: LAYOFF_STALE_HOURS.warn,
+};
+/** A published share of roles still advertised at day 30 outside this band is an instrument reading, not a market one. */
+const LAYOFF_S30_PLAUSIBLE: readonly [number, number] = [0.02, 0.98];
+
+interface LayoffReadRow { kind: string; read_at: string; ok: boolean; new_rows: number | null }
+interface LayoffPartitionRow { arm: string; sufficient_30: boolean | null; still_open_30: number | string | null; employers_n: number | null; computed_at: string | null }
+interface LayoffFeedInput {
+  /** layoff_read_log rows inside the widest bound, any order. */
+  readLog: LayoffReadRow[];
+  /** count(*) of layoff_filings. */
+  filingsTotal: number;
+  /** count(*) of layoff_filings where event_date > current_date. */
+  futureDated: number;
+  /** count(*) of sec_8k_205 rows with section_text NULL. */
+  secWithoutSection: number;
+  /** count(*) of form 8-K/A rows with amends_adsh NULL and amend_unresolved false. */
+  amendmentsUnresolved: number;
+  /** every row of job_board_layoff_partition. */
+  partition: LayoffPartitionRow[];
+}
+interface LayoffFeedVerdict { skip?: string; passed: boolean; error?: string; summary: string }
+
+/**
+ * The whole check as a pure function of what the tables hold and the clock,
+ * so a test can hand it fixtures -- an empty table, a dead poller, a
+ * partition arm printing 1.0 -- and watch it skip or fail without a database.
+ */
+function evaluateLayoffFeeds(input: LayoffFeedInput, nowMs: number): LayoffFeedVerdict {
+  if (input.readLog.length === 0 && input.filingsTotal === 0) {
+    return { skip: 'layoff tables are empty — the poller has never run (deploy layoff-filings and run the backfill)', passed: true, summary: 'empty' };
+  }
+  const problems: string[] = [];
+
+  // liveness: the newest ok=true run per kind, against that kind's bound.
+  const newestOk: Record<string, number> = {};
+  for (const r of input.readLog) {
+    if (r.ok !== true) continue;
+    const t = Date.parse(r.read_at);
+    if (!Number.isFinite(t)) continue;
+    if (!(r.kind in newestOk) || t > newestOk[r.kind]) newestOk[r.kind] = t;
+  }
+  const ages: string[] = [];
+  for (const [kind, hours] of Object.entries(LAYOFF_LIVE_KINDS)) {
+    const t = newestOk[kind];
+    if (t === undefined) { problems.push(`${kind}: no ok run recorded`); ages.push(`${kind}=never`); continue; }
+    const ageH = (nowMs - t) / 3_600_000;
+    ages.push(`${kind}=${ageH.toFixed(1)}h`);
+    if (ageH > hours) problems.push(`${kind}: last ok run ${ageH.toFixed(1)}h ago (bound ${hours}h)`);
+  }
+
+  // completeness: the newest full-text audit, ok or not, must not have found accessions the Atom feed missed.
+  let newestAudit: LayoffReadRow | null = null;
+  for (const r of input.readLog) {
+    if (r.kind !== 'edgar_fts_audit' || r.ok !== true) continue;
+    if (!newestAudit || Date.parse(r.read_at) > Date.parse(newestAudit.read_at)) newestAudit = r;
+  }
+  if (newestAudit && typeof newestAudit.new_rows === 'number' && newestAudit.new_rows > 0) {
+    problems.push(`the full-text audit found ${newestAudit.new_rows} Item 2.05 accession(s) the Atom feed missed`);
+  }
+
+  // plausibility
+  if (input.futureDated > 0) problems.push(`${input.futureDated} filing(s) dated after today`);
+  if (input.secWithoutSection > 0) problems.push(`${input.secWithoutSection} SEC row(s) without their Item 2.05 section`);
+  if (input.amendmentsUnresolved > 0) problems.push(`${input.amendmentsUnresolved} 8-K/A row(s) name no original and are not flagged unresolved`);
+  const arms = new Set(input.partition.map((p) => p.arm));
+  if (!arms.has('filed') || !arms.has('control')) problems.push(`partition holds ${input.partition.length} arm(s); both filed and control must always be written`);
+  for (const p of input.partition) {
+    if (p.sufficient_30 !== true) continue;
+    const s30 = p.still_open_30 === null ? NaN : Number(p.still_open_30);
+    if (!Number.isFinite(s30) || s30 < LAYOFF_S30_PLAUSIBLE[0] || s30 > LAYOFF_S30_PLAUSIBLE[1]) {
+      problems.push(`${p.arm} arm is sufficient with S(30)=${p.still_open_30} outside [${LAYOFF_S30_PLAUSIBLE[0]}, ${LAYOFF_S30_PLAUSIBLE[1]}] — a windowed board is being published as a share`);
+    }
+    if (p.arm === 'filed' && (typeof p.employers_n !== 'number' || p.employers_n < LAYOFF_MIN_ARM_EMPLOYERS)) {
+      problems.push(`filed arm is sufficient on ${p.employers_n ?? 'no'} employer(s); the floor is ${LAYOFF_MIN_ARM_EMPLOYERS}`);
+    }
+  }
+
+  const summary = `filings=${input.filingsTotal} ${ages.join(' ')}`;
+  return problems.length === 0
+    ? { passed: true, summary }
+    : { passed: false, error: `layoff feeds: ${problems.join('; ')} [${summary}]`, summary };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -1379,6 +1504,54 @@ serve(async (req) => {
       });
       if (overallStatus === 'healthy') overallStatus = 'degraded';
       errorMessage = errorMessage || 'Job board status endpoint unreachable';
+    }
+
+
+    // Check: LAYOFF FEEDS. Reads the layoff tables through the service client
+    // (they carry no anon policy) and hands what they hold to
+    // evaluateLayoffFeeds. Any table that does not answer -- not migrated,
+    // timed out, errored -- records a skip with the reason; an empty table is
+    // the poller's own skip path. See the block above for what it asks.
+    try {
+      const LAYOFF_MS = 6_000;
+      const sinceIso = new Date(Date.now() - 2 * LAYOFF_STALE_HOURS.warn * 3_600_000).toISOString();
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const within = <T,>(p: PromiseLike<T>): Promise<T | { timedOut: true }> =>
+        Promise.race([Promise.resolve(p), new Promise<{ timedOut: true }>((res) => setTimeout(() => res({ timedOut: true }), LAYOFF_MS))]);
+      const [logR, totalR, futureR, secR, amendR, partR] = await Promise.all([
+        within(supabase.from('layoff_read_log').select('kind, read_at, ok, new_rows').gte('read_at', sinceIso).order('read_at', { ascending: false }).limit(600)),
+        within(supabase.from('layoff_filings').select('filing_id', { count: 'exact', head: true })),
+        within(supabase.from('layoff_filings').select('filing_id', { count: 'exact', head: true }).gt('event_date', todayIso)),
+        within(supabase.from('layoff_filings').select('filing_id', { count: 'exact', head: true }).eq('source', 'sec_8k_205').is('section_text', null)),
+        within(supabase.from('layoff_filings').select('filing_id', { count: 'exact', head: true }).eq('form', '8-K/A').is('amends_adsh', null).eq('amend_unresolved', false)),
+        within(supabase.from('job_board_layoff_partition').select('arm, sufficient_30, still_open_30, employers_n, computed_at')),
+      ]);
+      const failed = [logR, totalR, futureR, secR, amendR, partR].find((r) => 'timedOut' in r || (r as { error?: { message?: string } | null }).error);
+      if (failed) {
+        const why = 'timedOut' in failed ? `a layoff table read exceeded its ${LAYOFF_MS}ms deadline` : `layoff tables unreadable: ${(failed as { error?: { message?: string } }).error?.message ?? 'error'}`;
+        skip('layoff_feeds', why);
+      } else {
+        const count = (r: unknown) => (r as { count?: number | null }).count ?? 0;
+        const verdict = evaluateLayoffFeeds({
+          readLog: ((logR as { data?: LayoffReadRow[] | null }).data ?? []),
+          filingsTotal: count(totalR),
+          futureDated: count(futureR),
+          secWithoutSection: count(secR),
+          amendmentsUnresolved: count(amendR),
+          partition: ((partR as { data?: LayoffPartitionRow[] | null }).data ?? []),
+        }, Date.now());
+        if (verdict.skip) {
+          skip('layoff_feeds', verdict.skip);
+        } else {
+          checks.push({ name: 'layoff_feeds', passed: verdict.passed, responseTimeMs: 0, error: verdict.error });
+          if (!verdict.passed) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage || 'Layoff feeds: a read is stale or a stored filing is implausible';
+          }
+        }
+      }
+    } catch (e) {
+      skip('layoff_feeds', e instanceof Error ? e.message : 'layoff tables unreadable');
     }
 
     // Check: VENDOR SCHEMA DRIFT. The normalizer tests lock our parsing to fixed

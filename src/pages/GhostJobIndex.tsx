@@ -14,6 +14,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { VIZ_SERIES_A } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
+import { LayoffPartitionSection } from "@/components/ghost/LayoffPartitionSection";
 // One declaration of the observation-window floor, in /jobs, read by every
 // surface that publishes a fourteen-day fill claim. Re-typing 21 here is how
 // this table and the board start disagreeing about which fields may speak.
@@ -1192,6 +1193,12 @@ export default function GhostJobIndex() {
             </p>
           </div>
         )}
+
+        {/* Roles at employers with a recent layoff filing: the day-30 chain
+            partitioned on a qualifying filing, rendered in its unavailable
+            state with its reason until both arms clear the gate. Its own
+            component, its own reader, no ratio. */}
+        <LayoffPartitionSection />
 
         {/* Methodology */}
         <div className="rounded-2xl border border-border bg-muted/30 p-5">

@@ -84,6 +84,39 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
     "ai_response_valid", "ai_parse_error", "generation_duration_ms", "metadata", "ai_model_used", "max_retries",
     "next_retry_at", "retry_count",
   ],
+  // The layoff-filings tables (20260918100000 onwards). layoff_matches_rebuild
+  // reads five of them plus job_board_postings; refresh_layoff_partition joins
+  // layoff_filings and layoff_matches to the closure ledgers, the postings,
+  // the snapshots and the observability table. Every OUT name of those
+  // writers carries a prefix (lm_, lw_, lu_, lb_, lr_) and every reader's
+  // (lf_, la_, lp_), so none is a column here; the map exists so the strict
+  // loop can see the tables at all.
+  layoff_filings: [
+    "filing_id", "source", "filer_raw", "filer_norm", "event_date", "event_basis", "public_date", "public_basis",
+    "source_read_at", "source_url", "source_name", "status", "supersedes_id", "cik", "adsh", "form", "amends_adsh",
+    "amend_unresolved", "section_text", "excerpt", "pct", "headcount", "headcount_basis", "timing_text",
+    "is_workforce_event", "parse_confidence", "parser_version", "state", "feed", "bln_hash_id", "site_raw", "site_city",
+    "site_county", "workers", "effective_date", "effective_raw", "event_type", "is_temporary", "notice_pdf_url",
+    "first_seen_at", "last_seen_at",
+  ],
+  layoff_employer_aliases: [
+    "alias_id", "alias_norm", "cik", "company_token", "relation", "state_scope", "decision", "evidence", "decided_at", "decided_by",
+  ],
+  layoff_board_names: ["vendor", "company_token", "display_name", "display_norm", "mirrored_at"],
+  layoff_matches: ["filing_id", "company_token", "matched_via", "matched_norm", "alias_id", "relation", "matched_at"],
+  layoff_feed_health: [
+    "feed", "state", "last_ok_at", "last_attempt_at", "latest_public_date", "rows_last_run", "etag", "extract_failed", "stale", "note",
+  ],
+  layoff_read_log: ["id", "kind", "read_at", "fetched", "kept", "new_rows", "ok", "ms", "note"],
+  layoff_filing_rollup: ["month", "source", "state", "filings", "workers_sum", "rolled_at"],
+  job_board_layoff_partition: [
+    "arm", "taken_down_30", "still_open_30", "still_open_30_lo", "still_open_30_hi", "half_width_30", "relist_rate_30",
+    "n_at_risk_30", "employers_n", "max_employer_share", "gate_share_30", "sum_check_30", "cohort_from", "cohort_to",
+    "sufficient_30", "insufficient_reason", "newest_filing_event_date", "warn_lag_p50_days", "warn_lag_n", "computed_at",
+    "filings_read_at",
+  ],
+  job_board_board_observability: ["company_token", "bucket", "lap_w0", "as_of"],
+  job_board_company_snapshots: ["company_token", "snapshot_date", "open_roles"],
 };
 
 /**
@@ -299,6 +332,10 @@ describe("category_knn qualifies every OUT name that is also an anchor column", 
 const STRICT_FUNCTIONS = [
   "api_key_check", "api_key_issue", "api_key_issue_agent", "mcp_anon_check",
   "agent_pass_grant", "agent_queue_enqueue", "agent_pass_metrics", "agent_adoption_metrics",
+  // The layoff matcher and the partition writer (20260918100400 / 100700):
+  // plpgsql, RETURNS TABLE, over the two locked layoff tables and the
+  // closure ledgers. Both ship fully prefixed.
+  "layoff_matches_rebuild", "refresh_layoff_partition",
 ];
 
 describe("the API key functions do not name a column in their return shape", () => {

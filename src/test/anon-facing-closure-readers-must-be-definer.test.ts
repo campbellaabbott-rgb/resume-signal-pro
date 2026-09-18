@@ -34,11 +34,19 @@ const DIR = resolve(__dirname, "../../supabase/migrations");
 // reconstruct every company's hiring curve for the last month, which is the
 // same asset the closure lock was protecting, in a more convenient shape.
 // Adding it here is what makes the DEFINER check cover its readers too.
+// layoff_filings and layoff_matches joined this list 2026-09-18: both are
+// created with RLS on and NO policy (a filing reaches a surface only through
+// a definer reader that joins the two), and the partition writer joins both
+// to the closure ledgers. An INVOKER reader granted to anon would return one
+// NULL-source row per token -- exactly the shape of "no filing" -- for every
+// employer, forever, and nothing would go red.
 const LOCKED_TABLES = [
   "job_board_closures",
   "job_board_exits",
   "job_board_pool_samples",
   "job_board_company_snapshots",
+  "layoff_filings",
+  "layoff_matches",
 ];
 
 /** Latest CREATE of each function — Lovable re-stamps migrations, so filename
@@ -94,16 +102,18 @@ describe("no anon-facing function reads a locked table as INVOKER", () => {
     expect(defs.size).toBeGreaterThan(20);
   });
 
+  // Every migration, read once: the grant scan below runs per locked-table
+  // reader, and re-reading ~600 files for each of them blew the 5 s test
+  // timeout under a loaded machine.
+  const ALL_SQL = readdirSync(DIR).map((f) => readFileSync(resolve(DIR, f), "utf8")).join("\n");
+
   it("every closure-reading function granted to anon is SECURITY DEFINER", () => {
     const offenders: string[] = [];
     for (const [name, def] of defs) {
       const readsLocked = LOCKED_TABLES.some((t) => def.includes(t));
       if (!readsLocked) continue;
       // Is it exposed to anon anywhere in the migrations?
-      const grantedToAnon = readdirSync(DIR).some((f) => {
-        const sql = readFileSync(resolve(DIR, f), "utf8");
-        return new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${name}\\([^)]*\\)\\s+TO[^;]*anon`).test(sql);
-      });
+      const grantedToAnon = new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${name}\\([^)]*\\)\\s+TO[^;]*anon`).test(ALL_SQL);
       if (!grantedToAnon) continue;
       if (!isDefiner(name, def)) offenders.push(name);
     }
@@ -121,6 +131,19 @@ describe("no anon-facing function reads a locked table as INVOKER", () => {
     ]) {
       expect(isDefiner(name, defs.get(name) ?? ""), `${name} must be DEFINER`).toBe(true);
     }
+  });
+
+  it("the three layoff readers are found, read a locked table, and are DEFINER with search_path pinned", () => {
+    for (const name of ["get_employer_layoff_filings", "get_employer_layoff_filings_all", "get_layoff_partition"]) {
+      const def = defs.get(name) ?? "";
+      expect(def, `${name} is not defined`).not.toBe("");
+      expect(isDefiner(name, def), `${name} must be DEFINER`).toBe(true);
+      expect(def, `${name} must pin search_path`).toMatch(/SET search_path = public/);
+    }
+    // The card reader and the lander reader read both locked tables; the
+    // partition reader reads the writer's two-row output, never the ledgers.
+    expect(defs.get("get_employer_layoff_filings")).toMatch(/layoff_matches[\s\S]*layoff_filings|layoff_filings[\s\S]*layoff_matches/);
+    expect(defs.get("get_layoff_partition")).not.toMatch(/job_board_closures|job_board_exits|layoff_filings\b/);
   });
 
   it("every DEFINER-by-ALTER also has its search_path pinned", () => {

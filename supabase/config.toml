@@ -130,6 +130,14 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.job-board]
     verify_jwt = false
+  # The layoff-filings poller is kicked by pg_cron (net.http_post from
+  # migration 20260918101000) and by its own slice/backfill self-kicks, neither
+  # of which carries a JWT; the function's only door is the x-layoff-cron
+  # header checked against the vault key (layoff_cron_key_matches) before any
+  # work. Without this block every kick is a gateway 401 that never reaches the
+  # function or its read log.
+  [functions.layoff-filings]
+    verify_jwt = false
   # Public so the cron can trigger {action:send} and, critically, so the email
   # unsubscribe link (a plain browser click with no JWT) works. Safe: the send
   # action is opt-in only and self-throttled to once per search per 6 days, and

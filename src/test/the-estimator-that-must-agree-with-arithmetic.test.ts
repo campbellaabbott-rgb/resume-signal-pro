@@ -818,6 +818,70 @@ describe("the shipped SQL mirrors the reference estimator", () => {
   }
 });
 
+// THE LAYOFF PARTITION WRITER (20260918100700, refresh_layoff_partition) runs
+// the 217500 day-30 chain once more with the filing arm as its partition key.
+// It publishes NO MEDIAN (the table has no column for one) and no day-14
+// figures, so it is pinned here on its own: every mirror check EXCEPT
+// median-horizon, plus the two properties the partition adds -- the arm is
+// keyed on the filing's event_date against posted_at and never on the day we
+// read it, and the filed arm's gate carries the employer floor and the share
+// cap while the control arm's does not. The pglite run of the migration
+// (scripts/verify-migration-20260918100000.mjs) proves the arithmetic on
+// hand-worked arms; this pins the spelling so a later re-issue cannot drift.
+const LAYOFF_PARTITION_SQL = "20260918100700_two_arms_side_by_side_never_a_ratio.sql";
+
+describe("the layoff partition writer mirrors the reference estimator (no median to pin)", () => {
+  const RAW = readRaw(LAYOFF_PARTITION_SQL);
+  const CODE = stripComments(RAW);
+  // The day-30 bounds are named s30_lo / s30_hi here (the chain carries only
+  // the day-30 horizon); the routine reads the day-14 names, so they are
+  // renamed for the read and nothing else is touched.
+  const body = CODE.slice(CODE.indexOf("CREATE OR REPLACE FUNCTION public.refresh_layoff_partition"))
+    .replace(/AS s30_lo\b/g, "AS s_lo").replace(/AS s30_hi\b/g, "AS s_hi");
+
+  it("is the partition writer and nothing else, and the renamed bounds were found", () => {
+    expect(body).not.toBe("");
+    expect(CODE.match(/CREATE OR REPLACE FUNCTION/g)?.length).toBe(1);
+    expect(CODE.match(/AS s30_lo\b/g)?.length, "the day-30 lower bound").toBe(1);
+    expect(CODE.match(/AS s30_hi\b/g)?.length, "the day-30 upper bound").toBe(1);
+  });
+
+  it("passes every mirror check but the median horizon, against comment-stripped code", () => {
+    const v = mirrorViolations(body).filter((x) => x !== "median-horizon");
+    expect(v, `${LAYOFF_PARTITION_SQL} drifted from the reference estimator`).toEqual([]);
+    // It publishes no median at all: neither spelling of one appears.
+    expect(body).not.toMatch(/FILTER \(WHERE [\w.]+\.tt <= 30 AND [\w.]+\.(?:r_cif >= 0\.5|s <= 0\.5)\)/);
+    expect(body).not.toMatch(/median/i);
+  });
+
+  it("keys the arm on the filing's event_date against posted_at, never on the read date or first_seen", () => {
+    expect(body).toMatch(/x\.event_date\s*<=\s*c\.posted_at::date/);
+    expect(body).toMatch(/x\.event_date\s*>\s*\(c\.posted_at - make_interval\(days => \(SELECT [\w.]+\.layoff_lookback_days FROM k [\w]+\)\)\)::date/);
+    expect(body).not.toMatch(/source_read_at::date\s*<=\s*[\w.]+\.posted_at/);
+    expect(body).not.toMatch(/COALESCE\(\s*[\w.]*posted_at\s*,\s*[\w.]*(?:first_seen|effective_posted)/i);
+  });
+
+  it("gates on the 217500 thresholds, and the employer floor and share cap on the filed arm only", () => {
+    const gate = body.slice(body.indexOf("AS sufficient_30") - 700, body.indexOf("AS sufficient_30"));
+    expect(gate).toMatch(/>= \(SELECT [\w.]+\.min_n_at_risk_30 FROM k/);
+    expect(gate).toMatch(/\/ 2 <= \(SELECT [\w.]+\.max_half_width_30 FROM k/);
+    expect(gate).toMatch(/abs\([\w.]+\.r30 \+ [\w.]+\.x30 \+ [\w.]+\.s30 - 1\) <= 0\.000001/);
+    expect(gate).toMatch(/a\.arm = 'control'\s+OR \(COALESCE\([\w.]+\.employers_n, 0\) >= \(SELECT [\w.]+\.min_arm_employers FROM k/);
+    expect(gate).toMatch(/COALESCE\([\w.]+\.top_share, 1\) <= \(SELECT [\w.]+\.max_employer_share FROM k/);
+    // Never a ratio of the two arms.
+    expect(body).not.toMatch(/filed[\w.]*\s*\/\s*[\w.]*control|control[\w.]*\s*\/\s*[\w.]*filed/i);
+  });
+
+  it("teeth: the same routine fires on the writer with its clamp removed", () => {
+    const noClamp = body.replace("ln(GREATEST(1.0 - c.d::numeric / c.n, 1e-12))", "ln(1.0 - c.d::numeric / c.n)");
+    expect(noClamp).not.toBe(body);
+    expect(mirrorViolations(noClamp)).toContain("clamp");
+    const readDated = body.replace("x.event_date <= c.posted_at::date", "f.source_read_at::date <= c.posted_at::date");
+    expect(readDated).not.toBe(body);
+    expect(readDated).toMatch(/source_read_at::date\s*<=\s*[\w.]+\.posted_at/);
+  });
+});
+
 describe("the mirror checks have teeth", () => {
   // Each fixture is the real estimator with ONE clause spelled the pre-fix way.
   // If a check cannot fire, it is decoration, and this repo has shipped

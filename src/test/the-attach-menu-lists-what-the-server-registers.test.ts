@@ -482,7 +482,7 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
 
   it("serverInfo names the bump, a title, the human page and an icon that exists", () => {
     const info = between(MCP, "const SERVER_INFO = {", "\n};");
-    expect(info).toMatch(/version: "2026-09-04\.7"/);
+    expect(info).toMatch(/version: "2026-09-04\.8"/);
     expect(info).toMatch(/title: "[^"]+"/);
     expect(info).toMatch(/websiteUrl: "https:\/\/resumebooster\.work\/agents"/);
     const icon = /src: "https:\/\/resumebooster\.work\/([^"]+)"/.exec(info)?.[1];

@@ -265,7 +265,10 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // cron-built rows real pages serve from that nothing watched.
     // 2026-08-28.5: per-check alert clocks — a flapping check emails once per
     // day and a set-shrink never emails (the user's inbox measured the flap).
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-08-\d\d\.\d+"/);
+    // 2026-09-18.7: the layoff_feeds check — read-log liveness per kind,
+    // EDGAR completeness against the full-text audit, filing plausibility,
+    // and a skip with its reason on empty or unmigrated tables.
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-09-18\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {

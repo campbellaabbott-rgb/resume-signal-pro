@@ -47,6 +47,7 @@ import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { DeclaredWagesCard } from "@/components/jobs/DeclaredWagesCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
+import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
 import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
@@ -4972,6 +4973,17 @@ export default function Jobs() {
     };
   }, [jobs]);
 
+  // A FOURTH OBSERVED FACT, KEPT APART FROM THE THREE VERDICTS ABOVE. The
+  // newest qualifying layoff filing per visible employer, one row per token
+  // asked, fetched by the same batching rules as the curve and the growth
+  // row and read by nothing that decides the badge: it is printed beside
+  // "Actively hiring" as a filing -- filer, date, count, link -- and never
+  // folded into it. The employer page reads every qualifying filing for its
+  // one token. Both readers, their hide rules and the copy live in
+  // LayoffFilingLine.tsx.
+  const layoffFilingOf = useEmployerLayoffFilings(jobs.map((j) => j.token));
+  const landerLayoffFilings = useEmployerLayoffFilingsAll(landerCompany);
+
   /** THE PAGE'S ONE READING OF THE CLOSURE RECORD. Three answers, and every
    *  surface below branches on all three — see hiringRecordVerdict for why the
    *  third one exists and what it cost to not have it. */
@@ -6519,6 +6531,9 @@ export default function Jobs() {
                   return null;
                 })()}
               </div>
+              {/* The filing, as a filing, on its own line under the row
+                  above -- after the closure-record line, never inside it. */}
+              <LayoffFilingLine row={layoffFilingOf(detailJob.token)} country={detailJob.country} />
 
               {/* ── AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD ─────
                   The card is SKIMMED and the panel is READ, and they were
@@ -7794,6 +7809,10 @@ export default function Jobs() {
                       : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relists_90d })}
                   </li>
                 )}
+                {/* Every qualifying filing in the window, after the growth,
+                    open-roles and filled lines and never in the header beside
+                    the pill: "Also on record:", each with its own link. */}
+                <LayoffFilingsOnRecord rows={landerLayoffFilings} />
                 {/* THE PACE LINE. Three states and no fourth: a share with its
                     interval; a bound where the record never reaches half inside
                     the days we can see; or, below the RPC's own bar, the span
@@ -10654,6 +10673,10 @@ export default function Jobs() {
                               }
                               return null;
                             })()}
+                            {/* The employer's newest qualifying layoff filing,
+                                AFTER the slot so its three states keep their
+                                position, and beside it rather than in it. */}
+                            <LayoffFilingChip row={layoffFilingOf(job.token)} country={job.country} />
                             {/* HOW LONG THIS ONE HAS BEEN UP, AGAINST WHAT
                                 ACTUALLY HAPPENS TO POSTINGS LIKE IT — and now
                                 on the surface where people triage, not only in

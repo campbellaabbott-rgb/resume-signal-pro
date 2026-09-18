@@ -166,9 +166,24 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // very next statement — a guard now executes the gate); the guide's
 // rate-limit row reads the free-key default from one constant and says
 // so; the decision log names the transport the challenge took.
+// 09-04.8: the filing beside the record. Every employer_hiring_record row
+// gains layoff_filing — the newest layoff filing joined to that board by a
+// hand-curated alias or an exact multi-token name match (a US state WARN
+// notice or an SEC 8-K Item 2.05 disclosure), read through one more
+// SECURITY DEFINER reader on the same tokens and passed through as the
+// reader wrote it: filer verbatim, both dates with their bases, count,
+// state or form, link, our read stamp; null for a token nothing qualifies
+// on, never omitted. It is printed beside record / unknown_reason and is no
+// part of either; the response carries layoff_basis saying so, with the
+// display window, the worker bar and the two read cadences interpolated
+// from LAYOFF_BARS, a mirror of src/config/layoffs.ts and of the reader and
+// cron migrations, pinned cross-runtime by its own guard. A filing read
+// that fails never fails the (metered) record call: the rows ship with
+// layoff_filing null and layoff_read on the response names the fault. The
+// unkeyed tier, the sign-in path and every other tool are untouched.
 const SERVER_INFO = {
   name: "resumebooster-job-board",
-  version: "2026-09-04.7",
+  version: "2026-09-04.8",
   // 2025-11-25 Implementation fields, additive: a display name, the human
   // page, and an icon a host may show beside the connector.
   title: "Resume Booster job board",
@@ -721,6 +736,76 @@ const HIRING_RECORD_UNKNOWN = {
     "unknown, not a verdict about the employer.",
 } as const;
 
+/**
+ * THE FILING BARS, MIRRORED FROM THE READER THAT APPLIES THEM AND THE
+ * SCHEDULE THAT FEEDS IT.
+ *
+ * get_employer_layoff_filings owns every predicate (a filing older than the
+ * display window, a state notice under the single-site worker bar, an
+ * amendment, or an employer without a curated or exact multi-token match
+ * never leaves the table); the cron rows own the cadence. These four values
+ * exist here so layoff_basis and the tool's description can SAY what the
+ * field carries and how often its sources are read, and for nothing else —
+ * no runner compares a filing against them. They mirror
+ * src/config/layoffs.ts (LAYOFF_DISPLAY_MAX_AGE_DAYS, LAYOFF_WARN_MIN_WORKERS,
+ * LAYOFF_READ_CADENCE), which mirrors the migrations; the cross-runtime guard
+ * reads all three sources off comment-stripped code and fails on drift.
+ */
+const LAYOFF_BARS = {
+  displayMaxAgeDays: 90,
+  warnMinWorkers: 50,
+  cadenceEdgar: "hourly",
+  cadenceWarn: "nightly",
+} as const;
+
+/**
+ * WHAT A FILING IS AND IS NOT, in the words the site's spec fixes for the
+ * same field. A filing is printed as a filing: the filer as the source names
+ * it, the filing's own dates and ours, a count, a state or a form, a link —
+ * no adjective, no verdict, and never a part of record or unknown_reason.
+ */
+const LAYOFF_FILING_BASIS =
+  `A filing is a fact about the employer on one date, read from the named source at read_at; it is printed beside the ` +
+  `record and is no part of record, unknown_reason, or any verdict. state_warn is a US state notice (workers counted at ` +
+  `one site); sec_8k_205 is an Item 2.05 disclosure that names no roles or sites. An 8-K amendment never appears; a ` +
+  `filing without a curated or exact multi-token employer match never appears. Only a filing whose event_date is within ` +
+  `the last ${LAYOFF_BARS.displayMaxAgeDays} days is carried, and a state notice only when it states at least ` +
+  `${LAYOFF_BARS.warnMinWorkers} workers (an unstated count is not zero and is not carried). Filings are read ` +
+  `${LAYOFF_BARS.cadenceEdgar} from SEC EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices as consolidated by ` +
+  `Big Local News; read_at is our read, event_date and public_date are the filing's own, each with its basis named. ` +
+  `more_n counts further qualifying filings the employer page lists; null means nothing qualified, never that nothing happened ` +
+  `-- except when layoff_read on the response is not "ok": then the filing read failed on this call, every layoff_filing is null ` +
+  `for that reason alone, and the record beside it is untouched.`;
+
+/** The layoff_filing object, field for field the reader's lf_ columns with the prefix dropped. */
+const LAYOFF_FILING_SCHEMA = {
+  type: ["object", "null"],
+  description: "The newest qualifying layoff filing joined to this employer, or null when none qualifies. A fact about the employer on one date, beside the record and no part of it.",
+  properties: {
+    source: { type: "string", enum: ["sec_8k_205", "state_warn"], description: "state_warn: a US state WARN notice. sec_8k_205: an SEC 8-K Item 2.05 disclosure." },
+    relation: { type: "string", enum: ["filer", "subsidiary_site"], description: "filer: the filer is this board's employer. subsidiary_site: the filer is the parent company of this board's employer." },
+    filer: { type: "string", description: "The employer as the source names it, verbatim — never the board's own display name." },
+    event_date: { type: "string", description: "The filing's own date: the WARN notice date or the 8-K report date. Named by event_basis." },
+    event_basis: { type: "string" },
+    public_date: { type: "string", description: "When it became public: the SEC file date or the state's received/processed/posted stamp. Named by public_basis." },
+    public_basis: { type: "string" },
+    state: { type: ["string", "null"], description: "Two-letter state of a WARN notice; null on an SEC filing." },
+    site: { type: ["string", "null"], description: "The notice's site as the state lists it; null when not stated or on an SEC filing." },
+    workers: { type: ["integer", "null"], description: "Positions the WARN notice states at that site. Null on an SEC filing — never zero." },
+    event_type: { type: ["string", "null"], enum: ["closure", "layoff", "relocation", "unknown", null], description: "What the WARN notice says it is, as the state classifies it; null on an SEC filing." },
+    effective_date: { type: ["string", "null"], description: "The date the WARN notice gives for the separations; null when it gives none or on an SEC filing." },
+    pct: { type: ["number", "null"], description: "Workforce share the 8-K states, as parsed; null when it states none or on a WARN notice." },
+    headcount: { type: ["integer", "null"], description: "Positions the 8-K states, as parsed; null when it states none or on a WARN notice." },
+    form: { type: ["string", "null"], description: "The SEC form (an amendment never appears); null on a WARN notice." },
+    source_url: { type: "string", description: "The filing itself, at the source." },
+    source_name: { type: "string", description: "SEC EDGAR, or the state agency as it names itself." },
+    read_at: { type: "string", description: "When we read it. Our stamp, never a date basis for the filing." },
+    more_n: { type: "integer", description: "Further qualifying filings for this employer beyond this newest one." },
+  },
+  required: ["source", "relation", "filer", "event_date", "event_basis", "public_date", "public_basis", "state", "site", "workers", "event_type", "effective_date", "pct", "headcount", "form", "source_url", "source_name", "read_at", "more_n"],
+  additionalProperties: false,
+};
+
 const HIRING_RECORD_ROW_SCHEMA = {
   type: "object",
   properties: {
@@ -739,8 +824,9 @@ const HIRING_RECORD_ROW_SCHEMA = {
     feed_total: { type: ["integer", "null"], description: "What the employer's feed advertised at the last verification. Null when never verified." },
     basis: { type: "string" },
     note: { type: "string", description: "Present on an unknown row: what the absence means and does not mean." },
+    layoff_filing: LAYOFF_FILING_SCHEMA,
   },
-  required: ["company_token", "record", "basis"],
+  required: ["company_token", "record", "basis", "layoff_filing"],
   additionalProperties: true,
 };
 
@@ -1141,6 +1227,10 @@ const TOOLS = [
       "observed answers record:'unknown' with the reason, never a verdict about the employer: on a board bigger than one visit " +
       "can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it, " +
       "so silence there is about our instrument. Every row carries its basis. " +
+      `Every row also carries layoff_filing — the newest layoff filing joined to that employer by a hand-curated alias or an exact multi-token name match, ` +
+      `a US state WARN notice or an SEC 8-K Item 2.05 disclosure, printed as a filing (filer verbatim, its dates with their bases, count, state or form, link), ` +
+      `read ${LAYOFF_BARS.cadenceEdgar} from SEC EDGAR and ${LAYOFF_BARS.cadenceWarn} from state notices, null when none qualifies within ` +
+      `${LAYOFF_BARS.displayMaxAgeDays} days, and no part of record or any verdict; layoff_basis on the response says what it is and is not. ` +
       `Pair with employer_growth for the other half of what the site calls "Actively hiring". ${KEYED_TOOL_SENTENCE}`,
     annotations: READS_THE_BOARD,
     inputSchema: {
@@ -1160,8 +1250,10 @@ const TOOLS = [
         asked: { type: "integer" },
         window_days: { type: "integer" },
         basis: { type: "string" },
+        layoff_basis: { type: "string", description: "What layoff_filing is and is not, beside every row's record." },
+        layoff_read: { type: "string", description: "\"ok\" when the filing reader answered for every employer; otherwise \"unread: <fault>\" and every layoff_filing on this response is null for that reason, never because nothing qualified. The record is unaffected either way." },
       },
-      required: ["employers", "basis"],
+      required: ["employers", "basis", "layoff_basis", "layoff_read"],
       additionalProperties: true,
     },
   },
@@ -2283,6 +2375,20 @@ async function runEmployerHiringRecord(client: SupabaseClient, args: Record<stri
   if (error) throw new Error(`get_company_hiring_health: ${error.message}`);
   const rows = new Map<string, Record<string, unknown>>();
   for (const r of (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>) rows.set(String(r.company_token), r);
+  // The filing is an accessory beside the record, never a gate on it: this
+  // tool is metered before it runs, so a reader that cannot answer -- the
+  // migration not yet applied, its statement timeout, a transient fault --
+  // must not take a charged call down with it. The rows ship with the record
+  // intact and layoff_filing null, and layoff_read names the fault so null
+  // is not read as "nothing qualified".
+  let filings = new Map<string, LayoffFiling | null>();
+  let layoffRead = "ok";
+  try {
+    filings = await employerLayoffFilings(client, tokens);
+  } catch (e) {
+    layoffRead = `unread: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300);
+    console.warn(`[agent-mcp] employer_hiring_record: ${layoffRead}`);
+  }
   const closedCol = `closed_${HIRING_RECORD_WINDOW_DAYS}d`;
   const supersededCol = `superseded_${HIRING_RECORD_WINDOW_DAYS}d`;
   const employers = tokens.map((tok) => {
@@ -2301,9 +2407,72 @@ async function runEmployerHiringRecord(client: SupabaseClient, args: Record<stri
       unknown_reason: unknownReason,
       basis: HIRING_RECORD_BASIS,
       ...(unknownReason ? { note: HIRING_RECORD_UNKNOWN[unknownReason] } : {}),
+      layoff_filing: filings.get(tok) ?? null,
     };
   });
-  return { employers, asked: tokens.length, window_days: HIRING_RECORD_WINDOW_DAYS, basis: HIRING_RECORD_BASIS };
+  return { employers, asked: tokens.length, window_days: HIRING_RECORD_WINDOW_DAYS, basis: HIRING_RECORD_BASIS, layoff_basis: LAYOFF_FILING_BASIS, layoff_read: layoffRead };
+}
+
+/** The layoff_filing object as the response carries it: the reader's row with its lf_ prefix dropped and nothing added. */
+type LayoffFiling = {
+  source: string; relation: string; filer: string;
+  event_date: string; event_basis: string; public_date: string; public_basis: string;
+  state: string | null; site: string | null; workers: number | null;
+  event_type: string | null; effective_date: string | null;
+  pct: number | null; headcount: number | null; form: string | null;
+  source_url: string; source_name: string; read_at: string; more_n: number;
+};
+
+/**
+ * ONE MORE RPC ON THE SAME TOKENS, ONE ROW PER TOKEN, NOTHING RE-DERIVED.
+ *
+ * get_employer_layoff_filings answers a row for every distinct token asked
+ * (a LEFT JOIN off unnest) with lf_source NULL when nothing qualifies — a
+ * row is an answer, and "no row" is never "no filing". Every predicate that
+ * decides whether a filing may be printed lives in that SECURITY DEFINER
+ * reader; this function drops the lf_ prefix and nothing else. A token the
+ * reader did not answer is a fault in the read and is thrown, exactly as the
+ * health read treats its own missing row; it is never filled with null,
+ * because null here means "nothing qualified", and an unread token is not
+ * that.
+ */
+async function employerLayoffFilings(client: SupabaseClient, tokens: string[]): Promise<Map<string, LayoffFiling | null>> {
+  const { data, error } = await client.rpc("get_employer_layoff_filings", { p_tokens: tokens });
+  if (error) throw new Error(`get_employer_layoff_filings: ${error.message}`);
+  const out = new Map<string, LayoffFiling | null>();
+  for (const r of (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>) {
+    out.set(String(r.lf_company_token), layoffFilingOf(r));
+  }
+  for (const tok of tokens) if (!out.has(tok)) throw new Error(`get_employer_layoff_filings answered no row for ${tok}`);
+  return out;
+}
+
+/** lf_<field> → field. A NULL lf_source is the reader saying nothing qualified. */
+function layoffFilingOf(r: Record<string, unknown>): LayoffFiling | null {
+  if (r.lf_source == null) return null;
+  const text = (v: unknown): string | null => (v == null ? null : String(v));
+  const num = (v: unknown): number | null => (v == null || v === "" || Number.isNaN(Number(v)) ? null : Number(v));
+  return {
+    source: String(r.lf_source),
+    relation: String(r.lf_relation),
+    filer: String(r.lf_filer),
+    event_date: String(r.lf_event_date),
+    event_basis: String(r.lf_event_basis),
+    public_date: String(r.lf_public_date),
+    public_basis: String(r.lf_public_basis),
+    state: text(r.lf_state),
+    site: text(r.lf_site),
+    workers: num(r.lf_workers),
+    event_type: text(r.lf_event_type),
+    effective_date: text(r.lf_effective_date),
+    pct: num(r.lf_pct),
+    headcount: num(r.lf_headcount),
+    form: text(r.lf_form),
+    source_url: String(r.lf_source_url),
+    source_name: String(r.lf_source_name),
+    read_at: String(r.lf_read_at),
+    more_n: num(r.lf_more_n) ?? 0,
+  };
 }
 
 /**
