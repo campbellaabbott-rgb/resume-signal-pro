@@ -351,6 +351,13 @@
       "when": 1789763030032,
       "tag": "0049_a_filing_is_a_fact_with_two_dates_and_a_link",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789763064178,
+      "tag": "0050_a_name_is_compared_only_after_both_sides_are_stripped_the_same_way",
+      "breakpoints": true
     }
   ]
 }

@@ -5483,6 +5483,7 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      layoff_norm: { Args: { p_raw: string }; Returns: string }
       load_category_anchors: {
         Args: {
           p_anchors_sha256?: string
