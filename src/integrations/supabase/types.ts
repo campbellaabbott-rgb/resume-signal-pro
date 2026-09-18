@@ -5000,6 +5000,31 @@ export type Database = {
           window_days: number
         }[]
       }
+      get_employer_layoff_filings: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          lf_company_token: string
+          lf_effective_date: string
+          lf_event_basis: string
+          lf_event_date: string
+          lf_event_type: string
+          lf_filer: string
+          lf_form: string
+          lf_headcount: number
+          lf_more_n: number
+          lf_pct: number
+          lf_public_basis: string
+          lf_public_date: string
+          lf_read_at: string
+          lf_relation: string
+          lf_site: string
+          lf_source: string
+          lf_source_name: string
+          lf_source_url: string
+          lf_state: string
+          lf_workers: number
+        }[]
+      }
       get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }
@@ -5499,6 +5524,20 @@ export type Database = {
           lu_refused_ids: string[]
           lu_refused_reasons: string[]
           lu_updated: number
+        }[]
+      }
+      layoff_matches_rebuild: {
+        Args: never
+        Returns: {
+          lm_alias: number
+          lm_exact_multitoken: number
+          lm_filings: number
+          lm_ms: number
+          lm_refused_ambiguous: number
+          lm_refused_rejected: number
+          lm_refused_single: number
+          lm_refused_state_gate: number
+          lm_unmatched: number
         }[]
       }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
