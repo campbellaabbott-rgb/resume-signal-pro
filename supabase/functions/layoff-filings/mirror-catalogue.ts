@@ -13,8 +13,13 @@
 // test) and from mirror-rows.ts (which the operator script imports under
 // node and which must therefore never drag the catalogue in).
 
-import { JOB_SOURCES } from "../job-board/sources.ts";
-import { EMPLOYER_ALIASES } from "../job-board/employer-aliases.ts";
+// Symlinks in this directory to ../job-board/sources.ts and
+// ../job-board/employer-aliases.ts: the deploy uploads only this function's
+// own folder (plus _shared), so a ../job-board import does not resolve at
+// bundle time. The links keep the bytes identical to the catalogue job-board
+// serves — same file, one name closer.
+import { JOB_SOURCES } from "./board-sources.ts";
+import { EMPLOYER_ALIASES } from "./board-employer-aliases.ts";
 import { buildMirrorRows } from "./mirror-rows.ts";
 import type { MirrorBuild } from "./mirror-rows.ts";
 
