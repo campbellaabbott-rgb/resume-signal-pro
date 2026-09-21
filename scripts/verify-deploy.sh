@@ -17,6 +17,8 @@ UA="Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 J() { curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$1"; }
 R() { curl -s -m 60 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-{\}}"; }
 MC() { curl -s -m 60 -X POST "$B/functions/v1/agent-mcp" -H "Content-Type: application/json" -H "apikey: $K" -H "mcp-protocol-version: 2025-06-18" "$@"; }
+# Table probes select `*`: a named column that the table lacks answers 400 before
+# the permission check runs, which reads as anything but the 401 it should be.
 # A refusal probe: 42501 = revoked by name (good); PGRST202 = wrong argument names, NOT absence.
 probe() { local out; out=$(R "$1" "$2"); local code; code=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
   case "$code" in 42501) echo "PASS  $1 as anon -> 42501 (revoked by name)";; PGRST202) echo "INFO  $1 -> PGRST202 (argument names differ from the migration, or not applied)";; *) echo "FAIL  $1 as anon -> $code  $(printf '%s' "$out" | head -c 200)";; esac; }
@@ -42,12 +44,12 @@ echo "== 3. company counts are servable =="
 J '{"action":"list","limit":1,"includeFacets":true}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const c=(j.companies||[])[0]||{};console.log((("open" in c)&&!("count" in c)?"PASS":"FAIL")+"  facet row carries `open` and no `count`");console.log("INFO  companiesOpenCount="+j.companiesOpenCount+" totalAllCompanies="+j.totalAllCompanies)})'
 
 echo "== 4. S(30): columns present, the 1.0 leak not live =="
-R get_category_fill_curve '{"p_days":30,"p_window":90}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  fill curve non-JSON")}if(!Array.isArray(j))return console.log("INFO  "+JSON.stringify(j).slice(0,120));console.log((j.length&&"still_open_30" in j[0]?"PASS":"FAIL")+"  still_open_30 present ("+j.length+" rows)");console.log((j.filter(r=>r.still_open_30===1).length===0?"PASS":"FAIL")+"  no field publishes still_open_30 = 1.0")})'
+R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  fill curve non-JSON")}if(!Array.isArray(j))return console.log("INFO  "+JSON.stringify(j).slice(0,120));console.log((j.length&&"still_open_30" in j[0]?"PASS":"FAIL")+"  still_open_30 present ("+j.length+" rows)");console.log((j.filter(r=>r.still_open_30===1).length===0?"PASS":"FAIL")+"  no field publishes still_open_30 = 1.0")})'
 
 echo "== 5d. vendor counts on the facets action (board-wide, one stamp) =="
 J '{"action":"facets"}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const src=j.sources||{};const cats=j.categories||{};const a=Object.values(src).reduce((x,y)=>x+y,0),b=Object.values(cats).reduce((x,y)=>x+y,0);console.log((Object.keys(src).length>=15?"PASS":"FAIL")+"  sources has "+Object.keys(src).length+" keys");console.log((a===b?"PASS":"FAIL")+"  sum(sources)="+a.toLocaleString()+" vs sum(categories)="+b.toLocaleString());console.log((Object.values(src).every(v=>v!==10000)?"PASS":"FAIL")+"  no source count equals the 10,000 list cap")})'
 
-echo "== 5f. field-panel percentages are the field\x27s own (hourly field_grid) =="
+echo "== 5f. field-panel percentages are the field’s own (hourly field_grid) =="
 R get_explore_cache '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  explore cache non-JSON")}const g=(Array.isArray(j)?j[0]:j)||{};const fg=g.field_grid||g.fieldGrid||{};const F=fg.fields||fg;const pct=(k)=>{const f=F[k];return f&&f.n?Math.round(100*(f.work_mode_n||0)/f.n):null};const a=pct("finance"),b=pct("design");console.log((a!==null&&b!==null&&a!==b?"PASS":"INFO")+"  finance work-mode share="+a+"%  design="+b+"% (board-wide was 23% for both)")})'
 
 echo "== 5g. the leaderboard is timed (its own aggregation, 9-25s live) =="
@@ -71,8 +73,8 @@ ok(j.length===3,"one row per asked token ("+j.length+")");ok(j.every(r=>V.has(r.
 const z=j.find(r=>r.company_token==="zz-not-a-board");ok(!!z&&z.verdict==="unknown"&&z.unknown_reason==="no_series","unknown token -> unknown/no_series");
 for(const r of j)console.log("INFO  "+r.company_token+": "+r.verdict+(r.unknown_reason?"/"+r.unknown_reason:"")+" baseline="+r.baseline_served+" latest="+r.latest_served+" removed="+r.removed_departures)})'
 
-echo "== 5l. the runner\x27s staging table is closed to every client role =="
-for T in _mig_stage _mig_probe; do code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/$T?select=name&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  $T SELECT as anon -> $code" || echo "FAIL  $T SELECT as anon -> $code"; done
+echo "== 5l. the runner’s staging table is closed to every client role =="
+for T in _mig_stage _mig_probe; do code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/$T?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  $T SELECT as anon -> $code" || echo "FAIL  $T SELECT as anon -> $code"; done
 probe _mig_exec '{"p_sql":"select 1"}'
 
 echo "== 5m. .72: the pay-widening disclosure =="
@@ -86,7 +88,7 @@ MC -d '{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}' | node -e
 MC -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"board_stats","arguments":{}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=(JSON.parse(s).result)||{};const txt=JSON.stringify(r.content||"");const spent=/allowance is spent/.test(txt);console.log((r.isError?(spent?"INFO":"FAIL"):"PASS")+"  keyless board_stats "+(r.isError?(spent?"refused: this address is over its daily allowance (our own probes) — the wall works":"isError "+txt.slice(0,120)):"answers"+((r.structuredContent||{}).withKey?" with a withKey block":"")))})'
 MC -w '\nHTTPSTATUS:%{http_code}' -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"request_application","arguments":{"jobId":"zz"}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const st=(s.match(/HTTPSTATUS:(\d+)/)||[])[1];s=s.replace(/\nHTTPSTATUS:\d+$/,"");if(st==="401")return console.log("PASS  keyless request_application -> 401 (sign-in is ON and the challenge is answered)");let j;try{j=JSON.parse(s)}catch{j=null}const r=(j&&j.result)||{};const txt=JSON.stringify(r).slice(0,300);console.log((r.isError&&/key|sign-in/i.test(txt)?"PASS":"FAIL")+"  keyless request_application refused in band: "+txt.slice(0,120))})'
 probe mcp_anon_check '{"p_ip_hash":"0000000000000000","p_global_cap":1,"p_ip_cap":1}'
-if [ -n "$RB" ]; then MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"employer_growth","arguments":{"companyTokens":["dominos","tysonfoods~wd5~TSN","zz-not-a-board"]}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=(JSON.parse(s).result)||{};const rows=((r.structuredContent||{}).rows)||[];console.log((!r.isError&&rows.length===3?"PASS":"INFO")+"  keyed employer_growth: "+rows.length+" rows, "+rows.map(x=>x.verdict+(x.unknown_reason?"/"+x.unknown_reason:"")).join(","))})'; fi
+if [ -n "$RB" ]; then MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"employer_growth","arguments":{"companyTokens":["dominos","tysonfoods~wd5~TSN","zz-not-a-board"]}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=(JSON.parse(s).result)||{};const rows=((r.structuredContent||{}).employers)||[];console.log((!r.isError&&rows.length===3?"PASS":"FAIL")+"  keyed employer_growth: "+rows.length+" rows, "+rows.map(x=>x.verdict+(x.unknown_reason?"/"+x.unknown_reason:"")).join(","))})'; fi
 
 echo "== 5o. the six-hour pass =="
 probe agent_pass_grant '{"p_user_id":"00000000-0000-0000-0000-000000000000","p_stripe_session_id":"zz","p_payment_intent_id":"zz","p_amount_cents":0,"p_session_hours":1,"p_applications_total":1,"p_rate_per_min":1,"p_daily_quota":1,"p_shelf_days":1}'
@@ -105,7 +107,7 @@ curl -s -m 30 -A "$UA" "$SITE/agents" > /tmp/vd_agents.html; echo "INFO  /agents
 echo "INFO  /jobs crawler copy links /agents: $(curl -s -m 30 -A "$UA" "$SITE/jobs" | grep -c 'href="/agents"')"
 echo "INFO  homepage strip in crawler copy: $(curl -s -m 30 -A "$UA" "$SITE/" | grep -c 'Bring your own AI agent')"
 
-echo "== 5r. the registry\x27s domain proof and listing =="
+echo "== 5r. the registry’s domain proof and listing =="
 wk=$(curl -s -m 20 "$SITE/.well-known/mcp-registry-auth" | head -1); printf '%s' "$wk" | grep -qE '^v=MCPv1; k=(ed25519|ecdsap384); p=' && echo "PASS  /.well-known/mcp-registry-auth -> $wk" || echo "FAIL  /.well-known/mcp-registry-auth -> $wk"
 [ -f ~/.config/resumebooster/mcp-registry-auth.txt ] && { [ "$(cat ~/.config/resumebooster/mcp-registry-auth.txt)" = "$wk" ] && echo "PASS  the served proof matches the key in ~/.config/resumebooster" || echo "INFO  the served proof differs from the local key (site not re-baked since the key changed)"; }
 curl -s -m 20 "https://registry.modelcontextprotocol.io/v0.1/servers?search=work.resumebooster" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=(JSON.parse(s).servers)||[];console.log((v.length>0?"PASS":"FAIL")+"  registry lists work.resumebooster: "+v.map(x=>(x.server||x).name+"@"+(x.server||x).version).join(","))})'
