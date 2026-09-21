@@ -110,7 +110,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-09-18.7"; // .7: layoff_feeds check (read-log liveness, EDGAR completeness, filing plausibility; skips with a reason on empty or unmigrated tables)
+const BUILD_VERSION = "2026-09-21.1"; // 09-21.1: the daily board-name mirror (read-log kind 'mirror') is a live kind; a mirror that fails every night left stale names with no alarm
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,6 +154,9 @@ const LAYOFF_LIVE_KINDS: Record<string, number> = {
   warn: LAYOFF_STALE_HOURS.warn,
   matcher: LAYOFF_STALE_HOURS.warn,
   partition: LAYOFF_STALE_HOURS.warn,
+  // The board-name mirror the matcher compares against, written daily at 05:00 UTC by the layoff-filings
+  // function; a failed run prunes nothing, so the names go stale silently unless this watches it.
+  mirror: LAYOFF_STALE_HOURS.warn,
 };
 /** A published share of roles still advertised at day 30 outside this band is an instrument reading, not a market one. */
 const LAYOFF_S30_PLAUSIBLE: readonly [number, number] = [0.02, 0.98];

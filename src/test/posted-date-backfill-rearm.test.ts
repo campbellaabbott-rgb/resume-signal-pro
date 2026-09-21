@@ -268,7 +268,9 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // 2026-09-18.7: the layoff_feeds check — read-log liveness per kind,
     // EDGAR completeness against the full-text audit, filing plausibility,
     // and a skip with its reason on empty or unmigrated tables.
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-09-18\.\d+"/);
+    // 2026-09-21.1: the daily board-name mirror (read-log kind 'mirror') is a
+    // live kind — a mirror failing every night left stale names and no alarm.
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-09-21\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {

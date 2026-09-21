@@ -71,7 +71,7 @@ const bad = (kind: string, h: number): ReadRow => ({ kind, read_at: hoursAgo(h),
 
 /** A board an hour after a good night: every kind fresh, nothing implausible, both arms insufficient (today's state). */
 const healthy = (): Input => ({
-  readLog: [ok("edgar_atom", 0.7), ok("edgar_atom", 1.7), ok("edgar_fts_audit", 5.3, 0), ok("warn", 8.3), ok("matcher", 6.8), ok("partition", 6.8)],
+  readLog: [ok("edgar_atom", 0.7), ok("edgar_atom", 1.7), ok("edgar_fts_audit", 5.3, 0), ok("warn", 8.3), ok("mirror", 7.0), ok("matcher", 6.8), ok("partition", 6.8)],
   filingsTotal: 312,
   futureDated: 0,
   secWithoutSection: 0,
@@ -83,13 +83,13 @@ const healthy = (): Input => ({
 });
 
 describe("evaluateLayoffFeeds, executed", () => {
-  it("the bounds it uses are the config's and the kinds it requires are the five that recur", () => {
+  it("the bounds it uses are the config's and the kinds it requires are the six that recur", () => {
     expect(shipped.LAYOFF_STALE_HOURS).toEqual({ edgar: 6, warn: 48 });
     expect(shipped.LAYOFF_MIN_ARM_EMPLOYERS).toBe(10);
     expect(shipped.LAYOFF_S30_PLAUSIBLE).toEqual([0.02, 0.98]);
-    expect(Object.keys(shipped.LAYOFF_LIVE_KINDS).sort()).toEqual(["edgar_atom", "edgar_fts_audit", "matcher", "partition", "warn"]);
+    expect(Object.keys(shipped.LAYOFF_LIVE_KINDS).sort()).toEqual(["edgar_atom", "edgar_fts_audit", "matcher", "mirror", "partition", "warn"]);
     expect(shipped.LAYOFF_LIVE_KINDS.edgar_atom).toBe(6);
-    for (const k of ["edgar_fts_audit", "warn", "matcher", "partition"]) expect(shipped.LAYOFF_LIVE_KINDS[k]).toBe(48);
+    for (const k of ["edgar_fts_audit", "warn", "matcher", "partition", "mirror"]) expect(shipped.LAYOFF_LIVE_KINDS[k]).toBe(48);
     // The one-time backfill is not a kind that must recur.
     expect(shipped.LAYOFF_LIVE_KINDS).not.toHaveProperty("edgar_backfill");
   });
@@ -141,6 +141,30 @@ describe("evaluateLayoffFeeds, executed", () => {
 
   it("each SQL kind is required too: a matcher or partition writer that stopped is named", () => {
     for (const kind of ["matcher", "partition", "edgar_fts_audit"]) {
+      const at = healthy();
+      at.readLog = at.readLog.filter((r) => r.kind !== kind);
+      const v = shipped.evaluateLayoffFeeds(at, NOW);
+      expect(v.passed, kind).toBe(false);
+      expect(v.error).toMatch(new RegExp(`${kind}: no ok run recorded`));
+    }
+  });
+
+  it("the board-name mirror is a live kind: a mirror that fails every night (stale names, never empty) degrades on the daily bound", () => {
+    // The mirror runs at 05:00 UTC by cron and prunes only on success, so a
+    // failing run leaves yesterday's names in place; nothing but this
+    // liveness read tells. Its bound is the daily one (48 h), like the matcher's.
+    const at = healthy();
+    at.readLog = at.readLog.filter((r) => r.kind !== "mirror").concat([bad("mirror", 7), bad("mirror", 31), ok("mirror", 49)]);
+    const v = shipped.evaluateLayoffFeeds(at, NOW);
+    expect(v.passed).toBe(false);
+    expect(v.error).toMatch(/mirror: last ok run 49\.0h ago \(bound 48h\)/);
+    // A run inside the bound with a failed attempt since is not yet stale.
+    at.readLog = at.readLog.filter((r) => r.kind !== "mirror").concat([bad("mirror", 7), ok("mirror", 31)]);
+    expect(shipped.evaluateLayoffFeeds(at, NOW).passed).toBe(true);
+    // The kind the heartbeat watches is the kind the poller writes.
+    const poller = readFileSync(resolve(__dirname, "../../supabase/functions/layoff-filings/index.ts"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/[^\n]*/gm, " ");
+    expect(poller).toMatch(/readLog\(client, "mirror", \{/);
+    for (const kind of ["mirror"]) {
       const at = healthy();
       at.readLog = at.readLog.filter((r) => r.kind !== kind);
       const v = shipped.evaluateLayoffFeeds(at, NOW);
@@ -247,7 +271,7 @@ describe("the call site, on comment-stripped code", () => {
   });
 
   it("the version marker moved with the check, so a stale deploy is tellable from the payload", () => {
-    expect(CODE).toMatch(/const BUILD_VERSION = "2026-09-18\.\d+"/);
+    expect(CODE).toMatch(/const BUILD_VERSION = "2026-09-21\.\d+"/);
   });
 });
 

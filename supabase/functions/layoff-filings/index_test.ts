@@ -15,15 +15,17 @@ import { assert, assertEquals, assertStringIncludes } from "https://deno.land/st
 const RAW = Deno.readTextFileSync(new URL("./index.ts", import.meta.url));
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/^\s*\/\/.*$/gm, "");
 
-Deno.test("the six actions dispatch, and nothing else is an action", () => {
-  for (const a of ["edgar", "edgar_audit", "edgar_backfill", "warn", "matches", "partition"]) {
+Deno.test("the seven actions dispatch, and nothing else is an action", () => {
+  const actions = ["edgar", "edgar_audit", "edgar_backfill", "warn", "matches", "partition", "mirror"];
+  for (const a of actions) {
     assert(new RegExp(`case "${a}":`).test(CODE), `action ${a}`);
   }
+  assertEquals([...CODE.matchAll(/^\s*case "([a-z_]+)":/gm)].map((m) => m[1]).sort(), [...actions].sort());
   assertStringIncludes(CODE, 'default: return json({ error: `unknown action');
 });
 
 Deno.test("every run writes its read-log kind and prints the grep-able line the heartbeat expects", () => {
-  for (const k of ["edgar_atom", "edgar_fts_audit", "edgar_backfill", "warn"]) {
+  for (const k of ["edgar_atom", "edgar_fts_audit", "edgar_backfill", "warn", "mirror"]) {
     assert(new RegExp(`readLog\\(client, "${k}"`).test(CODE), `read log for ${k}`);
   }
   assertStringIncludes(CODE, "[layoff-filings] kind=edgar_atom fetched=");
@@ -34,6 +36,7 @@ Deno.test("every run writes its read-log kind and prints the grep-able line the 
   assertStringIncludes(CODE, "refused_single=${r?.lm_refused_single ?? 0} refused_ambiguous=${r?.lm_refused_ambiguous ?? 0}");
   assertStringIncludes(CODE, "[layoff-filings] kind=edgar_fts_audit fetched=");
   assertStringIncludes(CODE, "fts_only=${ftsOnly}");
+  assertStringIncludes(CODE, "[layoff-filings] kind=mirror rows=");
 });
 
 Deno.test("the mirror constants are spelled once each, as src/config/layoffs.ts and the cross-runtime guard read them", () => {
@@ -77,6 +80,7 @@ Deno.test("the writers are the SQL functions lane A shipped, called through the 
   assertStringIncludes(CODE, 'client.rpc("layoff_filings_upsert", { p_rows: chunk })');
   assertStringIncludes(CODE, 'client.rpc("layoff_matches_rebuild")');
   assertStringIncludes(CODE, 'client.rpc("refresh_layoff_partition")');
+  assertStringIncludes(CODE, 'client.rpc("layoff_board_names_mirror", { p_rows: chunk, p_run_started_at: runStartedAt, p_prune: isLast })');
   assertStringIncludes(CODE, "getServiceClient()");
   // Nothing here reads a filing for a surface: the only select on the table asks for ids it is about to write.
   const selects = [...CODE.matchAll(/from\("layoff_filings"\)\.select\("([^"]*)"\)/g)].map((m) => m[1]);

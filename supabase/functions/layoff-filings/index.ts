@@ -6,6 +6,8 @@
 //   POST { action: "warn", cursor }               nightly: state WARN notices, slice-chained
 //   POST { action: "matches" }                    layoff_matches_rebuild(), the matcher log line
 //   POST { action: "partition" }                  refresh_layoff_partition(), the Ghost-Index writer
+//   POST { action: "mirror", chain }              daily: the board catalogue into layoff_board_names,
+//                                                 then (chain:true) the matcher and the partition
 //
 // Its own function, never a job-board action: the job-board bundle sits at
 // the 4.5 MB cap and a bundle over it silently serves the old version. It
@@ -40,8 +42,10 @@ import { RAW_STATE_MAPS, FL as FL_MAP, TX as TX_MAP } from "./warn-maps/index.ts
 import type { StateMap } from "./warn-maps/types.ts";
 import { fetchTwcYear } from "./tx-xlsx.ts";
 import { fetchFlYear, flListingUrl } from "./fl-html.ts";
+import { deployMirrorRows } from "./mirror-catalogue.ts";
+import type { MirrorRow } from "./mirror-rows.ts";
 
-export const BUILD_VERSION = "2026-09-18.1";
+export const BUILD_VERSION = "2026-09-21.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;
@@ -65,6 +69,8 @@ const AUDIT_DAYS = 3;
 const BACKFILL_CHUNK = 25;
 const WARN_STATES_PER_SLICE = 8;
 const UPSERT_CHUNK = 200;
+/** Rows per layoff_board_names_mirror call; the operator script's default, one run_started_at across every chunk. */
+const MIRROR_CHUNK = 2000;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +118,7 @@ type SupabaseLike = any;
 
 // ── the read log and the writers ───────────────────────────────────────────
 
-type LogKind = "edgar_atom" | "edgar_fts_audit" | "edgar_backfill" | "warn";
+type LogKind = "edgar_atom" | "edgar_fts_audit" | "edgar_backfill" | "warn" | "mirror";
 
 async function readLog(
   client: SupabaseLike,
@@ -629,6 +635,85 @@ async function runWarn(client: SupabaseLike, body: Record<string, unknown>, self
   return json({ ok: allOk, kind: "warn", cursor, next: done ? null : next, states: attempted, rows: rowsMapped, newRows, ms, notes, version: BUILD_VERSION }, allOk ? 200 : 500);
 }
 
+// ── the mirror: the catalogue's names into layoff_board_names ──────────────
+//
+// The matcher's exact rule compares a filer's name against
+// layoff_board_names.display_norm, and until 2026-09-21 that table was
+// written only by scripts/layoff-board-names-mirror.mjs --apply, which needs
+// the service key this project does not hold outside the platform. The
+// table stayed empty; every two-word filer answered no rows. So the deploy
+// writes it: this action builds the rows the script builds (one rule,
+// mirror-rows.ts) from the catalogue this bundle imports, and posts them to
+// layoff_board_names_mirror in chunks that all carry ONE run_started_at,
+// pruning on the last chunk only, so a token that left the catalogue leaves
+// the mirror and a run that fails part-way prunes nothing. display_norm is
+// computed by the writer with layoff_norm; nothing here normalises a name.
+//
+// With chain:true the matcher and the partition writer run after a good
+// mirror, so one POST brings every surface current. The daily cron passes
+// chain:false and lets the existing matcher row, minutes later, do that.
+// The two chained calls report a failure in their line (" ok=false"), never
+// by throwing, so the response carries chainOk (null when nothing chained)
+// and answers 500 when either failed: a caller reading ok:true / HTTP 200
+// must be able to trust that the surfaces it asked for are current.
+
+interface MirrorTally {
+  rows: number; catalogue: number; facet: number; facetSkipped: number;
+  chunks: number; chunksDone: number; upserted: number; pruned: number; total: number;
+}
+
+async function runMirror(client: SupabaseLike, body: Record<string, unknown>): Promise<Response> {
+  const t0 = Date.now();
+  const runStartedAt = new Date().toISOString();
+  const chain = body.chain === true;
+  const built = deployMirrorRows();
+  const chunks: MirrorRow[][] = [];
+  for (let i = 0; i < built.rows.length; i += MIRROR_CHUNK) chunks.push(built.rows.slice(i, i + MIRROR_CHUNK));
+  const tally: MirrorTally = {
+    rows: built.rows.length, catalogue: built.catalogue, facet: built.facet, facetSkipped: built.facetSkipped,
+    chunks: chunks.length, chunksDone: 0, upserted: 0, pruned: 0, total: 0,
+  };
+  let ok = true;
+  let note: string | null = null;
+  try {
+    if (chunks.length === 0) throw new Error("the catalogue built zero rows; nothing written, nothing pruned");
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const isLast = i === chunks.length - 1;
+      const { data, error } = await client.rpc("layoff_board_names_mirror", { p_rows: chunk, p_run_started_at: runStartedAt, p_prune: isLast });
+      if (error) throw new Error(`layoff_board_names_mirror chunk ${i + 1}/${chunks.length}: ${error.message}`);
+      const r = Array.isArray(data) ? data[0] : data;
+      tally.chunksDone += 1;
+      tally.upserted += Number(r?.lb_upserted ?? 0);
+      tally.pruned = Number(r?.lb_pruned ?? 0);
+      tally.total = Number(r?.lb_total ?? 0);
+    }
+  } catch (e) {
+    ok = false;
+    note = `error:${(e as Error).message}`;
+  }
+  const ms = Date.now() - t0;
+  const line =
+    `[layoff-filings] kind=mirror rows=${tally.rows} catalogue=${tally.catalogue} facet=${tally.facet} facet_skipped=${tally.facetSkipped}` +
+    ` chunks=${tally.chunksDone}/${tally.chunks} upserted=${tally.upserted} pruned=${tally.pruned} total=${tally.total}` +
+    ` run_started_at=${runStartedAt} ms=${ms} ok=${ok}` + (note ? ` note=${JSON.stringify(note)}` : "");
+  (ok ? console.log : console.error)(line);
+  // fetched = rows built, kept = rows in the table after the run (what the
+  // matcher can now compare against), new_rows = rows upserted this run.
+  await readLog(client, "mirror", {
+    fetched: tally.rows, kept: tally.total, newRows: tally.upserted, ok, ms,
+    note: [`pruned=${tally.pruned}`, `chunks=${tally.chunksDone}/${tally.chunks}`, `catalogue=${tally.catalogue}`, `facet=${tally.facet}`, note].filter(Boolean).join("; "),
+  });
+  const chained: string[] = [];
+  if (ok && chain) {
+    chained.push(await rebuildMatches(client));
+    chained.push(await refreshPartition(client));
+  }
+  const chainOk: boolean | null = chained.length === 0 ? null : chained.every((l) => !/ ok=false/.test(l));
+  if (chainOk === false) console.error(`[layoff-filings] kind=mirror chain ok=false run_started_at=${runStartedAt}`);
+  return json({ ok, kind: "mirror", ...tally, runStartedAt, chained, chainOk, ms, note, version: BUILD_VERSION }, ok && chainOk !== false ? 200 : 500);
+}
+
 // ── the handler ────────────────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -666,6 +751,7 @@ serve(async (req) => {
       case "warn": return await runWarn(client, body, selfKick);
       case "matches": return json({ ok: true, line: await rebuildMatches(client), version: BUILD_VERSION });
       case "partition": return json({ ok: true, line: await refreshPartition(client), version: BUILD_VERSION });
+      case "mirror": return await runMirror(client, body);
       default: return json({ error: `unknown action ${JSON.stringify(action)}` }, 400);
     }
   } catch (e) {

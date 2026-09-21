@@ -1,5 +1,9 @@
-#!/usr/bin/env node
 // THE MATCHER READS THE NAMES THE DEPLOY MIRRORED, NEVER THE LIVE ONES.
+//
+// (No shebang, on purpose: the file was never executable and every caller
+// runs `node scripts/...`; vite hoists an import helper above line 1 of a
+// module that uses import(), and a shebang there breaks the vitest that
+// imports mirrorRows.)
 //
 // Emits the rows for public.layoff_board_names and, with --apply, writes them
 // through layoff_board_names_mirror(p_rows, p_run_started_at, p_prune) in
@@ -26,9 +30,22 @@
 // and never a second employer. A facet entry whose token is no longer in the
 // catalogue is skipped (the facet file is regenerated, not hand-edited).
 //
+// ONE RULE, TWO RUNTIMES. Since 2026-09-21 the deployed layoff-filings
+// function writes this mirror itself (action "mirror", daily by cron), from
+// the catalogue its bundle imports. The row rule lives in
+// supabase/functions/layoff-filings/mirror-rows.ts and is imported here
+// unchanged (plain node strips the types; the module carries nothing else),
+// so this script and the deploy cannot disagree on what a row is. What CAN
+// disagree is the catalogue each side reads -- the text parser here, the
+// runtime module there -- and the function's parity test runs this script
+// with --emit and requires the same set. The .ts is imported natively where
+// node strips types (22.18+ / 23.6+; the repo runs 25) and through the same
+// tsx require the catalogue already needs where it does not (CI pins 20).
+//
 // USAGE
 //   node scripts/layoff-board-names-mirror.mjs                 # dry run: counts to stdout
 //   node scripts/layoff-board-names-mirror.mjs --out rows.json # write the rows
+//   node scripts/layoff-board-names-mirror.mjs --emit          # the rows as JSON on stdout, counts on stderr
 //   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
 //   node scripts/layoff-board-names-mirror.mjs --apply         # write to the database
 //   --no-facet-names   leave the second-name rows out
@@ -44,49 +61,52 @@ import { dirname, resolve } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..");
+const RULE = resolve(REPO, "supabase/functions/layoff-filings/mirror-rows.ts");
+
+/** Require TypeScript modules through tsx for the duration of one call. Not under vitest: tsx's esbuild
+ *  refuses that environment, which is why the vitest passes the catalogue in and never reaches here. */
+function withTsx(fn) {
+  const require = createRequire(`${REPO}/package.json`);
+  const { register } = require("tsx/cjs/api");
+  const unregister = register();
+  try {
+    return fn(require);
+  } finally {
+    unregister();
+  }
+}
+
+/** The row rule, the function's own module: imported natively where node strips types (and under vitest,
+ *  which transforms it), through tsx on a node that refuses a .ts import (20, the CI pin). */
+async function loadRule() {
+  try {
+    return await import("../supabase/functions/layoff-filings/mirror-rows.ts");
+  } catch (e) {
+    if (e?.code !== "ERR_UNKNOWN_FILE_EXTENSION") throw e;
+    return withTsx((require) => require(RULE));
+  }
+}
+const { buildMirrorRows } = await loadRule();
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
 
 /** Read the catalogue and the facet names through the TypeScript modules. */
 export function loadCatalogueAndFacet() {
-  const require = createRequire(`${REPO}/package.json`);
-  const { register } = require("tsx/cjs/api");
-  const unregister = register();
-  try {
+  return withTsx((require) => {
     const { CATALOG } = require(`${REPO}/src/test/helpers/catalog.ts`);
     const { EMPLOYER_ALIASES } = require(`${REPO}/supabase/functions/job-board/employer-aliases.ts`);
     return { CATALOG, EMPLOYER_ALIASES };
-  } finally {
-    unregister();
-  }
+  });
 }
 
 /** The rows the mirror takes: one per catalogue entry, plus a 'facet' row where the facet name differs.
- *  The catalogue and the facet map are loaded through tsx unless the caller passes them (a vitest does). */
+ *  The catalogue and the facet map are loaded through tsx unless the caller passes them (a vitest does).
+ *  The rule itself is the function's (mirror-rows.ts); this only feeds it the text-parsed catalogue. */
 export function mirrorRows({ withFacetNames = true, catalog = null, employerAliases = null } = {}) {
   const loaded = catalog && employerAliases ? { CATALOG: catalog, EMPLOYER_ALIASES: employerAliases } : loadCatalogueAndFacet();
   const { CATALOG, EMPLOYER_ALIASES } = loaded;
-  const rows = [];
-  const byToken = new Map();
-  for (const e of CATALOG) {
-    rows.push({ vendor: e.source, company_token: e.token, display_name: e.name });
-    if (!byToken.has(e.token)) byToken.set(e.token, []);
-    byToken.get(e.token).push(e);
-  }
-  let facet = 0, facetSkipped = 0;
-  if (withFacetNames) {
-    for (const entry of Object.values(EMPLOYER_ALIASES)) {
-      for (const token of entry.tokens) {
-        const es = byToken.get(token);
-        if (!es) { facetSkipped++; continue; }
-        if (es.some((e) => e.name === entry.name)) continue;
-        rows.push({ vendor: "facet", company_token: token, display_name: entry.name });
-        facet++;
-      }
-    }
-  }
-  return { rows, catalogue: CATALOG.length, facet, facetSkipped };
+  return buildMirrorRows(CATALOG, EMPLOYER_ALIASES, { withFacetNames });
 }
 
 async function apply(rows, { chunk }) {
@@ -120,8 +140,11 @@ if (isMain) {
   const { rows, catalogue, facet, facetSkipped } = mirrorRows({ withFacetNames: !flag("--no-facet-names") });
   const vendors = {};
   for (const r of rows) vendors[r.vendor] = (vendors[r.vendor] ?? 0) + 1;
-  console.log(`[layoff-board-names-mirror] catalogue=${catalogue} facet_rows=${facet} facet_skipped_uncatalogued=${facetSkipped} rows=${rows.length}`);
-  console.log(`[layoff-board-names-mirror] by vendor: ${Object.entries(vendors).sort((a, b) => b[1] - a[1]).map(([v, n]) => `${v}=${n}`).join(" ")}`);
+  // --emit keeps stdout for the rows alone so a caller can parse it; the counts move to stderr.
+  const say = flag("--emit") ? console.error : console.log;
+  say(`[layoff-board-names-mirror] catalogue=${catalogue} facet_rows=${facet} facet_skipped_uncatalogued=${facetSkipped} rows=${rows.length}`);
+  say(`[layoff-board-names-mirror] by vendor: ${Object.entries(vendors).sort((a, b) => b[1] - a[1]).map(([v, n]) => `${v}=${n}`).join(" ")}`);
+  if (flag("--emit")) process.stdout.write(JSON.stringify(rows) + "\n");
   const out = opt("--out", null);
   if (out) {
     writeFileSync(out, JSON.stringify(rows));
