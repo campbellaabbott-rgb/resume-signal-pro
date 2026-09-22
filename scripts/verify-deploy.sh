@@ -110,7 +110,12 @@ echo "INFO  homepage strip in crawler copy: $(curl -s -m 30 -A "$UA" "$SITE/" | 
 echo "== 5r. the registry’s domain proof and listing =="
 wk=$(curl -s -m 20 "$SITE/.well-known/mcp-registry-auth" | head -1); printf '%s' "$wk" | grep -qE '^v=MCPv1; k=(ed25519|ecdsap384); p=' && echo "PASS  /.well-known/mcp-registry-auth -> $wk" || echo "FAIL  /.well-known/mcp-registry-auth -> $wk"
 [ -f ~/.config/resumebooster/mcp-registry-auth.txt ] && { [ "$(cat ~/.config/resumebooster/mcp-registry-auth.txt)" = "$wk" ] && echo "PASS  the served proof matches the key in ~/.config/resumebooster" || echo "INFO  the served proof differs from the local key (site not re-baked since the key changed)"; }
-curl -s -m 20 "https://registry.modelcontextprotocol.io/v0.1/servers?search=work.resumebooster" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=(JSON.parse(s).servers)||[];console.log((v.length>0?"PASS":"FAIL")+"  registry lists work.resumebooster: "+v.map(x=>(x.server||x).name+"@"+(x.server||x).version).join(","))})'
+# The registry's own search is matched loosely: on 2026-09-22 a search for the
+# full namespace "work.resumebooster" answered an EMPTY BODY where the day
+# before it answered the row, while "resumebooster" still returned it. So ask
+# the looser term and assert the NAME on the row, and treat an unparseable or
+# empty body as INFO about the registry, never as a claim about our listing.
+curl -s -m 20 "https://registry.modelcontextprotocol.io/v0.1/servers?search=resumebooster" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  registry search returned no parseable body ("+s.length+" bytes) — the listing is unproven by this run, not gone")}const v=(j.servers)||[];const ours=v.map(x=>(x.server||x)).filter(x=>/^work\.resumebooster\//.test(String(x.name)));console.log((ours.length>0?"PASS":"FAIL")+"  registry lists work.resumebooster: "+(ours.map(x=>x.name+"@"+x.version).join(",")||"NOT among "+v.length+" results"))})'
 
 echo "== 5s. layoff filings: writers closed, tables locked, readers honest, the mirror full =="
 probe refresh_layoff_partition '{}'
