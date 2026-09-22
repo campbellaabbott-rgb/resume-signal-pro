@@ -13,11 +13,14 @@
 // test) and from mirror-rows.ts (which the operator script imports under
 // node and which must therefore never drag the catalogue in).
 
-// Symlinks in this directory to ../job-board/sources.ts and
+// Copies, in this directory, of ../job-board/sources.ts and
 // ../job-board/employer-aliases.ts: the deploy uploads only this function's
 // own folder (plus _shared), so a ../job-board import does not resolve at
-// bundle time. The links keep the bytes identical to the catalogue job-board
-// serves — same file, one name closer.
+// bundle time, and the 2026-09-21 deploy answered by copying both files here.
+// A copy is right until the catalogue moves, and the catalogue moves with
+// every census merge, so a guard (a-copy-of-the-catalogue-drifts-the-day-the-
+// catalogue-moves.test.ts) holds each copy byte-identical to its original and
+// names the cp command when it is not. Never edit the copies; recopy them.
 import { JOB_SOURCES } from "./board-sources.ts";
 import { EMPLOYER_ALIASES } from "./board-employer-aliases.ts";
 import { buildMirrorRows } from "./mirror-rows.ts";
