@@ -8,14 +8,17 @@
 -- few days; seven is the window Supabase's own pg_cron page schedules.
 --
 -- DELETE only, on purpose. Deleting rows returns nothing to the disk figure
--- (the space is reused inside the file); the one-time reclaim is a
--- `VACUUM (FULL) cron.job_run_details;` the operator runs ALONE in one
--- SQL-editor run. It cannot live here: this file executes inside the deploy
--- runner's single transaction, where VACUUM raises 25001 -- and a migration
--- that fails is one the runner rewrites into something that does not
--- (20260827181000 records the vacuum one-shot that errored once a minute for
--- nine days). It cannot live in the cron body either, for the same reason a
--- scheduled VACUUM was removed from postings in 20260830200000.
+-- (the space is reused inside the file); the one-time reclaim of the file is
+-- a full rewrite of that one table, which the OWNER runs by hand, alone, in
+-- a single dashboard SQL-editor run -- and nowhere else. It is not written
+-- out here and must not be added here: this file executes inside the deploy
+-- runner's single transaction, where such a rewrite raises 25001, and a
+-- migration that fails is one the runner rewrites into something that does
+-- not (20260827181000 records the one-shot that errored once a minute for
+-- nine days). It does not belong in the cron body either, for the reason
+-- 20260830200000 removed the scheduled one from postings. Nothing in this
+-- file, comments included, is an instruction to run anything but the DO
+-- block below.
 --
 -- cron.schedule on an existing job name updates it in place (pg_cron 1.6), so
 -- this is idempotent and a re-emitted copy of this file does the same thing.
