@@ -19,6 +19,11 @@ import { LayoffPartitionSection } from "@/components/ghost/LayoffPartitionSectio
 // surface that publishes a fourteen-day fill claim. Re-typing 21 here is how
 // this table and the board start disagreeing about which fields may speak.
 import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
+// The sources line and the audit-trail note both used to spell the platform
+// list out — fifteen names in one and "and 8 more" in the other, over a board
+// that serves nineteen. Both now read the one array, which also drops the
+// source that serves no rows. See src/config/ats-vendors.ts.
+import { SERVING_SOURCE_LIST, servingSourceSummary } from "@/config/ats-vendors";
 
 interface Stats {
   total_open: number;
@@ -648,7 +653,7 @@ export default function GhostJobIndex() {
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Every figure below is computed from the full lifecycle of postings on companies' <b>official</b> job boards
-          (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday, iCIMS, Oracle, Pinpoint) — never an aggregator or a scrape.
+          ({SERVING_SOURCE_LIST}) — never an aggregator or a scrape.
         </p>
 
         {/* Headline stats — always true */}
@@ -849,7 +854,7 @@ export default function GhostJobIndex() {
 
         <HowWeMeasure
           items={[
-            { term: "Verified open roles", method: "A live count of postings currently served from companies' official hiring systems (Greenhouse, Lever, Ashby and 8 more) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass." },
+            { term: "Verified open roles", method: `A live count of postings currently served from companies' official hiring systems (${servingSourceSummary()}) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass.` },
             { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age. Past the cap a posting is deleted, not watched, so nothing on this page says how long postings stay up beyond it. What can be measured is how many reach it: for each field, the share of dated roles from a stated posting window that were still advertised when they reached day 30, with its interval, and beside it the share taken down for good (a ceiling: a takedown we have not yet seen re-listed counts there) and the share re-listed (a floor). The three sum to one before each is rounded to the nearest point, so the printed figures can add to one more or less than a hundred. That line is counted only on boards we read to the end — on a board we can only read part of, a takedown is invisible and every posting would seem to reach the cap — and fields where too few roles sat on such boards are named above the table rather than given a figure. A role still advertised at day 30 is a fact about that posting, not proof of anything about the employer: a role can be genuinely open for longer than a month." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
             { term: "How often roles are actually filled", method: "The share of a field's roles taken down for good — down, and not re-listed under the same title — within 14 days of the date the company itself published, never our discovery date, and never a median. Roles that come back up are counted as re-listings and shown separately; the two together are the share that left the board at all, so the fill figure is always the smaller number. We used to publish a median time to close and state its window beside it; the window was the problem. The board drops any posting older than 30 days, so a role that stays up longer leaves the board instead of being recorded as closed, and every fill surface then required a posting to have stood a week before it counted at all. A median drawn from a window of [7, 30] days lands near 15 whatever employers do — measured 2026-09-06, eighteen fields spanning nursing, law, retail and ML research agreed to within 1.4 days across roughly 600,000 closures. Roles that outlive the cap, and roles still up today, are now counted as unfinished rather than dropped from the sample, which is what that figure got wrong: dropping the slowest cases and taking a median of the rest is not censoring, it is truncation, and it biases the answer down without bound. Same-title relistings are held out as their own outcome, not counted as fills. Where fewer than half of a field's roles had been taken down for good by day 30 there is no typical figure to give and we say so instead of manufacturing one." },

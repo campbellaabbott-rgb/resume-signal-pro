@@ -46,7 +46,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
 export { getAllProducts, PASS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
-export { BOARD_SOURCE_LIST } from "../src/config/ats-vendors";
+export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
@@ -254,6 +254,413 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
         savedAt: new Date().toISOString().slice(0, 10),
       }));
     } catch { /* snapshot refresh is best-effort */ }
+  }
+
+  // ---- The four data pages' own figures (/ghost-job-index, /entry-level-index,
+  // /hiring-trends, /pay-transparency) ----
+  //
+  // MEASURED 2026-09-22 and reproduced 2026-09-23 with a Googlebot UA: those
+  // four documents served 1,035-1,334 characters of body text and ZERO
+  // statistics. Every number on them hydrates client-side, so a crawler, an
+  // AI engine, a reader with JS off and a preview card all got the explainer
+  // and none of the measurements the pages exist to publish -- on four URLs
+  // that are in sitemap.xml and are linked from llms.txt as the live slice of
+  // the dataset. /explore already reads its facets at build time and prints
+  // them; these four just never used the machinery.
+  //
+  // Read exactly the way /explore's facets are read: the SAME cached RPCs the
+  // React pages call (get_stats_cache at :12, get_transparency_cache at :37,
+  // get_freshness_stats off the 15-minute rollup), anon key, short timeouts,
+  // every failure swallowed. A build that cannot reach the board prints the
+  // pages' prose with no figures and SAYS it could not read them -- the same
+  // rule /explore applies to its field counts. No snapshot fallback here on
+  // purpose: these are stated as measurements of a moment, each carrying the
+  // payload's own computed_at, and a count re-served from an old bake under a
+  // fresh basis line would be the stale-claim defect this build is fixing.
+  let statsCache = null;
+  let transparencyCache = null;
+  let freshnessRow = null;
+  try {
+    const envText4 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+    const grab4 = (k) => process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const supaUrl4 = grab4("VITE_SUPABASE_URL");
+    const supaKey4 = grab4("VITE_SUPABASE_PUBLISHABLE_KEY");
+    if (supaUrl4 && supaKey4) {
+      const rpc4 = async (fn, ms) => {
+        try {
+          const r = await fetch(`${supaUrl4}/rest/v1/rpc/${fn}`, {
+            method: "POST",
+            headers: { apikey: supaKey4, Authorization: `Bearer ${supaKey4}`, "Content-Type": "application/json" },
+            body: "{}",
+            signal: AbortSignal.timeout(ms),
+          });
+          return r.ok ? await r.json() : null;
+        } catch { return null; }
+      };
+      // SHAPE-VALIDATED, never truthiness: every one of these rows is NULL
+      // before its first cron refresh, and `typeof null === "object"` would
+      // put null into the builder and print "null" at a reader.
+      const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+      const sc = await rpc4("get_stats_cache", 15000);
+      if (isObj(sc)) statsCache = sc;
+      const tc = await rpc4("get_transparency_cache", 15000);
+      if (isObj(tc)) transparencyCache = tc;
+      const fr4 = await rpc4("get_freshness_stats", 20000);
+      if (Array.isArray(fr4) && isObj(fr4[0])) freshnessRow = fr4[0];
+    }
+  } catch { /* offline build -- the four data pages ship their count-free copy */ }
+  console.log(`[prerender-seo] data-page figures: stats_cache ${statsCache ? "read" : "UNREAD"}, transparency_cache ${transparencyCache ? "read" : "UNREAD"}, freshness ${freshnessRow ? "read" : "UNREAD"}`);
+
+  // >>> DATA-PAGE FIGURE BUILDER START
+  //
+  // EVERYTHING BETWEEN THESE TWO MARKERS IS SELF-CONTAINED ON PURPOSE. It
+  // declares its own helpers, reads nothing from the closure around it, and
+  // touches no network or filesystem, so the guard
+  // src/test/a-data-page-that-serves-no-number-is-an-empty-page.test.ts can
+  // slice this exact source out of this exact file and RUN it against
+  // fixtures. A guard that only read the file as text would pass over a
+  // builder that had stopped emitting numbers -- which is the state these four
+  // pages were in for months, under a sitemap that listed them and an llms.txt
+  // that pointed AI engines at them as the public slice of the dataset.
+  //
+  // Keep it pure. The moment something in here reaches for `boardFacets`, `D`
+  // or `esc`, the slice stops evaluating and the guard fails loudly, which is
+  // the intended failure -- not a reason to loosen the guard.
+
+  // HOW OFTEN EACH FIGURE IS RECOMPUTED, in the words the pages publish.
+  // Keyed by the pg_cron job name that does it, because the phrase is a claim
+  // about a schedule that lives in a migration, and a claim that lives in a
+  // different runtime from the thing it describes goes false silently. The
+  // guard reads the LAST migration scheduling each job name, parses the cron
+  // expression and checks the phrase against it, so re-timing a job fails the
+  // build rather than quietly making four public sentences wrong.
+  // How far above the closure record's own daily average a single week may
+  // read before this build refuses to publish it. Two, because the two
+  // figures are drawn on different filters and a genuine week really can run
+  // hot; anything past that is the filter gap, not the market.
+  const CLOSURE_WEEK_PLAUSIBILITY = 2;
+
+  const DATA_PAGE_CADENCE = {
+    "refresh-ghost-stats": "recomputed twice an hour",
+    "refresh-stats-cache": "recomputed once an hour",
+    "transparency-cache-hourly": "recomputed once an hour",
+    "job-board-stats-rollup": "recomputed every 15 minutes",
+  };
+
+  /**
+   * The figures the four data pages publish, as HTML fragments.
+   *
+   * Every group is all-or-nothing against its own payload: a group whose
+   * source did not answer emits the UNREAD sentence instead of numbers, so a
+   * partially reachable build publishes what it measured and says what it did
+   * not. Nothing here rounds, estimates or carries a figure over from another
+   * read -- the pages' whole argument is that a job number you cannot source
+   * is not a number.
+   */
+  function dataPageFigures(P) {
+    const C = DATA_PAGE_CADENCE;
+    const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+    const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+    const fmt = (v) => (num(v) === null ? null : Number(v).toLocaleString("en-US"));
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    // THE DAY THE FIGURE WAS TAKEN, from the payload's own stamp and from
+    // nowhere else. A build date would be a different fact wearing this one's
+    // clothes: the cron can stall (it stalled 4.3 days on 2026-08-07 while a
+    // tile still said "right now") and the bake would go on printing today.
+    const asOf = (v) => {
+      if (typeof v !== "string") return null;
+      const d = new Date(v);
+      return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
+    };
+    const UNREAD = "This build could not read the board's own measurements, so this page states no figure rather than one it cannot source. The live page reads them when it opens in a browser.";
+    const unread = () => ({ html: `<p class="text-sm text-muted-foreground mb-8">${UNREAD}</p>`, desc: null, read: false });
+    /** A figure list plus the one sentence that says what it counts, when it was taken and how often it moves. */
+    const group = (heading, rows, basis) => {
+      const usable = rows.filter((r) => r && r.value !== null && r.value !== undefined);
+      if (usable.length === 0) return "";
+      return `<section class="mb-8"><h2 class="text-xl font-bold mb-3">${heading}</h2>`
+        + `<ul class="space-y-1.5 text-sm">${usable.map((r) => `<li><b class="text-foreground">${r.value}</b> — ${r.label}</li>`).join("")}</ul>`
+        + `<p class="text-xs text-muted-foreground mt-3">${basis}</p></section>`;
+    };
+    const table = (heading, head, rows, basis) => {
+      if (rows.length === 0) return "";
+      return `<section class="mb-8"><h2 class="text-xl font-bold mb-3">${heading}</h2>`
+        + `<table class="w-full text-sm"><thead><tr>${head.map((h) => `<th class="text-left py-1 pr-3 font-medium">${h}</th>`).join("")}</tr></thead>`
+        + `<tbody>${rows.map((cells) => `<tr>${cells.map((c) => `<td class="py-1 pr-3">${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`
+        + `<p class="text-xs text-muted-foreground mt-3">${basis}</p></section>`;
+    };
+    const pct = (n, d) => (num(n) !== null && num(d) !== null && d > 0 ? Math.round((100 * n) / d) : null);
+    // THE CACHE PUBLISHES WHICH OF ITS OWN PARTS IT COULD NOT RECOMPUTE, and a
+    // figure standing on a previous run's value under a fresh "measured at"
+    // stamp is a stale claim wearing a current date. When the row says a part
+    // fell back, the basis sentence says so too.
+    const staleNote = Array.isArray(P.stats?.stale_parts) && P.stats.stale_parts.length
+      ? ` This refresh could not recompute every part; these carry the previous run's value: ${P.stats.stale_parts.map((x) => esc(String(x))).join(", ")}.`
+      : "";
+
+    // ---- /ghost-job-index ----
+    const ghost = (() => {
+      const g = isObj(P.stats?.ghost_stats) ? P.stats.ghost_stats : null;
+      const f = isObj(P.freshness) ? P.freshness : null;
+      if (!g && !f) return unread();
+      const openN = g ? fmt(g.total_open) : null;
+      const gAt = g ? asOf(g.computed_at) : null;
+      const span = g ? num(g.observed_days) : null;
+      const coverage = g ? num(g.posted_coverage_pct) : null;
+      const stock = group("What the board holds right now", [
+        { value: openN, label: "verified open roles — postings the employer's own feed still serves, whose company-stated date falls inside the last 30 days" },
+        { value: g ? fmt(g.total_company_names) : null, label: "employers with at least one of them, sub-boards merged by employer name" },
+        // THE COVERAGE FIGURE IS PRINTED AS MEASURED, NOT ROUNDED. It is 99.5
+        // today, and rounding it prints 100% — an absolute, about the one
+        // thing this page exists to be careful about, off the back of a
+        // decimal.
+        { value: g && num(g.median_days_open) !== null ? `${g.median_days_open} days` : null,
+          label: `median age of an open posting, by the date the employer itself put on it${coverage !== null ? ` — ${coverage}% of postings state one and the rest are excluded from this median, never estimated` : ""}` },
+      ], `Counted over the postings the board serves. ${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}; the live page re-reads it when it opens in a browser.`);
+      // THE CLOSURE COUNT CARRIES THE DEPTH OF THE RECORD BESIDE IT, always.
+      // A closure total from a young log reads as a rate to anyone who does
+      // not know how long the log is -- the right-censoring trap that put a
+      // 2.8-day median on this very page. The span is the payload's own
+      // observed_days, so the two cannot come apart.
+      const lifecycle = group("What the closure record says", [
+        // EVENTS, AND THE WORD SAYS SO. The count is rows in the closure log,
+        // not distinct postings — re-listings are excluded from it, but one
+        // posting that genuinely came down twice is two rows. "Postings" over
+        // an event count is the noun error this repo keeps paying for.
+        // THE FILTER IS PART OF THE LABEL. This figure drops batches later
+        // flagged as collection faults (a dark feed logging 400 removals in
+        // one second is not 400 employers taking a posting down) and KEEPS
+        // the takedowns the first lap backfilled. The weekly figure on
+        // /hiring-trends has the opposite pair. Neither is a subset of the
+        // other, so under matching wording a reader would divide one by the
+        // other and get a number that is about our filters.
+        { value: g ? fmt(g.closed_90d) : null, label: `closure events logged in the last 90 days${span !== null ? `, from a record ${span} days deep` : ""} — takedowns, re-listings excluded, and batches later flagged as collection faults excluded with them; takedowns the first lap backfilled are included. A posting coming down is never called a hire: a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed` },
+      ], `${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}.`);
+      const fresh = group("How far behind the re-check rotation is", [
+        { value: f && num(f.p50_min) !== null ? `${Math.round(f.p50_min)} minutes` : null, label: "since the median company feed was last re-read" },
+        { value: f && num(f.p95_min) !== null ? `${(f.p95_min / 60).toFixed(1)} hours` : null, label: "covers 95% of feeds — the rest are older, and this is a measurement rather than a promise" },
+        { value: f ? fmt(f.boards) : null, label: "company feeds in the rotation" },
+      ], `Measured from each feed's own last verification stamp${f && asOf(f.computed_at) ? ` ${asOf(f.computed_at)}` : ""}, ${C["job-board-stats-rollup"]}.`);
+      const html = stock + lifecycle + fresh;
+      if (!html) return unread();
+      return {
+        html,
+        desc: openN && g ? `${openN} open roles from employers' own job boards, ${g.median_days_open != null ? `median age ${g.median_days_open} days by the employer's stated date` : "each dated by the employer"}, and ${fmt(g.closed_90d)} closure events logged in 90 days.` : null,
+        read: true,
+      };
+    })();
+
+    // ---- /entry-level-index ----
+    const entry = (() => {
+      const e = isObj(P.stats?.entry_stats) ? P.stats.entry_stats : null;
+      const leaders = Array.isArray(P.stats?.entry_companies) ? P.stats.entry_companies : [];
+      if (!e && leaders.length === 0) return unread();
+      const at = asOf(P.stats?.computed_at);
+      const share = e ? pct(e.total_entry, e.total_open) : null;
+      const entryN = e ? fmt(e.total_entry) : null;
+      // "EARLY-CAREER" IS OUR CLASSIFICATION, NOT THE EMPLOYER'S WORD, and
+      // the RPC's own comment requires every surface rendering these numbers
+      // to say so: a stated years requirement in the posting text decides it
+      // where there is one, and title keywords alone decide it where there is
+      // not. A posting with neither signal is counted in the denominator and
+      // never in the numerator, so the share understates rather than
+      // overstates — which is the direction a claim like this has to err in.
+      const basis = `Early-career is OUR classification of the posting's own words, not a label the employer applied: a stated requirement of two years or fewer decides it where the posting states one, and otherwise the title alone does (intern, trainee, apprentice, entry-level, junior, graduate, new grad, early career). A posting carrying neither signal is counted in the total and never as early-career, so these figures understate rather than overstate. Counted over the postings the board serves — still live in the employer's feed, dated inside 30 days. ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["refresh-stats-cache"]}.${staleNote}`;
+      const head = group("Early-career openings on the board right now", [
+        { value: entryN, label: "openings our classification puts at early-career" },
+        { value: share !== null ? `${share}%` : null, label: `of the ${e ? fmt(e.total_open) : "open"} postings the board serves` },
+        // FEEDS, NOT EMPLOYERS. The figure is count(DISTINCT company_token) —
+        // one per feed token — and one employer runs several (PwC ships five
+        // Workday sub-sites). It was published under the word "companies" on
+        // the Ghost Job Index until a guard caught it there; the same figure
+        // must not arrive here under the same wrong noun.
+        { value: e ? fmt(e.companies_with_entry) : null, label: "company job boards carrying at least one — feed tokens, so an employer running several sub-boards counts once per board" },
+        { value: e ? fmt(e.remote_entry) : null, label: "of those same early-career openings state a remote work mode — the rest either state otherwise or state nothing, and a posting that states nothing is never counted as remote" },
+      ], basis);
+      const byCat = isObj(e?.by_category)
+        ? Object.entries(e.by_category).filter(([, n]) => num(n) !== null).sort((a, b) => b[1] - a[1]).slice(0, 8)
+        : [];
+      const fields = byCat.length
+        ? table("Where the early-career openings are", ["Field", "Openings"],
+            byCat.map(([slug, n]) => [`<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${esc(slug.replace(/_/g, " "))}</a>`, fmt(n)]),
+            basis)
+        : "";
+      // THE COLUMN IT IS RANKED ON IS A COLUMN ON THE TABLE. The RPC orders
+      // by the SHARE of a board's served roles we classify early-career, with
+      // the raw count as the tie-break — it was changed off the raw count on
+      // 20260908134000 because "who posts the most" is a list of the largest
+      // boards, not an answer to where a beginner has a chance. Printing the
+      // counts alone under a heading about ranking would show a reader 219
+      // above 106 above 139 and leave them to guess the rule.
+      const rows = leaders
+        .filter((c) => c && typeof c.company === "string" && num(c.entry_roles) !== null && num(c.open_roles) > 0)
+        .slice(0, 15)
+        .map((c) => [
+          `<a href="/jobs/company/${encodeURIComponent(String(c.company_token))}?experience=entry">${esc(c.company)}</a>`,
+          `${Math.round((100 * c.entry_roles) / c.open_roles)}%`,
+          fmt(c.entry_roles),
+          fmt(c.open_roles) ?? "—",
+        ]);
+      const board = rows.length
+        ? table("Where a beginner has the best chance right now", ["Board", "Share early-career", "Early-career openings", "All open roles"], rows,
+            `Ranked by the SHARE of a board's open roles our classification puts at early-career, with the raw count as the tie-break — not by who posts the most, which only ever ranks the largest boards. A board is listed only with at least 10 early-career openings and at least 50 open roles, because a share over a handful of postings reads as 100% and means nothing. One row per board, not per employer. ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["refresh-stats-cache"]}. Placement cannot be bought.`)
+        : "";
+      const html = head + fields + board;
+      if (!html) return unread();
+      return {
+        html,
+        desc: entryN && share !== null ? `${entryN} early-career openings — ${share}% of the board — counted only where the posting's own title or requirements say so.` : null,
+        read: true,
+      };
+    })();
+
+    // ---- /hiring-trends ----
+    const trends = (() => {
+      const weeks = Array.isArray(P.stats?.hiring_trends) ? P.stats.hiring_trends.filter(isObj) : [];
+      const cats = Array.isArray(P.stats?.trending_categories) ? P.stats.trending_categories.filter(isObj) : [];
+      if (weeks.length === 0 && cats.length === 0) return unread();
+      const at = asOf(P.stats?.computed_at);
+      // TWO CLOSURE TOTALS, TWO FILTERS, ONE BUILD. This page's weekly figure
+      // and the Ghost Job Index's 90-day figure come from different RPCs with
+      // different predicates: the weekly one drops takedowns the first lap
+      // backfilled and keeps batches later flagged as collection faults; the
+      // 90-day one does the reverse. Neither is a subset of the other, and
+      // before this build neither was crawlable, so nothing ever compared
+      // them. Now both ship as the statement of record on two pages that link
+      // to each other, and 870,536 in one week against 1,544,132 over 71 days
+      // is not a pair a reader can hold at once.
+      //
+      // The label says which filter each figure has. This bound is the other
+      // half: a weekly count more than CLOSURE_WEEK_PLAUSIBILITY times the
+      // 90-day record's own daily average is not a week of employer
+      // takedowns, and a figure whose own sibling refutes it is held rather
+      // than published. No count beats a suspect count.
+      const gs = isObj(P.stats?.ghost_stats) ? P.stats.ghost_stats : null;
+      const closureCeiling = gs && num(gs.closed_90d) !== null && num(gs.observed_days) > 0
+        ? (gs.closed_90d / gs.observed_days) * 7 * CLOSURE_WEEK_PLAUSIBILITY
+        : null;
+      const closureIsPlausible = (n) => num(n) !== null && (closureCeiling === null || n <= closureCeiling);
+      // THE SAME MATURITY GATES THE LIVE PAGE APPLIES, and for the same
+      // reason: postings that predate our tracking of a board are excluded by
+      // design, so a week we only partly observed has a structurally low count
+      // and any ratio against it is a lie of framing (it once read +19,000%).
+      // The current week is always partial and is never the headline.
+      const complete = weeks.slice(0, -1);
+      const lastFull = complete.length > 0 ? complete[complete.length - 1] : null;
+      const prevFull = complete.length > 1 ? complete[complete.length - 2] : null;
+      const beforePrev = complete.length > 2 ? complete[complete.length - 3] : null;
+      const wowMature = !!beforePrev && num(beforePrev.new_postings) > 0;
+      const wow = wowMature && lastFull && prevFull && num(prevFull.new_postings) > 0
+        ? Math.round((100 * (lastFull.new_postings - prevFull.new_postings)) / prevFull.new_postings)
+        : null;
+      const wk = lastFull && typeof lastFull.week_start === "string" ? lastFull.week_start : null;
+      const basis = `Counted by the date the employer itself put on the posting, from its own applicant-tracking feed — never by when we first saw it. Postings from boards we catalogued mid-window are excluded, so growth in our coverage can never read as a hiring spike. ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["refresh-stats-cache"]}.${staleNote}`;
+      // NO REMOTE OR EARLY-CAREER *SHARE* HERE, AND THE COUNTS SAY WHY.
+      // `new_postings` is the live rows for that week PLUS the closure rows
+      // for that week; `remote_new` and `entry_new` are counted over the live
+      // rows only. Dividing one by the other is a ratio across two different
+      // populations — the defect project_partial_instrumentation and the
+      // measure-like-with-like rule both name — and it renders LOW, which
+      // makes it read as a finding about employers rather than an artefact of
+      // the denominator. The raw counts are true of the narrower population
+      // and are published as floors, with the gap stated.
+      const head = lastFull
+        ? group(`The last complete week${wk ? ` (beginning ${wk})` : ""}`, [
+            { value: fmt(lastFull.new_postings), label: "roles employers dated that week — counted only where we saw the posting within three days of that date, and including roles since taken down" },
+            { value: closureIsPlausible(lastFull.closed) ? fmt(lastFull.closed) : null, label: "closure events logged that week, dated by the day the posting came down; a role that genuinely came down more than once counts each time, and re-listings are excluded. Takedowns the first lap backfilled are excluded here and batches later flagged as collection faults are NOT, which is the opposite pair from the 90-day closure total on the Ghost Job Index — the two are drawn on different filters and neither is a subset of the other, so they are not a ratio" },
+            { value: fmt(lastFull.remote_new), label: "of that week's roles state a remote work mode — a FLOOR, not a share: it counts only the roles from that week we still hold, while the figure above also counts the ones already closed" },
+            { value: fmt(lastFull.entry_new), label: "say early-career in their own title or stated requirements, on the same narrower population — also a floor" },
+            { value: wow !== null ? `${wow > 0 ? "+" : ""}${wow}%` : null, label: "against the week before, on the new-roles figure alone — printed only when both weeks were fully observed, otherwise omitted rather than estimated" },
+          ], basis)
+        : "";
+      const deltasMature = !!prevFull && num(prevFull.new_postings) > 0;
+      const catRows = cats
+        .filter((c) => typeof c.category === "string" && num(c.last7) !== null)
+        .slice(0, 10)
+        .map((c) => {
+          const d = deltasMature && num(c.prior7) >= 20 ? Math.round((100 * (c.last7 - c.prior7)) / c.prior7) : null;
+          return [esc(String(c.category).replace(/_/g, " ")), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
+        });
+      const fields = catRows.length
+        ? table("Which fields are hiring, last 7 days", ["Field", "New postings", "vs the 7 days before"], catRows,
+            `${basis} A change is printed only where the prior window was fully observed and held at least twenty postings; everything else prints a dash rather than a number.`)
+        : "";
+      const html = head + fields;
+      if (!html) return unread();
+      return {
+        html,
+        desc: lastFull
+          ? `${fmt(lastFull.new_postings)} roles employers dated in the last complete week${wk ? ` (from ${wk})` : ""}${closureIsPlausible(lastFull.closed) ? `, and ${fmt(lastFull.closed)} closure events logged` : ""}.`
+          : null,
+        read: true,
+      };
+    })();
+
+    // ---- /pay-transparency ----
+    const pay = (() => {
+      const t = isObj(P.transparency) ? P.transparency : null;
+      const p = isObj(t?.pay) ? t.pay : null;
+      const cov = isObj(t?.coverage) ? t.coverage : null;
+      if (!p && !cov) return unread();
+      const at = asOf(t?.computed_at);
+      // THE DENOMINATOR IS NOT THE SERVED BOARD, and this sentence is the only
+      // place a reader can learn that. Both aggregates behind this page count
+      // the whole postings table -- no serving predicate, no 30-day window --
+      // so the population is every posting catalogued, including ones since
+      // taken down. Stating it under the board's own serving word would be the
+      // right number under the wrong noun.
+      const population = "Counted across every posting in our table — including roles since taken down or aged past the board's 30-day cap — not only the ones open today.";
+      const basis = `A posting states pay when its own description text or its system's structured compensation field carries a figure or a range, in the employer's words; nothing is estimated, modelled or converted. ${population} ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["transparency-cache-hourly"]}.`;
+      const o = isObj(p?.overall) ? p.overall : null;
+      const co = isObj(cov?.overall) ? cov.overall : null;
+      const head = group("How much of the corpus states pay", [
+        { value: o && num(o.pay_pct) !== null ? `${o.pay_pct}%` : null, label: `of the ${o ? fmt(o.total) : ""} postings we have catalogued state pay` },
+        { value: co && num(co.mode_pct) !== null ? `${co.mode_pct}%` : null, label: "state a definitive work mode — remote, hybrid or on-site — and a posting that states nothing carries no tag rather than a guess" },
+      ], basis);
+      const catRows = Array.isArray(p?.categories)
+        ? p.categories.filter((c) => isObj(c) && num(c.pay_pct) !== null).slice(0, 10)
+            .map((c) => [esc(String(c.category).replace(/_/g, " ")), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
+        : [];
+      const fields = catRows.length
+        ? table("By field", ["Field", "State pay", "Postings"], catRows, `${basis} Fields with fewer than 200 postings are left out rather than shown on a sample too small to read.`)
+        : "";
+      // THE VENDOR TABLE IS THE VENDOR LIST, and it is the board's own rather
+      // than a sentence someone typed: one row per hiring system that has rows.
+      const srcRows = Array.isArray(cov?.by_source)
+        ? cov.by_source.filter((r) => isObj(r) && typeof r.source === "string" && num(r.total) !== null)
+            .map((r) => [esc(r.source), fmt(r.total), num(r.pay_pct) !== null ? `${r.pay_pct}%` : "—", num(r.mode_pct) !== null ? `${r.mode_pct}%` : "—"])
+        : [];
+      const systems = srcRows.length
+        ? table("By hiring system", ["System", "Postings", "State pay", "State work mode"], srcRows,
+            `${basis} One row per hiring system the board actually has postings from, taken from the board's own per-source count — a system we can read but hold no rows from has no row here.`)
+        : "";
+      const companyRows = Array.isArray(p?.top_companies)
+        ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).slice(0, 15)
+            .map((c) => [`<a href="/jobs/company/${encodeURIComponent(String(c.company_token))}">${esc(c.company)}</a>`, `${c.pay_pct}%`, fmt(c.total) ?? "—"])
+        : [];
+      const employers = companyRows.length
+        ? table("Most transparent large employers", ["Employer", "State pay", "Postings"], companyRows,
+            `${basis} Employers with fewer than 50 postings are not ranked. Placement cannot be bought: the only way onto this table is to state pay in your own postings.`)
+        : "";
+      const html = head + fields + systems + employers;
+      if (!html) return unread();
+      return {
+        html,
+        desc: o && num(o.pay_pct) !== null ? `${o.pay_pct}% of the ${fmt(o.total)} postings we have catalogued state pay, in the employer's own words — counted, never modelled.` : null,
+        read: true,
+      };
+    })();
+
+    return { ghost, entry, trends, pay };
+  }
+  // <<< DATA-PAGE FIGURE BUILDER END
+
+  // ONE CALL, read by the four write() blocks below. Built here rather than
+  // inline so a page cannot silently render a different payload from the one
+  // the guard exercises.
+  const DATA_FIGURES = dataPageFigures({ stats: statsCache, transparency: transparencyCache, freshness: freshnessRow });
+  for (const [k, v] of Object.entries(DATA_FIGURES)) {
+    if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
   }
 
   // ---- Shared live-count constants: ONE derivation for every surface that
@@ -1168,7 +1575,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
         description: `Browse ${countPhrase}${boardCompanies ? `, pulled from ${fmt(boardCompanies)} company job boards with roles open now` : ", pulled from companies' own official job boards"} and re-checked continuously. Check your resume's fit free before you apply.`,
         content: `
           <h1>Live ${label} jobs</h1>
-          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, and Pinpoint. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
           <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
@@ -1291,7 +1698,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
             : `Browse open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
           content: `
             <h1>Open roles at ${esc(nm)}</h1>
-            <p>${hasN ? `${fmt(openN)} verified ${esc(nm)} openings right now` : `Verified ${esc(nm)} openings`}, pulled straight from ${esc(nm)}'s own official job board (Greenhouse, Workday, Lever, Ashby, SmartRecruiters, Oracle, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, or Pinpoint) and re-checked continuously. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site.${hasN ? ` THE COUNT'S BASIS: an "open role" here is a posting ${esc(nm)} has not taken down and whose date falls inside the last 30 days — the same two rules the linked board page applies, so the number below it is the number this page states. Counts were measured when this page was last built; the board's own count refreshes periodically through the day and moves as roles open and close.` : ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the linked page would contradict — open the board below for the roles themselves.`}</p>
+            <p>${hasN ? `${fmt(openN)} verified ${esc(nm)} openings right now` : `Verified ${esc(nm)} openings`}, pulled straight from ${esc(nm)}'s own official job board (one of ${D.SERVING_SOURCE_LIST}) and re-checked continuously. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site.${hasN ? ` THE COUNT'S BASIS: an "open role" here is a posting ${esc(nm)} has not taken down and whose date falls inside the last 30 days — the same two rules the linked board page applies, so the number below it is the number this page states. Counts were measured when this page was last built; the board's own count refreshes periodically through the day and moves as roles open and close.` : ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the linked page would contradict — open the board below for the roles themselves.`}</p>
             <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} company job boards with roles open now` : ""}.</p>
           `,
@@ -1387,7 +1794,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
         description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; no dated posting older than 30 days.`,
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.BOARD_SOURCE_LIST}. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
           <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
@@ -1396,25 +1803,32 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Live job board",
-          description: `Live openings from companies' official job boards (${D.BOARD_SOURCE_LIST}), re-verified throughout the day — no aggregators, no dated posting older than 30 days.`,
+          description: `Live openings from companies' official job boards (${D.SERVING_SOURCE_LIST}), re-verified throughout the day — no aggregators, no dated posting older than 30 days.`,
           url: `${SITE}/jobs`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }],
       });
     }
 
-    // The Ghost Job Index — the board's public transparency page. Static shell
-    // only (the live stats hydrate client-side); prerendering puts the page in
-    // the sitemap and gives crawlers real head/meta + explainer content.
+    // The Ghost Job Index — the board's public transparency page.
+    //
+    // IT PUBLISHED NO NUMBER TO ANYONE WHO DOES NOT RUN JAVASCRIPT. Every
+    // figure hydrated client-side, so this document — in the sitemap, and
+    // named in llms.txt as the live slice of the dataset — was 1,334
+    // characters of explainer and two digits, both of them in the phrase for
+    // the freshness cap. The figures below come from the same cached RPCs the
+    // React page reads, each with the sentence project_stat_provenance
+    // requires: what it counts, when it was measured, how often it moves.
     {
       write({
         path: "/ghost-job-index",
         title: "The Ghost Job Index — how many job postings are actually real?",
-        description: "A live measure of job-posting reality: how many roles are open, how long postings stay up, how fast they fill, and who is actively hiring — audited daily.",
+        description: DATA_FIGURES.ghost.desc ?? "A live measure of job-posting reality: how many roles are open, how long postings stay up, how fast they fill, and who is actively hiring — audited daily.",
         content: `
           <h1>The Ghost Job Index</h1>
           <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
-          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR) — never an aggregator or a scrape. Any posting whose company-stated date passes 30 days is dropped automatically, we log every closure to measure which employers truly fill roles, we sample random listings daily and re-check them against the companies' own systems, and every posting is re-checked live the moment you click Apply. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
+          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator or a scrape. Any posting whose company-stated date passes 30 days is dropped automatically, we log every closure to measure which employers truly fill roles, we sample random listings daily and re-check them against the companies' own systems, and every posting is re-checked live the moment you click Apply. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
+          ${DATA_FIGURES.ghost.html}
           <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
         `,
         jsonLd: [{
@@ -1434,11 +1848,12 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       write({
         path: "/entry-level-index",
         title: "The Entry-Level Index — who's actually hiring entry-level right now?",
-        description: "A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, no dated posting older than 30 days.",
+        description: DATA_FIGURES.entry.desc ?? "A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, no dated posting older than 30 days.",
         content: `
           <h1>The Entry-Level Index</h1>
-          <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks the companies that post the most of them.</p>
-          <p>Every count comes live from companies' official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling, Workday) — never an aggregator or a scrape, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks each job board by the SHARE of its open roles that are early-career, with the raw count as the tie-break. Not by who posts the most, which only ever ranks the largest boards. One row per board, so an employer running several counts once per board.</p>
+          <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator or a scrape, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          ${DATA_FIGURES.entry.html}
           <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
         jsonLd: [{
@@ -1457,11 +1872,12 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       write({
         path: "/hiring-trends",
         title: "Weekly Hiring Trends — how many jobs were really posted this week?",
-        description: "Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote shares, and how many roles actually got filled — no estimates, no surveys.",
+        description: DATA_FIGURES.trends.desc ?? "Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote counts as floors, and closure events logged per week — no estimates, no surveys.",
         content: `
           <h1>Weekly Hiring Trends</h1>
-          <p>Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies dated this week on their own boards, which fields they're in, and how many roles actually got filled.</p>
+          <p>Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies dated this week on their own boards, which fields they're in, and how many closure events the lifecycle log recorded. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed.</p>
           <p>Counts use each posting's own stated date from the company's official applicant-tracking feed. Postings from companies newly added to our catalog are excluded from weekly counts, so growth in our coverage never shows up as a fake hiring spike. Closure counts come from our lifecycle log — the moment a company takes a posting down, we record it.</p>
+          ${DATA_FIGURES.trends.html}
           <p><a href="/jobs">Browse the live board</a>, see <a href="/entry-level-index">who's hiring entry-level</a>, or check the <a href="/ghost-job-index">Ghost Job Index</a>.</p>
         `,
         jsonLd: [{
@@ -1481,11 +1897,12 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       write({
         path: "/pay-transparency",
         title: "Pay Transparency Index — who actually states salaries?",
-        description: "A live ranking of fields, hiring systems, and large employers by the share of job postings that state pay — counted from companies' own posting text and ATS fields. No estimates, no modeled ranges.",
+        description: DATA_FIGURES.pay.desc ?? "A live ranking of fields, hiring systems, and large employers by the share of job postings that state pay — counted from companies' own posting text and ATS fields. No estimates, no modeled ranges.",
         content: `
           <h1>The Pay Transparency Index</h1>
-          <p>Which employers actually state salaries? This page counts it: the share of live postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large employers. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
+          <p>Which employers actually state salaries? This page counts it: the share of postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large employers. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
           <p>The same rules apply to work modes: a posting is tagged remote, hybrid, or on-site only when the employer's own ATS field or explicit posting text says so. Postings that don't say carry no tag — we show nothing rather than a guess.</p>
+          ${DATA_FIGURES.pay.html}
           <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license the underlying data at <a href="/data-api">Hiring Data &amp; API</a>.</p>
         `,
         jsonLd: [{
@@ -2102,7 +2519,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
     if (BOARD_TOTAL) {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.BOARD_SOURCE_LIST}) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -2146,9 +2563,9 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     // and one final "and", the same joiner the /agents page and its prerender use.
     const andHosts = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
     lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
-    lines.push(`- Live job board: ${SITE}/jobs — every posting read from the employer's own hiring system (${D.BOARD_SOURCE_LIST}); no aggregators; no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
+    lines.push(`- Live job board: ${SITE}/jobs — every posting read from the employer's own hiring system (${D.SERVING_SOURCE_LIST}); no aggregators; no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
     lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
-    lines.push(`- Weekly Hiring Trends: ${SITE}/hiring-trends — counted postings per week by each posting's own stated date, which fields are hiring, entry-level and remote shares, and closures per week from the lifecycle log; newly catalogued employers are excluded from weekly counts so coverage growth never reads as a hiring spike.`);
+    lines.push(`- Weekly Hiring Trends: ${SITE}/hiring-trends — counted postings per week by each posting's own stated date, which fields are hiring, entry-level and remote counts as floors (they are counted over a narrower population than the weekly total, so they are never divided into it), and closure events per week from the lifecycle log; newly catalogued employers are excluded from weekly counts so coverage growth never reads as a hiring spike.`);
     lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(`- Companies on the board: ${SITE}/companies — every employer with open roles, A–Z, each with its live count and a link to its own page.`);
@@ -2222,7 +2639,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       // on every bake from the same constant the board's own source note
       // renders — the committed file had fourteen systems typed by hand while
       // the board served more, the shape published-claims guards on /jobs.
-      sub(/own hiring system \([^)]+\) — never an aggregator/, `own hiring system (${D.BOARD_SOURCE_LIST}) — never an aggregator`);
+      sub(/own hiring system \([^)]+\) — never an aggregator/, `own hiring system (${D.SERVING_SOURCE_LIST}) — never an aggregator`);
       if (missed.length) {
         // Not fatal to the bake, but never silent: an orphaned figure is a
         // number nothing updates, which is how a true "+" claim rots into a

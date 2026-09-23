@@ -20,6 +20,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
+import { servingSourceSummary } from "@/config/ats-vendors";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -43,6 +44,7 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     notes: [
       "country, category, company_token, work_mode, source and experience_band take a comma list — country=US,GB — capped at 5, 3, 12, 3, 8 and 4 values, the same caps the board applies. Over the cap is a 400, never a silent slice.",
       "A value outside a closed set (an unknown source, category, work mode or experience band) is a 400 naming the valid values. It is never an empty page, which would read as a statement about the market in answer to a typo.",
+      "One hiring system inside that set — the U.S. federal feed — is refused rather than filtered. Its terms of use permit showing results to a person and not redistributing them as a data feed, so no endpoint here returns its rows on any tier, and naming it in source= answers 451 with that reason. A 400 would be wrong, because the value really is in the set; an empty 200 would be worse, because it would tell your code there are no federal jobs. /v1 lists the excluded systems and the reason in its own index.",
       "include=description adds the posting body to every row and caps that request at 25 rows a page — descriptions average ~5.7KB, so a 100-row page would be ~570KB. Page with cursor= to walk the rest. /v1/jobs/{id} always carries it.",
       "engine=ranked (paid) swaps the default title match for the site's full relevance/rescue engine, and passes its disclosures through. explain=1 appends a diagnostics block naming every filter that bound and how.",
     ],
@@ -164,7 +166,12 @@ export default function DataApi() {
   }, []);
 
   const inDataset = [
-    { title: "Lifecycle-tracked postings", body: "Every opening from companies' official applicant-tracking feeds (Greenhouse, Lever, Ashby, SmartRecruiters, Workday and more) — with first-seen, company-stated post date where the vendor provides one, and the exact close date when it comes down." },
+    // DERIVED, never typed. The hand-written run this replaced named five
+    // systems and ended in "and more" — a tail written when the board read
+    // eleven and still on the page at nineteen. The helper computes both the
+    // lead and the count from the one list, and it names only systems the
+    // board actually serves rows from.
+    { title: "Lifecycle-tracked postings", body: `Every opening from companies' official applicant-tracking feeds (${servingSourceSummary(5)}) — with first-seen, company-stated post date where the vendor provides one, and the exact close date when it comes down.` },
     { title: "Fills vs. re-listing churn", body: "When a posting closes we record whether it genuinely closed or was re-listed under a new ID. That distinction — companies that fill roles vs. companies that churn them — exists almost nowhere else." },
     { title: "Stated salary ranges", body: "Salary ranges extracted from posting text where the company itself states them, normalized by currency and period. Never estimated, never modeled." },
     { title: "Daily accuracy audits", body: "We sample random live postings every day and re-check them against the companies' own systems, stratified per hiring system. The audit trail ships with the data." },

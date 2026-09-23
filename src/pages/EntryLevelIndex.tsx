@@ -14,6 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { HBarList } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
+// The sources line below named nineteen platforms plus one that serves no
+// rows, all typed by hand — the second time this line drifted. It reads the
+// one array now. See src/config/ats-vendors.ts.
+import { SERVING_SOURCE_LIST } from "@/config/ats-vendors";
 
 interface Stats {
   total_entry: number;
@@ -103,14 +107,17 @@ export default function EntryLevelIndex() {
           and ranks the companies that post the most of them.
         </p>
         <p className="text-xs text-muted-foreground mb-8">
-          {/* This list named 10 systems while the board serves 15. The five it
-              omitted — Workday, iCIMS, Oracle, Rippling, Pinpoint — include
-              Workday, which alone is 52.1% of postings (303,098 of 581,576 on
-              2026-07-27). A sources line that leaves out the majority source
-              is false by omission, however true each named item is. */}
-          Counted live from employers' <b>official</b> job boards (Workday, Greenhouse, SmartRecruiters, Ashby,
-          iCIMS, Oracle, Lever, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy, Rippling,
-          Pinpoint, Paylocity, ADP Workforce Now, UKG Pro Recruiting and JazzHR) and the U.S. federal government's own system (USAJOBS) — never an aggregator
+          {/* THIS LINE HAS NOW DRIFTED TWICE, IN BOTH DIRECTIONS. It first named
+              10 systems while the board served 15 — omitting Workday, which
+              alone was 52.1% of postings (303,098 of 581,576 on 2026-07-27), so
+              a sources line that leaves out the majority source is false by
+              omission however true each named item is. It was then filled in by
+              hand and gained the opposite fault: it named the federal system as
+              a source while the board served nothing from it. Both faults are
+              the same defect, which is that this sentence held its own copy of
+              a list. It interpolates now, and what it interpolates is the
+              serving set, so neither direction can come back. */}
+          Counted live from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — never an aggregator
           or a scrape, and no dated posting older than 30 days.
         </p>
 
@@ -122,7 +129,13 @@ export default function EntryLevelIndex() {
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">{fmt(stats?.companies_with_entry)}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">companies with at least one entry-level role</div>
+            {/* FEEDS, NOT COMPANIES. get_entry_level_stats returns
+                count(DISTINCT company_token) — one per feed token — and one
+                employer runs several (PwC ships five Workday sub-sites). The
+                Ghost Job Index published the same shape of figure under the
+                same wrong noun until a guard caught it there; the caption says
+                what the number is. */}
+            <div className="text-[11px] text-muted-foreground mt-0.5">company job boards carrying at least one — feed tokens, so an employer with several sub-boards counts once per board</div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">{fmt(stats?.remote_entry)}</div>
@@ -151,13 +164,29 @@ export default function EntryLevelIndex() {
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
                   <span className="flex-1 text-sm font-medium text-foreground truncate">{c.company}</span>
-                  <span className="text-[11px] text-success font-semibold shrink-0">{c.entry_roles} entry-level</span>
-                  <span className="text-[11px] text-muted-foreground shrink-0 w-24 text-right">{c.open_roles} open total</span>
+                  <span className="text-[11px] text-success font-semibold shrink-0">
+                    {c.open_roles > 0 ? `${Math.round((100 * c.entry_roles) / c.open_roles)}% early-career` : "—"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground shrink-0 w-28 text-right">{c.entry_roles} of {c.open_roles} open</span>
                 </Link>
               ))}
             </div>
+            {/* THE CAPTION DESCRIBED A RANKING THE RPC STOPPED DOING.
+                get_entry_level_companies was changed on 20260908134000 to
+                order by the SHARE of a board's served roles we classify
+                early-career (raw count as the tie-break), because ranking on
+                the count only ever answers "who posts the most" and returns a
+                list of the largest boards. The floors moved with it —
+                entry_roles >= 10 AND open_roles >= 50, not "minimum 5". This
+                caption kept the old rule and the old floor, so a reader saw
+                219 above 106 above 139 under a sentence promising descending
+                counts. The share is now printed in the row as well: ranking on
+                one number while showing another is the defect, not the wording. */}
             <p className="text-[11px] text-muted-foreground mt-2">
-              Ranked by entry-level openings live right now (minimum 5). Every link goes to the company's verified roles here.
+              Ranked by the share of a board's open roles that are early-career — not by who posts the most, which only ranks the
+              largest boards — with the raw count as the tie-break. Listed with at least 10 early-career openings and at least 50
+              open roles. One row per job board, so an employer running several counts once per board. Every link goes to that
+              board's verified roles here.
             </p>
           </div>
         )}

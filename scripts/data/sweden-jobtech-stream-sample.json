@@ -1,0 +1,532 @@
+{
+ "_what": "Real rows from Sweden's national employment register (Arbetsformedlingen / Platsbanken), read through the open JobStream channel. Kept so the apply-URL parser in scripts/sweden-jobtech-yield.mjs is tested against shapes the register really emits rather than shapes someone imagined.",
+ "_source": "https://jobstream.api.jobtechdev.se/stream?date=2026-09-22T17:31:36",
+ "_captured": "2026-09-23T17:32:55Z",
+ "_licence": "CC0 (https://data.arbetsformedlingen.se/dataset/job-ads/). Public-domain dedication: redistribution and commercial reuse permitted, attribution not required.",
+ "_selection": "One 24h window held 5,441 rows. These were picked to cover every distinct behaviour the parser has to get right -- carried and not-carried tenants on each vendor the window contained, a null apply URL, a removal event, and the long tail of Swedish apply hosts that resolve to no carried vendor at all. Job descriptions were dropped; nothing else was edited.",
+ "_not_a_measurement": "Counts taken over this file describe this file. Every published figure comes from a full window, never from here.",
+ "rows": [
+  {
+   "id": "29366100",
+   "employer": {
+    "name": "Gullella Pizzeria Aktiebolag",
+    "organization_number": "5590423462"
+   },
+   "application_details": {
+    "url": null,
+    "via_af": false,
+    "email": "serkanmorogullari82@gmail.com"
+   },
+   "publication_date": "2026-09-23T18:05:30",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/29366100"
+  },
+  {
+   "id": "30434747",
+   "employer": {
+    "name": null,
+    "organization_number": null
+   },
+   "application_details": {
+    "url": null,
+    "via_af": null,
+    "email": null
+   },
+   "removed": true
+  },
+  {
+   "id": "30434751",
+   "employer": {
+    "name": null,
+    "organization_number": null
+   },
+   "application_details": {
+    "url": null,
+    "via_af": null,
+    "email": null
+   },
+   "removed": true
+  },
+  {
+   "id": "30893368",
+   "employer": {
+    "name": "NOVAPUX AB",
+    "organization_number": "5595210534"
+   },
+   "application_details": {
+    "url": null,
+    "via_af": false,
+    "email": "hr@novamarket.se"
+   },
+   "publication_date": "2026-04-13T09:53:05",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/30893368"
+  },
+  {
+   "id": "30948207",
+   "employer": {
+    "name": "Vår Omtanke Sverige AB",
+    "organization_number": "5567380257"
+   },
+   "application_details": {
+    "url": "https://varomtanke-1636017729.teamtailor.com/jobs/7628696-kvinnlig-personlig-assistent-med-hundvana-sokes-till-sodertalje-vaken-natt/applications/new?promotion=1963609-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-04-23T15:32:47",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/30948207"
+  },
+  {
+   "id": "30979836",
+   "employer": {
+    "name": "Hänvisning till Arbetsförmedlingen",
+    "organization_number": null
+   },
+   "application_details": {
+    "url": null,
+    "via_af": false,
+    "email": "JLAssistans@outlook.com"
+   },
+   "publication_date": "2026-04-30T12:00:46",
+   "source_type": "VIA_AIS",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/30979836"
+  },
+  {
+   "id": "31076450",
+   "employer": {
+    "name": "GLAUK EL OCH BYGG AB",
+    "organization_number": "5594247446"
+   },
+   "application_details": {
+    "url": null,
+    "via_af": false,
+    "email": "info@glauk-el-bygg.se"
+   },
+   "publication_date": "2026-09-23T16:25:25",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31076450"
+  },
+  {
+   "id": "31088424",
+   "employer": {
+    "name": "REGION SÖRMLAND",
+    "organization_number": "2321000032"
+   },
+   "application_details": {
+    "url": "https://sormland.powerinit.com/Modules/Recruitments/Public/?JobPositionId=27077&RefNo=RLSV-26-373",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-05-27T10:20:26",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31088424"
+  },
+  {
+   "id": "31123245",
+   "employer": {
+    "name": "Best Bemanning & Rekrytering i Sverige AB",
+    "organization_number": "5567867352"
+   },
+   "application_details": {
+    "url": "https://jobb.bestbemanning.nu/jobs/7832840-underhallstekniker-till-malarplast-ab-i-eskilstuna/applications/new?promotion=2030016-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-06-02T09:03:13",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31123245"
+  },
+  {
+   "id": "31136218",
+   "employer": {
+    "name": "BOQUERIA AB",
+    "organization_number": "5568510837"
+   },
+   "application_details": {
+    "url": "https://jobb.boqueria.se/jobs/5393326-kock/applications/new?promotion=2034323-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-06-03T15:37:40",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31136218"
+  },
+  {
+   "id": "31148764",
+   "employer": {
+    "name": "Hotellet vid Lilla Apelviken AB",
+    "organization_number": "5594953670"
+   },
+   "application_details": {
+    "url": "https://forms.monday.com/forms/0b713dd41a4f6fcbaa2883543ba27f48?r=use1",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-06-07T20:36:00",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31148764"
+  },
+  {
+   "id": "31169579",
+   "employer": {
+    "name": "Workz Sweden AB",
+    "organization_number": "5569383788"
+   },
+   "application_details": {
+    "url": "https://karriar.workz.se/jobs/7894722-kundservicemedarbetare-till-seb-kort/applications/new?promotion=2048933-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-06-11T15:25:25",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31169579"
+  },
+  {
+   "id": "31171634",
+   "employer": {
+    "name": "Carelli Assistans AB",
+    "organization_number": "5569098063"
+   },
+   "application_details": {
+    "url": "https://www.recruto.se/apps/listings/view/id/85099/tracking/5",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-06-12T09:37:28",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31171634"
+  },
+  {
+   "id": "31236428",
+   "employer": {
+    "name": "Ohlssons i Landskrona AB",
+    "organization_number": "5565593497"
+   },
+   "application_details": {
+    "url": "https://ohlssons.uhigher.com/job-details?job=4d5eb440-073b-413c-844f-275602704657",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-07-01T14:20:47",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31236428"
+  },
+  {
+   "id": "31239058",
+   "employer": {
+    "name": "Flextronics International Sweden AB",
+    "organization_number": "5565134797"
+   },
+   "application_details": {
+    "url": "https://flextronics.wd1.myworkdayjobs.com/en-US/Careers?Location_Country=6a800a4736884df5826858d435650f45&utm_source=Flex_Career_Site&utm_medium=button&utm_campaign=Sweden",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-07-02T10:27:55",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31239058"
+  },
+  {
+   "id": "31239742",
+   "employer": {
+    "name": "Din & Min Omsorg i Umeå AB",
+    "organization_number": "5569359309"
+   },
+   "application_details": {
+    "url": null,
+    "via_af": false,
+    "email": "ansokan@dinochmin.se"
+   },
+   "publication_date": "2026-07-02T11:35:20",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31239742"
+  },
+  {
+   "id": "31246107",
+   "employer": {
+    "name": "Northern Skill AB",
+    "organization_number": "5594506346"
+   },
+   "application_details": {
+    "url": "https://jobb.northernskill.se/jobs/8014972-elektriker-till-umia-i-umea/applications/new?promotion=2085078-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-07-03T13:14:28",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31246107"
+  },
+  {
+   "id": "31256144",
+   "employer": {
+    "name": "REGION UPPSALA",
+    "organization_number": "2321000024"
+   },
+   "application_details": {
+    "url": "https://lul.powerinit.com/Modules/Recruitments/Public/?JobPositionId=55227&RefNo=AS848%2f2026",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-07-07T15:17:30",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31256144"
+  },
+  {
+   "id": "31259621",
+   "employer": {
+    "name": "Multiply Teknik & IT AB",
+    "organization_number": "5569193500"
+   },
+   "application_details": {
+    "url": "https://join.multiply.tech/en/jobs/8038966-senior-system-engineers-within-hw-radio-embedded-software-security",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-07-08T14:52:30",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31259621"
+  },
+  {
+   "id": "31374590",
+   "employer": {
+    "name": "Active Academy Nordic AB",
+    "organization_number": "5567189138"
+   },
+   "application_details": {
+    "url": "https://ssa.teamtailor.com/jobs/7766950-ht26-barnledare-for-knatteskutt-1-4-ar-stockholm-sprid-rorelsegladje/applications/new?promotion=2153531-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-08-20T08:05:11",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31374590"
+  },
+  {
+   "id": "31432169",
+   "employer": {
+    "name": "Forenede Care AB",
+    "organization_number": "5565355400"
+   },
+   "application_details": {
+    "url": "https://forenadecare.teamtailor.com/jobs/8007186-sveriges-forsta-demensby-manstorps-angar-soker-nu-en-underskoterska/applications/new?promotion=2176493-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-03T09:06:43",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31432169"
+  },
+  {
+   "id": "31432653",
+   "employer": {
+    "name": "Submit AB",
+    "organization_number": "5590728837"
+   },
+   "application_details": {
+    "url": "https://submitab.teamtailor.com/jobs/8313801-produktionsmedarbetare-var-med-och-starta-en-helt-ny-avdelning/applications/new?promotion=2176698-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-03T09:55:08",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31432653"
+  },
+  {
+   "id": "31439171",
+   "employer": {
+    "name": "Omsorg Assistans 1 AB",
+    "organization_number": "5591043707"
+   },
+   "application_details": {
+    "url": "https://omsorgassistans.teamtailor.com/jobs/8322978-personlig-assistent-sokes-till-hugo-fahlberg-28-ar/applications/new?promotion=2179814-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-04T12:58:32",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31439171"
+  },
+  {
+   "id": "31450259",
+   "employer": {
+    "name": "Valmet Aktiebolag",
+    "organization_number": "5560173386"
+   },
+   "application_details": {
+    "url": "https://valmet.wd103.myworkdayjobs.com/External/job/Karlstad/Service-Engineer-Analyzers_R59729",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-08T11:00:45",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31450259"
+  },
+  {
+   "id": "31477148",
+   "employer": {
+    "name": "Södra Älvsborgs Räddningstjänstförbund",
+    "organization_number": "2220000810"
+   },
+   "application_details": {
+    "url": "https://serf.teamtailor.com/jobs/8352891-vi-behover-bli-fler-brandman-pa-heltid",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-15T09:15:36",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31477148"
+  },
+  {
+   "id": "31481110",
+   "employer": {
+    "name": "AFRY AB",
+    "organization_number": "5561206474"
+   },
+   "application_details": {
+    "url": "https://jobs.smartrecruiters.com/AFRY/744000149855494-gruppchef-till-afry-transmssion-lines?oga=true&trid=4de896fd-3759-406c-8d07-8a7da8844ce0",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-15T16:35:03",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31481110"
+  },
+  {
+   "id": "31508237",
+   "employer": {
+    "name": "Kontaktpartner Malmö AB",
+    "organization_number": "5594554171"
+   },
+   "application_details": {
+    "url": "https://kontaktpartnerjobb.teamtailor.com/jobs/8436925-nu-oppnar-vi-i-kristianstad-ta-chansen-sok-nu/applications/new?promotion=2209555-arbetsformedlingen",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-22T18:01:53",
+   "source_type": "VIA_JOBPOSTING",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31508237"
+  },
+  {
+   "id": "31509401",
+   "employer": {
+    "name": "SSAB EMEA AB",
+    "organization_number": "5563137933"
+   },
+   "application_details": {
+    "url": "https://iaacwm.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/sv/sites/SSAB/jobs",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-23T09:24:10",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31509401"
+  },
+  {
+   "id": "31509457",
+   "employer": {
+    "name": "Aktiebolaget Electrolux",
+    "organization_number": "5560094178"
+   },
+   "application_details": {
+    "url": "https://electrolux.wd3.myworkdayjobs.com/ElectroluxCareerSite/job/Stockholm/Regional-Sales-Controller_JR80580",
+    "via_af": false,
+    "email": "emma.johansson@electrolux.com"
+   },
+   "publication_date": "2026-09-23T09:28:00",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31509457"
+  },
+  {
+   "id": "31510175",
+   "employer": {
+    "name": "Publicis Media Sweden AB",
+    "organization_number": "5566079439"
+   },
+   "application_details": {
+    "url": "https://careers-publicisgroupe.icims.com/jobs/148494/paid-social-manager/job?mode=view&mobile=false&width=739&height=500&bga=true&needsRedirect=false&jan1offset=60&jun1offset=120",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-23T10:46:05",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31510175"
+  },
+  {
+   "id": "31510825",
+   "employer": {
+    "name": "Melt&Marble AB",
+    "organization_number": "5569611576"
+   },
+   "application_details": {
+    "url": "https://meltandmarble.recruitee.com/o/business-development-manager-personal-care",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-23T12:13:30",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31510825"
+  },
+  {
+   "id": "31511116",
+   "employer": {
+    "name": "Vattenfall AB",
+    "organization_number": "5560362138"
+   },
+   "application_details": {
+    "url": "https://jobs.smartrecruiters.com/Vattenfall/744000151002529-examensarbete-sakerhetsanalys-inom-karnkraft",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-23T13:09:10",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31511116"
+  },
+  {
+   "id": "31512143",
+   "employer": {
+    "name": "Orkla Foods Sverige AB",
+    "organization_number": "5562380302"
+   },
+   "application_details": {
+    "url": "https://jobs.smartrecruiters.com/Orkla/744000150962408-produktionspersonal-helg",
+    "via_af": false,
+    "email": null
+   },
+   "publication_date": "2026-09-23T15:04:40",
+   "source_type": "VIA_ANNONSERA",
+   "removed": false,
+   "webpage_url": "https://arbetsformedlingen.se/platsbanken/annonser/31512143"
+  }
+ ]
+}

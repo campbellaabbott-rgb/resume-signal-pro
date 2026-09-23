@@ -232,6 +232,36 @@ const dbObjects = {
     } catch { return "error"; }
   })(),
   "table user_job_searches": await tableState("user_job_searches"),
+  // THE TWO 2026-09-23 READERS, each called with its REAL named parameters.
+  // PostgREST resolves an RPC by name AND argument names, so posting {} to a
+  // function that takes parameters answers PGRST202 whether or not it exists —
+  // which is how six live functions were once reported missing in one sweep.
+  // Both are anon-callable readers behind a public panel, so a partial deploy
+  // that ships the frontend and drops the migration would otherwise show as an
+  // empty component and nothing else. A token and an id that have never
+  // existed are deliberate, and THE TWO ANSWER DIFFERENTLY, which is the point
+  // of writing it down rather than sharing one sentence: the Ontario reader
+  // answers an unknown id with ZERO ROWS (the posting is out of scope, and a
+  // surface prints nothing); the LCA reader answers an unknown token with
+  // EXACTLY ONE ROW OF NULLS, because its whole guarded contract is one row
+  // per asked token -- a missing row there would be an absence a client had to
+  // interpret, and the interpretation is a statement about a person. Neither
+  // probe reads the row count today; the next person to tighten this check
+  // needs to know which shape is correct before they assert on it.
+  "get_ontario_posting_disclosures()": await rpcState("get_ontario_posting_disclosures", { p_id: "deploy-verify:no-such-posting:0" }),
+  "get_employer_lca_wages()": await rpcState("get_employer_lca_wages", { p_tokens: ["deploy-verify-no-such-company"], p_soc_code: null, p_worksite_state: null }),
+  // THE NEGATIVE CONTROL, without which every "ok" above means nothing.
+  // PostgREST resolves an RPC by name AND argument names, so a probe that
+  // cannot tell a missing function from a live one still reports "ok" for all
+  // of them -- a sweep where everything passes is then indistinguishable from
+  // a sweep that is blind. This name has never existed and MUST read MISSING;
+  // if it does not, the reading above is not a reading.
+  "negative control (a function that never existed)": await (async () => {
+    const state = await rpcState("no_such_function_deploy_control", { p_x: 1 });
+    // Inverted on purpose: MISSING is the healthy answer here, so the entry
+    // reports MISSING when the control FAILS to come back missing.
+    return state === "MISSING" ? "ok" : "MISSING";
+  })(),
   // Behavioral, not just reachable: 20260721230000 redefined closed_90d as
   // genuine-tenure fills and made tracking_days the global log span, so even a
   // token with zero closures gets tracking_days >= 1; the old definition
@@ -246,6 +276,27 @@ const dbObjects = {
     } catch { return "error"; }
   })(),
 };
+// ---- 7b. THE FILED-WAGE PANEL SHIPS DARK, AND THAT IS A STATE, NOT A BUG ----
+// REACHABILITY IS NOT DATA. The reader above answers with its real parameters
+// the moment its migration applies, and it will answer a row of nulls for
+// every token until an operator loads a quarter: the loader script
+// (scripts/load-oflc-lca.mjs) reads the Department's 250 MB disclosure file
+// and EMITS ROWS, it does not write them, and the writer
+// (public.oflc_lca_wages_load) is service_role only. So the panel renders
+// nothing on the day this deploys, by design — and a sweep that only reports
+// the function as present would let the next person read a permanently empty
+// panel as a regression and go looking for a fault that is not there.
+//
+// The table is closed to anon by design, so this cannot count its rows from
+// here; what it can do is say, out loud, which of the two lanes is armed.
+record("filed-wage panel: reader present, quarter not loaded from here", true,
+  dbObjects["get_employer_lca_wages()"] === "ok"
+    ? "reader reachable. The panel prints nothing until an operator runs "
+      + "`node scripts/load-oflc-lca.mjs --file <LCA_Disclosure_Data_FY....xlsx> --published YYYY-MM-DD --out rows.json` "
+      + "and posts the rows in chunks to public.oflc_lca_wages_load with ONE shared p_run_started_at, p_prune on the LAST chunk only. "
+      + "An empty panel before that step is the expected state, not a fault."
+    : "reader NOT reachable — the migration has not applied; the panel would be empty for that reason instead");
+
 const dbMissing = Object.entries(dbObjects).filter(([, v]) => v === "MISSING").map(([k]) => k);
 record("migrations applied (critical DB objects)", dbMissing.length === 0,
   dbMissing.length

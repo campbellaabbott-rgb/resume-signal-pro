@@ -20,11 +20,36 @@
 
 export type AtsTier = "auto" | "click";
 
-export interface AtsVendor {
+/**
+ * What every list in this file holds: a source the board carries an entry for.
+ *
+ * `serving` is the DORMANCY MARKER, and it exists because an entry here is two
+ * separate claims — "we can read this system" and "we are serving its rows
+ * today" — and they came apart. USAJOBS sat in the vendor menu and in every
+ * public "where these jobs come from" sentence while the board served ZERO
+ * rows from it, because its secrets are not set. A reader filtered the board
+ * to it and got an empty page; a reader of the sources line was told about an
+ * inventory that is not there.
+ *
+ * Absent means serving, `serving: false` means the entry is carried but
+ * dormant. Deleting the entry instead would lose the tier, the label and the
+ * standing the moment its secrets land; marking it keeps all of that and takes
+ * it off the public surfaces until it has rows. The surfaces filter on the
+ * marker (SERVING_SOURCES below) — they must never re-spell the list.
+ */
+export interface BoardSource {
   /** Matches the `source` value on postings and the key in apply-automation.ts. */
   key: string;
   /** How the vendor writes its own name. */
   label: string;
+  /**
+   * Set to `false` — explicitly — for a source the board carries but serves no
+   * rows from. Absent is the normal case and means the source has rows.
+   */
+  serving?: false;
+}
+
+export interface AtsVendor extends BoardSource {
   tier: AtsTier;
 }
 
@@ -62,12 +87,20 @@ export const ATS_VENDORS: readonly AtsVendor[] = [
  *
  * USAJOBS is the U.S. federal government's own hiring system. Applications run
  * through USAJOBS accounts and agency assessments, so the agent does not apply
- * there at all — not "auto", not "click", not ever. It still belongs in the
- * board's SOURCE list, because a "where these jobs come from" note that omits
- * a source is false by omission however true each named item is.
+ * there at all — not "auto", not "click", not ever.
+ *
+ * IT IS DORMANT, and that is why it carries the marker. Measured 2026-09-23
+ * against the board's own per-source facet and its date-coverage rollup: both
+ * return nineteen sources with rows and usajobs is in neither. The entry stays
+ * — it comes back the day its secrets are set, and deleting it would lose this
+ * note with it — but a "where these jobs come from" sentence that names a
+ * system serving nothing is false in the other direction, and a menu entry
+ * that filters to an empty page is worse than no entry. So the public
+ * surfaces read SERVING_SOURCES, which drops it, and the moment rows appear
+ * the marker comes off and every surface names it again with no copy edit.
  */
 export const NON_ATS_SOURCES = [
-  { key: "usajobs", label: "USAJOBS" },
+  { key: "usajobs", label: "USAJOBS", serving: false },
 ] as const;
 
 /**
@@ -130,6 +163,74 @@ export const ATS_VENDOR_LIST = ATS_VENDORS.map((v) => v.label).join(", ");
 export const BOARD_SOURCE_LIST = [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES]
   .map((v) => v.label)
   .join(", ");
+
+/**
+ * EVERY SOURCE THE BOARD CARRIES AN ENTRY FOR, in one array — the thing the
+ * three lists above are, read as one.
+ *
+ * The three lists are split by what the AGENT may do on a source (measured
+ * tier / unmeasured / not an ATS at all). Nothing public asks that question,
+ * so every public surface had to re-spell the union by hand, and six of them
+ * did: a six-name list and a twelve-name list in the prerender, a fifteen-name
+ * list and an "and 8 more" on the Ghost Job Index, a nineteen-name list on the
+ * Entry-Level Index, and the board's own note. Five of the six were wrong on
+ * the day this was written.
+ */
+export const ALL_BOARD_SOURCES: readonly BoardSource[] = [
+  ...ATS_VENDORS,
+  ...UNMEASURED_ATS_SOURCES,
+  ...NON_ATS_SOURCES,
+];
+
+/**
+ * The sources that actually have rows — what a reader is told about.
+ *
+ * THE ONE LIST PUBLIC COPY MAY NAME. BOARD_SOURCE_LIST answers "what do we
+ * hold an entry for", which is an internal question; this answers "where do
+ * the postings on this page come from", which is the one every public sentence
+ * is really asking. They differ by the dormancy marker, and the day they stop
+ * differing this still reads correctly.
+ */
+export const SERVING_SOURCES: readonly BoardSource[] = ALL_BOARD_SOURCES.filter((v) => v.serving !== false);
+
+/** Carried, but serving nothing today. Named where the ABSENCE is the point. */
+export const DORMANT_SOURCES: readonly BoardSource[] = ALL_BOARD_SOURCES.filter((v) => v.serving === false);
+
+/**
+ * The `source` values a public surface may offer as a filter.
+ *
+ * WHO READS IT, named here because a documented list with no reader is the
+ * shape that drifts next: the board's vendor menu is built from SERVING_SOURCES
+ * (it needs the labels too), and the guards bind the two together -- the menu
+ * builder's option set is asserted to equal this list, key for key, and this
+ * list is asserted to equal the set of sources the board was MEASURED to have
+ * rows for. So this is the keys-only view the checks are written against, not
+ * a second source of truth for the menu.
+ */
+export const SERVING_SOURCE_KEYS: readonly string[] = SERVING_SOURCES.map((v) => v.key);
+
+/**
+ * Every serving source as one prose string, for interpolation into copy.
+ *
+ * Comma-joined with no "and", for the same reason ATS_VENDOR_LIST is: the
+ * surrounding sentence supplies the grammar, this supplies the names.
+ */
+export const SERVING_SOURCE_LIST = SERVING_SOURCES.map((v) => v.label).join(", ");
+
+/**
+ * The same fact in a short sentence — "A, B, C and 16 more" — for places where
+ * nineteen names would swamp the line.
+ *
+ * Derived, so the tail count cannot go stale the way "and 8 more" did: it was
+ * written when the board served eleven sources, and by the time anyone read it
+ * again the board served nineteen. A number that describes a list must be
+ * computed from that list.
+ */
+export const servingSourceSummary = (lead = 3): string => {
+  const names = SERVING_SOURCES.map((v) => v.label);
+  if (names.length <= lead) return names.join(", ");
+  return `${names.slice(0, lead).join(", ")} and ${names.length - lead} more`;
+};
 
 /**
  * Deliberately no "percentage of the board" export.

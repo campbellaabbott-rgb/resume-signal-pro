@@ -36,6 +36,22 @@ vi.mock("@/integrations/supabase/client", () => ({
 import { AtsCoverage } from "../components/AtsCoverage";
 import { ATS_VENDORS, ATS_VENDOR_LIST } from "../config/ats-vendors";
 
+/**
+ * Source with its comments removed, for the assertions below that pin a
+ * SPELLING rather than a behaviour.
+ *
+ * Comments are part of a file, and a docblock explaining which identifier a
+ * line uses necessarily contains that identifier. A guard counting or matching
+ * the literal then passes on the explanation while the code says something
+ * else — the failure mode this repo has shipped several times. JSX comment
+ * braces go first, or the closing brace survives as code.
+ */
+const codeOf = (s: string) =>
+  s
+    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/[^\n]*/gm, " ");
+
 /** Shape the warm cache returns, trimmed to what this component reads. */
 const facets = (sourcesFacet: Record<string, unknown>, openTotal: unknown = 12_345) => ({
   data: {
@@ -245,9 +261,23 @@ describe("the board's Sources note is generated, never typed out", () => {
   });
 
   it("Jobs.tsx passes the generated list into the string", () => {
-    const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
-    expect(jobs).toMatch(/jobsPage\.sourceNote[\s\S]{0,600}?\{ vendors: BOARD_SOURCE_LIST \}/);
-    expect(jobs).toMatch(/import \{ BOARD_SOURCE_LIST \} from "@\/config\/ats-vendors"/);
+    // THE SERVING LIST, NOT THE CARRIED ONE. The note answers "where do the
+    // postings on this page come from", and on 2026-09-23 the carried list
+    // held a source the board served zero rows from — so interpolating it
+    // named an inventory that is not there. The two lists differ only by the
+    // config's dormancy marker, and on the day nothing is dormant this still
+    // reads correctly.
+    //
+    // COMMENT-STRIPPED, because this pins spellings: a literal written into a
+    // comment has satisfied a dead guard in this repo several times, and the
+    // import line above the note is exactly the kind of thing a docblock
+    // quotes.
+    const jobs = codeOf(readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8"));
+    expect(jobs).toMatch(/jobsPage\.sourceNote[\s\S]{0,600}?\{ vendors: SERVING_SOURCE_LIST \}/);
+    expect(jobs).toMatch(/import \{ SERVING_SOURCE_LIST \} from "@\/config\/ats-vendors"/);
+    // And the superseded spelling is gone from the code, not merely outvoted
+    // by a newer line somewhere below it.
+    expect(jobs, "the carried-list interpolation is still in the page").not.toMatch(/\{ vendors: BOARD_SOURCE_LIST \}/);
   });
 
   it("the inline default no longer spells any platform out", () => {

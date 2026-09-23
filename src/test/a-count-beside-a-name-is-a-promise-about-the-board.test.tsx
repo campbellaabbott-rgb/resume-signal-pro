@@ -66,7 +66,7 @@ function stubTable() {
 
 import Jobs, { vendorOptionsWithCounts } from "../pages/Jobs";
 import { readBoardFacets } from "../lib/board-facets";
-import { ATS_VENDORS, NON_ATS_SOURCES, UNMEASURED_ATS_SOURCES } from "../config/ats-vendors";
+import { ALL_BOARD_SOURCES, DORMANT_SOURCES, SERVING_SOURCE_KEYS } from "../config/ats-vendors";
 
 // A CASE THAT CHAINS SEVERAL WAITS NEEDS A BUDGET LARGER THAN THEIR SUM. Every
 // wait below is bounded (SLOW, 4 s), but vitest's default per-test budget is
@@ -120,8 +120,8 @@ const ROWS = [{
 
 type FacetsReply = Record<string, unknown> | null;
 
-function mount(facets: FacetsReply) {
-  window.history.replaceState({}, "", "/jobs");
+function mount(facets: FacetsReply, search = "") {
+  window.history.replaceState({}, "", `/jobs${search}`);
   rpc.mockImplementation(async () => ({ data: [] }));
   invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {
     const b = o?.body ?? {};
@@ -162,8 +162,20 @@ async function openVendorPicker() {
 
 type Opt = { value: string; label: string; count?: number; capped?: boolean };
 function assertHonest(opts: Opt[], sources: Record<string, number> | null) {
-  const keys = [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES].map((v) => v.key);
-  expect(opts.map((o) => o.value), "the option set must not depend on inventory").toEqual(keys);
+  // THE OPTION SET MUST NOT DEPEND ON INVENTORY -- and that is a statement
+  // about the FACET, which is what this function is handed. Every call below
+  // passes a different `sources` payload and must get the same rows back, so a
+  // source that dipped to zero this hour cannot vanish from a control a
+  // shared link is about to apply.
+  //
+  // IT DOES DEPEND ON THE CONFIG'S DORMANCY MARKER, which is a different kind
+  // of thing entirely: a decision somebody made and wrote down, not a number
+  // that moves every pass. Measured 2026-09-23, the twentieth entry served
+  // zero rows because its secrets are not set, so offering it filtered the
+  // board to an empty page -- an answer about our configuration dressed as an
+  // answer about the market. It keeps its entry, its label and its place in
+  // the URL parser; it loses its place in the menu until it has rows.
+  expect(opts.map((o) => o.value), "the option set must not depend on inventory").toEqual([...SERVING_SOURCE_KEYS]);
   for (const o of opts) {
     expect("capped" in o, `${o.value} carries a capped flag — facet counts are exact`).toBe(false);
     const n = sources?.[o.value];
@@ -273,13 +285,43 @@ describe("a count beside a name is a promise about the board", () => {
     expect(rows["Lever"]).not.toMatch(/\d/);
     // Absent from the map entirely: same.
     expect(rows["Ashby"]).toBe("Ashby");
-    expect(rows["USAJOBS"]).toBe("USAJOBS");
+    // And a source the board serves NOTHING from has no row at all. Not a row
+    // with no number -- that is what "absent from the facet this hour" looks
+    // like, and these are different facts: Ashby above has rows and none were
+    // counted this pass, while this one has never had any.
+    for (const d of DORMANT_SOURCES) {
+      expect(rows[d.label], `${d.label} serves no rows and is still offered`).toBeUndefined();
+    }
     expect(Object.keys(rows).length, "every source keeps its row").toBe(vendorOptionsWithCounts(null).length);
     // The basis: once, on the control, naming the population and the stamp.
     expect(noteCount).toBe(1);
     expect(note).toContain("whole board");
     expect(note).toContain("not narrowed by your other filters");
     expect(note).toContain("2026");
+  });
+
+  it("behaviour: a link naming a source the menu no longer offers still binds it and names it", async () => {
+    // THE OTHER HALF OF TAKING IT OFF THE MENU. Dropping the value at init
+    // would show the whole board under a URL that asks for one vendor -- a
+    // filter silently WIDENING a search, which is a defect class this project
+    // keeps re-finding, arriving here from the address bar instead of from a
+    // control. So the parser accepts every carried source and only the MENU
+    // narrows: nobody new can land on an empty page, and a link already out
+    // there still means what it said.
+    const d = DORMANT_SOURCES[0];
+    expect(ALL_BOARD_SOURCES.map((v) => v.key), "the dormant entry was deleted, not marked").toContain(d.key);
+    mount({ categories: { engineering: 1 }, refreshedAt: AT, sources: SOURCES, sourcesAt: AT }, `?vendor=${d.key}`);
+    await waitFor(() => expect(document.body.textContent).toContain("Staff Engineer"), SLOW);
+    // The request carried it, rather than the page quietly asking for everything.
+    await waitFor(() => {
+      const sent = invoke.mock.calls.some(([fn, o]) => {
+        const b = (o as { body?: Record<string, unknown> } | undefined)?.body ?? {};
+        return fn === "job-board" && b.action === "list" && b.vendor === d.key;
+      });
+      expect(sent, "the vendor from the URL never reached the request").toBe(true);
+    }, SLOW);
+    // And the chip names the vendor rather than printing a raw column value.
+    expect(document.body.textContent, "the bound filter is unnamed on the page").toContain(d.label);
   });
 
   it("behaviour: an older function (sources null) prints no numbers and no basis line — silence, never 0", async () => {

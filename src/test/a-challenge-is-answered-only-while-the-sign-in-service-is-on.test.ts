@@ -588,8 +588,13 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     expect(MCP).toMatch(/`method not found: \$\{String\(method\)\} — supported: \$\{SUPPORTED_METHODS\.join\(", "\)\}`/);
   });
 
-  it("the version names the release with the switch in it", () => {
-    expect(between(MCP, "const SERVER_INFO = {", "\n};")).toMatch(/version: "2026-09-04\.8"/);
+  it("the version names the release with the switch in it, or a later one", () => {
+    // A FLOOR, NOT AN EQUALITY: the sign-in switch shipped in .9 and every
+    // release after it still carries the switch. An equality here fails on
+    // the next required bump, which is how a version guard gets deleted.
+    const v = /version: "2026-09-04\.(\d+)"/.exec(between(MCP, "const SERVER_INFO = {", "\n};"));
+    expect(v, "the server version left the 2026-09-04 release line").toBeTruthy();
+    expect(Number(v![1]), "the server version went back past the release that carries the switch").toBeGreaterThanOrEqual(9);
   });
 });
 

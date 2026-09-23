@@ -357,7 +357,7 @@ console.log("\n[/v1] MCP-parity filters");
 console.log("\n[/v1] 2026-09-03 upgrades");
 {
   const root = await api("/v1");
-  ok(root.body?.apiVersion === "2026-09-17.1", "apiVersion is 2026-09-17.1", root.body?.apiVersion ?? "none");
+  ok(root.body?.apiVersion === "2026-09-23.1", "apiVersion is 2026-09-23.1", root.body?.apiVersion ?? "none");
   ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
   const loc = await api("/v1/jobs?location=London&limit=10");
   ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);
@@ -371,6 +371,60 @@ console.log("\n[/v1] 2026-09-03 upgrades");
   ok(post.status === 402 && pb?.error?.code === "upgrade_required", "POST /v1/fit is paid: free key gets 402 upgrade_required", pb?.error?.code ?? `HTTP ${post.status}`);
   const get = await api("/v1/fit");
   ok(get.status === 405, "GET /v1/fit is 405 — the résumé must not ride a query string", `HTTP ${get.status}`);
+}
+
+// ── 2026-09-23: a feed we may only DISPLAY must not leave by the API ──────
+//
+// The board carries a hiring system whose terms permit showing its results to
+// a person and forbid republishing them as a data feed. Its rows are absent
+// from every /v1 row, and naming it in ?source= is refused with the reason.
+//
+// THE FAILURE THIS CATCHES IS AN HTTP 200. An empty page for that source would
+// be this API making a false statement about the world — "there are no such
+// jobs" — in place of a true one about a licence, and a caller could not tell
+// the two apart. A 400 would be almost as bad: the value IS in the closed set,
+// so "not a valid source" would be wrong as well. The whole point of 451 is
+// that its meaning is a legal restriction and nothing else.
+//
+// NEGATIVE CONTROL INCLUDED, because a 451 on every source would satisfy the
+// first check and mean the filter had swallowed the endpoint.
+console.log("\n[/v1] display-only sources never leave by the API");
+{
+  const barred = await api("/v1/jobs?source=usajobs&limit=1");
+  ok(barred.status === 451, "a display-only source is refused with 451, not answered", `HTTP ${barred.status}`);
+  ok(barred.body?.error?.code === "source_not_redistributable",
+    "the refusal names the reason rather than the input", barred.body?.error?.code ?? "none");
+  ok(barred.status !== 200 && (barred.body?.data ?? null) === null,
+    "the refusal carries no rows", Array.isArray(barred.body?.data) ? `${barred.body.data.length} rows` : "no data key");
+
+  const root = await api("/v1");
+  const excluded = root.body?.restrictions?.excludedSources ?? [];
+  ok(Array.isArray(excluded) && excluded.includes("usajobs"),
+    "/v1 declares the excluded source rather than hiding it", JSON.stringify(excluded));
+  ok(typeof root.body?.restrictions?.reason === "string" && root.body.restrictions.reason.length > 20,
+    "/v1 states WHY it is excluded");
+
+  // THE SAME POPULATION BY A DIFFERENT PARAMETER. Every row of the restricted
+  // feed carries one company_token, and it is the source's own name, so this
+  // reaches what ?source= just refused. company_token is deliberately NOT
+  // domain-checked (a caller may legitimately ask about an employer the board
+  // does not carry, and an empty page is the true answer to that) — which is
+  // exactly why the one token value naming a restricted source has to be
+  // refused explicitly rather than left to answer an empty 200.
+  const barredToken = await api("/v1/jobs?company_token=usajobs&limit=1");
+  ok(barredToken.status === 451, "the restricted source's own token is refused too, not answered empty", `HTTP ${barredToken.status}`);
+  ok(barredToken.body?.error?.code === "source_not_redistributable",
+    "the company_token refusal names the same reason", barredToken.body?.error?.code ?? "none");
+  const openToken = await api("/v1/jobs?company_token=not-an-employer-we-carry&limit=1");
+  ok(openToken.status === 200 && Array.isArray(openToken.body?.data) && openToken.body.data.length === 0,
+    "control: an unknown employer token still answers an honest empty page, not a 451",
+    `HTTP ${openToken.status} ${openToken.body?.error?.code ?? `${openToken.body?.data?.length ?? "?"} rows`}`);
+
+  const serving = await api("/v1/jobs?source=greenhouse&limit=1");
+  ok(serving.status === 200, "control: a source we may redistribute still answers 200", `HTTP ${serving.status} ${serving.body?.error?.code ?? ""}`);
+  const bogus = await api("/v1/jobs?source=notavendor&limit=1");
+  ok(bogus.status === 400 && bogus.body?.error?.code === "unsupported_param",
+    "control: a source outside the closed set is still a 400, not a 451", bogus.body?.error?.code ?? `HTTP ${bogus.status}`);
 }
 
 // ── 2026-09-04 upgrades: comma lists, closed-set refusals, include= ───────

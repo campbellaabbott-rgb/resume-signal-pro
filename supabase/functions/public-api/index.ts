@@ -44,15 +44,17 @@ import { isPaidKeyTier } from "../_shared/key-tier.ts";
 // stops being type-only.
 import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
 
-// BUMPED FOR AN ADDITIVE FIELD, deliberately. /v1/changes closed[] rows now
-// carry closedAtIsObservation, which tells a consumer whether closed_at is an
-// event date or the date we could first see the event -- the distinction D1
-// applied to every SQL statistic reading job_board_closures. A customer who
-// pinned the old version is not broken by a new key, but a customer deriving
-// time-to-close needs to know the field exists, and the version string is the
-// only thing they can diff. scripts/api-contract-probe.mjs pins this literal
-// and moves with it.
-const API_VERSION = "2026-09-17.1";
+// BUMPED FOR A NARROWING, which is the kind a consumer most needs to be able
+// to diff. The federal feed is now structurally absent from every row this API
+// returns, and asking for it by name is refused rather than answered with an
+// empty page (see NO_REDISTRIBUTION_SOURCES below). A caller who was filtering
+// it in themselves is unaffected; a caller who was counting on it needs to
+// know the day it stopped, and the version string is the only thing they can
+// diff. The previous bump was the additive closedAtIsObservation field on
+// /v1/changes closed[] rows -- whether closed_at is an event date or the date
+// we could first see the event. scripts/api-contract-probe.mjs pins this
+// literal and moves with it.
+const API_VERSION = "2026-09-23.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -73,6 +75,59 @@ const DEFAULT_LIMIT = 25;
 // breaking existing callers to fix a performance cliff they may never have hit
 // would be its own regression. Past the cap the error names the cursor.
 const MAX_OFFSET = 10_000;
+
+/**
+ * THE ONE HIRING SYSTEM THIS API READS AND MAY NOT HAND ON.
+ *
+ * The board carries a USAJOBS adapter (job-board's fetcher, keyed on the
+ * vendor code below). It reads the U.S. federal government's own job API,
+ * which is free and open to read — and whose terms of use permit DISPLAYING
+ * the results to a person while forbidding republication of the data as a
+ * standalone feed. /v1 is exactly that: a feed, sold to someone else's code,
+ * which is then free to store it, resell it and mirror it. Displaying a
+ * federal role on resumebooster.work is inside those terms; handing the same
+ * row to an API customer is not.
+ *
+ * SO THE EXCLUSION IS STRUCTURAL, NOT A FILTER SOMEONE REMEMBERS TO APPLY.
+ * Every path that can emit a posting row applies it: the two /v1/jobs engines,
+ * /v1/jobs/{id}, both lists of /v1/changes, and POST /v1/fit. The direct
+ * database reads bind it in SQL so the rows never leave Postgres; the three
+ * paths that proxy job-board -- which has no vendor-EXCLUSION filter, only a
+ * vendor-inclusion one -- drop the rows on the way back out.
+ *
+ * AND ASKING FOR IT BY NAME IS REFUSED, NOT SILENTLY EMPTIED. `?source=` with
+ * this vendor answers HTTP 451 naming the terms of use. An empty 200 would be
+ * this API telling a machine there are no federal jobs, which is a false
+ * statement about the world rather than a true one about our licence -- the
+ * same failure mode the unknown-vendor 400 above exists to prevent.
+ *
+ * WHY THIS READS ZERO ROWS TODAY, AND WHY THAT IS NOT A BUG. The adapter
+ * skips every visit with a console warning unless the owner sets two secrets,
+ * USAJOBS_API_KEY and USAJOBS_USER_AGENT, obtained by free registration at
+ * developer.usajobs.gov (the user agent is the registered e-mail address).
+ * Until then the board holds one catalogue entry and no federal postings at
+ * all, so this exclusion removes nothing. It exists so that the day those two
+ * secrets are set is not the day /v1 quietly starts republishing federal data.
+ * The same registration caps any single query at 10,000 results, so even armed
+ * the federal feed is a bounded slice and never a census of federal hiring --
+ * a second reason not to sell it as one.
+ */
+const NO_REDISTRIBUTION_SOURCES = ["usajobs"] as const;
+/** The `in` list PostgREST takes, built from the array so the two cannot drift. */
+const NO_REDISTRIBUTION_IN = `(${NO_REDISTRIBUTION_SOURCES.join(",")})`;
+/** Said in the refusal, in /v1's own index, and in /v1/stats. One wording. */
+const NO_REDISTRIBUTION_REASON =
+  "The U.S. federal job feed is readable on resumebooster.work but may not be redistributed as a data feed under its terms of use, so no /v1 endpoint returns its rows on any tier.";
+const isNoRedistributionSource = (v: unknown): boolean =>
+  (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
+/**
+ * Drop every row this API may not redistribute. Used ONLY on the paths that
+ * proxy job-board and get rows back in memory; a direct read binds
+ * NO_REDISTRIBUTION_IN in SQL instead, which is strictly better because the
+ * rows never cross the wire.
+ */
+const withoutNoRedistribution = <T extends Record<string, unknown>>(rows: T[]): T[] =>
+  rows.filter((r) => !isNoRedistributionSource(r.source));
 
 // The columns /v1 promises. Listed once, explicitly, because `select("*")`
 // would silently publish every column added to the table later — including
@@ -251,6 +306,15 @@ Deno.serve(async (req) => {
         rankedEngine: "/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match.",
         include: `/v1/jobs?include=description — adds the posting body to every row, and caps that request at ${MAX_LIMIT_WITH_DESCRIPTION} rows a page.`,
         multiValue: "country, category, company_token, work_mode, source and experience_band take comma lists (e.g. country=US,GB). An unknown value in a closed set is a 400, never an empty page.",
+      },
+      // DOCUMENTED WHERE A CONSUMER LOOKS FIRST. A caller who finds this
+      // vendor in the board's own source list and not in this API's rows must
+      // be able to learn why without filing a bug: it is a licence boundary,
+      // not a gap in coverage and not an outage.
+      restrictions: {
+        excludedSources: [...NO_REDISTRIBUTION_SOURCES],
+        reason: NO_REDISTRIBUTION_REASON,
+        note: "Rows from these hiring systems are absent from /v1/jobs, /v1/jobs/{id}, /v1/changes and POST /v1/fit. Naming one in ?source= answers HTTP 451 rather than an empty page.",
       },
     });
   }
@@ -542,7 +606,16 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     console.error("[PUBLIC-API] ranked engine call failed:", String((e as Error)?.message ?? e).slice(0, 160));
     return fail(502, "ranked_unavailable", "The ranked engine did not respond. Retry, or drop engine=ranked to use the default.", headers);
   }
-  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
+  // THE BOARD HAS NO VENDOR-EXCLUSION FILTER, ONLY A VENDOR-INCLUSION ONE, so
+  // this path cannot push the restriction down into the query the way the
+  // default engine does -- it drops the rows on the way back out instead. The
+  // `total` beside them is the board's own and still counts what it counted;
+  // `returned` is what a caller actually received, and the disclosure below
+  // says which sources were withheld, so the two cannot be silently subtracted
+  // from each other.
+  const jobs = withoutNoRedistribution(
+    (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>,
+  );
   const toV1 = (j: Record<string, unknown>) => ({
     id: j.id, source: j.source, company_token: j.token, company: j.company,
     title: j.title, location: j.location, country: j.country, remote: j.remote,
@@ -581,8 +654,10 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
       note: "Only postings still live in the employer's own feed within the last 30 days.",
     },
     // The board's own honesty, verbatim — filters it could not honour, words it
-    // read as filters, spelling suggestions, the route it took.
-    ...(Object.keys(disc).length ? { disclosures: disc } : {}),
+    // read as filters, spelling suggestions, the route it took — plus OUR
+    // narrowing, named the same way, because a disclosure block that lists
+    // every restriction but ours is the one place a reader would not look.
+    disclosures: { ...disc, excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON } },
   }, 200, headers);
 }
 
@@ -647,6 +722,31 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       if (unknown.length) {
         return fail(400, "unsupported_param",
           `${f.param} accepts: ${[...f.domain].join(", ")}. Unknown: ${unknown.map((x) => `"${x}"`).join(", ")}.`,
+          headers);
+      }
+    }
+    // ASKED FOR BY NAME, AND REFUSED BY NAME. A vendor the board carries but
+    // this API may not republish is a KNOWN member of the domain above, so it
+    // passes the unknown-value check and would otherwise bind a filter that
+    // can only ever match rows the query below has already excluded -- an
+    // empty 200 saying "no such federal jobs" instead of "we may not sell you
+    // these". 451 is the status whose whole meaning is a legal restriction,
+    // and the code and message both name the reason.
+    // AND THROUGH THE OTHER DOOR, WHICH IS NOT DOMAIN-CHECKED. Every row of a
+    // restricted feed carries ONE company_token, and that token is the
+    // source's own name -- the agency travels in `company` -- so
+    // ?company_token= reaches exactly the population ?source= just refused, by
+    // a parameter deliberately left open because ~23,400 tokens cannot be a
+    // closed set. The SQL below already excludes the rows, so what came back
+    // was an empty 200: the same false statement about the world that the 451
+    // above exists to avoid making, wearing a different parameter name. Only
+    // the handful of token values that ARE restricted source names are
+    // refused; every other unknown token still answers an honest empty page.
+    if (f.param === "source" || f.param === "company_token") {
+      const barred = asked.filter(isNoRedistributionSource);
+      if (barred.length) {
+        return fail(451, "source_not_redistributable",
+          `${barred.map((x) => `"${x}"`).join(", ")} cannot be served by this API. ${NO_REDISTRIBUTION_REASON} Drop it from ?${f.param}= and the rest of your query is answered normally.`,
           headers);
       }
     }
@@ -819,7 +919,11 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       .from("job_board_postings")
       .select(`${JOB_FIELDS},effective_posted${extraSelect}`, opts)
       .is("missing_since", null)                       // fence: never serve a withdrawn posting
-      .gte("effective_posted", freshCutoff());          // fence: never serve past the window
+      .gte("effective_posted", freshCutoff())           // fence: never serve past the window
+      // fence: never redistribute a feed we are only licensed to display.
+      // Bound on BOTH the row query and the count, because a total that counts
+      // rows the caller can never reach is the same lie as serving them.
+      .not("source", "in", NO_REDISTRIBUTION_IN);
     // ONE VALUE IS .eq(), SEVERAL ARE .in() — the board's own choice, and it is
     // about the index, not about tidiness: a widened `.in()` on a large bucket
     // loses the date index the ordering rides on, so a single-value request
@@ -1077,6 +1181,11 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
     // why the guard now counts BOTH per read path rather than checking that
     // "a fence" is present.
     .gte("effective_posted", freshCutoff())           // fence: past the serving window
+    // fence: a licence boundary, not a coverage gap. A caller who already
+    // holds a federal id (from the website, say) gets the same 404 a withdrawn
+    // posting gets, and the note below names redistribution as one of the
+    // reasons an id can be absent so the 404 is not read as "we lost it".
+    .not("source", "in", NO_REDISTRIBUTION_IN)
     .maybeSingle();
   if (error) {
     console.error("[PUBLIC-API] /v1/jobs/{id} failed:", error.message?.slice(0, 160));
@@ -1084,7 +1193,7 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
   }
   // A withdrawn posting is 404 and NOT a stale 200. The difference is the whole
   // product: a caller must be able to tell "gone" from "we stopped looking".
-  if (!data) return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer, or aged past the 30-day window.", headers);
+  if (!data) return fail(404, "not_found", `No live posting with that id. It may have been withdrawn by the employer, aged past the 30-day window, or come from a hiring system this API may not redistribute (${NO_REDISTRIBUTION_SOURCES.join(", ")}; see /v1 restrictions).`, headers);
   return json({ apiVersion: API_VERSION, data }, 200, headers);
 }
 
@@ -1185,6 +1294,11 @@ async function changes(
     // rows were measured sitting between 30 and 31 days old. Without this,
     // /v1/changes reports as "opened" postings /v1/jobs would refuse.
     .gte("effective_posted", freshCutoff())          // fence: past the serving window
+    // fence: the redistribution boundary reaches the change feed too. An
+    // "opened" event carries the whole row -- title, employer, apply URL --
+    // so a feed that excluded these from /v1/jobs and announced them here
+    // would be republishing the same data one endpoint over.
+    .not("source", "in", NO_REDISTRIBUTION_IN)
     .gte("first_seen", sinceIso);
   if (openedAfter) {
     openedQ = openedQ.or(`first_seen.gt.${openedAfter.ep},and(first_seen.eq.${openedAfter.ep},id.gt.${openedAfter.id})`);
@@ -1211,6 +1325,10 @@ async function changes(
   // unflagged feed would have made impossible to resolve.
   let closedQ = client.from("job_board_closures")
     .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis")
+    // Same fence, same reason: a closure row carries the posting's title,
+    // employer and dates. The closure LOG is ours, but the posting it
+    // describes is still the vendor's data.
+    .not("source", "in", NO_REDISTRIBUTION_IN)
     .gte("closed_at", sinceIso);
   if (closedAfter) {
     closedQ = closedQ.or(`closed_at.gt.${closedAfter.ep},and(closed_at.eq.${closedAfter.ep},event_id.gt.${closedAfter.id})`);
@@ -1272,6 +1390,11 @@ async function changes(
       },
     },
     closureHistoryDays: maxDays,
+    // A CHANGE FEED IS WALKED FOR COMPLETENESS, so the one population it does
+    // not cover has to be stated inside it -- a consumer reconciling this feed
+    // against the site would otherwise find federal roles opening and closing
+    // on the page and never here, and read that as dropped events.
+    excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
     note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series, and the remainder matches our own published daily figures. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
   }, 200, headers);
 }
@@ -1339,7 +1462,17 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     companiesFacet?: Array<{ token?: string; name?: string; count?: number }>;
     companiesOpen?: Record<string, number>;
   };
-  const facet = Array.isArray(v.companiesFacet) ? v.companiesFacet : [];
+  // THE DIRECTORY HAS TO AGREE WITH THE ROWS, or it is the irreconcilable
+  // pair this endpoint already shipped once (open_postings 33,986 beside a
+  // /v1/jobs page serving a fraction of it). The facet carries no `source`
+  // column, only a token — but the federal feed is the board's one
+  // SINGLE-SOURCE vendor: job-board's adapter gives every federal posting the
+  // fixed company_token equal to the vendor code itself, with the hiring
+  // agency travelling in each row's `company`. So the vendor codes ARE the
+  // tokens to drop here, and dropping them is what keeps a customer from
+  // joining this endpoint to a /v1/jobs query that can only return zero.
+  const facet = (Array.isArray(v.companiesFacet) ? v.companiesFacet : [])
+    .filter((c) => !isNoRedistributionSource(c.token));
   // `open_postings` NOW MEANS OPEN. This is a FIX, not a breaking change: the
   // field kept its name, its type and its position, and the name was always
   // the promise. What it carried was companiesFacet.count — count(*) GROUP BY
@@ -1389,6 +1522,10 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
       // one decoder validates all of them.
       nextCursor: more && lastTok ? encodeCursor("token", lastTok) : null,
     },
+    // Named here for the same reason it is named on /v1/jobs: an employer
+    // directory that silently omits one is a directory whose completeness a
+    // consumer cannot reason about.
+    excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
     // The figure's age is published rather than implied. This facet refreshes
     // at the end of a rotation pass, so it is minutes-to-hours old by design.
     asOf: data?.updated_at ?? null,
@@ -1439,7 +1576,13 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
   const r = await board({ action: "list", limit, includeFacets: false, q,
     ...(typeof body.country === "string" ? { country: body.country } : {}),
     ...(body.remote === true ? { remote: true } : {}) });
-  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
+  // DROPPED BEFORE SCORING, not after. This endpoint returns a job card per
+  // row (title, employer, apply URL) exactly as /v1/jobs does, so it is a
+  // redistribution path like any other; filtering here also means we never
+  // spend the scorer's budget on a row the caller will not receive.
+  const jobs = withoutNoRedistribution(
+    (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>,
+  );
   const ids = jobs.map((j) => String(j.id)).slice(0, 20);
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   if (ids.length) {
@@ -1615,6 +1758,20 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
       companiesBasis:
         "Distinct company job boards with at least one open posting, under the same two rules as livePostings (not withdrawn, dated within the last 30 days), counted in the pass named by asOf. A count of BOARDS, not of employers: an employer running several boards is counted once per board, so this is a floor on the number of employers.",
       freshnessWindowDays: FRESH_WINDOW_DAYS,
+      // A COUNT A CALLER CANNOT WALK MUST SAY SO. Every figure on this
+      // endpoint is the BOARD's — the same numbers the website publishes —
+      // and the board serves a hiring system whose rows this API may not
+      // redistribute. So livePostings, companies and every per-source row
+      // below stand on a population that is WIDER than what /v1/jobs can
+      // return, by exactly these sources. Stated rather than silently
+      // subtracted: a customer reconciling a row walk against livePostings
+      // would otherwise find a gap and have no name for it.
+      notRedistributed: {
+        sources: [...NO_REDISTRIBUTION_SOURCES],
+        reason: NO_REDISTRIBUTION_REASON,
+        appliesTo: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "POST /v1/fit"],
+        note: "These sources are counted in every figure on this endpoint, because these are the board's own statistics, and are absent from every row the endpoints above return. Naming one in ?source= answers HTTP 451.",
+      },
       // THE CLOSURE LOG, PUBLISHED. Every figure here is the one the site shows,
       // read from the same cache, so an API customer and a reader of the page
       // can arrive at the same numbers — which is the whole claim the product

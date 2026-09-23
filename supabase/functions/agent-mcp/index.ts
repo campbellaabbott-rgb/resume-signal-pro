@@ -181,9 +181,31 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // that fails never fails the (metered) record call: the rows ship with
 // layoff_filing null and layoff_read on the response names the fault. The
 // unkeyed tier, the sign-in path and every other tool are untouched.
+// 09-04.9: the redistribution boundary. One hiring system the board reads
+// under a display-only licence is now structurally absent from every tool
+// result — search_jobs, debug_search, fit_resume, get_job, get_jobs,
+// check_jobs_open and the two ChatGPT aliases — and naming it in `vendor`,
+// or handing a detail tool one of its ids, is refused in band with the
+// reason rather than answered with an empty page or a false "no such job".
+// The list is declared identically in public-api and held there by a
+// cross-file guard. Nothing else moves: no tool is added or removed, the
+// unkeyed tier, the pass and the sign-in path are untouched, and the board
+// currently holds zero rows from it, so the change removes no inventory.
+// 09-04.10: the ninth runner. The boundary above enumerated eight and missed
+// check_apply_support, which asked the board for the posting itself and
+// handed back its apply URL for ANY id — strictly more than the liveness
+// tool that was closed beside it, and reachable from any free minted key. It
+// now refuses a restricted id before the board is asked, in the same shape
+// and with the same wording as the detail path, and the cross-file guard no
+// longer enumerates runners at all: it counts detail call sites and requires
+// each one to stand inside a function that checks the id's vendor first, so a
+// tenth reader cannot ship unguarded either. Also here: `companies` is
+// refused when it names a restricted source, because the token a federal row
+// carries is the source name and an empty answer to it was the same false
+// statement the vendor argument already refused to make.
 const SERVER_INFO = {
   name: "resumebooster-job-board",
-  version: "2026-09-04.8",
+  version: "2026-09-04.10",
   // 2025-11-25 Implementation fields, additive: a display name, the human
   // page, and an icon a host may show beside the connector.
   title: "Resume Booster job board",
@@ -446,6 +468,52 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
 }
 
 /**
+ * THE ONE HIRING SYSTEM THIS SERVER READS AND MAY NOT HAND ON.
+ *
+ * Kept here for the same reason /v1 keeps it: the U.S. federal job feed's
+ * terms of use permit DISPLAYING its results to a person and forbid
+ * republishing the data as a feed. An MCP tool result is a feed — the rows
+ * leave this runtime into a third-party host that stores them, re-presents
+ * them and may hand them on again — so this surface is on the same side of
+ * that line as the public API, not the website.
+ *
+ * IT IS THE SAME LIST, DELIBERATELY, AND A GUARD HOLDS THE TWO TOGETHER.
+ * These vendor codes are declared identically in public-api's index.ts; a
+ * cross-file test reads both files' comment-stripped code and fails when they
+ * disagree, because a second list that drifts is how every filter defect on
+ * this board has started. A shared module under _shared/ would be better
+ * still and is the next step.
+ *
+ * WHY THIS REMOVES NOTHING TODAY. job-board's federal adapter skips every
+ * visit unless the owner sets USAJOBS_API_KEY and USAJOBS_USER_AGENT (free
+ * registration at developer.usajobs.gov; the user agent is the registered
+ * e-mail address), so the board currently holds no federal postings at all
+ * and zero rows is the expected reading, not a fault. The same registration
+ * caps a query at 10,000 results, so even armed the feed is a bounded slice
+ * and never a census of federal hiring.
+ */
+const NO_REDISTRIBUTION_SOURCES = ["usajobs"] as const;
+/** Said in every refusal this file makes about it. One wording, like /v1's. */
+const NO_REDISTRIBUTION_REASON =
+  "The U.S. federal job feed is readable on resumebooster.work but may not be redistributed as a data feed under its terms of use, so no tool here returns its rows.";
+const isNoRedistributionSource = (v: unknown): boolean =>
+  (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
+/** A job id is `vendor:employer:externalId`, so its vendor is its first field. */
+const vendorOfId = (id: unknown): string => String(id ?? "").split(":")[0] ?? "";
+/**
+ * Drop every row this server may not redistribute. The board has a
+ * vendor-INCLUSION filter and no exclusion, so the restriction cannot ride
+ * down into the query: every runner that gets rows back applies this on the
+ * way out, before compactJob — which does not emit `source` — has erased the
+ * only field that says which vendor a row came from.
+ */
+const withoutNoRedistribution = <T extends Record<string, unknown>>(rows: T[]): T[] =>
+  rows.filter((r) => !isNoRedistributionSource(r.source));
+/** The rows of a board `list` answer, with the unredistributable ones dropped. */
+const servableJobs = (r: Record<string, unknown>): Array<Record<string, unknown>> =>
+  withoutNoRedistribution((Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>);
+
+/**
  * THE STRUCTURED FIELDS THE ROW ALREADY CARRIES.
  *
  * Every one of these is a real column the board selected the row BY — the
@@ -571,7 +639,12 @@ const SEARCH_PROPERTIES = {
   hasStatedPay: { type: "boolean", description: "Only postings that state a salary (excludes the ~87% that don't)." },
   payBasis: { type: "string", enum: ["hourly", "salaried"], description: "Restrict to hourly or salaried pay." },
   maxYears: { type: "number", description: "Only roles asking for at most N years of experience." },
-  vendor: { type: "string", description: "Comma list of hiring-system vendors (greenhouse, lever, ashby, …), max 8." },
+  vendor: {
+    type: "string",
+    description:
+      "Comma list of hiring-system vendors (greenhouse, lever, ashby, …), max 8. " +
+      `Not available here: ${NO_REDISTRIBUTION_SOURCES.join(", ")} — ${NO_REDISTRIBUTION_REASON} Naming one is refused rather than answered with an empty page.`,
+  },
   excludeAgencies: { type: "boolean", description: "Hide postings from staffing/recruiting agencies (their job cards carry agency:true). Agencies are served by default; this is an opt-in narrowing." },
   agentReadyOnly: { type: "boolean", description: "Only jobs the apply agent can submit to on the user's behalf." },
   sort: { type: "string", enum: ["relevance", "newest", "salary"], description: "Default relevance." },
@@ -1935,6 +2008,34 @@ const companyTokens = (v: unknown): string[] =>
 function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   const limit = Math.max(1, Math.min(KEYED_SEARCH_LIMIT, Number(args.limit ?? 20) || 20));
   const companies = companyTokens(args.companies);
+  // ASKED FOR BY NAME, AND REFUSED BY NAME. A vendor filter naming a system
+  // this server may not redistribute would bind a filter that can only ever
+  // select rows the runners then drop, and the agent would read the empty
+  // result as "there are no federal jobs" — a false statement about the world
+  // in place of a true one about our licence. Thrown as an argument error, so
+  // it comes back in band with the fix, exactly like every other bad argument.
+  const barredVendors = String(args.vendor ?? "").split(",").map((x) => x.trim()).filter(Boolean)
+    .filter(isNoRedistributionSource);
+  if (barredVendors.length) {
+    throw new ToolArgumentError(
+      `${barredVendors.join(", ")} cannot be served by this server. ${NO_REDISTRIBUTION_REASON}`,
+      "Drop it from `vendor` and the rest of the search is answered normally.",
+    );
+  }
+  // THE SAME REFUSAL THROUGH THE OTHER DOOR. A restricted feed's rows all
+  // carry ONE employer token, which is the source's own name (the agency
+  // travels in `company`), so `companies` reaches the same population by a
+  // parameter the vendor check never looked at. The runners still drop the
+  // rows, so the leak is not data — it is the empty answer, which says "this
+  // employer has no openings" when what is true is that we may not hand them
+  // on. Refused by name, like the vendor argument beside it.
+  const barredCompanies = companies.filter(isNoRedistributionSource);
+  if (barredCompanies.length) {
+    throw new ToolArgumentError(
+      `${barredCompanies.join(", ")} cannot be served by this server. ${NO_REDISTRIBUTION_REASON}`,
+      "Drop it from `companies` and the rest of the search is answered normally.",
+    );
+  }
   return {
     action: "list", limit, includeFacets: false,
     ...(args.query ? { q: String(args.query) } : {}),
@@ -1968,8 +2069,16 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
 
 async function runSearchJobs(args: Record<string, unknown>): Promise<unknown> {
   const r = await board(searchBody(args));
-  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
-  return { jobs: jobs.map(compactJob), ...disclosures(r) };
+  const jobs = servableJobs(r);
+  // The board's `total` beside them is the board's own and still counts what
+  // it counted, so the narrowing is NAMED rather than left for an agent to
+  // discover by subtracting `jobs.length` from it — the same rule
+  // salaryStatedOnly and agenciesExcluded already follow here.
+  return {
+    jobs: jobs.map(compactJob),
+    ...disclosures(r),
+    excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
+  };
 }
 
 async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
@@ -1982,10 +2091,16 @@ async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
     board(base),
   ]);
   const out = outcome as Record<string, unknown>;
-  const jobs = (Array.isArray(out.jobs) ? out.jobs : []) as Array<Record<string, unknown>>;
+  // The DEBUG tool most of all: rowsServed has to be the rows an agent would
+  // actually have received, or the trace explains a search nobody was served.
+  const jobs = servableJobs(out);
   return {
     decision,
     outcome: {
+      // Beside the outcome, because it describes what was SERVED and not what
+      // the board decided: the decision half is the board's own trace and says
+      // nothing about this server's licence.
+      excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
       rowsServed: jobs.length,
       topTitles: jobs.slice(0, 5).map((j) => j.title),
       ...disclosures(out),
@@ -2004,9 +2119,18 @@ async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
  */
 type DetailOutcome =
   | { ok: true; card: Record<string, unknown> }
-  | { ok: false; id: string; reason: "closed" | "agedOut" | "notFound"; detail?: unknown };
+  | { ok: false; id: string; reason: "closed" | "agedOut" | "notFound" | "restricted"; detail?: unknown };
 
 async function detailOf(id: string, descCap: number, truncNote: string): Promise<DetailOutcome> {
+  // REFUSED BEFORE THE BOARD IS ASKED, and refused as its own reason rather
+  // than folded into notFound. An id whose vendor prefix names a system we may
+  // not redistribute is a posting that EXISTS and that we decline to hand on;
+  // answering "no posting with that id" would be the server making a false
+  // statement about the board to avoid making a true one about its licence.
+  // This is also the path a direct deep link takes — search excluding these
+  // rows would otherwise still leave the detail tools serving one to any agent
+  // that held an id from the website.
+  if (isNoRedistributionSource(vendorOfId(id))) return { ok: false, id, reason: "restricted" };
   let r: Record<string, unknown>;
   try {
     r = await board({ action: "detail", id });
@@ -2051,6 +2175,19 @@ async function runGetJob(args: Record<string, unknown>): Promise<unknown> {
   // the closed/agedOut shape has to learn a second one.
   if (out.reason === "closed") return { id, job: null, closed: out.detail, note: "This posting closed — the board watched it come down from the employer's feed." };
   if (out.reason === "agedOut") return { id, job: null, agedOut: out.detail, note: "Past the board's 30-day freshness cap." };
+  // NOT notFound, AND NOT SILENT. The distinction is the whole point: this id
+  // may name a live posting, and the reason it is not returned is a licence,
+  // which the agent can act on (send the person to the page) in a way it
+  // cannot act on "no such job".
+  if (out.reason === "restricted") {
+    return {
+      id,
+      job: null,
+      restricted: true,
+      note: NO_REDISTRIBUTION_REASON,
+      fix: `Open ${SITE_JOB_URL(id)} to read this posting on the site, or search without this hiring system.`,
+    };
+  }
   // ANSWERED, NOT THROWN — the same treatment its two siblings above already
   // got. A throw here reached the agent as "the get_job tool hit an internal
   // error. Try again shortly", so a mistyped or long-dead id read as a server
@@ -2124,6 +2261,10 @@ async function runGetJobs(args: Record<string, unknown>): Promise<unknown> {
           ...(out.reason === "closed" ? { closed: (out as { detail?: unknown }).detail } : {}),
           ...(out.reason === "agedOut" ? { agedOut: (out as { detail?: unknown }).detail } : {}),
           ...(out.reason === "notFound" ? { note: "Not a posting this board carries — check the id came from search_jobs." } : {}),
+          // A DIFFERENT REASON FROM notFound, in the batch too: the posting
+          // may well be live, and the agent can still send the person to the
+          // page for it.
+          ...(out.reason === "restricted" ? { note: NO_REDISTRIBUTION_REASON, url: SITE_JOB_URL(out.id) } : {}),
           ...(out.reason === "error" ? { note: "The board did not answer for this id. Retry it on its own with get_job." } : {}),
         });
       }
@@ -2165,16 +2306,27 @@ async function runGetJobs(args: Record<string, unknown>): Promise<unknown> {
  * saying so would be the board contradicting itself between two tools.
  */
 async function runCheckJobsOpen(args: Record<string, unknown>): Promise<unknown> {
-  const asked = [...new Set(
+  const sent = [...new Set(
     (Array.isArray(args.ids) ? args.ids : [args.ids])
       .map((x) => String(x ?? "").trim()).filter(Boolean),
   )];
-  if (!asked.length) {
+  if (!sent.length) {
     throw new ToolArgumentError(`ids is required — an array of job ids from search_jobs (up to ${CHECK_JOBS_OPEN_MAX}).`, "Send {ids: [...]}.");
   }
+  // HELD OUT OF THE CHECK, AND NAMED. A liveness answer is thinner than a row,
+  // but a caller holding federal ids from the website could walk them here and
+  // rebuild a live/dead federal feed one boolean at a time — which is the thing
+  // the licence forbids, assembled a column at a time instead of a row. They
+  // are listed back so an agent knows its shortlist was not fully verified,
+  // rather than silently reading them as closed. Held out BEFORE the cap, so a
+  // restricted id cannot consume one of the slots a checkable id needs.
+  const restricted = sent.filter((id) => isNoRedistributionSource(vendorOfId(id)));
+  const asked = sent.filter((id) => !isNoRedistributionSource(vendorOfId(id)));
   const ids = asked.slice(0, CHECK_JOBS_OPEN_MAX);
   const notChecked = asked.slice(CHECK_JOBS_OPEN_MAX);
-  const r = await board({ action: "exists", ids });
+  // A shortlist of nothing but restricted ids is an honest empty answer with
+  // the reason attached, never a board call for zero ids.
+  const r = ids.length ? await board({ action: "exists", ids }) : {} as Record<string, unknown>;
   const raw = (r.open && typeof r.open === "object" ? r.open : {}) as Record<string, unknown>;
   const open: Record<string, boolean> = {};
   for (const id of ids) open[id] = raw[id] === true;
@@ -2186,6 +2338,7 @@ async function runCheckJobsOpen(args: Record<string, unknown>): Promise<unknown>
     openCount: ids.length - closed.length,
     closedCount: closed.length,
     ...(notChecked.length ? { notChecked, note: `Only the first ${CHECK_JOBS_OPEN_MAX} ids were checked — send the rest in another call.` } : {}),
+    ...(restricted.length ? { restricted, restrictedNote: NO_REDISTRIBUTION_REASON } : {}),
     basis:
       "Open means the board still holds a row for this posting — its employer's feed listed it at the last refresh and the " +
       "board has not confirmed it gone. It is not a live probe of the employer's site at this instant, and it is a WEAKER " +
@@ -2216,7 +2369,10 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
   }
   const limit = Math.max(1, Math.min(20, Number(args.limit ?? 20) || 20));
   const r = await board(searchBody({ ...args, query, limit }));
-  const jobs = (Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>;
+  // Dropped BEFORE scoring: this tool returns a job card per row exactly as
+  // search_jobs does, so it redistributes the same way — and filtering here
+  // also means the scorer's budget is never spent on a row nobody receives.
+  const jobs = servableJobs(r);
   const ids = jobs.map((j) => String(j.id)).slice(0, 20);
   let fits: Record<string, number | null> = {}, matched: Record<string, string[]> = {}, missing: Record<string, string[]> = {};
   if (ids.length) {
@@ -2241,6 +2397,7 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
     terms, query,
     jobs: jobs.map((j) => ({ ...compactJob(j), fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [] })),
     ...disclosures(r),
+    excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
   };
 }
 
@@ -2518,6 +2675,24 @@ async function runCheckApplySupport(client: SupabaseClient, args: Record<string,
   const id = String(args.id ?? "");
   const source = id.split(":")[0] ?? "";
   const agentReady = SENDABLE_VENDORS.includes(source);
+  // REFUSED BEFORE THE BOARD IS ASKED, exactly as the detail path refuses.
+  // This tool hands back a posting's apply URL plus confirmation that the id
+  // is live, which is MORE than the liveness tool gives, and it was outside
+  // the boundary while its eight siblings were inside it. Named as a
+  // restriction rather than answered with a blank apply URL: an empty field
+  // would be this server saying the posting has nowhere to apply, which is a
+  // false statement about a posting that exists, in place of a true one about
+  // our licence.
+  if (isNoRedistributionSource(vendorOfId(id))) {
+    return {
+      jobId: id,
+      agentReady: false,
+      vendor: source || null,
+      restricted: true,
+      note: NO_REDISTRIBUTION_REASON,
+      fix: `Open ${SITE_JOB_URL(id)} to read this posting on the site and apply from there.`,
+    };
+  }
   const r = await board({ action: "detail", id }).catch(() => null);
   const applyUrl = r ? String((r.job as Record<string, unknown> | undefined)?.applyUrl ?? r.applyUrl ?? "") : "";
   return {

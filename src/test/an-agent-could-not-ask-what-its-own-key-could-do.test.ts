@@ -309,7 +309,10 @@ describe("the four filters the board served and the agent could not ask for", ()
 
 describe("the surface says it changed, and the live probe checks it", () => {
   it("bumps the served version", () => {
-    expect(MCP).toMatch(/version: "2026-09-\d\d\.\d"/);
+    // \d+, not \d: the release counter passed nine, and a one-digit pattern
+    // then reports a BUMP as a missing bump -- the exact opposite of what this
+    // assertion is for.
+    expect(MCP).toMatch(/version: "2026-09-\d\d\.\d+"/);
     expect(MCP, "the version an agent reads must move when the tools do").not.toMatch(/version: "2026-09-04\.1"/);
   });
 

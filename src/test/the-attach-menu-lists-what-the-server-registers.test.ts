@@ -482,7 +482,14 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
 
   it("serverInfo names the bump, a title, the human page and an icon that exists", () => {
     const info = between(MCP, "const SERVER_INFO = {", "\n};");
-    expect(info).toMatch(/version: "2026-09-04\.8"/);
+    // A FLOOR, NOT AN EQUALITY. The property is that the release carrying the
+    // attach-menu work shipped, and the server is at or past it; pinning the
+    // exact string made every later bump fail here -- and the repo's own rule
+    // is to bump the version on ANY change to this function, so an equality
+    // turns that rule into a failing test and invites someone to skip it.
+    const v = /version: "2026-09-04\.(\d+)"/.exec(info);
+    expect(v, "the server version left the 2026-09-04 release line").toBeTruthy();
+    expect(Number(v![1]), "the server version went back past the release this file guards").toBeGreaterThanOrEqual(9);
     expect(info).toMatch(/title: "[^"]+"/);
     expect(info).toMatch(/websiteUrl: "https:\/\/resumebooster\.work\/agents"/);
     const icon = /src: "https:\/\/resumebooster\.work\/([^"]+)"/.exec(info)?.[1];

@@ -96,8 +96,12 @@ describe("the scorer in its own isolate", () => {
     // moves the paid-tier predicate into _shared/key-tier.ts so the six-hour
     // pass (key_tier 'pass' on the MCP server) can never read as a paid /v1
     // key, and the Decision type carries api_key_check's two new columns.
-    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-17\.1"/);
-    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1"]) {
+    // 2026-09-23.1 makes the sources under a display-only licence structurally
+    // absent from every row /v1 returns, and refuses them by name with 451
+    // rather than answering an empty page — a change to what the contract
+    // CONTAINS, so it is a version, not a patch.
+    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-23\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1"]) {
       expect(API, `the API still reports the superseded version ${old}`)
         .not.toMatch(new RegExp(`"${old}"`));
     }

@@ -3,6 +3,8 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-board/filters.ts";
 import { BOARD_SOURCE_LIST } from "../config/ats-vendors";
+import { SERVING_SOURCE_LIST, DORMANT_SOURCES } from "../config/ats-vendors";
+import { codeOf } from "./helpers/strip-comments";
 
 // /trust and /methodology — the two pages whose entire purpose is to be
 // believed — carried the worst claims on the site until 2026-07-27:
@@ -364,12 +366,32 @@ describe("published source lists name every system the board actually serves", (
   // is strictly stronger than before, because it now also pins BOARD_SOURCE_LIST
   // to the normalizers: a vendor added to the edge function but missing from
   // the config fails here, which the old raw-JSON check could not detect.
-  const render = (note: string) => note.replace("{{vendors}}", BOARD_SOURCE_LIST);
+  const render = (note: string) => note.replace("{{vendors}}", SERVING_SOURCE_LIST);
+
+  // THE SOURCES THE READER IS OWED A NAME FOR, which is not every source the
+  // config carries. A vendor whose secrets are not set serves zero rows, and
+  // naming it in "where these jobs come from" is false in the other direction
+  // from the omission this whole block exists to catch — the reader is told
+  // about an inventory that is not there, and the menu entry beside it filters
+  // to an empty page. Derived from the config's dormancy marker, so the day a
+  // dormant source wakes up every assertion here demands it again with no edit.
+  const dormant = DORMANT_SOURCES.map((v) => v.key);
+  const expected = () => SOURCES.filter((s) => !dormant.includes(s));
+
+  // The split is real, and both halves are asserted: the carried list keeps
+  // the entry (other guards key on it), the public list drops it.
+  it("the carried list keeps the dormant source and the published list does not", () => {
+    expect(DORMANT_SOURCES.length, "nothing is dormant — re-anchor this block").toBeGreaterThan(0);
+    for (const d of DORMANT_SOURCES) {
+      expect(BOARD_SOURCE_LIST, `${d.label} was deleted rather than marked`).toContain(d.label);
+      expect(SERVING_SOURCE_LIST, `${d.label} is dormant and still published`).not.toContain(d.label);
+    }
+  });
 
   for (const file of locales) {
-    it(`${file} jobsPage.sourceNote names all ${SOURCES.length} systems`, () => {
+    it(`${file} jobsPage.sourceNote names every system the board serves`, () => {
       const note: string = readJson(resolve(localeDir, file)).jobsPage.sourceNote;
-      const missing = SOURCES.filter((s) => !render(note).includes(DISPLAY[s] ?? s));
+      const missing = expected().filter((s) => !render(note).includes(DISPLAY[s] ?? s));
       expect(missing).toEqual([]);
     });
 
@@ -380,8 +402,22 @@ describe("published source lists name every system the board actually serves", (
   }
 
   it("the entry-level index names them too", () => {
-    const page = readFileSync(resolve(root, "src/pages/EntryLevelIndex.tsx"), "utf8");
-    const missing = SOURCES.filter((s) => !page.includes(DISPLAY[s] ?? s));
+    // IT NO LONGER SPELLS THEM OUT, so this no longer reads the page for
+    // nineteen names. The page interpolates the one derived list, and the
+    // assertion moves with it: the import is there, the list is rendered, and
+    // the list itself still names every serving source. Reading the page text
+    // for names would now pass only if someone re-typed the list by hand —
+    // exactly the thing a-vendor-list-typed-by-hand forbids.
+    // COMMENT-STRIPPED, AND THAT IS LOAD-BEARING. The block above the
+    // interpolation on that page explains which list it replaced and quotes
+    // the import line while doing it, so a docblock alone would satisfy all
+    // three of these assertions over a page that had gone back to a
+    // hand-typed run. The stripper cuts a TRAILING `//` as well, which the
+    // line-start idiom these guards used does not.
+    const page = codeOf(readFileSync(resolve(root, "src/pages/EntryLevelIndex.tsx"), "utf8"));
+    expect(page).toMatch(/import \{ SERVING_SOURCE_LIST \} from "@\/config\/ats-vendors"/);
+    expect(page).toContain("{SERVING_SOURCE_LIST}");
+    const missing = expected().filter((s) => !SERVING_SOURCE_LIST.includes(DISPLAY[s] ?? s));
     expect(missing).toEqual([]);
   });
 });
@@ -1489,10 +1525,36 @@ describe("published nouns match what was counted", () => {
     expect(jobs).toMatch(/\{\{companyFeeds\}\} company feeds/);
   });
 
+  it("the import/render assertions read code, never a comment that quotes it", () => {
+    // THE TRAP THIS REPO HAS SHIPPED SEVERAL TIMES, shown not being fallen
+    // into: a page whose interpolation was replaced by a hand-typed run and
+    // whose docblock still quotes the import line must fail, not pass.
+    const decoy = [
+      '// import { SERVING_SOURCE_LIST } from "@/config/ats-vendors";',
+      "/* it used to render {SERVING_SOURCE_LIST} here */",
+      "{/* and in JSX: {SERVING_SOURCE_LIST} */}",
+      'const line = "Greenhouse, Lever, Ashby, SmartRecruiters, Workable";',
+    ].join("\n");
+    expect(codeOf(decoy)).not.toMatch(/import \{ SERVING_SOURCE_LIST \} from "@\/config\/ats-vendors"/);
+    expect(codeOf(decoy)).not.toContain("{SERVING_SOURCE_LIST}");
+    // ...and a trailing comment on a real line is cut while a URL in a string
+    // survives, which is what the line-start strippers got wrong.
+    expect(codeOf('const u = "https://example.com"; // note\n').trim()).toBe('const u = "https://example.com";');
+  });
+
   it("the transparency page names every vendor inside its own figures", () => {
     // It named 12 of 15 while the table below it listed all 15; iCIMS, Oracle
     // and Pinpoint postings are inside total_open and inside the medians.
-    for (const v of ["iCIMS", "Oracle", "Pinpoint"]) expect(ghost).toContain(v);
+    //
+    // The page stopped spelling the list out, so the three names are now
+    // demanded of the DERIVED list the page interpolates — which is the
+    // stronger place to demand them, because it is the list every other
+    // surface renders too. The page is checked for the import and the render
+    // instead, so a page that quietly went back to a hand-typed run fails.
+    const ghostCode = codeOf(ghost);
+    expect(ghostCode).toMatch(/import \{ SERVING_SOURCE_LIST, servingSourceSummary \} from "@\/config\/ats-vendors"/);
+    expect(ghostCode).toContain("{SERVING_SOURCE_LIST}");
+    for (const v of ["iCIMS", "Oracle", "Pinpoint"]) expect(SERVING_SOURCE_LIST).toContain(v);
   });
 
   it("the 30-day bullet is not an unqualified absolute", () => {

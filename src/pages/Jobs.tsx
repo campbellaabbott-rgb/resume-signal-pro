@@ -23,10 +23,19 @@ import { isSendableVendor } from "../../supabase/functions/_shared/apply-automat
 // reason the salary parser above comes straight out of _shared.
 import { STATE_ALIASES, METRO_ALIASES } from "../../supabase/functions/_shared/location-terms";
 // Two statements from one module, deliberately: ats-coverage-counts.test.tsx
-// pins the BOARD_SOURCE_LIST import line by spelling, and the vendor filter
-// below needs the tiered list the same file exports.
-import { ATS_VENDORS, NON_ATS_SOURCES, UNMEASURED_ATS_SOURCES } from "@/config/ats-vendors";
-import { BOARD_SOURCE_LIST } from "@/config/ats-vendors";
+// pins the serving-list import line by spelling, and the label map below needs
+// the full carried set the same file exports.
+//
+// TWO QUESTIONS, TWO LISTS, AND THEY ARE NOT THE SAME LIST. The vendor menu
+// and the "Sources:" sentence both answer "where do the postings on this page
+// come from", so both read the SERVING set: a source the board holds no rows
+// for is a menu entry that filters to an empty page, and a sentence naming an
+// inventory that is not there. The label map answers a different question —
+// "what is this row's source called" — and it keeps every carried entry,
+// because an already-shared link carrying a dormant source must still render a
+// name rather than a raw column value.
+import { ALL_BOARD_SOURCES, SERVING_SOURCES } from "@/config/ats-vendors";
+import { SERVING_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -48,6 +57,8 @@ import { DeclaredWagesCard } from "@/components/jobs/DeclaredWagesCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
+import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
+import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
 import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
@@ -1013,7 +1024,13 @@ const SALARY_CEILING_STEPS = [60_000, 80_000, 100_000, 120_000, 150_000, 200_000
 // that allowed nine would hand the visitor a filter the server then names as
 // only partly applied.
 const VENDOR_LIMIT = 8;
-const VENDOR_OPTIONS = [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES].map((v) => ({ value: v.key, label: v.label }));
+// SERVING, not carried. A vendor the board holds an entry for but serves no
+// rows from is a choice that lands the reader on an empty page — measured
+// 2026-09-23: the per-source facet and the date-coverage rollup both returned
+// nineteen sources and the twentieth was in neither. The entry stays in the
+// config with its dormancy marker, and it comes back here the day it has rows,
+// with no edit to this line.
+const VENDOR_OPTIONS = SERVING_SOURCES.map((v) => ({ value: v.key, label: v.label }));
 
 /**
  * THE INVENTORY BESIDE EACH SOURCE'S NAME (owner's ask, 2026-09-10).
@@ -1632,7 +1649,12 @@ export function isEmploymentType(v: unknown): v is EmploymentTypeKey {
  * reaches this from a server row.
  */
 const SOURCE_LABEL_BY_KEY: Record<string, string> = Object.fromEntries(
-  [...ATS_VENDORS, ...UNMEASURED_ATS_SOURCES, ...NON_ATS_SOURCES].map((v) => [v.key, v.label]),
+  // EVERY carried source, dormant ones included — deliberately wider than the
+  // menu above. A ?source= link shared before a source went dormant, and a row
+  // already in a cached page, must still print the vendor's own name; falling
+  // back to the un-named sentence because a list narrowed underneath it would
+  // be the same defect in the other direction.
+  ALL_BOARD_SOURCES.map((v) => [v.key, v.label]),
 );
 export function sourceLabel(source?: string | null): string | null {
   if (typeof source !== "string") return null;
@@ -2247,7 +2269,15 @@ export default function Jobs() {
     return EMPLOYMENT_TYPE_KEYS.filter((k) => parts.has(k)).join(",");
   });
   const [vendor, setVendor] = useState(() => {
-    const known = new Set(VENDOR_OPTIONS.map((v) => v.value));
+    // EVERY CARRIED VENDOR, not just the ones the menu offers — wider than
+    // VENDOR_OPTIONS on purpose. A source the board currently serves nothing
+    // from is off the MENU, so nobody new can land on an empty page; but a
+    // link already shared with it must still bind the filter it names. Parsing
+    // it out here would drop the filter silently and show the whole board
+    // under a URL that asks for one vendor, which is the same
+    // silent-widening defect this page has fixed three times, just arriving
+    // from the address bar instead of the control.
+    const known = new Set(ALL_BOARD_SOURCES.map((v) => v.key));
     // Dedupe BEFORE the cap, as workMode and country already do — five copies
     // of one vendor must not push a real second one past VENDOR_LIMIT.
     const parts = (initial.get("vendor") ?? "").split(",").map((v) => v.trim().toLowerCase())
@@ -5769,7 +5799,10 @@ export default function Jobs() {
       f.push({
         key: "vendor",
         label: vs.length === 1
-          ? (VENDOR_OPTIONS.find((v) => v.value === vs[0])?.label ?? vs[0])
+          // sourceLabel, not the menu: the chip has to name a vendor the URL
+          // bound even when the menu no longer offers it, or a reader looking
+          // at an empty board is shown a raw column value as the reason.
+          ? (sourceLabel(vs[0]) ?? vs[0])
           : t("jobsPage.nVendors", "{{n}} sources", { n: vs.length }),
         clear: () => setVendor(""),
       });
@@ -6534,6 +6567,46 @@ export default function Jobs() {
               {/* The filing, as a filing, on its own line under the row
                   above -- after the closure-record line, never inside it. */}
               <LayoffFilingLine row={layoffFilingOf(detailJob.token)} country={detailJob.country} />
+
+              {/* WHAT THIS EMPLOYER FILED, beside what this posting says —
+                  never merged into it. Both slots below sit under the
+                  provenance strip and above the facts of the JOB, for the same
+                  reason the filing line does: they are statements about the
+                  employer's record, from a named government file, and a reader
+                  must never read one as a fact about this role's pay.
+
+                  NEITHER IS CONDITIONAL HERE, and that is the safe direction.
+                  Each reader answers for the id or token it is handed and each
+                  component renders nothing at all — no skeleton, no "no data"
+                  row — until a row arrives that clears its own bars. Gating
+                  them on a guess the page could make (a country code, a region
+                  string) would put the decision in the surface that has the
+                  least evidence, which is how an absence starts reading as a
+                  finding. */}
+              {/* NO SOC CODE EXISTS ON A POSTING TODAY — nothing the board
+                  stores carries one, and inventing a title-to-occupation
+                  mapping here would make the surface state an occupation the
+                  data never said. Handed null, the reader answers the
+                  employer's largest cell and the copy names which occupation
+                  that is. The board holds no worksite subdivision either, so
+                  the state stays unasked rather than guessed out of the
+                  free-text location. */}
+              <LcaFiledWagesLine
+                companyToken={detailJob.token ?? ""}
+                companyName={companyDisplayName(detailJob.company)}
+                socCode={null}
+                worksiteState={null}
+              />
+
+              {/* Ontario postings only. The reader returns no row for anything
+                  outside the stored CA-ON subdivision code, for a posting the
+                  employer's feed has dropped, or for either of the two
+                  O. Reg. 476/24 exclusions — so this needs no condition on the
+                  page, and the page holds no opinion about which postings are
+                  in scope. postingUrl is supplied here rather than returned by
+                  the reader: an anon-callable RPC that handed back apply URLs
+                  would let the corpus be walked out from under the board. */}
+              <OntarioEsaDisclosures postingId={detailJob.id} postingUrl={detailJob.applyUrl} />
 
               {/* ── AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD ─────
                   The card is SKIMMED and the panel is READ, and they were
@@ -7405,7 +7478,7 @@ export default function Jobs() {
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
           ? t("jobsPage.companySeoDescription", "Is {{company}} hiring right now? See {{company}}'s verified open roles, pulled straight from their own job board and re-checked today — no aggregators, no ghost postings. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
-          : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, BambooHR, Recruitee, Teamtailor, Personio, Breezy) — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
+          : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCompany ? `/jobs/company/${landerCompany}` : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
       <Header />
@@ -11317,7 +11390,7 @@ export default function Jobs() {
                 invisible right up until a missing translation would have
                 rendered it. Now there is one list, and it is the one the code
                 obeys. */}
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously \u2014 how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index \u2014 and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: BOARD_SOURCE_LIST })}
+            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously \u2014 how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index \u2014 and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: SERVING_SOURCE_LIST })}
           </p>
         </div>
       </main>
