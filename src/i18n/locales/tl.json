@@ -5009,5 +5009,29 @@
     "regLink": "O. Reg. 476/24 ↗",
     "postingLink": "Ang posting na ito sa site ng employer ↗",
     "sourceLine": "Ang mga numero ng seksyon at ang teksto ng batas ay mula sa e-Laws ng Ontario. © King's Printer for Ontario, 2024. Hindi ito ang opisyal na bersyon ng batas."
+  },
+  "jobPostingPage": {
+    "backToBoard": "Lahat ng bakante",
+    "loading": "Ini-load ang posting na ito…",
+    "loadFailed": "Hindi namin ma-load ang posting na ito ngayon.",
+    "retry": "Subukan ulit",
+    "genericHeading": "Job posting",
+    "goneTitle": "Hindi na aktibo ang posting na ito",
+    "goneMeta": "Hindi na inilalabas ng sariling job board ng employer ang bakanteng ito. Maghanap ng katulad na bakante sa live na board.",
+    "goneBody": "Maaaring tinanggal na ito ng sariling job board ng employer, o lumampas na ito sa {{days}} araw na ipinapakita ng board na ito ang isang posting na may petsa. Wala nang pinapanatiling aktibo rito pagkatapos noon.",
+    "goneCta": "Maghanap sa live na board",
+    "remote": "Remote",
+    "postedLabel": "Nai-post",
+    "postedValue": "{{date}}, ayon sa petsang sinabi ng employer",
+    "noDate": "Walang sinasabing petsa ng pag-post ang employer na ito, kaya wala ring sinasabing petsa ang pahinang ito.",
+    "payLabel": "Sahod",
+    "payValue": "{{salary}} — mismong pananalita ng employer, hindi kino-convert o tinatantiya",
+    "noPay": "Walang sinasabing sahod ang employer na ito sa posting na ito.",
+    "applyCta": "Mag-apply sa sariling site ng {{company}}",
+    "applyCtaPlain": "Mag-apply sa sariling site ng employer",
+    "applyNote": "Ang aplikasyon ay nangyayari sa sariling hiring system ng employer. Hindi kailanman muling ipina-post ng board na ito ang isang trabaho at hindi ito pumapagitna sa inyo ng employer.",
+    "descHeading": "Ang sariling paglalarawan ng employer",
+    "sourceNote": "Diretso mula sa sariling hiring system ng {{company}} — hindi kailanman aggregator, hindi kailanman repost. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw at inaalis sa sandaling wala na ito sa feed ng employer.",
+    "theEmployer": "ang employer"
   }
 }

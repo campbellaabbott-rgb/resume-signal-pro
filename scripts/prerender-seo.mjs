@@ -52,6 +52,7 @@ export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_AD
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
+export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle } from "../src/components/jobs/posting-page";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -955,7 +956,27 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       }
       headExtra += `<link rel="alternate" hreflang="x-default" href="${SITE}${hreflang.en}" />\n`;
     }
-    for (const ld of jsonLd) headExtra += `<script type="application/ld+json">${JSON.stringify(ld)}</script>\n`;
+    // THE SERIALISED JSON IS ESCAPED BEFORE IT GOES INTO A SCRIPT ELEMENT.
+    //
+    // JSON.stringify does not escape `<` or `/`, and that was harmless for as
+    // long as every LD block was built from our own copy. It is not any more:
+    // a posting page's `description` is EMPLOYER-AUTHORED free text, and
+    // decodeJdEntities in posting-page.ts deliberately turns `&lt;` back into
+    // `<`. A job description containing the literal `&lt;/script&gt;` — an
+    // ordinary thing in an engineering JD — would decode to a real `</script>`,
+    // close this element early and spill the rest of the JSON into the head as
+    // text, destroying that page's structured data. None of the 399 pages in
+    // the last bake contained one; the exposure is new with employer text, and
+    // the escape costs nothing on every other block.
+    //
+    // THE JOB BLOCK ALSO CARRIES THE ID THE PAGE TAKES OVER. The React route
+    // replaces this element on hydration rather than adding a second entity
+    // beside it, and removes it outright when the posting has gone stale since
+    // the bake. It finds it by id, and until now there was none to find.
+    for (const ld of jsonLd) {
+      const tagId = ld && ld["@type"] === "JobPosting" ? ` id="${D.POSTING_LD_TAG_ID}"` : "";
+      headExtra += `<script type="application/ld+json"${tagId}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
+    }
     // Preload hints last in the head, so they cannot displace the meta tags
     // above them if the template shape ever shifts.
     headExtra += preloadFor(path);
@@ -1543,6 +1564,296 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     }
   }
 
+  // ---- A POSTING GETS A PAGE — AND THE SET IS BOUNDED, BY A STATED RULE ----
+  //
+  // THE DEFECT. Until this block existed a posting had no addressable page at
+  // all. The board renders one in a dialog over the list, so the only handle on
+  // a posting was a query parameter on the list URL — and a query parameter is
+  // not a page. Measured 2026-09-23 under a Googlebot user-agent:
+  // /jobs?job=<id> returned the SAME 12,377 bytes as /jobs, MD5 identical, and
+  // identical again for an id that does not exist, carrying the board's title,
+  // the board's meta description, a canonical naming /jobs, and no job markup
+  // anywhere in the served bytes. A posting could not be linked, indexed, cited
+  // or read by an answer engine as itself.
+  //
+  // WHY ONLY SOME. The board serves on the order of three quarters of a million
+  // postings. Prerendering them is not a matter of patience: the description a
+  // posting page must carry comes one posting at a time from the board's detail
+  // action (the list action does not return it), and that round trip was
+  // measured on 2026-09-23 at 993ms mean sequentially, 247.8ms per posting at
+  // eight in flight, and 142.0ms at twelve — zero non-200s at any of them. At
+  // the eight-in-flight figure the whole corpus is about 53 hours of wall clock
+  // for one build, before the tens of gigabytes of files. So the set is capped,
+  // and the cap is the honest part of the feature rather than an apology for it.
+  //
+  // THE RULE, WHICH IS ALSO PRINTED ON /jobs FOR ANYONE WHO WONDERS WHY THEIR
+  // POSTING HAS NO PAGE:
+  //   1. A posting is ELIGIBLE only if it can satisfy the structured-data
+  //      requirements in full — employer, job title, an employer-stated posting
+  //      date, a place with its country, and a real description — and only if
+  //      the employer's own feed still served it at the last re-read and it is
+  //      inside the board's serving window. Nothing is invented to qualify.
+  //   2. Eligible postings that ALREADY HAVE A PAGE in the committed sitemap
+  //      come first, up to POSTING_PAGE_CARRY_MAX, so a URL that has been
+  //      submitted for indexing keeps its page for as long as the posting is
+  //      alive instead of churning out from under the crawler on the next bake.
+  //   3. The rest of the budget goes to the newest eligible postings by the
+  //      employer's own stated date — the ones whose page will stay valid
+  //      longest, since the window closes a fixed number of days after that
+  //      date. The reserve in rule 2 guarantees this never falls to zero.
+  //   4. One page per posting IDENTITY. One requisition appears as several rows
+  //      across a tenant's career sites on this board; the copies get no page at
+  //      all rather than compete with each other, which is also what keeps the
+  //      served titles distinct.
+  //   5. ONLY what this block actually wrote reaches sitemap.xml. write() is the
+  //      single path into writtenPaths, the sitemap is built from writtenPaths,
+  //      and an assertion below refuses the bake if a posting URL ever appears
+  //      in the sitemap without its file.
+  const POSTING_PAGE_CAP = 400;
+  const POSTING_PAGE_CARRY_MAX = 300;
+  const POSTING_FETCH_CONCURRENCY = 8;
+  const POSTING_LIST_PAGES = 8;
+  const POSTING_MIN_DESCRIPTION = 100;
+  /** Rendered into /jobs so the selection is visible from the board itself. */
+  let postingIndexSection = "";
+  /** Paths this block wrote, for the sitemap assertion. */
+  const postingPaths = [];
+  {
+    const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+    const grab5 = (k) => process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const supaUrl5 = grab5("VITE_SUPABASE_URL");
+    const supaKey5 = grab5("VITE_SUPABASE_PUBLISHABLE_KEY");
+    const boardRead = async (body) => {
+      try {
+        const r = await fetch(`${supaUrl5}/functions/v1/job-board`, {
+          method: "POST",
+          headers: { apikey: supaKey5, Authorization: `Bearer ${supaKey5}`, "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(20000),
+        });
+        return r.ok ? await r.json() : null;
+      } catch { return null; }
+    };
+    try {
+      if (!supaUrl5 || !supaKey5) throw new Error("no board credentials — posting pages skipped");
+
+      // Rule 1 — eligibility on the fields the list and the detail both carry.
+      // The description gate needs the detail action and is applied after the
+      // fetch, because the list does not return one.
+      //
+      // A STAFFING AGENCY IS NOT ELIGIBLE, because this page family states
+      // outright that the posting came from the employer's own hiring system
+      // and never an aggregator or a repost, and names the row's company as the
+      // hiring organisation in its markup. For an agency row both are false:
+      // the board carries `agency` NOT NULL on every posting, discloses it with
+      // a badge, and offers a documented opt-out filter — nothing here read it.
+      // One predicate, and consistent with rule 1's "nothing is invented to
+      // qualify". Latent rather than live today: 0 of the 200 newest rows
+      // probed carried the flag, and the filtered count comes back capped at
+      // 10,000, which is not a number to state.
+      const eligibleRow = (j) => !!(j
+        && typeof j.id === "string"
+        && D.postingPagePath(j.id)
+        && typeof j.title === "string" && j.title.trim()
+        && typeof j.company === "string" && j.company.trim()
+        && j.agency !== true
+        && j.country
+        && (j.workMode === "remote" || j.location)
+        && D.isPostingLive(j));
+
+      // The descriptions, at a concurrency measured against this board rather
+      // than guessed. A posting whose description cannot be read, or is too
+      // short to be a description, gets no page — Google requires one, and a
+      // page that omits it would be an invalid posting page rather than a thin
+      // one. Takes ids or list rows; the detail action's own row wins where it
+      // returns one, because it is the fresher read.
+      const fetchDetails = async (items) => {
+        const out = [];
+        for (let i = 0; i < items.length; i += POSTING_FETCH_CONCURRENCY) {
+          const slice = items.slice(i, i + POSTING_FETCH_CONCURRENCY);
+          const got = await Promise.all(slice.map(async (item) => {
+            const id = typeof item === "string" ? item : item.id;
+            const d = await boardRead({ action: "detail", id });
+            const row = d && typeof d === "object" && d.job ? d.job : (typeof item === "string" ? null : item);
+            const text = d && typeof d.description === "string" ? d.description : "";
+            return { job: row, description: text };
+          }));
+          for (const g of got) {
+            if (!eligibleRow(g.job)) continue;
+            if (D.jdParagraphs(g.description).join("\n").length < POSTING_MIN_DESCRIPTION) continue;
+            out.push(g);
+          }
+        }
+        return out;
+      };
+
+      // RULE 2 — THE CARRY SET IS RESOLVED BY ID, NOT BY HOPING IT FALLS INSIDE
+      // THE NEWEST WINDOW.
+      //
+      // It was an intersection with the candidate pool below, and the pool is
+      // the newest ~900 rows of a board taking tens of thousands a day. A
+      // carried posting that is alive and fully eligible is simply not in that
+      // window a day later, so it was never carried: measured on a bake hours
+      // after the committed one, 397 posting URLs in, 2 kept and 395 dropped —
+      // and 10 of 10 of the dropped ones sampled through the detail action came
+      // back live with no missingSince. Each abandoned URL then serves the SPA
+      // fallback, which is the homepage with `index, follow` and no canonical
+      // at all: the exact defect this page family exists to end, moved from
+      // /jobs?job= to /jobs/posting/. So every carried id is asked about
+      // directly. The bake already spends hundreds of these calls; this makes a
+      // published URL survive until the posting genuinely dies, which is what
+      // the rule printed on /jobs says.
+      const carried = [];
+      try {
+        const prevXml = readFileSync(join(root, "public/sitemap.xml"), "utf8");
+        for (const m of prevXml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+          const id = D.postingIdFromPath(m[1].replace(SITE, ""));
+          if (id && !carried.includes(id)) carried.push(id);
+        }
+      } catch { /* first build, or no committed sitemap — nothing to carry */ }
+      const carriedDetailed = await fetchDetails(carried.slice(0, POSTING_PAGE_CARRY_MAX));
+
+      // Rule 4 — one page per identity. The carried pages claim their
+      // identities first, so a duplicate appearing in today's newest window
+      // cannot evict a URL that is already published.
+      const takenIdentity = new Set();
+      const detailed = [];
+      for (const g of carriedDetailed) {
+        const k = D.postingIdentity(g.job);
+        if (takenIdentity.has(k)) continue;
+        takenIdentity.add(k);
+        detailed.push(g);
+      }
+
+      // Rule 3 — the rest of the budget goes to the newest eligible postings.
+      //
+      // TWO CLAIMS THAT USED TO SIT HERE WERE FALSE, and the first of them is
+      // why the carry set above had to be rebuilt.
+      //   - "the board's newest sort orders on the stated column, never on our
+      //     discovery stamp". It does order on posted_at, but Workday — which
+      //     dominates the head of that sort — has no stated date in its list
+      //     payload, so normalize.ts computes posted_at as fetchedAt minus the
+      //     bucket's days. A "Posted Today" row's stamp IS the fetch instant:
+      //     533 of the first 535 rows of this sort carry a sub-second, non-
+      //     midnight postedAt within seconds of their own lastSeen. The head of
+      //     this sort is therefore partly ordered by which boards were refreshed
+      //     most recently, which is our ingestion, and is why the window turns
+      //     over completely between bakes. That is accepted openly here rather
+      //     than papered over: the carry set, not the sort, is what gives a
+      //     published URL its stability.
+      //   - "paged with the keyset cursor the board hands back". The board
+      //     returns nextCursor: null for this sort by construction (the keyset
+      //     path is gated on NOT being the newest sort), so the loop pages by
+      //     offset. The id-dedupe below is what actually prevents a duplicate
+      //     from an offset page shifting under us, and it is asserted rather
+      //     than described.
+      const pool = [];
+      const seenIds = new Set();
+      let offset = 0;
+      let poolDuplicates = 0;
+      for (let p = 0; p < POSTING_LIST_PAGES; p++) {
+        const j = await boardRead({ action: "list", sort: "newest", limit: 200, includeFacets: false, offset });
+        if (!j || !Array.isArray(j.jobs) || j.jobs.length === 0) break;
+        for (const row of j.jobs) {
+          if (!row || typeof row.id !== "string") continue;
+          if (seenIds.has(row.id)) { poolDuplicates++; continue; }
+          seenIds.add(row.id);
+          pool.push(row);
+        }
+        if (!j.hasMore || typeof j.nextOffset !== "number") break;
+        offset = j.nextOffset;
+        if (pool.length >= POSTING_PAGE_CAP * 3) break;
+      }
+      if (poolDuplicates) console.warn(`[prerender-seo] posting pool: ${poolDuplicates} duplicate row(s) across offset pages — the board shifted under the walk; deduped by id`);
+
+      const fresh = [];
+      for (const j of pool) {
+        if (detailed.length + fresh.length >= POSTING_PAGE_CAP) break;
+        if (!eligibleRow(j)) continue;
+        const k = D.postingIdentity(j);
+        if (takenIdentity.has(k)) continue;
+        takenIdentity.add(k);
+        fresh.push(j);
+      }
+      for (const g of await fetchDetails(fresh)) detailed.push(g);
+      const eligible = pool.filter(eligibleRow);
+
+      let withPay = 0;
+      for (const { job, description } of detailed) {
+        const path = D.postingPagePath(job.id);
+        const ld = D.postingJsonLd(job, description, { site: SITE });
+        // A page whose markup we cannot stand behind is not written at all.
+        // Its URL then never reaches the sitemap, which is the whole contract.
+        if (!path || !ld) continue;
+        if (ld.baseSalary) withPay++;
+        const paras = D.jdParagraphs(description);
+        const nm = String(job.company).trim();
+        const place = job.location ? String(job.location).trim() : "";
+        write({
+          path,
+          title: D.postingPageTitle(job),
+          description: D.postingPageDescription(job),
+          content: `
+            <p><a href="/jobs">All openings</a></p>
+            <h1>${esc(job.title)}</h1>
+            <p>${esc(nm)}${place ? ` — ${esc(place)}` : ""}${job.workMode === "remote" ? " — Remote" : ""}</p>
+            <p>Posted ${esc(String(job.postedAt).slice(0, 10))}, as stated by the employer. ${job.salary
+              ? `Pay, in the employer's own words and neither converted nor estimated: ${esc(String(job.salary))}.`
+              : "This employer states no pay on this posting, so this page states none."}</p>
+            ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(nm)}'s own site</a> — the application happens on ${esc(nm)}'s own hiring system. This board never reposts a job and never stands between you and the employer.</p>` : ""}
+            <h2>The employer's own description</h2>
+            ${paras.map((p) => `<p>${esc(p)}</p>`).join("\n            ")}
+            <p><a href="/jobs/company/${esc(String(job.token ?? ""))}">All open roles at ${esc(nm)}</a> · <a href="/jobs">Search the live board</a> · <a href="/">Check your resume against this posting free</a></p>
+            <p>Pulled straight from ${esc(nm)}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and is dropped the moment their feed stops serving it. This page was built ${new Date().toISOString().slice(0, 10)}.</p>
+          `,
+          jsonLd: [ld, {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
+              ...(job.token ? [{ "@type": "ListItem", position: 2, name: `${nm} jobs`, item: `${SITE}/jobs/company/${job.token}` }] : []),
+              { "@type": "ListItem", position: job.token ? 3 : 2, name: job.title, item: `${SITE}${path}` },
+            ],
+          }],
+        });
+        postingPaths.push(path);
+      }
+
+      // SITEMAP-ONLY ORPHANS ARE A KNOWN DEFECT HERE — 387 company pages sat in
+      // the sitemap linked from nothing. Every posting page this bake wrote is
+      // linked from /jobs, with the rule and the number beside the links so the
+      // next person can see why their posting is not among them.
+      if (postingPaths.length) {
+        const links = detailed
+          .filter((d) => postingPaths.includes(D.postingPagePath(d.job.id)))
+          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(d.job.title)}</a> — ${esc(String(d.job.company).trim())}${d.job.location ? `, ${esc(String(d.job.location).trim())}` : ""}</li>`)
+          .join("\n              ");
+        postingIndexSection = `
+          <section>
+            <h2>Openings with a page of their own</h2>
+            <p>${postingPaths.length} of them, and the board serves far more than that — this is a deliberate bound, not the whole board. A posting gets its own page when the employer stated everything such a page must carry (the job, the employer, the date, a place with its country, and a real description), when their own feed still served it at the last re-read, and when it is inside the ${D.BOARD_FRESH_WINDOW_DAYS}-day window. Pages already published keep their URL while the posting lives; the remaining budget goes to the most recently posted, whose pages stay valid longest. Duplicates of one requisition across an employer's several career sites get one page between them. Every other opening is browsable here on the board and nowhere in the sitemap, because a URL we cannot serve as its own page is a URL we do not advertise.</p>
+            <ul>
+              ${links}
+            </ul>
+          </section>`;
+      }
+      console.log(`[prerender-seo] posting pages: ${postingPaths.length} written (cap ${POSTING_PAGE_CAP}; ${carried.length} posting URLs in the committed sitemap → ${carriedDetailed.length} still live and eligible, carried; ${fresh.length} new from a pool of ${pool.length} (${eligible.length} eligible); ${withPay} carry employer-stated pay)`);
+      // A bake that drops a published URL without its posting having died is
+      // the churn defect. It cannot be asserted from inside the loop (a posting
+      // may legitimately have gone), so it is reported every time: a carry rate
+      // that collapses is the symptom to look at first.
+      if (carried.length && carriedDetailed.length < carried.length * 0.5) {
+        console.warn(`[prerender-seo] posting pages: only ${carriedDetailed.length} of ${carried.length} published posting URLs survived re-verification — if that is not a genuine wave of closures, the carry resolution is broken again`);
+      }
+    } catch (e) {
+      // A bake that cannot reach the board writes NO posting pages and puts no
+      // posting URL in the sitemap. Losing pages for a build is recoverable;
+      // advertising URLs that serve the homepage is the defect this exists to
+      // end, so there is no fallback rung here on purpose.
+      console.warn(`[prerender-seo] posting pages SKIPPED (${e?.message || e}) — no posting URL enters the sitemap on this bake`);
+    }
+  }
+
   // ---- Job-board category landers: the queries people actually type are
   // "healthcare jobs", not "job board". 17 crawlable pages, counts baked
   // from the live corpus at build time (omitted gracefully offline), copy
@@ -1798,6 +2109,7 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
           <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
+          ${postingIndexSection}
         `,
         jsonLd: [{
           "@context": "https://schema.org",
@@ -2674,12 +2986,46 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
       { path: "/changelog", changefreq: "weekly", priority: "0.5" },
     ];
     const seen = new Set(STATIC_ROUTES.map((r) => r.path));
-    const entries = [...STATIC_ROUTES];
+    let entries = [...STATIC_ROUTES];
     for (const wp of writtenPaths) {
       if (seen.has(wp)) continue;
       seen.add(wp);
       const jobsPage = wp.startsWith("/jobs/field/") || wp.startsWith("/jobs/company/");
-      entries.push({ path: wp, changefreq: jobsPage ? "daily" : "monthly", priority: "0.7" });
+      const postingPage = wp.startsWith(`${D.POSTING_PATH_PREFIX}/`);
+      entries.push({
+        path: wp,
+        changefreq: jobsPage || postingPage ? "daily" : "monthly",
+        // A single opening is a leaf: real, but not a page to spend crawl
+        // budget on ahead of the board and the employer landers above it.
+        priority: postingPage ? "0.5" : "0.7",
+      });
+    }
+    // THE SITEMAP MAY NOT NAME A POSTING URL THIS BAKE DID NOT WRITE.
+    //
+    // A sitemap entry is a request to index that URL. There is no file behind a
+    // posting URL this bake did not write, so the host would serve the homepage
+    // shell — which is exactly the state this whole page family exists to end,
+    // reintroduced at the one place nobody looks. The set written above is the
+    // only source, so this can only fire on a future edit.
+    //
+    // IT DROPS THE ENTRIES AND SHOUTS; IT DOES NOT THROW. A throw here is
+    // caught by the never-block-a-publish handler at the foot of this file,
+    // which means the two writeFileSync calls below never run — so the bake
+    // would leave the COMMITTED public/sitemap.xml in place, still naming
+    // posting URLs this bake did not write. That is precisely the state this
+    // check exists to prevent, reached by the check itself. The ratchet comment
+    // twenty lines down identifies the same hazard for itself; this one had
+    // walked into it.
+    {
+      const written = new Set(postingPaths);
+      const unwritten = entries
+        .map((e) => e.path)
+        .filter((p) => p.startsWith(`${D.POSTING_PATH_PREFIX}/`) && !written.has(p));
+      if (unwritten.length) {
+        console.warn(`[prerender-seo] DROPPING ${unwritten.length} posting URL(s) from the sitemap with no prerendered file — each would serve the homepage shell: ${unwritten.slice(0, 5).join(", ")}`);
+        const drop = new Set(unwritten);
+        entries = entries.filter((e) => !drop.has(e.path));
+      }
     }
     if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
     // Ratchet guard: a transient facets/board fetch failure mid-build silently
@@ -2687,11 +3033,23 @@ export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/
     // and public/sitemap.xml is committed, so the shrink would have shipped.
     // Never overwrite with >20% fewer URLs than the sitemap already has; a
     // REAL catalog shrink that big should be a deliberate edit, not a flake.
+    //
+    // THE RATCHET COUNTS THE STABLE PAGES, NOT THE POSTINGS. Posting pages are
+    // a deliberately bounded, deliberately churning set: a bake that cannot
+    // reach the board writes none at all, which is the correct behaviour and
+    // not a flake. Counted together with the standing pages, that correct
+    // behaviour would look like a 30% collapse and abort the bake — and an
+    // aborted bake leaves the PREVIOUS sitemap in place, still naming posting
+    // URLs whose files this bake never wrote, which is precisely the state the
+    // assertion above exists to prevent. So both sides of the comparison
+    // exclude them, and the posting set is governed by its own cap instead.
     try {
       const prev = readFileSync(join(root, "public/sitemap.xml"), "utf8");
-      const prevCount = (prev.match(/<loc>/g) ?? []).length;
-      if (prevCount > 0 && entries.length < prevCount * 0.8) {
-        throw new Error(`sitemap would shrink ${prevCount} → ${entries.length} URLs — transient data-fetch failure? refusing to overwrite`);
+      const standing = (u) => !u.includes(`${D.POSTING_PATH_PREFIX}/`);
+      const prevCount = [...prev.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).filter(standing).length;
+      const nowCount = entries.map((e) => e.path).filter(standing).length;
+      if (prevCount > 0 && nowCount < prevCount * 0.8) {
+        throw new Error(`sitemap would shrink ${prevCount} → ${nowCount} standing URLs — transient data-fetch failure? refusing to overwrite`);
       }
     } catch (e) {
       if (String(e).includes("refusing to overwrite")) throw e;

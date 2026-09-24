@@ -6,8 +6,8 @@ import {
   CATALOG,
   MIN_EXPECTED_BOARDS,
   SOURCES_PATH,
-  stripTsComments,
 } from "./helpers/catalog";
+import { codeOf } from "./helpers/strip-comments";
 
 /**
  * sources.ts and BUILD_VERSION must change together.
@@ -1186,7 +1186,14 @@ const PINNED = {
   //   isLight is token-keyed, so enrolling greenhouse `antenna` turned the
   //   WORKABLE `antenna` light too. Plus fix C, so the descriptions a refused
   //   board defers have a lane that fills them.
-  buildVersion: "2026-09-09.72",
+  //   .73: the employer's own place, out of bytes the detail sweeps already
+  //   downloaded — fetchVendorDetail's Workday branch reads the CXS country,
+  //   display location and site count through workdayDetailPlace, and both
+  //   sweeps write them through one placeWrite rule (country replaces, location
+  //   fills a placeholder only, subdivision refused for a one-of-N site). Two
+  //   mis-parses fixed alongside it: a country read out of an organisation name
+  //   and a region read out of the leftmost of several states.
+  buildVersion: "2026-09-09.73",
 };
 
 /**
@@ -1227,11 +1234,19 @@ describe("sources.ts and BUILD_VERSION move together", () => {
     // and the ORDER was load-bearing: index.ts has a line comment naming
     // `../_shared/*`, whose `/*` opens a block comment that a block-first strip
     // runs to the next `*/` hundreds of lines away, taking the real constant
-    // with it. stripTsComments is a single left-to-right pass that is also
-    // string-aware, so the ordering trap cannot exist and a `//` inside a
-    // string literal no longer eats the rest of its line. One stripper, shared
-    // with every other catalog guard.
-    const CODE = stripTsComments(idx);
+    // with it.
+    //
+    // codeOf, the shared stripper, had that exact defect and has been repaired
+    // rather than avoided: it is now a single left-to-right pass that is
+    // string- AND regex-aware, so the ordering trap cannot exist, a `//`
+    // inside a string literal no longer eats the rest of its line, and a quote
+    // inside a regex character class no longer desynchronises the scan. That
+    // last one is why this guard no longer reads through helpers/catalog's
+    // stripTsComments: lacking regex awareness, it comes out of step on THIS
+    // file and leaves comment prose standing in what it returns as code —
+    // which is precisely the "guard passes against prose" failure the
+    // paragraph above is about. One stripper, and it has a guard of its own.
+    const CODE = codeOf(idx);
     // Both quote styles, and EXACTLY ONE match. Matching only `"` was the
     // house bug that made a single-quoted `.from('table')` invisible; and
     // taking the FIRST match of several would pin one declaration while the

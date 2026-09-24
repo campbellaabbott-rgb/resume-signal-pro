@@ -29,6 +29,7 @@ const ProductSuccess = lazy(() => import("./pages/ProductSuccess"));
 const PaymentFailed = lazy(() => import("./pages/PaymentFailed"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Jobs = lazy(() => import("./pages/Jobs"));
+const JobPosting = lazy(() => import("./pages/JobPosting"));
 const GhostJobIndex = lazy(() => import("./pages/GhostJobIndex"));
 const EntryLevelIndex = lazy(() => import("./pages/EntryLevelIndex"));
 const Explore = lazy(() => import("./pages/Explore"));
@@ -92,6 +93,22 @@ const App = () => (
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/jobs/field/:category" element={<Jobs />} />
           <Route path="/jobs/company/:companyToken" element={<Jobs />} />
+          {/* A POSTING FINALLY HAS AN ADDRESS. Until this route existed the
+              board could only put a posting in a dialog over the list, so the
+              only handle on one was a query parameter — and a query parameter
+              is not a page: /jobs?job=<id> served the board's own bytes, byte
+              for byte, canonical and all. This is the posting itself, with its
+              own title, heading, description and job markup.
+
+              THREE SEGMENTS, NOT ONE. A board id is source, board token and the
+              employer's requisition key joined by colons; split across path
+              segments it needs no escaping and uses only characters this host
+              is already proven to serve. The one-segment form below is a
+              compatibility route for an id pasted whole — it resolves and then
+              redirects to the canonical three-segment URL, and is baked into
+              no file and named in no sitemap. */}
+          <Route path="/jobs/posting/:source/:token/:key" element={<JobPosting />} />
+          <Route path="/jobs/posting/:id" element={<JobPosting />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/ghost-job-index" element={<GhostJobIndex />} />
           <Route path="/entry-level-index" element={<EntryLevelIndex />} />

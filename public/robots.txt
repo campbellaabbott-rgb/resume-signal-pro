@@ -233,9 +233,19 @@ Disallow: /agents/pass
 Disallow: /oauth/consent
 
 Sitemap: https://resumebooster.work/sitemap.xml
-# Per-posting sitemap INDEX, served live by the board function (cross-host
-# sitemaps are valid when referenced from this robots.txt). The index sizes
-# itself from a live count of company-dated postings inside the 30-day
-# serving window, so coverage grows with the catalog instead of being frozen
-# by a hard-coded page list.
-Sitemap: https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/job-board?action=sitemap
+
+# ONE SITEMAP, AND EVERY URL IN IT SERVES ITS OWN PAGE.
+#
+# A second Sitemap line used to point at an index the board function serves
+# live. Measured 2026-09-23: it listed 767,391 URLs across 30 pages, every one
+# of the form /jobs?job=<id> — and every one of those served, byte for byte,
+# the same file as /jobs. Same MD5, the board's own title and description, a
+# canonical naming /jobs, and no job markup in the served bytes; an id that
+# does not exist returned the identical bytes too. So we were asking crawlers
+# to index three quarters of a million copies of one page, and telling them on
+# each copy that the page was really /jobs.
+#
+# Individual openings now have real pages (/jobs/posting/...), a bounded set of
+# them is prerendered by scripts/prerender-seo.mjs, and exactly those are in
+# sitemap.xml above. The rule and the number are printed on /jobs itself.
+# Do not restore a sitemap of URLs that have no file behind them.

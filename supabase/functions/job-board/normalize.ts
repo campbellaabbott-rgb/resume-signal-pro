@@ -451,7 +451,35 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bhungary\b/i, "HU"],
   [/\b(?:finland|suomi)\b/i, "FI"],
   [/\bgreece\b/i, "GR"],
-  [/\bisrael\b/i, "IL"],
+  // AN ORGANISATION'S NAME IS NOT A PLACE, and this pattern was the proof.
+  // Many feeds put a FACILITY name in the location column rather than a town —
+  // "Beth Israel Deaconess Medical Center" is a Boston hospital, and a bare
+  // word-boundary test filed it, and every other site in that health system,
+  // under Israel. Measured live 2026-09-23 by walking the country=IL bucket
+  // (stated total 725, 682 rows walked): 100 rows = 14.7% of the bucket are
+  // the Boston-area system, every one of them Workday, every one of them one
+  // employer token. The seeker asking for jobs in Israel was handed a per-diem
+  // CT technologist in Massachusetts.
+  //
+  // Same shape as the (?<!new south )wales and (?<!new )mexico guards above:
+  // a narrow, named exception rather than a loosened pattern. "Beth Israel,
+  // Tel Aviv, Israel" still resolves — the comma-prefixed occurrence is not
+  // preceded by the qualifier and matches on its own.
+  //
+  // IT IS NOT THE ONLY MEMBER OF ITS CLASS, and the first version of this note
+  // said it was ("the word genuinely is the country everywhere else"). It is
+  // not: the same ordering — COUNTRY_PATTERNS ahead of the comma-prefixed
+  // state code — files US towns named after countries abroad. Walked live with
+  // the anon key on 2026-09-23: the PE bucket (667 rows read) holds "Peru, IN"
+  // twice and "Peru, IL" once, the TR bucket (504 rows) holds "Turkey, TX"
+  // twice. Those five rows are handled by a second, equally narrow guard in
+  // detectCountry rather than here, because the guard has to read the state
+  // code CASE-SENSITIVELY and these patterns are case-insensitive.
+  //
+  // These rows do not merely lose a wrong answer: they gain the right one. The
+  // same 14 rows fetched live from the vendor's own CXS detail return US on
+  // 14/14, which is the country the Workday place reader below now writes.
+  [/\b(?<!beth\s)israel\b/i, "IL"],
   [/\b(?:united arab emirates|uae|dubai|abu dhabi)\b/i, "AE"],
   [/\bsaudi arabia\b/i, "SA"],
   [/\bsouth africa\b/i, "ZA"],
@@ -491,6 +519,39 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 // stray "in" or "or" inside words no.
 const P_US_STATE_CODE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)(?![A-Za-z])/;
 const P_CA_PROV_CODE = /,\s*(ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)(?![A-Za-z])/;
+
+/**
+ * A US TOWN NAMED AFTER A COUNTRY, FILED ABROAD BY PATTERN ORDER.
+ *
+ * detectCountry runs COUNTRY_PATTERNS before any state-code check, so a bare
+ * country word beats the trailing comma-prefixed code that detectRegion's own
+ * docblock calls the most certain form. Walked live with the anon key
+ * 2026-09-23: "Peru, IN" x2 and "Peru, IL" in the PE bucket (667 rows read),
+ * "Turkey, TX" x2 in the TR bucket (504 rows). Five rows, two employers'
+ * worth of towns in Indiana, Illinois and Texas, all filed in South America
+ * and Anatolia.
+ *
+ * REORDERING THE WHOLE TABLE WAS REFUTED BY THE SAME WALK, which is why this
+ * is a named list and not a rule. The CN bucket holds "Shanghai, SD, China"
+ * and "Weihai City, SD" — SD there is SHANDONG, not South Dakota, and running
+ * the comma-prefixed state code ahead of the country words would move both of
+ * those to the United States. A trailing two-letter code is only unambiguous
+ * once you already know the country is the US, which is the thing being
+ * decided. So: the two words measured to collide, and nothing speculative.
+ *
+ * The code must be UPPERCASE, the convention P_US_STATE_CODE already relies
+ * on, so the case check is done in code — a case-insensitive pattern would
+ * refuse "Lima, Peru, in the south".
+ */
+/** The same fifty-one codes P_US_STATE_CODE carries, read off it so there is one list. */
+export const US_STATE_CODES: ReadonlySet<string> = new Set(
+  (P_US_STATE_CODE.source.match(/\(([A-Z|]+)\)/)?.[1] ?? "").split("|").filter(Boolean),
+);
+const P_COUNTRY_WORD_US_TOWN = /\b(peru|turkey)\s*,\s*([A-Za-z]{2})(?![A-Za-z])/i;
+function countryWordNamesAUsTown(s: string): boolean {
+  const m = P_COUNTRY_WORD_US_TOWN.exec(s);
+  return !!m && m[2] === m[2].toUpperCase() && US_STATE_CODES.has(m[2]);
+}
 // SOME FEEDS PUT THE STATE FIRST: "AR Hot Springs", "NC - Raleigh". The
 // comma-prefixed pattern above cannot see those, and they are the largest
 // recoverable class in the unplaced set — 146 of 5,000 sampled, roughly 4,900
@@ -519,7 +580,19 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // never substring — "Santiago de Compostela" does not match "santiago".
 // Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
 // sweep re-runs stored null-country rows against the current table.
-export const COUNTRY_MAP_VERSION = 5;
+// 6: the country word may no longer be read out of an organisation name — see
+// the guarded pattern in COUNTRY_PATTERNS.
+// 7: nor out of a US town named after a country ("Peru, IN", "Turkey, TX") —
+// see countryWordNamesAUsTown.
+//
+// AND THE BUMP ALONE DOES NOT REPAIR THE ROWS IT INVALIDATES. The backfill
+// sweep selects `country IS NULL`: it fills gaps and has never corrected a
+// stored wrong answer, so the rows already holding the organisation-name
+// reading keep it however often this constant moves. What repairs them is the
+// vendor's own structured country, written by the Workday place reader below
+// through the detail sweeps — measured agreeing with 136 of 136 rows we had
+// already placed correctly, and disagreeing only where we were wrong.
+export const COUNTRY_MAP_VERSION = 7;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -858,6 +931,9 @@ export function cityCountry(location: string): string | null {
 export function detectCountry(location: string | null | undefined): string | null {
   if (!location) return null;
   const s = String(location).slice(0, 300);
+  // The two measured US towns whose names are countries — see the docblock on
+  // countryWordNamesAUsTown for why this is a named pair and not a reordering.
+  if (countryWordNamesAUsTown(s)) return "US";
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
@@ -892,7 +968,20 @@ export function detectCountry(location: string | null | undefined): string | nul
 /** Bump when the vocabularies or the resolution order below change, exactly as
  *  COUNTRY_MAP_VERSION does for the country table — a stored region_code is
  *  only interpretable against the version of the rules that produced it. */
-export const REGION_MAP_VERSION = 1;
+// 2: the spelled-out-state-name branch refuses a string that names two or more
+// different states instead of taking the leftmost one.
+//
+// AND THE BUMP ALONE REPAIRS NOTHING — the same sentence COUNTRY_MAP_VERSION
+// now carries, said here too because a reader comparing the two constants
+// would otherwise reasonably infer that this one behaves like the country
+// backfill. It does not: there is no region_backfill meta key, no cursor and
+// no sweep that re-derives region_code on a version change. A stored region is
+// corrected only when a place write happens to touch that row (the detail
+// sweeps re-derive it with the pair they write), or by a region re-derive
+// sweep if one is ever built. Cost of leaving them, from the review walk of
+// 2026-09-23 (6,144 live rows A/B-tested against both rules): 1,033 reach the
+// spelled-out-name branch and 17 of those — 1.65% — change under version 2.
+export const REGION_MAP_VERSION = 2;
 
 // The SAME 49 names P_US_STATE_NAME carries, as a map so the match can be
 // turned into a code. Georgia is absent here for the reason it is absent
@@ -982,9 +1071,48 @@ export function detectRegion(
     if (code[1] === "CA" && (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME_CAP.test(s))) return null;
     return `US-${code[1]}`;
   }
-  const name = P_US_STATE_NAME_CAP.exec(s);
-  const mapped = name?.[1] ? US_STATE_NAME_TO_CODE[name[1].toLowerCase()] : undefined;
-  if (mapped) return `US-${mapped}`;
+  // A STATE NAME ONLY DENOTES A STATE WHEN THE STRING NAMES ONE STATE.
+  //
+  // This was `P_US_STATE_NAME_CAP.exec(s)` — a leftmost-wins search over the
+  // whole string, which answers with whichever state name appears EARLIEST
+  // rather than whichever one the posting is in. Two measured failures, both
+  // from live location strings (4,500 Workday rows + 4,500 board rows walked
+  // 2026-09-23, 1,253 of which reach this branch):
+  //
+  //   "Kansas City, Missouri"            -> US-KS. The state name is inside
+  //                                        the CITY's name; the state is the
+  //                                        segment after it. Same for
+  //                                        "Kansas, Oklahoma", a town in OK.
+  //   "Chicago, Illinois; New York, New
+  //    York; Philadelphia, Pennsylvania" -> US-IL. A multi-site requisition
+  //                                        filed at whichever site the
+  //                                        employer happened to list first.
+  //
+  // The second class is the one worth being careful about: picking the last
+  // name instead of the first would be just as arbitrary, and a subdivision is
+  // written into a longitudinal series that outlives the posting. So neither
+  // is chosen. When the string names two or more DIFFERENT states it does not
+  // denote one state, and this returns null — the same answer it already gives
+  // for the ", CA" collision directly above, for the same stated reason.
+  //
+  // COST, MEASURED: 14 of 1,253 rows reaching this branch = 1.12%, and every
+  // one of the 14 is currently either flatly wrong or a multi-site string
+  // claiming a precision it does not have. Nothing correct is lost. The
+  // dash-delimited Workday form ("San Antonio-Texas-United States of America")
+  // names one state and is untouched, as is the repeated-name form ("New York,
+  // New York"), which names one state twice.
+  //
+  // The comma-prefixed CODE branch above is deliberately not changed: a code
+  // is unambiguous and trailing, and "Kansas City, MO" already resolves to MO
+  // through it. The province branch is not changed either — of 180 rows that
+  // reached it, zero named two different provinces.
+  const named = new Set<string>();
+  for (const m of s.matchAll(new RegExp(P_US_STATE_NAME_CAP.source, "gi"))) {
+    const c = US_STATE_NAME_TO_CODE[String(m[1]).toLowerCase()];
+    if (c) named.add(c);
+  }
+  if (named.size > 1) return null;
+  if (named.size === 1) return `US-${[...named][0]}`;
   const leading = P_US_STATE_CODE_LEADING.exec(s);
   if (leading?.[1]) return `US-${leading[1]}`;
   return null;
@@ -998,6 +1126,151 @@ export function detectRegion(
  * `stated` argument exists to let a caller hand in the vendor's own country
  * and still get a region parsed out of the free text beneath it.
  */
+// ── THE PLACE THE EMPLOYER STATED AND WE THREW AWAY ─────────────────────────
+//
+// Workday's LIST payload gives us `locationsText`, which on a multi-site
+// requisition is the literal string "2 Locations" — a count, not a place. The
+// board stores it verbatim and files the row with no country at all.
+//
+// The vendor's own CXS job-detail response, which the description and
+// structured sweeps ALREADY download for every one of these postings and
+// already read remoteType and startDate out of, carries the answer outright:
+// a display location string and an ISO 3166-1 alpha-2 country code, both
+// employer-stated, neither inferred. Reading them costs zero extra requests.
+//
+// MEASURED LIVE 2026-09-23, 367 unplaced Workday postings fetched from CXS:
+//   367/367 (100%) carry jobPostingInfo.jobRequisitionLocation.country.alpha2Code
+//   0/367   (0%)   carry ...jobRequisitionLocation.country.country.alpha2Code
+// The second path is the one the proposal specified. Coded as written it would
+// have returned undefined on every posting while every local check stayed
+// green — which is why the shape below is pinned by a guard that walks real
+// captured payloads rather than by a comment.
+//
+// 369 of 370 attempted fetches returned HTTP 200 (one 403, one 404).
+
+/**
+ * The literal multi-site placeholders Workday puts in `locationsText` where a
+ * place should be: "2 Locations", "3 sites". A count of places is not a place,
+ * and a row carrying one names nowhere to a reader.
+ *
+ * EVERY WORD HERE WAS OBSERVED; THE FIRST VERSION'S WERE HALF GUESSED. It read
+ * `locations|sites|standorte|lieux|ubicaciones` under a measurement that
+ * covered only the English half — and the real French form is `emplacements`,
+ * which was not in the list, so those rows were never filled. The vocabulary
+ * below is the complete set of `<number> <word>` location strings seen on a
+ * 15,000-row cursor walk of live Workday rows with the anon key, 2026-09-23:
+ *
+ *   locations 381 · sites 10 · emplacements 2 · standorte 1 · locaties 1
+ *
+ * plus 535 rows with an empty location string, and three strings of the same
+ * SHAPE that are real places and must not match — "3 Kedzie" twice and one
+ * "N DMC" — which is why the word list is closed rather than `\d+\s+\w+`.
+ * `lieux` and `ubicaciones` appeared nowhere in the walk and are gone.
+ *
+ * THE COUNTS ARE THE VOCABULARY'S BASIS, NOT A BOARD-WIDE RATE. The walk is
+ * id-ordered and a tenant's postings cluster in id order, so a sample's share
+ * moves with where it starts: this walk puts "N locations" at 2.54% of Workday
+ * rows and empty at 3.57%, while a 3,841-row sample of the same corpus the
+ * same day put them at 10.1% and 7.4%. Either says the shape is common;
+ * neither is a rate to publish.
+ */
+export function isPlacelessLocation(v: string | null | undefined): boolean {
+  const s = String(v ?? "").trim();
+  if (!s) return true;
+  return /^\d+\s+(?:locations?|sites?|emplacements?|standorte|locaties)$/i.test(s);
+}
+
+/** What a Workday CXS job-detail payload says about where the job is. */
+export interface WorkdayDetailPlace {
+  /** ISO 3166-1 alpha-2, or null when the payload does not state one we trust. */
+  country: string | null;
+  /** The employer's own display location string, or null. */
+  location: string | null;
+  /** How many FURTHER sites the requisition lists beyond `location`. */
+  additionalCount: number;
+}
+
+/**
+ * Read the place out of a Workday CXS job-detail payload. Pure: the caller
+ * fetches, this only parses.
+ *
+ * THE COUNTRY COMES FROM THE CODE, AND THE CODE MUST AGREE WITH THE PLACE WE
+ * ARE ABOUT TO STORE. The payload states the country twice — once as an
+ * alpha-2 code under the requisition's location, once as a spelled-out
+ * `country.descriptor` beside the display location. On 366 of 367 live
+ * postings they agree. On the 367th the display location read "Germany -
+ * Munich" with descriptor "Germany" while the requisition's own country code
+ * said IE: a multi-site requisition whose primary site is in a different
+ * country from the site being displayed.
+ *
+ * We store the display location, so a country that contradicts it would put a
+ * Munich-labelled row in the Ireland bucket — the right number under the wrong
+ * noun. Where they disagree this returns null and the row stays unplaced,
+ * which is the board's stated behaviour for anything it cannot place.
+ *
+ * THE CHECK READS THE DISPLAY LOCATION AS WELL AS THE DESCRIPTOR, because the
+ * descriptor is the field that can be ABSENT. Across 253 live payloads the
+ * alpha-2 code is present on 252 and `jobPostingInfo.country.descriptor` on
+ * 251 — one carries the code with no descriptor, and on that shape the refusal
+ * could not fire at all: the salesforce payload with its descriptor deleted
+ * returns country IE beside the location "Germany - Munich", a Munich row in
+ * the Ireland bucket, which is the exact failure this paragraph says it
+ * prevents. So the code is checked against BOTH readings, and a contradiction
+ * from either refuses. Both names are resolved through detectCountry, the same
+ * table every other surface uses, so there is no second country vocabulary to
+ * drift from the first.
+ *
+ * THE SITE COUNT RIDES OUT WITH THEM, because the caller cannot judge the
+ * precision of what it is being handed without it. A requisition listing 52
+ * sites hands us ONE display location, and a subdivision derived from that one
+ * site is written into a longitudinal series that outlives the posting.
+ *
+ * NOTHING HERE READS THE APPLY URL. The path slug of a Workday apply URL names
+ * a place for most of these rows, and reading it through a gazetteer was
+ * measured at 14.4% wrong — "Beth Israel Deaconess Medical Center" resolving
+ * to Israel, "Poland Remote" to the United States. The employer answers this
+ * question directly in the payload; there is no reason to guess at a URL.
+ */
+export function workdayDetailPlace(payload: unknown): WorkdayDetailPlace {
+  const info = (payload as { jobPostingInfo?: Record<string, unknown> } | null)?.jobPostingInfo;
+  if (!info || typeof info !== "object") return { country: null, location: null, additionalCount: 0 };
+  const jrl = info.jobRequisitionLocation as { country?: { alpha2Code?: unknown } } | null | undefined;
+  const raw = jrl?.country?.alpha2Code;
+  // Uppercase two letters or nothing: a well-formed code is the only thing
+  // that gets written into a column the country filter reads.
+  const code = typeof raw === "string" && /^[A-Za-z]{2}$/.test(raw.trim()) ? raw.trim().toUpperCase() : null;
+  const locRaw = info.location;
+  const location = typeof locRaw === "string" && locRaw.trim() ? locRaw.trim() : null;
+  const descRaw = (info.country as { descriptor?: unknown } | null | undefined)?.descriptor;
+  // The two readings of the SAME claim: the country the payload names beside
+  // the display location, and the country the display location itself names.
+  const fromDescriptor = typeof descRaw === "string" ? detectCountry(descRaw) : null;
+  const fromLocation = location ? detectCountry(location) : null;
+  let country: string | null;
+  if (code && (fromDescriptor || fromLocation)) {
+    // Stated twice, disagreeing on either reading — refuse.
+    const contradicted = (!!fromDescriptor && fromDescriptor !== code) || (!!fromLocation && fromLocation !== code);
+    country = contradicted ? null : code;
+  } else {
+    country = code ?? fromDescriptor ?? fromLocation;
+  }
+  const addl = Array.isArray(info.additionalLocations) ? info.additionalLocations : [];
+  // A FURTHER SITE IN ANOTHER COUNTRY MAKES THE COUNTRY A CLAIM ABOUT ONE
+  // SITE, NOT ABOUT THE POSTING. Measured on the review walk of 2026-09-23: of
+  // 68 unplaced rows a detail sweep would fill, four gained a country that
+  // another site of the same requisition contradicts — a resmed requisition
+  // written US with a Canadian site, a lonza one written MX with US, BE, IN
+  // and FR sites, a maersk one written PE with a Chilean site, a lego one
+  // written DK with a London site.
+  if (country) {
+    for (const a of addl) {
+      const other = typeof a === "string" ? detectCountry(a) : null;
+      if (other && other !== country) { country = null; break; }
+    }
+  }
+  return { country, location, additionalCount: addl.length };
+}
+
 export function detectPlace(
   location: string | null | undefined,
   stated?: string | null,

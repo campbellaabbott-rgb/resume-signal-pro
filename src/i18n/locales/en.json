@@ -5009,5 +5009,29 @@
     "regLink": "O. Reg. 476/24 ↗",
     "postingLink": "This posting on the employer's site ↗",
     "sourceLine": "Section numbers and wording of the law are from Ontario's e-Laws. © King's Printer for Ontario, 2024. This is not an official version of the legislation."
+  },
+  "jobPostingPage": {
+    "backToBoard": "All openings",
+    "loading": "Loading this posting…",
+    "loadFailed": "We couldn't load this posting just now.",
+    "retry": "Try again",
+    "genericHeading": "Job posting",
+    "goneTitle": "This posting is no longer live",
+    "goneMeta": "This opening is no longer served by the employer's own job board. Search the live board for openings like it.",
+    "goneBody": "Either the employer's own job board stopped serving it, or it passed the {{days}} days this board serves a dated posting for. Nothing here is kept live after that.",
+    "goneCta": "Search the live board",
+    "remote": "Remote",
+    "postedLabel": "Posted",
+    "postedValue": "{{date}}, as stated by the employer",
+    "noDate": "This employer states no posting date, so this page states none.",
+    "payLabel": "Pay",
+    "payValue": "{{salary}} — the employer's own words, not converted or estimated",
+    "noPay": "This employer states no pay on this posting.",
+    "applyCta": "Apply on {{company}}'s own site",
+    "applyCtaPlain": "Apply on the employer's own site",
+    "applyNote": "The application happens on the employer's own hiring system. This board never reposts a job or stands between you and them.",
+    "descHeading": "The employer's own description",
+    "sourceNote": "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
+    "theEmployer": "the employer"
   }
 }

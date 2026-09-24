@@ -61,6 +61,8 @@ import {
   NEGATED_REMOTE_SOURCE,
   normalizeUkg,
   ukgBoardParams,
+  workdayDetailPlace,
+  isPlacelessLocation,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
@@ -141,7 +143,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.72"; // .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.73"; // .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -8819,8 +8821,35 @@ async function fetchVendorDetail(
   id: string,
   externalId: string,
   applyUrl?: string | null,
-): Promise<{ text: string | null; postedAt: string | null; workMode: "remote" | "hybrid" | "onsite" | null }> {
+): Promise<{
+  text: string | null;
+  postedAt: string | null;
+  workMode: "remote" | "hybrid" | "onsite" | null;
+  country: string | null;
+  location: string | null;
+  /** Sites the requisition lists BESIDES `location`. 0 means the place is the whole answer. */
+  additionalSites: number;
+}> {
   let text: string | null = null;
+  // WHERE THE EMPLOYER SAYS THE JOB IS, from the same payload, for free.
+  //
+  // Workday's list gives `locationsText`, which on a multi-site requisition is
+  // the literal "2 Locations" — and the row is then stored with no country at
+  // all. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows:
+  // 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4%
+  // carry an empty location string. Workday is 216,035 of the board's 770,705
+  // servable rows (28.0%), and is where most of the board's unplaced set sits.
+  //
+  // The detail payload this function already downloads states both outright.
+  // null = the vendor did not state one, or stated two that disagree.
+  //
+  // AND HOW MANY SITES THE REQUISITION LISTS, because without it the caller
+  // cannot tell a place from one of fifty-two places. The vendor hands us ONE
+  // display location whatever the count is; `additionalSites` is what lets the
+  // write sites refuse a precision the requisition does not have.
+  let country: string | null = null;
+  let location: string | null = null;
+  let additionalSites = 0;
   // Vendor-STRUCTURED work mode, when the same detail payload states one
   // (today: workday remoteType). Callers write it as authoritative — a
   // structured field always outranks text inference. null = not stated.
@@ -8881,6 +8910,12 @@ async function fetchVendorDetail(
         const html = j?.jobPostingInfo?.jobDescription ?? "";
         text = html ? htmlToText(String(html)).slice(0, DESC_CAP) || null : null;
         postedAt = isoDateOnly(j?.jobPostingInfo?.startDate);
+        // The place, out of bytes this lane has always downloaded and dropped.
+        // The parse is workdayDetailPlace in normalize.ts, where a guard walks
+        // real captured payloads against it — the field path is one level
+        // shallower than it looks and a wrong path fails silently, returning
+        // undefined on every posting with every local check still green.
+        ({ country, location, additionalCount: additionalSites } = workdayDetailPlace(j));
         // Workday's LIST payload carries no work-mode field, so every workday
         // row's work_mode is text-inferred at ingest — but the detail we're
         // already holding states remoteType outright. The vendor's structured
@@ -9058,7 +9093,61 @@ async function fetchVendorDetail(
   }
   // Everything else — rippling today — has no public description source.
   // Returning null here is a measured fact, not an unfinished branch.
-  return { text, postedAt, workMode };
+  return { text, postedAt, workMode, country, location, additionalSites };
+}
+
+/**
+ * THE PLACE PATCH BOTH DETAIL SWEEPS WRITE — one rule, in one function, so the
+ * two lanes cannot drift apart. Three columns and three different rules:
+ *
+ *   country      REPLACES. It is the employer's own structured field and what
+ *                it replaces is our text inference over a location string —
+ *                the same precedence work_mode already takes. workdayDetailPlace
+ *                has already refused it where the payload contradicts itself or
+ *                where another site of the same requisition is in another
+ *                country.
+ *   location     FILLS ONLY a stored string that names nowhere ("52 Locations",
+ *                empty). Writing the vendor's display location over a real one
+ *                would narrow a multi-site posting to one site the employer did
+ *                not single out.
+ *   region_code  MOVES WITH THE PAIR, and is REFUSED where the pair cannot
+ *                support it.
+ *
+ * WHY REGION_CODE IS THE ONE THAT GETS REFUSED. On a multi-site requisition
+ * the vendor hands us one display location out of N, and a subdivision derived
+ * from it is a claim about one site written into a longitudinal series that
+ * outlives the posting. Measured on the review walk of 2026-09-23: of 68
+ * unplaced rows this fill would touch, 60 are multi-site; 23 of them would
+ * have gained a region_code and 12 of those 23 — 52% — are contradicted by
+ * another site the SAME requisition lists. The worst live case is a RELX
+ * requisition stored as "52 Locations" which became location "Ohio", country
+ * US, region US-OH while its own additionalLocations name fifty-one other
+ * states. So when the location we are deriving from is the vendor's
+ * one-of-N string, the subdivision is written as NULL: null is recoverable and
+ * a wrong subdivision in a series is not. Where the stored location is kept —
+ * a real place the seeker can already read — the site count says nothing about
+ * it and the region is re-derived as usual, because a derived column that does
+ * not move with what it is derived from is the drift this same rule exists to
+ * stop.
+ */
+function placeWrite(
+  row: { location: string | null; country: string | null },
+  vendorCountry: string | null,
+  vendorLocation: string | null,
+  additionalSites: number,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (vendorCountry) patch.country = vendorCountry;
+  if (vendorLocation && isPlacelessLocation(row.location)) patch.location = vendorLocation;
+  if (!patch.country && !patch.location) return patch;
+  const oneOfMany = patch.location !== undefined && additionalSites > 0;
+  patch.region_code = oneOfMany
+    ? null
+    : detectRegion(
+      (patch.location as string | null) ?? row.location,
+      (patch.country as string | null) ?? row.country,
+    );
+  return patch;
 }
 
 /**
@@ -12604,6 +12693,7 @@ Deno.serve(async (req) => {
       const queue = [...(rows ?? [])] as Array<{
         id: string; source: string; company_token: string; apply_url: string | null;
         title: string | null; location: string | null; posted_at: string | null; work_mode: string | null; first_seen: string | null;
+        country: string | null;
       }>;
       const pending = [...queue];
       let updated = 0;
@@ -12616,7 +12706,14 @@ Deno.serve(async (req) => {
           const externalId = String(row.id).split(":").slice(2).join(":");
           if (!externalId) continue;
           try {
-            const { text, postedAt, workMode: wmVendor } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
+            const { text, postedAt, workMode: wmVendor, country: vCountry, location: vLocation, additionalSites } =
+              await fetchVendorDetail(src, row.id, externalId, row.apply_url);
+            // Same rules as structured-sweep, stated once here and applied in
+            // both of this lane's write paths: the vendor's structured country
+            // replaces our text inference, the vendor's display location only
+            // fills a placeholder that names nowhere, and a SUBDIVISION is
+            // written only for a requisition that names one site.
+            const placePatch = placeWrite(row, vCountry, vLocation, additionalSites);
             if (!text) {
               // AN EMPTY BODY IS NOT AN EMPTY PAYLOAD. This was a bare
               // `continue`, which discarded a remoteType and a startDate that
@@ -12627,17 +12724,33 @@ Deno.serve(async (req) => {
               // Salvage them on the way past. The row keeps its null
               // description and is retried for that next sweep — this only
               // stops the structured half being collateral damage.
-              const salv: Record<string, unknown> = {};
-              if (wmVendor) { salv.work_mode = wmVendor; salv.remote = wmVendor === "remote"; }
+              // THE WORK_MODE GUARD IS ABOUT THE ROW, NOT ABOUT THE VENDOR —
+              // and conditioning it on the vendor made the loss DETERMINISTIC
+              // rather than a race. `.is("work_mode", null)` is there to lose a
+              // race against a concurrent writer; there is no race to lose when
+              // the row ALREADY HOLDS a work mode, and this lane's select does
+              // not filter on work_mode at all (structured-sweep's does, which
+              // is why the two are not "on the same terms" however similar the
+              // statements look). So for a row that already has a work mode and
+              // whose payload states a remoteType, the guard matched zero rows
+              // every time and took the country, the location and the date in
+              // the same patch with it — no error, no count, nothing to see.
+              // Measured size: 127 of 3,841 sampled Workday rows (3.3%) already
+              // carry a work mode and 51 of 253 fetched payloads (20%) state a
+              // remoteType, so the intersection is small — but it is a
+              // certainty whenever it occurs, not a probability.
+              //
+              // A row that already has a work mode also has nothing to gain
+              // from this write, so the work mode is simply left out of the
+              // patch and the guard goes with it. The gap-fill semantics are
+              // unchanged: work_mode is still only ever written where there was
+              // none.
+              const salv: Record<string, unknown> = { ...placePatch };
+              if (wmVendor && row.work_mode === null) { salv.work_mode = wmVendor; salv.remote = wmVendor === "remote"; }
               if (postedAt && (row.source === "workday" || !row.posted_at)) salv.posted_at = postedAt;
               if (Object.keys(salv).length) {
-                // The work_mode IS NULL guard applies ONLY when this patch
-                // actually writes a work mode. Attaching it unconditionally
-                // would mean a row that already HAS a work mode and is missing
-                // a date matches nothing — silently dropping the very date this
-                // block exists to rescue.
                 const q = client.from("job_board_postings").update(salv).eq("id", row.id);
-                await (wmVendor ? q.is("work_mode", null) : q);
+                await (salv.work_mode ? q.is("work_mode", null) : q);
               }
               continue;
             }
@@ -12647,7 +12760,17 @@ Deno.serve(async (req) => {
             // where the vendor gave us no structured pay field. Only ever the
             // company's own words — never an estimate.
             const minedSalary = extractSalary(clean);
-            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, (row as { country?: string | null }).country, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
+            // THE CURRENCY IS CHOSEN BY THE COUNTRY THIS STATEMENT IS ABOUT TO
+            // STORE, not the one it is about to replace. salary-extract maps a
+            // bare "$" to a currency through BARE_DOLLAR_BY_COUNTRY (CA, AU,
+            // NZ, SG, MX, HK…), so a row whose country is corrected in the same
+            // update was having its currency picked by the value being
+            // discarded — the same "a derived column moves with what it is
+            // derived from" rule the region_code re-derivation two lines above
+            // already follows, applied to the other derived column in this
+            // patch.
+            const salaryCountry = (placePatch.country as string | null) ?? (row as { country?: string | null }).country;
+            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, salaryCountry, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
             // The three fields below are DERIVED FROM DESCRIPTION TEXT but were
             // only ever computed at ingest, so the description backfill left
             // them stale — measured coverage was experience 26.4%, work mode
@@ -12680,6 +12803,7 @@ Deno.serve(async (req) => {
             const { error } = await client.from("job_board_postings")
               .update({
                 description: clean,
+                ...placePatch,
                 ...(exp.band ? { experience_band: exp.band, min_years: exp.minYears } : {}),
                 // `remote` moves WITH work_mode, or the columns drift apart.
                 // normalize.ts:1069 sets remote = (workMode === "remote") at
@@ -12840,7 +12964,7 @@ Deno.serve(async (req) => {
       // per-posting vendor fetch for no gain.
       let sel = client
         .from("job_board_postings")
-        .select("id, company_token, apply_url, posted_at, work_mode")
+        .select("id, company_token, apply_url, posted_at, work_mode, location, country")
         .eq("source", sVendor)
         .not("description", "is", null)
         .is("work_mode", null)
@@ -12874,7 +12998,7 @@ Deno.serve(async (req) => {
       if (sErr) throw sErr;
       const sQueue = [...(sRows ?? [])] as Array<{
         id: string; company_token: string; apply_url: string | null;
-        posted_at: string | null; work_mode: string | null;
+        posted_at: string | null; work_mode: string | null; location: string | null; country: string | null;
       }>;
       const sPending = [...sQueue];
       let sFilled = 0;
@@ -12889,7 +13013,8 @@ Deno.serve(async (req) => {
           const externalId = String(row.id).split(":").slice(2).join(":");
           if (!externalId) continue;
           try {
-            const { postedAt, workMode } = await fetchVendorDetail(src, row.id, externalId, row.apply_url);
+            const { postedAt, workMode, country: vCountry, location: vLocation, additionalSites } =
+              await fetchVendorDetail(src, row.id, externalId, row.apply_url);
             // NO `if (!text) continue` HERE. desc-sweep drops the whole row
             // when the description comes back empty (:4485) and throws away a
             // remoteType and a startDate it successfully parsed on the way. In
@@ -12906,6 +13031,34 @@ Deno.serve(async (req) => {
             // Workday floored-bucket replacement is desc-sweep's call, made
             // where the description write already justifies the fetch.
             if (postedAt && !row.posted_at) patch.posted_at = postedAt;
+            // THE COUNTRY REPLACES A STORED ONE; THE LOCATION ONLY FILLS A
+            // PLACEHOLDER. Two different rules because the two fields are two
+            // different kinds of claim.
+            //
+            // The country here is the employer's own structured field, and the
+            // stored value it replaces was text inference over a location
+            // string — the same precedence the work mode above already takes,
+            // for the same stated reason. It is not a guess that it is better:
+            // measured 2026-09-23 against 136 Workday rows we had already
+            // placed, the vendor's code agreed with ours on 136 of 136, and
+            // the rows where the two disagree are rows where we are wrong
+            // (14 of 14 "Beth Israel" rows stored IL, vendor says US).
+            //
+            // The location is the opposite. On a multi-site requisition the
+            // vendor's display string names ONE site, so writing it over a
+            // real location a seeker can already read would narrow a posting
+            // to a place the employer did not single out. It is therefore
+            // written only where the stored string names nowhere at all —
+            // "2 Locations", "3 sites", empty — a large and repeatedly measured
+            // share of Workday rows (the placeless shapes and their bases are
+            // enumerated on isPlacelessLocation in normalize.ts).
+            //
+            // region_code MOVES WITH THE PAIR IT IS DERIVED FROM, for the same
+            // reason `remote` moves with work_mode a few lines up — and is
+            // REFUSED where the pair is one site out of several. Both rules,
+            // and the measurements behind them, live on placeWrite so this
+            // lane and desc-sweep cannot state them differently.
+            Object.assign(patch, placeWrite(row, vCountry, vLocation, additionalSites));
             if (!Object.keys(patch).length) continue;
             // `filled` MUST MEAN ROWS WRITTEN, NOT UPDATES ATTEMPTED.
             //
@@ -12915,14 +13068,36 @@ Deno.serve(async (req) => {
             // question: without it you cannot tell "wrote 6,700 rows" from
             // "matched nothing 6,700 times", which is exactly the ambiguity
             // that let 154,003 scanned / 0 filled sit unexplained.
-            const { data: wrote, error } = await client.from("job_board_postings")
-              .update(patch)
-              .eq("id", row.id)
-              // Gap-fill only, and it is what makes a concurrent desc-sweep
-              // write safe: if that lane set a work mode between our select and
-              // our update, this update matches nothing rather than racing it.
-              .is("work_mode", null)
-              .select("id");
+            // THE WORK-MODE RACE GUARD APPLIES ONLY WHEN THIS PATCH WRITES A
+            // WORK MODE. It used to ride every update unconditionally, which
+            // was harmless while work_mode was the only column written here and
+            // is a silent loss now that it is not: a row that gained a work
+            // mode between our select and our update would match nothing, and
+            // the country and location in the same patch would be dropped with
+            // it — no error, no count, nothing to see. This is the correction
+            // desc-sweep's own salvage block already documents; both lanes now
+            // state the same rule.
+            //
+            // A RESIDUAL REMAINS AND IS DELIBERATE. When the patch DOES write a
+            // work mode (the fifth or so of Workday postings that state a
+            // remoteType) the guard still covers the whole statement, so a
+            // genuine race would drop that row's country too. Splitting the
+            // write in two removes it and is the right end state.
+            //
+            // EXACTLY ONE ASSERTION BLOCKS THE SPLIT, and an earlier draft of
+            // this note named four. The one is in src/test/structured-sweep.ts,
+            // in the group about what the lane writes: it requires the update
+            // call and the race predicate to sit within 120 characters of each
+            // other, which two statements cannot. The other three block
+            // nothing — two of them pin DESC-SWEEP's salvage statement, which
+            // is a different write, and the one in
+            // backfill-cannot-stamp-vacuous pins the ROW-COUNT accumulator
+            // expression, which a split write keeps unchanged. Naming four
+            // where there is one is how a deferral outlives its reason, so it
+            // is named precisely: re-point that single adjacency regex and the
+            // split is free.
+            const upd = client.from("job_board_postings").update(patch).eq("id", row.id);
+            const { data: wrote, error } = await (patch.work_mode ? upd.is("work_mode", null) : upd).select("id");
             if (!error) sFilled += (wrote?.length ?? 0);
           } catch { /* transient — the row keeps its place in the cursor order */ }
         }

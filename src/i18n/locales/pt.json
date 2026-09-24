@@ -5009,5 +5009,29 @@
     "regLink": "O. Reg. 476/24 ↗",
     "postingLink": "Este anúncio no site do empregador ↗",
     "sourceLine": "Os números de artigo e o texto da lei vêm do e-Laws de Ontário. © King's Printer for Ontario, 2024. Esta não é uma versão oficial da legislação."
+  },
+  "jobPostingPage": {
+    "backToBoard": "Todas as vagas",
+    "loading": "A carregar esta vaga…",
+    "loadFailed": "Não foi possível carregar esta vaga neste momento.",
+    "retry": "Tentar novamente",
+    "genericHeading": "Vaga",
+    "goneTitle": "Esta vaga já não está ativa",
+    "goneMeta": "O portal de empregos do próprio empregador já não apresenta esta vaga. Procure vagas semelhantes no quadro ao vivo.",
+    "goneBody": "Ou o portal de empregos do próprio empregador deixou de a apresentar, ou ultrapassou os {{days}} dias durante os quais este quadro apresenta uma vaga datada. Depois disso nada é mantido ativo aqui.",
+    "goneCta": "Procurar no quadro ao vivo",
+    "remote": "Remoto",
+    "postedLabel": "Publicada",
+    "postedValue": "{{date}}, segundo a data indicada pelo empregador",
+    "noDate": "Este empregador não indica data de publicação, por isso esta página também não indica nenhuma.",
+    "payLabel": "Remuneração",
+    "payValue": "{{salary}} — as palavras do próprio empregador, sem conversão nem estimativa",
+    "noPay": "Este empregador não indica remuneração nesta vaga.",
+    "applyCta": "Candidate-se no site da {{company}}",
+    "applyCtaPlain": "Candidate-se no site do próprio empregador",
+    "applyNote": "A candidatura decorre no sistema de recrutamento do próprio empregador. Este quadro nunca republica uma vaga nem se coloca entre si e o empregador.",
+    "descHeading": "A descrição do próprio empregador",
+    "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
+    "theEmployer": "o empregador"
   }
 }

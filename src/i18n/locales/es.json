@@ -5009,5 +5009,29 @@
     "regLink": "O. Reg. 476/24 ↗",
     "postingLink": "Esta oferta en el sitio del empleador ↗",
     "sourceLine": "Los números de artículo y el texto de la ley proceden de e-Laws de Ontario. © King's Printer for Ontario, 2024. Esta no es una versión oficial de la legislación."
+  },
+  "jobPostingPage": {
+    "backToBoard": "Todas las vacantes",
+    "loading": "Cargando esta vacante…",
+    "loadFailed": "No pudimos cargar esta vacante en este momento.",
+    "retry": "Intentar de nuevo",
+    "genericHeading": "Vacante",
+    "goneTitle": "Esta vacante ya no está activa",
+    "goneMeta": "El portal de empleo del propio empleador ya no publica esta vacante. Busca vacantes similares en el tablero en vivo.",
+    "goneBody": "O el portal de empleo del propio empleador dejó de publicarla, o superó los {{days}} días que este tablero mantiene una vacante con fecha. Después de eso aquí no se mantiene nada activo.",
+    "goneCta": "Buscar en el tablero en vivo",
+    "remote": "Remoto",
+    "postedLabel": "Publicada",
+    "postedValue": "{{date}}, según la fecha indicada por el empleador",
+    "noDate": "Este empleador no indica fecha de publicación, así que esta página tampoco la indica.",
+    "payLabel": "Salario",
+    "payValue": "{{salary}} — las palabras del propio empleador, sin convertir ni estimar",
+    "noPay": "Este empleador no indica salario en esta vacante.",
+    "applyCta": "Postúlate en el sitio de {{company}}",
+    "applyCtaPlain": "Postúlate en el sitio del propio empleador",
+    "applyNote": "La postulación ocurre en el sistema de selección del propio empleador. Este tablero nunca republica una vacante ni se interpone entre tú y la empresa.",
+    "descHeading": "La descripción del propio empleador",
+    "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días y desaparece en cuanto el feed del empleador deja de incluirla.",
+    "theEmployer": "el empleador"
   }
 }

@@ -5009,5 +5009,29 @@
     "regLink": "O. Reg. 476/24 ↗",
     "postingLink": "Diese Anzeige auf der Seite des Arbeitgebers ↗",
     "sourceLine": "Paragrafennummern und Gesetzeswortlaut stammen aus den e-Laws von Ontario. © King's Printer for Ontario, 2024. Dies ist keine amtliche Fassung des Gesetzes."
+  },
+  "jobPostingPage": {
+    "backToBoard": "Alle Stellen",
+    "loading": "Diese Stellenanzeige wird geladen …",
+    "loadFailed": "Diese Stellenanzeige konnte gerade nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "genericHeading": "Stellenanzeige",
+    "goneTitle": "Diese Stelle ist nicht mehr aktiv",
+    "goneMeta": "Das eigene Stellenportal des Arbeitgebers spielt diese Stelle nicht mehr aus. Suchen Sie auf dem Live-Board nach ähnlichen Stellen.",
+    "goneBody": "Entweder hat das eigene Stellenportal des Arbeitgebers sie zurückgezogen, oder sie hat die {{days}} Tage überschritten, die dieses Board für eine datierte Anzeige ausspielt. Danach wird hier nichts aktiv gehalten.",
+    "goneCta": "Live-Board durchsuchen",
+    "remote": "Remote",
+    "postedLabel": "Veröffentlicht",
+    "postedValue": "{{date}}, laut Angabe des Arbeitgebers",
+    "noDate": "Dieser Arbeitgeber nennt kein Veröffentlichungsdatum, deshalb nennt diese Seite auch keines.",
+    "payLabel": "Vergütung",
+    "payValue": "{{salary}} — die Angabe des Arbeitgebers im Wortlaut, weder umgerechnet noch geschätzt",
+    "noPay": "Dieser Arbeitgeber nennt in dieser Anzeige keine Vergütung.",
+    "applyCta": "Auf der eigenen Seite von {{company}} bewerben",
+    "applyCtaPlain": "Auf der eigenen Seite des Arbeitgebers bewerben",
+    "applyNote": "Die Bewerbung läuft über das eigene Bewerbersystem des Arbeitgebers. Dieses Board veröffentlicht keine Stelle erneut und schaltet sich nie zwischen Sie und den Arbeitgeber.",
+    "descHeading": "Die Beschreibung des Arbeitgebers",
+    "sourceNote": "Direkt aus dem eigenen Bewerbersystem von {{company}} — nie ein Aggregator, nie eine Zweitveröffentlichung. Eine datierte Anzeige wird höchstens {{days}} Tage ausgespielt und verschwindet, sobald der Feed des Arbeitgebers sie nicht mehr enthält.",
+    "theEmployer": "dem Arbeitgeber"
   }
 }

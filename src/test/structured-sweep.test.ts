@@ -154,8 +154,50 @@ describe("what the lane writes", () => {
     }
   });
 
-  it("fills gaps and never overwrites a stored statement", () => {
+  it("guards the work mode against a concurrent writer, adjacently in one statement", () => {
+    // RENAMED, BECAUSE THE OLD NAME WENT FALSE UNDER IT. This was called
+    // "fills gaps and never overwrites a stored statement" while the lane
+    // started deliberately REPLACING a stored country — and the single
+    // assertion in it only ever checked the work-mode adjacency, so the title
+    // and the intent went false with nothing going red. A guard whose name
+    // describes something other than what it asserts is the shape this
+    // repository keeps producing; the name now describes the assertion, and
+    // the three column rules are asserted separately below.
+    //
+    // The adjacency is load-bearing, not incidental: `.is("work_mode", null)`
+    // is what makes this write safe against a concurrent desc-sweep, and it is
+    // only a race guard while it rides the same statement as the work-mode
+    // write. It is also the ONE assertion blocking the split that would remove
+    // this lane's residual race — re-point it here, in one place, if that
+    // split is ever done.
     expect(LANE).toMatch(/\.update\(patch\)[\s\S]{0,120}\.is\("work_mode", null\)/);
+  });
+
+  it("replaces the stored country, fills the location only, and moves the region with them", () => {
+    // THE THREE COLUMNS, THREE RULES, ASSERTED SEPARATELY because they are not
+    // the same kind of claim and a single "fills gaps" sentence cannot cover
+    // them. The country is the employer's own structured field and outranks
+    // our text inference, so it replaces; the display location names ONE site
+    // of a multi-site requisition, so it only ever fills a stored string that
+    // names nowhere; the subdivision is derived from the pair and refused
+    // where the pair is one of several.
+    //
+    // All three now live in the shared placeWrite helper so that desc-sweep
+    // and this lane cannot state them differently — which is the property
+    // asserted here, rather than the spelling of any one of the rules.
+    expect(LANE, "the lane no longer routes its place write through the shared rule").toMatch(/placeWrite\(/);
+    const helper = (() => {
+      const at = CODE.indexOf("function placeWrite(");
+      expect(at, "placeWrite is gone — where do the two lanes state the place rules now?").toBeGreaterThan(-1);
+      return CODE.slice(at, CODE.indexOf("\n}", at));
+    })();
+    // The country replaces: no gate on the stored value.
+    expect(helper).toMatch(/if \(vendorCountry\) patch\.country = vendorCountry;/);
+    // The location fills only: gated on the stored string naming nowhere.
+    expect(helper).toMatch(/isPlacelessLocation\(row\.location\)\) patch\.location = vendorLocation;/);
+    // The region moves with the pair, and is refused for a one-of-N place.
+    expect(helper).toMatch(/patch\.region_code\s*=/);
+    expect(helper).toMatch(/additionalSites > 0/);
   });
 
   it("only fills posted_at when it is missing", () => {
@@ -199,11 +241,22 @@ describe("desc-sweep no longer discards structured fields with an empty body", (
     expect(SWEEP).toMatch(/salv\.posted_at = postedAt/);
   });
 
-  it("applies the work_mode guard ONLY when it writes a work mode", () => {
+  it("applies the work_mode guard ONLY when this patch writes a work mode", () => {
     // Attaching `.is("work_mode", null)` unconditionally means a row that
     // already has a work mode and is missing a date matches nothing — silently
     // dropping the very date the salvage exists to rescue.
-    expect(SWEEP).toMatch(/await \(wmVendor \? q\.is\("work_mode", null\) : q\)/);
+    //
+    // AND THE CONDITION IS THE PATCH, NOT THE VENDOR. It read `wmVendor ?`,
+    // which is a fact about the PAYLOAD, not about the row: this lane's select
+    // does not filter work_mode at all, so for a row that already held one and
+    // whose payload stated a remoteType the guard matched zero rows EVERY
+    // time — not as a race, as a certainty — and took the country, location
+    // and date in the same patch with it. The work mode is now simply left out
+    // of the patch for a row that already has one, and the guard rides the
+    // patch.
+    expect(SWEEP).toMatch(/await \(salv\.work_mode \? q\.is\("work_mode", null\) : q\)/);
+    expect(SWEEP, "the salvage writes a work mode without first checking the row lacks one")
+      .toMatch(/wmVendor && row\.work_mode === null/);
   });
 });
 

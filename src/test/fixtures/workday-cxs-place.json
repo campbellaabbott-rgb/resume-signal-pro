@@ -1,0 +1,107 @@
+{
+  "workday:armaninollp~wd1~armanino:JR104376": {
+    "jobPostingInfo": {
+      "additionalLocations": [
+        "Boca Raton, Florida"
+      ],
+      "country": {
+        "descriptor": "United States of America",
+        "id": "bc33aa3152ec42d4995f4791a106ed09"
+      },
+      "jobRequisitionLocation": {
+        "country": {
+          "alpha2Code": "US",
+          "descriptor": "United States of America",
+          "id": "bc33aa3152ec42d4995f4791a106ed09"
+        },
+        "descriptor": "US NY New York City - Madison Ave."
+      },
+      "location": "New York City, New York (Madison Ave.)"
+    }
+  },
+  "workday:bilh~wd1~External:JR103173": {
+    "jobPostingInfo": {
+      "country": {
+        "descriptor": "United States of America",
+        "id": "bc33aa3152ec42d4995f4791a106ed09"
+      },
+      "jobRequisitionLocation": {
+        "country": {
+          "alpha2Code": "US",
+          "descriptor": "United States of America",
+          "id": "bc33aa3152ec42d4995f4791a106ed09"
+        },
+        "descriptor": "Boston - 330 Brookline Ave"
+      },
+      "location": "Beth Israel Deaconess Medical Center"
+    }
+  },
+  "workday:mavenir~wd1~Mavenir_Careers:R0016189-1": {
+    "jobPostingInfo": {
+      "additionalLocations": [
+        "Mumbai, India"
+      ],
+      "country": {
+        "descriptor": "India",
+        "id": "c4f78be1a8f14da0ab49ce1162348a5e"
+      },
+      "jobRequisitionLocation": {
+        "country": {
+          "alpha2Code": "IN",
+          "descriptor": "India",
+          "id": "c4f78be1a8f14da0ab49ce1162348a5e"
+        },
+        "descriptor": "Bangalore, India"
+      },
+      "location": "Bangalore, India"
+    }
+  },
+  "workday:salesforce~wd12~External_Career_Site:JR361184-1": {
+    "jobPostingInfo": {
+      "additionalLocations": [
+        "Germany - Frankfurt",
+        "Germany - Stuttgart",
+        "Germany - Maxdorf",
+        "Germany - Mannheim",
+        "Germany - Berlin",
+        "Germany - Dusseldorf",
+        "Germany - Jena"
+      ],
+      "country": {
+        "descriptor": "Germany",
+        "id": "dcc5b7608d8644b3a93716604e78e995"
+      },
+      "jobRequisitionLocation": {
+        "country": {
+          "alpha2Code": "IE",
+          "descriptor": "Ireland",
+          "id": "04a05835925f45b3a59406a2a6b72c8a"
+        },
+        "descriptor": "Ireland - Dublin"
+      },
+      "location": "Germany - Munich",
+      "remoteType": "Office - Based"
+    }
+  },
+  "workday:westernunion~wd5~WesternUnionJobs:JR0131247-1": {
+    "jobPostingInfo": {
+      "additionalLocations": [
+        "USA GA - Atlanta - Corporate Center V, 5 Concourse Parkway, Suite 2300"
+      ],
+      "country": {
+        "descriptor": "United States of America",
+        "id": "bc33aa3152ec42d4995f4791a106ed09"
+      },
+      "jobRequisitionLocation": {
+        "country": {
+          "alpha2Code": "US",
+          "descriptor": "United States of America",
+          "id": "bc33aa3152ec42d4995f4791a106ed09"
+        },
+        "descriptor": "USA GA - Atlanta - Corporate Center V, 5 Concourse Parkway, Suite 2300"
+      },
+      "location": "USA - CO - Denver",
+      "remoteType": "Hybrid"
+    }
+  }
+}

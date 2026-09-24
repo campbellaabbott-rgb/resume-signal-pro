@@ -5009,5 +5009,29 @@
     "regLink": "O. Reg. 476/24 ↗",
     "postingLink": "Deze vacature op de site van de werkgever ↗",
     "sourceLine": "Artikelnummers en wettekst komen uit de e-Laws van Ontario. © King's Printer for Ontario, 2024. Dit is geen officiële versie van de wetgeving."
+  },
+  "jobPostingPage": {
+    "backToBoard": "Alle vacatures",
+    "loading": "Deze vacature wordt geladen…",
+    "loadFailed": "We konden deze vacature nu niet laden.",
+    "retry": "Opnieuw proberen",
+    "genericHeading": "Vacature",
+    "goneTitle": "Deze vacature is niet meer actief",
+    "goneMeta": "Het vacaturesysteem van de werkgever zelf toont deze vacature niet meer. Zoek op het live bord naar vergelijkbare vacatures.",
+    "goneBody": "Of het vacaturesysteem van de werkgever zelf toont hem niet meer, of hij is voorbij de {{days}} dagen die dit bord een gedateerde vacature toont. Daarna wordt hier niets actief gehouden.",
+    "goneCta": "Zoek op het live bord",
+    "remote": "Remote",
+    "postedLabel": "Geplaatst",
+    "postedValue": "{{date}}, volgens de datum van de werkgever zelf",
+    "noDate": "Deze werkgever noemt geen plaatsingsdatum, dus noemt deze pagina er ook geen.",
+    "payLabel": "Salaris",
+    "payValue": "{{salary}} — de eigen woorden van de werkgever, niet omgerekend en niet geschat",
+    "noPay": "Deze werkgever noemt geen salaris bij deze vacature.",
+    "applyCta": "Solliciteer op de eigen site van {{company}}",
+    "applyCtaPlain": "Solliciteer op de eigen site van de werkgever",
+    "applyNote": "De sollicitatie verloopt via het eigen wervingssysteem van de werkgever. Dit bord plaatst een vacature nooit opnieuw en gaat nooit tussen jou en de werkgever staan.",
+    "descHeading": "De eigen omschrijving van de werkgever",
+    "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond en verdwijnt zodra de feed van de werkgever hem niet meer bevat.",
+    "theEmployer": "de werkgever"
   }
 }
