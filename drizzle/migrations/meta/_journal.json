@@ -414,6 +414,13 @@
       "when": 1789764374557,
       "tag": "0058_a_filing_is_pruned_only_after_its_month_is_counted",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790357685193,
+      "tag": "0059_pg_crons_own_log_is_pruned_like_every_other_ledger",
+      "breakpoints": true
     }
   ]
 }
