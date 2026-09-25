@@ -5098,6 +5098,30 @@ export type Database = {
           la_workers: number
         }[]
       }
+      get_employer_lca_wages: {
+        Args: {
+          p_soc_code?: string
+          p_tokens: string[]
+          p_worksite_state?: string
+        }
+        Returns: {
+          ow_company_token: string
+          ow_employer_cells_n: number
+          ow_employer_filings_n: number
+          ow_filings_n: number
+          ow_fiscal_quarter: string
+          ow_match_basis: string
+          ow_published_on: string
+          ow_soc_code: string
+          ow_soc_title: string
+          ow_source_file: string
+          ow_source_url: string
+          ow_wage_high: number
+          ow_wage_low: number
+          ow_wage_median: number
+          ow_worksite_state: string
+        }[]
+      }
       get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }

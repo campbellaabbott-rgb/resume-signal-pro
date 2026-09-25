@@ -435,6 +435,13 @@
       "when": 1790357740860,
       "tag": "0061_a_quarter_replaces_itself_and_never_half_of_itself",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790357778941,
+      "tag": "0062_one_row_per_asked_token_and_no_row_is_never_does_not_sponsor",
+      "breakpoints": true
     }
   ]
 }
