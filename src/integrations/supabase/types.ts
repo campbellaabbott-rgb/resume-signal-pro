@@ -5838,6 +5838,15 @@ export type Database = {
         Returns: number
       }
       normalize_close_title: { Args: { p_title: string }; Returns: string }
+      oflc_lca_wages_load: {
+        Args: { p_prune?: boolean; p_rows: Json; p_run_started_at: string }
+        Returns: {
+          lo_pruned: number
+          lo_tokens: number
+          lo_total: number
+          lo_upserted: number
+        }[]
+      }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
