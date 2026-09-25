@@ -5351,6 +5351,18 @@ export type Database = {
           open_roles: number
         }[]
       }
+      get_ontario_posting_disclosures: {
+        Args: { p_id: string }
+        Returns: {
+          od_ai_evidence: string
+          od_canadian_experience_evidence: string
+          od_id: string
+          od_pay_basis: string
+          od_pay_evidence: string
+          od_read_at: string
+          od_vacancy_evidence: string
+        }[]
+      }
       get_parse_failure_stats: {
         Args: { p_hours_back?: number }
         Returns: {
