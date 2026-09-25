@@ -33,14 +33,34 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
-/** This lane's three migrations, pinned by their stamps: the table, the writer, the reader. */
-const LANE = ["20260923114532", "20260923114719", "20260923114903"];
+/** This lane's migrations, pinned by their stamps and applied in order: the table, the first
+ *  writer, the first reader, the coverage columns, the staged swap that replaces the writer, and
+ *  the reader that replaces the reader. The LIVE definitions are the last of each, and that is what
+ *  the mutations below have to target -- a tooth biting a superseded function proves nothing. */
+const WRITER = "20260925150412";
+const READER = "20260925150733";
+const LANE = ["20260923114532", "20260923114719", "20260923114903", "20260925150221", WRITER, READER];
 const migFile = (prefix: string) => {
   const f = readdirSync(MIGRATIONS).find((x) => x.startsWith(prefix) && x.endsWith(".sql"));
   if (!f) throw new Error(`no migration starts with ${prefix}`);
   return resolve(MIGRATIONS, f);
 };
 const migSql = (prefix: string) => readFileSync(migFile(prefix), "utf8");
+
+interface Period { quarter: string; file: string; published: string; from: string; to: string }
+
+/** The period the payload carries: a label MEASURED from the decision dates the cells were folded
+ *  from, not read off the file name. */
+const CURRENT: Period = {
+  quarter: "FY2026 Q3", file: "LCA_Disclosure_Data_FY2026_Q3.xlsx", published: "2026-08-25",
+  from: "2026-04-01", to: "2026-06-30",
+};
+
+/** The previous period, for the two-periods case: an older file, an older publication date. */
+const PREV: Period = {
+  quarter: "FY2026 Q2", file: "LCA_Disclosure_Data_FY2026_Q2.xlsx", published: "2026-05-20",
+  from: "2026-01-01", to: "2026-03-31",
+};
 
 const CELLS = [
   // An employer with two cells, both above the bar.
@@ -53,18 +73,17 @@ const CELLS = [
   cell("tinyco", "15-1252", "CA", "Software Developers", 70000, 75000, 72000, 1),
 ];
 
-function cell(token: string, soc: string, state: string, title: string, low: number, high: number, med: number, n: number, q?: { quarter: string; file: string; published: string }) {
+function cell(token: string, soc: string, state: string, title: string, low: number, high: number, med: number, n: number, q?: Period) {
+  const p = q ?? CURRENT;
   return {
     company_token: token, soc_code: soc, worksite_state: state, soc_title: title,
     wage_low_annual: low, wage_high_annual: high, wage_median_annual: med, filings_n: n,
-    source_file: q?.file ?? "LCA_Disclosure_Data_FY2026_Q3.xlsx",
-    source_url: `https://www.dol.gov/media/${q?.file ?? "LCA_Disclosure_Data_FY2026_Q3.xlsx"}`,
-    fiscal_quarter: q?.quarter ?? "FY2026 Q3", published_on: q?.published ?? "2026-08-25",
+    source_file: p.file,
+    source_url: `https://www.dol.gov/media/${p.file}`,
+    fiscal_quarter: p.quarter, published_on: p.published,
+    coverage_from: p.from, coverage_to: p.to,
   };
 }
-
-/** The previous quarter, for the interrupted-load case: an older file, an older publication date. */
-const PREV = { quarter: "FY2026 Q2", file: "LCA_Disclosure_Data_FY2026_Q2.xlsx", published: "2026-05-20" };
 
 type Row = Record<string, unknown>;
 
@@ -164,21 +183,21 @@ describe("the reader answers every token it is asked", () => {
   });
 
   it("teeth: an inner join on the employer totals loses the tokens it has nothing for", async () => {
-    const bad = await boot({ prefix: "20260923114903", find: "LEFT JOIN emp e ON e.tok = t.tok", replace: "JOIN emp e ON e.tok = t.tok" });
+    const bad = await boot({ prefix: READER, find: "LEFT JOIN emp e ON e.tok = t.tok", replace: "JOIN emp e ON e.tok = t.tok" });
     const rows = await ask(bad, ["acmewidgets", "never-heard-of-it", "tinyco"], "15-1252", "CA");
     expect(rows.map((r) => r.ow_company_token)).toEqual(["acmewidgets"]);
     await bad.close();
   }, 30_000);
 
   it("teeth: an inner join on the nearest cell loses the employer that has totals but no near cell", async () => {
-    const bad = await boot({ prefix: "20260923114903", find: "LEFT JOIN near n ON n.tok = t.tok", replace: "JOIN near n ON n.tok = t.tok" });
+    const bad = await boot({ prefix: READER, find: "LEFT JOIN near n ON n.tok = t.tok", replace: "JOIN near n ON n.tok = t.tok" });
     const rows = await ask(bad, ["acmewidgets", "thinco"], "15-1252", "CA");
     expect(rows.map((r) => r.ow_company_token)).toEqual(["acmewidgets"]);
     await bad.close();
   }, 30_000);
 
   it("teeth: an un-deduplicated token list answers one token more than once", async () => {
-    const bad = await boot({ prefix: "20260923114903", find: "SELECT DISTINCT t.tok", replace: "SELECT t.tok" });
+    const bad = await boot({ prefix: READER, find: "SELECT DISTINCT t.tok", replace: "SELECT t.tok" });
     const rows = await ask(bad, ["acmewidgets", "acmewidgets"], "15-1252", "CA");
     expect(rows).toHaveLength(2);
     await bad.close();
@@ -189,7 +208,7 @@ describe("the reader answers every token it is asked", () => {
     // each: under the bar they print nothing, and the only thing standing
     // between a reader and a "range" drawn from two filings is this predicate.
     const bad = await boot({
-      prefix: "20260923114903",
+      prefix: READER,
       find: "WHERE w.filings_n >= (SELECT kk.lca_min_filings FROM k kk)",
       replace: "WHERE w.filings_n >= 1",
     });
@@ -202,7 +221,7 @@ describe("the reader answers every token it is asked", () => {
 
   it("teeth: without the employer bar, a one-application employer prints totals", async () => {
     const bad = await boot({
-      prefix: "20260923114903",
+      prefix: READER,
       find: "HAVING sum(w.filings_n) >= (SELECT kk.lca_min_filings FROM k kk)",
       replace: "HAVING sum(w.filings_n) >= 1",
     });
@@ -218,24 +237,40 @@ describe("the reader answers every token it is asked", () => {
 });
 
 /**
- * THE STATE THE WRITER'S OWN HEADER PLANS FOR: a load that died half way, so
- * the previous quarter is still resident beside part of the new one. Both of
- * the defects below are only visible in that state, and both go out to nine
- * languages at once when they happen -- the copy says "for that quarter" and
- * names a file and a publication date beside every figure.
+ * TWO PERIODS RESIDENT IS ONE PERIOD ANSWERED -- THE READER'S OWN SCOPE.
+ *
+ * The writer can no longer produce this state: since 20260925150412 a load is
+ * staged and swapped in one statement, and the pglite proof of that is
+ * src/test/a-half-written-period-is-never-the-one-the-reader-serves.test.ts.
+ * The reader's scoping is the SECOND line of defence and still worth holding,
+ * because the defect it prevents is silent and goes out in nine languages at
+ * once -- an employer total that adds two periods together under one period's
+ * name. So the mixed state is built here the only way left: by writing the
+ * second period's row into the table directly, around the writer.
  */
-describe("two quarters resident is one quarter answered", () => {
-  /** Q2 loaded whole, then a Q3 chunk posted WITHOUT the prune -- an interrupted run. */
+describe("two periods resident is one period answered", () => {
+  /** A cell of an older period, inserted behind the writer's back. */
+  async function insertDirectly(d: PGlite, c: ReturnType<typeof cell>) {
+    await d.query(
+      `INSERT INTO public.oflc_lca_wages (company_token, soc_code, worksite_state, soc_title,
+         wage_low_annual, wage_high_annual, wage_median_annual, filings_n,
+         source_file, source_url, fiscal_quarter, published_on, coverage_from, coverage_to)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::date,$13::date,$14::date)`,
+      [c.company_token, c.soc_code, c.worksite_state, c.soc_title, c.wage_low_annual, c.wage_high_annual,
+       c.wage_median_annual, c.filings_n, c.source_file, c.source_url, c.fiscal_quarter, c.published_on,
+       c.coverage_from, c.coverage_to],
+    );
+  }
+
+  /** The newest period loaded whole, with a row of the previous one left beside it. */
   async function twoQuarters(): Promise<PGlite> {
     const d = new PGlite();
     await d.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
     for (const p of LANE) await d.exec(migSql(p));
     await d.query("SELECT * FROM public.oflc_lca_wages_load($1::jsonb, now(), true)", [JSON.stringify([
-      cell("mixco", "15-1252", "CA", "Software Developers", 100000, 110000, 105000, 10, PREV),
-    ])]);
-    await d.query("SELECT * FROM public.oflc_lca_wages_load($1::jsonb, now(), false)", [JSON.stringify([
       cell("mixco", "15-2051", "NY", "Data Scientists", 150000, 160000, 155000, 4),
     ])]);
+    await insertDirectly(d, cell("mixco", "15-1252", "CA", "Software Developers", 100000, 110000, 105000, 10, PREV));
     return d;
   }
 
@@ -262,12 +297,12 @@ describe("two quarters resident is one quarter answered", () => {
     await d.close();
   }, 30_000);
 
-  it("teeth: without the quarter scope the totals add two quarters under one quarter's name", async () => {
+  it("teeth: without the period scope the totals add two periods under one period's name", async () => {
     const d = new PGlite();
     await d.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
     for (const p of LANE) {
       let sql = migSql(p);
-      if (p === "20260923114903") {
+      if (p === READER) {
         // The reader as it was written: the quarter taken as an aggregate over
         // all of an employer's rows, and the total summed across them.
         for (const [find, replace] of [
@@ -281,11 +316,9 @@ describe("two quarters resident is one quarter answered", () => {
       await d.exec(sql);
     }
     await d.query("SELECT * FROM public.oflc_lca_wages_load($1::jsonb, now(), true)", [JSON.stringify([
-      cell("mixco", "15-1252", "CA", "Software Developers", 100000, 110000, 105000, 10, PREV),
-    ])]);
-    await d.query("SELECT * FROM public.oflc_lca_wages_load($1::jsonb, now(), false)", [JSON.stringify([
       cell("mixco", "15-2051", "NY", "Data Scientists", 150000, 160000, 155000, 4),
     ])]);
+    await insertDirectly(d, cell("mixco", "15-1252", "CA", "Software Developers", 100000, 110000, 105000, 10, PREV));
     const rows = await ask(d, ["mixco"], null, null);
     expect(Number(rows[0].ow_employer_filings_n), "the mutation did not apply -- RE-ANCHOR this tooth").toBe(14);
     await d.close();
@@ -340,7 +373,7 @@ describe("the run stamp is required, because the prune keys on it", () => {
     await d.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
     for (const p of LANE) {
       let sql = migSql(p);
-      if (p === "20260923114719") {
+      if (p === WRITER) {
         const find = "  p_run_started_at timestamptz,";
         expect(sql.includes(find), "the stamp parameter moved -- the mutation proves nothing").toBe(true);
         sql = sql.split(find).join("  p_run_started_at timestamptz DEFAULT now(),");
@@ -369,7 +402,7 @@ describe("the run stamp is required, because the prune keys on it", () => {
 
 describe("the definer functions are locked by name", () => {
   it("revokes from PUBLIC, anon and authenticated by name before it grants", () => {
-    for (const [prefix, fn] of [["20260923114719", "oflc_lca_wages_load"], ["20260923114903", "get_employer_lca_wages"]] as const) {
+    for (const [prefix, fn] of [[WRITER, "oflc_lca_wages_load"], [READER, "get_employer_lca_wages"]] as const) {
       const code = migSql(prefix).replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
       for (const role of ["PUBLIC", "anon", "authenticated"]) {
         expect(code, `${fn} must revoke from ${role} by name`).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}\\([^)]*\\) FROM ${role}`));
@@ -378,9 +411,16 @@ describe("the definer functions are locked by name", () => {
     }
   });
 
-  it("the writer is reachable by the service role alone, and the table by no client role", () => {
-    const writer = migSql("20260923114719").replace(/--[^\n]*/g, "");
+  it("the writer is reachable by the service role alone, and neither table by any client role", () => {
+    const writer = migSql(WRITER).replace(/--[^\n]*/g, "");
     expect(writer).not.toMatch(/GRANT EXECUTE ON FUNCTION public\.oflc_lca_wages_load\([^)]*\) TO [^;]*\b(anon|authenticated)\b/);
+    // The staging table holds a whole period on its way in and is exactly as
+    // sensitive as the live one.
+    for (const role of ["PUBLIC", "anon", "authenticated"]) {
+      expect(writer, `the staging table must revoke from ${role} by name`)
+        .toMatch(new RegExp(`REVOKE ALL ON TABLE public\\.oflc_lca_wages_stage FROM ${role}`));
+    }
+    expect(writer).toMatch(/ALTER TABLE public\.oflc_lca_wages_stage ENABLE ROW LEVEL SECURITY/);
     const table = migSql("20260923114532").replace(/--[^\n]*/g, "");
     expect(table).toMatch(/ALTER TABLE public\.oflc_lca_wages ENABLE ROW LEVEL SECURITY/);
     expect(table).not.toMatch(/CREATE POLICY/);

@@ -134,6 +134,13 @@ describe("the read log admits the kind the function writes (pglite)", () => {
     return m[0];
   };
 
+  // THE HOOK GETS THE SAME BUDGET AS THE CHECK BELOW IT, and for the same
+  // reason: this boots its own WASM Postgres, creates three roles, applies the
+  // lane-A DDL and executes the migration. Vitest's default hook budget is ten
+  // seconds, and on the loaded machine that made the five-second test budget
+  // fail one run in three the hook is under exactly the same contention -- a
+  // hook that times out reports as a red gate on all three checks in this
+  // block while saying nothing about the property.
   beforeAll(async () => {
     db = new PGlite();
     await db.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
@@ -141,7 +148,7 @@ describe("the read log admits the kind the function writes (pglite)", () => {
     // The lane-A check refuses the kind before the migration runs.
     await expect(db.query("INSERT INTO public.layoff_read_log (kind, ok) VALUES ('mirror', true)")).rejects.toThrow(/check/i);
     await db.exec(MIRROR_SQL);
-  });
+  }, 30_000);
   afterAll(async () => { await db?.close(); });
 
   it("after the migration a mirror row inserts and an unknown kind is still refused", async () => {
@@ -162,6 +169,11 @@ describe("the read log admits the kind the function writes (pglite)", () => {
     expect(rows[0].n).toBe(1);
   });
 
+  // The budget is stated because booting a second WASM Postgres inside a check
+  // is seconds, not milliseconds, and under vitest's default five seconds this
+  // failed as a TIMEOUT roughly one run in three once a second pglite suite
+  // joined the same run -- a red gate saying nothing about the property. Thirty
+  // seconds is hung; six on a busy machine is not.
   it("TEETH: with the widening removed, the migration's own self-check raises", async () => {
     const cut = MIRROR_SQL.replace(/ALTER TABLE public\.layoff_read_log\s+ADD CONSTRAINT layoff_read_log_kind_check\s+CHECK \([^;]*\);/, "");
     expect(cut).not.toBe(MIRROR_SQL);
@@ -169,7 +181,7 @@ describe("the read log admits the kind the function writes (pglite)", () => {
     await fresh.exec(readLogDdl());
     await expect(fresh.exec(cut)).rejects.toThrow(/does not admit the mirror kind/);
     await fresh.close();
-  });
+  }, 30_000);
 });
 
 describe("the checks have teeth", () => {

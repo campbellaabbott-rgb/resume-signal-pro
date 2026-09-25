@@ -8,6 +8,8 @@
 //   POST { action: "partition" }                  refresh_layoff_partition(), the Ghost-Index writer
 //   POST { action: "mirror", chain }              daily: the board catalogue into layoff_board_names,
 //                                                 then (chain:true) the matcher and the partition
+//   POST { action: "lca_wages" }                  once a quarter, by hand: the certified H-1B wage
+//                                                 cells this bundle carries into oflc_lca_wages
 //
 // Its own function, never a job-board action: the job-board bundle sits at
 // the 4.5 MB cap and a bundle over it silently serves the old version. It
@@ -44,8 +46,14 @@ import { fetchTwcYear } from "./tx-xlsx.ts";
 import { fetchFlYear, flListingUrl } from "./fl-html.ts";
 import { deployMirrorRows } from "./mirror-catalogue.ts";
 import type { MirrorRow } from "./mirror-rows.ts";
+import { decodeLcaCells, LCA_CHUNK_ROWS, newLcaTally, planLcaChunks, postLcaChunks } from "./lca-cells.ts";
+import {
+  LCA_CELL_COUNT, LCA_COVERAGE_FROM, LCA_COVERAGE_TO, LCA_FISCAL_QUARTER, LCA_PUBLISHED_ON, LCA_TOKEN_COUNT,
+} from "./lca-payload.ts";
 
-export const BUILD_VERSION = "2026-09-21.1";
+// .1 mirror; .1 of this date carries the certified H-1B wage cells, the action that loads them, the
+// measured coverage span they are labelled by, and the staged swap that replaces a period whole.
+export const BUILD_VERSION = "2026-09-25.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;
@@ -118,7 +126,7 @@ type SupabaseLike = any;
 
 // ── the read log and the writers ───────────────────────────────────────────
 
-type LogKind = "edgar_atom" | "edgar_fts_audit" | "edgar_backfill" | "warn" | "mirror";
+type LogKind = "edgar_atom" | "edgar_fts_audit" | "edgar_backfill" | "warn" | "mirror" | "lca_wages";
 
 async function readLog(
   client: SupabaseLike,
@@ -714,6 +722,93 @@ async function runMirror(client: SupabaseLike, body: Record<string, unknown>): P
   return json({ ok, kind: "mirror", ...tally, runStartedAt, chained, chainOk, ms, note, version: BUILD_VERSION }, ok && chainOk !== false ? 200 : 500);
 }
 
+// ── the H-1B wage cells: the quarter this bundle carries ───────────────────
+//
+// Same wall as the mirror, same answer. public.oflc_lca_wages_load is granted
+// to service_role and nothing else, and no service-role key exists outside the
+// platform, so the operator loader can read the Department's 250 MB file and
+// post none of it. The bundle carries the folded cells instead (lca-payload.ts,
+// gzipped and base64'd), this action decodes them, checks every one against the
+// shape the table would refuse, and posts them through the definer in chunks
+// that all carry ONE run stamp with the swap on the LAST chunk only -- the
+// contract migration 20260925150412 exists to state: a period replaces itself
+// and never half of itself.
+//
+// Nothing here is scheduled. A quarter arrives about five weeks after it ends,
+// as a new file with a new digest, so the load is a deploy followed by one
+// POST, and a second POST of the same bundle is a no-op that re-upserts the
+// same cells under a new stamp and prunes nothing.
+//
+// The decode happens BEFORE the first chunk is sent: a payload that fails its
+// own checks must cost nothing. And no chunk before the last touches the live
+// table -- the rows are staged under the run stamp and the live period is
+// replaced from the stage in one statement on the last call -- so the state
+// this lane must never reach, a half-replaced period served as a whole one, is
+// not reachable by an interrupted run rather than merely unlikely.
+
+interface LcaTally {
+  cells: number; tokens: number; chunks: number; chunksDone: number;
+  upserted: number; pruned: number; total: number; totalTokens: number;
+}
+
+async function runLcaWages(client: SupabaseLike): Promise<Response> {
+  const t0 = Date.now();
+  const runStartedAt = new Date().toISOString();
+  const tally: LcaTally = {
+    cells: 0, tokens: 0, chunks: 0, chunksDone: 0, upserted: 0, pruned: 0, total: 0, totalTokens: 0,
+  };
+  // THE POSTING TALLY IS OURS, AND postLcaChunks MUTATES IT AS IT GOES. A tally the callee built and
+  // returned was lost on the throw, so the one run where the record matters -- a chunk that failed
+  // half way -- logged chunks=0 and upserted=0 while thousands of rows sat staged. The mirror lane
+  // keeps its tally in the caller for exactly this reason.
+  const posted = newLcaTally(0);
+  let ok = true;
+  let note: string | null = null;
+  try {
+    const rows = await decodeLcaCells();
+    const plan = planLcaChunks(rows, runStartedAt, LCA_CHUNK_ROWS);
+    tally.cells = rows.length;
+    tally.tokens = new Set(rows.map((r) => r.company_token)).size;
+    tally.chunks = plan.length;
+    await postLcaChunks(client, plan, posted);
+  } catch (e) {
+    ok = false;
+    note = `error:${(e as Error).message}`;
+  }
+  tally.chunksDone = posted.chunksDone;
+  tally.upserted = posted.upserted;
+  tally.pruned = posted.pruned;
+  tally.total = posted.total;
+  tally.totalTokens = posted.tokens;
+  const ms = Date.now() - t0;
+  const line =
+    `[layoff-filings] kind=lca_wages cells=${tally.cells} tokens=${tally.tokens}` +
+    ` chunks=${tally.chunksDone}/${tally.chunks} upserted=${tally.upserted} pruned=${tally.pruned}` +
+    ` total=${tally.total} total_tokens=${tally.totalTokens} quarter=${JSON.stringify(LCA_FISCAL_QUARTER)}` +
+    ` coverage=${LCA_COVERAGE_FROM}..${LCA_COVERAGE_TO}` +
+    ` published=${LCA_PUBLISHED_ON} run_started_at=${runStartedAt} ms=${ms} ok=${ok}` +
+    (note ? ` note=${JSON.stringify(note)}` : "");
+  (ok ? console.log : console.error)(line);
+  // fetched = cells the bundle carries, kept = rows the LIVE table holds now (the previous period's
+  // until the swap on the last chunk lands, which is the honest answer to "what can the reader
+  // answer with"), new_rows = rows this run staged. chunks says how far it got even when it threw.
+  await readLog(client, "lca_wages", {
+    fetched: tally.cells, kept: tally.total, newRows: tally.upserted, ok, ms,
+    note: [
+      `quarter=${LCA_FISCAL_QUARTER}`, `coverage=${LCA_COVERAGE_FROM}..${LCA_COVERAGE_TO}`,
+      `published=${LCA_PUBLISHED_ON}`,
+      `pruned=${tally.pruned}`, `chunks=${tally.chunksDone}/${tally.chunks}`, `tokens=${tally.totalTokens}`, note,
+    ].filter(Boolean).join("; "),
+  });
+  return json({
+    ok, kind: "lca_wages", ...tally, runStartedAt, ms, note,
+    quarter: LCA_FISCAL_QUARTER, publishedOn: LCA_PUBLISHED_ON,
+    coverageFrom: LCA_COVERAGE_FROM, coverageTo: LCA_COVERAGE_TO,
+    expected: { cells: LCA_CELL_COUNT, tokens: LCA_TOKEN_COUNT },
+    version: BUILD_VERSION,
+  }, ok ? 200 : 500);
+}
+
 // ── the handler ────────────────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -752,6 +847,7 @@ serve(async (req) => {
       case "matches": return json({ ok: true, line: await rebuildMatches(client), version: BUILD_VERSION });
       case "partition": return json({ ok: true, line: await refreshPartition(client), version: BUILD_VERSION });
       case "mirror": return await runMirror(client, body);
+      case "lca_wages": return await runLcaWages(client);
       default: return json({ error: `unknown action ${JSON.stringify(action)}` }, 400);
     }
   } catch (e) {

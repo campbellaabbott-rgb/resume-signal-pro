@@ -137,7 +137,46 @@ code=$(curl -s -m 20 -o /tmp/vd_lf.json -w '%{http_code}' -X POST "$B/functions/
 echo "== 5t. the H-1B wage cells: writer closed, table locked, reader answers a row per token =="
 probe oflc_lca_wages_load '{"p_rows":[],"p_run_started_at":"2026-01-01T00:00:00Z","p_prune":false}'
 code=$(curl -s -m 20 -o /dev/null -w '%{http_code}' "$B/rest/v1/oflc_lca_wages?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); { [ "$code" = "401" ] || [ "$code" = "403" ]; } && echo "PASS  oflc_lca_wages as anon -> $code" || echo "FAIL  oflc_lca_wages as anon -> $code"
-R get_employer_lca_wages '{"p_tokens":["dominos","thetradedesk","zz-not-a-board"]}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  lca reader non-JSON")}if(!Array.isArray(j))return console.log("FAIL  lca reader: "+JSON.stringify(j).slice(0,180));const toks=new Set(j.map(r=>r.ow_company_token));console.log((toks.size===3?"PASS":"FAIL")+"  one row per asked token ("+toks.size+"/3, "+j.length+" rows) -- no row is never \"does not sponsor\"");const z=j.find(r=>r.ow_company_token==="zz-not-a-board");console.log((z&&z.ow_soc_code===null?"PASS":"FAIL")+"  unknown token answers a null-wage row");const filled=j.filter(r=>r.ow_filings_n>0);console.log("INFO  cells with filings: "+filled.length+" (0 is CORRECT until the loader is run)")})'
+R get_employer_lca_wages '{"p_tokens":["dominos","thetradedesk","zz-not-a-board"]}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  lca reader non-JSON")}if(!Array.isArray(j))return console.log("FAIL  lca reader: "+JSON.stringify(j).slice(0,180));const toks=new Set(j.map(r=>r.ow_company_token));console.log((toks.size===3?"PASS":"FAIL")+"  one row per asked token ("+toks.size+"/3, "+j.length+" rows) -- no row is never \"does not sponsor\"");const z=j.find(r=>r.ow_company_token==="zz-not-a-board");console.log((z&&z.ow_soc_code===null?"PASS":"FAIL")+"  unknown token answers a null-wage row");const filled=j.filter(r=>r.ow_filings_n>0);console.log("INFO  cells with filings: "+filled.length+" (0 is CORRECT until the load POST is fired)")})'
+# THE WHOLE LOAD, NOT ONE TOKEN, AND NO FIGURE TYPED TWICE. This block used to
+# spell the label, the publication date, the source file and a proof token here
+# in the shell, and to read that ONE token -- so it printed four passes over a
+# load that was missing thousands of cells as long as that token's chunk had
+# landed, and it would have printed three FAILs on a correct load the day the
+# next file shipped. Every figure below is read out of the payload the deploy
+# carries, at run time, and the assertions are over the load as a whole. A null
+# or zero state here before the POST is CORRECT, not a defect.
+LCA_PAYLOAD=supabase/functions/layoff-filings/lca-payload.ts
+lcaconst() { grep -m1 "^export const $1 = " "$LCA_PAYLOAD" | sed -E 's/^[^=]*= *"?([^";]*)"?;.*$/\1/'; }
+if [ -f "$LCA_PAYLOAD" ]; then
+  export LCA_Q="$(lcaconst LCA_FISCAL_QUARTER)" LCA_FILE="$(lcaconst LCA_SOURCE_FILE)" LCA_PUB="$(lcaconst LCA_PUBLISHED_ON)"
+  export LCA_FROM="$(lcaconst LCA_COVERAGE_FROM)" LCA_TO="$(lcaconst LCA_COVERAGE_TO)"
+  export LCA_CELLS="$(lcaconst LCA_CELL_COUNT)" LCA_TOKENS="$(lcaconst LCA_TOKEN_COUNT)" LCA_WRITES="$(lcaconst LCA_CELL_WRITES)"
+  echo "INFO  the bundle carries $LCA_CELLS cells / $LCA_TOKENS tokens / $LCA_WRITES filings, labelled \"$LCA_Q\" ($LCA_FROM..$LCA_TO) from $LCA_FILE published $LCA_PUB"
+  R get_lca_load_state '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  lca load state non-JSON")}const r=Array.isArray(j)?j[0]:j;if(!r)return console.log("FAIL  lca load state answered no row");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);if(!Number(r.ls_cells))return console.log("INFO  the period is not loaded yet: 0 cells resident (fire the lca_wages POST)");
+ok(String(r.ls_cells)===process.env.LCA_CELLS,"every cell landed: "+r.ls_cells+" resident, bundle carries "+process.env.LCA_CELLS);
+ok(String(r.ls_tokens)===process.env.LCA_TOKENS,"every board token landed: "+r.ls_tokens+" of "+process.env.LCA_TOKENS);
+ok(String(r.ls_filings)===process.env.LCA_WRITES,"the filings behind them: "+r.ls_filings+" of "+process.env.LCA_WRITES);
+ok(Number(r.ls_periods)===1,"exactly one labelled period is resident ("+r.ls_periods+") -- more than one is a load that left a mixture");
+ok(r.ls_fiscal_quarter===process.env.LCA_Q,"label -> "+r.ls_fiscal_quarter+" (bundle says "+process.env.LCA_Q+")");
+ok(String(r.ls_published_on).slice(0,10)===process.env.LCA_PUB,"published on -> "+String(r.ls_published_on).slice(0,10));
+ok(r.ls_source_file===process.env.LCA_FILE,"source file -> "+r.ls_source_file);
+ok(String(r.ls_coverage_from).slice(0,10)===process.env.LCA_FROM&&String(r.ls_coverage_to).slice(0,10)===process.env.LCA_TO,"the span the figures are about -> "+String(r.ls_coverage_from).slice(0,10)+".."+String(r.ls_coverage_to).slice(0,10));
+// THE PLAUSIBILITY BOUND, CHECKED ON WHAT LANDED. The loader refuses a filed
+// annual figure outside this band and the bundle re-checks it before posting;
+// this is the third place, on the rows the public can actually be shown.
+ok(Number(r.ls_wage_low)>=15000&&Number(r.ls_wage_high)<=1500000,"every filed figure is inside the band: "+r.ls_wage_low+" to "+r.ls_wage_high+" (15,000 to 1,500,000)");
+console.log("INFO  widest printable range is "+r.ls_max_spread+"x its own floor (teaching hospitals file residents and attendings under one broad SOC); loaded at "+r.ls_loaded_at)})'
+  # ...and one employer answered through the reader the component actually asks,
+  # so the aggregates above are not the only thing that can see the table.
+  # A SAMPLE, not the proof: the assertions above are the proof. This token was
+  # the largest filer in the file the bundle carried when this was written, and
+  # a null row here is informational -- the next file may not carry it at all.
+  PROOF=generalmotors~wd5~Careers_GM
+  R get_employer_lca_wages "{\"p_tokens\":[\"$PROOF\"]}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  lca reader non-JSON")}if(!Array.isArray(j)||!j.length)return console.log("INFO  lca reader gave no row for the sample token");const r=j[0];if(r.ow_filings_n===null||r.ow_filings_n===undefined)return console.log("INFO  the sample token answers a null-wage row (correct before the POST, or if it is not in this file)");console.log("PASS  a sample employer reads back: "+r.ow_company_token+" "+r.ow_soc_code+" "+r.ow_worksite_state+" $"+r.ow_wage_low+"-"+r.ow_wage_high+" over "+r.ow_filings_n+" filings, "+r.ow_employer_cells_n+" cells / "+r.ow_employer_filings_n+" applications, "+r.ow_fiscal_quarter+" "+String(r.ow_coverage_from).slice(0,10)+".."+String(r.ow_coverage_to).slice(0,10))})'
+else
+  echo "INFO  no lca payload in this tree; the load state was not checked against it"
+fi
 
 echo "== 5u. the Ontario reader quotes a posting and never judges it =="
 ONT=$(J '{"action":"list","country":"CA","location":"ontario","limit":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const r=(j.jobs||[])[0];console.log(r?r.id:"")})')

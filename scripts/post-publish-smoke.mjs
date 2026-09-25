@@ -278,23 +278,27 @@ const dbObjects = {
 };
 // ---- 7b. THE FILED-WAGE PANEL SHIPS DARK, AND THAT IS A STATE, NOT A BUG ----
 // REACHABILITY IS NOT DATA. The reader above answers with its real parameters
-// the moment its migration applies, and it will answer a row of nulls for
-// every token until an operator loads a quarter: the loader script
-// (scripts/load-oflc-lca.mjs) reads the Department's 250 MB disclosure file
-// and EMITS ROWS, it does not write them, and the writer
-// (public.oflc_lca_wages_load) is service_role only. So the panel renders
-// nothing on the day this deploys, by design — and a sweep that only reports
-// the function as present would let the next person read a permanently empty
-// panel as a regression and go looking for a fault that is not there.
+// the moment its migration applies, and it answers a row of nulls for every
+// token until a quarter is actually in the table. The loader script
+// (scripts/load-oflc-lca.mjs) reads the Department's 250 MB disclosure file and
+// EMITS ROWS, it does not write them, and the writer
+// (public.oflc_lca_wages_load) is service_role only — which is why the cells
+// now travel in the layoff-filings bundle and are written by the deployed
+// function, the same answer the board-name mirror needed for the same reason.
+// So the panel renders nothing between the deploy and that one POST, by design
+// — and a sweep that only reported the function as present would let the next
+// person read an empty panel as a regression and go looking for a fault that is
+// not there.
 //
 // The table is closed to anon by design, so this cannot count its rows from
 // here; what it can do is say, out loud, which of the two lanes is armed.
-record("filed-wage panel: reader present, quarter not loaded from here", true,
+record("filed-wage panel: reader present, quarter loaded by one POST", true,
   dbObjects["get_employer_lca_wages()"] === "ok"
-    ? "reader reachable. The panel prints nothing until an operator runs "
-      + "`node scripts/load-oflc-lca.mjs --file <LCA_Disclosure_Data_FY....xlsx> --published YYYY-MM-DD --out rows.json` "
-      + "and posts the rows in chunks to public.oflc_lca_wages_load with ONE shared p_run_started_at, p_prune on the LAST chunk only. "
-      + "An empty panel before that step is the expected state, not a fault."
+    ? "reader reachable. The panel prints nothing until the deploy carrying the quarter is POSTed once: "
+      + "`{\"action\":\"lca_wages\"}` to /functions/v1/layoff-filings with the x-layoff-cron key. That action decodes the cells "
+      + "the bundle carries and posts them to public.oflc_lca_wages_load in chunks under ONE p_run_started_at: every chunk STAGES its rows and "
+      + "only the last one swaps the whole period into the live table, so a run that dies half way leaves the resident period untouched. "
+      + "An empty panel before that POST is the expected state, not a fault; scripts/verify-deploy.sh §5t says which side of it we are on."
     : "reader NOT reachable — the migration has not applied; the panel would be empty for that reason instead");
 
 const dbMissing = Object.entries(dbObjects).filter(([, v]) => v === "MISSING").map(([k]) => k);

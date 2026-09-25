@@ -1,0 +1,70 @@
+# THE RUN THAT PRODUCED THE EMBEDDED WAGE CELLS.
+#
+# scripts/load-oflc-lca.mjs was run once, on 2026-09-25, against the
+# Department's real disclosure file. Every [load-oflc-lca] line below is that
+# run's stderr, in full and in order -- the progress lines included -- with one
+# substitution: the --out path on the last line is a scratch path on the
+# operator's machine and is written here as <out>. An earlier version of this
+# file said "verbatim" over an edited subset, which is the same defect as a
+# label read off a file name.
+#
+# Above them are the two facts about the file itself that the loader does not
+# print (it never hashes the 250 MB input; the digest and the byte count were
+# measured with shasum -a 256 and wc -c over the same downloaded file, in the
+# same directory, in the same session).
+#
+# WHERE THE SOURCE URL COMES FROM. It is the link the Department's own
+# "Performance Data" page carries for this file, in the LCA Programs (H-1B,
+# H-1B1, E-3) row of its disclosure-data table -- the page was saved on
+# 2026-09-22, the day the file was downloaded, and the href it holds is
+# www.dol.gov//media/LCA_Disclosure_Data_FY2026_Q3.xlsx (the doubled slash is
+# the page's, not ours). The same page links the PERM, PW, H-2A and H-2B files
+# under the same /media/ path, so the path is the publisher's and not a guess
+# from the file name.
+#
+# It could not be RE-FETCHED on 2026-09-25: www.dol.gov answers 403 to every
+# request from this machine -- the file, the landing page, the agency index --
+# which is a fact about the block and not about the path. Anyone who can reach
+# dol.gov should confirm it before the load POST, because it is the provenance
+# link stored on all 5,534 rows and printed beside every figure.
+#
+# It is here because the numbers in supabase/functions/layoff-filings/
+# lca-payload.ts are the ones every surface citing this data must print, and a
+# constant with no record behind it is a figure with no basis. The emitter
+# refuses to write the payload unless these lines and the rows agree -- on the
+# cell count, the token count, the (application x token) write count, the
+# label, the coverage dates, the file and the url -- and a guard re-checks the
+# shipped constants against this file, so editing a constant by hand fails
+# rather than quietly re-labelling the period.
+#
+# THE LABEL IS MEASURED, NOT NAMED. The Department's quarterly file is
+# cumulative year to date: this one carries applications decided from
+# 2025-10-01 to 2026-06-30. The label below is computed from those dates.
+#
+# The rows themselves are NOT in the repository: 2.56 MB of JSON, carried in
+# the bundle gzipped instead. Regenerate the payload with
+#   node scripts/emit-lca-payload.mjs --rows <lca-rows.json> \
+#        --run scripts/data/oflc/lca-FY2026Q3-run.txt \
+#        --out supabase/functions/layoff-filings/lca-payload.ts
+
+source_file=LCA_Disclosure_Data_FY2026_Q3.xlsx
+source_url=https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx
+bytes=251850891
+sha256=f8ca8448a528671f784d3692923775a13741c99caec2816b2fe30c8885bd28b3
+
+[load-oflc-lca] mirror rows=44663 catalogue=44519 facet=144 comparable_norms=23066 held_non_ascii_names=406
+[load-oflc-lca] data_rows=50000 certified=44844 matched=1455
+[load-oflc-lca] data_rows=100000 certified=89420 matched=2825
+[load-oflc-lca] data_rows=150000 certified=134320 matched=4263
+[load-oflc-lca] data_rows=200000 certified=180256 matched=5700
+[load-oflc-lca] data_rows=250000 certified=225688 matched=7072
+[load-oflc-lca] data_rows=300000 certified=272654 matched=8661
+[load-oflc-lca] data_rows=350000 certified=319503 matched=10447
+[load-oflc-lca] data_rows=400000 certified=366099 matched=11914
+[load-oflc-lca] sheet_rows=1032736 data_rows=437496
+[load-oflc-lca] certified_by_equality=401412 other_status=36084 of_which_certified_prefix_refused=26303
+[load-oflc-lca] refused: single_token=103772 ambiguous=196 unmatched=283231 held_non_ascii=311
+[load-oflc-lca] held: no_soc=0 no_state=0 no_decision_date=0 no_readable_wage=0 wage_not_filed_yearly=1048 wage_outside_plausible_band=3
+[load-oflc-lca] matched_rows=12851 cell_writes=12903 tokens=1442 cells=5534
+[load-oflc-lca] quarter="FY2026 Q1-Q3" coverage_from=2025-10-01 coverage_to=2026-06-30 published=2026-08-07
+[load-oflc-lca] wrote 5534 cells to <out>

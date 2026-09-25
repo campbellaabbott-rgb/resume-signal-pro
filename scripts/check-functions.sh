@@ -37,6 +37,19 @@ for dir in supabase/functions/*/; do
     deno check --config supabase/functions/deno.json "$dir/index.ts" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -A3 "ERROR" | head -12
     fails=$((fails+1))
   fi
+  # THE TESTS BESIDE A FUNCTION ARE PART OF THE GATE. A *_test.ts module is not
+  # reachable from index.ts, so checking the entry point alone left every Deno
+  # test in the tree untypechecked: this gate printed OK with one of them
+  # deliberately broken in a way deno check catches. The house rule says those
+  # tests must pass this gate, so they are handed to it by name.
+  for t in "$dir"*_test.ts; do
+    [ -e "$t" ] || continue
+    if ! deno check --quiet --config supabase/functions/deno.json "$t" >/dev/null 2>&1; then
+      echo "FAIL: $name $(basename "$t")"
+      deno check --config supabase/functions/deno.json "$t" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | grep -A3 "ERROR" | head -12
+      fails=$((fails+1))
+    fi
+  done
 done
 
 if [ $fails -eq 0 ]; then

@@ -78,6 +78,8 @@ export interface LcaFiledWages {
   sourceFile: string;
   sourceUrl: string;
   publishedOn: string;
+  coverageFrom: string | null;
+  coverageTo: string | null;
 }
 
 /** The employer-level answer alone: enough to say an employer filed, when no cell is near enough. */
@@ -89,6 +91,10 @@ export interface LcaEmployerFilings {
   sourceFile: string;
   sourceUrl: string;
   publishedOn: string;
+  /** The span of decision dates the figures cover, measured from the file. Null only for rows
+   *  loaded before the loader measured it, in which case the span is not printed at all. */
+  coverageFrom: string | null;
+  coverageTo: string | null;
 }
 
 const numOrNull = (v: unknown): number | null => {
@@ -123,9 +129,15 @@ export function readLcaRow(raw: unknown): { employer: LcaEmployerFilings; wages:
   if (!url.startsWith("https://")) return null;
   if (!isDateOnly(published)) return null;
   if (total < LCA_MIN_FILINGS || cells < 1) return null;
+  // The span is OPTIONAL and never approximated: a row without it prints no span, rather than
+  // borrowing the publication date or the label's own name for one.
+  const coverageFrom = isDateOnly(r.ow_coverage_from) ? r.ow_coverage_from : null;
+  const coverageTo = isDateOnly(r.ow_coverage_to) ? r.ow_coverage_to : null;
+  const span = coverageFrom !== null && coverageTo !== null && coverageFrom <= coverageTo;
   const employer: LcaEmployerFilings = {
     companyToken: token, employerFilingsN: total, employerCellsN: cells,
     fiscalQuarter: quarter, sourceFile: file, sourceUrl: url, publishedOn: published,
+    coverageFrom: span ? coverageFrom : null, coverageTo: span ? coverageTo : null,
   };
 
   const soc = strOrNull(r.ow_soc_code);
@@ -145,6 +157,7 @@ export function readLcaRow(raw: unknown): { employer: LcaEmployerFilings; wages:
       wageLow: low, wageHigh: high, wageMedian: med, filingsN: n, basis: basis as LcaMatchBasis,
       employerFilingsN: total, employerCellsN: cells, fiscalQuarter: quarter,
       sourceFile: file, sourceUrl: url, publishedOn: published,
+      coverageFrom: employer.coverageFrom, coverageTo: employer.coverageTo,
     },
   };
 }
@@ -240,7 +253,7 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
       <p className="text-[11px] text-muted-foreground mb-1">
         {t(
           "jobsPage.lcaSponsor",
-          "{{company}} has {{total}} certified applications on file for that quarter, across {{groups}} occupation-and-state groups.",
+          "{{company}} has {{total}} certified applications on file for that period with a yearly-stated wage, across {{groups}} occupation-and-state groups.",
           {
             company: companyName,
             total: employer.employerFilingsN.toLocaleString(lang),
@@ -248,6 +261,16 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
           },
         )}
       </p>
+
+      {employer.coverageFrom && employer.coverageTo && (
+        <p className="text-[11px] text-muted-foreground mb-1" data-lca-coverage={`${employer.coverageFrom}..${employer.coverageTo}`}>
+          {t(
+            "jobsPage.lcaPeriod",
+            "These are applications the Department certified between {{from}} and {{to}}.",
+            { from: employer.coverageFrom, to: employer.coverageTo },
+          )}
+        </p>
+      )}
 
       <p className="text-[11px] text-muted-foreground mb-1">
         {t("jobsPage.lcaNotAnOffer", "These are wages that were filed for those applications. They are not this role's pay and not an offer.")}

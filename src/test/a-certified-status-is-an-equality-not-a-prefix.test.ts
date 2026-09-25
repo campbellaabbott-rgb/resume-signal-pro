@@ -47,9 +47,16 @@ afterAll(() => {
 });
 
 const HEADER = [
-  "CASE_NUMBER", "CASE_STATUS", "VISA_CLASS", "JOB_TITLE", "SOC_CODE", "SOC_TITLE",
+  "CASE_NUMBER", "CASE_STATUS", "DECISION_DATE", "VISA_CLASS", "JOB_TITLE", "SOC_CODE", "SOC_TITLE",
   "EMPLOYER_NAME", "WAGE_RATE_OF_PAY_FROM", "WAGE_RATE_OF_PAY_TO", "WAGE_UNIT_OF_PAY", "WORKSITE_STATE",
 ];
+
+/** The decision date, as the real sheet stores it: an Excel day count. 46112 is 2026-03-31 and
+ *  46173 is 2026-05-31, so the fixture's folded rows span two fiscal quarters of FY2026 and the
+ *  label the loader must derive from them is the two-quarter one -- not the one quarter a file
+ *  name would have supplied. */
+const DECIDED_Q2 = "46112";
+const DECIDED_Q3 = "46173";
 
 /** The status spellings the file actually carries. Written here, in the test that needs them, and
  *  never in a comment of the code under test. */
@@ -64,13 +71,13 @@ const WITHDRAWN_WAGE = "900000";
 const HOURLY_HIGH_IF_CONVERTED = 145600;
 
 const ROWS: string[][] = [
-  ["I-1", CERTIFIED, "H-1B", "SWE", "15-1252.00", "Software Developers", "ACME WIDGETS, INC.", "120000", "140000", "Year", "CA"],
-  ["I-2", CERTIFIED, "H-1B", "SWE", "15-1252", "Software Developers", "Acme Widgets Inc", "124000", "132000", "Year", "CA"],
-  ["I-3", CERTIFIED, "H-1B", "SWE", "15-1252", "Software Developers", "Acme Widgets", "130000", "135000", "Year", "CA"],
-  ["I-7", CERTIFIED, "H-1B", "SWE", "15-1252", "Software Developers", "Acme Widgets Inc", "60", "70", "Hour", "CA"],
-  ["I-4", CERTIFIED_THEN_WITHDRAWN, "H-1B", "SWE", "15-1252", "Software Developers", "ACME WIDGETS, INC.", WITHDRAWN_WAGE, WITHDRAWN_WAGE, "Year", "CA"],
-  ["I-5", "Withdrawn", "H-1B", "SWE", "15-1252", "Software Developers", "ACME WIDGETS, INC.", "800000", "800000", "Year", "CA"],
-  ["I-6", "Denied", "H-1B", "SWE", "15-1252", "Software Developers", "ACME WIDGETS, INC.", "700000", "700000", "Year", "CA"],
+  ["I-1", CERTIFIED, DECIDED_Q2, "H-1B", "SWE", "15-1252.00", "Software Developers", "ACME WIDGETS, INC.", "120000", "140000", "Year", "CA"],
+  ["I-2", CERTIFIED, DECIDED_Q3, "H-1B", "SWE", "15-1252", "Software Developers", "Acme Widgets Inc", "124000", "132000", "Year", "CA"],
+  ["I-3", CERTIFIED, DECIDED_Q3, "H-1B", "SWE", "15-1252", "Software Developers", "Acme Widgets", "130000", "135000", "Year", "CA"],
+  ["I-7", CERTIFIED, DECIDED_Q3, "H-1B", "SWE", "15-1252", "Software Developers", "Acme Widgets Inc", "60", "70", "Hour", "CA"],
+  ["I-4", CERTIFIED_THEN_WITHDRAWN, DECIDED_Q3, "H-1B", "SWE", "15-1252", "Software Developers", "ACME WIDGETS, INC.", WITHDRAWN_WAGE, WITHDRAWN_WAGE, "Year", "CA"],
+  ["I-5", "Withdrawn", DECIDED_Q3, "H-1B", "SWE", "15-1252", "Software Developers", "ACME WIDGETS, INC.", "800000", "800000", "Year", "CA"],
+  ["I-6", "Denied", DECIDED_Q3, "H-1B", "SWE", "15-1252", "Software Developers", "ACME WIDGETS, INC.", "700000", "700000", "Year", "CA"],
 ];
 
 const CATALOG = [{ name: "Acme Widgets", source: "greenhouse", token: "acmewidgets" }];
@@ -96,7 +103,7 @@ async function writeFixture(
   const { strings = "inline", padRows = 0, name = "LCA_Disclosure_Data_FY2026_Q3.xlsx" } = opts;
   const padded = [...rows];
   for (let i = 0; i < padRows; i += 1) {
-    padded.push(["P-" + i, "Denied", "H-1B", "Padding row " + i, "15-1252", "Software Developers", "Padding Employer " + i, "1", "1", "Year", "CA"]);
+    padded.push(["P-" + i, "Denied", DECIDED_Q3, "H-1B", "Padding row " + i, "15-1252", "Software Developers", "Padding Employer " + i, "1", "1", "Year", "CA"]);
   }
   const all = [HEADER, ...padded];
 
@@ -155,7 +162,7 @@ async function runLoader(L: Loader, file: string) {
   return L.loadDisclosureFile({
     file, index,
     sourceUrl: "https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx",
-    fiscalQuarter: "FY2026 Q3", publishedOn: "2026-08-25",
+    publishedOn: "2026-08-25",
   });
 }
 

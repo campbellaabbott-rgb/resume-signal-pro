@@ -7,13 +7,21 @@
 // WHAT THIS IS. The US Department of Labor's Office of Foreign Labor
 // Certification publishes one xlsx per fiscal quarter listing every Labor
 // Condition Application it decided -- the H-1B programme's filed pay, per
-// employer, per SOC occupation, per worksite state. Measured 2026-09-22:
+// employer, per SOC occupation, per worksite state.
 //
-//   https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx
-//   HTTP 200, no auth, 251,850,891 bytes, quarterly, ~5-week publication lag.
-//   1,032,735 sheet rows, 437,496 of them carrying data (the rest is empty
-//   padding the generator leaves behind). 401,412 rows whose CASE_STATUS
-//   EQUALS 'Certified'.
+// EVERY FIGURE THIS HEADER USED TO STATE IS NOW IN THE RUN RECORD INSTEAD.
+// scripts/data/oflc/lca-FY2026Q3-run.txt holds the summary of the run the
+// shipped payload came from, and the payload's constants are held equal to it
+// by a guard. A prose measurement in a header is a number with no mechanism
+// keeping it true: this one carried the 2026-09-22 figures for weeks after the
+// run that shipped disagreed with all of them (14,230 matched against 12,854,
+// 1,045 held against 1,048, 1,460 tokens against 1,442). Read the record.
+//
+// THE FILE IS CUMULATIVE YEAR TO DATE, NOT ONE QUARTER. The FY2026 Q3 file
+// carries every application decided since 1 October, and its Q3 months are
+// about half of it. The label on a cell is therefore computed from the
+// decision dates of the rows folded into the cells and never from the file
+// name; see fiscalLabelForSpan() below.
 //
 // THE EQUALITY. CASE_STATUS is matched by EQUALITY and never by prefix. A
 // startsWith('Certified') test silently adds the 26,303 rows whose status is
@@ -25,9 +33,7 @@
 //
 // THE WAGE IS FILED, NEVER DERIVED, AND THAT IS WHY A CELL IS ANNUAL. Every
 // row carries a WAGE_UNIT_OF_PAY, and the units are not equivalent statements
-// of one number: only the yearly ones state a year. Measured over the 14,230
-// certified rows this join matches (2026-09-22): Year 13,185, Hour 1,021,
-// Week 11, Month 7, Bi-Weekly 6. Multiplying an hourly figure by 2,080 does
+// of one number: only the yearly ones state a year. Multiplying an hourly figure by 2,080 does
 // not read a yearly wage out of the file, it assumes a full-time schedule the
 // filing never states -- and the repository already wrote that rule down for
 // the identical arithmetic, in the structured salary parser: an hourly, daily
@@ -36,11 +42,13 @@
 // be worse still: one range whose floor was filed and whose ceiling we
 // invented, printed under copy that says "filed".
 //
-// So a row is kept only where the unit IS yearly. The other 1,045 -- 7.3% of
-// the matched population -- are HELD and COUNTED under their own name in the
-// run summary, never folded into the missing-wage counter and never converted.
-// The cost is stated rather than hidden: those employers' cells are thinner or
-// absent, which is the recoverable error.
+// So a row is kept only where the unit IS yearly. The others are HELD and
+// COUNTED under their own name in the run summary, never folded into the
+// missing-wage counter and never converted. The cost is stated rather than
+// hidden: those employers' cells are thinner or absent, which is the
+// recoverable error -- and because the count is stated, a surface printing an
+// employer's total can name the subset the total is of instead of absorbing
+// the gap.
 //
 // THE JOIN IS THE FILINGS MATCHER'S, NOT A SECOND ONE. An employer name
 // reaches a board token exactly the way a layoff filing does: normalised by
@@ -52,10 +60,17 @@
 // same catalogue and the same alias ledger (job-board/employer-aliases.ts),
 // so there is one matcher and one alias ledger for filings and for LCAs.
 //
-// Measured under that rule: 1,460 board tokens (3.31% of the catalogue) match
-// on the catalogue names alone, 1,504 (3.41%) once the alias file's facet
-// names are included -- and it is the alias side that picks up General Motors
-// (607 rows), Applied Materials (474) and Palo Alto Networks (433).
+// The alias side is what picks up the largest filers: General Motors, Applied
+// Materials and Palo Alto Networks all reach a token through the alias file's
+// facet names rather than a catalogue name. How many tokens match in any one
+// run is in that run's record, not here.
+//
+// ONE APPLICATION CAN BECOME MORE THAN ONE CELL WRITE. matchEmployer refuses a
+// name that resolves to more than one EMPLOYER, but one employer may own
+// several board tokens, and the application is folded into each of them. So
+// matched_rows counts applications and cell_writes counts (application, token)
+// pairs, both are printed, and the payload holds the sum of filings_n equal to
+// cell_writes rather than to matched_rows.
 //
 // THE PARITY GATE. keyNorm and public.layoff_norm are two implementations of
 // one rule, and over today's catalogue they agree on 43,391 of 43,423 distinct
@@ -85,7 +100,9 @@
 //   --published <date>   the file's publication date, YYYY-MM-DD (REQUIRED:
 //                        it is not in the file, and a figure with no basis
 //                        does not ship)
-//   --quarter "FY2026 Q3"  overrides the quarter read from the file name
+//   --quarter "FY2026 Q1-Q3"  states the label instead of letting the run
+//                        measure it; refused unless it EQUALS the label the
+//                        folded rows' decision dates earn
 //   --url <url>          the source URL stored with every row (default: the
 //                        measured dol.gov media URL for the quarter)
 //   --visa H-1B          keep only these VISA_CLASS values (repeatable);
@@ -268,12 +285,98 @@ export function isAnnualUnit(unit) {
  * Null for a unit that is not yearly -- there is no multiplier here and no table of them, because
  * a table is the thing that makes the conversion look like a reading. Null also for an amount that
  * is not a positive finite number or that lands outside the range a filed annual wage can occupy.
+ *
+ * READABLE is not the same as PLAUSIBLE, and the two are separate on purpose: this function answers
+ * "did the file state a yearly number here", isPlausibleAnnualWage answers "is that number one a
+ * person could have been paid". They are counted under different names in the run summary.
  */
 export function filedAnnualWage(amount, unit) {
   if (!isAnnualUnit(unit)) return null;
   const n = typeof amount === "number" ? amount : Number(String(amount ?? "").replace(/[$,\s]/g, ""));
   if (!Number.isFinite(n) || n <= 0) return null;
   return n >= 1 && n <= 100_000_000 ? Math.round(n * 100) / 100 : null;
+}
+
+// ── the plausibility band ──────────────────────────────────────────────────
+
+/**
+ * The band a filed annual wage has to land in to reach a cell, and the reason there is one.
+ *
+ * The Department publishes what employers typed. Measured on the FY2026 Q3 file (2026-09-25 run):
+ * one certified, matched, yearly filing states 10,798,445 dollars and another states 17,448,664 --
+ * figures with an extra digit, not salaries. A single such row sets a cell's ceiling, and a cell
+ * with three applications behind it is printable, so a transcription error of that shape becomes a
+ * public sentence about an employer. project_stat_provenance requires a stated plausibility bound
+ * on every new public figure; this is that bound, and it is applied to BOTH endpoints of the range
+ * because a cell whose floor is credible and whose ceiling is not still prints the ceiling.
+ *
+ * The floor is below the lowest full-time federal minimum a year of work could be filed at and the
+ * ceiling is above what the highest-paid certified occupations file; a row outside them is HELD and
+ * COUNTED under its own name, never clamped. Clamping would invent a number the file never stated,
+ * which is the same refusal the non-yearly units already get.
+ */
+export const WAGE_PLAUSIBLE_MIN = 15_000;
+export const WAGE_PLAUSIBLE_MAX = 1_500_000;
+
+/** Is this a filed annual figure a cell may print? Both endpoints are asked separately. */
+export function isPlausibleAnnualWage(n) {
+  return typeof n === "number" && Number.isFinite(n) && n >= WAGE_PLAUSIBLE_MIN && n <= WAGE_PLAUSIBLE_MAX;
+}
+
+// ── the date the Department decided, and the span the cells cover ──────────
+
+/** Excel counts days from this instant, and the sheet stores every date as that count. */
+const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30);
+
+/**
+ * The decision date of one application as a plain date, or null.
+ *
+ * The file stores it as an Excel serial ("45931"), which is why nothing in the first build read it
+ * and why the quarter label came off the FILE NAME instead: a number nobody decoded looks like a
+ * column with no dates in it. Text forms are accepted too, because a future file may carry them,
+ * and anything else is refused rather than guessed at. Serials are bounded well inside the range
+ * where Excel's 1900 leap-year bug lives, so no correction is needed or applied.
+ */
+export function decisionDate(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  if (s === "") return null;
+  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+  if (!/^\d+(\.\d+)?$/.test(s)) return null;
+  const serial = Math.floor(Number(s));
+  if (serial < 20_000 || serial > 80_000) return null;
+  return new Date(EXCEL_EPOCH_MS + serial * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** The US federal fiscal year and quarter a date falls in. The fiscal year starts on 1 October. */
+export function fiscalQuarterOf(date) {
+  const [y, m] = String(date).split("-").map(Number);
+  return { fy: m >= 10 ? y + 1 : y, q: Math.floor(((m + 2) % 12) / 3) + 1 };
+}
+
+/**
+ * The label for the span the folded cells actually cover.
+ *
+ * THIS IS THE FIX FOR A LABEL READ OFF A FILE NAME. The Department's quarterly disclosure file is
+ * CUMULATIVE YEAR TO DATE: the FY2026 Q3 file carries every application decided since 1 October,
+ * not the three months of Q3. Naming it after the quarter in its name overstated the window on
+ * every row, in nine languages, and no check could catch it because every step downstream compared
+ * the label to the file name it came from. The label is therefore computed from the decision dates
+ * of the rows that became cells, and nothing else may set it.
+ */
+export function fiscalLabelForSpan(from, to) {
+  const a = fiscalQuarterOf(from), b = fiscalQuarterOf(to);
+  if (a.fy !== b.fy) return `FY${a.fy} Q${a.q}-FY${b.fy} Q${b.q}`;
+  return a.q === b.q ? `FY${a.fy} Q${a.q}` : `FY${a.fy} Q${a.q}-Q${b.q}`;
+}
+
+/** Is this label the one the measured span earns? A narrower label overstates the coverage; a
+ *  wider one claims applications we do not hold. Only the measured label passes. */
+export function labelCoversSpan(label, from, to) {
+  return typeof label === "string" && from != null && to != null && label === fiscalLabelForSpan(from, to);
 }
 
 /** '15-1252.00' / '151252' / '15-1252' to the seven-character form, or null when it is not a SOC code. */
@@ -294,6 +397,9 @@ export function stateCode(raw) {
  *  rows of a column reports an honest-looking zero. */
 export const COLUMNS = {
   caseStatus: { required: true, names: ["CASE_STATUS"] },
+  // REQUIRED, because the coverage span is what the label is computed from and a file with no
+  // decision dates can only be labelled from its own name -- the defect this column exists to end.
+  decision: { required: true, names: ["DECISION_DATE"] },
   employer: { required: true, names: ["EMPLOYER_NAME", "EMPLOYER_BUSINESS_DBA"] },
   soc: { required: true, names: ["SOC_CODE"] },
   wageFrom: { required: true, names: ["WAGE_RATE_OF_PAY_FROM", "WAGE_RATE_OF_PAY_FROM_1"] },
@@ -337,16 +443,36 @@ export function newCells() {
 
 const CELL_SEP = "";
 
-/** Fold one certified, matched, yearly-filed row into its cell. */
+/**
+ * Fold one certified, matched, yearly-filed row into its cell.
+ *
+ * THE TITLE IS KEPT ONLY WHILE IT IS TRUE OF EVERY FILING IN THE CELL. A cell is keyed on the
+ * BROAD six-digit SOC, and the file states the O*NET DETAIL title (15-1252.00 "Software
+ * Developers", 17-2141.01 "Automotive Engineers"), so several detailed occupations fold into one
+ * cell. Keeping the first title seen named a narrower job than the cell contained -- the n=93 cell
+ * for 17-2141, whose broad SOC is Mechanical Engineers, printed "Automotive Engineers". The title
+ * therefore survives only where every filing that states one states the SAME one; the first
+ * disagreement drops it for good and the cell prints its SOC code instead. A filing that states no
+ * title states nothing and cannot disagree.
+ *
+ * THE WAGES LIST IS BOTH ENDPOINTS, not the floors. The median used to be taken over the range
+ * FLOORS, which is why 165 of the 929 cells with three or more filings had a "median" equal to one
+ * end of their own range. It is the median of the figures the filings state: the floor, and the
+ * ceiling wherever the employer filed one.
+ */
 export function addCell(cells, { token, soc, state, socTitle, lowAnnual, highAnnual }) {
   const key = [token, soc, state].join(CELL_SEP);
   let c = cells.byKey.get(key);
   if (!c) {
-    c = { company_token: token, soc_code: soc, worksite_state: state, soc_title: socTitle ?? null, lows: [], low: Infinity, high: 0, n: 0 };
+    c = { company_token: token, soc_code: soc, worksite_state: state, soc_title: null, titleConflict: false, wages: [], low: Infinity, high: 0, n: 0 };
     cells.byKey.set(key, c);
   }
-  if (c.soc_title == null && socTitle) c.soc_title = socTitle;
-  c.lows.push(lowAnnual);
+  if (socTitle && !c.titleConflict) {
+    if (c.soc_title == null) c.soc_title = socTitle;
+    else if (c.soc_title !== socTitle) { c.titleConflict = true; c.soc_title = null; }
+  }
+  c.wages.push(lowAnnual);
+  if (highAnnual > lowAnnual) c.wages.push(highAnnual);
   if (lowAnnual < c.low) c.low = lowAnnual;
   if (highAnnual > c.high) c.high = highAnnual;
   c.n += 1;
@@ -363,8 +489,9 @@ export function median(values) {
 }
 
 /** The cells as the writer takes them: one row per (token, soc, state), each carrying the file it
- *  came from and that file's publication date, because a number with no basis does not ship. */
-export function finishCells(cells, { sourceFile, sourceUrl, fiscalQuarter, publishedOn }) {
+ *  came from, that file's publication date and the SPAN OF DECISION DATES the cells were folded
+ *  from, because a number with no basis does not ship and a label is not a basis. */
+export function finishCells(cells, { sourceFile, sourceUrl, fiscalQuarter, publishedOn, coverageFrom, coverageTo }) {
   const rows = [];
   for (const c of cells.byKey.values()) {
     rows.push({
@@ -374,12 +501,14 @@ export function finishCells(cells, { sourceFile, sourceUrl, fiscalQuarter, publi
       soc_title: c.soc_title,
       wage_low_annual: Math.round(c.low * 100) / 100,
       wage_high_annual: Math.round(Math.max(c.high, c.low) * 100) / 100,
-      wage_median_annual: median(c.lows),
+      wage_median_annual: median(c.wages),
       filings_n: c.n,
       source_file: sourceFile,
       source_url: sourceUrl,
       fiscal_quarter: fiscalQuarter,
       published_on: publishedOn,
+      coverage_from: coverageFrom,
+      coverage_to: coverageTo,
     });
   }
   rows.sort((a, b) =>
@@ -595,11 +724,11 @@ export async function* streamSheetRows(byteStream, shared) {
 
 // ── the run ────────────────────────────────────────────────────────────────
 
-/** 'LCA_Disclosure_Data_FY2026_Q3.xlsx' to 'FY2026 Q3'. */
-export function quarterFromFileName(name) {
-  const m = /FY(\d{4})[_ -]?Q([1-4])/i.exec(basename(String(name ?? "")));
-  return m ? `FY${m[1]} Q${m[2]}` : null;
-}
+// THERE IS NO QUARTER-FROM-FILE-NAME READER HERE, AND THAT IS THE POINT. One existed, it produced
+// the label every cell carried, and the label was wrong: the Department's file is cumulative year
+// to date, so the name of its newest quarter names about half of what is inside it. The label now
+// comes from fiscalLabelForSpan() over the decision dates of the rows that became cells, and a
+// reader that could take it from the name again is a defect waiting to be re-wired.
 
 /** The measured publication URL for a quarter, as the file names it. */
 export function defaultSourceUrl(fileName) {
@@ -622,11 +751,15 @@ export async function loadDisclosureFile({ file, index, sourceUrl, fiscalQuarter
     sheetRows: 0, dataRows: 0, certified: 0, notCertified: 0, certifiedWithdrawnPrefix: 0,
     visaFiltered: 0, heldNonAsciiEmployer: 0, refusedSingleToken: 0, refusedAmbiguous: 0,
     unmatchedEmployer: 0, heldNoWage: 0, heldNonAnnualUnit: 0, heldNoSoc: 0, heldNoState: 0,
-    matchedRows: 0, cellWrites: 0,
+    heldNoDecisionDate: 0, heldWageOutOfBand: 0, matchedRows: 0, cellWrites: 0,
   };
   const cells = newCells();
   let cols = null;
   const matchedTokens = new Set();
+  // The span the CELLS cover, measured over the rows actually folded -- never over the file, and
+  // never off its name. Both ends move only here.
+  let coverageFrom = null;
+  let coverageTo = null;
 
   for await (const row of streamSheetRows(streamZipEntry(file, entries.get(sheetName)), shared)) {
     counts.sheetRows += 1;
@@ -658,6 +791,11 @@ export async function loadDisclosureFile({ file, index, sourceUrl, fiscalQuarter
     if (!soc) { counts.heldNoSoc += 1; continue; }
     const state = stateCode(row[cols.state]);
     if (!state) { counts.heldNoState += 1; continue; }
+    // HELD, AND COUNTED. An application with no readable decision date cannot be inside the span
+    // the label names, and a row outside the measured span is a row the printed coverage does not
+    // cover. It is never dated by assumption.
+    const decided = decisionDate(row[cols.decision]);
+    if (!decided) { counts.heldNoDecisionDate += 1; continue; }
     const unit = row[cols.wageUnit];
     // HELD, AND COUNTED AS ITS OWN REFUSAL. A row filed by the hour, the week,
     // the fortnight or the month says nothing about a year without a schedule
@@ -666,7 +804,13 @@ export async function loadDisclosureFile({ file, index, sourceUrl, fiscalQuarter
     const low = filedAnnualWage(row[cols.wageFrom], unit);
     if (low === null) { counts.heldNoWage += 1; continue; }
     const high = (cols.wageTo >= 0 ? filedAnnualWage(row[cols.wageTo], unit) : null) ?? low;
+    // HELD, AND COUNTED UNDER ITS OWN NAME. A figure outside the band is a transcription error, not
+    // a wage, and one of them is enough to set a printable cell's ceiling. Never clamped: a clamped
+    // figure is one the file did not state.
+    if (!isPlausibleAnnualWage(low) || !isPlausibleAnnualWage(high)) { counts.heldWageOutOfBand += 1; continue; }
 
+    if (coverageFrom === null || decided < coverageFrom) coverageFrom = decided;
+    if (coverageTo === null || decided > coverageTo) coverageTo = decided;
     counts.matchedRows += 1;
     for (const token of m.tokens) {
       matchedTokens.add(token);
@@ -676,9 +820,24 @@ export async function loadDisclosureFile({ file, index, sourceUrl, fiscalQuarter
     if (sample > 0 && counts.matchedRows >= sample) break;
   }
   if (cols === null) throw new Error(`${basename(file)} has no header row`);
+  if (coverageFrom === null || coverageTo === null) {
+    throw new Error(`${basename(file)} produced no folded rows, so there is no measured span to label the cells with`);
+  }
+  // THE LABEL IS THE SPAN'S, OR THE RUN STOPS. An override is allowed only where it is the label
+  // the measured span earns: a narrower one overstates the coverage of every cell, a wider one
+  // claims applications the payload does not hold.
+  const label = fiscalQuarter ?? fiscalLabelForSpan(coverageFrom, coverageTo);
+  if (!labelCoversSpan(label, coverageFrom, coverageTo)) {
+    throw new Error(
+      `the label ${JSON.stringify(label)} is not the one these cells earn: they were decided between ` +
+      `${coverageFrom} and ${coverageTo}, which is ${fiscalLabelForSpan(coverageFrom, coverageTo)}`,
+    );
+  }
 
-  const rows = finishCells(cells, { sourceFile: basename(file), sourceUrl, fiscalQuarter, publishedOn });
-  return { rows, counts, tokens: matchedTokens.size };
+  const rows = finishCells(cells, {
+    sourceFile: basename(file), sourceUrl, fiscalQuarter: label, publishedOn, coverageFrom, coverageTo,
+  });
+  return { rows, counts, tokens: matchedTokens.size, coverageFrom, coverageTo, fiscalQuarter: label };
 }
 
 /** The mirror the join reads: the same rule, catalogue and alias ledger the filings matcher uses. */
@@ -701,14 +860,15 @@ if (isMain) {
   if (!published || !/^\d{4}-\d{2}-\d{2}$/.test(published)) {
     throw new Error("--published YYYY-MM-DD is required: the publication date is not inside the file, and a figure whose basis is unknown does not ship");
   }
-  const fiscalQuarter = opt("--quarter") ?? quarterFromFileName(file);
-  if (!fiscalQuarter) throw new Error(`could not read a fiscal quarter from ${basename(file)}; pass --quarter "FY2026 Q3"`);
+  // No default from the file name. The label is measured from the decision dates of the rows that
+  // become cells; an override is checked against that measurement and refused unless it equals it.
+  const fiscalQuarter = opt("--quarter");
   const sourceUrl = opt("--url") ?? defaultSourceUrl(file);
   const visaClasses = opts("--visa");
   const { index, mirror } = await buildIndexFromCatalogue({ withFacetNames: !flag("--no-facet-names") });
   console.error(`[load-oflc-lca] mirror rows=${mirror.rows.length} catalogue=${mirror.catalogue} facet=${mirror.facet} comparable_norms=${index.byNorm.size} held_non_ascii_names=${index.heldNonAscii}`);
 
-  const { rows, counts, tokens } = await loadDisclosureFile({
+  const { rows, counts, tokens, coverageFrom, coverageTo, fiscalQuarter: label } = await loadDisclosureFile({
     file, index, sourceUrl, fiscalQuarter, publishedOn: published,
     visaClasses: visaClasses.length > 0 ? visaClasses : null,
     sample: Number(opt("--sample", "0")) || 0,
@@ -718,8 +878,12 @@ if (isMain) {
   console.error(`[load-oflc-lca] sheet_rows=${counts.sheetRows} data_rows=${counts.dataRows}`);
   console.error(`[load-oflc-lca] certified_by_equality=${counts.certified} other_status=${counts.notCertified} of_which_certified_prefix_refused=${counts.certifiedWithdrawnPrefix}`);
   console.error(`[load-oflc-lca] refused: single_token=${counts.refusedSingleToken} ambiguous=${counts.refusedAmbiguous} unmatched=${counts.unmatchedEmployer} held_non_ascii=${counts.heldNonAsciiEmployer}`);
-  console.error(`[load-oflc-lca] held: no_soc=${counts.heldNoSoc} no_state=${counts.heldNoState} no_readable_wage=${counts.heldNoWage} wage_not_filed_yearly=${counts.heldNonAnnualUnit}`);
-  console.error(`[load-oflc-lca] matched_rows=${counts.matchedRows} tokens=${tokens} cells=${rows.length} quarter="${fiscalQuarter}" published=${published}`);
+  console.error(`[load-oflc-lca] held: no_soc=${counts.heldNoSoc} no_state=${counts.heldNoState} no_decision_date=${counts.heldNoDecisionDate} no_readable_wage=${counts.heldNoWage} wage_not_filed_yearly=${counts.heldNonAnnualUnit} wage_outside_plausible_band=${counts.heldWageOutOfBand}`);
+  // cell_writes is not matched_rows: an employer with two board tokens contributes its application
+  // to each of them, so the cells hold (application x token) pairs while matched_rows counts
+  // applications. Printing only one of the two left the payload's own totals unreconcilable.
+  console.error(`[load-oflc-lca] matched_rows=${counts.matchedRows} cell_writes=${counts.cellWrites} tokens=${tokens} cells=${rows.length}`);
+  console.error(`[load-oflc-lca] quarter="${label}" coverage_from=${coverageFrom} coverage_to=${coverageTo} published=${published}`);
 
   const out = opt("--out");
   if (out) {

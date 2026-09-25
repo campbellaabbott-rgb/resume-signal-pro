@@ -47,9 +47,11 @@ import { LcaFiledWagesLine, LCA_MIN_FILINGS, LCA_MATCH_BASES, LCA_SOURCE_AUTHORI
 
 const ROOT = resolve(__dirname, "../..");
 const MIGRATIONS = resolve(ROOT, "supabase/migrations");
-const READER = "20260923114903";
+/** The LIVE reader: the one that hands back the coverage dates. The bar this file mirrors is
+ *  stated in its k block, and a guard reading a superseded migration proves nothing. */
+const READER = "20260925150733";
 const LOCALES = resolve(ROOT, "src/i18n/locales");
-const KEYS = ["lcaChip", "lcaRange", "lcaWhyThisCell", "lcaSponsor", "lcaNotAnOffer", "lcaBasis", "lcaMinNote"] as const;
+const KEYS = ["lcaChip", "lcaRange", "lcaWhyThisCell", "lcaSponsor", "lcaPeriod", "lcaNotAnOffer", "lcaBasis", "lcaMinNote"] as const;
 
 const migRaw = (prefix: string) => {
   const f = readdirSync(MIGRATIONS).find((x) => x.startsWith(prefix) && x.endsWith(".sql"));
@@ -179,6 +181,8 @@ describe("the client refuses a row the bars would not have admitted", () => {
     ow_source_file: "LCA_Disclosure_Data_FY2026_Q3.xlsx",
     ow_source_url: "https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx",
     ow_published_on: "2026-08-25",
+    ow_coverage_from: "2025-10-01",
+    ow_coverage_to: "2026-06-30",
   };
 
   it("reads a complete row", () => {
@@ -186,6 +190,24 @@ describe("the client refuses a row the bars would not have admitted", () => {
     expect(r?.wages?.wageLow).toBe(120000);
     expect(r?.employer.employerFilingsN).toBe(21);
     expect(LCA_MATCH_BASES).toContain(r?.wages?.basis);
+    expect(r?.employer.coverageFrom).toBe("2025-10-01");
+    expect(r?.employer.coverageTo).toBe("2026-06-30");
+  });
+
+  it("a span that is absent, half-stated or backwards is no span at all, never an inferred one", () => {
+    // A LABEL IS NOT A SPAN, AND NEITHER IS A PUBLICATION DATE. A row loaded
+    // before the loader measured the period has no coverage dates, and the
+    // line must print no period sentence rather than borrow one from the
+    // figures it does have.
+    expect(readLcaRow({ ...base, ow_coverage_from: null, ow_coverage_to: null })?.employer.coverageFrom).toBeNull();
+    expect(readLcaRow({ ...base, ow_coverage_to: null })?.employer.coverageFrom).toBeNull();
+    expect(readLcaRow({ ...base, ow_coverage_from: "2026-13-45" })?.employer.coverageFrom).toBeNull();
+    // ...and a span whose end precedes its start is not a span.
+    const backwards = readLcaRow({ ...base, ow_coverage_from: "2026-06-30", ow_coverage_to: "2025-10-01" });
+    expect(backwards?.employer.coverageFrom).toBeNull();
+    expect(backwards?.employer.coverageTo).toBeNull();
+    // The rest of the row is still answered: a missing span is not a missing figure.
+    expect(readLcaRow({ ...base, ow_coverage_from: null, ow_coverage_to: null })?.employer.employerFilingsN).toBe(21);
   });
 
   it("the reader's null answer is a null answer, never a fact", () => {
@@ -353,6 +375,8 @@ describe("the rendered line says what it is a figure of", () => {
     ow_source_file: "LCA_Disclosure_Data_FY2026_Q3.xlsx",
     ow_source_url: "https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx",
     ow_published_on: "2026-08-25",
+    ow_coverage_from: "2025-10-01",
+    ow_coverage_to: "2026-06-30",
   };
 
   it("prints the count, the occupation, the state, the quarter and the file it came from", async () => {
@@ -365,6 +389,12 @@ describe("the rendered line says what it is a figure of", () => {
     expect(await screen.findByText(/LCA_Disclosure_Data_FY2026_Q3\.xlsx/)).toBeTruthy();
     expect(await screen.findByText(/2026-08-25/)).toBeTruthy();
     expect(await screen.findByText(/not this role's pay and not an offer/i)).toBeTruthy();
+    // THE MEASURED SPAN, PRINTED. The Department's file is cumulative year to
+    // date, so the label alone understates what the figures are about; the two
+    // dates the loader measured are what makes the sentence checkable.
+    expect(await screen.findByText(/certified between 2025-10-01 and 2026-06-30/i)).toBeTruthy();
+    // ...and the employer total names the subset it counts.
+    expect(await screen.findByText(/with a yearly-stated wage/i)).toBeTruthy();
     // The bar the line is gated on is stated, from the constant, not typed.
     expect(await screen.findByText(new RegExp(`at least ${LCA_MIN_FILINGS} certified applications`, "i"))).toBeTruthy();
   });

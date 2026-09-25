@@ -160,20 +160,35 @@ Deno.test("index.ts: the mirror writes its read-log row as kind mirror with rows
   assertStringIncludes(CODE, "`[layoff-filings] kind=partition ok=false error=");
 });
 
-Deno.test("the migration that admits the mirror kind lists every kind the function writes", () => {
+// A CHECK holds an expression and not a set, so every later widening rewrites
+// the WHOLE list of kinds -- which is exactly how a kind gets dropped by
+// accident. This used to require that only one migration ever widened the
+// column; a second lane then needed a kind of its own and the requirement would
+// have been satisfied by editing an applied migration. What matters is that the
+// mirror kind was introduced here and that the widening which runs LAST still
+// admits it. The list in full is held beside the payload it was widened for,
+// in lca_test.ts.
+Deno.test("the mirror kind is introduced by this lane's migration and survives every later widening", () => {
   const dir = `${REPO}/supabase/migrations`;
   const files = [...Deno.readDirSync(dir)].map((e) => e.name).filter((n) => n.endsWith(".sql")).sort();
   const admits = files.filter((n) => {
     const sql = Deno.readTextFileSync(`${dir}/${n}`).replace(/^\s*--.*$/gm, "");
     return /ADD CONSTRAINT layoff_read_log_kind_check/.test(sql);
   });
-  assertEquals(admits.length, 1, `exactly one migration widens the read-log kind check: ${admits.join(", ")}`);
-  const sql = Deno.readTextFileSync(`${dir}/${admits[0]}`).replace(/^\s*--.*$/gm, "");
-  const m = /CHECK \(kind IN \(([^)]*)\)\)/.exec(sql);
-  assert(m, "the widened check names its kinds inline");
-  const kinds = [...m![1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort();
+  assert(admits.length >= 1, "no migration widens the read-log kind check");
+  const kindsOf = (file: string) => {
+    const sql = Deno.readTextFileSync(`${dir}/${file}`).replace(/^\s*--.*$/gm, "");
+    const m = /CHECK \(kind IN \(([^)]*)\)\)/.exec(sql);
+    assert(m, `${file} does not name its kinds inline`);
+    return [...m![1].matchAll(/'([^']+)'/g)].map((x) => x[1]).sort();
+  };
+  // The first widening is this lane's, and it is the one that adds the mirror.
+  assertEquals(admits[0].slice(0, 8), "20260921");
+  assertEquals(kindsOf(admits[0]), ["edgar_atom", "edgar_backfill", "edgar_fts_audit", "matcher", "mirror", "partition", "warn"]);
+  // The one applied last is the column's actual bar, and it admits every kind
+  // the function writes plus the two the database writes for itself.
+  const kinds = kindsOf(admits[admits.length - 1]);
   const union = /type LogKind = ([^;]*);/.exec(CODE)![1];
   const written = [...union.matchAll(/"([^"]+)"/g)].map((x) => x[1]);
   for (const k of [...written, "matcher", "partition"]) assert(kinds.includes(k), `the check does not admit ${k}`);
-  assertEquals(kinds, ["edgar_atom", "edgar_backfill", "edgar_fts_audit", "matcher", "mirror", "partition", "warn"]);
 });

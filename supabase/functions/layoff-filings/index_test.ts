@@ -15,8 +15,8 @@ import { assert, assertEquals, assertStringIncludes } from "https://deno.land/st
 const RAW = Deno.readTextFileSync(new URL("./index.ts", import.meta.url));
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/^\s*\/\/.*$/gm, "");
 
-Deno.test("the seven actions dispatch, and nothing else is an action", () => {
-  const actions = ["edgar", "edgar_audit", "edgar_backfill", "warn", "matches", "partition", "mirror"];
+Deno.test("the eight actions dispatch, and nothing else is an action", () => {
+  const actions = ["edgar", "edgar_audit", "edgar_backfill", "warn", "matches", "partition", "mirror", "lca_wages"];
   for (const a of actions) {
     assert(new RegExp(`case "${a}":`).test(CODE), `action ${a}`);
   }
@@ -25,7 +25,7 @@ Deno.test("the seven actions dispatch, and nothing else is an action", () => {
 });
 
 Deno.test("every run writes its read-log kind and prints the grep-able line the heartbeat expects", () => {
-  for (const k of ["edgar_atom", "edgar_fts_audit", "edgar_backfill", "warn", "mirror"]) {
+  for (const k of ["edgar_atom", "edgar_fts_audit", "edgar_backfill", "warn", "mirror", "lca_wages"]) {
     assert(new RegExp(`readLog\\(client, "${k}"`).test(CODE), `read log for ${k}`);
   }
   assertStringIncludes(CODE, "[layoff-filings] kind=edgar_atom fetched=");
@@ -37,6 +37,7 @@ Deno.test("every run writes its read-log kind and prints the grep-able line the 
   assertStringIncludes(CODE, "[layoff-filings] kind=edgar_fts_audit fetched=");
   assertStringIncludes(CODE, "fts_only=${ftsOnly}");
   assertStringIncludes(CODE, "[layoff-filings] kind=mirror rows=");
+  assertStringIncludes(CODE, "[layoff-filings] kind=lca_wages cells=");
 });
 
 Deno.test("the mirror constants are spelled once each, as src/config/layoffs.ts and the cross-runtime guard read them", () => {
