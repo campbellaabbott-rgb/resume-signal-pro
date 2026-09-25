@@ -421,6 +421,13 @@
       "when": 1790357685193,
       "tag": "0059_pg_crons_own_log_is_pruned_like_every_other_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790357711770,
+      "tag": "0060_a_filed_wage_is_a_cell_that_carries_the_file_it_came_from",
+      "breakpoints": true
     }
   ]
 }

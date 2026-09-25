@@ -3077,6 +3077,54 @@ export type Database = {
         }
         Relationships: []
       }
+      oflc_lca_wages: {
+        Row: {
+          company_token: string
+          filings_n: number
+          fiscal_quarter: string
+          loaded_at: string
+          published_on: string
+          soc_code: string
+          soc_title: string | null
+          source_file: string
+          source_url: string
+          wage_high_annual: number
+          wage_low_annual: number
+          wage_median_annual: number
+          worksite_state: string
+        }
+        Insert: {
+          company_token: string
+          filings_n: number
+          fiscal_quarter: string
+          loaded_at?: string
+          published_on: string
+          soc_code: string
+          soc_title?: string | null
+          source_file: string
+          source_url: string
+          wage_high_annual: number
+          wage_low_annual: number
+          wage_median_annual: number
+          worksite_state: string
+        }
+        Update: {
+          company_token?: string
+          filings_n?: number
+          fiscal_quarter?: string
+          loaded_at?: string
+          published_on?: string
+          soc_code?: string
+          soc_title?: string | null
+          source_file?: string
+          source_url?: string
+          wage_high_annual?: number
+          wage_low_annual?: number
+          wage_median_annual?: number
+          worksite_state?: string
+        }
+        Relationships: []
+      }
       parse_failures: {
         Row: {
           created_at: string
