@@ -414,6 +414,41 @@
       "when": 1789764374557,
       "tag": "0058_a_filing_is_pruned_only_after_its_month_is_counted",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790357685193,
+      "tag": "0059_pg_crons_own_log_is_pruned_like_every_other_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790357711770,
+      "tag": "0060_a_filed_wage_is_a_cell_that_carries_the_file_it_came_from",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790357740860,
+      "tag": "0061_a_quarter_replaces_itself_and_never_half_of_itself",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790357778941,
+      "tag": "0062_one_row_per_asked_token_and_no_row_is_never_does_not_sponsor",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790357828611,
+      "tag": "0063_a_posting_is_quoted_never_judged",
+      "breakpoints": true
     }
   ]
 }

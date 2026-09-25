@@ -3077,6 +3077,54 @@ export type Database = {
         }
         Relationships: []
       }
+      oflc_lca_wages: {
+        Row: {
+          company_token: string
+          filings_n: number
+          fiscal_quarter: string
+          loaded_at: string
+          published_on: string
+          soc_code: string
+          soc_title: string | null
+          source_file: string
+          source_url: string
+          wage_high_annual: number
+          wage_low_annual: number
+          wage_median_annual: number
+          worksite_state: string
+        }
+        Insert: {
+          company_token: string
+          filings_n: number
+          fiscal_quarter: string
+          loaded_at?: string
+          published_on: string
+          soc_code: string
+          soc_title?: string | null
+          source_file: string
+          source_url: string
+          wage_high_annual: number
+          wage_low_annual: number
+          wage_median_annual: number
+          worksite_state: string
+        }
+        Update: {
+          company_token?: string
+          filings_n?: number
+          fiscal_quarter?: string
+          loaded_at?: string
+          published_on?: string
+          soc_code?: string
+          soc_title?: string | null
+          source_file?: string
+          source_url?: string
+          wage_high_annual?: number
+          wage_low_annual?: number
+          wage_median_annual?: number
+          worksite_state?: string
+        }
+        Relationships: []
+      }
       parse_failures: {
         Row: {
           created_at: string
@@ -5050,6 +5098,30 @@ export type Database = {
           la_workers: number
         }[]
       }
+      get_employer_lca_wages: {
+        Args: {
+          p_soc_code?: string
+          p_tokens: string[]
+          p_worksite_state?: string
+        }
+        Returns: {
+          ow_company_token: string
+          ow_employer_cells_n: number
+          ow_employer_filings_n: number
+          ow_filings_n: number
+          ow_fiscal_quarter: string
+          ow_match_basis: string
+          ow_published_on: string
+          ow_soc_code: string
+          ow_soc_title: string
+          ow_source_file: string
+          ow_source_url: string
+          ow_wage_high: number
+          ow_wage_low: number
+          ow_wage_median: number
+          ow_worksite_state: string
+        }[]
+      }
       get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }
@@ -5277,6 +5349,18 @@ export type Database = {
           company_token: string
           first_added: string
           open_roles: number
+        }[]
+      }
+      get_ontario_posting_disclosures: {
+        Args: { p_id: string }
+        Returns: {
+          od_ai_evidence: string
+          od_canadian_experience_evidence: string
+          od_id: string
+          od_pay_basis: string
+          od_pay_evidence: string
+          od_read_at: string
+          od_vacancy_evidence: string
         }[]
       }
       get_parse_failure_stats: {
@@ -5790,6 +5874,15 @@ export type Database = {
         Returns: number
       }
       normalize_close_title: { Args: { p_title: string }; Returns: string }
+      oflc_lca_wages_load: {
+        Args: { p_prune?: boolean; p_rows: Json; p_run_started_at: string }
+        Returns: {
+          lo_pruned: number
+          lo_tokens: number
+          lo_total: number
+          lo_upserted: number
+        }[]
+      }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
