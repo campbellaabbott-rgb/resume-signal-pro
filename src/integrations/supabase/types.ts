@@ -3080,6 +3080,8 @@ export type Database = {
       oflc_lca_wages: {
         Row: {
           company_token: string
+          coverage_from: string | null
+          coverage_to: string | null
           filings_n: number
           fiscal_quarter: string
           loaded_at: string
@@ -3095,6 +3097,8 @@ export type Database = {
         }
         Insert: {
           company_token: string
+          coverage_from?: string | null
+          coverage_to?: string | null
           filings_n: number
           fiscal_quarter: string
           loaded_at?: string
@@ -3110,6 +3114,8 @@ export type Database = {
         }
         Update: {
           company_token?: string
+          coverage_from?: string | null
+          coverage_to?: string | null
           filings_n?: number
           fiscal_quarter?: string
           loaded_at?: string

@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925150221_a_filed_wage_carries_the_span_it_was_certified_in.sql'));

@@ -456,6 +456,13 @@
       "when": 1790449998824,
       "tag": "0064_20260925141127_the_read_log_admits_the_quarter_load",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790450006341,
+      "tag": "0065_20260925150221_a_filed_wage_carries_the_span",
+      "breakpoints": true
     }
   ]
 }
