@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925164510_an_arm_written_before_the_control_existed_is_not_a_sufficient_arm.sql'));

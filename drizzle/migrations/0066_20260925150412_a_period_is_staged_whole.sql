@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925150412_a_period_is_staged_whole_before_any_of_it_is_served.sql'));

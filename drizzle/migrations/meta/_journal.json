@@ -449,6 +449,69 @@
       "when": 1790357828611,
       "tag": "0063_a_posting_is_quoted_never_judged",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790449998824,
+      "tag": "0064_20260925141127_the_read_log_admits_the_quarter_load",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790450006341,
+      "tag": "0065_20260925150221_a_filed_wage_carries_the_span",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790450022037,
+      "tag": "0066_20260925150412_a_period_is_staged_whole",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790450031975,
+      "tag": "0067_20260925150733_the_period_a_figure_is_about",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790450042127,
+      "tag": "0068_20260925151044_the_load_can_be_asked",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1790450052969,
+      "tag": "0069_20260925163517_a_gate_made_of_width_alone",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1790450064063,
+      "tag": "0070_20260925163842_a_field_pooled_over_boards",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1790450073657,
+      "tag": "0071_20260925164237_the_third_day_thirty_chain",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1790450083556,
+      "tag": "0072_20260925164510_an_arm_written_before_the_control",
+      "breakpoints": true
     }
   ]
 }

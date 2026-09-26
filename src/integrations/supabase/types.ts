@@ -2230,7 +2230,9 @@ export type Database = {
           cohort_to: string | null
           computed_at: string | null
           employers_n: number | null
+          events_30: number | null
           filings_read_at: string | null
+          fills_30: number | null
           gate_share_30: number | null
           half_width_30: number | null
           insufficient_reason: string | null
@@ -2238,6 +2240,7 @@ export type Database = {
           n_at_risk_30: number | null
           newest_filing_event_date: string | null
           relist_rate_30: number | null
+          relists_30: number | null
           still_open_30: number | null
           still_open_30_hi: number | null
           still_open_30_lo: number | null
@@ -2253,7 +2256,9 @@ export type Database = {
           cohort_to?: string | null
           computed_at?: string | null
           employers_n?: number | null
+          events_30?: number | null
           filings_read_at?: string | null
+          fills_30?: number | null
           gate_share_30?: number | null
           half_width_30?: number | null
           insufficient_reason?: string | null
@@ -2261,6 +2266,7 @@ export type Database = {
           n_at_risk_30?: number | null
           newest_filing_event_date?: string | null
           relist_rate_30?: number | null
+          relists_30?: number | null
           still_open_30?: number | null
           still_open_30_hi?: number | null
           still_open_30_lo?: number | null
@@ -2276,7 +2282,9 @@ export type Database = {
           cohort_to?: string | null
           computed_at?: string | null
           employers_n?: number | null
+          events_30?: number | null
           filings_read_at?: string | null
+          fills_30?: number | null
           gate_share_30?: number | null
           half_width_30?: number | null
           insufficient_reason?: string | null
@@ -2284,6 +2292,7 @@ export type Database = {
           n_at_risk_30?: number | null
           newest_filing_event_date?: string | null
           relist_rate_30?: number | null
+          relists_30?: number | null
           still_open_30?: number | null
           still_open_30_hi?: number | null
           still_open_30_lo?: number | null
@@ -3080,6 +3089,8 @@ export type Database = {
       oflc_lca_wages: {
         Row: {
           company_token: string
+          coverage_from: string | null
+          coverage_to: string | null
           filings_n: number
           fiscal_quarter: string
           loaded_at: string
@@ -3095,6 +3106,8 @@ export type Database = {
         }
         Insert: {
           company_token: string
+          coverage_from?: string | null
+          coverage_to?: string | null
           filings_n: number
           fiscal_quarter: string
           loaded_at?: string
@@ -3110,6 +3123,8 @@ export type Database = {
         }
         Update: {
           company_token?: string
+          coverage_from?: string | null
+          coverage_to?: string | null
           filings_n?: number
           fiscal_quarter?: string
           loaded_at?: string
@@ -3118,6 +3133,63 @@ export type Database = {
           soc_title?: string | null
           source_file?: string
           source_url?: string
+          wage_high_annual?: number
+          wage_low_annual?: number
+          wage_median_annual?: number
+          worksite_state?: string
+        }
+        Relationships: []
+      }
+      oflc_lca_wages_stage: {
+        Row: {
+          company_token: string
+          coverage_from: string | null
+          coverage_to: string | null
+          filings_n: number
+          fiscal_quarter: string
+          published_on: string
+          run_started_at: string
+          soc_code: string
+          soc_title: string | null
+          source_file: string
+          source_url: string
+          staged_at: string
+          wage_high_annual: number
+          wage_low_annual: number
+          wage_median_annual: number
+          worksite_state: string
+        }
+        Insert: {
+          company_token: string
+          coverage_from?: string | null
+          coverage_to?: string | null
+          filings_n: number
+          fiscal_quarter: string
+          published_on: string
+          run_started_at: string
+          soc_code: string
+          soc_title?: string | null
+          source_file: string
+          source_url: string
+          staged_at?: string
+          wage_high_annual: number
+          wage_low_annual: number
+          wage_median_annual: number
+          worksite_state: string
+        }
+        Update: {
+          company_token?: string
+          coverage_from?: string | null
+          coverage_to?: string | null
+          filings_n?: number
+          fiscal_quarter?: string
+          published_on?: string
+          run_started_at?: string
+          soc_code?: string
+          soc_title?: string | null
+          source_file?: string
+          source_url?: string
+          staged_at?: string
           wage_high_annual?: number
           wage_low_annual?: number
           wage_median_annual?: number
@@ -4830,10 +4902,9 @@ export type Database = {
           median_days_to_fill: number
           n_at_risk_14: number
           n_at_risk_30: number
-          top_board_share_30: number
           relist_rate_14: number
-          relists_30: number
           relist_rate_30: number
+          relists_30: number
           still_open_14: number
           still_open_30: number
           still_open_30_hi: number
@@ -4842,6 +4913,7 @@ export type Database = {
           sufficient_30: boolean
           sum_check_30: number
           taken_down_30: number
+          top_board_share_30: number
           window_days: number
         }[]
       }
@@ -4909,8 +4981,8 @@ export type Database = {
           fill_rate_30: number
           fill_rate_7: number
           fill_through: number
-          fills_90d: number
           fills_30: number
+          fills_90d: number
           fills_le_14: number
           median_censored: boolean
           median_days_to_fill: number
@@ -4919,8 +4991,8 @@ export type Database = {
           observability_bucket: string
           open_roles: number
           relist_rate_14: number
-          relists_30: number
           relist_rate_30: number
+          relists_30: number
           relists_90d: number
           still_open_14: number
           still_open_30: number
@@ -5114,6 +5186,8 @@ export type Database = {
         }
         Returns: {
           ow_company_token: string
+          ow_coverage_from: string
+          ow_coverage_to: string
           ow_employer_cells_n: number
           ow_employer_filings_n: number
           ow_filings_n: number
@@ -5326,7 +5400,9 @@ export type Database = {
           lp_cohort_to: string
           lp_computed_at: string
           lp_employers_n: number
+          lp_events_30: number
           lp_filings_read_at: string
+          lp_fills_30: number
           lp_gate_share_30: number
           lp_half_width_30: number
           lp_max_employer_share: number
@@ -5337,8 +5413,6 @@ export type Database = {
           lp_min_events: number
           lp_min_fills: number
           lp_min_n: number
-          lp_events_30: number
-          lp_fills_30: number
           lp_n_at_risk_30: number
           lp_newest_filing_event_date: string
           lp_reason: string
@@ -5354,6 +5428,24 @@ export type Database = {
           lp_taken_down_30: number
           lp_warn_lag_n: number
           lp_warn_lag_p50_days: number
+        }[]
+      }
+      get_lca_load_state: {
+        Args: never
+        Returns: {
+          ls_cells: number
+          ls_coverage_from: string
+          ls_coverage_to: string
+          ls_filings: number
+          ls_fiscal_quarter: string
+          ls_loaded_at: string
+          ls_max_spread: number
+          ls_periods: number
+          ls_published_on: string
+          ls_source_file: string
+          ls_tokens: number
+          ls_wage_high: number
+          ls_wage_low: number
         }[]
       }
       get_newest_companies: {

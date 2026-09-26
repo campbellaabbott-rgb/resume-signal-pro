@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql'));

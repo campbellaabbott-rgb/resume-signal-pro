@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925151044_the_load_can_be_asked_whether_it_finished.sql'));
