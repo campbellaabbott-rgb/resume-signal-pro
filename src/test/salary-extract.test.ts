@@ -180,3 +180,97 @@ describe("an entity-encoded dash is still a pay range", () => {
     expect(parseSalaryStructured("$115,000 &mdash; $125,000", "US")?.annualMin).toBe(115000);
   });
 });
+
+describe("a three-decimal rate is not a thousands group", () => {
+  // Saskatchewan Health Authority publishes union pay bands as HOURLY rates
+  // carried to three decimals. Its own requisition fields say it —
+  // `"RequisitionType": "Hourly"` beside `"Salary or Pay Band: Pay Band 12
+  // $23.170 to $24.840 (3 step range)"` (tenant CX API, 2026-09-26) — and
+  // P_MONEY's thousands alternative read "$38.580" as 38,580, so a $38.58/hour
+  // RN band was served as a $38,580 ANNUAL salary: under Saskatchewan's
+  // minimum wage for full-time work, and ~48% of the real ~$80,246.
+  //
+  // Measured live 2026-09-26 over 176,575 rows: 1,404 affected rows on FIVE boards
+  // and two vendors (oracle HealthCareersInSask.ca 1,294, oracle DPS 96,
+  // workday Scarborough Health Network 11, workday Richmond University Medical
+  // Center 2, oracle Northwell 1). Every salary floor, ceiling and the pay sort
+  // compare against salary_rank_usd, generated from salary_min_annual, so all
+  // of them filtered and sorted at roughly half their true pay.
+  it("reads the live Saskatchewan band as an hourly rate", () => {
+    const p = parseSalaryStructured("$38.580 to $50.070", "CA");
+    expect(p?.min).toBe(38.58);
+    expect(p?.max).toBe(50.07);
+    expect(p?.currency).toBe("CAD");
+    expect(p?.annualMultiplier, "annualized as an hourly rate, not taken as annual").toBe(2080);
+    expect(p?.annualMin).toBe(Math.round(38.58 * 2080)); // 80,246
+    expect(p?.annualMax).toBe(Math.round(50.07 * 2080));
+  });
+
+  it("fixes the other measured rows on the same board", () => {
+    expect(parseSalaryStructured("$36.160 to $38.720", "CA")?.annualMin).toBe(Math.round(36.16 * 2080));
+    expect(parseSalaryStructured("$33.440 to $35.830", "CA")?.annualMin).toBe(Math.round(33.44 * 2080));
+    // the rows that stored NULL because 23,170 clears neither the 20k
+    // unlabeled-annual floor nor the <200 hourly window
+    expect(parseSalaryStructured("$23.170 to $24.840", "CA")?.annualMin).toBe(Math.round(23.17 * 2080));
+    // the other four boards
+    expect(parseSalaryStructured("$23.178 to $27.698", "US")?.annualMin).toBe(Math.round(23.178 * 2080));
+    expect(parseSalaryStructured("$46.762 - $54.209", "CA")?.annualMin).toBe(Math.round(46.762 * 2080));
+    expect(parseSalaryStructured("$25.835-$27.162", "US")?.annualMin).toBe(Math.round(25.835 * 2080));
+    expect(parseSalaryStructured("$54.051 - $93.846", "US")?.annualMin).toBe(Math.round(54.051 * 2080));
+  });
+
+  it("KEEPS the European thousands reading — the separator alone decides nothing", () => {
+    // parseMoney's documented behaviour ("50.000" = 50000) must survive. These
+    // are real measured rows in the same band; 285 EUR rows matched the shape
+    // and every one of them is a genuine annual salary.
+    expect(parseSalaryStructured("€ 45.000 - €65.000", "IT")?.annualMin).toBe(45000);
+    expect(parseSalaryStructured("€68.000 - €87.000", "IT")?.annualMin).toBe(68000);
+    expect(parseSalaryStructured("€32.232 to € 34.000", "IT")?.annualMin).toBe(32232);
+    expect(parseSalaryStructured("€54.000 to €60.000", "NL")?.annualMin).toBe(54000);
+    expect(parseSalaryStructured("€50.000 – €65.000 annually")?.annualMin).toBe(50000);
+    // a continental-formatted GBP row: the comma-decimal tail settles it
+    expect(parseSalaryStructured("£28.766,77 per year", "GB")?.annualMin).toBe(28767);
+  });
+
+  it("leaves a dot-as-thousands TYPO in a dot-decimal locale alone", () => {
+    // A round annual figure is the signature of the typo, and all of these are
+    // genuinely annual. Reading them as rates would inflate them 2080x.
+    expect(parseSalaryStructured("$110.400 TO $184.000", "US")?.annualMin).toBe(110400);
+    expect(parseSalaryStructured("$50.000-$100.000", "US")?.annualMin).toBe(50000);
+    expect(parseSalaryStructured("$103.600-$145.000", "CA")?.annualMin).toBe(103600);
+    expect(parseSalaryStructured("$65.000 to $85.000", "US")?.annualMin).toBe(65000);
+    expect(parseSalaryStructured("$110.000 - $117.000", "US")?.annualMin).toBe(110000);
+  });
+
+  it("a comma elsewhere in the string proves the dot is a thousands separator", () => {
+    // "$85,000-$105.000" (lever/Sait) and "$66,788 - $92.788" (paylocity) are
+    // annual ranges whose second figure is mistyped — reading it as $105.00 an
+    // hour would both invent a rate and break the range.
+    const p = parseSalaryStructured("$85,000-$105.000", "CA");
+    expect(p?.annualMin).toBe(85000);
+    expect(p?.annualMax).toBe(105000);
+    expect(parseSalaryStructured("$66,788 - $92.788", "US")?.annualMin).toBe(66788);
+    expect(parseSalaryStructured("$100,000-$140.000", "US")?.annualMin).toBe(100000);
+  });
+
+  it("takes the employer's word when they state an annual basis", () => {
+    // bamboohr/BibliU: both figures are bare dot-3 and the locale is USD, but
+    // "per annum" is the employer naming the period.
+    expect(parseSalaryStructured("$30.000 - $35.000 per annum", "US")?.annualMin).toBe(30000);
+    // a stated "per hour" CONFIRMS the rate reading — and without the re-read
+    // 23,170 fails the $500/hour sanity ceiling and annualizes to nothing
+    expect(parseSalaryStructured("$23.170 per hour", "CA")?.annualMin).toBe(Math.round(23.17 * 2080));
+  });
+
+  it("refuses the re-read when nothing narrows it", () => {
+    // no locale stated at all -> keep today's thousands reading
+    expect(parseSalaryStructured("38.580 to 50.070")?.annualMin).toBe(38580);
+    // decimal reading outside the hourly window -> the thousands reading is
+    // kept rather than dropping a value
+    expect(parseSalaryStructured("$250.750 - $300.500", "US")?.annualMin).toBe(250750);
+    // the part-time guard still governs the rate it now reads correctly
+    expect(
+      parseSalaryStructured("$38.580 to $50.070", "CA", { title: "Registered Nurse - Part Time" })?.annualMin,
+    ).toBeNull();
+  });
+});

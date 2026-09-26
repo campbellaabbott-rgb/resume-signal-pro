@@ -162,6 +162,113 @@ const P_YEAR = /per[\s-]?(?:year|annum)|\/\s?yr\b|\/\s?year|annual|yearly|year-?
 // was served as salaryMinAnnual 332,800 (live, 2026-08-25).
 const P_DAY = /per[\s-]?day|\/\s?day\b|\bdaily\b|day-?rate|day-?wage|\ba\s+day\b|\bdiem\s+rate\b/i;
 
+// ── a three-decimal rate is not a thousands group ───────────────────────────
+// `\d{1,3}\.\d{3}` is genuinely ambiguous and P_MONEY reads it as THOUSANDS:
+// "€45.000" is 45,000 in Italian/German/Dutch grouping, and parseMoney's own
+// comment above keeps that reading on purpose. But the identical shape is also
+// how some employers write an HOURLY rate carried to three decimals, and there
+// the thousands reading halves the job's pay.
+//
+// Saskatchewan Health Authority's requisitions say it in their own fields:
+// `"RequisitionType": "Hourly"` beside `"Salary or Pay Band: Pay Band 12
+// $23.170 to $24.840 (3 step range)"` (fetched from the tenant's CX API,
+// 2026-09-26). Canadian public-sector wage grids publish steps to three
+// decimals, so a $23.17/hour band was stored as a $23,170 ANNUAL salary —
+// under Saskatchewan's minimum wage, and ~29% of the real figure. Every salary
+// floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual,
+// so these rows filtered and sorted at roughly half their true pay.
+//
+// MEASURED LIVE 2026-09-26 over 176,575 rows read with the anon key: 144,989
+// in the 12k-120k band where a misread rate necessarily lands (complete band
+// coverage for all 20 vendors) and 31,586 in the 120k-2M band, where nothing
+// qualifies. 1,404 affected rows on FIVE boards and two vendors — oracle
+// HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health
+// Network 11, workday Richmond University Medical Center 2, oracle Northwell 1
+// (each board then swept in full, unbanded, for its exact footprint). 1,323
+// carry a wrong stored annual; the other 81 are rates under $20.000 that
+// stored NULL because they cleared neither the 20k unlabeled-annual floor nor
+// the <200 hourly window. The convention is NOT one board's and NOT one
+// vendor's, which is why this is conditioned on the locale and not on a token.
+//
+// The re-read fires only when the decimal reading is the ONLY plausible one.
+// Every condition below is here because a real measured row needs it:
+//
+//   * No comma-grouped thousands anywhere. "$85,000-$105.000" (lever/Sait) and
+//     "$66,788 - $92.788" (paylocity/Greater Nashua) are annual ranges whose
+//     second figure is a typo — the comma proves "," is this string's thousands
+//     separator, so its dot-3 group is the same scale, not a rate. 45 rows.
+//   * No stated annual or monthly period. "$30.000 - $35.000 per annum"
+//     (bamboohr/BibliU) is the employer naming the basis; take their word. A
+//     stated "per hour" is welcome — it CONFIRMS the rate reading, and those
+//     rows currently annualize to nothing because 23,170 fails the $500/hour
+//     sanity ceiling.
+//   * Every money figure in the string is one of these groups, so a mixed
+//     string is never half-reinterpreted.
+//   * No group is round to the hundred. This is the line between the two
+//     conventions and the one that matters most: a dot-as-thousands TYPO writes
+//     a ROUND annual figure — "$110.400 TO $184.000" (workday/Diageo),
+//     "$50.000-$100.000" (icims/84 Lumber), "$103.600-$145.000"
+//     (workday/Organon), "$65.000 to $85.000" (oracle/WM) — while a real
+//     three-decimal rate does not land on .x00 for every figure at once:
+//     .170 .840 .580 .070 .178 .698 .762 .209 .051 .846. Without this test the
+//     re-read fired on 240 measured rows it had no business touching, turning
+//     genuine annual ranges into hourly ones at 2080x.
+//   * The posting's locale writes "." as its DECIMAL separator — the stated
+//     currency when there is one, else the country. This is the narrowing the
+//     separator alone cannot give, and it is what protects parseMoney's
+//     European reading: "€ 45.000 - €65.000" (smartrecruiters/Bosch, Italy) is
+//     45,000 EUR a year and stays that way, along with the other 284 EUR rows
+//     measured in the same band. EUR is treated as comma-decimal even though
+//     Ireland writes dot-decimal: that keeps today's behaviour for IE rather
+//     than trading one locale's correctness for another's.
+//   * Each figure lands in [7, 200) read as a decimal — the same window the
+//     unlabeled-hourly inference below uses. So the re-read only happens when
+//     it will actually produce an hourly annualization, and never drops a value
+//     the thousands reading would have kept.
+//
+// It rewrites `min`/`max` ONLY. Annualization is then the existing audited
+// path — the stated-period branch or the unlabeled-hourly inference — so the
+// part-time guard still applies, `annualMin` stays Math.round(min * mult), and
+// the rate the board displays reconciles with the annual figure beside it.
+const DOT3 = /(?<![\d.,])(\d{1,3})\.(\d{3})(?![\d.,])/g;
+const COMMA_THOUSANDS = /(?<![\d.,])\d{1,3},\d{3}(?![\d])/;
+// Deliberately NOT P_YEAR: that pattern also matches "annual" inside prose the
+// miner may have captured, but more to the point a stated year or month is the
+// only period whose thousands reading is plausible. hour/week/day are not
+// excluded — see the second bullet above.
+const P_YEAR_OR_MONTH = /per[\s-]?(?:year|annum|month)|\/\s?(?:yr|year|mo|month)\b|annual|yearly|monthly|year-?salary|\ba\s+(?:year|month)\b/i;
+// Locales writing "." as the decimal separator, limited to what detectCurrency
+// can actually return (P_ISO's set plus its symbol mappings) so there is no
+// unreachable member. Everything else — EUR, BRL, CHF, SEK, DKK, NOK, PLN —
+// keeps the thousands reading.
+const DOT_DECIMAL_CURRENCIES = new Set(["USD", "CAD", "GBP", "AUD", "NZD", "SGD", "HKD", "INR", "PHP", "MXN", "JPY"]);
+const DOT_DECIMAL_COUNTRIES = new Set(["US", "CA", "GB", "AU", "NZ", "IE", "SG", "HK", "IN", "PH", "MX", "JP", "MY", "TH", "KR", "IL", "CN"]);
+
+/**
+ * Should `\d{1,3}\.\d{3}` figures in this string be read as DECIMAL rates
+ * rather than thousands groups? Exported so the rule can be tested and audited
+ * against real stored strings directly, the same reason detectPartTime is.
+ */
+export function readsDotThreeAsRate(
+  s: string,
+  currency: string | null,
+  country?: string | null,
+): boolean {
+  const groups = [...s.matchAll(DOT3)];
+  if (!groups.length) return false;
+  if (COMMA_THOUSANDS.test(s)) return false;
+  if (P_YEAR_OR_MONTH.test(s)) return false;
+  const figures = [...s.matchAll(new RegExp(P_MONEY.source, "g"))];
+  if (figures.length !== groups.length) return false;
+  if (figures.some((f) => f[2])) return false; // a k suffix means thousands outright
+  if (groups.every((g) => Number(g[2]) % 100 === 0)) return false;
+  if (!groups.every((g) => { const v = Number(`${g[1]}.${g[2]}`); return v >= 7 && v < 200; })) return false;
+  const cur = String(currency ?? "").toUpperCase();
+  if (cur) return DOT_DECIMAL_CURRENCIES.has(cur);
+  const cty = String(country ?? "").toUpperCase();
+  return cty ? DOT_DECIMAL_COUNTRIES.has(cty) : false;
+}
+
 // Annualization factors. hour=2080 is 40h x 52w; day=260 is 5d x 52w, chosen
 // so the family stays internally CONSISTENT — 2080 / 260 = 8, i.e. a posting
 // quoting "$20/hour" and one quoting "$160/day" for the same 8-hour day
@@ -334,7 +441,20 @@ export function parseSalaryStructured(
 ): ParsedSalary | null {
   if (!text) return null;
   const s = decodeLegacyEntities(String(text).slice(0, 300));
+  // Currency is derived BEFORE the figures because the three-decimal rate rule
+  // needs it: whether "23.170" is 23,170 or $23.17 is a question about the
+  // posting's locale, not about the digits.
+  const currency = detectCurrency(s, country);
+  const dotThreeIsRate = readsDotThreeAsRate(s, currency, country);
   const num = (raw: string, k?: string): number | null => {
+    // "$23.170" in a dot-decimal locale that states no annual basis is $23.17,
+    // not $23,170 — see readsDotThreeAsRate for every condition that had to
+    // hold before we read it this way.
+    if (dotThreeIsRate && /^\d{1,3}\.\d{3}$/.test(raw)) {
+      const rate = Number(raw);
+      if (!Number.isFinite(rate)) return null;
+      return k ? rate * 1000 : rate;
+    }
     const m = raw.match(/^(\d{1,3}(?:[.,]\d{3})*)(?:[.,](\d{1,2}))?$/);
     const base = m ? Number(m[1].replace(/[.,]/g, "") + (m[2] ? `.${m[2]}` : "")) : Number(raw.replace(/,/g, ""));
     if (!Number.isFinite(base)) return null;
@@ -359,7 +479,6 @@ export function parseSalaryStructured(
   }
   if (min === null || min <= 0) return null;
 
-  const currency = detectCurrency(s, country);
   const MULT = PERIOD_MULTIPLIER;
   // `mult` and `annualMin` move together and are never assigned apart, so the
   // returned annualMin cannot drift from the multiplier that produced it.
