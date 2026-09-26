@@ -4880,10 +4880,13 @@ export type Database = {
           category: string
           cohort_from: string
           cohort_to: string
+          dated_cohort_n_30: number
           dated_coverage: number
+          events_30: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
+          fills_30: number
           fills_le_14: number
           gate_share_30: number
           median_censored: boolean
@@ -4892,6 +4895,7 @@ export type Database = {
           n_at_risk_30: number
           relist_rate_14: number
           relist_rate_30: number
+          relists_30: number
           still_open_14: number
           still_open_30: number
           still_open_30_hi: number
@@ -4900,6 +4904,7 @@ export type Database = {
           sufficient_30: boolean
           sum_check_30: number
           taken_down_30: number
+          top_board_share_30: number
           window_days: number
         }[]
       }
