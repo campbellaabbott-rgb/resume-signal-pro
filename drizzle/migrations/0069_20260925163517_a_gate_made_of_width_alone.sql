@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql'));

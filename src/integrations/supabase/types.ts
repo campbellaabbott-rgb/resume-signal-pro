@@ -4960,12 +4960,14 @@ export type Database = {
           company_token: string
           dated_coverage: number
           dated_n: number
+          events_30: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
           fill_rate_30: number
           fill_rate_7: number
           fill_through: number
+          fills_30: number
           fills_90d: number
           fills_le_14: number
           median_censored: boolean
@@ -4976,6 +4978,7 @@ export type Database = {
           open_roles: number
           relist_rate_14: number
           relist_rate_30: number
+          relists_30: number
           relists_90d: number
           still_open_14: number
           still_open_30: number

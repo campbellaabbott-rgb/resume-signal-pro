@@ -484,6 +484,13 @@
       "when": 1790450042127,
       "tag": "0068_20260925151044_the_load_can_be_asked",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1790450052969,
+      "tag": "0069_20260925163517_a_gate_made_of_width_alone",
+      "breakpoints": true
     }
   ]
 }
