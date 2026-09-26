@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925150733_the_period_a_figure_is_about_is_two_dates.sql'));

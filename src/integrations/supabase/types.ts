@@ -5169,6 +5169,8 @@ export type Database = {
         }
         Returns: {
           ow_company_token: string
+          ow_coverage_from: string
+          ow_coverage_to: string
           ow_employer_cells_n: number
           ow_employer_filings_n: number
           ow_filings_n: number
