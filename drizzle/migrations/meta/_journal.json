@@ -505,6 +505,13 @@
       "when": 1790450073657,
       "tag": "0071_20260925164237_the_third_day_thirty_chain",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1790450083556,
+      "tag": "0072_20260925164510_an_arm_written_before_the_control",
+      "breakpoints": true
     }
   ]
 }

@@ -5400,18 +5400,24 @@ export type Database = {
           lp_cohort_to: string
           lp_computed_at: string
           lp_employers_n: number
+          lp_events_30: number
           lp_filings_read_at: string
+          lp_fills_30: number
           lp_gate_share_30: number
           lp_half_width_30: number
           lp_max_employer_share: number
           lp_max_employer_share_cap: number
           lp_max_half_width: number
+          lp_max_rel_half_width: number
           lp_min_employers: number
+          lp_min_events: number
+          lp_min_fills: number
           lp_min_n: number
           lp_n_at_risk_30: number
           lp_newest_filing_event_date: string
           lp_reason: string
           lp_relist_rate_30: number
+          lp_relists_30: number
           lp_separated: boolean
           lp_stale_hours: number
           lp_still_open_30: number
