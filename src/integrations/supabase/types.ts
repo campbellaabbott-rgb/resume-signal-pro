@@ -4817,17 +4817,22 @@ export type Database = {
           category: string
           cohort_from: string
           cohort_to: string
+          dated_cohort_n_30: number
           dated_coverage: number
+          events_30: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
+          fills_30: number
           fills_le_14: number
           gate_share_30: number
           median_censored: boolean
           median_days_to_fill: number
           n_at_risk_14: number
           n_at_risk_30: number
+          top_board_share_30: number
           relist_rate_14: number
+          relists_30: number
           relist_rate_30: number
           still_open_14: number
           still_open_30: number
@@ -4897,6 +4902,7 @@ export type Database = {
           company_token: string
           dated_coverage: number
           dated_n: number
+          events_30: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
@@ -4904,6 +4910,7 @@ export type Database = {
           fill_rate_7: number
           fill_through: number
           fills_90d: number
+          fills_30: number
           fills_le_14: number
           median_censored: boolean
           median_days_to_fill: number
@@ -4912,6 +4919,7 @@ export type Database = {
           observability_bucket: string
           open_roles: number
           relist_rate_14: number
+          relists_30: number
           relist_rate_30: number
           relists_90d: number
           still_open_14: number
@@ -5324,12 +5332,18 @@ export type Database = {
           lp_max_employer_share: number
           lp_max_employer_share_cap: number
           lp_max_half_width: number
+          lp_max_rel_half_width: number
           lp_min_employers: number
+          lp_min_events: number
+          lp_min_fills: number
           lp_min_n: number
+          lp_events_30: number
+          lp_fills_30: number
           lp_n_at_risk_30: number
           lp_newest_filing_event_date: string
           lp_reason: string
           lp_relist_rate_30: number
+          lp_relists_30: number
           lp_separated: boolean
           lp_stale_hours: number
           lp_still_open_30: number

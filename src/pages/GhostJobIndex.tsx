@@ -221,18 +221,91 @@ interface FillCurveRow {
   /** The cohort's edges as the RPC computed them, ISO dates. Printed from the row, never typed. */
   cohort_from?: string | null;
   cohort_to?: string | null;
-  /** n_at_risk_30 >= 25 AND half-width <= 0.15 AND R + X + S = 1 within 1e-6, over admitted boards. */
+  /** n_at_risk_30 >= 25 AND half-width <= 0.15 AND R + X + S = 1 within 1e-6
+   *  AND events_30 >= the floor below, over admitted boards. */
   sufficient_30?: boolean | null;
+  /** THE POSITIVE CONTROL, PUBLISHED. Fills plus re-listings observed INSIDE
+   *  the day-30 cohort at days at or before the cap — the events that move S.
+   *  Our own sweep's takedowns at the cap are not in it; they are
+   *  ageouts_at_30. A response that does not carry this column came from a
+   *  function whose day-30 test had no positive control, and its share is
+   *  withheld rather than reprinted — see day30Verdict. */
+  events_30?: number | string | null;
+  /** THE COUNT SPLIT, because the two license different clauses. taken_down_30
+   *  is a FILL rate and relist_rate_30 a RELIST rate, both published under the
+   *  same boolean as S(30) — so a cohort whose only events are relists prints
+   *  "at most 0% had been taken down for good" as a measured figure while
+   *  nothing was ever seen to come down. The day-14 gate refuses that shape
+   *  with a floor on fills alone and a ceiling on relists against fills; the
+   *  day-30 gate now does too, and these are the counts it reads. */
+  fills_30?: number | string | null;
+  relists_30?: number | string | null;
+  /** THE RESIDUAL THE POOLED FIGURE CARRIES, disclosed rather than gated: the
+   *  share of the field's ADMITTED dated day-30 cohort held by its single
+   *  largest board. S(30) is a mass-weighted average over admitted boards, so a
+   *  large board that cleared the events floor on a handful of events of its
+   *  own still carries its whole censored mass in. A field this reads near one
+   *  is one board's answer wearing a field's name. */
+  top_board_share_30?: number | string | null;
+  /** gate_share_30's own denominator — the field's whole dated day-30 cohort
+   *  before either gate. It is what lets a NULL reading say WHICH absence it
+   *  is: nothing reached the cap, or things reached it and none of them was on
+   *  a board that cleared both tests. */
+  dated_cohort_n_30?: number | string | null;
 }
+/** THE DAY-30 GATE, RE-APPLIED HERE RATHER THAN TRUSTED. Every one of these is
+ *  a term of the server's own sufficient_30, and each is checked again on the
+ *  row's published columns before a percentage reaches the screen. The reason
+ *  is not distrust of the SQL: this deployment's migrations are applied by a
+ *  staged runner that has been observed editing and renaming them, so "the
+ *  function shipped" is a claim about behaviour, not about a file. If a build
+ *  ever answers sufficient_30 = true on a cohort that produced no events, the
+ *  page refuses anyway, and the numbers below are the ones the guard holds
+ *  against the migration that defines the function the database runs. */
+export const MIN_EVENTS_30 = 5;
+/** A FLOOR ON FILLS ALONE, because two of the three shares this line publishes
+ *  are a fill rate and a relist rate. Fills and relists together are what move
+ *  S(30), which is why MIN_EVENTS_30 counts both; neither of those is what
+ *  taken_down_30 is. */
+export const MIN_FILLS_30 = 5;
+export const MIN_N_AT_RISK_30 = 25;
+export const MAX_HALF_WIDTH_30 = 0.15;
+/** THE TERM AN ABSOLUTE WIDTH CANNOT EXPRESS. Greenwood's variance on the
+ *  complementary log-log scale is about 1/D, so the interval's precision is
+ *  RELATIVE to the complement while the published half-width is absolute and
+ *  collapses toward zero as S approaches one, however few events produced it: a
+ *  20,000-role cohort with five events publishes 0.9998 with a half-width of
+ *  0.00025. So the half-width must also be no more than this share of the
+ *  complement the sentence actually asserts — at most this much came down. The
+ *  bar was calibrated on a full catalogue walk (2026-09-25T21:40Z): over the
+ *  2,659 boards then publishing a day-30 share with S below one the ratio ran
+ *  p50 0.33, p75 0.56, p90 0.92, max 3.40, and the eighteen live fields ran
+ *  0.0045 to 0.0295. */
+export const MAX_REL_HALF_WIDTH_30 = 0.5;
+export const SUM_CHECK_TOLERANCE_30 = 0.000001;
+/** The columns the day-30 gate and the day-30 sentence read, and the only
+ *  ones either is allowed to read. Named here, beside the row it is cut from,
+ *  so the guard that forbids any other part of the page touching a raw day-30
+ *  column has one place to check. */
+export type Day30Row = Pick<FillCurveRow,
+  "sufficient_30" | "still_open_30" | "still_open_30_lo" | "still_open_30_hi"
+  | "taken_down_30" | "relist_rate_30" | "n_at_risk_30" | "cohort_from" | "cohort_to" | "events_30"
+  | "fills_30" | "relists_30" | "gate_share_30" | "top_board_share_30" | "dated_cohort_n_30">;
 /** THE DAY-30 READING FOR ONE ROW, or null. This is the ONLY route by which a
- *  day-30 figure reaches the screen, and it renders on exactly one condition:
- *  the RPC's own sufficiency finding is the boolean true. An absent column
- *  (old RPC), a NULL (gate admitted nothing, or the cohort is empty), and an
- *  explicit false all come out as null here, and null draws nothing — no dash,
- *  no "n/a" — because a windowed board would read 1.0 by construction and a
- *  placeholder beside a field name reads as a finding about that field.
- *  Every number is coerced at the boundary and the cohort edges are carried
- *  through as the row states them. */
+ *  day-30 figure reaches the screen, and it renders on two conditions, not
+ *  one: the RPC's own sufficiency finding is the boolean true, AND every term
+ *  that finding is made of still holds when re-checked here on the row's
+ *  published columns — the risk-set floor, the half-width ceiling, the
+ *  identity, and, first of all, the count of events the cohort itself
+ *  produced. An absent column (old RPC), a NULL (gate admitted nothing, or
+ *  the cohort is empty), an explicit false, and a cohort that showed us
+ *  nothing all come out as null here, and null draws nothing — no dash, no
+ *  "n/a" — because a windowed board would read 1.0 by construction, an
+ *  eventless one reads 1.0 with a zero-width interval, and a placeholder
+ *  beside a field name reads as a finding about that field. Every number is
+ *  coerced at the boundary and the cohort edges are carried through as the
+ *  row states them. Why a row drew nothing is day30Verdict's answer, and the
+ *  page prints it. */
 export interface Day30Reading {
   /** S(30), R(30), X(30) and the interval, as whole percentages. */
   pct: number;
@@ -245,10 +318,34 @@ export interface Day30Reading {
   n: number;
   cohortFrom: string;
   cohortTo: string;
+  /** THE POOL THE FIGURE WAS COMPUTED ON, as whole percentages, or null where
+   *  the row did not publish them. `gateShare` is the share of the field's
+   *  dated day-30 cohort that cleared BOTH tests — the observability bucket and
+   *  the board's own events — and `topBoardShare` is how much of THAT one board
+   *  holds. Both are printed beside the figure: the sentence's basis is not
+   *  "boards we read to the end" any more, and a field that is one board is not
+   *  a field. */
+  gateShare: number | null;
+  topBoardShare: number | null;
 }
-export const day30Reading = (row: Pick<FillCurveRow,
-  "sufficient_30" | "still_open_30" | "still_open_30_lo" | "still_open_30_hi"
-  | "taken_down_30" | "relist_rate_30" | "n_at_risk_30" | "cohort_from" | "cohort_to">): Day30Reading | null => {
+/** ROUNDING THAT CANNOT OVERSTATE WHAT WE KNOW. Every percentage on this line
+ *  is a specific kind of claim, and nearest-integer rounding turns some of them
+ *  false at the edges: a share of 0.9983 printed as "100%" asserts that every
+ *  role stayed up, a complement of 0.0012 printed as "at most 0%" asserts that
+ *  none came down, and a half-width of 0.00055 printed as "±0 points" asserts
+ *  an exact measurement. So each figure rounds in the direction its own clause
+ *  can afford: a bound outward, a "±" up, and a point estimate to the nearest
+ *  point but never onto an endpoint it does not actually sit on. */
+const pctPoint = (v: number) => {
+  const c = Math.max(0, Math.min(1, v));
+  const r = Math.round(c * 100);
+  if (r === 100 && c < 1) return 99;
+  if (r === 0 && c > 0) return 1;
+  return r;
+};
+const pctFloor = (v: number) => Math.floor(Math.max(0, Math.min(1, v)) * 100);
+const pctCeil = (v: number) => Math.ceil(Math.max(0, Math.min(1, v)) * 100);
+export const day30Reading = (row: Day30Row): Day30Reading | null => {
   if (row.sufficient_30 !== true) return null;
   const s = numOr(row.still_open_30);
   const lo = numOr(row.still_open_30_lo);
@@ -257,13 +354,170 @@ export const day30Reading = (row: Pick<FillCurveRow,
   const x = numOr(row.relist_rate_30);
   const n = numOr(row.n_at_risk_30);
   if (s === null || lo === null || hi === null || r === null || x === null || n === null) return null;
+  // THE POSITIVE CONTROL AND THE THREE TERMS BESIDE IT. A row whose response
+  // carries no event count at all is refused outright: it was computed by a
+  // function whose day-30 test could pass on a cohort that produced nothing,
+  // and a share drawn from such a pool is pulled toward one in exactly the
+  // accusing direction. An explicit event count below the floor is refused
+  // for the same reason with the count in hand.
+  const ev = numOr(row.events_30);
+  if (row.events_30 === undefined || ev === null || ev < MIN_EVENTS_30) return null;
+  // THE FILL TERMS. Published beside S(30) are a fill rate and a relist rate,
+  // so a cohort with no fills of its own may not carry either, and a cohort
+  // whose relists outnumber its fills may not carry a fill CEILING we have
+  // already conceded is understated by the collector's relist dedupe. Both
+  // columns must be present: a response that answers events_30 and not these
+  // came from a function whose gate had neither term.
+  const fl = numOr(row.fills_30);
+  const rl = numOr(row.relists_30);
+  if (row.fills_30 === undefined || row.relists_30 === undefined || fl === null || rl === null) return null;
+  if (fl < MIN_FILLS_30 || rl > fl) return null;
+  if (n < MIN_N_AT_RISK_30) return null;
+  if ((hi - lo) / 2 > MAX_HALF_WIDTH_30) return null;
+  // AND THE PRECISION THE SENTENCE CLAIMS, relative to the complement it is
+  // about. An absolute half-width is blind exactly where the sentence is most
+  // damning; see MAX_REL_HALF_WIDTH_30.
+  if ((hi - lo) / 2 > MAX_REL_HALF_WIDTH_30 * (1 - s)) return null;
+  if (Math.abs(r + x + s - 1) > SUM_CHECK_TOLERANCE_30) return null;
   if (typeof row.cohort_from !== "string" || typeof row.cohort_to !== "string") return null;
   if (row.cohort_from.length === 0 || row.cohort_to.length === 0) return null;
-  const pc = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 100);
+  const gs = numOr(row.gate_share_30);
+  const tb = numOr(row.top_board_share_30);
   return {
-    pct: pc(s), lo: pc(lo), hi: pc(hi), hw: Math.round(((hi - lo) / 2) * 100),
-    r: pc(r), x: pc(x), n: Math.round(n), cohortFrom: row.cohort_from, cohortTo: row.cohort_to,
+    pct: pctPoint(s), lo: pctFloor(lo), hi: pctCeil(hi), hw: pctCeil((hi - lo) / 2),
+    r: pctCeil(r), x: pctFloor(x), n: Math.round(n), cohortFrom: row.cohort_from, cohortTo: row.cohort_to,
+    gateShare: gs === null ? null : pctPoint(gs), topBoardShare: tb === null ? null : pctPoint(tb),
   };
+};
+/** WHY A ROW DREW NOTHING, in the order the terms are checked. Each of these
+ *  is a sentence the page is willing to print beside the field's name, and
+ *  each states an absence as an absence: "we saw nothing happen" is never
+ *  rounded to "nothing happened", and a withheld share is never rendered as a
+ *  zero, a dash or an "n/a". The order is deliberate — the most fundamental
+ *  failure wins, so a field with no observed events is reported as having
+ *  shown us nothing rather than as having too wide an interval, which is the
+ *  same statement wearing a statistician's clothes. */
+export const DAY30_WITHHELD_REASONS = [
+  "uncontrolled", "unread", "ungated", "noEvents", "fewEvents", "noFills", "relists",
+  "fewRoles", "width", "precision", "arithmetic", "undated", "declined",
+] as const;
+export type Day30WithheldReason = (typeof DAY30_WITHHELD_REASONS)[number];
+export type Day30Verdict =
+  | { state: "published"; reading: Day30Reading }
+  | { state: "withheld"; reason: Day30WithheldReason };
+/** THE THREE STATES, the pattern /jobs already applies to "actively hiring":
+ *  published, withheld with its reason named, and — at the page level, not
+ *  here — unmeasured, when the response carried no day-30 gate on any row and
+ *  the whole surface stays silent. A verdict is `published` only when
+ *  day30Reading returns a reading for the same row, so the sentence the page
+ *  draws and the reason it would otherwise give cannot come apart. */
+export const day30Verdict = (row: Day30Row): Day30Verdict => {
+  const withheld = (reason: Day30WithheldReason): Day30Verdict => ({ state: "withheld", reason });
+  // No published event count means the answer predates the positive control.
+  // This is the one term that is about the FUNCTION rather than the field,
+  // and it is checked first because nothing below it can be believed without
+  // it: on a response of that shape, every other term passes vacuously.
+  if (row.events_30 === undefined) return withheld("uncontrolled");
+  const s = numOr(row.still_open_30);
+  const lo = numOr(row.still_open_30_lo);
+  const hi = numOr(row.still_open_30_hi);
+  const r = numOr(row.taken_down_30);
+  const x = numOr(row.relist_rate_30);
+  const n = numOr(row.n_at_risk_30);
+  const ev = numOr(row.events_30);
+  // The gate admitted nothing: on a board we can only read part of, a takedown
+  // is invisible and every posting would seem to have stayed up, so the RPC
+  // returns NULL rather than 1.0 and there is nothing to report.
+  if (s === null || lo === null || hi === null || r === null || x === null || n === null || ev === null) {
+    // WHICH ABSENCE IT IS, from the row's own denominator. NULL day-30 columns
+    // have two causes and they are different sentences: nothing of this field
+    // reached the cap in this cohort at all, or things did reach it and none of
+    // them sat on a board that cleared both tests. The gate share's denominator
+    // is published precisely so the page does not have to guess, and the older
+    // copy asserted the first for both — which was false about a field where a
+    // board we read to the end had dated roles reach the cap and simply showed
+    // us no events of its own.
+    const dn = numOr(row.dated_cohort_n_30);
+    return withheld(dn !== null && dn > 0 ? "ungated" : "unread");
+  }
+  if (ev === 0) return withheld("noEvents");
+  if (ev < MIN_EVENTS_30) return withheld("fewEvents");
+  const fl = numOr(row.fills_30);
+  const rl = numOr(row.relists_30);
+  // A response carrying events_30 but neither fill count came from a function
+  // whose gate had no fill term; that is the same class of answer as one with
+  // no event count, so it is refused under the same reason.
+  if (row.fills_30 === undefined || row.relists_30 === undefined || fl === null || rl === null) {
+    return withheld("uncontrolled");
+  }
+  if (fl < MIN_FILLS_30) return withheld("noFills");
+  if (rl > fl) return withheld("relists");
+  if (n < MIN_N_AT_RISK_30) return withheld("fewRoles");
+  if ((hi - lo) / 2 > MAX_HALF_WIDTH_30) return withheld("width");
+  if ((hi - lo) / 2 > MAX_REL_HALF_WIDTH_30 * (1 - s)) return withheld("precision");
+  if (Math.abs(r + x + s - 1) > SUM_CHECK_TOLERANCE_30) return withheld("arithmetic");
+  const reading = day30Reading(row);
+  if (reading) return { state: "published", reading };
+  // TWO DIFFERENT REFUSALS, NOT ONE. Reaching here means every term this page
+  // can check has passed. If the server also said the reading was sufficient,
+  // the only thing day30Reading can still be refusing is the cohort's own
+  // dates, which the sentence prints — that is not the server declining, and
+  // telling a reader the reading "did not pass its own sufficiency test" when
+  // it passed every term would be a second false statement beside the one the
+  // refusal replaced.
+  if (row.sufficient_30 === true) return withheld("undated");
+  return withheld("declined");
+};
+/** THE SENTENCE EACH REFUSAL PRINTS. The key is spelled out per reason rather
+ *  than built from the reason's name so that a reason added in code without a
+ *  translation cannot fall through to a raw key on the page, and the English
+ *  beside it is the inline default every other string on this page carries.
+ *  Every one of these states an absence in OUR record. None of them says a
+ *  field's roles stayed up, because that is the very thing we could not
+ *  measure — the sentence that would be a finding is the one we are refusing
+ *  to print. */
+export const DAY30_REASON_KEY: Record<Day30WithheldReason, string> = {
+  uncontrolled: "ghostIndex.stillUp30ReasonUncontrolled",
+  unread: "ghostIndex.stillUp30ReasonUnread2",
+  ungated: "ghostIndex.stillUp30ReasonUngated",
+  noEvents: "ghostIndex.stillUp30ReasonNoEvents",
+  fewEvents: "ghostIndex.stillUp30ReasonFewEvents",
+  noFills: "ghostIndex.stillUp30ReasonNoFills",
+  relists: "ghostIndex.stillUp30ReasonRelists",
+  fewRoles: "ghostIndex.stillUp30ReasonFewRoles2",
+  width: "ghostIndex.stillUp30ReasonWidth",
+  precision: "ghostIndex.stillUp30ReasonPrecision",
+  arithmetic: "ghostIndex.stillUp30ReasonArithmetic",
+  undated: "ghostIndex.stillUp30ReasonUndated",
+  declined: "ghostIndex.stillUp30ReasonDeclined",
+};
+export const DAY30_REASON_EN: Record<Day30WithheldReason, string> = {
+  uncontrolled:
+    "this share has not been recomputed since we found that our day-30 test could pass on roles we had never once seen come down, so the earlier figure is withheld rather than reprinted",
+  unread:
+    "no dated role of this field reached our 30-day cap in this cohort at all, on any board — there is no sample here to measure, not a sample that came out badly",
+  ungated:
+    "dated roles of this field did reach the cap in this cohort, but none of them sat on a board we could both read to the end and see produce takedowns or re-listings of its own; where a board can only be read in part a role coming down is invisible to us, and where a board's own cohort showed us nothing we cannot tell that from a board we are failing to read",
+  noEvents:
+    "not one dated role in this cohort was seen taken down or re-listed, so there is nothing for a share to be measured against — that is what our record holds, not what the field did",
+  fewEvents:
+    "fewer than {{minEvents}} dated roles in this cohort were seen taken down or re-listed, too few to stand a share on",
+  noFills:
+    "fewer than {{minFills}} dated roles in this cohort were seen taken down for good — the events here were re-listings — and two of the three shares this line publishes are a taken-down share and a re-listed share, neither of which a cohort with no fills can stand behind",
+  relists:
+    "more of this cohort's roles were seen re-listed than taken down for good, and our collector records only the first re-listing of a title per day, so the taken-down share would be a ceiling resting on the smaller half of what we saw",
+  fewRoles:
+    "fewer than {{minN}} of its dated roles reached the cap on boards that cleared both tests — read to the end, and seen to produce events of their own",
+  width:
+    "the interval around the share is wider than ±{{maxHw}} points, which is too wide to print as a figure",
+  precision:
+    "the interval around the share is more than {{maxRel}}% as wide as the share of roles it says came down, so it does not pin that share at all — an interval can be narrow in points and still say nothing, and that is exactly what happens as the share still advertised approaches everything",
+  undated:
+    "the reading passed every term, but this cohort's own start and end dates were not published with it, and this sentence has no period to name without them",
+  arithmetic:
+    "the three shares we publish together did not add up to one on this read, so at least one of them is wrong and we cannot tell which",
+  declined:
+    "the reading did not pass its own sufficiency test, and the columns it published do not say which term refused it",
 };
 /** Whether the RPC that answered carries the day-30 columns at all. The
  *  disclosure of WHICH fields lack a reading is only true once the function
@@ -562,15 +816,31 @@ export default function GhostJobIndex() {
   const shownCurve = fillCurve.filter((r) => r.sufficient
     && r.dated_coverage >= FILL_COVERAGE_QUALIFY
     && r.window_days >= FILL_RATE_MIN_TRACKING_DAYS);
-  /** The day-30 reading per LISTED row, through the one gate. A row without
-   *  one draws nothing for day 30; the fields that lack one are named once
-   *  above the table, and only when the RPC actually carried the columns. */
+  /** The day-30 verdict per LISTED row: published, or withheld with the term
+   *  that refused it named. A withheld row draws nothing on its own line —
+   *  no dash, no "n/a", no zero — and is named above the table in the group
+   *  for its reason, so a reader is told which fields have no reading AND why
+   *  each one has none. That grouping only runs when the RPC carried the
+   *  day-30 gate at all; against a response without it, the whole surface is
+   *  silent, because "we could not measure this" is itself a claim the
+   *  response has to support. */
   const { t } = useTranslation();
-  const day30Rows = shownCurve.map((r) => ({ r, d: day30Reading(r) }));
+  const day30Rows = shownCurve.map((r) => {
+    const v = day30Verdict(r);
+    return { r, v, d: v.state === "published" ? v.reading : null };
+  });
   const anyDay30 = day30Rows.some((x) => x.d !== null);
-  const day30Unread = day30ColumnPresent(fillCurve)
-    ? day30Rows.filter((x) => x.d === null).map((x) => x.r.category.replace(/_/g, " "))
+  const day30Withheld = day30ColumnPresent(fillCurve)
+    ? DAY30_WITHHELD_REASONS
+        .map((reason) => ({
+          reason,
+          fields: day30Rows
+            .filter((x) => x.v.state === "withheld" && x.v.reason === reason)
+            .map((x) => x.r.category.replace(/_/g, " ")),
+        }))
+        .filter((g) => g.fields.length > 0)
     : [];
+  const day30WithheldCount = day30Withheld.reduce((sum, g) => sum + g.fields.length, 0);
   /** The leaders this page lists. Until the guard answers, today's list in the
    *  RPC's own order; after it, only boards with a fill the guard stands behind,
    *  ORDERED BY THE SAME COUNT THAT RENDERS. Ranking on one population while
@@ -855,7 +1125,7 @@ export default function GhostJobIndex() {
         <HowWeMeasure
           items={[
             { term: "Verified open roles", method: `A live count of postings currently served from companies' official hiring systems (${servingSourceSummary()}) — never aggregators or scrapes. Postings a feed stops serving are removed after a confirmation pass.` },
-            { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age. Past the cap a posting is deleted, not watched, so nothing on this page says how long postings stay up beyond it. What can be measured is how many reach it: for each field, the share of dated roles from a stated posting window that were still advertised when they reached day 30, with its interval, and beside it the share taken down for good (a ceiling: a takedown we have not yet seen re-listed counts there) and the share re-listed (a floor). The three sum to one before each is rounded to the nearest point, so the printed figures can add to one more or less than a hundred. That line is counted only on boards we read to the end — on a board we can only read part of, a takedown is invisible and every posting would seem to reach the cap — and fields where too few roles sat on such boards are named above the table rather than given a figure. A role still advertised at day 30 is a fact about that posting, not proof of anything about the employer: a role can be genuinely open for longer than a month." },
+            { term: "30-day freshness cap", method: "Postings whose company-stated date is older than 30 days are dropped at ingestion AND filtered at read time — the board cannot serve a stale posting even mid-sweep. Undated postings can't be judged old, so they're kept and simply show no age. Past the cap a posting is deleted, not watched, so nothing on this page says how long postings stay up beyond it. What can be measured is how many reach it: for each field, the share of dated roles from a stated posting window that were still advertised when they reached day 30, with its interval, and beside it the share taken down for good (a ceiling: a takedown we have not yet seen re-listed counts there) and the share re-listed (a floor). The three sum to one before each is rounded to the nearest point, so the printed figures can add to one more or less than a hundred. The pool that line is computed over is narrower than the table above it, in two steps, and the line says how much of the field survived both. First, it is counted only on boards we read to the end — on a board we can only read part of, a takedown is invisible and every posting would seem to reach the cap. Second, and new: within each of those boards, only the boards whose OWN roles in this field we saw come down or go back up during this cohort. A cohort that showed us nothing yields a share of one by construction rather than by measurement, and a test made of sample size, interval width and an identity passes on it every time — so the field's pool now drops that board's roles entirely rather than averaging them in, which is a real shrink in coverage and is printed beside the figure as a percentage of the field's dated roles that reached the cap at all. That cut biases each field's share DOWNWARD, by at most the factor one over one minus the share removed, because the roles it removes are the ones that never produced an event. What it cannot fix is weighting: the share is an average over the roles that remain, so one very large board with only a handful of events of its own still pulls it, and where the row tells us so we print how much of the figure sits on a single company's board. Fields with no line are named above the table, each with the term that withheld it, and never with a zero. A role still advertised at day 30 is a fact about that posting, not proof of anything about the employer: a role can be genuinely open for longer than a month." },
             { term: "Median posting age", method: "Computed only from postings whose company states its own post date (the coverage share is shown next to the number). Undated postings are excluded from age stats, never estimated. We never use our own discovery time as a posting age." },
             { term: "How often roles are actually filled", method: "The share of a field's roles taken down for good — down, and not re-listed under the same title — within 14 days of the date the company itself published, never our discovery date, and never a median. Roles that come back up are counted as re-listings and shown separately; the two together are the share that left the board at all, so the fill figure is always the smaller number. We used to publish a median time to close and state its window beside it; the window was the problem. The board drops any posting older than 30 days, so a role that stays up longer leaves the board instead of being recorded as closed, and every fill surface then required a posting to have stood a week before it counted at all. A median drawn from a window of [7, 30] days lands near 15 whatever employers do — measured 2026-09-06, eighteen fields spanning nursing, law, retail and ML research agreed to within 1.4 days across roughly 600,000 closures. Roles that outlive the cap, and roles still up today, are now counted as unfinished rather than dropped from the sample, which is what that figure got wrong: dropping the slowest cases and taking a median of the rest is not censoring, it is truncation, and it biases the answer down without bound. Same-title relistings are held out as their own outcome, not counted as fills. Where fewer than half of a field's roles had been taken down for good by day 30 there is no typical figure to give and we say so instead of manufacturing one." },
             { term: "Confirmed-live accuracy", method: "Every day we draw ~100 served postings and re-check each at the company's own system. Draws are spread evenly across hiring systems rather than taken at random from the corpus, so a small vendor is checked as hard as a large one — which also means the blended figure weights systems equally, not by how many postings each contributes. Per-vendor results are published unedited alongside it, including runs that fail or miss a system. The percentage is a share of the probes that DECIDED, and the count it was computed on is printed beside it: a probe we could not reach, and a probe on a feed larger than one read of ours, both leave the denominator instead of being scored either way. That exclusion is not a rounding detail — around a tenth of our boards page short of the vendor's own advertised total, and on those a posting's absence from our read is evidence about our page cap, not about the employer. Saying 'we could not decide' is the only honest answer there, and it is why this figure is published with its own basis attached." },
@@ -1088,17 +1358,38 @@ export default function GhostJobIndex() {
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Briefcase className="w-4 h-4 text-primary" /> How often roles are actually filled, by field
             </h2>
-            {/* WHICH LISTED FIELDS HAVE NO DAY-30 LINE, said once, and only
-                when the RPC carried the columns that decide it. The count and
-                the names are the rows day30Reading returned null for: the
-                gate admitted no board we read to the end, or too few of the
-                field's roles reached the cap on the ones it did. */}
-            {day30Unread.length > 0 && (
-              <p className="text-[11px] text-muted-foreground mb-2">
-                {t("ghostIndex.stillUp30Unread",
-                  "{{n}} of the fields listed here — {{fields}} — have no reading of the share still advertised at our 30-day cap: on the boards we can read to the end, too few of their dated roles reached the cap for a share we would stand behind.",
-                  { n: day30Unread.length, fields: day30Unread.join(", ") })}
-              </p>
+            {/* WHICH LISTED FIELDS HAVE NO DAY-30 LINE, AND WHY EACH HAS NONE,
+                said once, and only when the RPC carried the gate that decides
+                it. This used to be one sentence giving one reason for every
+                withheld field — "too few of their dated roles reached the
+                cap" — which was a guess about most of them and, since the
+                positive control landed, wrong about all of them: what is
+                missing today is not roles but observed events. A refusal
+                printed under the wrong reason is a second false statement
+                beside the one it replaced, so each group now carries the term
+                that actually refused it. */}
+            {day30Withheld.length > 0 && (
+              <div className="text-[11px] text-muted-foreground mb-2">
+                <p>
+                  {t("ghostIndex.stillUp30WithheldLead",
+                    "{{n}} of the {{total}} fields listed here have no reading of the share still advertised at our 30-day cap. Each is withheld for a stated reason — an absence in our own record, never a finding about the field.",
+                    { n: day30WithheldCount, total: shownCurve.length })}
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {day30Withheld.map((g) => (
+                    <li key={g.reason}>
+                      {t("ghostIndex.stillUp30WithheldGroup", "{{fields}} — {{reason}}.", {
+                        fields: g.fields.join(", "),
+                        reason: t(DAY30_REASON_KEY[g.reason], DAY30_REASON_EN[g.reason], {
+                          minEvents: MIN_EVENTS_30, minFills: MIN_FILLS_30, minN: MIN_N_AT_RISK_30,
+                          maxHw: Math.round(MAX_HALF_WIDTH_30 * 100),
+                          maxRel: Math.round(MAX_REL_HALF_WIDTH_30 * 100),
+                        }),
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               {[...day30Rows]
@@ -1146,9 +1437,39 @@ export default function GhostJobIndex() {
                       in every western timezone. */}
                   {d && (
                     <p className="px-4 pb-2.5 pl-12 text-[11px] text-muted-foreground -mt-1">
-                      {t("ghostIndex.stillUp30Row",
-                        "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end.",
+                      {/* A NEW KEY, NOT AN EDIT TO THE OLD ONE. The basis
+                          clause is what changed, and a locale VALUE beats an
+                          inline default — editing stillUp30Row in place would
+                          leave eight languages stating a basis that is no
+                          longer the basis. It is not "boards we read to the
+                          end" any more: it is boards we read to the end WHOSE
+                          OWN COHORT PRODUCED EVENTS, which is a narrower pool,
+                          and the narrowing is precisely what moves a field off
+                          a contaminated figure. So the sentence names both
+                          terms and prints how much of the field's dated cohort
+                          survived them — and, when the row says so, how much of
+                          THAT one board holds, because a share computed almost
+                          entirely on one employer is that employer's answer
+                          wearing a field's name. */}
+                      {t("ghostIndex.stillUp30Row2",
+                        "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end whose own roles we saw come down or go back up in this cohort.",
                         { pct: d.pct, field: r.category.replace(/_/g, " "), cohortFrom: d.cohortFrom, cohortTo: d.cohortTo, n: d.n.toLocaleString(), hw: d.hw, r: d.r, x: d.x })}
+                      {d.gateShare !== null && (
+                        <>
+                          {" "}
+                          {t("ghostIndex.stillUp30Pool",
+                            "That is {{gateShare}}% of the dated roles of this field that reached the cap at all.",
+                            { gateShare: d.gateShare })}
+                        </>
+                      )}
+                      {d.topBoardShare !== null && (
+                        <>
+                          {" "}
+                          {t("ghostIndex.stillUp30TopBoard",
+                            "{{topBoardShare}}% of what it was counted on is one company's board.",
+                            { topBoardShare: d.topBoardShare })}
+                        </>
+                      )}
                     </p>
                   )}
                   </div>

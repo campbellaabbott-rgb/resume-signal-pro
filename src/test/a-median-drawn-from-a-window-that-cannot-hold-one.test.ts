@@ -503,8 +503,15 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // seven-day-floor property this block guards is unchanged; the pins
     // follow the functions so an older definition sorting last cannot leave
     // the body check above asserting dead text.
-    const COMPANY_CURVE = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
-    const CATEGORY_CURVE = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
+    // MOVED, NOT DROPPED, a fourth time: both curves were re-issued on
+    // 2026-09-25 so that sufficient_30 carries a positive control -- a floor on
+    // the day-30 cohort's OWN events, without which every term of that gate
+    // passes vacuously on a board that has never shown us a takedown. The
+    // seven-day-floor property guarded above is untouched by that change; the
+    // pins follow the functions so the body check reads the text the database
+    // runs.
+    const COMPANY_CURVE = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
+    const CATEGORY_CURVE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });

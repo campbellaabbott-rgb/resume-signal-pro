@@ -35,6 +35,16 @@
 //      25% still advertised satisfies. That sentence now names the arm it
 //      measures; published-claims.test.ts pins the wording.
 //
+//   5. THE GATE HAD NO POSITIVE CONTROL until 2026-09-25, and this file was
+//      written against the version that did not. Every fixture below that
+//      publishes now carries the cohort's own event count, because a row
+//      without one is refused outright and every listed field is named as
+//      withheld with its reason. The positive control itself, the reasons and
+//      the refusal copy are guarded by
+//      a-refused-share-must-not-reach-the-page-and-must-say-what-refused-it;
+//      what this file still owns is everything that was true before it and is
+//      still true after it.
+//
 // Guards read COMMENT-STRIPPED source. The literal trap has bitten this repo
 // five times; nothing a guard below requires is spelled inside a comment.
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -89,11 +99,24 @@ const DAY30 = {
   gate_share_30: 0.81, still_open_30: 0.41, still_open_30_lo: 0.35, still_open_30_hi: 0.47,
   taken_down_30: 0.44, relist_rate_30: 0.15, n_at_risk_30: 312, ageouts_at_30: 128,
   sum_check_30: 1, cohort_from: "2026-08-07", cohort_to: "2026-08-11",
+  // THE POSITIVE CONTROL, ADDED 2026-09-25. A publishing row now has to carry
+  // the count of events its own cohort produced; a fixture without it is the
+  // shape the old function returned and no longer publishes. The number is a
+  // shape, not a measurement -- what it has to be is at or above the floor. The
+  // fill counts are separate because taken_down_30 is a FILL rate and
+  // relist_rate_30 a RELIST rate, both issued under this one boolean: a cohort
+  // whose events are all relists may not carry either, so their sum is not
+  // enough on its own. The interval also has to clear the bar RELATIVE to the
+  // complement -- half-width 0.06 against a complement of 0.59 is 0.10 -- or
+  // this row would be refused for a reason the fixture is not about.
+  events_30: 37, fills_30: 27, relists_30: 10,
+  dated_cohort_n_30: 385, top_board_share_30: 0.22,
 };
 const NULL30 = {
   gate_share_30: null, still_open_30: null, still_open_30_lo: null, still_open_30_hi: null,
   taken_down_30: null, relist_rate_30: null, n_at_risk_30: null, ageouts_at_30: null,
-  sum_check_30: null, cohort_from: "2026-08-07", cohort_to: "2026-08-11",
+  sum_check_30: null, cohort_from: "2026-08-07", cohort_to: "2026-08-11", events_30: null,
+  fills_30: null, relists_30: null, dated_cohort_n_30: 0, top_board_share_30: null,
 };
 /** alpha publishes; beta has every number but the RPC said false (the mutant
  *  bait); gamma is the gate-admitted-nothing NULL row; delta is a row from a
@@ -138,7 +161,15 @@ describe("a role still up at the cap is a share, not a verdict — behaviour", (
     expect(text, "n and the half-width, from the row").toContain("(n=312, ±6 points)");
     expect(text, "R(30) beside it, as the ceiling it is").toContain("at most 44% had been taken down for good");
     expect(text, "X(30) is a floor").toContain("at least 15% re-listed");
-    expect(text, "the population the line was counted on").toContain("Counted only on boards we read to the end.");
+    // THE BASIS CLAUSE, BOTH TERMS. The pool is boards we read to the end AND
+    // only those whose own cohort produced events, and the sentence says so.
+    expect(text, "the population the line was counted on")
+      .toContain("Counted only on boards we read to the end whose own roles we saw come down or go back up in this cohort.");
+    // ...and how much of the field survived that pool, from the row.
+    expect(text, "the coverage of the pool the figure was computed on")
+      .toContain("That is 81% of the dated roles of this field that reached the cap at all.");
+    expect(text, "and how much of it is one board")
+      .toContain("22% of what it was counted on is one company's board.");
   });
 
   it("draws NOTHING for day 30 on a false, a NULL and an absent row — no dash, no placeholder", async () => {
@@ -152,12 +183,25 @@ describe("a role still up at the cap is a share, not a verdict — behaviour", (
     expect((text.match(/were still advertised when they reached our 30-day cap/g) ?? []).length, "exactly one row publishes").toBe(1);
   });
 
-  it("names the listed fields that lack a reading, once, above the table", async () => {
+  // ONE SENTENCE PER REASON, not one reason for every field. The sentence this
+  // replaced gave a single cause -- too few dated roles -- for every withheld
+  // field, which was a guess about most of them and wrong about all of them
+  // once the positive control landed: what is missing is observed events, not
+  // roles. delta is the row from a build with no event count at all.
+  it("names the listed fields that lack a reading, once, above the table, grouped by the term that refused each", async () => {
     mount(MIXED);
     await waitFor(() => expect(body()).toContain("alpha field"), SLOW);
     const text = body();
-    expect(text).toContain("4 of the fields listed here — beta field, gamma field, delta field, epsilon field — have no reading of the share still advertised at our 30-day cap");
+    expect(text).toContain("4 of the 5 fields listed here have no reading of the share still advertised at our 30-day cap");
     expect((text.match(/have no reading of the share still advertised/g) ?? []).length).toBe(1);
+    expect(text, "the build with no event count is named as not yet recomputed").toContain("delta field — this share has not been recomputed");
+    // gamma's day-30 columns are NULL and its own denominator is zero, so the
+    // absence is that nothing of the field reached the cap -- not that boards
+    // reached it and a gate removed them. Those are different sentences and the
+    // page prints the one the row supports.
+    expect(text, "the gate-admitted-nothing row says which absence it is")
+      .toContain("gamma field — no dated role of this field reached our 30-day cap in this cohort at all");
+    expect(text, "the two the server declined are grouped together").toContain("beta field, epsilon field — the reading did not pass its own sufficiency test");
   });
 
   it("re-captions the cap tile only once at least one field publishes the reading", async () => {
@@ -183,7 +227,9 @@ describe("a role still up at the cap is a share, not a verdict — behaviour", (
     const text = body();
     expect(text).not.toContain("still advertised when they reached our 30-day cap");
     expect(text).toContain(OLD_TILE);
-    expect(text).toContain("2 of the fields listed here — alpha field, beta field — have no reading");
+    expect(text).toContain("2 of the 2 fields listed here have no reading");
+    expect(text).toContain("alpha field — no dated role of this field reached our 30-day cap in this cohort at all");
+    expect(text).toContain("beta field — the reading did not pass its own sufficiency test");
   });
 
   it("the censored-median sentence names the arm it measures, not the share still up", async () => {
@@ -225,9 +271,18 @@ describe("a role still up at the cap is a share, not a verdict — the gate", ()
   it("coerces numeric strings at the boundary and carries the row's cohort edges through untouched", () => {
     const r = day30Reading({
       sufficient_30: true, still_open_30: "0.41", still_open_30_lo: "0.35", still_open_30_hi: "0.47",
-      taken_down_30: "0.44", relist_rate_30: "0.15", n_at_risk_30: "312", cohort_from: "2026-08-07", cohort_to: "2026-08-11",
+      taken_down_30: "0.44", relist_rate_30: "0.15", n_at_risk_30: "312", events_30: "37",
+      fills_30: "27", relists_30: "10", gate_share_30: "0.81", top_board_share_30: "0.22",
+      cohort_from: "2026-08-07", cohort_to: "2026-08-11",
     });
-    expect(r).toEqual({ pct: 41, lo: 35, hi: 47, hw: 6, r: 44, x: 15, n: 312, cohortFrom: "2026-08-07", cohortTo: "2026-08-11" });
+    // ROUNDING THAT CANNOT OVERSTATE ITS OWN CLAUSE. The point estimate rounds
+    // to the nearest point but never onto an endpoint it does not sit on; the
+    // lower bound rounds down and the upper bound up; the "±" rounds up, so a
+    // positive width never prints as zero; "at most" rounds up and "at least"
+    // rounds down. On this row every figure lands where plain rounding would
+    // except hi, which is a bound and rounds outward.
+    expect(r).toEqual({ pct: 41, lo: 35, hi: 47, hw: 6, r: 44, x: 15, n: 312,
+      cohortFrom: "2026-08-07", cohortTo: "2026-08-11", gateShare: 81, topBoardShare: 22 });
   });
 
   it("day30ColumnPresent is true only when some row carries the RPC's finding as a boolean", () => {
@@ -243,7 +298,7 @@ describe("a role still up at the cap is a share, not a verdict — the gate", ()
     const mutantOnNumbers: Fn = (row) => {
       const s = Number(row.still_open_30);
       if (!Number.isFinite(s)) return null;
-      return { pct: Math.round(s * 100), lo: 0, hi: 0, hw: 0, r: 0, x: 0, n: 0, cohortFrom: String(row.cohort_from), cohortTo: String(row.cohort_to) };
+      return { pct: Math.round(s * 100), lo: 0, hi: 0, hw: 0, r: 0, x: 0, n: 0, cohortFrom: String(row.cohort_from), cohortTo: String(row.cohort_to), gateShare: null, topBoardShare: null };
     };
     expect(() => assertDay30Gate(mutantOnNumbers)).toThrow();
     // A mutant that treats NULL as "not false" — `sufficient_30 !== false`.
@@ -251,13 +306,26 @@ describe("a role still up at the cap is a share, not a verdict — the gate", ()
     expect(() => assertDay30Gate(mutantNotFalse)).toThrow();
     // A mutant that prints a 0 for a NULL number.
     const mutantZero: Fn = (row) => (row.sufficient_30 === true
-      ? { pct: Math.round(Number(row.still_open_30 ?? 0) * 100), lo: 0, hi: 0, hw: 0, r: 0, x: 0, n: 0, cohortFrom: String(row.cohort_from), cohortTo: String(row.cohort_to) }
+      ? { pct: Math.round(Number(row.still_open_30 ?? 0) * 100), lo: 0, hi: 0, hw: 0, r: 0, x: 0, n: 0, cohortFrom: String(row.cohort_from), cohortTo: String(row.cohort_to), gateShare: null, topBoardShare: null }
       : null);
     expect(() => assertDay30Gate(mutantZero)).toThrow();
-    // A `?? 0` on ONE column, with the real gate on every other: the defect
-    // the all-NULL case cannot see.
+    // A `?? 0` on ONE column: the defect the all-NULL case cannot see. The
+    // bait used to be the real gate handed a row with that column coerced,
+    // and it stopped being toxic on 2026-09-25 -- the identity, half-width
+    // and risk-set terms the gate now re-checks catch a substituted zero on
+    // five of the six columns by themselves, so a mutant built that way
+    // agrees with the real function and the loop proved nothing. The bait is
+    // now a routine that coerces the column AND skips the terms, which is
+    // what the defect actually looks like in a renderer: a number reaches
+    // the screen where a NULL should have drawn nothing.
     for (const col of ["still_open_30", "still_open_30_lo", "still_open_30_hi", "taken_down_30", "relist_rate_30", "n_at_risk_30"] as const) {
-      const mutantOneZero: Fn = (row) => day30Reading({ ...row, [col]: row[col] ?? 0 });
+      const mutantOneZero: Fn = (row) => {
+        if (row.sufficient_30 !== true) return null;
+        const c = { ...row, [col]: row[col] ?? 0 };
+        const [s, lo, hi, r, x, n] = [c.still_open_30, c.still_open_30_lo, c.still_open_30_hi, c.taken_down_30, c.relist_rate_30, c.n_at_risk_30].map(Number);
+        if (![s, lo, hi, r, x, n].every(Number.isFinite)) return null;
+        return { pct: Math.round(s * 100), lo: Math.round(lo * 100), hi: Math.round(hi * 100), hw: Math.round(((hi - lo) / 2) * 100), r: Math.round(r * 100), x: Math.round(x * 100), n, cohortFrom: String(row.cohort_from), cohortTo: String(row.cohort_to), gateShare: null, topBoardShare: null };
+      };
       expect(() => assertDay30Gate(mutantOneZero), `a \`?? 0\` on ${col} alone must be rejected`).toThrow();
     }
   });
@@ -270,8 +338,8 @@ describe("a role still up at the cap is a share, not a verdict — the page's co
   });
 
   it("the day-30 line is drawn through day30Reading and nothing else", () => {
-    expect(PAGE).toMatch(/day30Reading\(r\)/);
-    const i = PAGE.indexOf('"ghostIndex.stillUp30Row"');
+    expect(PAGE).toMatch(/day30Verdict\(r\)/);
+    const i = PAGE.indexOf('"ghostIndex.stillUp30Row2"');
     expect(i, "the day-30 line moved — re-anchor").toBeGreaterThan(-1);
     expect(PAGE.slice(i - 400, i), "the line must sit inside a `d &&` branch").toMatch(/\{d && \(/);
     // No other JSX reads the raw day-30 columns.
@@ -290,15 +358,15 @@ describe("a role still up at the cap is a share, not a verdict — the page's co
     const gate = PAGE.slice(PAGE.indexOf("export const day30Reading"), PAGE.indexOf("export const day30ColumnPresent"));
     expect(gate.length).toBeGreaterThan(200);
     expect(gate, "a typed cohort date in the gate goes stale by itself; the floor retires itself").not.toMatch(/20\d\d-\d\d-\d\d/);
-    const i = PAGE.indexOf('"ghostIndex.stillUp30Row"');
+    const i = PAGE.indexOf('"ghostIndex.stillUp30Row2"');
     expect(PAGE.slice(i - 800, i + 800), "the row line prints the row's edges, never a typed date").not.toMatch(/20\d\d-\d\d-\d\d/);
-    const u = PAGE.indexOf('"ghostIndex.stillUp30Unread"');
+    const u = PAGE.indexOf('"ghostIndex.stillUp30WithheldLead"');
     expect(PAGE.slice(u - 800, u + 800)).not.toMatch(/20\d\d-\d\d-\d\d/);
   });
 
   it("the unread sentence is gated on the column being present, and the tile on a field publishing", () => {
     expect(PAGE).toMatch(/day30ColumnPresent\(fillCurve\)\s*\?/);
-    expect(PAGE).toMatch(/\{day30Unread\.length > 0 && \(/);
+    expect(PAGE).toMatch(/\{day30Withheld\.length > 0 && \(/);
     expect(PAGE).toMatch(/\{anyDay30\s*\?\s*t\("ghostIndex\.capTileWithReading"/);
   });
 
@@ -313,7 +381,7 @@ describe("a role still up at the cap is a share, not a verdict — the page's co
   });
 
   it("no day-30 placeholder exists to render: no dash or n/a beside the day-30 keys", () => {
-    const i = PAGE.indexOf('"ghostIndex.stillUp30Row"');
+    const i = PAGE.indexOf('"ghostIndex.stillUp30Row2"');
     const around = PAGE.slice(i - 600, i + 600);
     expect(around).not.toMatch(/n\/a|"—"|'—'/);
   });
@@ -324,7 +392,7 @@ const LOCALES = resolve(ROOT, "src/i18n/locales");
 const CHANGELOG = resolve(ROOT, "src/i18n/changelog");
 const localeFiles = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 const changelogFiles = readdirSync(CHANGELOG).filter((f) => f.endsWith(".json"));
-const GI_KEYS = ["stillUp30Row", "stillUp30Unread", "capTileWithReading"];
+const GI_KEYS = ["stillUp30Row2", "stillUp30Pool", "stillUp30WithheldLead", "stillUp30WithheldGroup", "capTileWithReading"];
 const NEW_IDS = ["oneRequisitionIsOnePosting", "staleBoardsAreNamed", "stillUpAtThirtyDays", "departmentFilterRemoved"];
 const placeholders = (s: string) => (s.match(/\{\{\w+\}\}/g) ?? []).sort();
 const en = JSON.parse(read("src/i18n/locales/en.json")) as { ghostIndex: Record<string, string> };
@@ -337,13 +405,22 @@ describe("a role still up at the cap is a share, not a verdict — the copy", ()
   });
 
   it("the English row sentence keeps the handed structure: share, population, dates, n, ±, R, X as a floor, the boards it counts", () => {
-    const s = en.ghostIndex.stillUp30Row;
+    const s = en.ghostIndex.stillUp30Row2;
     expect(placeholders(s)).toEqual(["{{cohortFrom}}", "{{cohortTo}}", "{{field}}", "{{hw}}", "{{n}}", "{{pct}}", "{{r}}", "{{x}}"]);
     expect(s).toMatch(/of dated \{\{field\}\} roles posted \{\{cohortFrom\}\} to \{\{cohortTo\}\}/);
     expect(s).toMatch(/still advertised when they reached our 30-day cap/);
     expect(s, "R(30) is a ceiling (a takedown not yet seen re-listed counts there)").toMatch(/at most \{\{r\}\}% had been taken down for good/);
     expect(s, "X(30) is a floor").toMatch(/at least \{\{x\}\}% re-listed/);
+    // THE BASIS CLAUSE NAMES BOTH TERMS OF THE POOL. It was "boards we read to
+    // the end" alone; the pool is now those boards AND only where the board's
+    // own cohort produced events, which is the narrowing that moves a field off
+    // a contaminated figure. A sentence that states only the first term
+    // understates the very restriction that makes the number trustworthy.
     expect(s).toMatch(/Counted only on boards we read to the end/);
+    expect(s, "and the second term, which is what changed").toMatch(/whose own roles we saw come down or go back up/);
+    // The retired single-term sentence must be gone from English, or eight
+    // locales would keep answering with the old basis.
+    expect(en.ghostIndex, "the single-term basis sentence is retired").not.toHaveProperty("stillUp30Row");
   });
 
   for (const f of localeFiles) {

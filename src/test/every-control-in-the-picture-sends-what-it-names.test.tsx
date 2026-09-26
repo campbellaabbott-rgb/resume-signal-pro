@@ -71,7 +71,18 @@ import Jobs from "../pages/Jobs";
 // click-through files that chain waits.
 vi.setConfig({ testTimeout: 30_000 });
 
-const SLOW = { timeout: 4000 } as const;
+// 4000 was this suite's copied convention, not a measurement, and in THIS file
+// it is the binding constraint: 31 tests each mount the whole Jobs page in one
+// jsdom process, so the later mounts are slow enough that an arbitrary one
+// misses a 4s budget -- the failure landed on C17, then C14, then F3, C23 and
+// C11 across successive runs with the code unchanged, which is capacity, not
+// logic. The per-test timeout above is 30s, so this still fails fast.
+//
+// A longer budget is only safe because the waits in this file are COUNT-based
+// (see bodyAfter): it can forgive a request that arrives late, and it cannot
+// forgive one that arrives with the wrong body -- which is exactly what a
+// value-based wait plus a bigger number would have hidden.
+const SLOW = { timeout: 15_000 } as const;
 const DAY = 86_400_000;
 const ago = (d: number) => new Date(Date.now() - d * DAY).toISOString();
 
@@ -178,6 +189,46 @@ const listBodies = () => invoke.mock.calls
     && "offset" in (o as { body: Body }).body)
   .map(([, o]) => (o as { body: Body }).body);
 const lastBody = () => listBodies().at(-1) as Body;
+// THE BODY THAT SATISFIED THE WAIT, not whichever one arrived last.
+//
+// The assertions after an `await waitFor(() => expect(lastBody().x).toBe(v))`
+// used to read lastBody() again. That reference moves: the board refetches on
+// a debounce tail and on its own follow-ups, so a request landing between the
+// waitFor resolving and the next line replaces the object those lines are
+// about. The failure therefore surfaced on a DIFFERENT assertion each run --
+// C7 under the full suite, C25 in isolation, same code -- which is the
+// signature of a racing read, not of a broken control. bodyWhere waits for a
+// request that matches and returns THAT one; the expectations that belong to
+// the same interaction then read the body in hand. A LATER interaction in the
+// same test must take its own snapshot -- the point is one body per action,
+// not one body per test.
+// THE REQUEST AN INTERACTION CAUSED, found by counting rather than by value.
+//
+// bodyWhere waits for a body that MATCHES, which cannot distinguish "the new
+// request has not arrived yet" from "it arrived and says something else": a
+// stale body that happens to satisfy nothing keeps the wait alive until the
+// budget runs out, and the failure then reads as a wrong value (C17 failed
+// "expected 3 to be 7" while the click for 7 had simply not been served yet)
+// or as an unchanged flag (C14, "expected true to be false"). Counting removes
+// the ambiguity: snapshot the request count before the click, wait for it to
+// grow, and assert on the body that arrived. A debounce that coalesces two
+// clicks still advances the count once, so the assertion is about a real
+// request and never about a guess at timing.
+const bodyCount = () => listBodies().length;
+async function bodyAfter(before: number, label: string): Promise<Body> {
+  return await waitFor(() => {
+    expect(bodyCount(), label + ": no list request followed the interaction").toBeGreaterThan(before);
+    return listBodies().at(-1) as Body;
+  }, SLOW);
+}
+
+async function bodyWhere(check: (b: Body) => boolean, label: string): Promise<Body> {
+  return await waitFor(() => {
+    const b = listBodies().filter(check).at(-1);
+    expect(b, label + " never arrived").toBeDefined();
+    return b as Body;
+  }, SLOW);
+}
 const fitCalls = () => invoke.mock.calls.filter(([fn]) => fn === "job-fit");
 const settled = async () => waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
 
@@ -250,8 +301,8 @@ describe("every control in the picture sends what it names", () => {
     await waitFor(() => expect(lastBody().category).toBe("engineering"), SLOW);
     await pickFromMenu("All fields", /Design/);
     // CATEGORY_IDS order, not click order — one selection, one string.
-    await waitFor(() => expect(lastBody().category).toBe("engineering,design"), SLOW);
-    expect("includeUncategorised" in lastBody(), "the unsorted opt-in is off by default").toBe(false);
+    const body1 = await bodyWhere((x) => x.category === "engineering,design", "category === 'engineering,design'");
+    expect("includeUncategorised" in body1, "the unsorted opt-in is off by default").toBe(false);
   });
 
   it("C4 'Agent can apply' sends sendableOnly as the literal true, and nothing when off", async () => {
@@ -269,17 +320,17 @@ describe("every control in the picture sends what it names", () => {
     await pickFromMenu("Seniority bands", /Senior/);
     await waitFor(() => expect(lastBody().experience).toBe("senior"), SLOW);
     await pickFromMenu("Seniority bands", /Entry level/);
-    await waitFor(() => expect(lastBody().experience).toBe("entry,senior"), SLOW);
+    const body2 = await bodyWhere((x) => x.experience === "entry,senior", "experience === 'entry,senior'");
     // Two controls, two columns: the bands do not set maxYears and vice versa.
-    expect("maxYears" in lastBody()).toBe(false);
+    expect("maxYears" in body2).toBe(false);
   });
 
   it("C6 'Any years required' sends maxYears as a whole number, and the empty option clears it", async () => {
     mount(); await settled();
     const sel = screen.getByLabelText("Maximum years of experience required") as HTMLSelectElement;
     fireEvent.change(sel, { target: { value: "3" } });
-    await waitFor(() => expect(lastBody().maxYears).toBe(3), SLOW);
-    expect("experience" in lastBody(), "years is its own column; it must not turn into a band").toBe(false);
+    const body3 = await bodyWhere((x) => x.maxYears === 3, "maxYears === 3");
+    expect("experience" in body3, "years is its own column; it must not turn into a band").toBe(false);
     fireEvent.change(sel, { target: { value: "" } });
     await waitFor(() => expect("maxYears" in lastBody()).toBe(false), SLOW);
   });
@@ -311,11 +362,11 @@ describe("every control in the picture sends what it names", () => {
   it("C9 'Any salary' sends salaryFloor as a number and implies nothing else", async () => {
     mount(); await settled();
     fireEvent.change(screen.getByLabelText("Minimum stated pay"), { target: { value: "100000" } });
-    await waitFor(() => expect(lastBody().salaryFloor).toBe(100000), SLOW);
+    const body4 = await bodyWhere((x) => x.salaryFloor === 100000, "salaryFloor === 100000");
     // The floor already confines the board to stated pay at the database; the
     // page must not ALSO send the states-pay key the reader never ticked.
-    expect("hasStatedPay" in lastBody()).toBe(false);
-    expect("payBasis" in lastBody()).toBe(false);
+    expect("hasStatedPay" in body4).toBe(false);
+    expect("payBasis" in body4).toBe(false);
     // The widening opt-in appears only now that there is a floor to relax.
     expect(screen.getByLabelText("Incl. unstated pay")).toBeTruthy();
   });
@@ -325,8 +376,8 @@ describe("every control in the picture sends what it names", () => {
     fireEvent.change(screen.getByLabelText("Maximum stated pay"), { target: { value: "150000" } });
     await waitFor(() => expect(lastBody().salaryCeiling).toBe(150000), SLOW);
     fireEvent.change(screen.getByLabelText("Minimum stated pay"), { target: { value: "200000" } });
-    await waitFor(() => expect(lastBody().salaryFloor).toBe(200000), SLOW);
-    expect(lastBody().salaryCeiling, "a contradiction is sent so ignoredFilters can say so").toBe(150000);
+    const body5 = await bodyWhere((x) => x.salaryFloor === 200000, "salaryFloor === 200000");
+    expect(body5.salaryCeiling, "a contradiction is sent so ignoredFilters can say so").toBe(150000);
   });
 
   it("C11 'Any pay basis' sends payBasis as hourly|salaried", async () => {
@@ -358,8 +409,8 @@ describe("every control in the picture sends what it names", () => {
     // states-pay-and-the-unstated-widening-cannot-both-bind.test.tsx; this
     // case pins the body the page produces.
     fireEvent.click(screen.getByLabelText("Incl. unstated pay"));
-    await waitFor(() => expect(lastBody().includeUnstatedPay).toBe(true), SLOW);
-    expect(lastBody().hasStatedPay).toBe(true);
+    const body6 = await bodyWhere((x) => x.includeUnstatedPay === true, "includeUnstatedPay === true");
+    expect(body6.hasStatedPay).toBe(true);
   });
 
   // ── ROW 4: source, agencies, work mode ──────────────────────────────────
@@ -374,8 +425,8 @@ describe("every control in the picture sends what it names", () => {
       return r;
     }, SLOW);
     fireEvent.click(wd);
-    await waitFor(() => expect(lastBody().vendor).toBe("workday"), SLOW);
-    expect("sendableOnly" in lastBody()).toBe(false);
+    const body7 = await bodyWhere((x) => x.vendor === "workday", "vendor === 'workday'");
+    expect("sendableOnly" in body7).toBe(false);
   });
 
   it("C14 'Hide staffing agencies' sends excludeAgencies as the literal true, and the tagged card is on the page until then", async () => {
@@ -383,10 +434,12 @@ describe("every control in the picture sends what it names", () => {
     expect(cardFor("Travel Nurse"), "agencies serve by default").toBeTruthy();
     expect("excludeAgencies" in lastBody()).toBe(false);
     const box = screen.getByLabelText("Hide staffing agencies") as HTMLInputElement;
+    const beforeOn = bodyCount();
     fireEvent.click(box);
-    await waitFor(() => expect(lastBody().excludeAgencies).toBe(true), SLOW);
+    expect((await bodyAfter(beforeOn, "excludeAgencies on")).excludeAgencies).toBe(true);
+    const beforeOff = bodyCount();
     fireEvent.click(box);
-    await waitFor(() => expect("excludeAgencies" in lastBody()).toBe(false), SLOW);
+    expect("excludeAgencies" in (await bodyAfter(beforeOff, "excludeAgencies off"))).toBe(false);
   });
 
   it("C15 Remote | Hybrid | On-site send workMode as a canonical list and never the legacy remote key", async () => {
@@ -396,8 +449,8 @@ describe("every control in the picture sends what it names", () => {
     await waitFor(() => expect(lastBody().workMode).toBe("hybrid"), SLOW);
     fireEvent.click(within(group).getByRole("button", { name: "Remote" }));
     // Canonical order, not click order.
-    await waitFor(() => expect(lastBody().workMode).toBe("remote,hybrid"), SLOW);
-    expect("remote" in lastBody(), "remote:true is a strict subset of the mode and must not AND with it").toBe(false);
+    const body8 = await bodyWhere((x) => x.workMode === "remote,hybrid", "workMode === 'remote,hybrid'");
+    expect("remote" in body8, "remote:true is a strict subset of the mode and must not AND with it").toBe(false);
     expect(within(group).getByRole("button", { name: "Remote" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(within(group).getByRole("button", { name: "Remote" }));
     await waitFor(() => expect(lastBody().workMode).toBe("hybrid"), SLOW);
@@ -422,12 +475,14 @@ describe("every control in the picture sends what it names", () => {
     mount(); await settled();
     const want: Array<[string, number]> = [["Today", 1], ["Last 3 days", 3], ["This week", 7], ["Last 2 weeks", 14], ["Last 30 days", 30]];
     for (const [label, days] of want) {
+      const before = bodyCount();
       fireEvent.click(dateChip(label));
-      await waitFor(() => expect(lastBody().maxAgeDays).toBe(days), SLOW);
+      expect((await bodyAfter(before, label)).maxAgeDays).toBe(days);
       expect(dateChip(label).getAttribute("aria-pressed")).toBe("true");
     }
+    const beforeAny = bodyCount();
     fireEvent.click(dateChip("Any date"));
-    await waitFor(() => expect("maxAgeDays" in lastBody()).toBe(false), SLOW);
+    expect("maxAgeDays" in (await bodyAfter(beforeAny, "Any date"))).toBe(false);
   });
 
   // ── ROW 7: industry chips + All industries ──────────────────────────────
@@ -556,10 +611,10 @@ describe("every control in the picture sends what it names", () => {
     sessionStorage.setItem("rb_board_resume", "x".repeat(400));
     fireEvent.click(screen.getByRole("button", { name: "For you" }));
     await waitFor(() => expect(fitCalls().some(([, o]) => (o as { body?: Body })?.body?.action === "fit-terms")).toBe(true), SLOW);
-    await waitFor(() => expect(lastBody().q).toBe("registered nurse"), SLOW);
+    const body9 = await bodyWhere((x) => x.q === "registered nurse", "q === 'registered nurse'");
     // fetchJobs writes the key with an undefined value (dropped by JSON on the
     // wire), so the VALUE is the claim, not the key's presence.
-    expect(lastBody().hasDescription, "a role query already retrieves scoreable rows").toBeUndefined();
+    expect(body9.hasDescription, "a role query already retrieves scoreable rows").toBeUndefined();
     // And the way back.
     fireEvent.click(screen.getByRole("button", { name: "All jobs" }));
     await waitFor(() => expect(text()).not.toContain("ordered by fit"), SLOW);
@@ -611,9 +666,9 @@ describe("every control in the picture sends what it names", () => {
   it("C25 '$100k+' sends salaryFloor 100000 alone, and toggles off to nothing", async () => {
     mount(); await settled();
     fireEvent.click(quickChip("$100k+"));
-    await waitFor(() => expect(lastBody().salaryFloor).toBe(100000), SLOW);
-    expect("hasStatedPay" in lastBody()).toBe(false);
-    expect("payBasis" in lastBody()).toBe(false);
+    const body10 = await bodyWhere((x) => x.salaryFloor === 100000, "salaryFloor === 100000");
+    expect("hasStatedPay" in body10).toBe(false);
+    expect("payBasis" in body10).toBe(false);
     fireEvent.click(quickChip("$100k+"));
     await waitFor(() => expect("salaryFloor" in lastBody()).toBe(false), SLOW);
   });

@@ -273,7 +273,12 @@ describe("the bars an agent is told about a filing are the reader's bars", () =>
 
   it("the migrations the mirror is read from are resolved, and a re-anchor is a visible diff here", () => {
     expect(READER_MIG).toBe("supabase/migrations/20260918100500_a_row_is_an_answer_and_no_row_is_never_no_filing.sql");
-    expect(WRITER_MIG).toBe("supabase/migrations/20260918100700_two_arms_side_by_side_never_a_ratio.sql");
+    // RE-ANCHORED 2026-09-25. refresh_layoff_partition was re-issued to give its
+    // day-30 gate the positive control the other two copies of that gate got the
+    // same day; this assertion exists so that move is a visible diff rather than
+    // a silent follow of newestDefining. The bars this file mirrors -- the worker
+    // bar and the lookback -- are unchanged in it.
+    expect(WRITER_MIG).toBe("supabase/migrations/20260925164237_the_third_day_thirty_chain_on_one_page_gets_the_same_control.sql");
     expect(CRON_MIG).toBe("supabase/migrations/20260918101000_the_cadence_the_copy_names_is_the_schedule_in_this_file.sql");
   });
 

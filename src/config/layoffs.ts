@@ -57,12 +57,23 @@ export const LAYOFF_MIN_ARM_EMPLOYERS = 10;
  *  risk set. Printed as a whole percentage. */
 export const LAYOFF_MAX_EMPLOYER_SHARE = 0.40;
 
-/** The day-30 gate both arms inherit from the category curve
- *  (migration 20260909217500): roles at risk at the cap, and the cloglog
- *  half-width in share points. Mirrored so the unavailable state can name
- *  the bar it did not clear. */
+/** The day-30 gate both arms carry. NOT "inherit": it is DUPLICATED in
+ *  refresh_layoff_partition, and the previous version of this comment claimed
+ *  inheritance while the partition's gate and the category curve's had silently
+ *  diverged by a whole term for a week. The guard
+ *  the-threshold-the-copy-prints-is-the-one-the-server-gated-on compares all
+ *  four of these numbers across the writer, the reader and the category curve,
+ *  so the claim is enforced rather than asserted.
+ *
+ *  Roles at risk at the cap; the cloglog half-width in share points; the
+ *  cohort's own events (fills plus relists, the two that move S) and its fills
+ *  alone; and the half-width as a share of the complement the sentence asserts.
+ *  Mirrored here so the unavailable state can name the bar it did not clear. */
 export const LAYOFF_PARTITION_MIN_N_AT_RISK_30 = 25;
+export const LAYOFF_PARTITION_MIN_EVENTS_30 = 5;
+export const LAYOFF_PARTITION_MIN_FILLS_30 = 5;
 export const LAYOFF_PARTITION_MAX_HALF_WIDTH_30 = 0.15;
+export const LAYOFF_PARTITION_MAX_REL_HALF_WIDTH_30 = 0.5;
 
 /** A state feed whose newest public date sits more than this many days
  *  behind its own rhythm is marked stale in layoff_feed_health. Staleness
@@ -95,5 +106,13 @@ export const LAYOFF_RELATIONS = ["filer", "subsidiary_site"] as const;
  *  than the writer tolerates); 'stale' is decided by the reader from
  *  computed_at against LAYOFF_STALE_HOURS.warn, and also covers an arm the
  *  writer has not written yet. */
-export const LAYOFF_INSUFFICIENT_REASONS = ["n", "width", "arithmetic", "employers", "share", "stale"] as const;
+/** Every value refresh_layoff_partition may write, plus the two the reader mints
+ *  (`stale` for a row older than its window, `uncontrolled` for a row written
+ *  before the positive control existed — see 20260925164237 / 20260925164510).
+ *  A value missing here is dropped to null by readPartitionArm and the section
+ *  falls through to its last branch, so the list is the contract. */
+export const LAYOFF_INSUFFICIENT_REASONS = [
+  "n", "ungated", "events", "fills", "relists", "width", "precision",
+  "arithmetic", "employers", "share", "stale", "uncontrolled",
+] as const;
 export type LayoffInsufficientReason = (typeof LAYOFF_INSUFFICIENT_REASONS)[number];

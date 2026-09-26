@@ -324,6 +324,15 @@ describe("a filing is printed as a filing, with its source link -- or not at all
     lp_newest_filing_event_date: "2026-09-15", lp_warn_lag_p50_days: 3, lp_warn_lag_n: 412,
     lp_computed_at: new Date(Date.now() - 2 * 3_600_000).toISOString(), lp_filings_read_at: new Date(Date.now() - 3 * 3_600_000).toISOString(),
     lp_min_n: 25, lp_max_half_width: 0.15, lp_min_employers: 10, lp_max_employer_share_cap: 0.4, lp_stale_hours: 48,
+    // THE POSITIVE CONTROL THE ARMS NOW CARRY (20260925164237 / 164510). The
+    // section re-applies it rather than trusting lp_sufficient_30, so a fixture
+    // without these three columns is the shape a row written by the OLD gate
+    // has, and it is refused as `uncontrolled`. The interval above is
+    // half-width 0.0576 against a complement of 0.6123 -- a ratio of 0.094 --
+    // so the relative term is cleared and the fixture fails for the reason each
+    // case names and no other.
+    lp_events_30: 40, lp_fills_30: 28, lp_relists_30: 12,
+    lp_min_events: 5, lp_min_fills: 5, lp_max_rel_half_width: 0.5,
     ...o,
   });
   const mountSection = (rows: unknown[] | null) => {

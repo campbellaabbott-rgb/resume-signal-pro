@@ -46,6 +46,117 @@ J '{"action":"list","limit":1,"includeFacets":true}' | node -e 'let s="";process
 echo "== 4. S(30): columns present, the 1.0 leak not live =="
 R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  fill curve non-JSON")}if(!Array.isArray(j))return console.log("INFO  "+JSON.stringify(j).slice(0,120));console.log((j.length&&"still_open_30" in j[0]?"PASS":"FAIL")+"  still_open_30 present ("+j.length+" rows)");console.log((j.filter(r=>r.still_open_30===1).length===0?"PASS":"FAIL")+"  no field publishes still_open_30 = 1.0")})'
 
+# ── 4a-4e. THE POSITIVE CONTROL ON THE DAY-30 GATE (20260925163517 / 163842 /
+# 164237 / 164510). Section 4 above predates this deploy and CANNOT tell a
+# silent non-apply from a success: it asserts still_open_30 is present and that
+# no FIELD publishes exactly 1.0, and both were already true before the change
+# (fields ran 0.4725-0.5976; the offending BOARDS published the 1.0). Everything
+# below is a claim this deploy makes, judged by behaviour, because migrations
+# here go through a staged runner that has been observed editing a file and
+# staging it under another name.
+echo "== 4a. the re-issued curves publish the counts their gate is built from =="
+for FN in get_category_fill_curve get_company_fill_curve; do
+  if [ "$FN" = "get_category_fill_curve" ]; then ARGS='{"p_days":90,"p_min_n":300}'; else ARGS='{"p_tokens":["dominos","workday~wd5~Workday"]}'; fi
+  R "$FN" "$ARGS" | FN="$FN" node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const fn=process.env.FN;
+let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  "+fn+" non-JSON (not applied, or it timed out)")}
+if(!Array.isArray(j))return console.log("FAIL  "+fn+" -> "+JSON.stringify(j).slice(0,160));
+if(!j.length)return console.log("INFO  "+fn+" returned no rows");
+const need=["events_30","fills_30","relists_30"];
+const missing=need.filter(k=>!(k in j[0]));
+// WITHOUT THIS THE FRONTEND WITHHOLDS ALL EIGHTEEN FIELDS FOREVER AND LOOKS
+// LIKE A WORKING DEPLOY: its `uncontrolled` path refuses any row with no
+// published event count, so a non-apply is indistinguishable from a page that
+// simply has nothing to say until this key is present.
+console.log((missing.length===0?"PASS":"FAIL")+"  "+fn+": events_30/fills_30/relists_30 present on the row ("+j.length+" rows)"+(missing.length?" MISSING "+missing.join(","):""));
+if(fn==="get_category_fill_curve"){
+  for(const k of ["top_board_share_30","dated_cohort_n_30"])
+    console.log((k in j[0]?"PASS":"FAIL")+"  "+fn+": "+k+" present (the two disclosures a pooled figure needs)");
+}})'
+done
+
+echo "== 4b. no published share rests on fewer events, fills or precision than the gate names =="
+R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  non-JSON")}
+if(!Array.isArray(j))return console.log("FAIL  "+JSON.stringify(j).slice(0,160));
+const N=v=>v===null||v===undefined?null:Number(v);
+const MIN_EVENTS=5, MIN_FILLS=5, MAX_HW=0.15, MAX_REL=0.5;
+const bad=(pred)=>j.filter(r=>r.sufficient_30===true&&pred(r)).map(r=>r.category);
+const noEv=bad(r=>N(r.events_30)===null||N(r.events_30)<MIN_EVENTS);
+const noFi=bad(r=>N(r.fills_30)===null||N(r.fills_30)<MIN_FILLS);
+const rel =bad(r=>N(r.relists_30)!==null&&N(r.fills_30)!==null&&N(r.relists_30)>N(r.fills_30));
+const hw  =bad(r=>{const lo=N(r.still_open_30_lo),hi=N(r.still_open_30_hi);return lo===null||hi===null||(hi-lo)/2>MAX_HW});
+// THE TERM AN ABSOLUTE WIDTH CANNOT EXPRESS: a half-width wider than this share
+// of the complement pins nothing, however narrow it is in points.
+const prec=bad(r=>{const v=N(r.still_open_30),lo=N(r.still_open_30_lo),hi=N(r.still_open_30_hi);
+  return v===null||lo===null||hi===null||v>=1||(hi-lo)/2>MAX_REL*(1-v)});
+const line=(n,label)=>console.log((n.length===0?"PASS":"FAIL")+"  "+label+(n.length?": "+n.join(", "):""));
+line(noEv,"sufficient_30 with events_30 below the floor");
+line(noFi,"sufficient_30 with fills_30 below the floor");
+line(rel,"sufficient_30 with relists outnumbering fills");
+line(hw,"sufficient_30 with an absolute half-width over the ceiling");
+line(prec,"sufficient_30 with a half-width wider than half its own complement");
+console.log("INFO  sufficient_30 true on "+j.filter(r=>r.sufficient_30===true).length+" of "+j.length+" fields");
+})'
+
+echo "== 4c. the board that opened the defect is refused, by its own published count =="
+# p_tokens is PLURAL; p_token singular answers nothing. dominos published
+# still_open_30=1.0000 with a zero-width interval and sufficient_30 true on
+# 21,708 observations before this change.
+R get_company_fill_curve '{"p_tokens":["dominos","oreillyauto~wd1~oreilly","workday~wd5~Workday"]}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  non-JSON")}
+if(!Array.isArray(j))return console.log("FAIL  "+JSON.stringify(j).slice(0,160));
+for(const r of j){
+  const t=r.company_token, ev=r.events_30, suf=r.sufficient_30, s30=r.still_open_30;
+  if(t==="workday~wd5~Workday"){console.log("INFO  "+t+" (the control): S30="+s30+" events_30="+ev+" sufficient_30="+suf);continue;}
+  const ok = suf!==true;
+  console.log((ok?"PASS":"FAIL")+"  "+t+" refused: S30="+s30+" events_30="+ev+" sufficient_30="+suf);
+}})'
+
+echo "== 4d. the coverage the new pool leaves, per field, and how much of it is one board =="
+# Not a PASS/FAIL: gate_share_30 ran 0.7381-0.9150 across the eighteen fields at
+# 2026-09-25T21:33Z, before this change, and it MUST fall. Printing it is what
+# makes the drop visible, and top_board_share_30 is the residual the control
+# does not close -- a cap on it would need exactly this measurement first.
+R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  non-JSON")}
+if(!Array.isArray(j))return;
+for(const r of j)console.log("INFO  "+String(r.category).padEnd(20)+" gate_share="+String(r.gate_share_30).padEnd(7)+" top_board="+String(r.top_board_share_30).padEnd(7)+" S30="+String(r.still_open_30).padEnd(7)+" n="+String(r.n_at_risk_30).padEnd(7)+" events="+String(r.events_30).padEnd(6)+" sufficient="+r.sufficient_30);
+})'
+
+echo "== 4e. the field curve still answers inside its own statement timeout =="
+# It reports 60s and the page calls it live on every visit inside a caught
+# Promise.all, so a timeout blanks the whole field section rather than one line.
+# 34.36s at 2026-09-25T21:33Z, BEFORE the two added CTEs; over ~45s, raise the
+# function's own statement_timeout rather than leave the section to disappear.
+T0=$(date +%s); R get_category_fill_curve '{"p_days":90,"p_min_n":300}' > /tmp/vd_cat.json; T1=$(date +%s)
+# A FAST ANSWER THAT IS NOT AN ANSWER MUST NOT PASS. A 401, a 500 or a cancelled
+# statement all come back in well under the bar, and timing an error reads as the
+# best result in the file.
+node -e 'const fs=require("fs");const t=Number(process.argv[1]);let j=null;
+try{j=JSON.parse(fs.readFileSync("/tmp/vd_cat.json","utf8"))}catch{}
+const answered=Array.isArray(j)&&j.length>0;
+console.log((answered&&t<45?"PASS":"FAIL")+"  get_category_fill_curve answered in "+t+"s with "+(answered?j.length+" rows":"no rows -- "+JSON.stringify(j).slice(0,120))+" (34s before the change; over 45 needs a timeout raise)")' "$((T1-T0))"
+
+echo "== 4f. the third day-30 chain on the same page carries the same control =="
+R get_layoff_partition '{}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  non-JSON")}
+const rows=Array.isArray(j)?j:[j];
+if(!rows.length||!rows[0])return console.log("FAIL  get_layoff_partition returned nothing");
+const need=["lp_events_30","lp_fills_30","lp_relists_30","lp_min_events","lp_max_rel_half_width"];
+const missing=need.filter(k=>!(k in rows[0]));
+console.log((missing.length===0?"PASS":"FAIL")+"  get_layoff_partition publishes the control"+(missing.length?" MISSING "+missing.join(","):""));
+for(const r of rows){
+  const ev=r.lp_events_30, suf=r.lp_sufficient_30;
+  // A row written before 20260925164237 carries NULL here and must not be
+  // sufficient: the writer coalesces the count to zero on every row it writes,
+  // so NULL means one thing only.
+  const ok = !(suf===true && (ev===null||ev===undefined||Number(ev)<5));
+  console.log((ok?"PASS":"FAIL")+"  "+r.lp_arm+": sufficient_30="+suf+" events_30="+ev+" fills="+r.lp_fills_30+" relists="+r.lp_relists_30+" reason="+r.lp_reason+" S30="+r.lp_still_open_30+" n="+r.lp_n_at_risk_30);
+}
+console.log("INFO  a reason of `uncontrolled` here means the migration applied and the refresh has not re-run yet");
+})'
+
 echo "== 5d. vendor counts on the facets action (board-wide, one stamp) =="
 J '{"action":"facets"}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const src=j.sources||{};const cats=j.categories||{};const a=Object.values(src).reduce((x,y)=>x+y,0),b=Object.values(cats).reduce((x,y)=>x+y,0);console.log((Object.keys(src).length>=15?"PASS":"FAIL")+"  sources has "+Object.keys(src).length+" keys");console.log((a===b?"PASS":"FAIL")+"  sum(sources)="+a.toLocaleString()+" vs sum(categories)="+b.toLocaleString());console.log((Object.values(src).every(v=>v!==10000)?"PASS":"FAIL")+"  no source count equals the 10,000 list cap")})'
 

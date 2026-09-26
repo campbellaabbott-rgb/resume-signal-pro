@@ -37,6 +37,9 @@ import {
   LAYOFF_MAX_EMPLOYER_SHARE,
   LAYOFF_MIN_ARM_EMPLOYERS,
   LAYOFF_PARTITION_MAX_HALF_WIDTH_30,
+  LAYOFF_PARTITION_MAX_REL_HALF_WIDTH_30,
+  LAYOFF_PARTITION_MIN_EVENTS_30,
+  LAYOFF_PARTITION_MIN_FILLS_30,
   LAYOFF_PARTITION_MIN_N_AT_RISK_30,
   LAYOFF_READ_CADENCE,
   LAYOFF_INSUFFICIENT_REASONS,
@@ -55,6 +58,14 @@ export interface LayoffPartitionArm {
   stillOpen30Hi: number | null;
   halfWidth30: number | null;
   nAtRisk30: number | null;
+  /** THE COUNTS THE POSITIVE CONTROL IS BUILT FROM (20260925164237). Fills and
+   *  re-listings observed inside this arm's own day-30 cohort — never our own
+   *  sweep's takedowns at the cap, and never the 90-day window's counts. A row
+   *  written before that migration carries NULL here, which is the only tell
+   *  that the figure beside it came from the gate that had no control at all. */
+  events30: number | null;
+  fills30: number | null;
+  relists30: number | null;
   employersN: number | null;
   cohortFrom: string | null;
   cohortTo: string | null;
@@ -95,6 +106,9 @@ export function readPartitionArm(raw: unknown): LayoffPartitionArm | null {
     stillOpen30Hi: hi,
     halfWidth30: hw ?? (lo !== null && hi !== null ? (hi - lo) / 2 : null),
     nAtRisk30: numOr(r.lp_n_at_risk_30),
+    events30: numOr(r.lp_events_30),
+    fills30: numOr(r.lp_fills_30),
+    relists30: numOr(r.lp_relists_30),
     employersN: numOr(r.lp_employers_n),
     cohortFrom: dateOr(r.lp_cohort_from),
     cohortTo: dateOr(r.lp_cohort_to),
@@ -132,6 +146,15 @@ export function partitionSentenceFigures(p: LayoffPartitionReading): {
 } | null {
   const f = p.filed, c = p.control;
   if (!f || !c || !f.sufficient || !c.sufficient) return null;
+  // THE POSITIVE CONTROL, RE-APPLIED HERE RATHER THAN TRUSTED, for the reason
+  // /ghost-job-index's field table re-applies its own: this deployment's
+  // migrations are applied by a staged runner that has been observed editing and
+  // renaming them, so "the reader shipped" is a claim about behaviour and not
+  // about a file. A row with no published event count came from a gate that
+  // could pass on an arm whose roles we had never once seen come down; a row
+  // below either floor, or with more re-listings than fills, cannot stand behind
+  // the taken-down share this section prints beside S(30).
+  if (!controlled(f) || !controlled(c)) return null;
   if (f.takenDown30 === null || f.halfWidth30 === null || f.nAtRisk30 === null || f.employersN === null) return null;
   if (c.takenDown30 === null || c.halfWidth30 === null || c.nAtRisk30 === null) return null;
   if (!f.cohortFrom || !f.cohortTo) return null;
@@ -144,12 +167,37 @@ export function partitionSentenceFigures(p: LayoffPartitionReading): {
 }
 
 /** Which arm's reason the unavailable state names. */
+/** Whether an arm's own columns show the positive control was applied and held.
+ *  Each term is one of refresh_layoff_partition's, checked again on the row. */
+export function controlled(a: LayoffPartitionArm): boolean {
+  if (a.events30 === null || a.fills30 === null || a.relists30 === null) return false;
+  if (a.events30 < LAYOFF_PARTITION_MIN_EVENTS_30) return false;
+  if (a.fills30 < LAYOFF_PARTITION_MIN_FILLS_30) return false;
+  if (a.relists30 > a.fills30) return false;
+  if (a.stillOpen30 === null || a.halfWidth30 === null) return false;
+  return a.halfWidth30 <= LAYOFF_PARTITION_MAX_REL_HALF_WIDTH_30 * (1 - a.stillOpen30);
+}
+/** The term that refused the pair, named from the arm's own columns first and
+ *  the writer's reason second. An arm the server called sufficient but whose
+ *  published counts do not clear the control is reported as `uncontrolled` and
+ *  never as sufficient: the reason has to match what actually refused it. */
 export function partitionUnavailableReason(p: LayoffPartitionReading): { reason: LayoffInsufficientReason; arm: LayoffPartitionArm | null } {
   const f = p.filed, c = p.control;
   if (!f) return { reason: "stale", arm: null };
   if (!f.sufficient) return { reason: f.reason ?? "n", arm: f };
+  if (!controlled(f)) return { reason: uncontrolledReason(f), arm: f };
   if (!c) return { reason: "stale", arm: null };
+  if (!c.sufficient) return { reason: c.reason ?? "n", arm: c };
+  if (!controlled(c)) return { reason: uncontrolledReason(c), arm: c };
   return { reason: c.reason ?? "n", arm: c };
+}
+/** Which term of the control an arm failed, in the order they are checked. */
+function uncontrolledReason(a: LayoffPartitionArm): LayoffInsufficientReason {
+  if (a.events30 === null || a.fills30 === null || a.relists30 === null) return "uncontrolled";
+  if (a.events30 < LAYOFF_PARTITION_MIN_EVENTS_30) return "events";
+  if (a.fills30 < LAYOFF_PARTITION_MIN_FILLS_30) return "fills";
+  if (a.relists30 > a.fills30) return "relists";
+  return "precision";
 }
 
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data?: unknown; error?: unknown } | undefined>;
@@ -261,9 +309,27 @@ export function LayoffPartitionSection() {
           ? t("ghostIndex.layoffReasonN", "fewer than {{minN}} such roles reached our 30-day cap", { minN: LAYOFF_PARTITION_MIN_N_AT_RISK_30 })
           : why.reason === "width"
             ? t("ghostIndex.layoffReasonWidth", "the interval is wider than ±{{maxHw}} points", { maxHw: Math.round(LAYOFF_PARTITION_MAX_HALF_WIDTH_30 * 100) })
-            : why.reason === "arithmetic"
-              ? t("ghostIndex.layoffReasonArithmetic", "the three shares in that group did not add up to one on this read, so it is withheld")
-              : arm?.computedAt
+            /* THE FIVE REASONS THE POSITIVE CONTROL ADDED (20260925164237 /
+               20260925164510). Each states an absence in OUR record and none
+               of them says anything about an employer's behaviour — that is the
+               whole point of naming them separately rather than rolling them
+               into "too few roles", which is what the old CASE did to an arm a
+               gate had emptied. */
+            : why.reason === "uncontrolled"
+              ? t("ghostIndex.layoffReasonUncontrolled", "this reading has not been recomputed since we found that our test at the 30-day cap could pass on roles we had never once seen come down, so the earlier figure is withheld rather than reprinted")
+              : why.reason === "ungated"
+                ? t("ghostIndex.layoffReasonUngated", "dated roles of that kind did reach our 30-day cap, but none of them sat on a board we could both read to the end and see produce takedowns or re-listings of its own")
+                : why.reason === "events"
+                  ? t("ghostIndex.layoffReasonEvents", "fewer than {{minEvents}} of those roles were seen taken down or re-listed, so there is nothing for a share to be measured against", { minEvents: LAYOFF_PARTITION_MIN_EVENTS_30 })
+                  : why.reason === "fills"
+                    ? t("ghostIndex.layoffReasonFills", "fewer than {{minFills}} of those roles were seen taken down for good, and the share this sentence would print is a taken-down share", { minFills: LAYOFF_PARTITION_MIN_FILLS_30 })
+                    : why.reason === "relists"
+                      ? t("ghostIndex.layoffReasonRelists", "more of those roles were seen re-listed than taken down for good, so the taken-down share would rest on the smaller half of what we saw")
+                      : why.reason === "precision"
+                        ? t("ghostIndex.layoffReasonPrecision", "the interval is more than {{maxRel}}% as wide as the share of roles it says came down, so it does not pin that share", { maxRel: Math.round(LAYOFF_PARTITION_MAX_REL_HALF_WIDTH_30 * 100) })
+              : why.reason === "arithmetic"
+                ? t("ghostIndex.layoffReasonArithmetic", "the three shares in that group did not add up to one on this read, so it is withheld")
+                : arm?.computedAt
                 ? t("ghostIndex.layoffReasonStale", "the reading has not been recomputed since {{computedAt}}", { computedAt: stamp(arm.computedAt) })
                 : t("ghostIndex.layoffReasonUnwritten", "the reading has not been computed yet");
   // The sample so far, from the filed arm, where the row carries it.

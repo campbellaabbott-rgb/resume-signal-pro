@@ -674,8 +674,16 @@ const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
 // mentions a function. Every column this file asserts is byte-identical in
 // the successors; the pins follow the functions so an OLDER definition
 // sorting last cannot leave these assertions reading dead text.
-const COMPANY_SQL = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
-const CATEGORY_SQL = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
+// MOVED, NOT DROPPED, a fourth time. Both curves were re-issued on 2026-09-25
+// to give the day-30 sufficiency test a positive control: its four terms --
+// risk-set floor, half-width ceiling, the identity, an admitted bucket -- all
+// pass VACUOUSLY on a cohort that produced no events, so 71 boards holding
+// 30,182 live postings published a zero-width 100%. The estimator itself did
+// not move: every clause this file mirrors is byte-identical in the
+// successors. The pins follow the functions, because a mirror asserted against
+// a body the database has stopped running is decoration.
+const COMPANY_SQL = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
+const CATEGORY_SQL = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
 
 const readRaw = (f: string) => readFileSync(resolve(MIGRATIONS, f), "utf8");
 const stripComments = (raw: string) =>

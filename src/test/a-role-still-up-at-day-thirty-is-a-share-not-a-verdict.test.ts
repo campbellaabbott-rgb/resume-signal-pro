@@ -58,6 +58,18 @@ const PRIOR = "20260909200000_a_closed_at_that_is_known_to_be_late.sql";
 const COMPANY_FILE = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
 const CATEGORY_FILE = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
 const TABLE_FILE = "20260909217800_the_bucket_we_computed_and_threw_away.sql";
+// MOVED, NOT DROPPED -- the rule this repo applies whenever a re-issue lands.
+// Both curves were re-issued on 2026-09-25 to give sufficient_30 the positive
+// control it never had: its four terms all pass VACUOUSLY on a cohort with no
+// events, which put 71 boards and 30,182 live postings behind a zero-width
+// 100%. Migrations are immutable, so the files above are untouched and the
+// database now runs the two below. Every property this file pins is unchanged
+// and must hold against the bodies that RUN, so the pins follow the functions;
+// leaving them on the superseded files would be this tree's oldest failure --
+// a guard asserting dead text. The day-30 gate itself is guarded by
+// a-day-thirty-gate-must-have-seen-the-cohort-produce-an-event.
+const LIVE_COMPANY_FILE = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
+const LIVE_CATEGORY_FILE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
 
 /** Executable text only: `--` to end of line, and block comments. */
 const stripSql = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/--[^\n]*/g, "");
@@ -245,8 +257,8 @@ function mirrorViolations(code: string): string[] {
 }
 
 const CURVES: Array<{ fn: string; grain: "tok" | "cat"; file: string }> = [
-  { fn: "get_company_fill_curve", grain: "tok", file: COMPANY_FILE },
-  { fn: "get_category_fill_curve", grain: "cat", file: CATEGORY_FILE },
+  { fn: "get_company_fill_curve", grain: "tok", file: LIVE_COMPANY_FILE },
+  { fn: "get_category_fill_curve", grain: "cat", file: LIVE_CATEGORY_FILE },
 ];
 
 describe("still advertised at day 30 is published as a share, gated, and never past the cap", () => {
@@ -353,7 +365,12 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       const owner = ddl(tableSql);
       expect(owner).toMatch(/CHECK \(bucket IN \('full_read', 'lap_proven', 'lap_pending', 'unprovable', 'unobserved'\)\)/);
       expect(owner).toMatch(/company_token text PRIMARY KEY/);
-      expect(ddl(readFileSync(resolve(DIR, COMPANY_FILE), "utf8"))).toBe(owner);
+      // Every file that repeats it -- each reader must be able to run on a
+      // schema built from the migrations alone, and a second spelling of the
+      // same table is a second table waiting to happen.
+      for (const f of [COMPANY_FILE, LIVE_COMPANY_FILE]) {
+        expect(ddl(readFileSync(resolve(DIR, f), "utf8")), `${f} repeats a different DDL`).toBe(owner);
+      }
     });
 
     it("stays service-role only and the refresh stays revoked from anon by name", () => {
@@ -378,9 +395,16 @@ describe("still advertised at day 30 is published as a share, gated, and never p
 
     it("sorts after the function files it serves, and the table DDL sorts before them", () => {
       // The readers are validated at CREATE, so the DDL must already exist
-      // when 217000 runs; the writer may come last.
+      // when the first of them runs; the writer may come last.
       expect(COMPANY_FILE < CATEGORY_FILE && CATEGORY_FILE < TABLE_FILE).toBe(true);
-      expect(readdirSync(DIR)).toEqual(expect.arrayContaining([COMPANY_FILE, CATEGORY_FILE, TABLE_FILE]));
+      // The re-issued readers sort after all three, so the table they read is
+      // already there however the schema was built -- and a re-issue that
+      // sorted BEFORE the definition it replaces would be silently reverted in
+      // filename order, which this repo has been bitten by twice.
+      expect(TABLE_FILE < LIVE_COMPANY_FILE && LIVE_COMPANY_FILE < LIVE_CATEGORY_FILE).toBe(true);
+      expect(readdirSync(DIR)).toEqual(
+        expect.arrayContaining([COMPANY_FILE, CATEGORY_FILE, TABLE_FILE, LIVE_COMPANY_FILE, LIVE_CATEGORY_FILE]),
+      );
     });
   });
 });
