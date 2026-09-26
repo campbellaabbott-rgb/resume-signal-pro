@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925164237_the_third_day_thirty_chain_on_one_page_gets_the_same_control.sql'));

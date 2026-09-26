@@ -2230,7 +2230,9 @@ export type Database = {
           cohort_to: string | null
           computed_at: string | null
           employers_n: number | null
+          events_30: number | null
           filings_read_at: string | null
+          fills_30: number | null
           gate_share_30: number | null
           half_width_30: number | null
           insufficient_reason: string | null
@@ -2238,6 +2240,7 @@ export type Database = {
           n_at_risk_30: number | null
           newest_filing_event_date: string | null
           relist_rate_30: number | null
+          relists_30: number | null
           still_open_30: number | null
           still_open_30_hi: number | null
           still_open_30_lo: number | null
@@ -2253,7 +2256,9 @@ export type Database = {
           cohort_to?: string | null
           computed_at?: string | null
           employers_n?: number | null
+          events_30?: number | null
           filings_read_at?: string | null
+          fills_30?: number | null
           gate_share_30?: number | null
           half_width_30?: number | null
           insufficient_reason?: string | null
@@ -2261,6 +2266,7 @@ export type Database = {
           n_at_risk_30?: number | null
           newest_filing_event_date?: string | null
           relist_rate_30?: number | null
+          relists_30?: number | null
           still_open_30?: number | null
           still_open_30_hi?: number | null
           still_open_30_lo?: number | null
@@ -2276,7 +2282,9 @@ export type Database = {
           cohort_to?: string | null
           computed_at?: string | null
           employers_n?: number | null
+          events_30?: number | null
           filings_read_at?: string | null
+          fills_30?: number | null
           gate_share_30?: number | null
           half_width_30?: number | null
           insufficient_reason?: string | null
@@ -2284,6 +2292,7 @@ export type Database = {
           n_at_risk_30?: number | null
           newest_filing_event_date?: string | null
           relist_rate_30?: number | null
+          relists_30?: number | null
           still_open_30?: number | null
           still_open_30_hi?: number | null
           still_open_30_lo?: number | null
