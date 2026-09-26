@@ -5407,6 +5407,24 @@ export type Database = {
           lp_warn_lag_p50_days: number
         }[]
       }
+      get_lca_load_state: {
+        Args: never
+        Returns: {
+          ls_cells: number
+          ls_coverage_from: string
+          ls_coverage_to: string
+          ls_filings: number
+          ls_fiscal_quarter: string
+          ls_loaded_at: string
+          ls_max_spread: number
+          ls_periods: number
+          ls_published_on: string
+          ls_source_file: string
+          ls_tokens: number
+          ls_wage_high: number
+          ls_wage_low: number
+        }[]
+      }
       get_newest_companies: {
         Args: { p_limit?: number }
         Returns: {

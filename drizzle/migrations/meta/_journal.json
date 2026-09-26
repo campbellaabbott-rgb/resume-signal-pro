@@ -477,6 +477,13 @@
       "when": 1790450031975,
       "tag": "0067_20260925150733_the_period_a_figure_is_about",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790450042127,
+      "tag": "0068_20260925151044_the_load_can_be_asked",
+      "breakpoints": true
     }
   ]
 }
