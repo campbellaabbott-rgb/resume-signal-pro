@@ -449,6 +449,13 @@
       "when": 1790357828611,
       "tag": "0063_a_posting_is_quoted_never_judged",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790449998824,
+      "tag": "0064_20260925141127_the_read_log_admits_the_quarter_load",
+      "breakpoints": true
     }
   ]
 }

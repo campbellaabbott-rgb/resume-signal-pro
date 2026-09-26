@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260925141127_the_read_log_admits_the_quarter_load_that_writes_to_it.sql'));
