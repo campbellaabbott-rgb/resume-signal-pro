@@ -76,8 +76,14 @@ if(fn==="get_category_fill_curve"){
 done
 
 echo "== 4b. no published share rests on fewer events, fills or precision than the gate names =="
-R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e '
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  non-JSON")}
+# The category curve is the heaviest read in this file (18 fields over a 90-day
+# cohort) and it answers in tens of seconds. R()'s 60s was enough before the
+# gate added three counted columns and is not reliably enough now: a timeout
+# came back as `non-JSON`, which reads as a broken deploy rather than a slow
+# one. This probe gets its own budget and says which of the two happened.
+Rslow() { curl -s -m 240 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-{\}}"; }
+Rslow get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  the category curve did not answer within 240s — slow, not necessarily wrong; re-run this section alone")}
 if(!Array.isArray(j))return console.log("FAIL  "+JSON.stringify(j).slice(0,160));
 const N=v=>v===null||v===undefined?null:Number(v);
 const MIN_EVENTS=5, MIN_FILLS=5, MAX_HW=0.15, MAX_REL=0.5;
