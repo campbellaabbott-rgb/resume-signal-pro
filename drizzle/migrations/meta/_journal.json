@@ -540,6 +540,13 @@
       "when": 1790544158630,
       "tag": "0076_20260927202451_a_window_of_sixty_minutes_is_not_sixty_windows_of_one",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1790544179208,
+      "tag": "0077_20260927211436_a_checkout_that_began_is_recorded_where_the_session_is_minted",
+      "breakpoints": true
     }
   ]
 }
