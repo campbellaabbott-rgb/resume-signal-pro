@@ -148,14 +148,55 @@ export function workdayCxsUrl(applyUrl: string): string | null {
 }
 
 /**
- * The description from a page's schema.org JobPosting node.
+ * The employer's own pay, as the MonetaryAmount that rides beside the
+ * description in the SAME schema.org node. Every field is the vendor's, read
+ * and not interpreted: no figure is derived here and no period is guessed.
+ *
+ * `point` is the node's single `value`. It is a BOUND, not a range — a posting
+ * that states one figure states one figure, and rendering it as min==max would
+ * invent a ceiling the employer did not type.
+ *
+ * `unitText` is the employer's own period label and is MEASURABLY WRONG on live
+ * rows, which is why it is carried through raw for a magnitude cross-check
+ * rather than trusted. See ldBaseSalaryText in normalize.ts for the refusals.
+ */
+export interface LdBaseSalary {
+  /** ISO code exactly as the MonetaryAmount states it; null when it states none. */
+  currency: string | null;
+  min: number | null;
+  max: number | null;
+  /** The node's single `value` — one bound, never half of a range. */
+  point: number | null;
+  /** HOUR | DAY | WEEK | MONTH | YEAR as the employer typed it, upper-cased. */
+  unitText: string | null;
+}
+
+/**
+ * BOTH halves of a page's schema.org JobPosting node: the description we have
+ * always read, and the pay we downloaded and threw away for over a year.
  *
  * Breezy renders its posting body client-side — the /json list has no
  * description field at all — but it emits this block for Google Jobs. Pages
  * carry MORE THAN ONE ld+json script (a WebSite node comes first), so every node
  * has to be checked; taking only the first one finds nothing.
+ *
+ * WHY ONE READER AND NOT TWO. The description half of this walk is the only
+ * description source Breezy and Paylocity have, and its predicate is exact:
+ * the FIRST node whose type is a job posting and whose description is longer
+ * than a teaser wins. A second function repeating that predicate to fetch the
+ * pay would be a second copy of it, free to drift — and the pay must come from
+ * the node the description came from, or the two halves describe different
+ * requisitions. So the predicate stays in one place and returns both halves;
+ * the description value returned is the same object property it always was, and
+ * the existing description cases assert it unchanged.
+ *
+ * A node with no MonetaryAmount, or one carrying no positive figure at all,
+ * yields pay: null. Measured over 356 captured live pages (240 Paylocity + 60
+ * Breezy + 90 Paylocity, 2026-09-26/27): 186 have a usable description and no
+ * pay node, and 0 have a pay node that is present but figureless — so the
+ * common case is "description only" and it must cost the description nothing.
  */
-export function jobPostingLdDescription(html: string): string | null {
+export function jobPostingLd(html: string): { description: string | null; pay: LdBaseSalary | null } {
   const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   for (const m of (html || "").matchAll(re)) {
     let parsed: unknown;
@@ -166,11 +207,49 @@ export function jobPostingLdDescription(html: string): string | null {
     }
     const nodes = Array.isArray(parsed) ? parsed : [parsed];
     for (const node of nodes) {
-      const n = node as { "@type"?: unknown; description?: unknown } | null;
+      const n = node as { "@type"?: unknown; description?: unknown; baseSalary?: unknown } | null;
       if (n && n["@type"] === "JobPosting" && typeof n.description === "string" && n.description.length > 100) {
-        return n.description;
+        return { description: n.description, pay: ldBaseSalary(n.baseSalary) };
       }
     }
   }
-  return null;
+  return { description: null, pay: null };
+}
+
+/** The MonetaryAmount's figures, unchanged. Null when there is nothing to read. */
+function ldBaseSalary(raw: unknown): LdBaseSalary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const bs = raw as { currency?: unknown; value?: unknown };
+  const v = bs.value;
+  if (!v || typeof v !== "object") return null;
+  const q = v as { minValue?: unknown; maxValue?: unknown; value?: unknown; unitText?: unknown };
+  // A figure arrives as a JSON number on every vendor measured (127 of 127 live
+  // nodes); a numeric string is accepted because the cost of doing so is one
+  // Number() and the cost of not doing so is a silently unread field. Zero and
+  // negatives are "the field exists and this posting states nothing" — never
+  // rendered.
+  //
+  // A COMMA IN A NUMBER-STRING IS REFUSED, NEVER STRIPPED. This used to read
+  // `Number(x.replace(/,/g, ""))`, which decided that every comma is a thousands
+  // group — the exact decision the comma-decimal fix in _shared/salary-extract.ts
+  // exists to undo. A vendor emitting `"1,50"` with unitText HOUR would have
+  // yielded 150, and a EUR 1.50 figure would have been published as a EUR 150.00
+  // per hour rate that annualises to 312,000. The type is the vendor's to change
+  // and nothing here would have noticed, so the predicate is the strict one the
+  // Personio reader already uses: digits, optionally one dot, nothing else. A
+  // comma-bearing string is a question this reader declines to answer.
+  const num = (x: unknown): number | null => {
+    if (typeof x === "number") return Number.isFinite(x) && x > 0 ? x : null;
+    const s = typeof x === "string" ? x.trim() : "";
+    if (!/^\d+(?:\.\d+)?$/.test(s)) return null;
+    const n = Number(s);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const min = num(q.minValue);
+  const max = num(q.maxValue);
+  const point = num(q.value);
+  if (min === null && max === null && point === null) return null;
+  const cur = typeof bs.currency === "string" && bs.currency.trim() ? bs.currency.trim().toUpperCase() : null;
+  const unit = typeof q.unitText === "string" && q.unitText.trim() ? q.unitText.trim().toUpperCase() : null;
+  return { currency: cur, min, max, point, unitText: unit };
 }

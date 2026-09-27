@@ -4,6 +4,10 @@
 
 import type { JobSourceKind } from "./sources.ts";
 import { categorize, type JobCategory } from "./categories.ts";
+// The vendor pay formatters below hand their sentence to the shared parser and
+// publish nothing it reads back differently — so the per-period magnitude
+// windows have exactly one definition, in the module that owns them.
+import { LOAD_DEPENDENT_PERIODS, parseSalaryStructured } from "../_shared/salary-extract.ts";
 
 export interface JobPosting {
   /** `${source}:${token}:${externalId}` — stable across refreshes. */
@@ -39,6 +43,25 @@ export interface JobPosting {
       client-authored work-level labels, pre-cleaned of pay-basis words before
       the shared mapper); the rest stay null. */
   employmentType?: EmploymentType | null;
+  /**
+   * The vendor's employment-type WORDS, carried beside the normalised enum
+   * because the part-time guard reads words and the enum cannot serve it.
+   *
+   * detectPartTime suppresses the full-time-load annualisation of an hourly,
+   * daily or weekly rate, and its vocabulary is written for the phrasing a
+   * posting uses: "part-time", "part time", "full-or-part-time". The enum above
+   * spells that state `part_time`, and an underscore matches none of those
+   * forms — verified against the live parser, `part-time` suppresses the
+   * annualisation and `part_time` does not. Handing the enum to the salary
+   * context would therefore be a guard that reads as wired and does nothing.
+   *
+   * Set only where a vendor states the schedule in the same payload as a pay
+   * figure, which today is Personio alone: 33 of 97 measured gains are
+   * part-time or full-or-part-time and 21 are hourly, so without this the
+   * board would annualise a part-time wage at 2,080 hours. Never written to a
+   * column — the enum is the stored field; this is context for the parser.
+   */
+  employmentTypeText?: string | null;
 }
 
 export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
@@ -1529,6 +1552,359 @@ export function leverSalary(r?: { min?: number; max?: number; currency?: string;
   return `${sym}${range}${interval ? interval.toLowerCase() : ""}`;
 }
 
+// ── a vendor's own structured pay → the board's salary TEXT ─────────────────
+//
+// TWO VENDORS PUBLISH A PAY FIGURE WE NEVER READ, AND THIS IS THE ONE PLACE
+// EITHER BECOMES A STRING. Personio's XML feed carries a compensation block on
+// 13.9% of feed positions (444 of 3,198 over a 200-token random sample);
+// Paylocity's and Breezy's posting pages carry a schema.org MonetaryAmount on
+// rows that today show nothing at these rates, each with its own denominator
+// because they are not one number: PAYLOCITY 90 of 240 pages (37.5%) on the
+// first capture and 46 of 150 (30.7%) on an independent second draw, across many
+// tenants; BREEZY 33 of 60 (55.0%) then 33 of 80 (41.3%), and 29 of those 33 are
+// ONE tenant's duplicate subcontractor postings — the very tenant whose WEEK
+// label this reader now refuses. So Breezy's rate is a fact about one employer
+// and must never be quoted as a vendor coverage figure. Measured 2026-09-26/27.
+//
+// FOUR RULES, AND EVERY ONE OF THEM IS A REFUSAL.
+//
+// 1. THE EMPLOYER'S DIGITS, UNCHANGED. Two decimals always, group separators,
+//    and an explicit period word. NOT leverSalary: its fmtAmount rounds to "k"
+//    above 1,000, so a stated €3,500–€4,000 per month comes out "€4k–4k/month"
+//    and parses to an annual floor of 48,000 where the employer said 42,000 —
+//    €6,000 of a raise nobody offered. Lever's annual USD ranges happen to
+//    survive that rounding, which is why it went unnoticed; Personio's monthly
+//    figures sit exactly in the band it destroys.
+//
+// 2. NO ARITHMETIC HERE. The annualisation, the part-time suppression, the
+//    per-period magnitude windows and the currency rules all live in
+//    parseSalaryStructured and stay there. This function's only job is to hand
+//    that parser a sentence in its own vocabulary. Which means the parser is
+//    also the arbiter of whether the pair is publishable at all: see rule 4.
+//
+// 3. A SINGLE FIGURE IS A SINGLE BOUND. A node's lone `value`, and a pair whose
+//    ends are equal (live: Breezy's Oil Changers team member, 16 to 16 per
+//    hour), are one bound. Printing "16.00 – 16.00" would dress one number as a
+//    range. A pair whose max is BELOW its min is two readings that disagree and
+//    is refused outright rather than resolved to either end.
+//
+// 4. THE TEXT MUST READ BACK AS WHAT WENT IN, or nothing is written. The
+//    formatted sentence is parsed before it is returned and refused unless the
+//    parser recovers the same floor, the same ceiling, the same period, and a
+//    non-null annual figure. That single check does three jobs at once: it is
+//    the label/magnitude contradiction gate (the parser's own per-period
+//    windows, so there is one source of truth for the thresholds and no copy of
+//    them here); it is the proof that no rounding changed the employer's number
+//    (a third decimal place cannot survive a two-decimal render, so it is
+//    refused instead of published rounded); and it means a future edit to this
+//    formatter cannot quietly emit a sentence the parser reads differently.
+//
+//    Refusing at TEXT level rather than letting the annual columns go null is
+//    deliberate and measured: the annual columns are not the only reader of this
+//    string. The card prints the text, and the stated-pay predicate tests the
+//    text column — so a row whose annual was honestly refused still displays
+//    "€1,100.00 – 1,300.00 per year" and still counts as an employer who
+//    disclosed pay. Eight of 444 measured Personio blocks (1.8%) are labelled
+//    that wrongly, and 3 of 170 measured page nodes (1.8%) are too.
+//
+// KNOWN AND ACCEPTED LOSS: the parser's monthly ceiling is 90,000 for a
+// non-parity currency, which is below a normal monthly wage in several
+// high-nominal currencies, so a genuine IDR 47,000,000 per month (live,
+// bauhauserde) is refused here. Silence costs a reader a figure; a published
+// figure we cannot stand behind costs them the decision. See the salary-extract
+// lane for widening that ceiling per currency.
+
+export type StatedPayPeriod = "hour" | "day" | "week" | "month" | "year";
+
+/** The period word the shared parser recognises, per period. */
+const STATED_PAY_PERIOD_WORD: Record<StatedPayPeriod, string> = {
+  hour: "per hour",
+  day: "per day",
+  week: "per week",
+  month: "per month",
+  year: "per year",
+};
+
+/** Two decimals, always: never three, which the parser reads as a thousands group. */
+const fmtStatedPay = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * One vendor-stated pair → one sentence the shared parser can read, or null.
+ *
+ * The currency marker is the vendor's three-letter code when it gave one (the
+ * same shape pinpointSalary already publishes, and the form the parser resolves
+ * most exactly — an ISO code beats every symbol and is never country-dependent,
+ * where a bare "$" on a Canadian row resolves to CAD against a vendor field
+ * that said USD). Failing a code, the vendor's own symbol, which keeps the
+ * figure honest on screen even where the parser can label no currency. Failing
+ * both, NOTHING IS WRITTEN — never a currency inferred from the office or the
+ * country, and never a bare number either.
+ *
+ * A bare number used to be the outcome of falling off the end of the code test:
+ * a node stating `"currency": "US Dollar"` or `"$"` published "20.00 – 22.00 per
+ * hour", a figure whose unit of account the reader cannot know, on a card that
+ * prints it beside a company name. The annual columns did stay out of the pay
+ * filters (salary_rank_usd is NULL without a currency), but salary_min_annual
+ * was still written, so the row counted in the pay-coverage denominators that
+ * read that column, and the stated-pay predicate tests the TEXT. An unreadable
+ * currency is treated exactly as an unreadable period: silence.
+ */
+function statedPayText(
+  period: StatedPayPeriod,
+  min: number | null,
+  max: number | null,
+  currencyCode: string | null,
+  currencySymbol: string | null,
+): string | null {
+  if (min === null || !Number.isFinite(min) || min <= 0) return null;
+  if (max !== null && Number.isFinite(max) && max < min) return null;
+  const ceiling = max !== null && Number.isFinite(max) && max > min ? max : null;
+  const code = String(currencyCode ?? "").trim().toUpperCase();
+  const sym = String(currencySymbol ?? "").trim();
+  const marker = /^[A-Z]{3}$/.test(code) ? `${code} ` : sym;
+  if (!marker) return null;
+  const figures = ceiling === null ? fmtStatedPay(min) : `${fmtStatedPay(min)} – ${fmtStatedPay(ceiling)}`;
+  const text = `${marker}${figures} ${STATED_PAY_PERIOD_WORD[period]}`;
+  const read = parseSalaryStructured(text, null, null);
+  if (!read || read.period !== period || read.annualMin === null) return null;
+  if (read.min !== min) return null;
+  if (ceiling === null ? read.max !== null : read.max !== ceiling) return null;
+  return text;
+}
+
+/** A positive figure from a vendor string or number, or null. Locale-ambiguous
+ *  groupings ("3.500,00") are refused rather than guessed at: reading one wrong
+ *  is a 1,000x error and no measured feed writes them. */
+const statedPayFigure = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : null;
+  const s = String(v ?? "").trim();
+  if (!/^\d+(?:\.\d+)?$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+const PERSONIO_PAY_PERIOD: Record<string, StatedPayPeriod> = {
+  hourly: "hour",
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
+  yearly: "year",
+};
+
+/**
+ * Personio's own compensation block → the board's salary text.
+ *
+ * Verified live 2026-09-27 on the five tenants named in the audit: the block is
+ * min, max, currencySymbol, currencyCode and a period word, inside the XML
+ * normalizePersonio is already handed. A lone upper bound is a ceiling and not
+ * this job's pay, so it is refused — only a floor can be published as one.
+ */
+export function personioSalary(si: {
+  min?: string | number | null;
+  max?: string | number | null;
+  currencyCode?: string | null;
+  currencySymbol?: string | null;
+  type?: string | null;
+} | null | undefined): string | null {
+  if (!si) return null;
+  const min = statedPayFigure(si.min);
+  if (min === null) return null;
+  const period = PERSONIO_PAY_PERIOD[String(si.type ?? "").trim().toLowerCase()];
+  if (!period) return null;
+  return statedPayText(period, min, statedPayFigure(si.max), si.currencyCode ?? null, si.currencySymbol ?? null);
+}
+
+/**
+ * Do two pay strings name the SAME money?
+ *
+ * Asked at the one place where a change to the pay TEXT is about to be recorded
+ * as an employer editing their posting. The first time a vendor arm starts
+ * reading a structured compensation field, every row the description miner had
+ * already covered in prose gets a differently-shaped string for the identical
+ * figures — measured on Personio 2026-09-27, 16 of 16 such rows, e.g. a mined
+ * "€63,000–€95,000" against the vendor's own 63,000 to 95,000 per year. Those
+ * are not sixteen employers changing their pay.
+ *
+ * FLOOR, CEILING, CURRENCY — AND A PERIOD ONLY ONE SIDE STATES.
+ *
+ * The exemption the first draft made was "the period does not count", and that
+ * was wrong in the one direction that matters: a period is the largest multiplier
+ * in this whole lane. "$15,000.00 per week" and "$15,000 per year" have the same
+ * floor, the same ceiling and the same currency, and they are 780,000 against
+ * 15,000 — an employer restating the period IS the employer moving the number,
+ * and the caller writes the new text either way, so an unlogged period change is
+ * a 52x pay edit that leaves no trace in the one log here that cannot be
+ * re-derived.
+ *
+ * What the exemption is actually for is narrower and is testable: OUR reading
+ * gaining an answer the prose never gave. The measured case is period NULL on one
+ * side — a mined "€63,000–€95,000" parses to no period at all, against the
+ * vendor's own "per year" — and there the vendor has not contradicted anything,
+ * it has filled a blank. So the period is excused when one side states none, and
+ * compared whenever both do.
+ *
+ * Identical strings return false: there is nothing to decide, and the caller
+ * asks only about strings that already differ.
+ */
+export function statesTheSameMoney(a: string | null, b: string | null, country?: string | null): boolean {
+  if (!a || !b || a === b) return false;
+  const x = parseSalaryStructured(a, country ?? null, null);
+  const y = parseSalaryStructured(b, country ?? null, null);
+  if (!x || !y) return false;
+  const samePeriod = x.period === null || y.period === null || x.period === y.period;
+  return samePeriod && x.min === y.min && x.max === y.max && x.currency === y.currency;
+}
+
+/**
+ * MUST THE STORED-TEXT RE-SWEEP LEAVE THIS ROW'S ANNUAL ALONE?
+ *
+ * The re-sweep (`backfill-salary`) re-parses every row holding salary text
+ * whenever SALARY_PARSE_VERSION moves, and it reads the row, not the vendor
+ * payload. For most of the board that is the same context the ingest parse had:
+ * the part-time signal lives in the title or the description, and the sweep
+ * passes both. For one vendor it is NOT: Personio states the schedule in the
+ * same payload as the pay, and the word that fires the guard reaches the ingest
+ * parse through `employmentTypeText`, which is never stored in a column. The
+ * board's own enum is stored — and the sweep passes it, so `part_time` fires the
+ * widened guard — but the vendor's third state, full-or-part-time, is normalised
+ * to `full_time` because the role CAN be full-time. For those rows the sweep sees
+ * a full-time enum over an hourly wage and computes the 2,080-hour annual the
+ * ingest parse deliberately refused. That is the 2026-08-25 $44/hour incident,
+ * restored by a version bump rather than by a code change, which is why it needs
+ * a rule and not a comment.
+ *
+ * THE RULE IS NARROW ON PURPOSE. It refuses only the promotion of a NULL annual
+ * to a number, only on a load-dependent period (where annualising is an
+ * assumption about how much someone works rather than arithmetic on a figure the
+ * employer stated), and only for the sources whose schedule words no column
+ * carries. A row whose stored annual is WRONG is still corrected, which is what
+ * the sweep is for; a monthly or yearly Personio figure is untouched; every other
+ * vendor is untouched. What it costs is that a future parser improvement reaches
+ * these rows at ingest and on a pay-text correction rather than through the
+ * sweep — silence until the row is re-read, instead of a figure we cannot stand
+ * behind.
+ */
+export const SCHEDULE_WORDS_NOT_STORED: ReadonlySet<string> = new Set(["personio"]);
+
+export function sweepRefusesAnnual(
+  source: string | null | undefined,
+  storedAnnualMin: number | null,
+  nextAnnualMin: number | null,
+  nextPeriod: string | null,
+): boolean {
+  if (!SCHEDULE_WORDS_NOT_STORED.has(String(source ?? ""))) return false;
+  if (storedAnnualMin !== null || nextAnnualMin === null) return false;
+  return LOAD_DEPENDENT_PERIODS.has(String(nextPeriod ?? ""));
+}
+
+const LD_PAY_PERIOD: Record<string, StatedPayPeriod> = {
+  HOUR: "hour",
+  DAY: "day",
+  WEEK: "week",
+  MONTH: "month",
+  YEAR: "year",
+};
+
+/**
+ * THE BAND A FIGURE MUST SIT IN TO BE PUBLISHABLE AT THIS LABEL, per period,
+ * `[lo, hi)`. `null` means NO MEASURED BAND EXISTS AND THE LABEL IS REFUSED.
+ *
+ * EXHAUSTIVE OVER StatedPayPeriod ON PURPOSE. The first draft hand-wrote two
+ * refusals — hour >= 200 and year < 20,000 — beside a label map that admitted
+ * five periods, so DAY, WEEK and MONTH reached the formatter with nothing but the
+ * shared parser's own windows (day 40–5,000; week 200–20,000; month 800–35,000),
+ * and those windows are exactly the bands a figure of a DIFFERENT period lands
+ * in. The two bounds that existed were the two the captured fixtures happened to
+ * contain. Because this table is typed over every period, a label cannot be
+ * admitted again without someone deciding its band, and the decision is data, not
+ * a branch someone forgot to add.
+ *
+ * WHAT IS MEASURED, and it is only two labels. Of 170 live pay nodes across 390
+ * captured Paylocity and Breezy pages (2026-09-26/27): 121 HOUR, 38 YEAR, 5 WEEK,
+ * 0 DAY, 0 MONTH in the primary capture, with a later Breezy sweep adding DAY
+ * from one further employer. So:
+ *
+ *   hour — refused at or above 200. This costs real rows: 3 of 124 measured
+ *   hourly nodes are a telemedicine physician at 100–200 per hour, which is
+ *   plausible and is thrown away. 200 is where the parser stops being able to
+ *   tell an hourly rate from a weekly or daily one on magnitude alone, and an
+ *   employer who mislabels the period is exactly the employer whose figure we
+ *   cannot check. The floor is the parser's own (7) and is not restated here.
+ *
+ *   year — refused below 20,000, because an annual label under it is an hourly
+ *   rate mislabelled. Purcell Tire states 24 to 28 and calls it annual; Valley
+ *   Behavioral states 45.31 to 56.64 and calls it annual (45.31 x 2080 = 94,245,
+ *   the figure its own posting text prints); Lindt Sprüngli Canada states 16.95
+ *   and calls it annual. Three of 41 measured annual-labelled nodes, 7.3%.
+ *   Without this the board publishes a wage understated 2,080-fold.
+ *   THE COST OF THIS ONE IS A NON-US SILENCE AND IT IS UNMEASURED. The argument
+ *   for 20,000 is a US full-time-minimum argument, and it is applied with no
+ *   regard to currency on a lane that also covers Breezy's non-US tenants (159
+ *   GB rows live, 2026-09-27). A genuine employer-stated EUR 14,000 or GBP 15,000
+ *   full-time year is refused here — a real loss, in the direction of silence
+ *   rather than a false figure, accepted because the alternative is publishing an
+ *   hourly rate as a salary and no measurement separates the two. Not gated on
+ *   PARITY_CURRENCIES, because the currencies this loses rows in ARE parity
+ *   currencies; a parity gate would move the loss, not remove it.
+ *
+ *   day, week, month — REFUSED, with the specific reason that every WEEK node
+ *   measured is a subcontractor crew's weekly volume rather than one person's
+ *   wage: 5 of 5 are home-genius-exteriors, `{unitText: "WEEK", value: 5000}`,
+ *   title "James Hardie Siding Subcontractor Crews Wanted", employmentType
+ *   CONTRACTOR, and a description that states no figure at all ("Competitive pay
+ *   rates and prompt payment"). Published, that node became "USD 5,000.00 per
+ *   week" and 260,000 in salary_min_annual — the column salary_rank_usd is
+ *   generated from, so the row entered the pay floor, the pay ceiling and the
+ *   highest-pay sort at $260k on a figure no employer stated as a salary. The
+ *   parser's week window [200, 20,000] cannot refuse it and detectPartTime has no
+ *   contractor vocabulary. Constructed through the same path, MONTH 30,000 gives
+ *   360,000 and DAY 5,000 gives 1,300,000, each passing every other gate.
+ */
+const LD_PERIOD_BAND: Record<StatedPayPeriod, { lo: number; hi: number } | null> = {
+  // lo 0 defers to the parser's own hourly floor rather than restating it.
+  hour: { lo: 0, hi: 200 },
+  day: null,
+  week: null,
+  month: null,
+  year: { lo: 20_000, hi: Number.POSITIVE_INFINITY },
+};
+
+/**
+ * A posting page's schema.org MonetaryAmount → the board's salary text.
+ *
+ * THE PERIOD LABEL HERE IS EMPLOYER-TYPED AND MEASURABLY WRONG, which is what
+ * separates this reader from Personio's. So the label alone never decides: the
+ * figure must also sit inside the band LD_PERIOD_BAND states for that label, and
+ * a label with no measured band publishes nothing. See that table for every
+ * bound, its evidence and its cost — they are stated once, there, so this
+ * function cannot grow a threshold of its own.
+ *
+ * Everything else — the hourly floor, the currency rules, the annualisation —
+ * comes from the shared parser through statedPayText and is not restated here.
+ */
+export function ldBaseSalaryText(pay: {
+  currency: string | null;
+  min: number | null;
+  max: number | null;
+  point: number | null;
+  unitText: string | null;
+} | null | undefined): string | null {
+  if (!pay) return null;
+  const period = LD_PAY_PERIOD[String(pay.unitText ?? "").trim().toUpperCase()];
+  // No period label, no publishable figure: the vendor states the unit on every
+  // one of the 170 measured nodes that carry a figure, so this is a refusal of
+  // an unmeasured shape rather than a branch with a cost.
+  if (!period) return null;
+  const band = LD_PERIOD_BAND[period];
+  if (!band) return null;
+  const min = pay.min ?? pay.point;
+  const max = pay.min !== null ? pay.max : null;
+  if (min === null) return null;
+  const outOfBand = (n: number) => n < band.lo || n >= band.hi;
+  if (outOfBand(min) || (max !== null && outOfBand(max))) return null;
+  return statedPayText(period, min, max, pay.currency, null);
+}
+
 export function normalizeLever(raw: LeverJob[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : []).map((j) => {
     const location = j.categories?.allLocations?.join(" · ") || j.categories?.location || "";
@@ -1820,6 +2196,17 @@ export function normalizePersonio(xml: string, company: string, token: string, h
       // <schedule> is an enum (full-time | part-time | …), NOT a description —
       // the "never infer from prose" rule is intact.
       const workMode = detectWorkMode(office, title, schedule);
+      // THE FEED HAS ALWAYS CARRIED COMPENSATION AND THIS LINE SAID IT DID NOT.
+      // Until now the field below read `null` under a comment asserting the feed
+      // states no pay, and a repo-wide search for the element's name returned
+      // nothing — so the claim was both false and load-bearing: Personio was the
+      // board's least transparent vendor at 0.62% stated pay while the employer's
+      // own minimum, maximum, currency and period sat unread in a string this
+      // function was already handed. Verified live 2026-09-27 on five tenants,
+      // and the element is present on 13.9% of feed positions across a
+      // 200-token random sample (444 of 3,198). Zero extra requests, zero extra
+      // bytes. Every refusal that keeps this honest lives in personioSalary.
+      const pay = xmlBlocks(block, "salaryInformation")[0];
       return {
         id: `personio:${token}:${id}`,
         source: "personio" as const,
@@ -1832,10 +2219,22 @@ export function normalizePersonio(xml: string, company: string, token: string, h
         department,
         postedAt: safeIso(xmlValue(block, "createdAt")),
         category: categorize(title, department),
-        salary: null, // the feed carries no compensation field
+        salary: pay
+          ? personioSalary({
+            min: xmlValue(pay, "min"),
+            max: xmlValue(pay, "max"),
+            currencyCode: xmlValue(pay, "currencyCode"),
+            currencySymbol: xmlValue(pay, "currencySymbol"),
+            type: xmlValue(pay, "type"),
+          })
+          : null,
         // <schedule> is full-time | part-time | full-or-part-time; the mapper
         // reads full-or-part-time as full_time (the role CAN be full-time).
         employmentType: normalizeEmploymentType(schedule),
+        // The same words, unmapped, so the part-time guard can read them when
+        // the pay above is an hourly rate. See the field's own docblock for why
+        // the enum one line up cannot do this job.
+        employmentTypeText: schedule || null,
         applyUrl: id ? safeUrl(`https://${token}.${host}/job/${id}`) : "",
       };
     })

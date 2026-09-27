@@ -6888,11 +6888,27 @@ export default function Jobs() {
     if (!detailJob?.salary || !detailJob.category || !benchmarks) return null;
     const b = benchmarks[detailJob.category];
     if (!b) return null;
-    const p = parseSalaryStructured(detailJob.salary);
+    // THE SAME CONTEXT THE EDGE PASSES, or this comparison annualises the very
+    // wage the board refused to annualise — and the caveat rendered one fold down
+    // promises it does not ("part-time and casual rates are left un-annualized").
+    // Called bare, parseSalaryStructured("USD 22.00 per hour") returns 45,760 and
+    // the panel printed a percentage against the median floor from it, while the
+    // row's own salary_min_annual is NULL: Robinson Oil's "Part-time Cashier" is a
+    // live row and a fixture in this bundle. With the posting's own title and body
+    // the parse returns annualMin null, and the existing guard below then shows no
+    // comparison at all, which is the honest answer.
+    // NOT detailJob.employmentType: that is the stored enum, and while the shared
+    // guard now reads its underscore spelling, the vendor's third state is
+    // normalised to full_time — so passing it could only ever weaken this, never
+    // strengthen it. The title and the description are the posting's own words.
+    const p = parseSalaryStructured(detailJob.salary, detailJob.country ?? null, {
+      title: detailJob.title ?? null,
+      description: detailDesc ?? null,
+    });
     if (!p?.annualMin || !p.currency || p.currency !== b.currency) return null;
     const pct = Math.round(((p.annualMin - b.median) / b.median) * 100);
     return { median: b.median, currency: b.currency, n: b.n, pct };
-  }, [detailJob, benchmarks]);
+  }, [detailJob, detailDesc, benchmarks]);
 
   // Detail content rendered by BOTH containers — the overlay drawer below
   // lg and the inline split-pane column on lg+. Only one is visible at a

@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fetched live 2026-09-27 from https://{token}.jobs.personio.de/xml with a descriptive UA.
+     Each position below is VERBATIM from the tenant named beside it; nothing is edited.
+     Tenants, in order:
+       alpha-industries-gmbh-co-kg        id 1613939
+       pmx                                id 2782509
+       pmx                                id 2760301
+       dhme                               id 2811482
+       dhme                               id 2445009
+       academediaeducation-gmbh           id 2694122
+       bauhauserde                        id 2816170
+       bauhauserde                        id 2816168
+       bauhauserde                        id (no pay block)
+     The register is the audited one: these are the tenants the salary audit named. -->
+<workzag-jobs>
+<position>
+    <id>1613939</id>
+    <office>Frankfurt</office>
+    <department>Retail</department>
+    <recruitingCategory>Minijobber</recruitingCategory>
+    <name>Minijobber (m/w/d) Sales</name>
+    <jobDescriptions>
+        <jobDescription>
+            <name>Stelle</name>
+            <value>
+                <![CDATA[Für unseren Flagship-Store in Frankfurt am Main, suchen wir ab sofort eine*n <br><br><strong>Aushilfe im Verkauf (m/w/d) auf Minijob-Basis</strong><br><br>Mit Deinem leidenschaftlichen Verkaufstalent und Deinem authentischen Auftreten unterstützt Du uns bei der erfolgreichen Entwicklung unseres Stores und sorgst für ein besonderes Einkaufserlebnis.]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Deine Aufgaben</name>
+            <value>
+                <![CDATA[<ul><li>Beratung unserer Kunden und Verkauf </li><li>Warenpräsentation und Umsetzung von Visual Merchandising-Konzepten</li><li>Mitwirkung bei Bestandsmanagement und Inventur </li><li>Übernahme der Kassenführung und des Kassenabschlusses</li></ul>]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Dein Profil</name>
+            <value>
+                <![CDATA[<ul><li>Erfahrung im textilen Einzelhandel</li><li>Begeisterung für Fashion Brands</li><li>Teamfähigkeit und eine Hands-On Mentalität</li><li>Hohe Serviceorientierung und Spaß am Verkauf</li><li>Kommunikationsstärke</li><li>Fließende Deutsch- sowie Englischkenntnisse</li></ul>]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Warum wir?</name>
+            <value>
+                <![CDATA[<ul><li>Es erwartet Dich ein interessantes, abwechslungsreiches und breites Aufgabenspektrum</li><li>Authentische Unternehmenskultur und flache Hierarchien</li><li>Kurze Kommunikationswege, offene Türen und hilfsbereite, engagierte Kollegen und Kolleginnen</li><li>Bei uns kannst Du aktiv mitgestalten, Ideen einbringen und mit uns wachsen</li></ul>]]>
+            </value>
+        </jobDescription>
+    </jobDescriptions>
+    <employmentType>temporary</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>part-time</schedule>
+    <keywords>sales,verkauf,fashion,alpha,brand,minijob,aushilfe</keywords>
+    <occupation>retail_and_counter_sales_and_cashier</occupation>
+    <occupationCategory>sales_and_business_development</occupationCategory>
+    <createdAt>2024-06-26T09:43:48+00:00</createdAt>
+    <salaryInformation>
+        <min>14.50</min>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>hourly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2782509</id>
+    <subcompany>pmX GmbH</subcompany>
+    <office>Oberkochen</office>
+    <department>A1 DS</department>
+    <recruitingCategory>Festangestellte</recruitingCategory>
+    <name>Logistikmitarbeiter (m/w/d)</name>
+    <jobDescriptions>
+        <jobDescription>
+            <name>Deine Aufgaben</name>
+            <value>
+                <![CDATA[<ul style="margin:0px;font-family:'-apple-system-body', 'ui-sans-serif', '-apple-system', 'system-ui', 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, 'sans-serif', 'Segoe UI Emoji', 'Segoe UI Symbol';font-size:16px;font-style:normal;font-weight:400;text-transform:none;background-color:rgb(255,255,255);"><li style="font-size:14px;">Kommissionierung von Montagekits</li><li style="font-size:14px;">Erfassung von Materialflüssen im elektronischen System</li><li style="font-size:14px;">Durchführung <span style="font-size:14px;">des Wareneingangs inklusive Mengen-, Identitäts-, Differenz- und Qualitätsprüfung</span></li><li style="font-size:14px;"><span style="font-size:14px;">Durchführung der </span>Ein- und Auslagerung von Materialien</li><li style="font-size:14px;">Erfassung und Verwaltung von Lagerorten im elektronischen System</li><li style="font-size:14px;">Unterstützung bei der Durchführung von Inventuren</li><li style="font-size:14px;">Durchführung von Materialübergaben in und aus dem Reinraum</li></ul>]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Dein Profil</name>
+            <value>
+                <![CDATA[<ul style="margin:0px;font-family:'-apple-system-body', 'ui-sans-serif', '-apple-system', 'system-ui', 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, 'sans-serif', 'Segoe UI Emoji', 'Segoe UI Symbol';font-size:16px;font-style:normal;font-weight:400;text-transform:none;background-color:rgb(255,255,255);"><li style="font-size:14px;">Berufserfahrung im Lager, Versand oder in der Materialbereitstellung</li><li style="font-size:14px;">Bereitschaft zur Arbeit im Reinraum</li><li style="font-size:14px;">Gute PC-Kenntnisse, insbesondere MS Excel, MS Word und SAP</li><li style="font-size:14px;">Bereitschaft zur Arbeit im 2-Schicht-System und zu gelegentlicher Wochenendarbeit</li></ul>]]>
+            </value>
+        </jobDescription>
+    </jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-time</schedule>
+    <occupation>shipping_and_receiving_and_warehousing</occupation>
+    <occupationCategory>logistics_and_transportation</occupationCategory>
+    <createdAt>2026-09-04T15:20:13+00:00</createdAt>
+    <salaryInformation>
+        <min>23.00</min>
+        <max>29.00</max>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>hourly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2760301</id>
+    <subcompany>pmX GmbH</subcompany>
+    <office>Stuttgart</office>
+    <department>A1 DS</department>
+    <recruitingCategory>Festangestellte</recruitingCategory>
+    <name>Assistenz Private Banking (m/w/d)</name>
+    <jobDescriptions>
+        <jobDescription>
+            <name>Deine Aufgaben</name>
+            <value>
+                <![CDATA[<ul style="margin:0px;color:rgb(13,13,13);font-family:'-apple-system-body', 'ui-sans-serif', '-apple-system', 'system-ui', 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, 'sans-serif', 'Segoe UI Emoji', 'Segoe UI Symbol';font-size:16px;font-style:normal;font-weight:400;text-transform:none;background-color:rgb(252,252,252);"><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Unterstützung der Private-Banking-Berater im anspruchsvollen Tagesgeschäft und bei der Betreuung vermögender Privatkunden</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Eigenständige Vor- und Nachbereitung von Kundenterminen und Kundenbesprechungen</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Erstellung und Aufbereitung von Präsentationen, Reports, Auswertungen und weiteren kundenbezogenen Unterlagen</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Pflege und Verwaltung von Kundenstammdaten sowie sorgfältige Dokumentation und Ablage</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Professionelle Korrespondenz mit Kunden, Geschäftspartnern sowie internen und externen Ansprechpartnern</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Übernahme vielfältiger organisatorischer Aufgaben rund um die Betreuung eines anspruchsvollen Kundenkreises</li></ul>]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Dein Profil</name>
+            <value>
+                <![CDATA[<ul style="margin:0px;color:rgb(13,13,13);font-family:'-apple-system-body', 'ui-sans-serif', '-apple-system', 'system-ui', 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, 'sans-serif', 'Segoe UI Emoji', 'Segoe UI Symbol';font-size:16px;font-style:normal;font-weight:400;text-transform:none;background-color:rgb(252,252,252);"><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Abgeschlossene kaufmännische Ausbildung, idealerweise im Bankwesen, Finanzbereich oder eine vergleichbare Qualifikation</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Mehrjährige Berufserfahrung als Assistenz im Private Banking, Wealth Management oder Family Office</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Sicherer Umgang mit MS Office</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Ausgeprägtes Verständnis für die Anforderungen und Abläufe im Private Banking</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Sehr gute organisatorische Fähigkeiten sowie eine strukturierte, sorgfältige und selbstständige Arbeitsweise</li><li style="font-family:Arial, Helvetica, sans-serif;font-size:14px;">Hohe Service- und Kundenorientierung sowie ausgeprägte Kommunikationsfähigkeit</li></ul>]]>
+            </value>
+        </jobDescription>
+    </jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-time</schedule>
+    <occupation>executive_support</occupation>
+    <occupationCategory>administrative_and_clerical</occupationCategory>
+    <createdAt>2026-08-19T15:06:50+00:00</createdAt>
+    <salaryInformation>
+        <min>60000.00</min>
+        <max>80000.00</max>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>yearly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2811482</id>
+    <subcompany>Daiwa House Modular Europe Jan Snel BV</subcompany>
+    <office>Montfoort</office>
+    <department>1030681_Productie Woningbouw (assemblage)</department>
+    <name>Assistent teamleider assemblage</name>
+    <jobDescriptions></jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-time</schedule>
+    <keywords>assemblage,woningbouw,beton,hout,metaal</keywords>
+    <occupation>general_and_other_production_and_operations</occupation>
+    <occupationCategory>production_and_operations</occupationCategory>
+    <createdAt>2026-09-23T16:25:48+00:00</createdAt>
+    <salaryInformation>
+        <min>3500.00</min>
+        <max>4000.00</max>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>monthly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2445009</id>
+    <subcompany>Daiwa House Modular Europe Jan Snel BV</subcompany>
+    <office>Montfoort</office>
+    <department>1030560_Transport Chauffeurs</department>
+    <recruitingCategory>Hiring process | Production</recruitingCategory>
+    <name>Chauffeur trekker-oplegger</name>
+    <jobDescriptions></jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-time</schedule>
+    <keywords>vrachtwagenchauffer, C+E,trekker,oplegger,vaste wagen,code 95</keywords>
+    <occupation>truck_driving</occupation>
+    <occupationCategory>logistics_and_transportation</occupationCategory>
+    <createdAt>2025-12-01T11:27:10+00:00</createdAt>
+    <salaryInformation>
+        <min>3254.83</min>
+        <max>3550.32</max>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>monthly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2694122</id>
+    <subcompany>FAWZ gGmbH</subcompany>
+    <office>Petershagen - Gesamtschule</office>
+    <department>Lehrkräfte</department>
+    <recruitingCategory>Lehrkräfte</recruitingCategory>
+    <name>Lehrkraft für Geografie (m/w/d)</name>
+    <jobDescriptions>
+        <jobDescription>
+            <name>Dein Job</name>
+            <value>
+                <![CDATA[<ul style="list-style-type:disc;"><li><strong><span style="font-family:Aptos, sans-serif;">Gestaltungsfreude und Entdeckergeist:</span></strong> Du bist mit Leidenschaft dabei, Neues zu entdecken und aktiv mitzugestalten.</li><li><strong><span style="font-family:Aptos, sans-serif;">Blick für die Schülerpersönlichkeit:</span></strong> Die altersspezifischen und individuellen Voraussetzungen Deiner Schüler*innen stehen für Dich im Mittelpunkt pädagogischen Handelns.</li><li><strong><span style="font-family:Aptos, sans-serif;">Innovativer Unterrichtsansatz</span></strong><strong><span style="font-family:Aptos, sans-serif;">: </span></strong><span style="font-family:Aptos, sans-serif;">Du denkst über standardisierte Unterrichtskonzepte hinaus und gestaltest lebendigen, praxisnahen Unterricht.</span></li><li><strong><span style="font-family:Aptos, sans-serif;">Ganzheitliche Wissensvermittlung:</span></strong> Du nutzt vielfältige Lernformate, um Inhalte über den klassischen Unterricht hinaus erlebbar zu machen.</li><li><strong><span style="font-family:Aptos, sans-serif;">Fördern mit Augenmaß:</span></strong> Du erkennst Potenziale und begleitest Deine Schüler*innen fordernd, aber stets wertschätzend und unterstützend.</li><li><strong><span style="font-family:Aptos, sans-serif;">Verlässliche Ansprechperson:</span></strong> Du bist für Deine Schüler*innen im Schulalltag da – bei kleinen und großen Anliegen.</li><li><strong><span style="font-family:Aptos, sans-serif;">Engagement für junge Menschen:</span></strong> Du unterstützt die Entwicklung einer neuen jungen Generation mit allem, was Sie zu bieten haben.</li><li><strong><span style="font-family:Aptos, sans-serif;">Gute Schule:</span></strong> Du verfolgst unser Ziel, Schule aktiv weiterzuentwickeln und nachhaltig mitzugestalten.</li></ul>]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Deine Qualifikation</name>
+            <value>
+                <![CDATA[<ul style="list-style-type:disc;margin-left:26px;"><li><strong><span style="font-family:Aptos, sans-serif;">Abschluss:</span></strong> Du hast die <strong>Zweite Staatsprüfung für das Lehramt</strong> an Sekundarschulen (SEK I) oder als Studienrat/Studienrätin erfolgreich abgeschlossen – alternativ verfügst Du über ein abgeschlossenes Hochschulstudium im Bereich Geografie.</li><li><strong><span style="font-family:Aptos, sans-serif;">Erfahrung in der Unterrichtsgestaltung: </span></strong><span style="font-family:Aptos, sans-serif;">Du verfügst über pädagogische Kompetenz und hast bereits eigene Unterrichtseinheiten geplant und durchgeführt.</span></li><li><strong><span style="font-family:Aptos, sans-serif;">Engagement in der Schulentwicklung:</span></strong> Du bringst Dich aktiv in die Weiterentwicklung unserer Schule ein und gestaltest Veränderungsprozesse mit.</li><li><strong><span style="font-family:Aptos, sans-serif;">Kreativität und Eigeninitiative:</span></strong> Du hast den Mut, neue Ideen einzubringen, und die Motivation, diese verantwortungsvoll umzusetzen.</li><li><strong><span style="font-family:Aptos, sans-serif;">Offenheit für Neues:</span></strong> Du bist bereit, neue Aufgaben mit Freude, Engagement und einer positiven Grundhaltung anzugehen.</li><li><strong><span style="font-family:Aptos, sans-serif;">Erfahrung in multinationalen Unternehmen:</span></strong> Idealerweise hast Du bereits in einer multinationalen Unternehmensstruktur gearbeitet und verstehst die Besonderheiten globaler Zusammenarbeit.</li><li><strong><span style="font-family:Aptos, sans-serif;">Innovationsgeist:</span></strong> Du denkst vorausschauend, erkennst technologische Trends und hast eine Leidenschaft für technologische Innovationen.</li><li><strong><span style="font-family:Aptos, sans-serif;">Ausgeprägte Kommunikationsfähigkeiten:</span></strong> Du verfügst über sehr gute sprachliche Ausdrucksfähigkeit in Wort und Schrift (<strong>Sprachniveau C1</strong>) und kommunizierst klar, wertschätzend und adressatengerecht.</li></ul>]]>
+            </value>
+        </jobDescription>
+        <jobDescription>
+            <name>Unsere Benefits</name>
+            <value>
+                <![CDATA[<ul style="list-style-type:disc;margin-left:26px;"><li><strong><span style="font-family:Aptos, sans-serif;">Sicheres Arbeitsverhältnis</span></strong><span style="font-family:Aptos;"> – Wir bieten Dir einen unbefristeten Arbeitsvertrag in einer offenen, kollegialen und motivierenden Teamkultur.</span></li><li><strong><span style="font-family:Aptos, sans-serif;">Raum zur individuellen Ausgestaltung des Unterrichts:</span></strong> Du hast die Möglichkeit, Deinen Unterricht kreativ und selbstbestimmt zu gestalten und auf die Bedürfnisse Deiner Schüler*innen einzugehen.</li><li><strong><span style="font-family:Aptos, sans-serif;">Internationale Schulpartnerschaften:</span></strong> Du profitierst von der Teilnahme an internationalen Schulpartnerschaften und förderst interkulturelle Zusammenarbeit und Austausch.</li><li><strong><span style="font-family:Aptos, sans-serif;">Schulen in grüner Umgebung:</span></strong> Unsere Schulen befinden sich in einer naturnahen Umgebung, die eine ruhige und inspirierende Lernatmosphäre schafft.</li><li><strong><span style="font-family:Aptos, sans-serif;">Digital ausgestattete Schulen:</span></strong> Du arbeitest in modernen, digital gut ausgestatteten Schulen, die den Einsatz neuer Technologien im Unterricht unterstützen.</li><li><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Gemeinsame Erlebnisse: </span></strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Du kannst Dich auf regelmäßige Firmenevents freuen, die den Teamgeist stärken und für abwechslungsreiche, gemeinsame Erlebnisse sorgen.</span></li><li><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Individuelle Weiterentwicklung: </span></strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Wir unterstützen und fördern Deine fachliche sowie persönliche Weiterentwicklung mit gezielten Weiterbildungsangeboten.</span></li><li><strong><span style="font-size:15px;font-family:Aptos, sans-serif;">Versicherungen und Vorsorge: </span></strong><strong><span style="font-size:15px;font-family:Aptos, sans-serif;font-weight:normal;">Du erhältst einen Zuschuss zur betrieblichen Altersvorsorge sowie eine betriebliche Unfallversicherung und Krankenzusatzversicherung für Deine Sicherheit.</span></strong></li><li><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Attraktive Vergünstigungen: </span></strong><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Du profitierst von exklusiven Mitarbeiterangeboten über corporate benefits, dem europäischen Marktführer für Mitarbeiterrabatte.</span></strong></li><li><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Gesundheitsförderung: </span></strong><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Mit einer Urban Sports Club Firmenmitgliedschaft kannst Du Deine sportliche Aktivität jederzeit flexibel und günstig gestalten.</span></strong></li><li><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Mobilität: </span></strong><strong><span style="font-family:Aptos, sans-serif;font-size:15px;">Du kannst von unserem Jobrad-Angebot profitieren und bist so flexibel und umweltbewusst unterwegs.</span></strong></li></ul>]]>
+            </value>
+        </jobDescription>
+    </jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>entry-level</seniority>
+    <schedule>full-or-part-time</schedule>
+    <yearsOfExperience>1-2</yearsOfExperience>
+    <keywords>Lehrer,Dozent,Gesamtschule,Abitur,Schule,Schüler,Geografie</keywords>
+    <occupation>other</occupation>
+    <occupationCategory>other</occupationCategory>
+    <createdAt>2026-07-01T14:48:50+00:00</createdAt>
+    <salaryInformation>
+        <min>3700.00</min>
+        <max>5600.00</max>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>yearly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2816170</id>
+    <office>Jakarta, Indonesia</office>
+    <department>Hilti Indo Team</department>
+    <recruitingCategory>Festangestellte</recruitingCategory>
+    <name>Local Research &amp; Implementation Manager - Indonesia (m/w/x)</name>
+    <jobDescriptions></jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-time</schedule>
+    <yearsOfExperience>2-5</yearsOfExperience>
+    <occupation>general_and_other_r_and_d_and_science</occupation>
+    <occupationCategory>r_and_d_and_science</occupationCategory>
+    <createdAt>2026-09-26T09:44:46+00:00</createdAt>
+    <salaryInformation>
+        <min>47000000.00</min>
+        <currencySymbol>Rp</currencySymbol>
+        <currencyCode>IDR</currencyCode>
+        <type>monthly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>2816168</id>
+    <office>Berlin</office>
+    <additionalOffices>
+        <office>Remote</office>
+    </additionalOffices>
+    <department>Hilti Indo Team</department>
+    <recruitingCategory>Festangestellte</recruitingCategory>
+    <name>Indonesia Project Lead (m/w/x)</name>
+    <jobDescriptions></jobDescriptions>
+    <employmentType>permanent</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-time</schedule>
+    <yearsOfExperience>2-5</yearsOfExperience>
+    <keywords>Project Management,Sustainable Architecture,International Development,Stakeholder Management,Urban Planning,Indonesia,Sustainable Construction</keywords>
+    <occupation>general_and_other_r_and_d_and_science</occupation>
+    <occupationCategory>r_and_d_and_science</occupationCategory>
+    <createdAt>2026-09-26T09:32:09+00:00</createdAt>
+    <salaryInformation>
+        <min>6283.38</min>
+        <currencySymbol>€</currencySymbol>
+        <currencyCode>EUR</currencyCode>
+        <type>monthly</type>
+    </salaryInformation>
+</position>
+<position>
+    <id>1320952</id>
+    <office>Berlin</office>
+    <department>Operations</department>
+    <recruitingCategory>Talentpool</recruitingCategory>
+    <name>General Talent Pool / Future Openings (m/f/d)</name>
+    <jobDescriptions>
+        <jobDescription>
+            <name>Projektbeschreibung</name>
+            <value>
+                <![CDATA[<h3><strong><span style="font-size:14px;">Not finding the right role today? Join our Talent Community!</span></strong></h3><p><span style="font-size:14px;">We are constantly growing and looking for passionate people to join our journey. Even if we don’t have a specific opening that matches your profile right now, we would love to stay in touch for future opportunities.</span></p><p><span style="font-size:14px;">By joining our <strong>General Talent Pool</strong>, you’ll be the first to know when a role opens up that fits your expertise.</span></p><h3><span style="font-size:14px;"><strong>How it works</strong></span></h3><ol><li style="font-size:14px;"><p><strong>Submit your profile:</strong> Upload your CV and tell us what you’re passionate about.</p></li><li style="font-size:14px;"><p><strong>Tell us your focus:</strong> Let us know which area of expertise you are passionate about:</p><ul><li><p><strong>Architecture &amp; Lab Projects</strong> (e.g., regenerative construction, material innovation, demonstrators)</p></li><li><p><strong>Research &amp; Science</strong> (e.g., systems research, data analytics, climate impact)</p></li><li><p><strong>Policy &amp; Advocacy</strong> (e.g., political strategy, urban transformation, advisory)</p></li><li><p><strong>Communications &amp; Outreach</strong> (e.g., events, digital media, storytelling)</p></li><li><p><strong>Operations &amp; Administration</strong> (e.g., HR, finance, organizational development)</p></li></ul></li><li style="font-size:14px;"><p><strong>Stay on our radar:</strong> Our Talent Acquisition team and Team Leads regularly review this pool before we even post a job publicly.</p></li></ol><h3><span style="font-size:14px;"><strong>What we look for</strong></span></h3><ul><li style="font-size:14px;"><p>Professionals at all levels (Junior to Senior).</p></li><li style="font-size:14px;"><p>A "can-do" attitude and a passion for regenerative architecture and the systemic transformation of our built environment.</p></li><li style="font-size:14px;"><p>People who want to make a long-term impact in a fast-paced environment.</p></li></ul><h3><span style="font-size:14px;"><strong>What’s next?</strong></span></h3><p><span style="font-size:14px;">If your profile matches a future opening, we will reach out to you directly for an initial chat. In the meantime, feel free to follow us on <a href="https://www.linkedin.com/company/bauhaus-earth/posts/?feedView=all">https://www.linkedin.com/company/bauhaus-earth/posts/?feedView=all</a> for company updates!</span></p>]]>
+            </value>
+        </jobDescription>
+    </jobDescriptions>
+    <employmentType>temporary</employmentType>
+    <seniority>experienced</seniority>
+    <schedule>full-or-part-time</schedule>
+    <occupation>other</occupation>
+    <occupationCategory>other</occupationCategory>
+    <createdAt>2018-07-31T09:25:04+00:00</createdAt>
+</position>
+</workzag-jobs>

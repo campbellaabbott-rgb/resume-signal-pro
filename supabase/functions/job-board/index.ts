@@ -15,7 +15,7 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, type JobSource } from "./sources.ts";
-import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLdDescription, workdayCxsUrl } from "./descriptions.ts";
+import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLd, workdayCxsUrl } from "./descriptions.ts";
 import { fetchJazzhr, jazzhrPostingUrl, parseJazzhrDetail } from "./vendors/jazzhr.ts";
 import {
   COUNTRY_MAP_VERSION,
@@ -57,6 +57,9 @@ import {
   detectRegion,
   greenhouseApi,
   leverApi,
+  ldBaseSalaryText,
+  statesTheSameMoney,
+  sweepRefusesAnnual,
   type JobPosting,
   NEGATED_REMOTE_SOURCE,
   normalizeUkg,
@@ -143,7 +146,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.79"; // .79: normalize.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). ONE STAMP FOR ONE BUNDLE. An earlier draft of this change minted .78 AND .79 for a single publish, which contradicts the .73 entry below in terms ("a new stamp would imply a shipped .73 that does not exist"): verify-deploy reads this string to identify the deployed artifact, and two stamps for one artifact make it useless. Both work-mode reads are here. (1) THE EMPLOYER PICKED THE WORK MODE FROM A DROPDOWN AND THIS FUNCTION THREW IT AWAY. UKG Pro Recruiting puts JobLocationType on every row of the list payload fetchUkg already POSTs for every UKG board on every pass; UkgOpportunity did not declare the field, and the comment above the arm's workMode said the list "states no remote flag of its own" — false, and the falsehood was load-bearing, because we state a mode on 716 of 34,333 servable UKG rows (2.1%: remote 423 / hybrid 80 / onsite 213, counted through this function's own probes, none capped) while the employer had answered the question on about half of them. THE VOCABULARY IS THE VENDOR'S, READ FROM ITS OWN LOCALIZATION RESOURCE, NOT GUESSED: the three JobLocationType labels are Hybrid, On-site, Remote in that numeric order, the vendor's own search facet offers -1 for "not specified", and its detail view model renders NOTHING for null, for a value below the first label or above the last. NOTE THE FIRST ONE IS HYBRID — guessing this enum from the usual boolean shape would have been wrong in the most damaging direction. MEASURED ON A CENSUS, NOT A SAMPLE: every UKG board in JOB_SOURCES, page 0 of each, 1,291 boards / 33,497 rows, 2026-09-27 — the key is present on 33,497 of 33,497 and 59.1% carry a value (1 -> 16,148, null -> 13,703, 0 -> 2,409, 2 -> 1,237, and NO OTHER INTEGER AT ALL). That 59.1% is a VENDOR-side share of the rows this lane reads first and is NOT the share of our own inventory. THE LIKE-WITH-LIKE REACH IS A RANGE, because two draws on our own rows the same day disagree: 59.6% of 300 rows sampled down the vendor=ukg slice would gain a stated mode against 45.3% on an independent 143-row draw, so ~15,000-20,000 of the 33,617 no-mode rows, ~13,000-17,000 of them on-site. The 65.6% first proposed was a vendor-side page-0 sample scaled onto our denominator and the same route run again reproduces it at 65.3% — page 0 is where this enum's coverage is highest, so it is the one sample that must not be scaled. ZERO EXTRA REQUESTS ON BOTH SIDES: new arrivals carry the field on the row this arm already receives, and existing rows are rewritten by the refresh path's stated-only work_mode write, so the backfill accrues over the rotation (400 sampled UKG rows were all re-read within 10.4h, p50 0.6h) rather than costing a fetch; the desc/structured sweeps are deliberately untouched, the field being on the LIST. FIVE GATES. (1) ONLY 0/1/2 MAP, through the one shared vendor-label reader and the vendor's own words, so no second mapping table and no second work-mode ladder: an unmapped integer — its own -1 sentinel included — a non-integer, a numeric string and an absent key are SILENCE, and there is no default branch to read them as on-site. AND an unmapped non-null integer other than that -1 is LOGGED, the way the Workday classifier logs an unclassified remoteType, because silence in the code must not also be silence to the operator on the vendor whose enum this bundle just made load-bearing for ~20,000 rows. (2) The guard walks CAPTURED PAYLOADS rather than asserting a comment (the remoteType lesson: the field path first proposed for the Workday place read was present on 0 of 367 live payloads while every local check stayed green), and breaking each rule in the state its defect lives in was run and recorded. (3) NULL STAYS NULL: silence is 40.9% of the census and a widening that filled it would invent a mode on thousands of postings. (4) THE ENUM CONTRADICTING THE EMPLOYER'S OWN WORDS WRITES NULL, NEVER THE ENUM — the workdayDetailPlace refuse-on-contradiction rule, one field over — AND "THE EMPLOYER'S OWN WORDS" NOW INCLUDES THE LABELS THEY GAVE EVERY SITE ON THE REQUISITION, which is the half a review found missing. `location` is the first site's City/State and falls back to a label only when that address is empty, so on any row the vendor placed properly the employer's own "Remote - Indianapolis, IN" was DELETED BEFORE the gate ran, and the gate then compared the dropdown against a string the remote statement had been removed from and published On-site. MEASURED: 26 rows were served on-site while a vendor label on the same requisition carried an explicit remote word — including both rows the audit's adversarial verifier named as the evidence for having this gate at all — and with the labels read that count is 0. BOTH label fields are read, because 174 census rows state a mode in LocalizedDescription with LocalizedName blank. Where both sides speak they agree on 762 of 902 rows (84.5%), and the refusal is SYMMETRIC: of the 140 disagreements, 37 are an On-site dropdown under the employer's own label reading Remote, 42 a Hybrid dropdown under a label reading Remote and 39 the reverse, and all of them write nothing. (5) A STRING THAT NAMES A BUILDING IS NOT A POLICY: the head-office phrase is removed from the place, the job category and the labels before the detector sees them, and LEFT IN THE TITLE, where it is the posting's own words about the role. Measured rather than assumed — 179 census rows carry that phrase in a vendor label, and where those employers also answered their own dropdown they said Hybrid on 32 and On-site on 40 against Remote on only 19, so the label is not a remote statement on 72 of the 91 rows that settle it. Handing the labels in UNMASKED would have published remote on 130 of them (the same fabrication the Paylocity half of this bundle removes, moved one vendor over) and would have deleted the employer's own On-site on 39 more by "contradicting" it with our reading of their building's name. 7 more census rows carry the phrase in the job CATEGORY, and on 5 of those the dropdown says On-site, so that reading was deleting the employer's answer. NET OVER THE CENSUS: stated 20,048 -> 20,155, on-site 16,252 -> 16,232. AND `enum ?? text`, NEVER THE BARE ENUM: the dropdown is blank on 501 of the 1,403 rows whose own words DO state a mode (35.7%), so returning the enum alone would go dark on a third of what this vendor already gives us; existing rows are shielded there by the stated-only write, a NEW arrival is not. WHERE THE SAFETY ACTUALLY IS, stated rather than implied: gates 4 and 5 and the `?? text` fallback. Gate 1 is a cheap fence over a value the vendor has NOT been observed to send — the -1 sentinel appears on 0 rows of the list payload, it lives in the search FACET — so it must not be counted as the evidence that this fill is safe. ONE ASYMMETRY IN THE CORRECTIONS PATH, named rather than left to drift: a refusal cannot erase a stored mode through the stated-only work_mode write, but the remote-boolean branch below it re-writes the re-normalised work_mode WITH its nulls whenever the boolean moves — so a stored 'remote' that the dropdown contradicts clears to (null, false), which is the honest state, while a stored 'hybrid' contradicted by the same dropdown keeps 'hybrid' because the boolean never moved. (2) A HEAD OFFICE IS A BUILDING AND THE BOARD READ IT AS A WORK-FROM-HOME POLICY. normalizePaylocity took the vendor's LocationName unconditionally over the City/State that arrives in the SAME list payload, and handed that string to the shared work-mode detector — which carries the head-office token because in German and in plenty of English postings it genuinely states the policy. On this vendor the field is often the employer's BUILDING or COST CENTRE, so a site name became a remote claim with no employer statement behind it: a Lube Technician, a Grading Foreman and a Mailroom Technician were all published as remote, and Jobs.tsx puts jobLocationType TELECOMMUTE in a remote posting's JSON-LD, so crawlers were told a Columbia SC equipment-operator role was telework. MEASURED as a CENSUS, not a sample, 2026-09-27: all 15 tenants in the stratum, all 39 stored rows re-fetched from the tenants' own public board payloads. The vendor's structured IsRemote is FALSE on 39 of 39 and 36 of the 39 carry a real City/State in that same payload. Live field values: "Home Office", "1000-Home Office" (a cost centre), "HOME OFFICE DEPARTMENTS", "Property Management, Inc. Home Office", "Home Office-Harold Grinspoon Foundation". THE FIX IS THE VENDOR'S OWN STRUCTURED FIELDS AND NEEDS NO JUDGEMENT ABOUT WHAT THE ENGLISH PHRASE MEANS: a LocationName whose residue after removing the token is EMPTY, a bare 3+-digit cost-centre number, or a residue NAMING AN ORGANISATION OR A DEPARTMENT yields to the payload's City/State, and the site label is never handed to the detector even when it has to stay as the displayed location. THE ENTITY ARM IS DELIBERATELY UNANCHORED and the docblock now says that instead of promising the opposite: two of the 39 labels put the entity word inside a COMPANY NAME, so a rule demanding a residue of nothing but entity words would answer no on four rows and leave them publishing a building as a policy. A residue naming ONLY a place still does not qualify, which is the line the refuted wide gate crossed. THE DEPARTMENT IS MASKED TOO, or the fix has a hole exactly the shape of the defect: an employer whose site labels read as head-office departments names departments the same way, and the department string reached the detector untouched, so the building came back in through the other door while the location yielded correctly. 0 of 3,646 rows across 30 sampled boards carry that shape today, so this closes a latent hole rather than repairing a live population — and the repair migration masks the same column, so the two runtimes cannot disagree about it. Zero extra requests — City, State and IsRemote all arrive in the list payload fetchPaylocity already downloads. RE-MEASURED through the real function over the 39 captured items: 36 read as site labels, 34 gain a real place (Peoria IL, Columbia SC, Camp Hill PA, Edina MN, Raleigh NC, Tallahassee FL, Overland Park KS, Madison WI, Charleston SC, Houston TX, West Warwick RI, Agawam MA, Lemoyne PA), 2 keep the label as their only location but stop reading it as a mode, and the mode goes 39 remote -> 35 NULL + 4 remote. IsRemote===false is NOT onsite, it is SILENCE (the SmartRecruiters false/false precedent), so those rows resolve to NULL: removing a claim cannot state a mode nobody stated, while a wrong onsite would be the fabrication the trinary-or-nothing rule exists to prevent. COUNTRY IS UNCHANGED ON ALL 39, AND region_code IS A GAIN: detectRegion derives a correct subdivision on 34 of them (US-IL, US-SC, US-PA, US-FL, US-MN, US-WI, US-KS, US-MA, US-RI, US-TX, US-NC) where it was null, and is contradicted on none — a location-string change silently re-derives a subdivision, which is the place build's lesson, and here the re-derivation is worth claiming. Two cosmetic residues named here rather than discovered later: three rows now display a bare state code as their whole location (KY, AR, SC — and the AR one is the employer's own State field on a posting titled for Arizona, so the board now surfaces their data error where it used to show a building), all three yielding region null so nothing is fabricated; and the 2 rows that keep the label are no longer remote, so their JSON-LD now emits jobLocation Place addressLocality "Home Office" instead of jobLocationType TELECOMMUTE — a pre-existing class, newly populated by two rows. THE SHARED REGEX IS DELIBERATELY UNTOUCHED and the change is scoped to ONE vendor arm. An adversarial re-check REFUTED the wider gate a first draft proposed: stripping the token wherever it sits beside a city would delete 114 genuinely-remote rows, including every German "Homeoffice" posting, which Recruitee's own remote boolean confirms on 51 of 51, and Ashby answers workplaceType Remote on "Home Office (Belfast)" and "Palo Alto Home Office"; of the Workday rows in this class carrying a structured remote type, 20 say Remote. The 3 of 39 rows whose residue still names a place ("Bozeman, MT - Home Office" x2 and a sentence naming three Californian cities) are left alone on purpose, and the title path is untouched, so the guarded German title reading stays remote. NOT fixed here and reachable by no lane: the Workday building/ordinal class (43 rows, 0 vendor fields, 23 carrying the employer's own in-office sentence — USAA publishes 41 rows at "San Antonio Home Office I/II/III") and the 4 rows whose Workday remoteType says On-site/Hybrid while we serve Remote, because structured-sweep selects work_mode IS NULL. MIGRATION 20260927113742, AND ITS DEPLOY ORDER, BOTH CORRECTED. An earlier draft of this note and of that file claimed the corrections path cannot write NULL over a stored work mode, so the code fix alone could never clear the 35. That is half the path: the stated-only write does refuse the null, and then the remote-boolean branch below it re-writes the re-normalised work_mode WITH its nulls whenever the boolean moves, which it does on all 35. So THE BUNDLE ALONE CLEARS THEM, one lap at a time, and the migration is an ACCELERATOR plus a reach extension: immediacy on a corpus this size, plus the rows no lap reaches — boards that are dormant, boards that are failing, and rows sitting past a board's per-pass fetch cap. Its second arm, which read the field-change log for a row whose location a lap had already rewritten, is DELETED: with the real mechanism that population cannot exist, because a row losing the token also moves the boolean and is cleared, and a row that keeps a remote statement in its new location is spared by the arm's own stated-remote test. THE REPAIR NOW WRITES NULL ONLY — the title-derived hybrid/on-site arms are gone, because SQL cannot see the vendor's remote flag and a title-derived on-site could contradict a payload whose structured field says remote, which is stating a mode rather than removing a claim; and they bought nothing, since for every row where the flag is silent the normalizer derives the same title-stated mode on the next lap and writes it freely. DEPLOY ORDER: WITH OR AFTER THIS BUNDLE, NEVER BEFORE IT. Applied first, the still-live old normalizer re-reads the site label as remote on the next visit, the corrections path writes a non-null work mode freely, and the same branch that clears the pair re-sets the boolean — so every repaired row silently goes back to a false remote, one board at a time. DISCLOSURE. One vendor going from 2.1% to roughly 45% stated will read from outside exactly like the on-site default this board refuses, so jobsPage.workModeProvenance ships in all nine locales and is rendered at EVERY surface that prints a posting's own work mode: the list card, the detail panel's Work mode row, the compare drawer — which a count-based guard had missed entirely — and the baked posting page, whose JSON-LD is built from the same field. The sentence names the employer's own hiring-system option AND their own words on the posting, title, location or DEPARTMENT, because the code reads all three; jobsPage.discWorkMode2, the /pay-transparency measurement copy and the agent-mcp field contract now give null its three meanings (nothing said; two things said and the board refusing to choose; or a posting older than the vendor field). THE COVERAGE PERCENTAGE STAYS DARK FOR ONE LAP AND THIS NOTE DOES NOT CLAIM OTHERWISE: the work-mode fraction is live from the coverage pass, its stamp is written only inside the pass's completion branch, and the deployed client withholds every percentage when the stamp is absent — so the coverage sentence appears a catalogue lap after deploy and until then the disclosure is the provenance line. The pinned PROSE figures for work-mode coverage in this file are re-dated rather than carried, because a figure in a comment names its date basis, and the live per-vendor share must be re-measured from the facet after the fill, never from a capped list total. .77: index.ts + filters.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE BOARD PRINTED THE EMPLOYER'S WAGE AND THE FILTER CALLED THE POSTING SILENT. All four pay controls decided "states pay" from the ANNUALISED figure, while the card renders its pay span from the verbatim pay TEXT — so every posting whose rate we declined to multiply into a year was served with its wage in bold on a row classified as stating nothing, and the population that decline lands on is not random: the shared parser deliberately refuses a 2,080-hour year for a rate carrying a part-time, casual, per-diem or on-call signal. MEASURED with the anon key through this function's own read paths, every figure stamped because the corpus moves ~2% an hour: two complete country strata walked row by row, no sampling — IE 2,575 rows / 312 with pay text / 282 with an annual (2026-09-27T02:01:53Z), NZ 1,455 / 161 / 143 (02:02:42Z), i.e. 30 and 18 postings printing a wage under a control calling them silent, and BOTH walks matched this function's own counted answer for the same stratum exactly (282 and 143). The hourly slice counted per country at 02:00:55Z-02:01:10Z, hourly against hourly-and-flagged: CA 2,170/1,461, GB 1,875/905, AU 464/168, IE 82/68, NZ 38/23, DE 26/23, NL 24/13. Board-wide, one scan at 2026-09-27T02:07:00Z over 733,190 servable rows: 207,108 carry pay text, 173,868 an annual figure, 173,826 a figure a pay floor can compare — so the predicate admits 33,240 postings and the control's published reach moves 23.71% -> 28.25%. hasStatedPay now binds the pay field in buildQuery AND inside search_jobs, count_jobs_capped and fuzzy_title_search (migration 20260927034117, each body extracted from ITS OWN latest definition and exactly one line changed): a count bound to one column under a page bound to the other is the 2026-07-25 p_work_mode defect, and a cross-runtime guard now fails if the four ever name different columns again. Four things moved WITH the predicate or they would each have gone quietly wrong: filterViolations reads the pay field (left behind it would have reported all 33,240 legitimately-admitted rows as integrity violations, and a channel that floods gets switched off); the coverage disclosure reads get_filter_coverage's salaryText instead of its hasStatedPay, so the percentage describes the population the count was taken over (the pass now stores that key — the scan has computed it since 20260909100000 and nothing kept it); MEASURED_COVERAGE.hasStatedPay was RE-MEASURED to 0.283 rather than carried, because a constant that silently changes which column it describes is how a number stays plausible while going wrong; and jobsPage.statedPayTip + jobsPage.coverageStatedPay were rewritten in all nine locales, since both promised "a yearly figure" and the apology pointing at the hourly control is retired. The FLOOR, the CEILING and the SORT are deliberately UNCHANGED — they compare an approximate-USD generated column that does not exist for a rate we would not annualise, and annualising a part-time wage to close the gap is how a $44/hr rate was once served at a $90k floor as 91,520. That makes the checkbox a strict superset of the three, so honesty() publishes payTextWithoutAnnual — the rows ON THIS PAGE printing a rate with no annual behind them, counted from the served rows, exact for the page and therefore printable where the board-wide fractions are withheld. It is published as a FLOOR, not a total: it cannot see a figure we annualised but could not convert (42 such rows board-wide, same scan), and it counts CARDS, not postings (60 cards stood for 68 postings on one live IE stated-pay page, 2026-09-27T03:29Z) — so the copy says "at least" and says "listings shown here". It is emitted ONLY under a pay control: ungated it printed on 10 of 20 default-shape browse pages spread from offset 0 to 494,000 (24 rows of 1,176 served, 03:29:49Z-03:30:23Z), telling readers who had touched no pay control that three controls they never used could not compare part of the page, and the client mirrors the gate rather than trusting the field's presence. DEPLOY ORDER, AND IT IS THE REVERSE OF THE USUAL ONE HERE: this bundle FIRST — together with public-api and agent-mcp in ONE publish, because all three answer the same documented filter — and migration 20260927034117 immediately after. The two halves ship down different pipes and cannot land together, so cappedCount stands down from count_jobs_capped for any stated-pay count the two SQL versions could disagree about (an UNCAPPED answer; a capped one is "10,000+" under both, the new predicate being a superset) and the exact buildQuery count answers instead, bounded by the same 10,000-row ceiling. The category rail withholds its numbers on a stated-pay text search for the same window rather than printing counts taken over the other population, and both stand-downs are dated and removable once verify-deploy 5y(b) shows the migration live. Bundle-second is the harmful order and is why the order is stated: the old bundle's page is NARROWER than the migrated count, and the old row audit reports every newly-admitted ranked row as an integrity violation on an unsampled channel. Also corrected here rather than left to drift: the click rollup's salary_present stays on the annualised column DELIBERATELY (a different question, named as such, dated) and the sentence claiming that column holds "Competitive"/"DOE" prose is retired — 0 of 5,350 pay texts in a 12,000-row walk of the two structured-pay vendors carry no digit, and the zero-VALUE rows that walk did find (11 of 1,674 newly-admitted, "EUR 0 - 0" and "$0" shapes, 0.66%) are an accepted cost stated as such, not a digit question. .76: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). REVIEW CORRECTIONS TO .75 — four exits could serve sort=newest and only two said what they had ordered, so the page invented the rest. (a) THE EMPLOYER ROUTE NEVER DATE-SORTED. newestTextSort stands down for the company retriever, and the routed exit ordered by effective_posted with no re-sort and emitted no sortScope: MEASURED live 2026-09-26, q="Spectrum Health"+sort=newest served workday:spectrumhealth~wd5~CorewellHealthCareers:R228442 with postedAt NULL at position 1 above seven rows stamped 2026-09-25, and the client's absent-sortScope arm printed "Newest first within the closest 200 matches" over it — a number no response ever sent, on a route whose window is ROUTE_WINDOW 400. The company half now orders posted_at DESC NULLS LAST, id ASC (block arithmetic unchanged: the key is still total and stable) and publishes sortScope matchSet + sortMatcher company; the routed block stands down entirely for a date sort on any OTHER retriever, because there it hands rows to rerankWindow and the ranked path below already serves that body with sortScope relevanceWindow and its real seam. (b) BOTH OF newestTextSort'S STAND-DOWNS WERE DEAD CODE UNDER A FILTER. They read routeDecision, which is hardcoded to BROWSE whenever any filter is applied, so the EMPLOYER and SYMBOL exclusions could never fire on a filtered body: MEASURED, {"q":"c++","country":"US","sort":"newest"} and the same body with q="c#" return total 1,430 with byte-identical title lists containing neither symbol (both collapse to the tsquery 'c'), and that set would have been published as the whole title-match set. The two exclusions now read `qClass`, the same pickRoute call computed from the query alone; the router itself still stands down under a filter. (c) THE DATED KEYSET WALK DROPPED THE UNDATED TAIL AND CALLED IT THE END. Both arms of the k:"pa" seek compare posted_at, and a NULL comparison is unknown, so the walk ended where the dated rows did with hasMore false — on the unfiltered board that is ~12,350 Load-more presses away and disclosed, but MEASURED on filtered pages it is a quarter of the answer: vendor=pinpoint+country=GB 244 undated of 860 (28.4%) after ~10 presses, vendor=pinpoint 959 of 3,554 (27.0%), while the header went on printing the full total. A short seek is now the SEAM, not the end: one .range() read at the accumulated offset crosses it (that read has always included the tail, which is why page one served it) and the walk continues by offset from there, exactly as it did before the keyset existed. (d) The grouping top-up's `!newestFirst` gate is gone. Its rationale was about the ANCHOR, not the order, and with every browse now sending sort:"newest" it had retired the mechanism on the board's most common request — the starvation it was built for was measured there ("retail sales" 39 cards under a total of 3,437). The anchor follows the order instead: the same two-arm seek on posted_at, skipped rather than faked when the last raw row carries no date. (e) The two-bucket includeUncategorised page publishes bucketedOrder: it returns the chosen field's rows followed by the "other" rows, each half ordered, so the date claim above the list is true inside a group and false across the seam; the page now discloses the grouping instead. (f) filterCoverage carries filterCoverageAt, the stamp of the pass that counted it, written INSIDE the coverage block (refreshedAt on the same row is patched between passes and would date a figure to a pass that never measured it). A reply that leaned on the 2026-08-25 pinned fallback ships the figures with NO stamp, and the client withholds every percentage when the stamp is absent — silence rather than a dated claim about numbers that date was not taken on. (g) The comment above the ranked exit's in-memory date sort said it ordered "the MATCHING set … which is what the control they chose promises" four lines above the field that publishes sortScope relevanceWindow; it now says which set it saw. logSearch("ranked") on the NEWEST exit is annotated with the guard that closes the label set, so nobody reads a per-route rate off a bucket holding three regimes. .75: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE ORDINARY BROWSE NEVER ASKED FOR THE ORDER IT CLAIMED. The list orders by posted_at nulls-last only when body.sort === "newest", and Jobs.tsx sent that only when there was a query, so a no-query browse sent no sort at all and fell back to effective_posted = coalesce(posted_at, first_seen) — every posting its employer never dated took OUR crawl stamp and sorted to the top. MEASURED live with the anon key on the body the UI actually sends, {"action":"list","limit":60}: 59 of 60 page-one rows undated (0 of 60 on the same body with sort=newest), and in the company state {"action":"list","limit":30,"groupSimilar":false,"companies":["classicfls"]} an undated row was served above four dated ones under a page printing "newest first, company-stated dates before undated" in nine languages. Jobs.tsx now sends sort:"newest" whenever the order on screen is newest, the no-query browse included, and names this function's effective_posted date fallback "discovered" so the undated rows stay one click away instead of 12,350 Load-more presses: page one of the discovery order is 59 of 60 undated, while under the dated order the first undated row sits between offset 740,000 and 742,000 of 746,300 (measured 2026-09-26). The dated walk also gains the keyset it never had: nextCursor now carries k:"pa" with the last raw row's posted_at, and the reader refuses any coordinate whose kind does not match the order the request pages in, so moving the ordinary browse onto sort=newest does not trade a wrong order for a lossy one (offset paging overlapped 4 of 8 page transitions, 2026-08-18). The untagged effective_posted cursor is unchanged. The stale "10% of the corpus with no date / 540,437 that DO carry one" figures above `ordered` are corrected to the measured ~0.7%. .74: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). "NEWEST FIRST" ON A SEARCH WAS THE NEWEST OF THE 200 MOST RELEVANT. sort=newest sets scoreRanked false, so deepPageable is false and planRankedPage reads search_jobs at p_offset 0 / p_limit 200 — the page then date-sorts THOSE 200 in memory, and the rows a date order needs are the ones least likely to rank. Measured live with the anon key before this change: {"q":"nurse","sort":"newest","limit":60} returned 3 cards, hasMore false, nextOffset 200, under total 10000 countCapped (the relevance top-200 was 199 requisitions from one employer under two titles), and a countOnly probe with postedAfter=<that page's newest row> counts 39 nurse title matches strictly newer than the top card, 224 for q="engineer". newestTextSort now serves that body the way salaryTextSort serves sort=salary: buildQuery matching titles on the simple-config index WITH alias expansion, ordered in SQL by posted_at DESC NULLS LAST, id ASC over the whole match set, paged by a plain offset — no window, and no total (the only count available describes a different set). It stands down for the EMPLOYER route (title matcher would return nothing for a company name) and for SYMBOL (identical tsquery for c++ and c#, and the literal-substring rule cannot run in SQL), and a zero-row read falls through so the description tier and the fuzzy/semantic/location-split rescues are never lost. Both regimes now SAY which set the order saw: sortScope matchSet + sortMatcher title here, sortScope relevanceWindow + sortScopeRows <seam> on the ranked exit, and Jobs.tsx prints its order claim from those fields instead of from the requested sort — the select, the line under the search box and the hint beside the select used to make three different claims on one screen. .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit. .78: _shared/salary-extract.ts + SALARY_PARSE_VERSION 7->8; index.ts otherwise UNCHANGED from .77. A three-decimal HOURLY rate was read as a thousands group. P_MONEY's first alternative matches "23.170" as 23,170, so the unlabeled-annual branch fired at multiplier 1 and Saskatchewan Health Authority's $23.17/hour pay band was stored as a $23,170 ANNUAL salary — below SK minimum wage for full-time work. The tenant's own CX API says "RequisitionType": "Hourly" beside "Salary or Pay Band: Pay Band 12 $23.170 to $24.840 (3 step range)". Measured live 2026-09-26 over 176,575 rows (complete coverage of the 12k-120k band for all 20 vendors, where a misread rate necessarily lands, plus 31,586 rows in 120k-2M where nothing qualifies): 1,404 rows on FIVE boards and two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. salary_rank_usd is GENERATED from salary_min_annual and is what the pay floor, ceiling and sort all compare, so every one of them filtered and sorted at about half its true pay. readsDotThreeAsRate re-reads the group as a decimal only when that is the only plausible reading, conditioned on the posting's LOCALE rather than the separator, so parseMoney's deliberate European reading is untouched (385 EUR rows in the same band unchanged) — plus: no comma-grouped figure elsewhere in the string, no stated annual/monthly basis, every figure a bare dot-3 group, and no group round to the hundred (a dot-as-thousands TYPO writes a round annual: "$110.400 TO $184.000", "$50.000-$100.000"; without that test the re-read fired on 240 measured rows at 2080x). It rewrites min/max only, so annualisation stays the audited path and the part-time guard still applies. SALARY_PARSE_VERSION 7->8 makes the chained backfill-salary sweep re-fill the stored columns; it skips rows already matching the current parse, so it writes only the ~1,404 corrections. // .77: index.ts + filters.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE BOARD PRINTED THE EMPLOYER'S WAGE AND THE FILTER CALLED THE POSTING SILENT. All four pay controls decided "states pay" from the ANNUALISED figure, while the card renders its pay span from the verbatim pay TEXT — so every posting whose rate we declined to multiply into a year was served with its wage in bold on a row classified as stating nothing, and the population that decline lands on is not random: the shared parser deliberately refuses a 2,080-hour year for a rate carrying a part-time, casual, per-diem or on-call signal. MEASURED with the anon key through this function's own read paths, every figure stamped because the corpus moves ~2% an hour: two complete country strata walked row by row, no sampling — IE 2,575 rows / 312 with pay text / 282 with an annual (2026-09-27T02:01:53Z), NZ 1,455 / 161 / 143 (02:02:42Z), i.e. 30 and 18 postings printing a wage under a control calling them silent, and BOTH walks matched this function's own counted answer for the same stratum exactly (282 and 143). The hourly slice counted per country at 02:00:55Z-02:01:10Z, hourly against hourly-and-flagged: CA 2,170/1,461, GB 1,875/905, AU 464/168, IE 82/68, NZ 38/23, DE 26/23, NL 24/13. Board-wide, one scan at 2026-09-27T02:07:00Z over 733,190 servable rows: 207,108 carry pay text, 173,868 an annual figure, 173,826 a figure a pay floor can compare — so the predicate admits 33,240 postings and the control's published reach moves 23.71% -> 28.25%. hasStatedPay now binds the pay field in buildQuery AND inside search_jobs, count_jobs_capped and fuzzy_title_search (migration 20260927034117, each body extracted from ITS OWN latest definition and exactly one line changed): a count bound to one column under a page bound to the other is the 2026-07-25 p_work_mode defect, and a cross-runtime guard now fails if the four ever name different columns again. Four things moved WITH the predicate or they would each have gone quietly wrong: filterViolations reads the pay field (left behind it would have reported all 33,240 legitimately-admitted rows as integrity violations, and a channel that floods gets switched off); the coverage disclosure reads get_filter_coverage's salaryText instead of its hasStatedPay, so the percentage describes the population the count was taken over (the pass now stores that key — the scan has computed it since 20260909100000 and nothing kept it); MEASURED_COVERAGE.hasStatedPay was RE-MEASURED to 0.283 rather than carried, because a constant that silently changes which column it describes is how a number stays plausible while going wrong; and jobsPage.statedPayTip + jobsPage.coverageStatedPay were rewritten in all nine locales, since both promised "a yearly figure" and the apology pointing at the hourly control is retired. The FLOOR, the CEILING and the SORT are deliberately UNCHANGED — they compare an approximate-USD generated column that does not exist for a rate we would not annualise, and annualising a part-time wage to close the gap is how a $44/hr rate was once served at a $90k floor as 91,520. That makes the checkbox a strict superset of the three, so honesty() publishes payTextWithoutAnnual — the rows ON THIS PAGE printing a rate with no annual behind them, counted from the served rows, exact for the page and therefore printable where the board-wide fractions are withheld. It is published as a FLOOR, not a total: it cannot see a figure we annualised but could not convert (42 such rows board-wide, same scan), and it counts CARDS, not postings (60 cards stood for 68 postings on one live IE stated-pay page, 2026-09-27T03:29Z) — so the copy says "at least" and says "listings shown here". It is emitted ONLY under a pay control: ungated it printed on 10 of 20 default-shape browse pages spread from offset 0 to 494,000 (24 rows of 1,176 served, 03:29:49Z-03:30:23Z), telling readers who had touched no pay control that three controls they never used could not compare part of the page, and the client mirrors the gate rather than trusting the field's presence. DEPLOY ORDER, AND IT IS THE REVERSE OF THE USUAL ONE HERE: this bundle FIRST — together with public-api and agent-mcp in ONE publish, because all three answer the same documented filter — and migration 20260927034117 immediately after. The two halves ship down different pipes and cannot land together, so cappedCount stands down from count_jobs_capped for any stated-pay count the two SQL versions could disagree about (an UNCAPPED answer; a capped one is "10,000+" under both, the new predicate being a superset) and the exact buildQuery count answers instead, bounded by the same 10,000-row ceiling. The category rail withholds its numbers on a stated-pay text search for the same window rather than printing counts taken over the other population, and both stand-downs are dated and removable once verify-deploy 5y(b) shows the migration live. Bundle-second is the harmful order and is why the order is stated: the old bundle's page is NARROWER than the migrated count, and the old row audit reports every newly-admitted ranked row as an integrity violation on an unsampled channel. Also corrected here rather than left to drift: the click rollup's salary_present stays on the annualised column DELIBERATELY (a different question, named as such, dated) and the sentence claiming that column holds "Competitive"/"DOE" prose is retired — 0 of 5,350 pay texts in a 12,000-row walk of the two structured-pay vendors carry no digit, and the zero-VALUE rows that walk did find (11 of 1,674 newly-admitted, "EUR 0 - 0" and "$0" shapes, 0.66%) are an accepted cost stated as such, not a digit question. .76: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). REVIEW CORRECTIONS TO .75 — four exits could serve sort=newest and only two said what they had ordered, so the page invented the rest. (a) THE EMPLOYER ROUTE NEVER DATE-SORTED. newestTextSort stands down for the company retriever, and the routed exit ordered by effective_posted with no re-sort and emitted no sortScope: MEASURED live 2026-09-26, q="Spectrum Health"+sort=newest served workday:spectrumhealth~wd5~CorewellHealthCareers:R228442 with postedAt NULL at position 1 above seven rows stamped 2026-09-25, and the client's absent-sortScope arm printed "Newest first within the closest 200 matches" over it — a number no response ever sent, on a route whose window is ROUTE_WINDOW 400. The company half now orders posted_at DESC NULLS LAST, id ASC (block arithmetic unchanged: the key is still total and stable) and publishes sortScope matchSet + sortMatcher company; the routed block stands down entirely for a date sort on any OTHER retriever, because there it hands rows to rerankWindow and the ranked path below already serves that body with sortScope relevanceWindow and its real seam. (b) BOTH OF newestTextSort'S STAND-DOWNS WERE DEAD CODE UNDER A FILTER. They read routeDecision, which is hardcoded to BROWSE whenever any filter is applied, so the EMPLOYER and SYMBOL exclusions could never fire on a filtered body: MEASURED, {"q":"c++","country":"US","sort":"newest"} and the same body with q="c#" return total 1,430 with byte-identical title lists containing neither symbol (both collapse to the tsquery 'c'), and that set would have been published as the whole title-match set. The two exclusions now read `qClass`, the same pickRoute call computed from the query alone; the router itself still stands down under a filter. (c) THE DATED KEYSET WALK DROPPED THE UNDATED TAIL AND CALLED IT THE END. Both arms of the k:"pa" seek compare posted_at, and a NULL comparison is unknown, so the walk ended where the dated rows did with hasMore false — on the unfiltered board that is ~12,350 Load-more presses away and disclosed, but MEASURED on filtered pages it is a quarter of the answer: vendor=pinpoint+country=GB 244 undated of 860 (28.4%) after ~10 presses, vendor=pinpoint 959 of 3,554 (27.0%), while the header went on printing the full total. A short seek is now the SEAM, not the end: one .range() read at the accumulated offset crosses it (that read has always included the tail, which is why page one served it) and the walk continues by offset from there, exactly as it did before the keyset existed. (d) The grouping top-up's `!newestFirst` gate is gone. Its rationale was about the ANCHOR, not the order, and with every browse now sending sort:"newest" it had retired the mechanism on the board's most common request — the starvation it was built for was measured there ("retail sales" 39 cards under a total of 3,437). The anchor follows the order instead: the same two-arm seek on posted_at, skipped rather than faked when the last raw row carries no date. (e) The two-bucket includeUncategorised page publishes bucketedOrder: it returns the chosen field's rows followed by the "other" rows, each half ordered, so the date claim above the list is true inside a group and false across the seam; the page now discloses the grouping instead. (f) filterCoverage carries filterCoverageAt, the stamp of the pass that counted it, written INSIDE the coverage block (refreshedAt on the same row is patched between passes and would date a figure to a pass that never measured it). A reply that leaned on the 2026-08-25 pinned fallback ships the figures with NO stamp, and the client withholds every percentage when the stamp is absent — silence rather than a dated claim about numbers that date was not taken on. (g) The comment above the ranked exit's in-memory date sort said it ordered "the MATCHING set … which is what the control they chose promises" four lines above the field that publishes sortScope relevanceWindow; it now says which set it saw. logSearch("ranked") on the NEWEST exit is annotated with the guard that closes the label set, so nobody reads a per-route rate off a bucket holding three regimes. .75: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE ORDINARY BROWSE NEVER ASKED FOR THE ORDER IT CLAIMED. The list orders by posted_at nulls-last only when body.sort === "newest", and Jobs.tsx sent that only when there was a query, so a no-query browse sent no sort at all and fell back to effective_posted = coalesce(posted_at, first_seen) — every posting its employer never dated took OUR crawl stamp and sorted to the top. MEASURED live with the anon key on the body the UI actually sends, {"action":"list","limit":60}: 59 of 60 page-one rows undated (0 of 60 on the same body with sort=newest), and in the company state {"action":"list","limit":30,"groupSimilar":false,"companies":["classicfls"]} an undated row was served above four dated ones under a page printing "newest first, company-stated dates before undated" in nine languages. Jobs.tsx now sends sort:"newest" whenever the order on screen is newest, the no-query browse included, and names this function's effective_posted date fallback "discovered" so the undated rows stay one click away instead of 12,350 Load-more presses: page one of the discovery order is 59 of 60 undated, while under the dated order the first undated row sits between offset 740,000 and 742,000 of 746,300 (measured 2026-09-26). The dated walk also gains the keyset it never had: nextCursor now carries k:"pa" with the last raw row's posted_at, and the reader refuses any coordinate whose kind does not match the order the request pages in, so moving the ordinary browse onto sort=newest does not trade a wrong order for a lossy one (offset paging overlapped 4 of 8 page transitions, 2026-08-18). The untagged effective_posted cursor is unchanged. The stale "10% of the corpus with no date / 540,437 that DO carry one" figures above `ordered` are corrected to the measured ~0.7%. .74: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). "NEWEST FIRST" ON A SEARCH WAS THE NEWEST OF THE 200 MOST RELEVANT. sort=newest sets scoreRanked false, so deepPageable is false and planRankedPage reads search_jobs at p_offset 0 / p_limit 200 — the page then date-sorts THOSE 200 in memory, and the rows a date order needs are the ones least likely to rank. Measured live with the anon key before this change: {"q":"nurse","sort":"newest","limit":60} returned 3 cards, hasMore false, nextOffset 200, under total 10000 countCapped (the relevance top-200 was 199 requisitions from one employer under two titles), and a countOnly probe with postedAfter=<that page's newest row> counts 39 nurse title matches strictly newer than the top card, 224 for q="engineer". newestTextSort now serves that body the way salaryTextSort serves sort=salary: buildQuery matching titles on the simple-config index WITH alias expansion, ordered in SQL by posted_at DESC NULLS LAST, id ASC over the whole match set, paged by a plain offset — no window, and no total (the only count available describes a different set). It stands down for the EMPLOYER route (title matcher would return nothing for a company name) and for SYMBOL (identical tsquery for c++ and c#, and the literal-substring rule cannot run in SQL), and a zero-row read falls through so the description tier and the fuzzy/semantic/location-split rescues are never lost. Both regimes now SAY which set the order saw: sortScope matchSet + sortMatcher title here, sortScope relevanceWindow + sortScopeRows <seam> on the ranked exit, and Jobs.tsx prints its order claim from those fields instead of from the requested sort — the select, the line under the search box and the hint beside the select used to make three different claims on one screen. .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.80"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -2680,10 +2683,15 @@ const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
 const EXPERIENCE_VERSION = 1;
 // Bump when parseSalaryStructured's rules change — re-sweeps stored salary
 // text into salary_min_annual + salary_currency (rows are insert-only, so
-// ingest alone never reaches postings that predate the parser). v2: currency
-// capture — the sweep targets salary_currency IS NULL, which also re-covers
-// rows v1 already parsed (they have a floor but no currency).
-const SALARY_PARSE_VERSION = 8; // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
+// ingest alone never reaches postings that predate the parser). v2 widened the
+// re-cover to rows v1 had already parsed (they held a floor but no currency).
+// WHAT THE SWEEP ACTUALLY SELECTS, since two comments in this file described a
+// predicate it has not had since v4: every row holding salary TEXT, with no
+// currency condition and no servable condition, skipping rows whose stored
+// values already match the current parse. A row with a currency and the wrong
+// amount IS reachable — which is why the comma-decimal rows, almost all of
+// which hold a currency beside a null or wrong annual, are repaired by a bump.
+const SALARY_PARSE_VERSION = 9; // v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8. // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
 // v6 (2026-08-24): // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
 const COUNTRY_VERSION = 1; // v1: deterministic country from location text (names + US/CA state patterns)
 // Date-the-undated sweep: greenhouse rows predating first_published capture
@@ -5243,6 +5251,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // already hold. Omitting it is what makes a deferral recoverable.
         const lightDescs = isLight(s.token) || descsDeferred;
         const rowsById = new Map<string, Record<string, unknown>>();
+        // THE VENDOR'S SCHEDULE WORDS, BESIDE THE ROWS AND NOT IN THEM. The
+        // part-time guard reads words and our stored enum is not in its
+        // vocabulary, so the salary parse needs the vendor's own phrasing — and
+        // both the insert parse and the CORRECTION re-parse below have to get
+        // the same value or a corrected row disagrees with a new one about the
+        // same pay text. It cannot ride the row object: every key of that
+        // object is sent to PostgREST as a column.
+        const scheduleWordsById = new Map<string, string>();
         // Ids the feed still serves but whose REAL stated date crossed the
         // 30-day window — our freshness cap, not a feed absence. They bypass
         // the two-pass grace below and delete this pass, unlogged, as always.
@@ -5262,6 +5278,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // fetched description where the vendor provides one). null → "unspecified".
           const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null));
           const rowCountry = j.country ?? detectCountry(j.location);
+          if (j.employmentTypeText) scheduleWordsById.set(j.id, j.employmentTypeText);
           rowsById.set(j.id, {
             id: j.id,
             source: j.source,
@@ -5299,7 +5316,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // an empty-string vendor salary must not block extraction.
             salary: salaryText,
             ...(() => {
-              const p = parseSalaryStructured(salaryText, j.country ?? detectCountry(j.location), { title: j.title ?? null, description: lightDescs ? null : (descs.get(j.id) ?? null) });
+              // employmentTypeText is the VENDOR'S OWN WORDS, and it is here
+              // because the part-time guard could not be reached from anything
+              // else this row carries. detectPartTime refuses the full-time-load
+              // annualisation of an hourly, daily or weekly rate, and its
+              // vocabulary is the phrasing a posting uses — "part-time",
+              // "full-or-part-time". Our own normalised enum spells that state
+              // with an underscore, which matches none of those forms, so
+              // passing the enum would have read as wired and done nothing.
+              // Only a vendor that states a schedule beside a pay figure sets
+              // the field (Personio today), so no other vendor's numbers move;
+              // for Personio it is the difference between publishing a
+              // part-time hourly wage as an annual salary and refusing to.
+              const p = parseSalaryStructured(salaryText, j.country ?? detectCountry(j.location), { title: j.title ?? null, description: lightDescs ? null : (descs.get(j.id) ?? null), employmentType: scheduleWordsById.get(j.id) ?? null });
               return {
                 salary_min_annual: p?.annualMin ?? null,
                 salary_max_annual: p?.annualMax ?? null,
@@ -5911,6 +5940,31 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // also the one field a stalled backfill would re-queue on every
         // rotation, which would bury the real edits under our own noise.
         const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code"]);
+        // AND WHAT IS NOT LOGGED ONCE, FOR ONE ROLLOUT: the FIRST value a vendor
+        // field ever hands us.
+        //
+        // `statesTheSameMoney` below stops our own reformatting of the same money
+        // being recorded as a pay edit, and that catches 16 Personio rows. The far
+        // larger case in the same rollout is null -> a figure: ~700 served Personio
+        // rows hold no pay text today (21 of 4,252 state any) and gain the
+        // employer's own range the first time their board rotates through refresh.
+        // Every one of those is a real change to the ROW and not one of them is an
+        // employer editing their posting — they are all us starting to read an
+        // element that has been in the feed the whole time. Logged as edits, that
+        // is ~700 fictions in job_board_field_changes, 44x the number the
+        // reformatting predicate was built to prevent, in the one table here whose
+        // contents cannot be re-derived.
+        //
+        // ONE SHOT, AND IT HAS TO BE DELETED. The entry below is scoped to the
+        // source and the field, and it suppresses ONLY the null -> value note; a
+        // later change to a figure already read logs exactly as before, which is
+        // what keeps this from being a permanent hole. It covers the rotation that
+        // follows this deploy (Personio boards are small and numerous — 1,373
+        // tokens — so one full rotation is the horizon) and the next bundle that
+        // touches this file should remove it. A real employer adding a range after
+        // that rotation must be logged, so leaving this in place indefinitely
+        // trades a burst of fiction for a permanent blind spot.
+        const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
@@ -6007,15 +6061,55 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // Stated-only: silence from the vendor must not erase enrichment.
           put("work_mode", row.work_mode, prev.work_mode, false);
           put("employment_type", (row as Record<string, unknown>).employment_type, (prev as Record<string, unknown>).employment_type, false);
-          put("salary", row.salary, prev.salary, false);
+          // A REFORMATTING IS NOT A PAY CHANGE, AND THE CHANGE LOG IS NOT OURS
+          // TO WRITE FICTION INTO.
+          //
+          // The log beside this patch is a record of what the EMPLOYER changed,
+          // and it is the one asset here that cannot be re-derived. This line
+          // will happily write into it whenever OUR reading of the same pay
+          // changes shape — which is exactly what happens the first time a
+          // vendor arm starts reading a structured compensation field that the
+          // description miner had been covering in prose. Measured on Personio,
+          // 2026-09-27: of 26 served rows that already state pay, 16 carry the
+          // newly-read vendor block, and all 16 texts differ while naming the
+          // SAME money ("€63,000–€95,000" mined from the body against the
+          // vendor's own 63,000 to 95,000 per year). Logged as-is, that is 16
+          // employers recorded as having changed their pay on a day none of them
+          // did.
+          //
+          // The patch itself is still worth making — the vendor states the PERIOD
+          // the prose never did, so salary_period moves from null to the
+          // employer's own answer through the re-parse below. What is refused is
+          // the note: when the floor, the ceiling and the currency all agree, the
+          // employer changed nothing and the log must stay silent. A real pay
+          // change moves one of those three and is logged exactly as before.
+          //
+          // The two parses cost nothing on a steady-state board: they run only
+          // where the text ALREADY differs, which is the same handful of rows
+          // this block was about to patch and log anyway.
+          const nextPay = (row.salary ?? null) as string | null;
+          const curPay = (prev.salary ?? null) as string | null;
+          const payCountry = ((row.country ?? prev.country) ?? null) as string | null;
+          const sameMoney = statesTheSameMoney(nextPay, curPay, payCountry);
+          // The first figure a newly-read vendor field hands us: our reading gained
+          // an answer, the employer did nothing. See VENDOR_FIELD_FIRST_READ, which
+          // is a one-shot list and names why it must be removed.
+          const firstVendorRead = curPay === null && nextPay !== null && VENDOR_FIELD_FIRST_READ.has(`${s.source}:salary`);
+          if (sameMoney || firstVendorRead) patch.salary = nextPay;
+          else put("salary", row.salary, prev.salary, false);
           // RE-PARSE WHEN THE PAY TEXT MOVES. A LIVE CORRECTNESS BUG, not just
           // a logging concern: this path patched the `salary` TEXT and left
           // salary_min_annual / salary_max_annual / salary_period /
           // salary_currency frozen at whatever the FIRST-EVER text parsed to.
           // A corrected row therefore served, filtered and benchmarked on a
-          // stale number, and the v7 re-sweep could not repair it because that
-          // sweep only targets rows where salary_currency IS NULL — a row with
-          // a currency and the wrong amount is invisible to it.
+          // stale number. The re-sweep is not a substitute for fixing it here:
+          // it runs only when SALARY_PARSE_VERSION moves, so between bumps a
+          // corrected row keeps the stale columns indefinitely — and it reads
+          // the ROW, so it cannot see the vendor context this path has (see
+          // sweepRefusesAnnual). An earlier version of this comment said the
+          // sweep targets salary_currency IS NULL and therefore could not see a
+          // row with a currency and a wrong amount; that stopped being true at
+          // v4, and the constant's own note now states the real predicate.
           //
           // It also poisons the change log this block just started writing: a
           // logged salary change would be a comparison against a baseline the
@@ -6037,7 +6131,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
               // path deliberately refuses to write (the 2026-08-25 $44/hr
               // incident). Same expression as the ingest site, light boards
               // included, so a corrected row parses exactly as a new one would.
-              { title: (row.title as string | null) ?? null, description: lightDescs ? null : (descs.get(id) ?? null) },
+              // employmentTypeText too, from the same map the insert parse reads,
+              // or this path annualises a part-time hourly wage that the insert
+              // path refuses to — and this is the path that fills the rows we
+              // ALREADY hold, so it carries most of the vendor-pay gain.
+              { title: (row.title as string | null) ?? null, description: lightDescs ? null : (descs.get(id) ?? null), employmentType: scheduleWordsById.get(id) ?? null },
             );
             patch.salary_min_annual = rp?.annualMin ?? null;
             patch.salary_max_annual = rp?.annualMax ?? null;
@@ -8591,7 +8689,12 @@ function withDeadline<T>(p: PromiseLike<T>, ms: number): Promise<T | { data: nul
  * that cannot fire is worse than no guard, because it reads as protection.
  */
 
-const detailCache = new Map<string, { at: number; text: string }>();
+// The pay rides in the cache beside the text because a cache HIT must answer the
+// same question a miss does. Cached without it, the demand-weighted lane would
+// keep the description and lose the employer's stated pay on the second reader of
+// the same posting — the leak below, reproduced silently and only sometimes,
+// which is worse than the leak.
+const detailCache = new Map<string, { at: number; text: string; pay: string | null }>();
 const DETAIL_TTL_MS = 60 * 60_000;
 
 // ── semantic embeddings (gte-small, in-runtime) ────────────────────────────
@@ -8797,15 +8900,31 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
   }
 }
 
-async function getDescription(src: JobSource, id: string, externalId: string, applyUrl?: string | null): Promise<string | null> {
+/**
+ * BOTH HALVES OF THE PAYLOAD, BECAUSE THROWING ONE AWAY HERE IS PERMANENT.
+ *
+ * This used to destructure `{ text }` and drop the pay — and every writer that can
+ * fill a Paylocity or Breezy description is gated on `description IS NULL`, so the
+ * row this lane persists never re-enters the desc sweep, the only other lane wired
+ * to the vendor's pay. The SALARY_PARSE_VERSION re-sweep cannot recover it either:
+ * that lane re-reads stored salary TEXT and this row's salary is null. So a posting
+ * that any reader opened before the sweep reached it lost its vendor-stated figure
+ * for good, on exactly the rows with the most demand, and the prose miner finds pay
+ * on 0 of them. Measured backlog 2026-09-27 (anon key, countOnly): paylocity 43,042
+ * rows / 40,464 described = 2,578 null; breezy 14,580 / 14,068 = 512 null.
+ *
+ * Two lanes reading the SAME downloaded bytes must produce the same answer, which
+ * is the argument for one reader returning both halves, one level up.
+ */
+async function getDescription(src: JobSource, id: string, externalId: string, applyUrl?: string | null): Promise<{ text: string | null; pay: string | null }> {
   const hit = detailCache.get(id);
-  if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.text;
-  const { text } = await fetchVendorDetail(src, id, externalId, applyUrl);
+  if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return { text: hit.text, pay: hit.pay };
+  const { text, pay } = await fetchVendorDetail(src, id, externalId, applyUrl);
   if (text) {
     if (detailCache.size > 300) detailCache.clear();
-    detailCache.set(id, { at: Date.now(), text });
+    detailCache.set(id, { at: Date.now(), text, pay });
   }
-  return text;
+  return { text, pay };
 }
 
 /**
@@ -8871,6 +8990,31 @@ async function fetchVendorDetail(
   location: string | null;
   /** Sites the requisition lists BESIDES `location`. 0 means the place is the whole answer. */
   additionalSites: number;
+  /**
+   * THE EMPLOYER'S OWN PAY, OFF THE SAME BYTES AS THE DESCRIPTION.
+   *
+   * Paylocity and Breezy server-render a schema.org JobPosting node on the
+   * posting page this function already downloads and already parses for the
+   * description, and the pay half of that node was read by nothing. Rates, each
+   * with its own denominator and never merged: PAYLOCITY 90 of 240 pages (37.5%)
+   * and 46 of 150 on an independent draw (30.7%); BREEZY 33 of 60 (55.0%) and 33
+   * of 80 (41.3%), where 29 of the 33 are ONE tenant's duplicate subcontractor
+   * postings, so the Breezy figure describes an employer and not a vendor — and
+   * that tenant's WEEK label is refused by this reader anyway. The repo's own
+   * prose miner finds pay on 0 of those 240 rows, so none of it is cannibalised
+   * by what we already do.
+   *
+   * Already formatted and already REFUSED where the vendor's period label
+   * contradicts its own magnitude — ldBaseSalaryText owns those rules. null
+   * means "no publishable figure", which includes "the vendor stated one we
+   * will not stand behind", and callers must treat the two identically.
+   *
+   * NOT FREE FOR THE ROWS THAT ALREADY HAVE A DESCRIPTION. Every caller of this
+   * function that writes salary is gated on description being null, so a row is
+   * fetched once, when it is new, and this field accrues forward with the
+   * rotation instead of back-filling the rows already described.
+   */
+  pay: string | null;
 }> {
   let text: string | null = null;
   // WHERE THE EMPLOYER SAYS THE JOB IS, from the same payload, for free.
@@ -8903,6 +9047,9 @@ async function fetchVendorDetail(
   // absolute startDate is strictly better than what we store. BambooHR's
   // 43,943 postings are 0% dated and its detail carries datePosted.
   let postedAt: string | null = null;
+  // The employer's own stated pay, formatted and gated. Populated only by the
+  // two vendors whose page carries the structured node (see the return type).
+  let pay: string | null = null;
   if (src.source === "smartrecruiters") {
     const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${src.token}/postings/${externalId}`);
     if (res.ok) {
@@ -9028,8 +9175,9 @@ async function fetchVendorDetail(
     const url = applyUrl || `https://${src.token}.breezy.hr/p/${externalId}`;
     const res = await fetchWithTimeout(url);
     if (res.ok) {
-      const html = jobPostingLdDescription(await res.text());
-      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+      const ld = jobPostingLd(await res.text());
+      text = ld.description ? htmlToText(ld.description).slice(0, DESC_CAP) || null : null;
+      pay = ldBaseSalaryText(ld.pay);
     }
   } else if (src.source === "jazzhr") {
     // The list carries no description and no date; the posting page carries
@@ -9068,8 +9216,9 @@ async function fetchVendorDetail(
     // live 2026-08-30: 3,264 of 3,491 chars against the 110-char stub).
     const res = await fetchWithTimeout(`https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}`);
     if (res.ok) {
-      const html = jobPostingLdDescription(await res.text());
-      text = html ? htmlToText(html).slice(0, DESC_CAP) || null : null;
+      const ld = jobPostingLd(await res.text());
+      text = ld.description ? htmlToText(ld.description).slice(0, DESC_CAP) || null : null;
+      pay = ldBaseSalaryText(ld.pay);
     }
   } else if (src.source === "adp") {
     // The list payload carries no description at all; the per-requisition
@@ -9135,7 +9284,7 @@ async function fetchVendorDetail(
   }
   // Everything else — rippling today — has no public description source.
   // Returning null here is a measured fact, not an unfinished branch.
-  return { text, postedAt, workMode, country, location, additionalSites };
+  return { text, postedAt, workMode, country, location, additionalSites, pay };
 }
 
 /**
@@ -12006,7 +12155,13 @@ Deno.serve(async (req) => {
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
-          .select("id,salary,country,title,description,salary_min_annual,salary_max_annual,salary_period,salary_currency")
+          // `source` and `employment_type` ride along because THE SWEEP'S PARSE
+          // CONTEXT HAS TO MATCH THE INGEST PARSE'S, or a version bump republishes
+          // a figure the ingest path deliberately refused. employment_type is the
+          // only stored record of a posting's schedule, and the part-time guard now
+          // reads its underscore spelling; `source` is what says whether even that
+          // is enough (see sweepRefusesAnnual).
+          .select("id,source,salary,country,title,description,employment_type,salary_min_annual,salary_max_annual,salary_period,salary_currency")
           .not("salary", "is", null)
           .order("id")
           .limit(1000);
@@ -12015,8 +12170,13 @@ Deno.serve(async (req) => {
         if (error) throw error;
         for (const r of rows ?? []) {
           scanned++;
-          const row = r as { id: string; salary?: string | null; country?: string | null; salary_min_annual?: number | string | null; salary_max_annual?: number | string | null; salary_period?: string | null; salary_currency?: string | null };
-          const p = parseSalaryStructured(row.salary, row.country, { title: (row as { title?: string | null }).title ?? null, description: (row as { description?: string | null }).description ?? null });
+          const row = r as { id: string; source?: string | null; salary?: string | null; country?: string | null; employment_type?: string | null; salary_min_annual?: number | string | null; salary_max_annual?: number | string | null; salary_period?: string | null; salary_currency?: string | null };
+          // THE SAME CONTEXT THE TWO INGEST PARSES GET, as far as a row can carry
+          // it. title and description were always passed; employment_type was not,
+          // and it is the only column that records a posting's schedule — so this
+          // sweep recomputed the full-time-load annual on every part-time row whose
+          // words live in a vendor field and not in its prose.
+          const p = parseSalaryStructured(row.salary, row.country, { title: (row as { title?: string | null }).title ?? null, description: (row as { description?: string | null }).description ?? null, employmentType: row.employment_type ?? null });
           const nextMin = p?.annualMin ?? null;
           const nextMax = p?.annualMax ?? null;
           const nextPer = p?.period ?? null;
@@ -12026,6 +12186,12 @@ Deno.serve(async (req) => {
           const curPer = row.salary_period ?? null;
           const curCur = row.salary_currency ?? null;
           if (nextMin === curMin && nextMax === curMax && nextPer === curPer && nextCur === curCur) continue; // already correct — no write
+          // AND WHERE THIS LANE CANNOT SEE WHAT INGEST SAW, IT WRITES NOTHING. The
+          // rule is stated and argued at sweepRefusesAnnual; here it is one call,
+          // placed after the no-change skip so a row it protects is not even
+          // grouped. It refuses only NULL -> a number, only on a load-dependent
+          // period, only for a source whose schedule words no column carries.
+          if (sweepRefusesAnnual(row.source, curMin, nextMin, nextPer)) continue;
           const key = `${nextMin ?? ""}|${nextMax ?? ""}|${nextPer ?? ""}|${nextCur ?? ""}`;
           const g = groups.get(key) ?? { annualMin: nextMin, annualMax: nextMax, period: nextPer, currency: nextCur, ids: [] };
           g.ids.push(row.id);
@@ -12805,7 +12971,12 @@ Deno.serve(async (req) => {
       // reaches its own adapter.
       let sel = client
         .from("job_board_postings")
-        .select("id, source, company_token, apply_url, title, location, country, posted_at, work_mode, first_seen")
+        // `salary` rides along so the vendor-pay write below can be FILL-ONLY
+        // against what the row already holds, not only against what this hop
+        // mines. Without it the fill-only rule would be an inference about
+        // which writers can reach a description-less row rather than a fact
+        // about this one.
+        .select("id, source, company_token, apply_url, title, location, country, posted_at, work_mode, first_seen, salary")
         .in("source", [...DETAIL_DESC_SOURCES])
         .is("description", null)
         .is("missing_since", null);
@@ -12817,7 +12988,7 @@ Deno.serve(async (req) => {
       const queue = [...(rows ?? [])] as Array<{
         id: string; source: string; company_token: string; apply_url: string | null;
         title: string | null; location: string | null; posted_at: string | null; work_mode: string | null; first_seen: string | null;
-        country: string | null;
+        country: string | null; salary: string | null;
       }>;
       const pending = [...queue];
       let updated = 0;
@@ -12830,7 +13001,7 @@ Deno.serve(async (req) => {
           const externalId = String(row.id).split(":").slice(2).join(":");
           if (!externalId) continue;
           try {
-            const { text, postedAt, workMode: wmVendor, country: vCountry, location: vLocation, additionalSites } =
+            const { text, postedAt, workMode: wmVendor, country: vCountry, location: vLocation, additionalSites, pay: vendorPay } =
               await fetchVendorDetail(src, row.id, externalId, row.apply_url);
             // Same rules as structured-sweep, stated once here and applied in
             // both of this lane's write paths: the vendor's structured country
@@ -12872,8 +13043,32 @@ Deno.serve(async (req) => {
               const salv: Record<string, unknown> = { ...placePatch };
               if (wmVendor && row.work_mode === null) { salv.work_mode = wmVendor; salv.remote = wmVendor === "remote"; }
               if (postedAt && (row.source === "workday" || !row.posted_at)) salv.posted_at = postedAt;
+              // THE PAY IS SALVAGED ON THE SAME TERMS, for the same reason: it was
+              // already parsed out of this response and already gated, and dropping
+              // it because a DIFFERENT field came back blank is the collateral
+              // damage this branch exists to stop. Fill-only against the row's own
+              // stored text, exactly as below — the vendor's node never overwrites
+              // pay we already hold. Measured 0 of 356 captured pages are in this
+              // state (a pay node with no usable description), so this is a branch
+              // with no known population, written because the loss would otherwise
+              // be silent and permanent: the row keeps its null description and is
+              // retried, but nothing re-reads a discarded figure.
+              if (vendorPay && !row.salary) {
+                const salvParse = parseSalaryStructured(vendorPay, (placePatch.country as string | null) ?? row.country, { title: row.title ?? null, description: null });
+                salv.salary = vendorPay;
+                salv.salary_min_annual = salvParse?.annualMin ?? null;
+                salv.salary_max_annual = salvParse?.annualMax ?? null;
+                salv.salary_period = salvParse?.period ?? null;
+                salv.salary_currency = salvParse?.currency ?? null;
+              }
               if (Object.keys(salv).length) {
-                const q = client.from("job_board_postings").update(salv).eq("id", row.id);
+                // The salary guard is added the same way the work-mode one is and
+                // for the same reason — a fill is only a fill if the row still
+                // lacks the field when the statement runs — and only when the
+                // patch actually carries pay, so a row that gains nothing here
+                // does not gain a predicate that could match nothing.
+                const q0 = client.from("job_board_postings").update(salv).eq("id", row.id);
+                const q = salv.salary ? q0.is("salary", null) : q0;
                 await (salv.work_mode ? q.is("work_mode", null) : q);
               }
               continue;
@@ -12894,7 +13089,42 @@ Deno.serve(async (req) => {
             // already follows, applied to the other derived column in this
             // patch.
             const salaryCountry = (placePatch.country as string | null) ?? (row as { country?: string | null }).country;
-            const minedParse = minedSalary ? parseSalaryStructured(minedSalary, salaryCountry, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
+            // THE VENDOR'S STRUCTURED PAY FILLS; IT NEVER OVERWRITES — and that
+            // inverts the house precedence on purpose.
+            //
+            // work_mode and country let a vendor's structured field replace our
+            // text inference because those fields are machine-generated enums and
+            // measured to agree with us where we are right. This one is not: the
+            // schema.org MonetaryAmount on a Paylocity page is a SECOND free-typed
+            // box in the same employer form as the prose, and its error rate is
+            // HIGHER than our parse of the prose. Measured on 90 rows that already
+            // state pay: 47 carry the node, 38 agree, and of the 9 that disagree
+            // two carry a period label that is simply wrong where our stored parse
+            // is right (Purcell Tire's body says 24 to 28 per hour and the node
+            // says annual; Valley Behavioral's says 94,244.88 annually and the
+            // node says 45.31 to 56.64 annual) and three disagree on the figures
+            // in both directions with no arbiter — a ceiling in no sentence of the
+            // posting (Alliance For Choice 27 stored, 32.4 in the node) and two
+            // rows where the body says "up to" a number the node exceeds. Blanket
+            // precedence would rewrite 5 of 47 already-stated ranges on the
+            // strength of a coin toss.
+            //
+            // So: only where the row holds no pay text and this hop's own prose
+            // mining found none either. Both halves are needed — the mining is
+            // this payload's answer, `row.salary` is the row's. Do not "fix" this
+            // to match work_mode's precedence; the two fields are not the same
+            // kind of claim, and this comment is the arbiter's absence written
+            // down.
+            const statedPay = minedSalary ?? (row.salary ? null : vendorPay);
+            // ONE PARSE FOR WHICHEVER TEXT WON, and it is the shared parser's, not
+            // arithmetic of ours: the vendor hands us a pair and a period label,
+            // and multiplying them here would reimplement detectPartTime, the
+            // per-period magnitude windows and the currency rules in a second
+            // place. The description from the SAME page is the part-time context —
+            // 7 of 90 measured hourly nodes carry a part-time or casual signal, and
+            // without it a 22.00-per-hour part-time cashier is published as a
+            // 45,760 salary, which is the exact defect detectPartTime exists for.
+            const statedParse = statedPay ? parseSalaryStructured(statedPay, salaryCountry, { title: (row as { title?: string | null }).title ?? null, description: clean }) : null;
             // The three fields below are DERIVED FROM DESCRIPTION TEXT but were
             // only ever computed at ingest, so the description backfill left
             // them stale — measured coverage was experience 26.4%, work mode
@@ -12938,12 +13168,12 @@ Deno.serve(async (req) => {
                 // with remote=false — invisible to the board's Remote filter.
                 ...(wm ? { work_mode: wm, remote: wm === "remote" } : {}),
                 ...(betterDate ? { posted_at: betterDate } : {}),
-                ...(minedSalary ? {
-                  salary: minedSalary,
-                  salary_min_annual: minedParse?.annualMin ?? null,
-                  salary_max_annual: minedParse?.annualMax ?? null,
-                  salary_period: minedParse?.period ?? null,
-                  salary_currency: minedParse?.currency ?? null,
+                ...(statedPay ? {
+                  salary: statedPay,
+                  salary_min_annual: statedParse?.annualMin ?? null,
+                  salary_max_annual: statedParse?.annualMax ?? null,
+                  salary_period: statedParse?.period ?? null,
+                  salary_currency: statedParse?.currency ?? null,
                 } : {}),
               })
               .eq("id", row.id)
@@ -13942,7 +14172,11 @@ Deno.serve(async (req) => {
         }
       }
       const stored = (jobRow?.description && jobRow.description.length > 200) ? jobRow.description as string : null;
-      const description = stored ?? await getDescription(src, id, externalId, jobRow?.apply_url as string | undefined);
+      // Still only fetched when the row holds no usable description; the pay comes
+      // back from the same call rather than a second one.
+      const fetched = stored ? null : await getDescription(src, id, externalId, jobRow?.apply_url as string | undefined);
+      const description = stored ?? fetched?.text ?? null;
+      const vendorPay = fetched?.pay ?? null;
       if (!description && !jobRow) {
         // Dead deep link. Before answering with a bare 404 (which the client
         // can only render as a shrug), check the closure log: if we WATCHED
@@ -13971,7 +14205,14 @@ Deno.serve(async (req) => {
       // write must never break the read.
       if (!stored && description && jobRow) {
         const minedSalary = jobRow.salary ? null : extractSalary(description);
-        const minedParse = minedSalary ? parseSalaryStructured(minedSalary, jobRow.country as string | null, { title: jobRow.title as string | null, description }) : null;
+        // THE SAME FILL-ONLY EXPRESSION AS THE DESC SWEEP, because this is the
+        // same payload and the same field. The prose this hop mined wins, then the
+        // pay the row already holds silences both, and only then the vendor's
+        // structured node — the precedence inversion is argued at the sweep's own
+        // write site and is not restated here. Without this the figure was fetched
+        // and dropped, and the row was then closed to the only lane that reads it.
+        const statedPay = minedSalary ?? (jobRow.salary ? null : vendorPay);
+        const statedParse = statedPay ? parseSalaryStructured(statedPay, jobRow.country as string | null, { title: jobRow.title as string | null, description }) : null;
         // Same re-derivation as the sweep: these fields come from description
         // text, so a row that gains a description here should gain them too,
         // rather than waiting for the sweep to reach it. Fill-only for work
@@ -13987,12 +14228,12 @@ Deno.serve(async (req) => {
               ...(expRead.band ? { experience_band: expRead.band, min_years: expRead.minYears } : {}),
               // Same invariant — see the desc-sweep write above.
               ...(wmRead ? { work_mode: wmRead, remote: wmRead === "remote" } : {}),
-              ...(minedSalary ? {
-                salary: minedSalary,
-                salary_min_annual: minedParse?.annualMin ?? null,
-                salary_max_annual: minedParse?.annualMax ?? null,
-                salary_period: minedParse?.period ?? null,
-                salary_currency: minedParse?.currency ?? null,
+              ...(statedPay ? {
+                salary: statedPay,
+                salary_min_annual: statedParse?.annualMin ?? null,
+                salary_max_annual: statedParse?.annualMax ?? null,
+                salary_period: statedParse?.period ?? null,
+                salary_currency: statedParse?.currency ?? null,
               } : {}),
             }).eq("id", id).is("description", null);
           } catch { /* best effort - a failed write must never break the read */ }

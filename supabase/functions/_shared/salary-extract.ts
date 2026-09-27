@@ -142,9 +142,67 @@ function detectCurrency(s: string, country?: string | null): string | null {
 const PARITY_CURRENCIES = new Set(["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "CHF", "SGD"]);
 const PARITY_MONTHLY_MAX = 35_000;
 
+// ── a two-digit tail is a decimal, in every locale ──────────────────────────
 // Separator-grouped form first ("120,000" / "50.000"), else plain digits with
-// optional decimal ("4000", "22.5") — a bare "4000" must parse whole, not "400".
-const P_MONEY = /[$€£]?\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:\.\d{1,2})?)\s?([kK])?/;
+// an optional decimal tail ("4000", "22.5") — a bare "4000" must parse whole,
+// not "400".
+//
+// THE TAIL LENGTH DECIDES, NOT THE SEPARATOR. A comma before THREE digits is
+// genuinely ambiguous and stays a thousands group: "1.500" and "1,500" are
+// 1500 here, and parseMoney's comment above plus readsDotThreeAsRate below
+// exist because that reading is right for European grouping and only the
+// posting's locale can overturn it. A comma before exactly TWO digits is not
+// ambiguous at all — no thousands group has two digits — so it can only be a
+// decimal point, which is how most of Europe writes one.
+//
+// Until this line read it that way, the comma split the figure in half.
+// P_RANGE is two of these patterns with a dash between, so on ouihelp's own
+// greenhouse footer "€14,61 — €14,61" the first alternative failed (",61" is
+// not a 3-digit group), the second matched the bare "14", the range separator
+// did not follow, and the engine restarted INSIDE the number: it matched the
+// decimal tail "61" as the low end and the next figure's "14" as the high end.
+// A €14.61/hour rate was read as a range from 61 to 14 — max below min, so
+// annualisation refused and the columns stored NULL. Where the two halves
+// happened to ascend the damage was worse than a null, because the wrong pair
+// annualised cleanly: "€ 18,10 – € 19,51" stored 10 x 2080 = 20,800 and
+// 19 x 2080 = 39,520 beside a card printing €18.10–€19.51, and "$ 19,08 -
+// $ 30,53" stored a floor of 16,640 against a true 39,686 (58% low).
+//
+// MEASURED LIVE 2026-09-27 with the anon key, one stream per vendor: 684 rows
+// on NINE boards carry the shape — greenhouse ouihelp 550 and joya 114,
+// smartrecruiters Securitas 8 and Flink 5, workday Ia 2 / Assurant 2 /
+// Enzazaden 1, oracle CareOne 1 and IHG 1. 643 of the 684 store NULL today and
+// 41 store a wrong figure. Boards were found by censusing every servable
+// posting placed in any of the 64 comma-decimal countries the board holds
+// (80,006 rows walked, groupSimilar off so the cluster fold hides nothing) and
+// then walking each discovered board to its exact countOnly total; a separate
+// 60,000-row offset sample of the whole board found one further board and
+// nothing else, which is what bounds the residual at roughly a dozen rows.
+// Note where the rows are: 29 of the 74 shape-carrying rows found by the
+// country census sit on postings whose country is NULL, so a locale-conditioned
+// rule would have missed most of the population — this one is unconditional
+// because the two-digit tail needs no locale to disambiguate it.
+//
+// The lookaheads are what keep it from firing on the shapes that are NOT a
+// decimal. `(?![\d,])` refuses a tail followed by another separator, which is
+// Indian lakh grouping — ashby/Oscilar states "₹66,21,800 – ₹96,56,800" and
+// ",21" there is a grouping step, not 66.21 (found in the offset sample).
+// `(?!\.\d)` refuses a mixed "1,23.456". And the whole alternative sits AFTER
+// the grouped one, so any figure a thousands group can explain is still read
+// as thousands.
+//
+// THE ONE RESIDUAL, CHOSEN RATHER THAN OVERLOOKED. A US posting that TYPOS its
+// thousands separator — "$55,00 - $65,00" for 55,000 to 65,000 — used to parse
+// to nothing and now parses to 55 and 65, which the unlabeled-hourly inference
+// reads as an hourly pair. That reading is wrong about the employer's intent and
+// right about their digits, and there is no rule that separates it from the
+// Securitas row two paragraphs up without asking the locale, which this
+// deliberately does not do. Measured: 0 of 13,936 live stored strings carry a
+// two-digit comma tail in a dot-decimal locale except two, and neither is this
+// shape — CareOne "$50.00 - $65,00 Hourly" (unchanged either way) and oracle/IHG
+// "$15.00 to $18,12" (improved, ceiling 18 -> 18.12). If a "$55,00" row is ever
+// found, the reading was decided here and is not an oversight.
+const P_MONEY = /[$€£]?\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:\.\d{1,2}|,\d{2}(?![\d,])(?!\.\d))?)\s?([kK])?/;
 const P_RANGE = new RegExp(P_MONEY.source + String.raw`\s*(?:-|–|—|to|through)\s*` + P_MONEY.source);
 // "an hour"/"a year" are Workday's OWN payRange phrasing ("$29.20 an hour")
 // — absent from this vocabulary, 17,641 vendor-stated workday salaries sat
@@ -282,7 +340,11 @@ export const PERIOD_MULTIPLIER = { hour: 2080, day: 260, week: 52, month: 12, ye
 // (a full-time load), not arithmetic on a figure the employer already stated
 // per year. Only these are suppressed by the part-time guard below; a stated
 // monthly or annual salary is the employer's own number and is left alone.
-const LOAD_DEPENDENT = new Set<string>(["hour", "day", "week"]);
+// Exported because a SECOND reader needs the same list and must not keep its
+// own copy: the stored-text re-sweep has to know which periods carry a
+// full-time-load assumption, because those are the only ones whose annual it
+// can get wrong by reading a thinner context than the ingest parse had.
+export const LOAD_DEPENDENT_PERIODS = new Set<string>(["hour", "day", "week"]);
 
 // ── part-time / casual guard ────────────────────────────────────────────────
 // Every load-dependent factor above silently assumes a full-time schedule. For
@@ -318,8 +380,26 @@ export interface SalaryContext {
 }
 
 // Short declarative fields: a bare employment word here IS the employment type.
+//
+// THE UNDERSCORE IS OURS AND IT HAS TO BE IN HERE. The board's own
+// `employment_type` column spells this state `part_time`, and until 2026-09-27
+// no pattern below could match it: `[\s-]` does not admit `_`, so the one
+// spelling that survives in a COLUMN was the one spelling this guard was blind
+// to. That mattered the moment a second reader needed the guard — the stored-text
+// re-sweep has no vendor payload to read schedule WORDS from, only the row, and
+// a guard the row cannot fire is a guard that exists at ingest and nowhere else.
+// The underscore form is added to the pattern rather than translated at the call
+// site so every caller gets it, and `full_or_part_time` gets its own pattern
+// because there `part_time` sits behind a word character, where `\b` does not
+// match.
+//
+// FT_DECLARED below is deliberately NOT widened the same way. Widening it would
+// let a stored `full_time` enum outrank a part-time statement in the posting's
+// own prose, which REMOVES suppressions — the direction that publishes a wage as
+// a salary. This widening only ever adds them.
 const PT_SHORT: RegExp[] = [
-  /\bpart[\s-]?time\b/i,
+  /\bpart[\s_-]?time\b/i,
+  /\bfull[\s_-]?or[\s_-]?part[\s_-]?time\b/i,
   // "Casual Dining" / "business casual" are cuisine and dress codes, not a
   // contract type — the only forms of the word that are NOT an employment type.
   /\bcasual\b(?!\s*(?:dining|dress|attire|wear|friday))/i,
@@ -455,7 +535,16 @@ export function parseSalaryStructured(
       if (!Number.isFinite(rate)) return null;
       return k ? rate * 1000 : rate;
     }
-    const m = raw.match(/^(\d{1,3}(?:[.,]\d{3})*)(?:[.,](\d{1,2}))?$/);
+    // Grouped integer, OR an ungrouped one of any length, then an optional
+    // 1-2 digit decimal tail. The second alternative is not cosmetic: P_MONEY
+    // now captures "2500,00" whole, and the old pattern — whose integer part
+    // stopped at three digits — failed to match it and fell through to a
+    // fallback that only strips commas, which would read a €2,500.00 monthly
+    // salary as 250000, a hundredfold overstatement of the employer's figure.
+    // Every shape the old pattern did match keeps its old value: a 4+ digit
+    // integer with no separators reached the same fallback before ("4000" was
+    // 4000 either way), and nothing here changes how a 3-digit group is read.
+    const m = raw.match(/^(\d{1,3}(?:[.,]\d{3})*|\d+)(?:[.,](\d{1,2}))?$/);
     const base = m ? Number(m[1].replace(/[.,]/g, "") + (m[2] ? `.${m[2]}` : "")) : Number(raw.replace(/,/g, ""));
     if (!Number.isFinite(base)) return null;
     return k ? base * 1000 : base;
@@ -527,7 +616,7 @@ export function parseSalaryStructured(
   // stated monthly or annual figure is the employer's own number, and refusing
   // it would hide a real part-time salary that the posting itself annualized.
   const partTimeSignal = detectPartTime(context);
-  if (partTimeSignal && basis !== null && LOAD_DEPENDENT.has(basis)) {
+  if (partTimeSignal && basis !== null && LOAD_DEPENDENT_PERIODS.has(basis)) {
     annualMin = null;
     mult = null;
   }

@@ -43,9 +43,14 @@ const ENTRY = resolve(ROOT, "supabase/functions/layoff-filings/index.ts");
  * 2026-09-25, leaving ~3.0 MB for the local graph before the platform's own
  * overhead is counted. Measured that day: 2,647,865 bytes over 32 modules --
  * 352 KB of headroom, or roughly one more quarterly payload plus a year of
- * catalogue growth. Raising this number is a decision about what gets served,
- * not a formality: the next quarter's payload REPLACES this one, so a load
- * that grows the graph is a catalogue that grew.
+ * catalogue growth. Re-measured 2026-09-27 after the catalogue copy's field
+ * separators went from `\u000b` to `\v` (same bytes at runtime, 352 KB less
+ * source): 2,295,701 bytes, 704 KB of headroom -- about three payloads. The
+ * ceiling did NOT move for that: it is derived from the cliff and the remote
+ * half, not from today's graph, and lowering it to keep a margin claim true
+ * would be inventing a constraint. Raising this number is a decision about
+ * what gets served, not a formality: the next quarter's payload REPLACES this
+ * one, so a load that grows the graph is a catalogue that grew.
  */
 const LOCAL_GRAPH_CEILING_BYTES = 3_000_000;
 
@@ -96,15 +101,23 @@ describe("the layoff-filings bundle stays under the cliff", () => {
   it("TEETH: the ceiling refuses a graph over it, and it binds the growth that is actually coming", () => {
     // The gate itself, shown failing: a number in a comment is not a gate.
     expect(() => expect(LOCAL_GRAPH_CEILING_BYTES + 1).toBeLessThanOrEqual(LOCAL_GRAPH_CEILING_BYTES)).toThrow();
-    // And it binds something real. The payload is replaced each quarter rather
-    // than added to, so the growth this has to catch is the catalogue copy and
-    // a payload that grew: two more of today's payload does not fit, which is
-    // the margin this ceiling is claiming to hold.
+    // And it binds something real, from both sides. The payload is replaced
+    // each quarter rather than added to, so the growth this has to catch is
+    // the catalogue copy and a payload that grew. Four more of today's payload
+    // does not fit -- the ceiling is within reach of the growth that is
+    // coming -- and one more DOES fit, so the gate is not already about to
+    // fire on the next quarter's load for no reason. If the first fails the
+    // graph shrank a lot (re-derive this comment, not the ceiling); if the
+    // second fails the next load is the one that goes over.
     const payload = [...graph.entries()].find(([f]) => f.endsWith("lca-payload.ts"))![1];
     expect(payload).toBeGreaterThan(100_000);
     expect(
-      total + payload * 2,
-      "two more payloads fit under the ceiling -- it is not holding anything",
+      total + payload * 4,
+      "four more payloads fit under the ceiling -- it is not holding anything",
     ).toBeGreaterThan(LOCAL_GRAPH_CEILING_BYTES);
+    expect(
+      total + payload,
+      "one more payload does not fit -- the next quarterly load goes over the cliff",
+    ).toBeLessThanOrEqual(LOCAL_GRAPH_CEILING_BYTES);
   });
 });

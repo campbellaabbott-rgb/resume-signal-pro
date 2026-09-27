@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { PERIOD_MULTIPLIER, detectPartTime } from "../../supabase/functions/_shared/salary-extract";
+import { PERIOD_MULTIPLIER, detectPartTime, parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
+import { codeOf } from "./helpers/strip-comments";
 
 /**
  * TWO CLAIMS THAT WENT FALSE THE MOMENT THE CODE BEHIND THEM MOVED.
@@ -54,6 +55,34 @@ describe("the salary footnote names the maths it describes", () => {
     expect(detectPartTime({ title: "Substitute Teacher (Part Time)", description: null, employmentType: null }))
       .not.toBeNull();
     expect(basis.toLowerCase()).toMatch(/part-time|part time/);
+  });
+
+  it("the panel's own comparison obeys the sentence printed under it", () => {
+    // THE DISCLOSURE WAS TRUE ABOUT THE MEDIAN AND FALSE ABOUT THE POSTING'S OWN
+    // SIDE OF THE COMPARISON. The detail panel computed "{{pct}}% below the median
+    // floor" from `parseSalaryStructured(detailJob.salary)` with NO context, so it
+    // annualised at 2,080 hours the very wage the board refused to annualise —
+    // three lines above a sentence promising that part-time and casual rates are
+    // left un-annualised. Robinson Oil's "Part-time Cashier (RR33 Santa Clara)" at
+    // 22.00 per hour is a live row, a fixture in this bundle, and the board stores
+    // salary_min_annual NULL for it; the panel printed a percentage anyway.
+    //
+    // The behavioural half first, on the real parser: the two answers this call
+    // can give, and they are 45,760 apart.
+    expect(parseSalaryStructured("USD 22.00 per hour", "US", null)?.annualMin).toBe(45760);
+    expect(parseSalaryStructured("USD 22.00 per hour", "US", { title: "Part-time Cashier (RR33 Santa Clara)", description: null })?.annualMin).toBeNull();
+    // And the wiring, whole, against comment-stripped source — the panel must pass
+    // the posting's own words, and the existing null-annual guard then shows no
+    // comparison at all, which is the honest answer.
+    const JOBS = codeOf(readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8"));
+    expect(JOBS).toContain("const p = parseSalaryStructured(detailJob.salary, detailJob.country ?? null, {");
+    expect(JOBS).toContain("description: detailDesc ?? null,");
+    expect(JOBS).toContain("if (!p?.annualMin || !p.currency || p.currency !== b.currency) return null;");
+    // A context-free call in this file is the defect, so there must be none left.
+    expect(JOBS).not.toMatch(/parseSalaryStructured\([A-Za-z.?\s]+\)/);
+    // The memo has to re-run when the description arrives, or the first render's
+    // answer (no description yet) is the one the reader keeps.
+    expect(JOBS).toContain("}, [detailJob, detailDesc, benchmarks]);");
   });
 
   it("every locale carries the same disclosure, not just English", () => {

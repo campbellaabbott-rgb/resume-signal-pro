@@ -280,7 +280,12 @@ const PINNED = {
   // 20260909222000, which filters inside its capped scan and drops the
   // (integer, integer) signature so the .70 bundle's two-argument call
   // resolves to one candidate across the deploy gap.
-  sourcesHash: "bf3535d300ace24f",
+  // 2026-09-09.80: sources.ts REPACKED A THIRD TIME, FORM ONLY. The 88,112
+  // field separators were the six-character escape `\u000b`; they are now
+  // the two-character `\v` (same code point, 352KB less deploy source —
+  // the .79 redeploy was refused at 4.6MB against the 4.5MB cap). The
+  // catalog pins below are UNCHANGED, which is the proof no entry moved.
+  sourcesHash: "4af7837d33843c1c",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -1311,7 +1316,38 @@ const PINNED = {
   //   makes the chained backfill-salary sweep re-fill the stored columns on the
   //   next refresh pass; it skips rows already matching the current parse, so it
   //   writes only the ~1,404 corrections.
-  buildVersion: "2026-09-09.79",
+  //   .80: two halves, one stamp. The vendor-field readers (Personio's
+  //   compensation element, the Paylocity/Breezy schema.org node) are described
+  //   at the constant itself in index.ts, where their measurements live; the
+  //   half that touches this file's other pins is neither of them.
+  //   sources.ts is UNCHANGED, so the two catalog pins above are untouched and
+  //   no board waits on the bootstrap lane.
+  //   The second half is _shared/salary-extract.ts + SALARY_PARSE_VERSION 8->9:
+  //   a comma before TWO digits is a decimal point, which is how most of Europe
+  //   writes one, and the money pattern read it as a thousands group. Since the
+  //   range pattern is two money patterns with a dash between them, the figure
+  //   split in half — "€14,61 — €14,61" parsed as a range from 61 down to 14,
+  //   which stored NULL when the halves descended (643 of 684 measured rows) and
+  //   annualised the WRONG pair when they ascended (41 rows, one of them a
+  //   €33k/year Dutch job published at 199,680 with a stated hourly period).
+  //   A three-digit tail is genuinely ambiguous and is STILL read as thousands,
+  //   so v8's rule above and the European reading are untouched: 1,715 dot-three
+  //   rows in the live census, zero changed. Measured 2026-09-27 over 178,591
+  //   real stored salary strings — 683 change, 638 NULL to a value, 45 a wrong
+  //   value to a right one, zero a value to NULL. NO MIGRATION. The version bump
+  //   alone does not re-fill anything: the sweep is kicked from the passDone
+  //   branch of runRefresh, so it needs a deploy AND a completed refresh pass.
+  //   THE STAMP DOES NOT MOVE FOR THE REVIEW FIXES, and that is the rule rather
+  //   than an omission: .80 has not been published, so the review of it is the
+  //   same artifact and a second stamp for one publish is what the .79 entry
+  //   above was written to stop. The note at the constant in index.ts carries what
+  //   changed — the page reader's period labels now all carry a bound (day, week
+  //   and month refused, which is the Home Genius weekly-volume node), the version
+  //   bump can no longer republish the part-time annual the ingest parse refused,
+  //   the demand-weighted detail lane keeps the pay it fetches, a period-only pay
+  //   change is logged again, and ~700 first reads of a newly-read vendor field
+  //   are not recorded as employer edits.
+  buildVersion: "2026-09-09.80",
 };
 
 /**

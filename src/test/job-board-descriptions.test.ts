@@ -16,7 +16,7 @@ import {
   BOARD_DESC_SOURCES,
   DETAIL_DESC_SOURCES,
   NO_DESC_SOURCES,
-  jobPostingLdDescription,
+  jobPostingLd,
   workdayCxsUrl,
 } from "../../supabase/functions/job-board/descriptions";
 
@@ -62,7 +62,13 @@ describe("workdayCxsUrl — derive the detail endpoint from the posting URL", ()
   });
 });
 
-describe("jobPostingLdDescription — Breezy's only description source", () => {
+// THE DESCRIPTION HALF OF THE READER, UNCHANGED. jobPostingLd returns both
+// halves of the node — the description it always returned and the pay it always
+// downloaded and discarded — and the whole point of widening ONE function
+// instead of adding a second walk is that these cases keep asserting the
+// description predicate. Every expectation below is byte-for-byte the one it
+// was before the pay half existed; only the property it reads is new.
+describe("jobPostingLd — Breezy's only description source", () => {
   const jobPosting = (desc: string) =>
     `<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", description: desc })}</script>`;
 
@@ -75,19 +81,19 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
       <script type="application/ld+json">${JSON.stringify({ "@type": "WebSite", name: "Careers" })}</script>
       ${jobPosting(body)}
     </head></html>`;
-    expect(jobPostingLdDescription(html)).toBe(body);
+    expect(jobPostingLd(html).description).toBe(body);
   });
 
   it("accepts single quotes and extra attributes on the script tag", () => {
     const body = "y".repeat(300);
     const html = `<script data-x='1' type='application/ld+json' defer>${JSON.stringify({ "@type": "JobPosting", description: body })}</script>`;
-    expect(jobPostingLdDescription(html)).toBe(body);
+    expect(jobPostingLd(html).description).toBe(body);
   });
 
   it("survives a malformed ld+json block and keeps looking", () => {
     const body = "z".repeat(250);
     const html = `<script type="application/ld+json">{not valid json,,,}</script>${jobPosting(body)}`;
-    expect(jobPostingLdDescription(html)).toBe(body);
+    expect(jobPostingLd(html).description).toBe(body);
   });
 
   it("handles an @graph-style array of nodes", () => {
@@ -96,15 +102,15 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
       { "@type": "Organization", name: "Acme" },
       { "@type": "JobPosting", description: body },
     ])}</script>`;
-    expect(jobPostingLdDescription(html)).toBe(body);
+    expect(jobPostingLd(html).description).toBe(body);
   });
 
   it("returns null rather than a stub when there is no real body", () => {
     // A 299-char og:description is NOT a job description — returning it would
     // put a truncated teaser into fit scoring and the apply kit.
-    expect(jobPostingLdDescription("<html><body>no structured data</body></html>")).toBeNull();
-    expect(jobPostingLdDescription(jobPosting("too short"))).toBeNull();
-    expect(jobPostingLdDescription("")).toBeNull();
+    expect(jobPostingLd("<html><body>no structured data</body></html>").description).toBeNull();
+    expect(jobPostingLd(jobPosting("too short")).description).toBeNull();
+    expect(jobPostingLd("").description).toBeNull();
   });
 
   it("ignores a non-JobPosting node that happens to carry a long description", () => {
@@ -112,7 +118,7 @@ describe("jobPostingLdDescription — Breezy's only description source", () => {
       "@type": "WebSite",
       description: "q".repeat(500),
     })}</script>`;
-    expect(jobPostingLdDescription(html)).toBeNull();
+    expect(jobPostingLd(html).description).toBeNull();
   });
 });
 

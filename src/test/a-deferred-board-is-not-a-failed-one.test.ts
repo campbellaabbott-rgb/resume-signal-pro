@@ -30,7 +30,12 @@ describe("a deferred board is not a failed one", () => {
   it("the desc sweep walks a first_seen cursor and hands it to the next hop", () => {
     expect(CODE).toMatch(/const descCursor = typeof body\.cursor === "string" && body\.cursor \? body\.cursor : null;/);
     expect(CODE).toMatch(/if \(descCursor\) sel = sel\.lt\("first_seen", descCursor\);/);
-    expect(CODE).toMatch(/posted_at, work_mode, first_seen"\)/);
+    // The property is that the CURSOR COLUMN is selected — a walk cannot hand
+    // on a watermark it never read. It used to be pinned as the END of the
+    // column list, which made it fail when a later column was added for an
+    // unrelated reason (the row's own stored pay, for the vendor-pay fill-only
+    // rule). Pinning a list's last element guards its length, not its contents.
+    expect(CODE).toMatch(/posted_at, work_mode, first_seen/);
     expect(CODE).toMatch(/const exhausted = queue\.length < DESC_SWEEP_PER_HOP;\s*const nextCursor = exhausted \? null : \(queue\[queue\.length - 1\]\?\.first_seen \?\? null\);/);
     expect(CODE, "the no-op escape hatch is gone").not.toMatch(/queue\.length < DESC_SWEEP_PER_HOP \|\| updated === 0/);
     expect(CODE).toMatch(/action: "desc-sweep", chainKey: key, vi, vstart, \.\.\.\(nextCursor \? \{ cursor: nextCursor \} : \{\}\)/);
