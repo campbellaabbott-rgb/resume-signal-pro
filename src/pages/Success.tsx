@@ -45,6 +45,7 @@ import {
 } from "@/hooks/use-resume-storage";
 import { useABConversion } from "@/hooks/use-ab-test";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
+import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 
@@ -52,6 +53,11 @@ const Success = () => {
   const { t } = useTranslation();
   const { trackAllConversions } = useABConversion();
   const { trackPurchaseCompleted } = useConversionTracking();
+  // The funnel's purchase_completed stage was emitted only by the product
+  // success page; the $5 analysis -- the main flow -- never reached it, so
+  // the stage read zero for every create-checkout purchase even after the
+  // writer's duplicate key was fixed (reviewed 2026-09-27).
+  const { trackPurchaseCompleted: trackFunnelPurchase } = useFunnelTracking();
   const { updateFromAnalysis } = usePersonalization();
   
   // Analysis progress steps
@@ -132,6 +138,7 @@ const Success = () => {
         if (!hasTrackedConversion) {
           trackAllConversions({ type: 'paid_analysis', hasLinkedIn: data.hasLinkedIn });
           trackPurchaseCompleted('fullAnalysis', 25, sessionId || undefined);
+          trackFunnelPurchase('fullAnalysis', 25, sessionId || undefined);
           setHasTrackedConversion(true);
         }
 

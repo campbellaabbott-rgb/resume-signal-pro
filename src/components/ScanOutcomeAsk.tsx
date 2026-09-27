@@ -6,25 +6,13 @@
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getVisitorId } from "@/lib/track-transport";
 
 const OUTCOMES = [
   { id: "interview", label: "🎉 Got interview(s)" },
   { id: "no_response", label: "📭 No response yet" },
   { id: "rejected", label: "❌ Rejected" },
 ] as const;
-
-function visitorId(): string {
-  try {
-    let v = localStorage.getItem("rb_visitor_id");
-    if (!v) {
-      v = crypto.randomUUID();
-      localStorage.setItem("rb_visitor_id", v);
-    }
-    return v;
-  } catch {
-    return "unknown";
-  }
-}
 
 export function ScanOutcomeAsk({ reportId }: { reportId: string }) {
   const [answered, setAnswered] = useState<string | null>(() => {
@@ -37,7 +25,7 @@ export function ScanOutcomeAsk({ reportId }: { reportId: string }) {
     try {
       await (supabase.rpc as unknown as (fn: string, args: object) => PromiseLike<unknown>)(
         "record_scan_outcome",
-        { p_report_id: reportId, p_outcome: outcome, p_ip: visitorId() },
+        { p_report_id: reportId, p_outcome: outcome, p_ip: getVisitorId() },
       );
       try { localStorage.setItem(`rb_outcome_${reportId}`, outcome); } catch { /* ignore */ }
       setAnswered(outcome);

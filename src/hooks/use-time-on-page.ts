@@ -1,21 +1,13 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { postTrackEvent } from '@/lib/track-transport';
 
 const TIME_MILESTONES = [0, 30, 60, 120, 300, 600] as const; // seconds: 0s, 30s, 1m, 2m, 5m, 10m
 
 type TimeMilestone = typeof TIME_MILESTONES[number];
 
-const getVisitorId = (): string => {
-  const key = 'time_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key.
 
 const formatMilestone = (seconds: number): string => {
   if (seconds < 60) return `${seconds}s`;
@@ -30,7 +22,7 @@ export function useTimeOnPage(pageName: string = 'home') {
 
   useEffect(() => {
     startTime.current = Date.now();
-    
+
     // Load already tracked milestones for this session
     const tracked = sessionStorage.getItem(sessionKey);
     if (tracked) {
@@ -44,35 +36,29 @@ export function useTimeOnPage(pageName: string = 'home') {
       }
     }
 
-    const trackMilestone = async (milestone: TimeMilestone) => {
+    const trackMilestone = (milestone: TimeMilestone) => {
       if (trackedMilestones.current.has(milestone)) return;
-      
+
       trackedMilestones.current.add(milestone);
       sessionStorage.setItem(sessionKey, JSON.stringify([...trackedMilestones.current]));
 
-      try {
-        await supabase.functions.invoke('track-ab-event', {
-          body: {
-            testName: 'time_on_page',
-            variant: formatMilestone(milestone),
-            eventType: 'view',
-            visitorId: getVisitorId(),
-            metadata: {
-              page: pageName,
-              seconds: milestone,
-              timestamp: new Date().toISOString(),
-              referrer: document.referrer || 'direct',
-            }
-          }
-        });
-        console.log(`[Time on Page] Tracked ${formatMilestone(milestone)} on ${pageName}`);
-      } catch (error) {
-        console.error('Failed to track time on page:', error);
-      }
+      // Through the one transport (keepalive, dev-silenced, one visitor id,
+      // pathname-only page fields) — not a bare client invoke around it.
+      postTrackEvent({
+        testName: 'time_on_page',
+        variant: formatMilestone(milestone),
+        eventType: 'view',
+        metadata: {
+          page: pageName,
+          seconds: milestone,
+          timestamp: new Date().toISOString(),
+          referrer: document.referrer || 'direct',
+        }
+      });
     };
 
     // Always record a baseline "0s" view so the funnel has a starting point
-    void trackMilestone(0);
+    trackMilestone(0);
 
     const checkMilestones = () => {
       const elapsedSeconds = Math.floor((Date.now() - startTime.current) / 1000);

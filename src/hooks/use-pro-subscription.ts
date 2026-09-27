@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { checkoutContext } from "@/lib/track-transport";
 
 export interface ProSubscriptionState {
   active: boolean;
@@ -74,7 +75,7 @@ export function useProSubscription() {
       setActionLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
-          body: { email },
+          body: { email, ...checkoutContext() },
         });
         if (error) throw error;
         if (data?.alreadySubscribed) {

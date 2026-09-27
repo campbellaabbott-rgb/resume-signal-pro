@@ -79,9 +79,9 @@ import {
 } from "@/config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
-import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { postTrackEvent, getVisitorId, checkoutContext } from "@/lib/track-transport";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
-import { PASS } from "@/config/products";
+import { PASS, SUBSCRIPTIONS } from "@/config/products";
 import { FREE_KEY_RATE_PER_MIN } from "@/config/free-key-limits";
 
 // The server address is defined once, beside the client that calls it, and
@@ -172,7 +172,7 @@ export function usePassStatus(sessionId?: string | null) {
  * browser is on its way to Stripe, or to a generic failure line.
  */
 export async function startPassCheckout(): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: {} });
+  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext() } });
   if (error) {
     const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
     let message: string | null = null;
@@ -698,6 +698,12 @@ export default function AgentConnect() {
   const countClause = totals
     ? `${roundedFloor(totals.jobs).toLocaleString("en-US")}+ live postings`
     : "the live postings";
+  // What applying costs, from the mirrors the checkout functions are pinned
+  // to. The description names both figures; the prerender's copy of this
+  // sentence is held word for word to this one, so a crawler and a visitor
+  // read the same prices.
+  const agentPlanPrice = SUBSCRIPTIONS.agent.priceUsd;
+  const passPrice = PASS.priceUsd;
   const { fact, probe, set } = useSignInFact();
   const [picked, setPicked] = useState<McpHostId | null>(initialHostId);
   const pickedName = picked ? MCP_PAGE_HOSTS.find((h) => h.id === picked)?.name ?? null : null;
@@ -710,7 +716,7 @@ export default function AgentConnect() {
     <>
       <SEO
         title="Connect Your Agent — MCP Server for the Live Job Board"
-        description={`Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Free keys for search; the Agent plan or a one-off pass can request applications.`}
+        description={`Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Search free; apply on the $${agentPlanPrice}/month Agent plan or a $${passPrice} pass.`}
         path="/agents"
       />
       <Header />

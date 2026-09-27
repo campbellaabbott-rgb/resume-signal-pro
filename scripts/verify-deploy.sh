@@ -477,4 +477,37 @@ const siteLabel=(s)=>{if(!HO.test(s))return false;const r=s.replace(HOG," ").rep
 
 echo "== 6. /companies renders =="
 echo "INFO  GET /companies -> HTTP $(curl -s -m 30 -o /dev/null -w '%{http_code}' "$SITE/companies")"
+
+# ── 7. THE FUNNEL BUILD OF 2026-09-27 (dedup key + window fix, one visitor id,
+# server-side checkout starts, prices in the crawler HTML, two-tier budget).
+# Every check is READ-ONLY: OPTIONS preflights run no function logic and spend
+# no budget; the anon GET/RPC probes expect a REFUSAL (42501) and a 404 control;
+# the cohort reader is a read; the crawler fetches are GETs with the Googlebot
+# UA. Nothing here posts an event or mints a session. Migrations here go
+# through a staged runner that has edited files and staged them under other
+# names, so "applied" is judged by behaviour (7b, 7c, 7d), never by its report.
+echo "== 7a. every rebuilt function answers its build on the preflight (deploy proof without a write) =="
+for FN in create-checkout create-product-checkout create-subscription-checkout create-agent-checkout create-pass-checkout create-scan-pack-checkout track-ab-event; do
+  H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+  case "$H" in "$FN.2026-09-27.2") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-09-27.2)";; esac
+done
+
+echo "== 7b. checkout_starts exists and is closed to anon by name (a refusal, not an empty answer and not a 404) =="
+CS=$(curl -s -m 30 -o /tmp/vd_cs.json -w '%{http_code}' "$B/rest/v1/checkout_starts?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+CSCODE=$(node -e 'try{const j=require("/tmp/vd_cs.json");console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON")}')
+case "$CSCODE" in 42501) echo "PASS  anon GET checkout_starts -> HTTP $CS code 42501 (revoked by name)";; PGRST205) echo "FAIL  checkout_starts does not exist (migration 20260927211436 not applied)";; ROWS:*) echo "FAIL  anon GET checkout_starts -> HTTP $CS $CSCODE (readable: the REVOKE did not land)";; *) echo "FAIL  anon GET checkout_starts -> HTTP $CS $CSCODE";; esac
+NC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/checkout_starts_never_existed?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+[ "$NC" = "404" ] && echo "PASS  negative control checkout_starts_never_existed -> 404" || echo "FAIL  negative control -> HTTP $NC (the 42501 above cannot be read as presence)"
+probe record_checkout_start '{"p_stripe_session_id":"cs_probe_anon_denied_000","p_checkout_function":"verify-deploy","p_product_type":"probe","p_product_id":null,"p_visitor_id":null,"p_amount_cents":null,"p_currency":null,"p_origin_path":"/","p_mode":null,"p_metadata":{}}'
+
+echo "== 7c. the writer's key names the variant: later funnel stages leave zero (a day of traffic after deploy) =="
+R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  cohort reader non-JSON: "+s.slice(0,120))}if(!Array.isArray(j))return console.log("FAIL  cohort reader: "+JSON.stringify(j).slice(0,160));const sum=k=>j.reduce((a,r)=>a+Number(r[k]||0),0);const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"];const t={};for(const k of ["landing_view",...later])t[k]=sum(k);console.log("INFO  24h stages: "+JSON.stringify(t)+" (baseline 2026-09-27: landing 136,048/30d, every later stage 0)");const any=later.some(k=>t[k]>0);console.log((any?"PASS":"INFO")+"  a later stage is non-zero"+(any?"":" -- not yet: judge this a day after deploy, not on the hour"))})'
+
+echo "== 7d. the crawler reads the prices: /pricing and /agents carry the plan and pass figures =="
+PR=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
+for T in 45 99 29; do N=$(printf '%s' "$PR" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /pricing carries \$$T x$N (want >= 5; baseline 0 for 45 and 99)" || echo "FAIL  /pricing carries \$$T x$N (want >= 5)"; done
+DESC=$(printf '%s' "$PR" | grep -o '<meta name="description" content="[^"]*"' | head -1)
+case "$DESC" in *"pass for your own agent."\") echo "PASS  /pricing description ends with the pass sentence";; *) echo "FAIL  /pricing description: ${DESC:0:200} (baseline: cut at 'purchases (\"')";; esac
+AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
+for T in 99 29; do N=$(printf '%s' "$AG" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /agents carries \$$T x$N (want >= 5; baseline 0)" || echo "FAIL  /agents carries \$$T x$N (want >= 5)"; done
 echo "done."

@@ -28,6 +28,7 @@ import { parseCountries } from "../../../supabase/functions/_shared/mandate-reac
 // The same extractor the scanner and setup use — one definition of "text out of
 // an uploaded CV", wrapping parse-pdf/parse-docx.
 import { resumeTextFrom } from "@/lib/resumeText";
+import { checkoutContext } from "@/lib/track-transport";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -412,7 +413,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const subscribe = useCallback(async () => {
     if (!email) return;
     setBusy(true);
-    const { data, error } = await sb.functions.invoke("create-agent-checkout", { body: { email } });
+    const { data, error } = await sb.functions.invoke("create-agent-checkout", { body: { email, ...checkoutContext() } });
     setBusy(false);
     if (error || !data?.url) {
       if (data?.alreadySubscribed) { setAgentActive(true); return; }

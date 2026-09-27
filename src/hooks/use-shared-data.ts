@@ -120,9 +120,6 @@ const DEFAULT_ERROR_HISTORY: ErrorHistory = {
   hasHadErrors: false
 };
 
-// Get visitor ID (same as error tracking)
-
-
 // Cached error history - deduplicates calls
 export function useVisitorErrorHistory() {
   const [data, setData] = useState<ErrorHistory>(DEFAULT_ERROR_HISTORY);
@@ -174,11 +171,13 @@ export function useVisitorErrorHistory() {
 // =============================================================================
 // Batches A/B events to reduce network calls
 
+// The visitor is NOT part of a queued event: the transport stamps every body
+// with this browser's one id (track-transport prepareTrackBody), so a hook
+// cannot queue an event under a visitor of its own.
 interface ABEvent {
   testName: string;
   variant: string;
   eventType: 'view' | 'conversion';
-  visitorId: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -193,11 +192,15 @@ async function flushABEvents() {
   pendingABEvents.length = 0;
   abBatchTimer = null;
   
-  // Deduplicate view events (keep only first per test)
+  // Deduplicate view events within the batch. The identity of a view is the
+  // test AND the variant: the server's own duplicate check once left the
+  // variant out and collapsed every funnel stage into the landing, and this
+  // batch key had the same hole (test + visitor only). Two views of one test
+  // that differ in variant are two events.
   const viewsSeen = new Set<string>();
   const deduped = events.filter(e => {
     if (e.eventType === 'view') {
-      const key = `${e.testName}_${e.visitorId}`;
+      const key = JSON.stringify([e.testName, e.variant]);
       if (viewsSeen.has(key)) return false;
       viewsSeen.add(key);
     }

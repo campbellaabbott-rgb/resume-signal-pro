@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { postTrackEvent } from '@/lib/track-transport';
 
 // Cohort dimensions for segmentation
 export interface CohortData {
@@ -46,18 +46,9 @@ const getCohortSessionId = (): string => {
   return sessionId;
 };
 
-// Get visitor ID (persists across sessions)
-const getVisitorId = (): string => {
-  const key = 'cohort_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key.
 
 // Detect traffic source from URL and referrer
 const detectTrafficSource = (): CohortData['trafficSource'] => {
@@ -235,41 +226,37 @@ const trackCohortEvent = async (
 ) => {
   try {
     const cohortData = getStoredCohortData() || buildCohortData();
-    const visitorId = getVisitorId();
     const sessionId = getCohortSessionId();
-    
-    await supabase.functions.invoke('track-ab-event', {
-      body: {
-        testName: 'cohort_analysis',
-        variant: cohortData.trafficSource,
-        eventType: eventType === 'conversion' ? 'conversion' : 'view',
-        visitorId,
-        metadata: {
-          ...metadata,
-          sessionId,
-          eventType,
-          // Flatten cohort data for easier querying
-          trafficSource: cohortData.trafficSource,
-          utmSource: cohortData.utmSource,
-          utmMedium: cohortData.utmMedium,
-          utmCampaign: cohortData.utmCampaign,
-          referrerDomain: cohortData.referrerDomain,
-          deviceType: cohortData.deviceType,
-          browser: cohortData.browser,
-          os: cohortData.os,
-          dayOfWeek: cohortData.dayOfWeek,
-          hourOfDay: cohortData.hourOfDay,
-          weekNumber: cohortData.weekNumber,
-          isReturningUser: cohortData.isReturningUser,
-          previousScans: cohortData.previousScans,
-          hasEmail: cohortData.hasEmail,
-          timezone: cohortData.timezone,
-          landingPage: cohortData.landingPage,
-        }
+
+    // Through the one transport (keepalive, dev-silenced, one visitor id,
+    // pathname-only page fields) — not a bare client invoke around it.
+    postTrackEvent({
+      testName: 'cohort_analysis',
+      variant: cohortData.trafficSource,
+      eventType: eventType === 'conversion' ? 'conversion' : 'view',
+      metadata: {
+        ...metadata,
+        sessionId,
+        eventType,
+        // Flatten cohort data for easier querying
+        trafficSource: cohortData.trafficSource,
+        utmSource: cohortData.utmSource,
+        utmMedium: cohortData.utmMedium,
+        utmCampaign: cohortData.utmCampaign,
+        referrerDomain: cohortData.referrerDomain,
+        deviceType: cohortData.deviceType,
+        browser: cohortData.browser,
+        os: cohortData.os,
+        dayOfWeek: cohortData.dayOfWeek,
+        hourOfDay: cohortData.hourOfDay,
+        weekNumber: cohortData.weekNumber,
+        isReturningUser: cohortData.isReturningUser,
+        previousScans: cohortData.previousScans,
+        hasEmail: cohortData.hasEmail,
+        timezone: cohortData.timezone,
+        landingPage: cohortData.landingPage,
       }
     });
-    
-    console.log(`[Cohort] Tracked: ${eventType}`, { trafficSource: cohortData.trafficSource });
   } catch (error) {
     console.debug('Cohort tracking failed:', error);
   }

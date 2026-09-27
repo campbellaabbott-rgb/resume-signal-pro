@@ -1,7 +1,8 @@
-#!/usr/bin/env node
 // Build-time prerender of the ~260 data-driven SEO routes into real HTML
 // files under dist/. Runs automatically after `vite build` (see the
-// prerender-seo plugin in vite.config.ts).
+// prerender-seo plugin in vite.config.ts), always as `node <this file>` —
+// no shebang, because the guard imports this module through vite's
+// transform, which prepends an import and cannot parse a `#!` after it.
 //
 // Why: the SPA serves an empty <div id="root"> to every crawler. Google
 // renders JS (slowly, via its render queue); Bing, DuckDuckGo, and most AI
@@ -18,16 +19,153 @@
 // - Any failure logs loudly but exits 0: a broken prerender must never block
 //   a publish. Worst case is the pre-existing status quo (SPA-only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, realpathSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
 const SITE = "https://resumebooster.work";
 
-try {
+// ---- Substitution that inserts its value as-is ----
+//
+// String.prototype.replace reads a REPLACEMENT STRING for its own grammar: a
+// dollar sign followed by an ampersand, a backtick, a quote, another dollar
+// sign or a digit means the whole match, the text before or after it, one
+// dollar sign, or a numbered capture group. A price is a dollar sign followed
+// by a digit. The /pricing description interpolated the catalogue's lowest
+// price into a two-group pattern, and the served page (Googlebot UA,
+// 2026-09-27) carried `purchases ("` where the figure belonged: the digit
+// named group 2, group 2 was the closing quote, the attribute ended there and
+// the rest of the sentence fell outside it. og:title and twitter:title lost
+// the same figure the same way. Employer-authored posting text can carry any
+// of those sequences, and the root injection took every page's content
+// through the same grammar.
+//
+// A replacer FUNCTION has no grammar: what it returns is inserted verbatim.
+// Every substitution composeHtml makes goes through these two, and the guard
+// renders a template through composeHtml with a price in every slot.
+export const putVerbatim = (html, pattern, value) => html.replace(pattern, () => value);
+const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (c) => `\\${c}`);
+// Rewrites the head tag that opens with `prefix`, through its closing quote,
+// as one whole string — nothing to number, nothing to keep by group.
+export const setContent = (html, prefix, value) => putVerbatim(html, new RegExp(`${reEscape(prefix)}[^"]*"`), `${prefix}${value}"`);
+
+// ---- Head surgery on the template ----
+// Pure: template + page + the helpers it needs → the finished HTML. Exported
+// so the guard can render a template through the SAME function the bake
+// uses; renderFile below only writes what this returns.
+//
+// `isFallback` marks the root index.html, which doubles as the SPA fallback
+// for every non-prerendered route: it gets NO canonical (a canonical of "/"
+// on /pricing would tell non-Google engines /pricing is a duplicate) and an
+// inline script that clears the static homepage content immediately when
+// the browser path isn't "/" (crawlers don't run it; JS users on other
+// routes get the same blank-then-render they had before).
+// `canonical` names a DIFFERENT page as the indexable version of this one —
+// for near-duplicates that must stay reachable but must not compete. `robots`
+// sets the meta robots tag for pages that exist only to serve their own URL
+// (an auth wall, say) and should never be indexed at all.
+export const composeHtml = (
+  { path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null },
+  { template, D, esc, shell, preloadFor, publicHref, onTruncated },
+) => {
+  // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
+  // (current or future) ships an overlong description.
+  //
+  // The clamp STAYS (a 300-char description in the wild is worse than a cut
+  // one) but it no longer does its work in silence. It cut the homepage's
+  // description at "…Upload your CV and an AI…" and nothing said so, so the
+  // headline change that made the agent the hallmark never reached the
+  // snippet Google shows. A safety net that hides the fall is how you find
+  // out months later.
+  if (description && description.length > 160) {
+    onTruncated({ path, len: description.length, text: description });
+    description = description.slice(0, 157).replace(/\s+\S*$/, "") + "…";
+  }
+  let html = template;
+  html = putVerbatim(html, /<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
+  html = setContent(html, '<meta name="description" content="', esc(description));
+  html = setContent(html, '<meta property="og:title" content="', esc(title));
+  html = setContent(html, '<meta property="og:description" content="', esc(description));
+  html = setContent(html, '<meta name="twitter:title" content="', esc(title));
+  html = setContent(html, '<meta name="twitter:description" content="', esc(description));
+  // Route-true share URLs: the template hardcodes the homepage, so every
+  // page's og:url/twitter:url contradicted its own canonical and shares
+  // canonicalized to "/" (audit 2026-07-25).
+  const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${path}`;
+  html = setContent(html, '<meta property="og:url" content="', pageUrl);
+  html = setContent(html, '<meta name="twitter:url" content="', pageUrl);
+  if (lang) html = putVerbatim(html, /<html lang="[^"]*"/, `<html lang="${lang}"`);
+
+  // REPLACE the template's robots tag, never append a second one. The
+  // template ships `index, follow`; appending `noindex` left both in the
+  // head, and two contradictory robots directives is a page whose indexing
+  // depends on which one a given crawler resolves. Caught before deploy by
+  // reading the built file — the tag was correct AND the wrong one was still
+  // above it.
+  if (robots) {
+    const tag = `<meta name="robots" content="${robots}" />`;
+    html = /<meta name="robots"[^>]*>/.test(html)
+      ? putVerbatim(html, /<meta name="robots"[^>]*>/, tag)
+      : putVerbatim(html, "</head>", `${tag}\n</head>`);
+  }
+  let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${publicHref(canonical || path)}" />\n`}<meta name="x-prerendered" content="1" />\n`;
+  if (hreflang) {
+    // hreflang is a { locale: path } map (any number of locales). Every
+    // cluster member emits the SAME set of alternates (reciprocity is what
+    // makes crawlers honor them) + x-default pointing at the English page.
+    for (const [hl, href] of Object.entries(hreflang)) {
+      headExtra += `<link rel="alternate" hreflang="${hl}" href="${SITE}${href}" />\n`;
+    }
+    headExtra += `<link rel="alternate" hreflang="x-default" href="${SITE}${hreflang.en}" />\n`;
+  }
+  // THE SERIALISED JSON IS ESCAPED BEFORE IT GOES INTO A SCRIPT ELEMENT.
+  //
+  // JSON.stringify does not escape `<` or `/`, and that was harmless for as
+  // long as every LD block was built from our own copy. It is not any more:
+  // a posting page's `description` is EMPLOYER-AUTHORED free text, and
+  // decodeJdEntities in posting-page.ts deliberately turns `&lt;` back into
+  // `<`. A job description containing the literal `&lt;/script&gt;` — an
+  // ordinary thing in an engineering JD — would decode to a real `</script>`,
+  // close this element early and spill the rest of the JSON into the head as
+  // text, destroying that page's structured data. None of the 399 pages in
+  // the last bake contained one; the exposure is new with employer text, and
+  // the escape costs nothing on every other block.
+  //
+  // THE JOB BLOCK ALSO CARRIES THE ID THE PAGE TAKES OVER. The React route
+  // replaces this element on hydration rather than adding a second entity
+  // beside it, and removes it outright when the posting has gone stale since
+  // the bake. It finds it by id, and until now there was none to find.
+  for (const ld of jsonLd) {
+    const tagId = ld && ld["@type"] === "JobPosting" ? ` id="${D.POSTING_LD_TAG_ID}"` : "";
+    headExtra += `<script type="application/ld+json"${tagId}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
+  }
+  // Preload hints last in the head, so they cannot displace the meta tags
+  // above them if the template shape ever shifts.
+  headExtra += preloadFor(path);
+  html = putVerbatim(html, "</head>", `${headExtra}</head>`);
+  const clearScript = isFallback
+    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";}</script>`
+    : "";
+  html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
+  return html;
+};
+
+// Importable for its pure functions (the guard renders a template through
+// composeHtml) and RUN only as a script — the rule load-oflc-lca.mjs uses.
+// The vite plugin invokes `node scripts/prerender-seo.mjs`, which is main.
+// Both sides are resolved to their REAL path: an absolute argv through a
+// symlinked checkout would otherwise compare unequal to import.meta.url,
+// the bake would silently not run, and the build would exit green with an
+// SPA-only dist (reviewed 2026-09-27).
+export const isMainModule = (argv1, moduleUrl) => {
+  try { return realpathSync(resolve(argv1)) === realpathSync(fileURLToPath(moduleUrl)); } catch { return false; }
+};
+const isMain = Boolean(process.argv[1]) && isMainModule(process.argv[1], import.meta.url);
+
+if (isMain) try {
   // ---- Bundle the pure-data modules for Node import ----
   const entry = join(root, "scripts", ".prerender-data-entry.ts");
   writeFileSync(entry, `
@@ -43,7 +181,7 @@ export { GUIDES, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
-export { getAllProducts, PASS } from "../src/config/products";
+export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
@@ -782,6 +920,10 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
 
   // ---- Helpers ----
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // Locale copy with its placeholders filled from a mirror — the prerender
+  // renders the SAME string the app renders, and a placeholder the mirror
+  // does not name is a build error rather than a blank.
+  const fillCopy = (s, vals, who) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] ${who} copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
   const label = (slug) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const displayKeyword = (k) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
   const uniq = (a) => [...new Set(a)];
@@ -894,102 +1036,17 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       </div></footer>
     </div>`;
 
-  // ---- Head surgery on the template ----
-  // `isFallback` marks the root index.html, which doubles as the SPA fallback
-  // for every non-prerendered route: it gets NO canonical (a canonical of "/"
-  // on /pricing would tell non-Google engines /pricing is a duplicate) and an
-  // inline script that clears the static homepage content immediately when
-  // the browser path isn't "/" (crawlers don't run it; JS users on other
-  // routes get the same blank-then-render they had before).
-  // `canonical` names a DIFFERENT page as the indexable version of this one —
-  // for near-duplicates that must stay reachable but must not compete. `robots`
-  // sets the meta robots tag for pages that exist only to serve their own URL
-  // (an auth wall, say) and should never be indexed at all.
-  const renderFile = ({ path, title, description, content, jsonLd = [], hreflang = null, lang = null, isFallback = false, canonical = null, robots = null }) => {
-    // SERP snippets truncate ~160 chars; clamp at a word boundary so no page
-    // (current or future) ships an overlong description.
-    //
-    // The clamp STAYS (a 300-char description in the wild is worse than a cut
-    // one) but it no longer does its work in silence. It cut the homepage's
-    // description at "…Upload your CV and an AI…" and nothing said so, so the
-    // headline change that made the agent the hallmark never reached the
-    // snippet Google shows. A safety net that hides the fall is how you find
-    // out months later.
-    if (description && description.length > 160) {
-      truncatedDescriptions.push({ path, len: description.length, text: description });
-      description = description.slice(0, 157).replace(/\s+\S*$/, "") + "…";
-    }
-    let html = template;
-    html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
-    html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(description)}$2`);
-    html = html.replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(title)}$2`);
-    html = html.replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
-    html = html.replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${esc(title)}$2`);
-    html = html.replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${esc(description)}$2`);
-    // Route-true share URLs: the template hardcodes the homepage, so every
-    // page's og:url/twitter:url contradicted its own canonical and shares
-    // canonicalized to "/" (audit 2026-07-25).
-    const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${path}`;
-    html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${pageUrl}$2`);
-    html = html.replace(/(<meta name="twitter:url" content=")[^"]*(")/, `$1${pageUrl}$2`);
-    if (lang) html = html.replace(/<html lang="[^"]*"/, `<html lang="${lang}"`);
+  // ---- Write one page ----
+  // composeHtml (top of file) does the head and body surgery; this hands it
+  // the bake's template and helpers and writes what comes back.
+  const renderFile = (page) => {
+    const html = composeHtml(page, { template, D, esc, shell, preloadFor, publicHref, onTruncated: (t) => truncatedDescriptions.push(t) });
 
-    // REPLACE the template's robots tag, never append a second one. The
-    // template ships `index, follow`; appending `noindex` left both in the
-    // head, and two contradictory robots directives is a page whose indexing
-    // depends on which one a given crawler resolves. Caught before deploy by
-    // reading the built file — the tag was correct AND the wrong one was still
-    // above it.
-    if (robots) {
-      const tag = `<meta name="robots" content="${robots}" />`;
-      html = /<meta name="robots"[^>]*>/.test(html)
-        ? html.replace(/<meta name="robots"[^>]*>/, tag)
-        : html.replace("</head>", `${tag}\n</head>`);
-    }
-    let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${publicHref(canonical || path)}" />\n`}<meta name="x-prerendered" content="1" />\n`;
-    if (hreflang) {
-      // hreflang is a { locale: path } map (any number of locales). Every
-      // cluster member emits the SAME set of alternates (reciprocity is what
-      // makes crawlers honor them) + x-default pointing at the English page.
-      for (const [hl, href] of Object.entries(hreflang)) {
-        headExtra += `<link rel="alternate" hreflang="${hl}" href="${SITE}${href}" />\n`;
-      }
-      headExtra += `<link rel="alternate" hreflang="x-default" href="${SITE}${hreflang.en}" />\n`;
-    }
-    // THE SERIALISED JSON IS ESCAPED BEFORE IT GOES INTO A SCRIPT ELEMENT.
-    //
-    // JSON.stringify does not escape `<` or `/`, and that was harmless for as
-    // long as every LD block was built from our own copy. It is not any more:
-    // a posting page's `description` is EMPLOYER-AUTHORED free text, and
-    // decodeJdEntities in posting-page.ts deliberately turns `&lt;` back into
-    // `<`. A job description containing the literal `&lt;/script&gt;` — an
-    // ordinary thing in an engineering JD — would decode to a real `</script>`,
-    // close this element early and spill the rest of the JSON into the head as
-    // text, destroying that page's structured data. None of the 399 pages in
-    // the last bake contained one; the exposure is new with employer text, and
-    // the escape costs nothing on every other block.
-    //
-    // THE JOB BLOCK ALSO CARRIES THE ID THE PAGE TAKES OVER. The React route
-    // replaces this element on hydration rather than adding a second entity
-    // beside it, and removes it outright when the posting has gone stale since
-    // the bake. It finds it by id, and until now there was none to find.
-    for (const ld of jsonLd) {
-      const tagId = ld && ld["@type"] === "JobPosting" ? ` id="${D.POSTING_LD_TAG_ID}"` : "";
-      headExtra += `<script type="application/ld+json"${tagId}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
-    }
-    // Preload hints last in the head, so they cannot displace the meta tags
-    // above them if the template shape ever shifts.
-    headExtra += preloadFor(path);
-    html = html.replace("</head>", `${headExtra}</head>`);
-    const clearScript = isFallback
-      ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";}</script>`
-      : "";
-    html = html.replace('<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
-
-    if (isFallback) {
+    if (page.isFallback) {
       writeFileSync(join(dist, "index.html"), html);
       return;
     }
+    const { path } = page;
     // Write BOTH layouts: <path>/index.html (served for "/path/") and
     // <path>.html (what sirv-style servers — vite preview included — resolve
     // for the extensionless "/path" our links and sitemap actually use).
@@ -1378,7 +1435,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   const AGENT_OFFER = (() => {
     const A = (D.EN_LOCALE && D.EN_LOCALE.homeAgent) || {};
     const vals = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications, freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
-    const fillIn = (s) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] homeAgent copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
+    const fillIn = (s) => fillCopy(s, vals, "homeAgent");
     return { lead: fillIn(A.lead), connect: fillIn(A.connectLine2), pass: fillIn(A.passLine), cta: fillIn(A.connectCta) };
   })();
   write({
@@ -2360,7 +2417,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
 
     // ---- /agent ----
     // FOUND 2026-08-18 by the post-recovery SEO sweep: /agent — the page the
-    // $99/mo product's checkout, the board pitch, and the welcome redirect all
+    // agent plan's checkout, the board pitch, and the welcome redirect all
     // land on — served the HOMEPAGE SHELL, byte-identical (16,183B), homepage
     // title, homepage description, no canonical. To a crawler the money page
     // was a duplicate of the front page; to an answer engine the price, the
@@ -2368,22 +2425,25 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     // because they existed only in JS. The claims below are the SAME countable
     // claims the board pitch makes (Jobs.tsx, agent-is-visible-on-the-board
     // guard) — a crawler and a visitor must read the same product.
+    // The figure is the mirror's, the one pricing-truth pins to the checkout
+    // function's constant; it was typed here three times.
+    const agentMonthly = D.SUBSCRIPTIONS.agent.priceUsd;
     write({
       path: "/agent",
-      title: "Apply Agent — $99/mo, Applications Sent For You",
+      title: `Apply Agent — $${agentMonthly}/mo, Applications Sent For You`,
       // The vendor count is RENDERED from the sendable mirror (pinned to the
       // Deno list by the-page-says-six guard), never typed: this line said
       // "four" for weeks while the list held five (project_claim_drift). The
       // board share is not on hand at bake time (no per-vendor facet here),
       // so it is absent rather than a stale figure — the SPA derives it live.
-      description: `The agent matches fresh postings to your resume and submits real applications on ${D.SENDABLE_VENDOR_LABELS.length} hiring systems. $99/mo, 7 days free. It never solves CAPTCHAs.`,
+      description: `The agent matches fresh postings to your resume and submits real applications on ${D.SENDABLE_VENDOR_LABELS.length} hiring systems. $${agentMonthly}/mo, 7 days free. It never solves CAPTCHAs.`,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
         <h1 class="text-3xl font-bold mb-3">The agent applies. You interview.</h1>
         <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings and submits real applications with your resume and answers, on the hiring systems it can drive end to end. You review what it sent, not what it plans to send.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it costs, and what you get</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$99/month, 7 days free</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$${agentMonthly}/month, 7 days free</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">The limits, stated up front</h2>
@@ -2431,6 +2491,11 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       const badge = { read: "any free key", paid: "paid key", apply: "agent key" };
       const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
       const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings` : "the live postings";
+      // What applying costs, from the mirrors — the page named the plan and
+      // the pass and served neither figure to a crawler.
+      const agentPlanPrice = D.SUBSCRIPTIONS.agent.priceUsd;
+      const passPrice = D.PASS.priceUsd;
+      const passHours = D.PASS.sessionHours;
       // The joiner the mirror exports: commas and one final "and", and
       // semicolons when an item carries its own "and" — never "and … and".
       const andList = D.andList;
@@ -2486,12 +2551,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
-        description: `Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Free keys for search; the Agent plan or a one-off pass can request applications.`,
+        description: `Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Search free; apply on the $${agentPlanPrice}/month Agent plan or a $${passPrice} pass.`,
         jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }])],
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Connect your agent" }])}
           <h1 class="text-3xl font-bold mb-3">Your AI agent can use this job board directly</h1>
-          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings, check a shortlist is still open, and — on the Agent plan or a live pass — ask your apply agent to submit applications for you.</p>
+          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings, check a shortlist is still open, and — on the Agent plan ($${agentPlanPrice}/month) or a live pass ($${passPrice} for ${passHours} hours) — ask your apply agent to submit applications for you.</p>
           <section class="mb-8"><h2 class="text-xl font-bold mb-2">Which agent do you use?</h2>
             <p class="text-sm text-muted-foreground mb-3">Pick one. You will see only the steps for that app.</p>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">${hostButtons}</div>
@@ -2514,7 +2579,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
             <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
-            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> or a live pass (sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
+            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> ($${agentPlanPrice}/month) or a live pass ($${passPrice} for ${passHours} hours, sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools</h2>
             <p class="text-sm text-muted-foreground mb-2">Every keyed tool call carries a credential, and hosts hold it two ways. From ${h(withHeader)}: the key in an Authorization header — every tool your key's tier allows.${signInSentence}${unkeyedOnlySentence} Each host's own note below says which.</p>
@@ -2661,10 +2726,27 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0);
     const minP = Math.min(...paid.map((p) => p.priceUsd));
     const maxP = Math.max(...paid.map((p) => p.priceUsd));
+    // THE TWO MONTHLY PLANS AND THE PASS, FROM THE MIRRORS THE CHECKOUT
+    // FUNCTIONS ARE PINNED TO (pricing-truth), never typed. Until now this
+    // page told a crawler the plans existed and sent it to the app for the
+    // figure — so the page a pricing query lands on served no monthly price
+    // to anything that does not run JavaScript. The sentences are the app's
+    // own locale strings with the same placeholders filled from the same
+    // mirrors; the plan rows read the mirror directly, so the prices stand
+    // even if a locale key goes missing.
+    const proPlan = D.SUBSCRIPTIONS.pro;
+    const agentPlan = D.SUBSCRIPTIONS.agent;
+    const passCopy = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications };
+    const subscriptionAnswer = fillCopy(D.EN_LOCALE?.faq?.questions?.subscription?.answer, { proPrice: proPlan.priceUsd, agentPrice: agentPlan.priceUsd }, "faq.subscription");
+    const passLine = fillCopy(D.EN_LOCALE?.pricingPage?.passLine, passCopy, "pricingPage.passLine");
+    // The offer range mirrors Pricing.tsx: every visible one-time product,
+    // both plans and the pass — a ceiling the catalogue has outgrown is a
+    // rich result that lies.
+    const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd, agentPlan.priceUsd, D.PASS.priceUsd];
     write({
       path: "/pricing",
       title: `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
-      description: `The diagnostic resume scan is free forever — 7 scans a day, no signup. Paid tools are one-time purchases ($${minP}–$${maxP}), plus an optional all-access Pro plan.`,
+      description: `The diagnostic resume scan is free — 7 scans a day, no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month; Apply Agent $${agentPlan.priceUsd}/month; a $${D.PASS.priceUsd} pass for your own agent.`,
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
         {
@@ -2678,8 +2760,8 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
             "@type": "AggregateOffer",
             priceCurrency: "USD",
             lowPrice: "0",
-            highPrice: String(maxP),
-            offerCount: paid.length + 1,
+            highPrice: String(Math.max(...offerPrices)),
+            offerCount: offerPrices.length + 1,
           },
         },
       ],
@@ -2690,7 +2772,15 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">One-time tools</h2>
           <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p></div>`).join("")}</div>
         </section>
-        <p class="text-sm text-muted-foreground mb-8">Current bundle discounts and the Pro all-access price are shown live on this page in the app.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two monthly plans, and a pass</h2>
+          <div class="space-y-2">
+            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">Unlimited scans and every paid tool included.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
+            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">Apply Agent (${esc(agentPlan.name)})</p><p class="text-xs text-muted-foreground mt-0.5">Includes everything in Pro; the agent prepares a shortlist for you overnight.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${agentPlan.priceUsd}/${esc(agentPlan.interval)}</p></div>
+          </div>
+          <p class="text-sm text-muted-foreground mt-3">${esc(subscriptionAnswer)}</p>
+          <p class="text-sm text-muted-foreground mt-2">${esc(passLine)} <a href="/agents" class="text-primary">Connect your agent →</a></p>
+        </section>
+        <p class="text-sm text-muted-foreground mb-8">Current bundle discounts are shown live on this page in the app.</p>
         ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
     });
 

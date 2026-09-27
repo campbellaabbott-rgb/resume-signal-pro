@@ -3,61 +3,59 @@ import { postTrackEvent } from '@/lib/track-transport';
 import { ProductId } from '@/config/products';
 import { AB_TESTS } from '@/hooks/use-ab-test';
 
-// Get or create visitor ID for tracking
-const getVisitorId = (): string => {
-  const key = 'conversion_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key for the product
+// events, and read the A/B hook's private key for the A/B conversions — so a
+// purchase was recorded under one visitor and the A/B conversion it implied
+// under another, and if the A/B key happened to be unset the A/B conversion
+// was silently skipped.
+//
+// TWO SUB-EVENTS UNDER ONE KEY, NOT THREE. product_conversion is read by
+// get-analytics as views against conversions per product (the variant), and
+// the writer refuses a repeat of (test, variant, visitor, type) for ninety
+// days when the type is conversion. This hook used to send a third sub-event,
+// checkout_initiated, as a conversion under the same product — so a visitor
+// who reached checkout was the product's "conversion" whether or not they
+// paid, and their purchase_completed row was refused for ninety days as a
+// repeat of it. The intent event is retired (reviewed 2026-09-27): the funnel
+// keeps checkout_started, and the server records every Stripe session it
+// mints in checkout_starts, keyed on the session and carrying the product.
+// The clicks stay views, the purchase stays the one conversion.
 
 // Track A/B test conversion for all active tests
-const trackABTestConversions = async (metadata?: Record<string, unknown>) => {
-  const visitorId = localStorage.getItem('ab_visitor_id');
-  if (!visitorId) return;
-  
-  // Track conversion for all active A/B tests
+const trackABTestConversions = (metadata?: Record<string, unknown>) => {
   const testNames = Object.keys(AB_TESTS) as (keyof typeof AB_TESTS)[];
-  
+
   for (const testName of testNames) {
-    const variant = localStorage.getItem(`ab_${testName}`);
-    if (variant) {
-      try {
+    try {
+      const variant = localStorage.getItem(`ab_${testName}`);
+      if (variant) {
         postTrackEvent({
-            testName,
-            variant,
-            eventType: 'conversion',
-            visitorId,
-            metadata
+          testName,
+          variant,
+          eventType: 'conversion',
+          metadata,
         });
-        console.log(`[A/B Conversion] Tracked conversion for ${testName}:${variant}`);
-      } catch (error) {
-        console.error(`Failed to track A/B conversion for ${testName}:`, error);
       }
+    } catch (error) {
+      console.error(`Failed to track A/B conversion for ${testName}:`, error);
     }
   }
 };
 
 // Track conversion event
 const trackConversionEvent = async (
-  eventType: 'button_click' | 'checkout_initiated' | 'purchase_completed',
+  eventType: 'button_click' | 'purchase_completed',
   productId: ProductId | string,
   metadata?: Record<string, unknown>
 ) => {
   try {
-    const visitorId = getVisitorId();
-    
     // Use existing A/B event tracking infrastructure
     postTrackEvent({
         testName: 'product_conversion',
         variant: productId,
         eventType: eventType === 'button_click' ? 'view' : 'conversion',
-        visitorId,
         metadata: {
           ...metadata,
           eventType,
@@ -67,12 +65,10 @@ const trackConversionEvent = async (
           referrer: document.referrer || 'direct',
         }
     });
-    
-    console.log(`[Conversion] Tracked ${eventType} for ${productId}`);
-    
+
     // Also track A/B test conversions on purchase completed
     if (eventType === 'purchase_completed') {
-      await trackABTestConversions({ productId, ...metadata });
+      trackABTestConversions({ productId, ...metadata });
     }
   } catch (error) {
     console.error('Failed to track conversion event:', error);
@@ -85,11 +81,6 @@ export function useConversionTracking() {
     trackConversionEvent('button_click', productId, { source });
   }, []);
 
-  // Track when checkout is initiated (Stripe session created)
-  const trackCheckoutInitiated = useCallback((productId: ProductId | string, priceUsd?: number) => {
-    trackConversionEvent('checkout_initiated', productId, { priceUsd });
-  }, []);
-
   // Track when purchase is completed (on success page)
   const trackPurchaseCompleted = useCallback((productId: ProductId | string, priceUsd?: number, sessionId?: string) => {
     // Prevent duplicate tracking using sessionStorage
@@ -98,14 +89,13 @@ export function useConversionTracking() {
       console.log('[Conversion] Purchase already tracked, skipping');
       return;
     }
-    
+
     sessionStorage.setItem(trackingKey, 'true');
     trackConversionEvent('purchase_completed', productId, { priceUsd, sessionId });
   }, []);
 
   return {
     trackButtonClick,
-    trackCheckoutInitiated,
     trackPurchaseCompleted,
   };
 }

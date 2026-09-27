@@ -29,18 +29,10 @@ const getSessionId = (): string => {
   return sessionId;
 };
 
-// Get or create visitor ID (persists across sessions)
-const getVisitorId = (): string => {
-  const key = 'funnel_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key, so the funnel's
+// visitor was never the A/B hook's visitor or the product hook's visitor.
 
 // Get the funnel progress from this session. Guarded: a corrupt/legacy
 // funnel_progress value would otherwise throw from JSON.parse, and this runs on
@@ -74,7 +66,6 @@ const trackFunnelEvent = async (
   metadata?: Record<string, unknown>
 ) => {
   try {
-    const visitorId = getVisitorId();
     const sessionId = getSessionId();
     const progress = getFunnelProgress();
     const stageIndex = FUNNEL_STAGES.indexOf(stage);
@@ -94,7 +85,6 @@ const trackFunnelEvent = async (
         testName: 'conversion_funnel',
         variant: stage,
         eventType: stage === 'purchase_completed' ? 'conversion' : 'view',
-        visitorId,
         metadata: {
           ...metadata,
           sessionId,
@@ -210,6 +200,15 @@ export function useFunnelTracking() {
     trackStage('product_clicked', { productId, productName, price });
   }, [trackStage]);
 
+  // TWO SOURCES FOR ONE STAGE, decided 2026-09-27. The server now records
+  // every Stripe session it mints in checkout_starts (immune to the writer's
+  // window, to unload and to any budget), and this client event still exists.
+  // They count different things: this is a VISITOR who reached the stage, as
+  // every other stage here counts visitors; that is a SESSION minted. The
+  // cohort reader keeps counting this event so its stages compare like with
+  // like; checkout_starts is the count of sessions, and the paid join. When
+  // the reader is next redefined, it may take this stage from checkout_starts
+  // joined on visitor_id -- until then the two numbers are not one number.
   const trackCheckoutStarted = useCallback((productId: string, price: number) => {
     trackStage('checkout_started', { productId, price });
   }, [trackStage]);

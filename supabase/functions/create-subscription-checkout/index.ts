@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-09-27T20:38Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
 // all current and future consumer tools included. Uses inline recurring
 // price_data so no Price object needs to exist in the Stripe dashboard.
@@ -7,10 +7,16 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail, PRO_PRICE_CENTS, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
+import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-subscription-checkout.2026-09-27.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 serve(async (req) => {
@@ -67,6 +73,21 @@ serve(async (req) => {
       success_url: `${origin}/account?pro=success`,
       cancel_url: `${origin}/pricing?pro=cancelled`,
       metadata: { product_type: "pro_subscription", customer_email: email },
+    });
+
+    // The start is on record before the browser has the url, so no
+    // navigation can race it; keyed on the session id, so a second checkout
+    // is a second row. Never blocks the purchase.
+    await recordCheckoutStart(supabase, {
+      stripeSessionId: session.id,
+      checkoutFunction: "create-subscription-checkout",
+      productType: "pro_subscription",
+      productId: null,
+      amountCents: session.amount_total,
+      currency: session.currency,
+      mode: session.mode,
+      context: checkoutContextOf(body),
+      metadata: { planCents: PRO_PRICE_CENTS },
     });
 
     console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] Session ${session.id} created for ${email}`);

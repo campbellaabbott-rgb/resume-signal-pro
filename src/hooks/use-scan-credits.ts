@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { PRODUCTS } from '@/config/products';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
+import { checkoutContext } from '@/lib/track-transport';
 
 // Calculate price per credit from scan pack
 const PRICE_PER_CREDIT_USD = PRODUCTS.scanPack.priceUsd / (PRODUCTS.scanPack.credits || 10);
@@ -102,7 +103,8 @@ export function useScanCredits() {
       const { data, error } = await supabase.functions.invoke('create-scan-pack-checkout', {
         body: { 
           email: email.toLowerCase().trim(),
-          creditAmount: creditAmount
+          creditAmount: creditAmount,
+          ...checkoutContext(),
         }
       });
 

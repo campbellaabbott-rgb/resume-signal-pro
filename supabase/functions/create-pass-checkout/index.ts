@@ -42,11 +42,18 @@ import {
   PASS_PRODUCT_TYPE,
   PASS_SESSION_HOURS,
 } from "../_shared/pass.ts";
+import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/checkout-start.ts";
+
+// deploy-stamp: 2026-09-27T20:38Z
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-pass-checkout.2026-09-27.2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "x-fn-build": FN_BUILD,
 };
 
 const json = (body: unknown, status = 200) =>
@@ -202,6 +209,23 @@ Deno.serve(async (req) => {
       cancel_url: `${origin}/agents?pass=cancelled`,
       allow_promotion_codes: true,
       automatic_tax: { enabled: false },
+    });
+
+    // The start is on record before the browser has the url, so no
+    // navigation can race it; keyed on the session id, so a second checkout
+    // is a second row. Never blocks the purchase. The analytics context is
+    // read off a clone of the body by the shared reader -- the buyer is
+    // still the verified token above, and nothing here is identity.
+    await recordCheckoutStart(service, {
+      stripeSessionId: session.id,
+      checkoutFunction: "create-pass-checkout",
+      productType: PASS_PRODUCT_TYPE,
+      productId: null,
+      amountCents: session.amount_total,
+      currency: session.currency,
+      mode: session.mode,
+      context: await checkoutContextFromRequest(req),
+      metadata: { planCents: PASS_PRICE_CENTS },
     });
 
     console.log(`[CREATE-PASS-CHECKOUT] Session ${session.id} created for user ${user.id}`);

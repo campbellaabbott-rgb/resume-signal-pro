@@ -1,11 +1,17 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-09-27T20:38Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-product-checkout.2026-09-27.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 // Product configuration with price IDs (keys match frontend ProductId keys).
@@ -292,6 +298,21 @@ serve(async (req) => {
         referral_code: sanitizedReferralCode,
         language: sanitizedLanguage,
       },
+    });
+
+    // The start is on record before the browser has the url, so no
+    // navigation can race it; keyed on the session id, so a second checkout
+    // is a second row. Never blocks the purchase.
+    await recordCheckoutStart(supabase, {
+      stripeSessionId: session.id,
+      checkoutFunction: "create-product-checkout",
+      productType: product.productType,
+      productId,
+      amountCents: session.amount_total,
+      currency: session.currency,
+      mode: session.mode,
+      context: checkoutContextOf(body),
+      metadata: { language: sanitizedLanguage, referral: !!sanitizedReferralCode, credits: product.credits ?? null },
     });
 
     console.log(`[CREATE-PRODUCT-CHECKOUT] Session created: ${session.id} for ${product.name}`);

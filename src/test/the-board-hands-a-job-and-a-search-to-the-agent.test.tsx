@@ -502,8 +502,20 @@ describe("2. the header", () => {
     fireEvent.click(wide);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(1), SLOW);
     expect(tracked(fetchSpy)[0]).toMatchObject({ testName: "nav", variant: "nav_agents", eventType: "view" });
+    // The twin fires the SAME (test, variant, type). The transport sends a
+    // given identity once per tab session once the server has kept it (the
+    // writer would answer "duplicate" and the visitor's budget was charged on
+    // the attempt -- 2026-09-27), so a second click sends nothing...
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(twin);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(tracked(fetchSpy).length, "a repeat of an acknowledged identity is not re-sent").toBe(1);
+    // ...and with the tab's sent map cleared, the twin proves it is wired to
+    // the same event.
+    sessionStorage.clear();
     fireEvent.click(twin);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(2), SLOW);
+    expect(tracked(fetchSpy)[1]).toMatchObject({ testName: "nav", variant: "nav_agents", eventType: "view" });
   });
 });
 

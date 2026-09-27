@@ -2,14 +2,21 @@
 // Queue subscription (includes everything in Pro). Inline recurring price_data,
 // same pattern as create-subscription-checkout: no dashboard Price needed.
 
+// deploy-stamp: 2026-09-27T20:38Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, checkAgentByEmail } from "../_shared/agent.ts";
+import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-agent-checkout.2026-09-27.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 serve(async (req) => {
@@ -99,6 +106,22 @@ serve(async (req) => {
       // Someone who backed out of a payment needs no banner about it.
       cancel_url: `${origin}/agent`,
       metadata: { product_type: "apply_agent", customer_email: email },
+    });
+
+    // The start is on record before the browser has the url, so no
+    // navigation can race it; keyed on the session id, so a second checkout
+    // is a second row. Never blocks the purchase. amount_total is zero on a
+    // trial, so the plan price travels in metadata by name.
+    await recordCheckoutStart(supabase, {
+      stripeSessionId: session.id,
+      checkoutFunction: "create-agent-checkout",
+      productType: "apply_agent",
+      productId: null,
+      amountCents: session.amount_total,
+      currency: session.currency,
+      mode: session.mode,
+      context: checkoutContextOf(body),
+      metadata: { planCents: AGENT_PRICE_CENTS, trial: session.payment_status === "no_payment_required" },
     });
 
     console.log(`[CREATE-AGENT-CHECKOUT] Session ${session.id} created for ${email}`);

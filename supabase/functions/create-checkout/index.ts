@@ -1,7 +1,12 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-09-27T20:38Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-checkout.2026-09-27.2";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -83,6 +88,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 // Module-level singletons (reduces latency variance on warm invocations)
@@ -456,6 +462,21 @@ serve(async (req) => {
 
     // Create checkout session with retry logic
     const session = await createStripeSessionWithRetry(stripe, sessionParams, idempotencyKey);
+
+    // The start is on record before the browser has the url, so no
+    // navigation can race it; keyed on the session id, so a second checkout
+    // is a second row. Never blocks the purchase.
+    await recordCheckoutStart(supabase, {
+      stripeSessionId: session.id,
+      checkoutFunction: "create-checkout",
+      productType: "full_analysis",
+      productId: "fullAnalysis",
+      amountCents: session.amount_total ?? amount,
+      currency: session.currency ?? currency,
+      mode: session.mode ?? "payment",
+      context: checkoutContextOf(requestBody),
+      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null },
+    });
 
     trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount }, clientIp);
     logStep("Checkout session created", { sessionId: session.id, currency, amount });

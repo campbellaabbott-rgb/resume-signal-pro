@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getVisitorId, postTrackEvent } from '@/lib/track-transport';
 
 // Optimization event types for tracking feature effectiveness
 type OptimizationEvent = 
@@ -17,46 +17,31 @@ type OptimizationEvent =
   | 'graceful_degradation_used'
   | 'returning_user_detected';
 
-// Get or create visitor ID for tracking
-const getVisitorId = (): string => {
-  const key = 'optimization_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key.
 
-// Track optimization event via edge function
+// Track optimization event via the one transport (keepalive, dev-silenced,
+// one visitor id, pathname-only page fields) — not a bare client invoke.
 const trackOptimizationEvent = async (
   eventType: OptimizationEvent,
   metadata?: Record<string, unknown>
 ) => {
   try {
-    const visitorId = getVisitorId();
-    
-    await supabase.functions.invoke('track-ab-event', {
-      body: {
-        testName: 'optimization_features',
-        variant: eventType,
-        eventType: eventType.includes('converted') || eventType.includes('succeeded') || eventType.includes('recovered') 
-          ? 'conversion' 
-          : 'view',
-        visitorId,
-        metadata: {
-          ...metadata,
-          feature: eventType.split('_')[0], // e.g., 'exit', 'session', 'live'
-          timestamp: new Date().toISOString(),
-          page: typeof window !== 'undefined' ? window.location.pathname : '/',
-          sessionDuration: getSessionDuration(),
-        }
+    postTrackEvent({
+      testName: 'optimization_features',
+      variant: eventType,
+      eventType: eventType.includes('converted') || eventType.includes('succeeded') || eventType.includes('recovered')
+        ? 'conversion'
+        : 'view',
+      metadata: {
+        ...metadata,
+        feature: eventType.split('_')[0], // e.g., 'exit', 'session', 'live'
+        timestamp: new Date().toISOString(),
+        page: typeof window !== 'undefined' ? window.location.pathname : '/',
+        sessionDuration: getSessionDuration(),
       }
     });
-    
-    console.log(`[Optimization] Tracked ${eventType}`, metadata);
   } catch (error) {
     // Silent fail - don't break user experience for tracking
     console.debug('Optimization tracking failed:', error);

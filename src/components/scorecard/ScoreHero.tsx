@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
+import { postTrackEvent } from "@/lib/track-transport";
 import {
   Tooltip,
   TooltipContent,
@@ -205,15 +205,12 @@ export function ScoreHero({
           <div className="h-3.5 w-px bg-border" />
           <button
             onClick={() => {
-              supabase.functions.invoke('track-ab-event', {
-                body: {
-                  testName: 'cache_reanalyze',
-                  variant: 'button_click',
-                  eventType: 'conversion',
-                  visitorId: localStorage.getItem('ab_visitor_id') || crypto.randomUUID(),
-                  metadata: { source: 'score_hero' }
-                }
-              }).catch(console.error);
+              postTrackEvent({
+                testName: 'cache_reanalyze',
+                variant: 'button_click',
+                eventType: 'conversion',
+                metadata: { source: 'score_hero' }
+              });
               onForceReanalyze();
             }}
             disabled={isLoading}

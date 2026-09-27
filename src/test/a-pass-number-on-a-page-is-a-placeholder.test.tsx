@@ -606,12 +606,20 @@ describe("the agent offer on the homepage", () => {
     // The block the script evaluates, run here against the real en.json and
     // the real mirrors — so what a Googlebot-UA curl of / carries is proven,
     // not inferred from a regex over template text.
+    // The offer block fills its placeholders through the script's one shared
+    // filler (fillCopy, declared at helper scope), so the harness slices that
+    // declaration in beside the block: what runs here is the real filler.
+    const FILLER = (() => {
+      const at = BAKE.indexOf("const fillCopy = ");
+      expect(at, "the shared filler is no longer declared").toBeGreaterThan(-1);
+      return BAKE.slice(at, BAKE.indexOf("\n", at));
+    })();
     const offer = (() => {
       const start = BAKE.indexOf("const AGENT_OFFER = (() => {");
       expect(start).toBeGreaterThan(-1);
       const end = BAKE.indexOf("})();", start) + "})();".length;
       const D = { EN_LOCALE: EN, PASS, MCP_ANON_CAPS };
-      return new Function("D", `${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D) as { lead: string; connect: string; pass: string; cta: string };
+      return new Function("D", `${FILLER}\n${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D) as { lead: string; connect: string; pass: string; cta: string };
     })();
     const fill = (s: string) => s.replace(/\{\{(\w+)\}\}/g, (_, k) => String(({ passPrice: PASS.priceUsd, passHours: PASS.sessionHours, passApplications: PASS.applications, freeCallsPerDay: MCP_ANON_CAPS.perAddressPerDay } as Record<string, number>)[k]));
     const homeAgent = EN.homeAgent as Record<string, string>;
@@ -634,7 +642,7 @@ describe("the agent offer on the homepage", () => {
       const start = BAKE.indexOf("const AGENT_OFFER = (() => {");
       const end = BAKE.indexOf("})();", start) + "})();".length;
       const D = { EN_LOCALE: { homeAgent: { ...homeAgent, passLine: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
-      expect(() => new Function("D", `${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D)).toThrow(/no mirror/);
+      expect(() => new Function("D", `${FILLER}\n${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D)).toThrow(/no mirror/);
     });
     it("the homepage block and the llms-full MCP line both emit them", () => {
       const home = BAKE.slice(BAKE.indexOf('path: "/",'), BAKE.indexOf('path: "/cv-standards"'));

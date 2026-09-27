@@ -58,18 +58,11 @@ export const AB_TESTS = {
 type TestName = keyof typeof AB_TESTS;
 type VariantOf<T extends TestName> = typeof AB_TESTS[T]['variants'][number];
 
-// Get or create visitor ID
-const getVisitorId = (): string => {
-  const key = 'ab_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key, which made the A/B
+// views a different visitor from the funnel, the scroll milestones and the
+// product clicks of the same browser.
 
 // Get stored variant or assign new one
 const getVariant = <T extends TestName>(testName: T): VariantOf<T> => {
@@ -95,14 +88,11 @@ const trackEvent = (
   eventType: 'view' | 'conversion',
   metadata?: Record<string, unknown>
 ) => {
-  const visitorId = getVisitorId();
-  
   // Queue the event for batched sending
   queueABEvent({
     testName,
     variant,
     eventType,
-    visitorId,
     metadata
   });
 };

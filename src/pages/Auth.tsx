@@ -8,18 +8,17 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth, safeNextPath } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { postTrackEvent } from "@/lib/track-transport";
 
 // Auth funnel telemetry — signups fail silently in the wild otherwise.
 function trackAuth(event: string, detail?: string) {
   try {
     const payload = { event: `auth_${event}`, detail: detail?.slice(0, 120) ?? null, ts: Date.now() };
     console.log("[AuthTelemetry]", payload);
-    const visitorId = localStorage.getItem("ab_visitor_id");
-    if (visitorId && visitorId.length === 36) {
-      supabase.functions.invoke("track-ab-event", {
-        body: { testName: "auth_funnel", variant: event.slice(0, 30), eventType: "conversion", visitorId, metadata: { detail: detail?.slice(0, 120) ?? null } },
-      }).catch(() => {});
-    }
+    // Through the one transport, under the browser's one visitor id. This
+    // used to read the A/B hook's private key and record nothing at all for
+    // a browser that had never been assigned an A/B variant.
+    postTrackEvent({ testName: "auth_funnel", variant: event.slice(0, 30), eventType: "conversion", metadata: { detail: detail?.slice(0, 120) ?? null } });
   } catch { /* never block auth on telemetry */ }
 }
 

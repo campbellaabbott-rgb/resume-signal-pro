@@ -63,6 +63,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScanCredits } from "@/hooks/use-scan-credits";
 import { supabase } from "@/integrations/supabase/client";
+import { checkoutContext, getVisitorId } from "@/lib/track-transport";
 import { resilientCallers, callEdgeFunctionWithRetry } from "@/lib/resilient-edge-function";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
@@ -603,11 +604,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const outcome = params.get("outcome");
     const rid = params.get("rid");
     if (!outcome || !rid || !["interview", "no_response", "rejected"].includes(outcome)) return;
-    let visitor = "unknown";
-    try {
-      visitor = localStorage.getItem("rb_visitor_id") ?? crypto.randomUUID();
-      localStorage.setItem("rb_visitor_id", visitor);
-    } catch { /* ignore */ }
+    // The one visitor id, from the chokepoint: this effect runs before the
+    // tracking hooks mount, and minting here used to split a returning
+    // browser that carried only a legacy key.
+    const visitor = getVisitorId();
     (supabase.rpc as unknown as (fn: string, args: object) => PromiseLike<unknown>)(
       "record_scan_outcome",
       { p_report_id: rid, p_outcome: outcome, p_ip: visitor },
@@ -621,7 +621,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { verifyPurchase } = useScanCredits();
-  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { trackButtonClick } = useConversionTracking();
   const { trackRateLimitError, trackApiError } = useErrorTracking();
   const { 
     trackUploadStarted, 
@@ -1686,6 +1686,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         tempSessionId: tempSessionData,
         currency: currency.code,
         promoCode,
+        // The visitor and the page, so the start the server records joins
+        // back to this browser's landing (checkout_starts.visitor_id).
+        ...checkoutContext(),
       });
 
       if (checkoutResult.error) {
@@ -1701,9 +1704,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       hasReceivedUrl = true;
       setCheckoutUrl(checkoutData.url);
       console.log("[Checkout] Checkout URL received and stored for fallback");
-      
-      // Track checkout initiated
-      trackCheckoutInitiated('fullAnalysis', 25);
 
       // Tie the temp session ID to this specific checkout session
       if (checkoutData?.sessionId) {

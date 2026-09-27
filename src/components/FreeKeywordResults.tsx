@@ -35,6 +35,7 @@ import { AddOnsShowcase } from "./AddOnsShowcase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { getVisitorId } from '@/lib/track-transport';
 import { useToast } from "@/hooks/use-toast";
 import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { emailSchema } from "@/lib/security-validation";
@@ -1290,7 +1291,7 @@ export function FreeKeywordResults({
         p_detected_years: experienceLevelBase.yearsEstimate ?? null,
         p_industry: effectiveIndustry,
         p_resume_text_length: resumeText?.length ?? null,
-        p_visitor_id: localStorage.getItem('ab_visitor_id') || null,
+        p_visitor_id: getVisitorId(),
       } as never);
     } catch { /* non-blocking */ }
   };
@@ -2118,7 +2119,7 @@ export function FreeKeywordResults({
         candidateName={candidateName}
         onIndustryChange={handleIndustryChange}
         resumeTextLength={resumeText?.length}
-        visitorId={localStorage.getItem('ab_visitor_id') || undefined}
+        visitorId={getVisitorId()}
       />
 
       {/* ── DETECTION CONFIDENCE WARNING (improvement #7) ── */}

@@ -4,7 +4,7 @@ import { Download, Linkedin, Check, Loader2, ImageIcon, Eye, EyeOff } from "luci
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { postTrackEvent } from "@/lib/track-transport";
 // html2canvas (~99KB gzipped) is only needed when the user actually exports an
 // image, so it's dynamically imported in generateImage() below instead of being
 // bundled into the main chunk that every visitor downloads on page load.
@@ -26,21 +26,19 @@ const trackShareEvent = async (
   industry: string
 ) => {
   try {
-    const visitorId = localStorage.getItem('funnel_visitor_id') || crypto.randomUUID();
-    
-    await supabase.functions.invoke('track-ab-event', {
-      body: {
-        testName: 'share_scorecard',
-        variant: action,
-        eventType: 'conversion',
-        visitorId,
-        metadata: {
-          action,
-          atsScore,
-          industry,
-          timestamp: new Date().toISOString(),
-          page: window.location.pathname,
-        }
+    // Through the one transport: the browser's one visitor id (this used to
+    // mint a throwaway id per click when the funnel key was unset), keepalive
+    // across navigation, and silence in development.
+    postTrackEvent({
+      testName: 'share_scorecard',
+      variant: action,
+      eventType: 'conversion',
+      metadata: {
+        action,
+        atsScore,
+        industry,
+        timestamp: new Date().toISOString(),
+        page: window.location.pathname,
       }
     });
     

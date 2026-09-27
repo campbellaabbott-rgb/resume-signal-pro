@@ -1,21 +1,13 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { postTrackEvent } from '@/lib/track-transport';
 
 const SCROLL_MILESTONES = [0, 25, 50, 75, 90, 100] as const;
 
 type ScrollMilestone = typeof SCROLL_MILESTONES[number];
 
-const getVisitorId = (): string => {
-  const key = 'scroll_visitor_id';
-  let visitorId = localStorage.getItem(key);
-  
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem(key, visitorId);
-  }
-  
-  return visitorId;
-};
+// The visitor id is not this hook's to decide: the transport stamps every
+// event with the browser's one id (src/lib/track-transport.ts). This file
+// used to keep a private copy under a private storage key.
 
 export function useScrollDepth(pageName: string = 'home') {
   const trackedMilestones = useRef<Set<ScrollMilestone>>(new Set());
@@ -35,37 +27,31 @@ export function useScrollDepth(pageName: string = 'home') {
       }
     }
 
-    const trackMilestone = async (milestone: ScrollMilestone) => {
+    const trackMilestone = (milestone: ScrollMilestone) => {
       if (trackedMilestones.current.has(milestone)) return;
-      
+
       trackedMilestones.current.add(milestone);
       sessionStorage.setItem(sessionKey, JSON.stringify([...trackedMilestones.current]));
 
-      try {
-        await supabase.functions.invoke('track-ab-event', {
-          body: {
-            testName: 'scroll_depth',
-            variant: `${milestone}%`,
-            eventType: 'view',
-            visitorId: getVisitorId(),
-            metadata: {
-              page: pageName,
-              milestone,
-              timestamp: new Date().toISOString(),
-              referrer: document.referrer || 'direct',
-            }
-          }
-        });
-        console.log(`[Scroll Depth] Tracked ${milestone}% on ${pageName}`);
-      } catch (error) {
-        console.error('Failed to track scroll depth:', error);
-      }
+      // Through the one transport (keepalive, dev-silenced, one visitor id,
+      // pathname-only page fields) — not a bare client invoke around it.
+      postTrackEvent({
+        testName: 'scroll_depth',
+        variant: `${milestone}%`,
+        eventType: 'view',
+        metadata: {
+          page: pageName,
+          milestone,
+          timestamp: new Date().toISOString(),
+          referrer: document.referrer || 'direct',
+        }
+      });
     };
 
     const handleScroll = () => {
       const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (scrollHeight <= 0) return;
-      
+
       const scrollPercent = Math.round((window.scrollY / scrollHeight) * 100);
 
       for (const milestone of SCROLL_MILESTONES) {
@@ -88,10 +74,10 @@ export function useScrollDepth(pageName: string = 'home') {
     };
 
     // Always record a baseline "0%" view so the funnel has a starting point
-    void trackMilestone(0);
+    trackMilestone(0);
 
     window.addEventListener('scroll', debouncedScroll, { passive: true });
-    
+
     // Track initial position (for short pages or already scrolled)
     handleScroll();
 

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { AUTO_VENDORS, CLICK_VENDORS } from "@/config/ats-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
+import { checkoutContext } from "@/lib/track-transport";
 
 /**
  * The agent tier. Priced from SUBSCRIPTIONS, never a literal — src/test/
@@ -30,7 +31,7 @@ export function AgentSubscriptionCard({ email }: { email?: string }) {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-agent-checkout", {
-        body: { email },
+        body: { email, ...checkoutContext() },
       });
       if (error) throw error;
       const url = (data as { url?: string } | null)?.url;

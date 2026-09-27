@@ -18,7 +18,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
   const [email, setEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
-  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { trackButtonClick } = useConversionTracking();
   const { formatPrice, isLocalCurrency } = useCurrency();
   
   const formatLocalPrice = (usd: number) => {
@@ -33,7 +33,6 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
     
     // Track conversion events
     trackButtonClick('scan_credits_variable', 'rate_limit_upsell');
-    trackCheckoutInitiated('scan_credits_variable', creditAmount * pricePerCredit);
     
     await purchaseCredits(email, creditAmount);
   };

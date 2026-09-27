@@ -5,6 +5,7 @@ import { PRODUCTS, ProductId } from '@/config/products';
 import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
+import { checkoutContext } from '@/lib/track-transport';
 import { getStoredReferralCode } from '@/hooks/use-affiliate-auth';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 
@@ -19,7 +20,7 @@ export function useProductCheckout() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<ProductId | null>(null);
   const { toast } = useToast();
-  const { trackButtonClick, trackCheckoutInitiated } = useConversionTracking();
+  const { trackButtonClick } = useConversionTracking();
   const { trackProductClicked, trackCheckoutStarted } = useFunnelTracking();
   const { prefetch: prefetchCheckout, prefetchProps } = useCheckoutPrefetch();
 
@@ -61,7 +62,10 @@ export function useProductCheckout() {
           referralCode: getStoredReferralCode(),
           // Generation happens server-side from the webhook, which has no
           // access to the browser's i18n state — has to be captured now.
-          language: localStorage.getItem('i18nextLng') || 'en'
+          language: localStorage.getItem('i18nextLng') || 'en',
+          // The visitor and the page, so the start the server records joins
+          // back to this browser's landing (checkout_starts.visitor_id).
+          ...checkoutContext(),
         }
       });
 
@@ -92,10 +96,9 @@ export function useProductCheckout() {
       }
 
       if (data?.url) {
-        // Track checkout initiated
-        trackCheckoutInitiated(productId, product.priceUsd);
-        
-        // Track in funnel
+        // Track in funnel (the product_conversion intent event was retired:
+        // see use-conversion-tracking.ts -- the server's checkout_starts row
+        // is the record of a session minted)
         trackCheckoutStarted(productId, product.priceUsd);
         
         toast(data.proIncluded

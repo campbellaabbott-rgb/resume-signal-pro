@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
@@ -146,7 +146,11 @@ const built = existsSync(resolve(ROOT, "dist/index.html")) && existsSync(DIST_SI
 describe.skipIf(!built)("the built sitemap advertises no posting URL without a page", () => {
   // Parity is a property of ONE bake: read the sitemap that shipped beside
   // these files, never a committed copy a later bake may have rewritten.
-  const xml = readFileSync(DIST_SITEMAP, "utf8");
+  // Read in the hook, not at collection: a skipped describe still runs its
+  // body to collect, and a read there raised ENOENT for every tree without
+  // a local dist (reviewed 2026-09-27).
+  let xml = "";
+  beforeAll(() => { xml = readFileSync(DIST_SITEMAP, "utf8"); });
   const hasPage = (path: string) =>
     existsSync(resolve(ROOT, `dist${path}/index.html`)) ||
     existsSync(resolve(ROOT, `dist${path.replace(/\/$/, "")}.html`));
