@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Im Tracker als beworben markiert",
     "appliedMarkedBody": "{{role}} bei {{company}} — falls du nicht abgeschickt hast, ändere den Status in deinem Konto.",
     "discSalary": "{{shown}} dieser Arbeitgeber nennen das Gehalt. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, machen aber keine Gehaltsangabe – dieser Filter blendet sie daher aus.",
-    "discWorkMode2": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, sagen aber nicht, ob remote, hybrid oder vor Ort – dieser Filter blendet sie daher aus.",
+    "discWorkMode2": "{{shown}} dieser Arbeitgeber geben an, wo gearbeitet wird. Weitere {{hidden}} Stellen erfüllen alle anderen Kriterien, tragen aber keine angegebene Arbeitsform – der Arbeitgeber hat nichts gesagt oder zwei verschiedene Dinge, und wir wählen dann nicht aus. Dieser Filter blendet sie daher aus.",
     "discShowAll": "Diese ebenfalls anzeigen",
     "discCategory": "Außerdem haben {{hidden}} Stellen im gesamten Board einen Titel, der den Bereich nie nennt – kein Bereichsfilter kann sie erreichen.",
     "fuzzyExtraLine": "Nur wenige exakte Treffer für „{{q}}“ — {{count}} ähnliche Titel sind unten enthalten, gekennzeichnet.",
@@ -4217,6 +4217,7 @@
       "internship": "Praktikum"
     },
     "employmentTypeProvenance": "Anstellungsart, so wie der Arbeitgeber sie im eigenen Karriere-Feed angibt. Anzeigen, deren Feed keine Art nennt, zeigen kein Label — niemals eine Vermutung.",
+    "workModeProvenance": "Arbeitsform, so wie der Arbeitgeber sie angibt — die Option, die er im eigenen Bewerbersystem gewählt hat, oder seine eigenen Worte in der Anzeige: Titel, Ort oder Abteilung. Widersprechen sich diese, oder nennt keines eine Arbeitsform, zeigt die Anzeige keine: Schweigen wird niemals als Vor Ort gelesen.",
     "relatedSeam": "Exakte Treffer enden hier — darunter nur Treffer im Anzeigentext",
     "hideAgencies": "Personaldienstleister ausblenden",
     "hideAgenciesTip": "Blendet Stellen von Personaldienstleistern und Personalvermittlungen aus. Ihre Karten tragen das Abzeichen „Personaldienstleister“; dieser Filter nimmt sie ganz von der Seite. Standardmäßig aus — auch Agentur-Stellen sind echte Stellen.",

@@ -694,7 +694,7 @@ const JOB_CARD_SCHEMA = {
     companyToken: { type: ["string", "null"], description: "The employer handle; pass it back in search_jobs `companies`." },
     location: { type: ["string", "null"] },
     country: { type: ["string", "null"], description: "ISO-2." },
-    workMode: { type: ["string", "null"], enum: ["remote", "hybrid", "onsite", null], description: "Stated or inferred from title/location; null when neither says." },
+    workMode: { type: ["string", "null"], enum: ["remote", "hybrid", "onsite", null], description: "The employer's own statement: the option they chose in their ATS, or their own words on the posting (title, location, department). null has THREE meanings: neither source says anything, the two disagree and the board refuses to choose, or the posting is older than the vendor field this board now reads. Never inferred from the description, and silence is never read as onsite." },
     employmentType: { type: ["string", "null"] },
     category: { type: ["string", "null"] },
     department: { type: "string", description: "The employer's own team name. ABSENT when the posting carries none." },

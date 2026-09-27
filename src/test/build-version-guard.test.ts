@@ -1216,6 +1216,67 @@ const PINNED = {
   //   publish — then migration 20260927034117. That is the reverse of the usual
   //   order here and cappedCount's stand-down is why it is safe; verify-deploy
   //   5y says which check reads which half and what a failure means.
+  //   .79: normalize.ts only; sources.ts UNCHANGED, so no board waits on the
+  //   bootstrap lane and the two catalog pins above are untouched. ONE STAMP FOR
+  //   ONE BUNDLE: a draft of this change minted .78 and .79 for a single publish,
+  //   which contradicts the .73 entry in the constant itself ("a new stamp would
+  //   imply a shipped .73 that does not exist") — verify-deploy reads that string
+  //   to identify the deployed artifact. Two work-mode reads ship under this one
+  //   stamp.
+  //   (a) A HEAD OFFICE IS A BUILDING and one vendor arm read that building name
+  //   as a work-from-home policy: the Paylocity arm took LocationName over the
+  //   City/State in the SAME payload and handed it to the shared work-mode
+  //   detector. Census of all 15 tenants in the stratum, 39 of 39 stored rows
+  //   re-fetched 2026-09-27: the vendor's structured remote flag is false on
+  //   39/39 and 36 carry a real City/State that ingest discarded. After the fix,
+  //   measured through the real function: 34 rows gain a place, the mode goes 39
+  //   remote -> 35 NULL + 4 remote (one of those four states remote in its own
+  //   title), country is unchanged on all 39 and region_code is a GAIN on 34.
+  //   The department string is masked for the mode read as well — an employer
+  //   naming site labels for the head office names departments the same way, and
+  //   that string reached the detector untouched. The residue rule's entity arm
+  //   is deliberately UNANCHORED and the docblock now says so: two of the 39
+  //   labels put the entity word inside a company name. The shared regex is
+  //   deliberately untouched — stripping the token wherever it sits beside a city
+  //   was REFUTED, it would delete 114 genuinely-remote rows including every
+  //   German one-word posting.
+  //   (b) THE EMPLOYER PICKED THE WORK MODE FROM A DROPDOWN and the UKG arm now
+  //   reads it: JobLocationType is on every row of the list this lane already
+  //   POSTs, present on 33,497 of 33,497 rows in a CENSUS of every UKG board in
+  //   JOB_SOURCES (1,291 boards, page 0 each, 2026-09-27), 59.1% carrying a value
+  //   and no integer outside 0/1/2/null. Only three values map, through the one
+  //   shared vendor-label reader, so an unmapped integer — the vendor's own -1
+  //   included — is silence and no default branch can read it as on-site; an
+  //   unmapped non-null integer other than that -1 is LOGGED, the way the Workday
+  //   classifier logs an unclassified remoteType. The dropdown contradicting the
+  //   employer's own words writes NULL rather than the enum, and those words now
+  //   include the LABELS THE EMPLOYER GAVE EVERY SITE: 26 census rows were served
+  //   on-site under a label carrying an explicit remote word, 0 after the fix.
+  //   The head-office phrase is masked out of the place, the category and the
+  //   labels and LEFT IN THE TITLE, because unmasked it would have published
+  //   remote on 130 rows and deleted the employer's own On-site on 39. The text
+  //   answer survives a blank dropdown, which is 501 of the 1,403 text-stated
+  //   rows. Zero extra requests on both sides. Reach stated like-with-like and as
+  //   a RANGE, because two draws on our own rows the same day disagree: 59.6% of
+  //   300 rows sampled down the vendor=ukg slice would gain a stated mode against
+  //   45.3% on an independent 143-row draw, so ~15,000-20,000 of the 33,617
+  //   no-mode rows. The 65.6% first proposed was a vendor-side page-0 sample
+  //   scaled onto our denominator, and the same route run again reproduces it at
+  //   65.3% — page 0 is where the enum's coverage is highest.
+  //   The 2.1% -> ~45% jump inside one vendor is disclosed rather than left to
+  //   look like a default: jobsPage.workModeProvenance, nine locales, at every
+  //   surface that prints a posting's own mode — card, detail panel, compare
+  //   drawer and the baked posting page. The coverage PERCENTAGE stays dark for
+  //   one catalogue lap, because its stamp is written only when the pass
+  //   completes and the client withholds a figure with no stamp.
+  //   DEPLOY ORDER: migration 20260927113742 with or AFTER this bundle, NEVER
+  //   before it. The old bundle re-derives remote from the site label on the next
+  //   visit and the corrections path writes non-null values freely, so a
+  //   migration that lands first is silently reverted board by board. The
+  //   migration is an accelerator, not a prerequisite: the corrections path's
+  //   remote-boolean branch re-writes the re-normalised work mode WITH its nulls
+  //   whenever the boolean moves, so the bundle alone clears the 35 a lap at a
+  //   time. What the migration buys is immediacy plus the rows no lap reaches.
   //   .78: _shared/salary-extract.ts + SALARY_PARSE_VERSION 7->8; index.ts
   //   otherwise unchanged from .77 and sources.ts UNCHANGED, so the two catalog
   //   pins above are untouched and no board waits on the bootstrap lane. A
@@ -1250,7 +1311,7 @@ const PINNED = {
   //   makes the chained backfill-salary sweep re-fill the stored columns on the
   //   next refresh pass; it skips rows already matching the current parse, so it
   //   writes only the ~1,404 corrections.
-  buildVersion: "2026-09-09.78",
+  buildVersion: "2026-09-09.79",
 };
 
 /**

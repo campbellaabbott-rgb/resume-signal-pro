@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Marcado como aplicado en tu seguimiento",
     "appliedMarkedBody": "{{role}} en {{company}} — si no enviaste la solicitud, cambia su estado en tu cuenta.",
     "discSalary": "{{shown}} de estas empresas publican el salario. Otras {{hidden}} vacantes cumplen todo lo demás que pediste, pero no indican salario, así que este filtro las oculta.",
-    "discWorkMode2": "{{shown}} de estas empresas indican dónde se trabaja. Otras {{hidden}} vacantes cumplen todo lo demás, pero no dicen si es remoto, híbrido o presencial, así que este filtro las oculta.",
+    "discWorkMode2": "{{shown}} de estas empresas indican dónde se trabaja. Otras {{hidden}} vacantes cumplen todo lo demás pero no llevan modalidad indicada: la empresa no dijo nada, o dijo dos cosas distintas y no elegimos por ella. Por eso este filtro las oculta.",
     "discShowAll": "Mostrarlas también",
     "discCategory": "Aparte, {{hidden}} vacantes de todo el tablero tienen un título que no indica a qué área pertenecen, así que ningún filtro de área puede alcanzarlas.",
     "fuzzyExtraLine": "Pocas coincidencias exactas para «{{q}}»: se incluyen {{count}} títulos aproximados abajo, etiquetados.",
@@ -4218,6 +4218,7 @@
       "internship": "Prácticas"
     },
     "employmentTypeProvenance": "Tipo de empleo tal como lo indica el empleador en su propio feed de empleo. Las ofertas cuyo feed no indica ningún tipo no muestran etiqueta — nunca una suposición.",
+    "workModeProvenance": "Modalidad de trabajo tal como la indica la empresa: la opción que eligió en su propio sistema de contratación, o sus propias palabras en la oferta —título, ubicación o departamento—. Si se contradicen, o si ninguna indica una modalidad, la oferta no muestra ninguna: el silencio nunca se lee como presencial.",
     "relatedSeam": "Aquí terminan las coincidencias exactas — debajo, solo coincidencias en el texto del anuncio",
     "hideAgencies": "Ocultar agencias de empleo",
     "hideAgenciesTip": "Oculta las ofertas publicadas por agencias de empleo y de selección de personal. Sus tarjetas llevan la insignia «Agencia de empleo»; este filtro las quita por completo de la página. Desactivado por defecto: una vacante de agencia es una vacante real.",

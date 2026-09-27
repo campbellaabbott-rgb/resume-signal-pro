@@ -1,0 +1,669 @@
+{
+  "ukg:recruiting~SUN1007SECL~405f8226-5347-498b-8c69-d200212ad1bb:ecd99147-1bb3-42cc-931c-ee7cc8d1482f": {
+    "Id": "ecd99147-1bb3-42cc-931c-ee7cc8d1482f",
+    "Featured": true,
+    "Title": "People Operations Leave & Accommodations Specialist",
+    "RequisitionNumber": "PEOPL014875",
+    "FullTime": true,
+    "JobCategoryName": "Service Center",
+    "Locations": [
+      {
+        "Id": "25ef79b8-8465-59b7-9639-d1eacaa4739f",
+        "LocalizedName": "Phoenix",
+        "LocalizedLocationId": "PHX",
+        "LocalizedDescription": "Phoenix",
+        "Address": {
+          "Line1": "5425 E Washington St",
+          "Line2": null,
+          "City": "Phoenix",
+          "PostalCode": "85034",
+          "State": {
+            "Code": "AZ",
+            "Name": "Arizona"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": true,
+        "DisplayDescription": true,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 33.445602665600155,
+          "Longitude": -111.9640633612833
+        }
+      }
+    ],
+    "PostedDate": "2026-09-26T20:38:18.194Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 0,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~SUN1007SECL~405f8226-5347-498b-8c69-d200212ad1bb:dc16e4c5-9608-49bc-86e5-51889286918d": {
+    "Id": "dc16e4c5-9608-49bc-86e5-51889286918d",
+    "Featured": false,
+    "Title": "Branch Manager",
+    "RequisitionNumber": "BRANC014869",
+    "FullTime": true,
+    "JobCategoryName": "Operations Management",
+    "Locations": [
+      {
+        "Id": "bcede8ff-d473-5d33-acea-a3d3a3357867",
+        "LocalizedName": "Reno",
+        "LocalizedLocationId": "RNO",
+        "LocalizedDescription": "Reno",
+        "Address": {
+          "Line1": "750 S Rock Blvd",
+          "Line2": null,
+          "City": "Reno",
+          "PostalCode": "89502",
+          "State": {
+            "Code": "NV",
+            "Name": "Nevada"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": true,
+        "DisplayDescription": true,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 39.50131726933195,
+          "Longitude": -119.76082076859458
+        }
+      }
+    ],
+    "PostedDate": "2026-09-25T22:33:25.277Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 1,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~SUN1007SECL~405f8226-5347-498b-8c69-d200212ad1bb:43040896-1675-4bd2-af31-97a25fb43860": {
+    "Id": "43040896-1675-4bd2-af31-97a25fb43860",
+    "Featured": false,
+    "Title": "Senior Strategic Analyst - Remote – Western U.S. | AZ, CA, NV, UT, NM, CO",
+    "RequisitionNumber": "SENIO014871",
+    "FullTime": true,
+    "JobCategoryName": "Service Center",
+    "Locations": [
+      {
+        "Id": "04c42ac3-1667-549f-8804-e988dc32cb69",
+        "LocalizedName": "Service Center",
+        "LocalizedLocationId": "SVC",
+        "LocalizedDescription": "Service Center",
+        "Address": {
+          "Line1": "5552 E Washington St",
+          "Line2": null,
+          "City": "Phoenix",
+          "PostalCode": "85034",
+          "State": {
+            "Code": "AZ",
+            "Name": "Arizona"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": true,
+        "DisplayDescription": true,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 33.445567699588516,
+          "Longitude": -111.96215771364885
+        }
+      }
+    ],
+    "PostedDate": "2026-09-25T16:30:30.374Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 2,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~SUN1007SECL~405f8226-5347-498b-8c69-d200212ad1bb:1fe2a932-c534-4792-ad0b-7f803c734f1e": {
+    "Id": "1fe2a932-c534-4792-ad0b-7f803c734f1e",
+    "Featured": false,
+    "Title": "Outside Sales Representative",
+    "RequisitionNumber": "OUTSI014872",
+    "FullTime": true,
+    "JobCategoryName": "Outside Sales",
+    "Locations": [
+      {
+        "Id": "737e2a50-f565-50d6-83b1-7c3bc2a004a3",
+        "LocalizedName": "Fort Worth",
+        "LocalizedLocationId": "FTW",
+        "LocalizedDescription": "Fort Worth",
+        "Address": {
+          "Line1": "701 Westport Pkwy",
+          "Line2": null,
+          "City": "Fort Worth",
+          "PostalCode": "76177",
+          "State": {
+            "Code": "TX",
+            "Name": "Texas"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": true,
+        "DisplayDescription": true,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 32.97396827971204,
+          "Longitude": -97.33384002223644
+        }
+      }
+    ],
+    "PostedDate": "2026-09-25T14:08:14.823Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": null,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting2~ARU1000ARUP~62cc791d-612e-42e6-909f-0de27efe2038:133f45f2-b7a0-4fd5-a297-96b436844646": {
+    "Id": "133f45f2-b7a0-4fd5-a297-96b436844646",
+    "Featured": false,
+    "Title": "PharmaDx Regulatory Affairs Specialist I",
+    "RequisitionNumber": "PHARM023017",
+    "FullTime": true,
+    "JobCategoryName": "Laboratory Scientist",
+    "Locations": [
+      {
+        "Id": "bb94592f-7860-48c7-a4e2-68476389d0fe",
+        "LocalizedName": "Remote",
+        "LocalizedLocationId": "Remote",
+        "LocalizedDescription": null,
+        "Address": {
+          "Line1": null,
+          "Line2": null,
+          "City": null,
+          "PostalCode": null,
+          "State": null,
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": true,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 0,
+        "Coordinates": {
+          "Latitude": 46.09249645722756,
+          "Longitude": -115.97626959614995
+        }
+      }
+    ],
+    "PostedDate": "2026-08-07T14:52:26.793Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 1,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~AUG1000AUG~02a29cd6-e7aa-4501-96be-6336647e3184:692bd5bf-2be4-4ddd-9e24-e32c507bb43f": {
+    "Id": "692bd5bf-2be4-4ddd-9e24-e32c507bb43f",
+    "Featured": false,
+    "Title": "Pre-Visit Specialist I - Call Center *Hybrid*",
+    "RequisitionNumber": "PREVI013991",
+    "FullTime": true,
+    "JobCategoryName": "Business Admin",
+    "Locations": [
+      {
+        "Id": "6465d214-6da6-5319-901c-e97a49666c46",
+        "LocalizedName": null,
+        "LocalizedLocationId": null,
+        "LocalizedDescription": "Fishersville VA",
+        "Address": {
+          "Line1": "78 Medical Center Drive",
+          "Line2": null,
+          "City": "Fishersville",
+          "PostalCode": "22939",
+          "State": {
+            "Code": "VA",
+            "Name": "Virginia"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 38.09628375657107,
+          "Longitude": -78.98693673112487
+        }
+      }
+    ],
+    "PostedDate": "2026-09-23T13:00:53.982Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 1,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~SUR1004SRGY~aa616d8f-f2a8-46c2-8f8e-1ca56e162ffd:fd2acb80-91b5-4574-8b77-6c8d6eb39ca3": {
+    "Id": "fd2acb80-91b5-4574-8b77-6c8d6eb39ca3",
+    "Featured": false,
+    "Title": "Director of Equipment Planning and Procurement - Nashville Hybrid / Remote Surrounding Areas",
+    "RequisitionNumber": "DIREC040807",
+    "FullTime": true,
+    "JobCategoryName": "Finance",
+    "Locations": [
+      {
+        "Id": "df0926a1-6dc2-5da8-a5c5-4005f62ab394",
+        "LocalizedName": null,
+        "LocalizedLocationId": "NSTN1",
+        "LocalizedDescription": "Corporate",
+        "Address": {
+          "Line1": "340 Seven Springs Way",
+          "Line2": "Suite 600",
+          "City": "Brentwood",
+          "PostalCode": "37027",
+          "State": {
+            "Code": "TN",
+            "Name": "Tennessee"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": true,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 36.041764098239,
+          "Longitude": -86.769843384051
+        }
+      },
+      {
+        "Id": "e5857843-fb6e-47af-8f7a-0cc32c5d92d9",
+        "LocalizedName": "USA Remote",
+        "LocalizedLocationId": null,
+        "LocalizedDescription": null,
+        "Address": {
+          "Line1": null,
+          "Line2": null,
+          "City": null,
+          "PostalCode": null,
+          "State": null,
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": true,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 0,
+        "Coordinates": {
+          "Latitude": 46.09249645722756,
+          "Longitude": -115.97626959614996
+        }
+      }
+    ],
+    "PostedDate": "2026-09-08T15:37:55.001Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 2,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~MIS1008~0e453acf-d578-055d-9df2-f788e73fadcf:ff1adcd6-131c-467d-b26f-09ffd7176709": {
+    "Id": "ff1adcd6-131c-467d-b26f-09ffd7176709",
+    "Featured": false,
+    "Title": "Project Manager, Aerospace & Defense",
+    "RequisitionNumber": "EMPLO006738",
+    "FullTime": true,
+    "JobCategoryName": "Inspection and NDT services",
+    "Locations": [
+      {
+        "Id": "d0c8c068-d358-41c6-91e2-25481f1834ac",
+        "LocalizedName": "Remote",
+        "LocalizedLocationId": null,
+        "LocalizedDescription": null,
+        "Address": {
+          "Line1": "remote",
+          "Line2": null,
+          "City": null,
+          "PostalCode": null,
+          "State": null,
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": true,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 0,
+        "Coordinates": {
+          "Latitude": 43.00605167533606,
+          "Longitude": -123.89209995392446
+        }
+      }
+    ],
+    "PostedDate": "2026-09-25T17:21:23.805Z",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": null,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting2~SIT1001SILQ~6a77286d-3477-45d7-9461-715b965f604c:ad22c8aa-cc26-4174-8669-2ab23afd4f9e": {
+    "Id": "ad22c8aa-cc26-4174-8669-2ab23afd4f9e",
+    "Featured": false,
+    "Title": "2027 Summer Project Engineer Intern",
+    "RequisitionNumber": "2026S002815",
+    "FullTime": true,
+    "JobCategoryName": "Construction Operations",
+    "Locations": [
+      {
+        "Id": "264e57fb-3efd-553c-81f7-88ad5e8e7720",
+        "LocalizedName": null,
+        "LocalizedLocationId": null,
+        "LocalizedDescription": "SIQ-MN-Edina",
+        "Address": {
+          "Line1": "7900 78th St W",
+          "Line2": null,
+          "City": "Minneapolis",
+          "PostalCode": "55439",
+          "State": {
+            "Code": "MN",
+            "Name": "Minnesota"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 44.861066329694,
+          "Longitude": -93.387260555004
+        }
+      },
+      {
+        "Id": "6a384715-39dc-46a7-978f-92b427a95cd0",
+        "LocalizedName": "Remote - Indianapolis, IN",
+        "LocalizedLocationId": null,
+        "LocalizedDescription": null,
+        "Address": {
+          "Line1": "Remote",
+          "Line2": null,
+          "City": "Indianapolis",
+          "PostalCode": "46204",
+          "State": {
+            "Code": "IN",
+            "Name": "Indiana"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 0,
+        "Coordinates": {
+          "Latitude": 39.77131918778588,
+          "Longitude": -86.15604975979261
+        }
+      },
+      {
+        "Id": "04fb2956-6dca-5497-b4cc-ed46cd5281f6",
+        "LocalizedName": null,
+        "LocalizedLocationId": null,
+        "LocalizedDescription": "SIQ-MI-Remote-Michigan-MW",
+        "Address": {
+          "Line1": "Remote",
+          "Line2": null,
+          "City": "Remote",
+          "PostalCode": "00000",
+          "State": {
+            "Code": "MI",
+            "Name": "Michigan"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 43.39095510607915,
+          "Longitude": -84.63272171063787
+        }
+      },
+      {
+        "Id": "eb013b16-dcfd-5c63-9c3e-47391a8d4cdc",
+        "LocalizedName": null,
+        "LocalizedLocationId": null,
+        "LocalizedDescription": "SIQ-IA-Des Moines",
+        "Address": {
+          "Line1": "516 3rd St",
+          "Line2": null,
+          "City": "Des Moines",
+          "PostalCode": "50309",
+          "State": {
+            "Code": "IA",
+            "Name": "Iowa"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 41.58918,
+          "Longitude": -93.62148895354584
+        }
+      }
+    ],
+    "PostedDate": "2026-09-08T15:45:39.276Z",
+    "BriefDescription": "We will be attending Ball State University, Iowa State University, Michigan State University, Dunwoody College, and Minnesota State-Mankato Career Fair this fall! If we aren't attending your school and are interested, please feel free to apply!",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 1,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting2~CKE1000CKER~8d7aeff6-90f7-47bf-9f70-771c5260877f:36635e64-2d63-4336-8c7b-593b0db6b260": {
+    "Id": "36635e64-2d63-4336-8c7b-593b0db6b260",
+    "Featured": false,
+    "Title": "Assistant General Manager  (Missouri Market)",
+    "RequisitionNumber": "ASSIS004706",
+    "FullTime": false,
+    "JobCategoryName": "Operations",
+    "Locations": [
+      {
+        "Id": "06fa2072-b6c2-55f5-8dba-4af3f5557988",
+        "LocalizedName": null,
+        "LocalizedLocationId": null,
+        "LocalizedDescription": "Remote Missouri",
+        "Address": {
+          "Line1": null,
+          "Line2": null,
+          "City": null,
+          "PostalCode": null,
+          "State": {
+            "Code": "MO",
+            "Name": "Missouri"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 37.581981086410565,
+          "Longitude": -91.86095985161894
+        }
+      }
+    ],
+    "PostedDate": "2026-09-25T18:26:07.579Z",
+    "BriefDescription": "POSITION SUMMARY\nThe Assistant General Manager (AGM) supports the General Manager (GM) in directing the daily operations of a Hardee’s restaurant in support of the Brand Vision, Mission, and Promise while role modeling CKE’s Core Values.  The AGM assists in ensuring compliance with company standards in all areas of operations including product preparation and delivery, customer service, facilities maintenance, and financial accountability. This role accomplishes these objectives by assisting the GM in actively selecting, training, and coaching top talent to achieve key results in People, Customer, Sales and Profit.\n \nESSENTIAL FUNCTIONS\nMay perform any or all of the following duties:\n▪ Demonstrate CKE’s Core Values while assisting the GM in building hi",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": null,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting~CON1019ACADE~c2b42121-092c-4125-8209-60593d2c63e0:52034777-1a14-4636-a7f7-f0d976b4ba83": {
+    "Id": "52034777-1a14-4636-a7f7-f0d976b4ba83",
+    "Featured": false,
+    "Title": "Certified Special Education Floating Teacher - Georgia Connections Academy",
+    "RequisitionNumber": "CERTI017565",
+    "FullTime": true,
+    "JobCategoryName": "Teaching",
+    "Locations": [
+      {
+        "Id": "b5cfda7f-4b31-4742-9ba6-04dcd81345e9",
+        "LocalizedName": "Hybrid, GA",
+        "LocalizedLocationId": "GACA",
+        "LocalizedDescription": null,
+        "Address": {
+          "Line1": "2763 Meadow Church Road",
+          "Line2": "Suite 208",
+          "City": "Duluth",
+          "PostalCode": "30097",
+          "State": {
+            "Code": "GA",
+            "Name": "Georgia"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": true,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": true,
+        "DisplayDescription": false,
+        "SourceOfTruth": 0,
+        "Coordinates": {
+          "Latitude": 33.999312894419,
+          "Longitude": -84.08942189258
+        }
+      }
+    ],
+    "PostedDate": "2026-09-25T09:49:03.415Z",
+    "BriefDescription": "Working from our office in Duluth, Georgia, or from your home in Georgia, certified teachers will utilize the Pearson Online Classroom to support and motivate students in working through their curriculum, deliver synchronous instruction, provide intervention and enrichment, and use data to diagnose student learning needs. All GACA staff must be able to participate in monthly in-person activities.",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 2,
+    "OpportunityType": 0
+  },
+  "ukg:recruiting2~GRA1007GRAND~54e3f493-e093-4bb2-8a28-7a5bdf4d375f:f9616686-46a5-433f-b5e8-46bd1e5de2c3": {
+    "Id": "f9616686-46a5-433f-b5e8-46bd1e5de2c3",
+    "Featured": false,
+    "Title": "Corporate Lab Intern",
+    "RequisitionNumber": "CORPO007032",
+    "FullTime": true,
+    "JobCategoryName": "Internships",
+    "Locations": [
+      {
+        "Id": "f6aba456-f700-53d6-b08d-4e33b78d5bd4",
+        "LocalizedName": "Home Office",
+        "LocalizedLocationId": "HOME",
+        "LocalizedDescription": "Home Office",
+        "Address": {
+          "Line1": "250 Camelot Drive",
+          "Line2": null,
+          "City": "Fond du Lac",
+          "PostalCode": "549358029",
+          "State": {
+            "Code": "WI",
+            "Name": "Wisconsin"
+          },
+          "Country": {
+            "Code": "USA",
+            "Name": "United States"
+          }
+        },
+        "DisplayName": false,
+        "DisplayLocationId": false,
+        "DisplayAddress": true,
+        "DisplayStreetAddress": false,
+        "DisplayDescription": false,
+        "SourceOfTruth": 1,
+        "Coordinates": {
+          "Latitude": 43.742412555971846,
+          "Longitude": -88.4410748417599
+        }
+      }
+    ],
+    "PostedDate": "2026-09-23T18:55:33.803Z",
+    "BriefDescription": "...",
+    "MatchScore": 1,
+    "MatchedLocations": [],
+    "Distance": null,
+    "JobLocationType": 1,
+    "OpportunityType": 0
+  }
+}

@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Namarkahan bilang nag-apply sa iyong tracker",
     "appliedMarkedBody": "{{role}} sa {{company}} — kung hindi ka nagsumite, palitan ang status nito sa iyong account.",
     "discSalary": "{{shown}} sa mga employer na ito ang naglalathala ng sahod. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba mong hinanap, pero hindi nagsasabi ng sahod — kaya itinatago sila ng filter na ito.",
-    "discWorkMode2": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba, pero hindi sinasabi kung remote, hybrid, o on-site — kaya itinatago sila ng filter na ito.",
+    "discWorkMode2": "{{shown}} sa mga employer na ito ang nagsasabi kung saan gagawin ang trabaho. May {{hidden}} pang trabaho na tumutugma sa lahat ng iba pero walang nakasaad na paraan — wala silang sinabi, o dalawang magkaibang bagay ang sinabi nila at tumanggi kaming pumili. Kaya itinatago sila ng filter na ito.",
     "discShowAll": "Ipakita rin ang mga iyon",
     "discCategory": "Bukod pa rito, {{hidden}} trabaho sa buong board ang may pamagat na hindi sinasabi ang larangan, kaya walang filter ng larangan ang makakaabot sa kanila.",
     "fuzzyExtraLine": "Iilan lang ang eksaktong tugma para sa “{{q}}” — {{count}} malapit na tugmang titulo ang kasama sa ibaba, may label.",
@@ -4217,6 +4217,7 @@
       "internship": "Internship"
     },
     "employmentTypeProvenance": "Uri ng trabaho ayon mismo sa sinasabi ng employer sa sarili nilang careers feed. Ang mga posting na walang nakasaad na uri ay walang ipinapakitang tag — hindi kailanman hula.",
+    "workModeProvenance": "Paraan ng pagtatrabaho gaya ng sinasabi mismo ng employer — ang opsyong pinili nila sa sarili nilang hiring system, o ang sarili nilang mga salita sa posting: pamagat, lokasyon o departamento. Kapag nagkakasalungat ang mga ito, o kapag wala sa kanila ang nagsasabi ng paraan, wala itong ipinapakita: ang katahimikan ay hindi kailanman binabasa bilang on-site.",
     "relatedSeam": "Dito nagtatapos ang eksaktong tugma — sa ibaba, tugma lamang sa teksto ng posting",
     "hideAgencies": "Itago ang mga staffing agency",
     "hideAgenciesTip": "Itinatago ang mga posting mula sa mga staffing at recruitment agency. May badge na \"Staffing agency\" ang kanilang mga card; tuluyang inaalis ng filter na ito ang mga iyon sa pahina. Naka-off bilang default — totoong trabaho pa rin ang mga bakante ng ahensya.",

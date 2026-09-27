@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Gemarkeerd als gesolliciteerd in je tracker",
     "appliedMarkedBody": "{{role}} bij {{company}} — als je niet hebt verzonden, wijzig dan de status in je account.",
     "discSalary": "{{shown}} van deze werkgevers vermelden het salaris. Nog eens {{hidden}} vacatures voldoen aan al het andere, maar noemen geen salaris — dit filter verbergt ze daarom.",
-    "discWorkMode2": "{{shown}} van deze werkgevers vermelden waar het werk plaatsvindt. Nog eens {{hidden}} vacatures voldoen aan al het andere, maar zeggen niet of het remote, hybride of op locatie is — dit filter verbergt ze daarom.",
+    "discWorkMode2": "{{shown}} van deze werkgevers vermelden waar het werk plaatsvindt. Nog eens {{hidden}} vacatures voldoen aan al het andere maar dragen geen opgegeven werkvorm — de werkgever zei niets, of zei twee verschillende dingen en wij kiezen dan niet. Daarom verbergt dit filter ze.",
     "discShowAll": "Toon die ook",
     "discCategory": "Daarnaast hebben {{hidden}} vacatures op het hele bord een titel die nooit zegt in welk vakgebied ze vallen, dus geen enkel vakgebiedfilter bereikt ze.",
     "fuzzyExtraLine": "Slechts enkele exacte resultaten voor “{{q}}” — {{count}} vergelijkbare titels staan hieronder, gemarkeerd.",
@@ -4217,6 +4217,7 @@
       "internship": "Stage"
     },
     "employmentTypeProvenance": "Dienstverband zoals de werkgever het in zijn eigen vacaturefeed vermeldt. Vacatures waarvan de feed geen type noemt, tonen geen label — nooit een gok.",
+    "workModeProvenance": "Werkvorm zoals de werkgever die zelf opgeeft — de optie die hij in zijn eigen wervingssysteem koos, of zijn eigen woorden in de vacature: titel, locatie of afdeling. Spreken die elkaar tegen, of noemt geen enkele een werkvorm, dan toont de vacature er geen: stilte wordt nooit als op locatie gelezen.",
     "relatedSeam": "Exacte matches eindigen hier — hieronder alleen matches in de vacaturetekst",
     "hideAgencies": "Uitzend- en wervingsbureaus verbergen",
     "hideAgenciesTip": "Verbergt vacatures van uitzend- en wervingsbureaus. Hun kaarten dragen de badge 'Uitzend-/wervingsbureau'; dit filter haalt ze volledig van de pagina. Standaard uit — een bureauvacature is een echte vacature.",

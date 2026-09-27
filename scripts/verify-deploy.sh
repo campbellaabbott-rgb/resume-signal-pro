@@ -406,6 +406,75 @@ const med=(a)=>a.slice().sort((x,y)=>x-y)[Math.floor(a.length/2)];
 })().catch(e=>console.log("FAIL  5y probe threw: "+e.message));
 '
 
+echo "== 5z. .78: the employer's own dropdown, and a building is not a policy =="
+# DEPLOY ORDER FOR THIS RELEASE: the EDGE BUNDLE (.78 job-board) FIRST, then
+# migration 20260927113742 with it or after it, NEVER BEFORE IT. The old bundle
+# re-derives remote from a Paylocity site label on every visit and the corrections
+# path writes non-null work modes freely, so a migration applied in front of the
+# bundle is silently reverted board by board. The migration is an ACCELERATOR, not
+# a prerequisite: the corrections path re-writes the re-normalised work mode with
+# its nulls whenever the remote boolean moves, so the bundle alone clears the 35
+# a lap at a time. What the migration buys is immediacy plus the rows no lap
+# reaches (dormant boards, failing boards, rows past a board's per-pass cap).
+#
+# BASELINES, measured with the anon key through this function's own read paths
+# just before the release, because every check below is a COMPARISON:
+#   ukg servable inventory 34,055 (facets sourcesAt 2026-09-27T14:52:12Z)
+#   ukg rows serving a stated mode 703 — remote 419 / hybrid 78 / onsite 206,
+#     countOnly, no cell capped, 2026-09-27T15:0xZ. 703/34,055 = 2.06%.
+#   paylocity workMode=remote 2,050, of which 38 carry the head-office token in
+#     their location and 35 of those 38 have a site-label residue. Those 35 are
+#     the repair's population.
+#
+# WHAT EACH CHECK READS:
+#   (a) THE EDGE BUNDLE, over a ROTATION. The stated-mode share on this vendor is
+#       expected to climb from 703 towards 15,000-20,000 as boards lap; it is NOT
+#       instant and a low number on deploy day is not a failure. The denominator
+#       comes from the FACET (one head-row read, complete by construction), never
+#       from a list total, which caps at 10,000 — the note is explicit about that.
+#   (b) THE MIGRATION, or the bundle a lap later: zero paylocity rows served
+#       remote whose location is a head-office SITE LABEL. 35 today. This is the
+#       only check that distinguishes "repaired" from "not yet lapped" on the day
+#       of the deploy; a week later the bundle alone would also have cleared them.
+#   (c) THE EDGE BUNDLE on named rows, which is the only check that proves the
+#       enum is being READ rather than the coverage having drifted. Postings
+#       expire, so a missing row here is INFO and not FAIL: pick another from the
+#       census in the build report.
+B="$B" K="$K" node -e '
+const B=process.env.B, K=process.env.K;
+const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
+const HO=/\bhome\s+office\b/i, HOG=/\bhome\s+office\b/gi;
+// The site-label residue rule, mirrored from normalize.ts: nothing left, a bare
+// cost-centre number, or a residue naming an organisation or a department.
+const siteLabel=(s)=>{if(!HO.test(s))return false;const r=s.replace(HOG," ").replace(/[^\p{L}\p{N}]+/gu," ").trim();return r===""||/^[0-9]{3,}$/.test(r)||/\b(inc|llc|corp|foundation|gmbh|departments?)\b/i.test(r)};
+(async()=>{
+  const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+  const f=await J({action:"facets"});
+  const inv=(f.sources||{}).ukg;
+  const st=await J({action:"list",countOnly:true,limit:1,vendor:"ukg",workMode:"remote,hybrid,onsite"});
+  const parts={};
+  for(const m of ["remote","hybrid","onsite"]) parts[m]=(await J({action:"list",countOnly:true,limit:1,vendor:"ukg",workMode:m})).total;
+  if(st.countCapped) console.log("INFO  (a) the stated-mode count came back CAPPED, so read the share from the facet and not from this number");
+  const share=(inv&&st.total!=null)?(100*st.total/inv):null;
+  ok(st.total!=null && st.total>1500,"(a) ukg stated-mode rows "+st.total+" of "+inv+" servable ("+(share==null?"?":share.toFixed(2))+"%, facet stamp "+f.sourcesAt+"), by state "+JSON.stringify(parts)+" — baseline 703/34,055 = 2.06%. This ACCRUES over the rotation: under ~1500 on deploy day means boards have not lapped yet, not that the read is broken. Re-run daily until it settles, and expect 15,000-20,000.");
+  let off=0,guard=0,seen=new Set(),tok=0,lab=[];
+  while(guard++<60){const r=await J({action:"list",vendor:"paylocity",workMode:"remote",limit:100,offset:off,groupSimilar:false,sort:"discovered"});
+    for(const j of (r.jobs||[])){if(seen.has(j.id))continue;seen.add(j.id);const L=String(j.location||"");if(HO.test(L)){tok++;if(siteLabel(L))lab.push(j.id+" "+JSON.stringify(L));}}
+    if(!r.hasMore)break; off=r.nextOffset ?? off+(r.jobs||[]).length;}
+  ok(lab.length===0,"(b) walked "+seen.size+" paylocity rows served remote: "+tok+" still quote the head-office token and "+lab.length+" of those are a SITE LABEL (baseline 38 and 35; a building is not a work-from-home policy). Remaining: "+JSON.stringify(lab.slice(0,5)));
+  const cases=[
+    ["ukg:recruiting~OLL1000OLLIE~355913c1-206d-48a4-bb34-020064efe845:d840d3e1-a9e5-4a55-9396-ea3931b584f3","onsite","dropdown On-site, nothing in the posting own words; served with NO mode before this bundle"],
+    ["ukg:recruiting2~SAL1016SALO~3347ce03-ba60-4bdc-8af2-26369c80b18f:edc33f98-aa88-49d5-920c-e5077e11aa5b","remote","dropdown Remote, silent text; served with NO mode before"],
+    ["ukg:recruiting~AUG1000AUG~02a29cd6-e7aa-4501-96be-6336647e3184:692bd5bf-2be4-4ddd-9e24-e32c507bb43f",null,"dropdown On-site against a title reading Hybrid: REFUSED. Served hybrid before, and a served on-site here is the fabrication this build exists to prevent"]];
+  for(const [id,want,why] of cases){
+    const d=await J({action:"detail",id});
+    if(!d||!d.job){console.log("INFO  (c) "+id.slice(-12)+" is no longer servable (postings expire) — take another row of the same shape from the build report: "+why);continue;}
+    ok(d.job.workMode===want,"(c) "+id.slice(-12)+" workMode "+JSON.stringify(d.job.workMode)+", expected "+JSON.stringify(want)+" — "+why);
+    ok(d.job.remote===(d.job.workMode==="remote"),"(c) "+id.slice(-12)+" boolean and trinary agree (remote="+d.job.remote+")");
+  }
+})().catch(e=>console.log("FAIL  5z probe threw: "+e.message));
+'
+
 echo "== 6. /companies renders =="
 echo "INFO  GET /companies -> HTTP $(curl -s -m 30 -o /dev/null -w '%{http_code}' "$SITE/companies")"
 echo "done."

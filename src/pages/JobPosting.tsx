@@ -265,7 +265,15 @@ export default function JobPosting() {
                     {job.location}
                   </span>
                 )}
-                {job.workMode === "remote" && <span>{t("jobPostingPage.remote", "Remote")}</span>}
+                {/* THE CRAWLER-FACING SURFACE. This page's JSON-LD is built
+                    from the same work_mode, so the line that says whose
+                    statement it is belongs here more than anywhere. Same
+                    sentence and same key as the board's own two readers. */}
+                {job.workMode === "remote" && (
+                  <span title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}>
+                    {t("jobPostingPage.remote", "Remote")}
+                  </span>
+                )}
               </div>
 
               {/* EVERY LINE NAMES ITS BASIS, AND AN ABSENT FACT IS SAID TO BE

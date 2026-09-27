@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Marqué comme postulé dans votre suivi",
     "appliedMarkedBody": "{{role}} chez {{company}} — si vous n'avez pas envoyé la candidature, changez son statut dans votre compte.",
     "discSalary": "{{shown}} de ces employeurs publient la rémunération. {{hidden}} autres offres correspondent à tout le reste, mais n'indiquent pas de salaire : ce filtre les masque donc.",
-    "discWorkMode2": "{{shown}} de ces employeurs précisent où le travail s'effectue. {{hidden}} autres offres correspondent à tout le reste, mais ne disent pas si c'est en télétravail, hybride ou sur site : ce filtre les masque donc.",
+    "discWorkMode2": "{{shown}} de ces employeurs précisent où le travail s'effectue. {{hidden}} autres offres correspondent à tout le reste mais ne portent aucun mode indiqué : l'employeur n'a rien dit, ou a dit deux choses différentes et nous refusons de choisir. Ce filtre les masque donc.",
     "discShowAll": "Les afficher aussi",
     "discCategory": "Par ailleurs, {{hidden}} offres sur l'ensemble du tableau ont un intitulé qui n'indique jamais leur domaine : aucun filtre par domaine ne peut les atteindre.",
     "fuzzyExtraLine": "Peu de correspondances exactes pour « {{q}} » — {{count}} intitulés proches sont inclus ci-dessous, signalés.",
@@ -4217,6 +4217,7 @@
       "internship": "Stage"
     },
     "employmentTypeProvenance": "Type d'emploi tel que l'employeur l'indique sur son propre flux de recrutement. Les offres dont le flux n'indique aucun type n'affichent pas d'étiquette — jamais une supposition.",
+    "workModeProvenance": "Mode de travail tel que l'employeur l'indique : l'option qu'il a choisie dans son propre logiciel de recrutement, ou ses propres mots dans l'annonce — intitulé, lieu ou service. Si ces sources se contredisent, ou si aucune n'indique de mode, l'annonce n'en affiche aucun : le silence n'est jamais lu comme « sur site ».",
     "relatedSeam": "Fin des correspondances exactes — en dessous, correspondances dans le texte de l'annonce uniquement",
     "hideAgencies": "Masquer les agences de recrutement",
     "hideAgenciesTip": "Masque les offres publiées par des agences d'intérim et cabinets de recrutement. Leurs cartes portent le badge « Agence de recrutement » ; ce filtre les retire entièrement de la page. Désactivé par défaut — une offre d'agence reste une vraie offre.",

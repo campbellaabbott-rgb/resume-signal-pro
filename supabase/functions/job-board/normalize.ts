@@ -374,6 +374,131 @@ export function workModeFrom(
   }
   return detected;
 }
+
+/**
+ * IN AMERICAN CORPORATE ENGLISH THE HEAD OFFICE IS CALLED THE "HOME OFFICE",
+ * AND THIS BOARD READ THAT BUILDING NAME AS A WORK-FROM-HOME POLICY.
+ *
+ * P_REMOTE above carries the token because in German ("Homeoffice") and in
+ * plenty of English postings it genuinely states the policy — recruitee's own
+ * remote boolean confirms the German reading on 51 of 51 live offers, so the
+ * token is NOT coming out of the shared detector. What is wrong is feeding it
+ * a vendor field that holds a SITE name.
+ *
+ * MEASURED on Paylocity 2026-09-27, a census and not a sample: all 15 tenants
+ * in the stratum, all 39 stored rows re-fetched from the tenants' own public
+ * board payloads. The vendor's structured IsRemote is FALSE on 39 of 39, and
+ * 36 of the 39 carry a real City/State in the SAME payload that ingest threw
+ * away because LocationName won unconditionally. Real values: "Home Office",
+ * "1000-Home Office" (a cost-centre code), "HOME OFFICE DEPARTMENTS",
+ * "Property Management, Inc. Home Office",
+ * "Home Office-Harold Grinspoon Foundation". Those are buildings and cost
+ * centres. "Lube Technician" and "Grading Foreman" were published as remote.
+ *
+ * WHAT THIS DOES AND DELIBERATELY DOES NOT DO. It answers ONE question — is
+ * this string a non-geographic site label? — and it answers yes on exactly
+ * three residues and no others: nothing left at all, a bare 3-or-more-digit
+ * cost-centre number, or a residue containing an organisation / department
+ * word. THE THIRD ARM IS NOT ANCHORED, AND THAT IS THE MEASURED CHOICE, not an
+ * oversight: two of the census's own labels are "Property Management, Inc.
+ * Home Office" and "Home Office-Harold Grinspoon Foundation", whose residues
+ * are a COMPANY NAME with an entity word inside it. A rule requiring the
+ * residue to be nothing but entity words would answer NO on both and leave
+ * three of the 39 measured rows publishing a building as a policy. So an
+ * entity word qualifies the residue wherever in it the word sits — including
+ * when a place is also left ("Bozeman, MT - Home Office Inc" IS a site label
+ * here, and the guard pins that as a decision rather than a side effect).
+ *
+ * A residue that names ONLY a place answers NO, and that is the line that
+ * matters: an adversarial re-check of this audit REFUTED the wider gate the
+ * first proposal wanted, because a city beside the token is not evidence of a
+ * building — Ashby's own workplaceType says "Remote" on "Home Office
+ * (Belfast)" and on "Palo Alto Home Office". A rule that read those as site
+ * labels would delete an employer's own statement.
+ *
+ * Nothing here decides a work mode. The caller's only use of a yes is to stop
+ * quoting a building name as if it were a policy; what it writes instead is
+ * whatever the employer stated elsewhere, or NULL. Every direction of error
+ * this rule can make therefore removes a claim; none of them states one.
+ *
+ * THE SEPARATOR IS MANDATORY HERE, and that is not a transcription slip of
+ * P_REMOTE's optional one. In the same census the one-word spelling is the
+ * GERMAN WORD and nothing else — all 99 of those rows belong to one vendor,
+ * whose own remote boolean confirms them on 51 of 51 — while every spaced row
+ * belongs to everything else. A rule that read the one-word spelling as a
+ * building name would take a statement away from the postings that genuinely
+ * make it, so it does not read it at all.
+ */
+export const HOME_OFFICE_TOKEN_SOURCE = "\\bhome\\s+office\\b";
+/** The residue words that mean "an organisation or a department is named here,
+ *  so this is not a place". Kept to the five entity words plus department,
+ *  because every word added here widens what stops counting as an employer
+ *  statement — and deliberately UNANCHORED, for the reason the docblock above
+ *  gives: the census's own labels put the entity word inside a company name. */
+export const SITE_LABEL_WORD_SOURCE = "\\b(?:inc|llc|corp|foundation|gmbh|departments?)\\b";
+/** A cost-centre number. Three digits minimum: a one- or two-digit residue is
+ *  as likely to be a street number or a floor. */
+export const SITE_LABEL_NUMBER_SOURCE = "^[0-9]{3,}$";
+
+const P_HOME_OFFICE_ANY = new RegExp(HOME_OFFICE_TOKEN_SOURCE, "i");
+const P_HOME_OFFICE_ALL = new RegExp(HOME_OFFICE_TOKEN_SOURCE, "gi");
+const P_SITE_LABEL_WORD = new RegExp(SITE_LABEL_WORD_SOURCE, "i");
+const P_SITE_LABEL_NUMBER = new RegExp(SITE_LABEL_NUMBER_SOURCE);
+
+/** What is left of a vendor location field once the head-office token is
+ *  removed and punctuation is collapsed, or null when the field never carried
+ *  the token at all. Exported so the guard can print it. */
+export function homeOfficeResidue(locationName: string | null | undefined): string | null {
+  const s = String(locationName ?? "");
+  if (!P_HOME_OFFICE_ANY.test(s)) return null;
+  return s.replace(P_HOME_OFFICE_ALL, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+/** True only for a head-office SITE LABEL: the token and nothing else, the
+ *  token and a bare cost-centre number, or a residue that names an
+ *  organisation or a department anywhere in it. A residue that names only a
+ *  place is not a site label. */
+export function isHomeOfficeSiteLabel(locationName: string | null | undefined): boolean {
+  const residue = homeOfficeResidue(locationName);
+  if (residue === null) return false;
+  return residue === "" || P_SITE_LABEL_NUMBER.test(residue) || P_SITE_LABEL_WORD.test(residue);
+}
+
+/**
+ * THE HEAD-OFFICE TOKEN REMOVED FROM A STRING THAT IS NOT THE POSTING'S OWN
+ * WORDS ABOUT THE ROLE, so a building or an organisational unit can never be
+ * read as a work-from-home policy. Returns null when nothing is left, which is
+ * what detectWorkMode already treats as "this string says nothing".
+ *
+ * WHICH STRINGS, AND WHY NOT THE TITLE. A vendor's LOCATION LABEL, a
+ * DEPARTMENT and a job CATEGORY name a building or a unit of the org chart. A
+ * TITLE is the posting's own description of the role, where the phrase is a
+ * genuine statement ("Berater Home Office" is a German remote posting, pinned
+ * by its own older guard), so the title is never masked.
+ *
+ * MEASURED, on a census of every UKG board in JOB_SOURCES — 1,291 boards, page
+ * 0 of each, 33,497 rows, 2026-09-27. 179 rows carry the token in a vendor
+ * location label, and where those employers also answered their own
+ * work-mode dropdown they said Hybrid on 32, On-site on 40 and Remote on only
+ * 19: the label is not a remote statement on 72 of the 91 rows that settle it.
+ * Feeding those labels to the detector UNMASKED would publish remote on 130 of
+ * them — the same fabrication the Paylocity half of this build removes, moved
+ * one vendor over. 7 more rows carry the token in the job CATEGORY ("HOME
+ * OFFICE", "CM Home Office"); on 5 of them the employer's dropdown says
+ * On-site, so the category reading was deleting the employer's own answer.
+ *
+ * Paylocity's HiringDepartment is masked for the same reason and is latent
+ * rather than live: 0 of 3,646 rows across 30 boards sampled every tenth token
+ * carry the token there (2026-09-27), and 0 of the 39 census rows do. It is
+ * masked anyway because the repair migration's evidence string is the same
+ * pair of columns, and the two runtimes have to read them the same way.
+ */
+export function withoutHomeOfficeToken(s: string | null | undefined): string | null {
+  if (typeof s !== "string" || !s.trim()) return null;
+  const left = s.replace(P_HOME_OFFICE_ALL, " ").replace(/\s+/g, " ").trim();
+  return left === "" ? null : left;
+}
+
 // A Map, not an object literal — the third instance of this hazard in this
 // codebase (see NAME_FIXES in company-display.ts and CATEGORY_ACCENT in
 // category-accent.ts). `VENDOR_MODE[v]` reaches Object.prototype, so a vendor
@@ -2029,13 +2154,51 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
     .filter((j) => j.IsInternal !== true)
     .map((j) => {
       const loc = j.JobLocation ?? {};
-      const location = String(j.LocationName ?? "").trim() || [loc.City, loc.State].filter(Boolean).join(", ").trim();
+      // LocationName used to win unconditionally over the payload's own
+      // City/State. On this vendor it is frequently the employer's BUILDING or
+      // cost centre rather than a place — see isHomeOfficeSiteLabel for the
+      // 39-of-39 census — so a site label yields to the structured fields the
+      // same payload already carries. Zero extra requests: City and State
+      // arrive in the list payload fetchPaylocity downloads.
+      //
+      // THE SUBSTITUTION IS UNCONDITIONAL ON IsRemote, AND THAT IS A DECISION.
+      // A vendor-stated-remote row whose LocationName is a site label loses the
+      // label and is displayed at the City/State from the SAME payload — the
+      // employer's own structured place, not an inference of ours — while its
+      // mode stays remote from the flag. A cost-centre code ("1000-Home
+      // Office") is worth less to a reader than the city the employer typed
+      // beside it, and every other remote posting on this board already prints
+      // whatever place its vendor states. Live count of rows this affects: 0
+      // (IsRemote is false on 39 of 39 census rows), so it is a decided
+      // behaviour with no shipping footprint, and the guard asserts it.
+      const siteName = String(j.LocationName ?? "").trim();
+      const cityState = [loc.City, loc.State].filter(Boolean).join(", ").trim();
+      const siteLabel = isHomeOfficeSiteLabel(siteName);
+      const location = siteLabel && cityState ? cityState : siteName || cityState;
       const title = String(j.JobTitle ?? "").trim();
       const dept = typeof j.HiringDepartment === "string" && j.HiringDepartment.trim() ? j.HiringDepartment.trim() : null;
       const externalId = String(j.JobId ?? "").trim();
       // IsRemote is the vendor's structured field; text detection only fills
-      // in when the feed doesn't state one (never guessed from prose).
-      const workMode = j.IsRemote === true ? "remote" as const : detectWorkMode(location, title, dept);
+      // in when the feed doesn't state one (never guessed from prose). A site
+      // label is never handed to the detector even when it has to stay as the
+      // displayed location (no City/State in the payload): the name of a
+      // building is not a statement about working from home. IsRemote false is
+      // silence, not onsite — the SmartRecruiters false/false precedent — so
+      // what these rows resolve to is whatever the TITLE states, or NULL.
+      //
+      // AND THE DEPARTMENT IS MASKED TOO, or the fix has a hole exactly the
+      // shape of the defect. An employer whose site labels read "HOME OFFICE
+      // DEPARTMENTS" names departments the same way, and the department string
+      // reached the detector untouched — so the building came back in through
+      // the other door while the location yielded correctly. A department is a
+      // unit of the org chart, never a policy; the TITLE is left alone because
+      // there the phrase is the posting's own words. The repair migration's
+      // evidence string masks the same column for the same reason, so the two
+      // runtimes cannot disagree about these rows.
+      const modeLocation = siteLabel ? cityState : location;
+      const workMode = j.IsRemote === true
+        ? "remote" as const
+        : detectWorkMode(modeLocation, title, withoutHomeOfficeToken(dept));
       const rawCountry = String(loc.Country ?? "").trim();
       return {
         id: `paylocity:${token}:${externalId}`,
@@ -2259,14 +2422,79 @@ export interface UkgOpportunity {
   JobCategoryName?: string;
   FullTime?: boolean;
   BriefDescription?: string;
+  // THE EMPLOYER'S OWN DROPDOWN, on every row of the list this lane already
+  // POSTs. Declared as a number because that is what the payload carries; see
+  // ukgLocationTypeMode below for the vocabulary and why nothing else is read.
+  JobLocationType?: number | null;
   Locations?: Array<{
+    // THE EMPLOYER'S OWN LABEL FOR THIS SITE, and the second half of it. Both
+    // are present on every location node of every captured row (41,588 nodes,
+    // 33,497 rows, 1,291 boards, 2026-09-27) and either one can be the only
+    // place the employer's own "Remote - Indianapolis, IN" appears: the name is
+    // non-empty on 22,713 nodes, the description on 31,935, and 174 rows state
+    // a mode in the description with the name blank. Reading one and not the
+    // other is how the contradiction gate below went blind.
     LocalizedName?: string | null;
+    LocalizedDescription?: string | null;
     Address?: {
       City?: string | null;
       State?: { Code?: string | null; Name?: string | null } | null;
       Country?: { Code?: string | null; Name?: string | null } | null;
     } | null;
   }> | null;
+}
+
+/**
+ * UKG's JobLocationType — the work mode the employer picked in their own
+ * recruiting system — mapped through the ONE shared reader of a vendor label.
+ *
+ * THE VOCABULARY IS THE VENDOR'S, NOT A GUESS. Read from UKG's own
+ * localization resource 2026-09-27 (GET /Content/locales/en-US/translation.json
+ * on the recruiting host): the three JobLocationType labels are Hybrid, On-site
+ * and Remote in that numeric order, and the vendor's own "not specified" facet
+ * value is -1. Note the first one is HYBRID, so guessing this enum from the
+ * usual boolean shape would have been wrong in the most damaging direction.
+ * All three labels are ALREADY in VENDOR_MODE, so this adds no second mapping
+ * table and no second work-mode ladder: it hands the vendor's own word to
+ * statedWorkMode, exactly as every other vendor arm does.
+ *
+ * NO DEFAULT BRANCH, BY CONSTRUCTION. The vendor's own renderer draws nothing
+ * at all for a value that is null, below the first label or above the last
+ * (site.min.js, the detail view model), so every other integer — its own -1
+ * sentinel included — is SILENCE, not a state. A non-integer, a numeric string
+ * and an absent key are silence too. Silence returns null and the caller falls
+ * back to the posting's own words; it is never read as on-site, which is the
+ * fabrication the trinary-or-nothing rule exists to prevent.
+ *
+ * A Map keyed by number, not an object literal: `LOOKUP[v]` on an object reaches
+ * Object.prototype, and this file has already been burned by that three times
+ * (see the note above VENDOR_MODE).
+ */
+const UKG_LOCATION_TYPE = new Map<number, string>([[0, "Hybrid"], [1, "On-site"], [2, "Remote"]]);
+export function ukgLocationTypeMode(raw: unknown): "remote" | "hybrid" | "onsite" | null {
+  if (typeof raw !== "number" || !Number.isInteger(raw)) return null;
+  return statedWorkMode(UKG_LOCATION_TYPE.get(raw) ?? null);
+}
+
+/**
+ * AN INTEGER THIS BOARD DOES NOT MAP IS SILENT TO THE READER AND MUST NOT BE
+ * SILENT TO US. The no-default-branch rule above is correct and cheap, but a
+ * vendor that adds a value 4 ("Flexible", say) would have it dropped forever
+ * with no signal, on the vendor whose enum this build has just made
+ * load-bearing for roughly 20,000 rows. The Workday classifier logs an
+ * unclassified remoteType for exactly this reason and this is that line, one
+ * vendor over.
+ *
+ * -1 IS EXCLUDED BY NAME. It is the vendor's own "not specified" facet value —
+ * documented silence, not a surprise — and logging it would be a third of the
+ * log. Nothing is logged today: the captured census holds only 0, 1, 2 and
+ * null (2,409 / 16,148 / 1,237 / 13,703 over 33,497 rows), and the vendor's
+ * live localization resource still defines exactly three labels.
+ */
+function logUnmappedUkgLocationType(raw: unknown): void {
+  if (typeof raw === "number" && Number.isInteger(raw) && raw !== -1 && ukgLocationTypeMode(raw) === null) {
+    console.log(`[JOB-BOARD] unmapped UKG JobLocationType: ${String(raw).slice(0, 40)}`);
+  }
 }
 
 /** `pod~TENANT~guid` -> the three parts, or null when the token is malformed. */
@@ -2306,7 +2534,62 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
       const raw3 = String(addr.Country?.Code ?? "").trim().toUpperCase();
       const country = UKG_ALPHA3[raw3]
         ?? (/^[A-Z]{2}$/.test(raw3) ? raw3 : detectCountry([location, city, state, String(addr.Country?.Name ?? "")].filter(Boolean).join(", ")));
-      const workMode = detectWorkMode(location, title, dept);
+      // THE EMPLOYER CHOSE THIS FROM A DROPDOWN AND WE WERE DROPPING IT. Every
+      // row of this list carries JobLocationType — present on 33,497 of 33,497
+      // rows in a CENSUS of every UKG board in JOB_SOURCES (1,291 boards, page 0
+      // of each, 2026-09-27), 59.1% of them carrying a value (1 -> 16,148,
+      // null -> 13,703, 0 -> 2,409, 2 -> 1,237, and no other integer at all).
+      // That is a VENDOR-side share of the rows this lane reads first, not the
+      // share of our own servable inventory; the note in index.ts states the
+      // like-with-like reach as a range. The comment that used to sit under
+      // `workMode` said this list "states no remote flag of its own": false.
+      const enumMode = ukgLocationTypeMode(j.JobLocationType);
+      logUnmappedUkgLocationType(j.JobLocationType);
+      // THE EMPLOYER'S OWN LABELS FOR EVERY SITE ON THE REQUISITION, which the
+      // line above `location` throws away. `location` is the first site's
+      // City/State and only falls back to a label when that address is empty,
+      // so on any row the vendor placed properly the employer's own
+      // "Remote - Indianapolis, IN" was DELETED BEFORE the contradiction check
+      // below ever saw it — and the check then compared the dropdown against a
+      // string the remote statement had been removed from and published the
+      // enum's On-site. MEASURED on the census: 26 rows were served On-site
+      // while a vendor label on the same requisition carried an explicit remote
+      // word, and both rows the audit's verifier named as the evidence for
+      // having this gate at all ("Remote - Indianapolis, IN" and "Remote - Los
+      // Angeles, CA", dropdown On-site) were among them. With the labels read,
+      // that count is 0.
+      const vendorLabels = (j.Locations ?? [])
+        .flatMap((L) => [L?.LocalizedName, L?.LocalizedDescription])
+        .filter((s): s is string => typeof s === "string" && s.trim() !== "")
+        .join(" · ");
+      // THE HEAD-OFFICE TOKEN COMES OUT OF ALL THREE VENDOR STRINGS FIRST, and
+      // the title keeps it — see withoutHomeOfficeToken for the census. Adding
+      // the labels unmasked would have printed remote on 130 rows whose label
+      // names a building, which is the fabrication the other half of this same
+      // bundle removes from Paylocity.
+      const textMode = detectWorkMode(
+        withoutHomeOfficeToken(location),
+        title,
+        withoutHomeOfficeToken(dept),
+        withoutHomeOfficeToken(vendorLabels),
+      );
+      // REFUSE ON CONTRADICTION — the workdayDetailPlace rule, one field over.
+      // MEASURED on the census above: both sides speak on 902 rows and agree on
+      // 762 of them (84.5%). The 140 disagreements include 37 where the dropdown
+      // says On-site while the employer's own label says Remote and 9 where it
+      // says On-site against their own Hybrid — taking the dropdown
+      // unconditionally would print In-office on a posting whose own location
+      // string says Remote, the fabrication this board refuses. So a
+      // contradiction resolves to null, the documented value for "we know the
+      // two statements differ, not which is true". The refusal is SYMMETRIC: 42
+      // of the 140 are a Hybrid dropdown under a label reading Remote and 39 the
+      // reverse, and both write nothing.
+      //
+      // AND `?? textMode`, NEVER THE BARE ENUM: the dropdown is blank on 501 of
+      // the 1,403 rows whose own words state a mode (35.7%), so returning
+      // enumMode alone would go dark on them. An existing row is shielded by the
+      // refresh path's stated-only write, but a NEW arrival is not.
+      const workMode = enumMode && textMode && enumMode !== textMode ? null : (enumMode ?? textMode);
       return {
         id: `ukg:${token}:${externalId}`,
         source: "ukg" as const,
@@ -2314,8 +2597,6 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
         company,
         title,
         location,
-        // The list states no remote flag of its own, so work mode is inferred
-        // from text exactly as it is for every other vendor that stays silent.
         workMode,
         remote: workMode === "remote",
         department: dept,

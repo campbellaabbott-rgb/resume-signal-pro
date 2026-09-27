@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Marcado como aplicado no seu acompanhamento",
     "appliedMarkedBody": "{{role}} na {{company}} — se você não enviou, altere o status na sua conta.",
     "discSalary": "{{shown}} destes empregadores divulgam a remuneração. Outras {{hidden}} vagas atendem a todo o resto, mas não informam salário — por isso este filtro as oculta.",
-    "discWorkMode2": "{{shown}} destes empregadores informam onde o trabalho acontece. Outras {{hidden}} vagas atendem a todo o resto, mas não dizem se é remoto, híbrido ou presencial — por isso este filtro as oculta.",
+    "discWorkMode2": "{{shown}} destes empregadores informam onde o trabalho acontece. Outras {{hidden}} vagas atendem a todo o resto mas não têm modelo declarado — o empregador não disse nada, ou disse duas coisas diferentes e não escolhemos por ele. Por isso este filtro as oculta.",
     "discShowAll": "Mostrar essas também",
     "discCategory": "Além disso, {{hidden}} vagas em todo o quadro têm um título que nunca diz a qual área pertencem, então nenhum filtro de área as alcança.",
     "fuzzyExtraLine": "Poucas correspondências exatas para “{{q}}” — {{count}} títulos aproximados incluídos abaixo, identificados.",
@@ -4217,6 +4217,7 @@
       "internship": "Estágio"
     },
     "employmentTypeProvenance": "Tipo de emprego conforme o empregador o indica no seu próprio feed de vagas. Vagas cujo feed não indica tipo não mostram etiqueta — nunca um palpite.",
+    "workModeProvenance": "Modelo de trabalho conforme o empregador o declara — a opção que escolheu no próprio sistema de recrutamento, ou as próprias palavras na vaga: título, localização ou departamento. Se essas fontes se contradisserem, ou se nenhuma declarar um modelo, a vaga não mostra nenhum: o silêncio nunca é lido como presencial.",
     "relatedSeam": "As correspondências exatas terminam aqui — abaixo, apenas correspondências no texto da vaga",
     "hideAgencies": "Ocultar agências de recrutamento",
     "hideAgenciesTip": "Oculta vagas publicadas por agências de recrutamento e de trabalho temporário. Os cartões delas levam o selo «Agência de recrutamento»; este filtro tira-as por completo da página. Desligado por padrão — uma vaga de agência é uma vaga real.",

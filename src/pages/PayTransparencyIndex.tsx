@@ -212,7 +212,7 @@ export default function PayTransparencyIndex() {
             <h2 className="text-xl font-bold mb-3 flex items-center gap-2"><MapPin className="w-5 h-5 text-primary" /> How this is measured</h2>
             <div className="text-sm text-muted-foreground space-y-2 max-w-3xl">
               <p>A posting "states pay" when its own description text or its ATS's structured compensation field contains a salary figure or range — the company's verbatim words. We never estimate, model, or convert pay.</p>
-              <p>A posting has a "work mode" when the employer's ATS field says remote/hybrid/on-site, or the title/location states it explicitly. Postings that don't say carry no tag — we show nothing rather than a guess.</p>
+              <p>A posting has a "work mode" when the employer's own ATS field says remote/hybrid/on-site, or their own words on the posting — its title, its location or its department — state it explicitly. Where those two sources disagree we show nothing rather than choose between them, and where neither says anything the posting carries no tag. We never guess, and silence is never read as on-site.</p>
               <p>
                 Browse <Link to="/jobs?mode=remote" className="text-primary hover:underline">remote roles</Link>,{" "}
                 <Link to="/jobs?mode=hybrid" className="text-primary hover:underline">hybrid roles</Link>, or see the{" "}

@@ -7246,7 +7246,22 @@ export default function Jobs() {
                 )}
                 {(detailJob.workMode || (detailJob.remote ? "remote" : null)) && (
                   <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factWorkMode", "Work mode")}</dt>
+                    {/* WHERE THE MODE CAME FROM, in the employer's name — the
+                        same provenance line the job type carries just below,
+                        and for a stronger reason. One vendor's rows are moving
+                        from 2.1% stated to roughly half stated in a single
+                        build because that vendor's employers pick the mode from
+                        a dropdown we had never read, and a board that starts
+                        printing "On-site" on thousands of postings looks from
+                        outside exactly like the on-site default this board
+                        refuses to have. So the line says whose statement it is,
+                        and says what silence means. */}
+                    <dt
+                      className="text-[11px] text-muted-foreground pt-0.5"
+                      title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}
+                    >
+                      {t("jobsPage.factWorkMode", "Work mode")}
+                    </dt>
                     <dd className="text-foreground min-w-0">
                       {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
                     </dd>
@@ -10539,7 +10554,7 @@ export default function Jobs() {
                         // which is what the sentence always claimed. The old
                         // key is retired from every locale so no translation
                         // can be read against the old arithmetic.
-                        : t("jobsPage.discWorkMode2", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })}
+                        : t("jobsPage.discWorkMode2", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else but carry no stated mode — their employer said nothing, or said two different things and we refused to choose — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })}
                     </p>
                     <button
                       type="button"
@@ -11395,7 +11410,10 @@ export default function Jobs() {
                               </span>
                             )}
                             {(job.workMode || (job.remote ? "remote" : null)) && (
-                              <span className="text-foreground">
+                              <span
+                                className="text-foreground"
+                                title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}
+                              >
                                 {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
                               </span>
                             )}
@@ -12722,8 +12740,14 @@ export default function Jobs() {
                         <li>{t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[id]!.slice(0, 4).join(", ")}</li>
                       )}
                       {j.salary && <li>{j.salary}</li>}
+                      {/* THE THIRD SURFACE THAT PRINTS A POSTING'S OWN WORK
+                          MODE, and it had no provenance line: a count-based
+                          guard asserting "both surfaces" was green while this
+                          one printed the mode bare. Same sentence, same key. */}
                       {j.workMode && (
-                        <li>{t(`jobsPage.workMode.${j.workMode}`, j.workMode)}</li>
+                        <li title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}>
+                          {t(`jobsPage.workMode.${j.workMode}`, j.workMode)}
+                        </li>
                       )}
                       {isEmploymentType(j.employmentType) && (
                         <li>{t(`jobsPage.employmentType.${j.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[j.employmentType])}</li>

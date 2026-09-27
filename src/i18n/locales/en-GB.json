@@ -3888,7 +3888,7 @@
     "appliedMarkedTitle": "Marked as applied in your tracker",
     "appliedMarkedBody": "{{role}} at {{company}} — if you didn't submit, change its status in your account.",
     "discSalary": "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.",
-    "discWorkMode2": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else, but don't say remote, hybrid, or on-site — so this filter hides them.",
+    "discWorkMode2": "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else but carry no stated mode — their employer said nothing, or said two different things and we refused to choose — so this filter hides them.",
     "discShowAll": "Show those too",
     "discCategory": "Separately, {{hidden}} openings across the whole board have a job title that never says which field they're in, so no field filter can reach them.",
     "fuzzyExtraLine": "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labelled.",
@@ -4217,6 +4217,7 @@
       "internship": "Internship"
     },
     "employmentTypeProvenance": "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.",
+    "workModeProvenance": "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.",
     "relatedSeam": "Exact matches end here — below matched in posting text only",
     "hideAgencies": "Hide staffing agencies",
     "hideAgenciesTip": "Hide postings from staffing and recruiting agencies. Their cards carry a “Staffing agency” badge; this takes them off the page entirely. Off by default — agency openings are real openings.",

@@ -1,0 +1,1450 @@
+{
+ "capturedAt": "2026-09-27T03:48:33.565Z",
+ "vendorPayloadsFetchedAt": "2026-09-27T03:55:43Z/03:55:56Z",
+ "what": "Every stored Paylocity posting whose location carried the head-office token, with the verbatim list-payload item re-fetched from its tenant board and the values the board stored for it. A census of the stratum: 15 tenants, 39 of 39 rows.",
+ "rows": [
+  {
+   "token": "3a2b8a5f-3d06-45b5-b84e-76d4cb574f53",
+   "company": "Tricon Wear Solutions LLC",
+   "item": {
+    "JobId": 4537035,
+    "JobTitle": "Territory Manager -  Texas",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-25T12:06:24-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Sales",
+    "JobLocation": {
+     "LocationId": 4462371,
+     "ModuleId": 28743,
+     "Name": "Home Office",
+     "Address": "OFF-SITE",
+     "Address2": null,
+     "Metro": null,
+     "City": null,
+     "State": null,
+     "Zip": null,
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "1da02253-f151-47fd-97d4-d1a298e75a68"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:3a2b8a5f-3d06-45b5-b84e-76d4cb574f53:4537035",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Territory Manager -  Texas",
+    "department": "Sales"
+   }
+  },
+  {
+   "token": "3a2b8a5f-3d06-45b5-b84e-76d4cb574f53",
+   "company": "Tricon Wear Solutions LLC",
+   "item": {
+    "JobId": 4523413,
+    "JobTitle": "Territory Manager- Kentucky",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-22T12:17:39-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4448725,
+     "ModuleId": 28743,
+     "Name": "Home Office",
+     "Address": "OFF-SITE",
+     "Address2": null,
+     "Metro": null,
+     "City": null,
+     "State": "KY",
+     "Zip": null,
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "327b7ce8-25c4-4872-af57-7218e1f41c6b"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:3a2b8a5f-3d06-45b5-b84e-76d4cb574f53:4523413",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Territory Manager- Kentucky",
+    "department": null
+   }
+  },
+  {
+   "token": "3a2b8a5f-3d06-45b5-b84e-76d4cb574f53",
+   "company": "Tricon Wear Solutions LLC",
+   "item": {
+    "JobId": 4523295,
+    "JobTitle": "Territory Manager- Arizona",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-22T12:16:37-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4448607,
+     "ModuleId": 28743,
+     "Name": "Home Office",
+     "Address": "OFF-SITE",
+     "Address2": null,
+     "Metro": null,
+     "City": null,
+     "State": "AR",
+     "Zip": null,
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "92898323-2fcf-4fb0-848f-d8cf4570d7b0"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:3a2b8a5f-3d06-45b5-b84e-76d4cb574f53:4523295",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Territory Manager- Arizona",
+    "department": null
+   }
+  },
+  {
+   "token": "3a2b8a5f-3d06-45b5-b84e-76d4cb574f53",
+   "company": "Tricon Wear Solutions LLC",
+   "item": {
+    "JobId": 4327927,
+    "JobTitle": "Territory Manager - Wyoming",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-21T08:40:51-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Sales",
+    "JobLocation": {
+     "LocationId": 4253124,
+     "ModuleId": 28743,
+     "Name": "Home Office",
+     "Address": "OFF-SITE",
+     "Address2": null,
+     "Metro": null,
+     "City": null,
+     "State": null,
+     "Zip": null,
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "1da02253-f151-47fd-97d4-d1a298e75a68"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:3a2b8a5f-3d06-45b5-b84e-76d4cb574f53:4327927",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Territory Manager - Wyoming",
+    "department": "Sales"
+   }
+  },
+  {
+   "token": "5790eabe-32b9-4d29-bbb9-f129840dd4e7",
+   "company": "EVEREVE",
+   "item": {
+    "JobId": 4529883,
+    "JobTitle": "Digital Operations, Item Specialist",
+    "LocationName": "1000-Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T14:40:28-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4455195,
+     "ModuleId": 23700,
+     "Name": "1000-Home Office",
+     "Address": "6800 France Avenue South",
+     "Address2": "Suite 700",
+     "Metro": null,
+     "City": "Edina",
+     "State": "MN",
+     "Zip": "55435",
+     "Country": "USA",
+     "County": "(952) 426-0050",
+     "SmartyAddressId": "49f7d9ff-9212-42ea-b23c-c3c2f4ca1bca"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5790eabe-32b9-4d29-bbb9-f129840dd4e7:4529883",
+    "location": "1000-Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Digital Operations, Item Specialist",
+    "department": null
+   }
+  },
+  {
+   "token": "5790eabe-32b9-4d29-bbb9-f129840dd4e7",
+   "company": "EVEREVE",
+   "item": {
+    "JobId": 4530740,
+    "JobTitle": "Digital Data Engineer & Analytics Lead",
+    "LocationName": "1000-Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T14:13:49-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4456054,
+     "ModuleId": 23700,
+     "Name": "1000-Home Office",
+     "Address": "6800 France Avenue South",
+     "Address2": "Suite 700",
+     "Metro": null,
+     "City": "Edina",
+     "State": "MN",
+     "Zip": "55435",
+     "Country": "USA",
+     "County": "(952) 426-0050",
+     "SmartyAddressId": "49f7d9ff-9212-42ea-b23c-c3c2f4ca1bca"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5790eabe-32b9-4d29-bbb9-f129840dd4e7:4530740",
+    "location": "1000-Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Digital Data Engineer & Analytics Lead",
+    "department": null
+   }
+  },
+  {
+   "token": "5790eabe-32b9-4d29-bbb9-f129840dd4e7",
+   "company": "EVEREVE",
+   "item": {
+    "JobId": 4530638,
+    "JobTitle": "Digital Lead, App & Capabilities",
+    "LocationName": "1000-Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T14:00:13-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4455952,
+     "ModuleId": 23700,
+     "Name": "1000-Home Office",
+     "Address": "6800 France Avenue South",
+     "Address2": "Suite 700",
+     "Metro": null,
+     "City": "Edina",
+     "State": "MN",
+     "Zip": "55435",
+     "Country": "USA",
+     "County": "(952) 426-0050",
+     "SmartyAddressId": "49f7d9ff-9212-42ea-b23c-c3c2f4ca1bca"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5790eabe-32b9-4d29-bbb9-f129840dd4e7:4530638",
+    "location": "1000-Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Digital Lead, App & Capabilities",
+    "department": null
+   }
+  },
+  {
+   "token": "5790eabe-32b9-4d29-bbb9-f129840dd4e7",
+   "company": "EVEREVE",
+   "item": {
+    "JobId": 4530188,
+    "JobTitle": "Digital Product Manager",
+    "LocationName": "1000-Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T12:51:38-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4455501,
+     "ModuleId": 23700,
+     "Name": "1000-Home Office",
+     "Address": "6800 France Avenue South",
+     "Address2": "Suite 700",
+     "Metro": null,
+     "City": "Edina",
+     "State": "MN",
+     "Zip": "55435",
+     "Country": "USA",
+     "County": "(952) 426-0050",
+     "SmartyAddressId": "49f7d9ff-9212-42ea-b23c-c3c2f4ca1bca"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5790eabe-32b9-4d29-bbb9-f129840dd4e7:4530188",
+    "location": "1000-Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Digital Product Manager",
+    "department": null
+   }
+  },
+  {
+   "token": "5790eabe-32b9-4d29-bbb9-f129840dd4e7",
+   "company": "EVEREVE",
+   "item": {
+    "JobId": 4527284,
+    "JobTitle": "Office Manager - EVEREVE Headquarters - Edina, MN",
+    "LocationName": "1000-Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-22T15:03:55-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "HR & Talent",
+    "JobLocation": {
+     "LocationId": 4452596,
+     "ModuleId": 23700,
+     "Name": "1000-Home Office",
+     "Address": "6800 France Avenue South",
+     "Address2": "Suite 700",
+     "Metro": null,
+     "City": "Edina",
+     "State": "MN",
+     "Zip": "55435",
+     "Country": "USA",
+     "County": "(952) 426-0050",
+     "SmartyAddressId": "49f7d9ff-9212-42ea-b23c-c3c2f4ca1bca"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5790eabe-32b9-4d29-bbb9-f129840dd4e7:4527284",
+    "location": "1000-Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Office Manager - EVEREVE Headquarters - Edina, MN",
+    "department": "HR & Talent"
+   }
+  },
+  {
+   "token": "fe274438-11df-4742-b18e-18a43cb5c6b7",
+   "company": "Ranch and Home Supply, LLC",
+   "item": {
+    "JobId": 4530292,
+    "JobTitle": "Staff Accountant",
+    "LocationName": "Bozeman, MT - Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T13:03:49-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Finance",
+    "JobLocation": {
+     "LocationId": 4455605,
+     "ModuleId": 11036,
+     "Name": "Bozeman, MT - Home Office",
+     "Address": "2311 North 7th Ave",
+     "Address2": null,
+     "Metro": null,
+     "City": "Bozeman",
+     "State": "MT",
+     "Zip": "59715",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "439b3308-5bef-4897-b661-1529813bcf0c"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:fe274438-11df-4742-b18e-18a43cb5c6b7:4530292",
+    "location": "Bozeman, MT - Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Staff Accountant",
+    "department": "Finance"
+   }
+  },
+  {
+   "token": "fe274438-11df-4742-b18e-18a43cb5c6b7",
+   "company": "Ranch and Home Supply, LLC",
+   "item": {
+    "JobId": 4511387,
+    "JobTitle": "Front End Operations Specialist",
+    "LocationName": "Bozeman, MT - Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-16T13:53:53-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Operations",
+    "JobLocation": {
+     "LocationId": 4436693,
+     "ModuleId": 11036,
+     "Name": "Bozeman, MT - Home Office",
+     "Address": "2311 North 7th Ave",
+     "Address2": null,
+     "Metro": null,
+     "City": "Bozeman",
+     "State": "MT",
+     "Zip": "59715",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "439b3308-5bef-4897-b661-1529813bcf0c"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:fe274438-11df-4742-b18e-18a43cb5c6b7:4511387",
+    "location": "Bozeman, MT - Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Front End Operations Specialist",
+    "department": "Operations"
+   }
+  },
+  {
+   "token": "376b17da-8ccc-4e21-8115-3a07eb095254",
+   "company": "Goodwill Industries of South Central Wisconsin",
+   "item": {
+    "JobId": 4529854,
+    "JobTitle": "Job Coach - No Evenings or Weekends!",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T11:52:45-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4455166,
+     "ModuleId": 11530,
+     "Name": "Home Office",
+     "Address": "1302 Mendota St",
+     "Address2": null,
+     "Metro": null,
+     "City": "Madison",
+     "State": "WI",
+     "Zip": "53714",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "f9b2e1fd-0952-464f-a609-022d1f188e6b"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:376b17da-8ccc-4e21-8115-3a07eb095254:4529854",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Job Coach - No Evenings or Weekends!",
+    "department": null
+   }
+  },
+  {
+   "token": "45b5d1fd-33e4-4f72-8022-3d8d8bbb1551",
+   "company": "Property Management Inc.",
+   "item": {
+    "JobId": 4493868,
+    "JobTitle": "Regional Community Director - Affordable",
+    "LocationName": "Property Management, Inc. Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T10:35:34-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4419157,
+     "ModuleId": 2926,
+     "Name": "Property Management, Inc. Home Office",
+     "Address": "350 Poplar Church Road",
+     "Address2": "Suite 201",
+     "Metro": null,
+     "City": "Camp Hill",
+     "State": "PA",
+     "Zip": "17011",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "0c48c2fe-b831-434e-8216-cb28dd619c6f"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:45b5d1fd-33e4-4f72-8022-3d8d8bbb1551:4493868",
+    "location": "Property Management, Inc. Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Regional Community Director - Affordable",
+    "department": null
+   }
+  },
+  {
+   "token": "45b5d1fd-33e4-4f72-8022-3d8d8bbb1551",
+   "company": "Property Management Inc.",
+   "item": {
+    "JobId": 1259677,
+    "JobTitle": "COMMERCIAL MAINTENANCE TECHNICIAN",
+    "LocationName": "Property Management, Inc. Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T09:57:18-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 1205751,
+     "ModuleId": 2926,
+     "Name": "Property Management, Inc. Home Office",
+     "Address": "1300 Market St.",
+     "Address2": null,
+     "Metro": null,
+     "City": "Lemoyne",
+     "State": "PA",
+     "Zip": "17043",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "00000000-0000-0000-0000-000000000000"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:45b5d1fd-33e4-4f72-8022-3d8d8bbb1551:1259677",
+    "location": "Property Management, Inc. Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "COMMERCIAL MAINTENANCE TECHNICIAN",
+    "department": null
+   }
+  },
+  {
+   "token": "45b5d1fd-33e4-4f72-8022-3d8d8bbb1551",
+   "company": "Property Management Inc.",
+   "item": {
+    "JobId": 3721347,
+    "JobTitle": "CVC - PAINTER",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T07:25:49-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 3646098,
+     "ModuleId": 2926,
+     "Name": "Home Office",
+     "Address": "350 Poplar Church Road",
+     "Address2": null,
+     "Metro": null,
+     "City": "Camp Hill",
+     "State": "PA",
+     "Zip": "17011",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "c8604cdd-9e2f-4f5e-9839-7eda966ea535"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:45b5d1fd-33e4-4f72-8022-3d8d8bbb1551:3721347",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "CVC - PAINTER",
+    "department": null
+   }
+  },
+  {
+   "token": "45b5d1fd-33e4-4f72-8022-3d8d8bbb1551",
+   "company": "Property Management Inc.",
+   "item": {
+    "JobId": 4297292,
+    "JobTitle": "CVC- ELECTRICIAN",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-23T07:25:16-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4222469,
+     "ModuleId": 2926,
+     "Name": "Home Office",
+     "Address": "350 Poplar Church Road",
+     "Address2": null,
+     "Metro": null,
+     "City": "Camp Hill",
+     "State": "PA",
+     "Zip": "17011",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "c8604cdd-9e2f-4f5e-9839-7eda966ea535"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:45b5d1fd-33e4-4f72-8022-3d8d8bbb1551:4297292",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "CVC- ELECTRICIAN",
+    "department": null
+   }
+  },
+  {
+   "token": "45b5d1fd-33e4-4f72-8022-3d8d8bbb1551",
+   "company": "Property Management Inc.",
+   "item": {
+    "JobId": 4382807,
+    "JobTitle": "LEASING AGENT",
+    "LocationName": "Property Management, Inc. Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-02T14:26:42-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4308031,
+     "ModuleId": 2926,
+     "Name": "Property Management, Inc. Home Office",
+     "Address": "350 Poplar Church Road",
+     "Address2": "Suite 201",
+     "Metro": null,
+     "City": "Camp Hill",
+     "State": "PA",
+     "Zip": "17011",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "0c48c2fe-b831-434e-8216-cb28dd619c6f"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:45b5d1fd-33e4-4f72-8022-3d8d8bbb1551:4382807",
+    "location": "Property Management, Inc. Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "LEASING AGENT",
+    "department": null
+   }
+  },
+  {
+   "token": "a7fb4030-962e-4d06-b3b0-dfc057e24408",
+   "company": "Residential Elevators",
+   "item": {
+    "JobId": 4522212,
+    "JobTitle": "Account Representative",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-21T12:28:28-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4447522,
+     "ModuleId": 12974,
+     "Name": "Home Office",
+     "Address": "2958 Wellington Circle",
+     "Address2": null,
+     "Metro": null,
+     "City": "Tallahassee",
+     "State": "FL",
+     "Zip": "32309",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "67781d19-c422-41ff-9c69-2e3953e2f380"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:a7fb4030-962e-4d06-b3b0-dfc057e24408:4522212",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Account Representative",
+    "department": null
+   }
+  },
+  {
+   "token": "a7fb4030-962e-4d06-b3b0-dfc057e24408",
+   "company": "Residential Elevators",
+   "item": {
+    "JobId": 4512120,
+    "JobTitle": "Staff Accountant",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-16T16:08:23-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4437426,
+     "ModuleId": 12974,
+     "Name": "Home Office",
+     "Address": "2958 Wellington Circle",
+     "Address2": null,
+     "Metro": null,
+     "City": "Tallahassee",
+     "State": "FL",
+     "Zip": "32309",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "67781d19-c422-41ff-9c69-2e3953e2f380"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:a7fb4030-962e-4d06-b3b0-dfc057e24408:4512120",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Staff Accountant",
+    "department": null
+   }
+  },
+  {
+   "token": "a7fb4030-962e-4d06-b3b0-dfc057e24408",
+   "company": "Residential Elevators",
+   "item": {
+    "JobId": 4481360,
+    "JobTitle": "Service Agreement Consultant",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-04T11:20:00-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Service",
+    "JobLocation": {
+     "LocationId": 4406645,
+     "ModuleId": 12974,
+     "Name": "Home Office",
+     "Address": "2958 Wellington Cir",
+     "Address2": null,
+     "Metro": "Tallahassee",
+     "City": "Tallahassee",
+     "State": "FL",
+     "Zip": "32309-6888",
+     "Country": "USA",
+     "County": "Leon",
+     "SmartyAddressId": "01adb9be-e2b8-47fa-9cf8-a54c21cc28e2"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:a7fb4030-962e-4d06-b3b0-dfc057e24408:4481360",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Service Agreement Consultant",
+    "department": "Service"
+   }
+  },
+  {
+   "token": "7a575766-5687-43c8-beb2-0d6d097412c9",
+   "company": "Illinois Mutual Life Insurance Company",
+   "item": {
+    "JobId": 4515706,
+    "JobTitle": "Administrative Technician, Mailroom",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-17T16:11:27-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Mail, Supply & Administrative Services",
+    "JobLocation": {
+     "LocationId": 4441014,
+     "ModuleId": 29034,
+     "Name": "Home Office",
+     "Address": "300 SW Adams St",
+     "Address2": null,
+     "Metro": "Peoria, Illinois",
+     "City": "Peoria",
+     "State": "IL",
+     "Zip": "61602",
+     "Country": "USA",
+     "County": "Peoria",
+     "SmartyAddressId": "08d0a309-1f58-411f-bf70-9187911a100f"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:7a575766-5687-43c8-beb2-0d6d097412c9:4515706",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Administrative Technician, Mailroom",
+    "department": "Mail, Supply & Administrative Services"
+   }
+  },
+  {
+   "token": "7a575766-5687-43c8-beb2-0d6d097412c9",
+   "company": "Illinois Mutual Life Insurance Company",
+   "item": {
+    "JobId": 4503070,
+    "JobTitle": "Claims Examiner Trainee",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T13:49:25-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Claims",
+    "JobLocation": {
+     "LocationId": 4428368,
+     "ModuleId": 29034,
+     "Name": "Home Office",
+     "Address": "300 SW Adams St",
+     "Address2": null,
+     "Metro": "Peoria, Illinois",
+     "City": "Peoria",
+     "State": "IL",
+     "Zip": "61602",
+     "Country": "USA",
+     "County": "Peoria",
+     "SmartyAddressId": "08d0a309-1f58-411f-bf70-9187911a100f"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:7a575766-5687-43c8-beb2-0d6d097412c9:4503070",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Claims Examiner Trainee",
+    "department": "Claims"
+   }
+  },
+  {
+   "token": "7a575766-5687-43c8-beb2-0d6d097412c9",
+   "company": "Illinois Mutual Life Insurance Company",
+   "item": {
+    "JobId": 4476278,
+    "JobTitle": "Senior Agent Contracting and Commissions Specialist",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-03T07:46:58-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Agent Contracting & Commissions",
+    "JobLocation": {
+     "LocationId": 4401555,
+     "ModuleId": 29034,
+     "Name": "Home Office",
+     "Address": "300 SW Adams St",
+     "Address2": null,
+     "Metro": "Peoria, Illinois",
+     "City": "Peoria",
+     "State": "IL",
+     "Zip": "61602",
+     "Country": "USA",
+     "County": "Peoria",
+     "SmartyAddressId": "08d0a309-1f58-411f-bf70-9187911a100f"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:7a575766-5687-43c8-beb2-0d6d097412c9:4476278",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Senior Agent Contracting and Commissions Specialist",
+    "department": "Agent Contracting & Commissions"
+   }
+  },
+  {
+   "token": "7a575766-5687-43c8-beb2-0d6d097412c9",
+   "company": "Illinois Mutual Life Insurance Company",
+   "item": {
+    "JobId": 4476263,
+    "JobTitle": "Agent Contracting and Commissions Specialist I",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-03T07:43:17-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Agent Contracting & Commissions",
+    "JobLocation": {
+     "LocationId": 4401540,
+     "ModuleId": 29034,
+     "Name": "Home Office",
+     "Address": "300 SW Adams St",
+     "Address2": null,
+     "Metro": "Peoria, Illinois",
+     "City": "Peoria",
+     "State": "IL",
+     "Zip": "61634-0001",
+     "Country": "USA",
+     "County": "Peoria",
+     "SmartyAddressId": "5aaf4614-f91c-44bf-9718-7a703774318e"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:7a575766-5687-43c8-beb2-0d6d097412c9:4476263",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Agent Contracting and Commissions Specialist I",
+    "department": "Agent Contracting & Commissions"
+   }
+  },
+  {
+   "token": "7a575766-5687-43c8-beb2-0d6d097412c9",
+   "company": "Illinois Mutual Life Insurance Company",
+   "item": {
+    "JobId": 4469103,
+    "JobTitle": "Policy Service Rep Trainee",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-01T11:01:43-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Policy Service",
+    "JobLocation": {
+     "LocationId": 4394376,
+     "ModuleId": 29034,
+     "Name": "Home Office",
+     "Address": "300 SW Adams St",
+     "Address2": null,
+     "Metro": "Peoria, Illinois",
+     "City": "Peoria",
+     "State": "IL",
+     "Zip": "61602",
+     "Country": "USA",
+     "County": "Peoria",
+     "SmartyAddressId": "08d0a309-1f58-411f-bf70-9187911a100f"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:7a575766-5687-43c8-beb2-0d6d097412c9:4469103",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Policy Service Rep Trainee",
+    "department": "Policy Service"
+   }
+  },
+  {
+   "token": "5a397474-6ac8-465f-a18b-39088126ada4",
+   "company": "CONTOUR",
+   "item": {
+    "JobId": 4460162,
+    "JobTitle": "Lube Technician",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T09:23:06-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4385434,
+     "ModuleId": 32922,
+     "Name": "Home Office",
+     "Address": "141 Cort Rd",
+     "Address2": null,
+     "Metro": "Columbia",
+     "City": "Columbia",
+     "State": "SC",
+     "Zip": "29203-3654",
+     "Country": "USA",
+     "County": "Richland",
+     "SmartyAddressId": "efab4744-4aff-47ad-96e1-f2517a6af257"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5a397474-6ac8-465f-a18b-39088126ada4:4460162",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Lube Technician",
+    "department": null
+   }
+  },
+  {
+   "token": "5a397474-6ac8-465f-a18b-39088126ada4",
+   "company": "CONTOUR",
+   "item": {
+    "JobId": 3703335,
+    "JobTitle": "Contour Heavy Equipment Operator",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T09:23:02-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 3628075,
+     "ModuleId": 32922,
+     "Name": "Home Office",
+     "Address": "141 Cort Rd",
+     "Address2": null,
+     "Metro": null,
+     "City": "Columbia",
+     "State": "SC",
+     "Zip": "29203-3654",
+     "Country": "USA",
+     "County": "Richland",
+     "SmartyAddressId": "efab4744-4aff-47ad-96e1-f2517a6af257"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5a397474-6ac8-465f-a18b-39088126ada4:3703335",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Contour Heavy Equipment Operator",
+    "department": null
+   }
+  },
+  {
+   "token": "5a397474-6ac8-465f-a18b-39088126ada4",
+   "company": "CONTOUR",
+   "item": {
+    "JobId": 4497174,
+    "JobTitle": "Finance Manager, Controller",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T09:22:54-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4422469,
+     "ModuleId": 32922,
+     "Name": "Home Office",
+     "Address": "141 Cort Rd",
+     "Address2": null,
+     "Metro": "Columbia",
+     "City": "Columbia",
+     "State": "SC",
+     "Zip": "29203-3654",
+     "Country": "USA",
+     "County": "Richland",
+     "SmartyAddressId": "efab4744-4aff-47ad-96e1-f2517a6af257"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5a397474-6ac8-465f-a18b-39088126ada4:4497174",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Finance Manager, Controller",
+    "department": null
+   }
+  },
+  {
+   "token": "5a397474-6ac8-465f-a18b-39088126ada4",
+   "company": "CONTOUR",
+   "item": {
+    "JobId": 2580060,
+    "JobTitle": "Field Mechanic",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T09:22:50-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 2502101,
+     "ModuleId": 32922,
+     "Name": "Home Office",
+     "Address": null,
+     "Address2": null,
+     "Metro": "Columbia",
+     "City": null,
+     "State": "SC",
+     "Zip": "29203",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "36bdaaf9-2eb8-4b2d-a624-9789c0693c2b"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5a397474-6ac8-465f-a18b-39088126ada4:2580060",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Field Mechanic",
+    "department": null
+   }
+  },
+  {
+   "token": "5a397474-6ac8-465f-a18b-39088126ada4",
+   "company": "CONTOUR",
+   "item": {
+    "JobId": 2537005,
+    "JobTitle": "Grading Foreman",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T09:22:48-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 2458875,
+     "ModuleId": 32922,
+     "Name": "Home Office",
+     "Address": "141 Cort Rd",
+     "Address2": null,
+     "Metro": null,
+     "City": "Columbia",
+     "State": "SC",
+     "Zip": "29203-3654",
+     "Country": "USA",
+     "County": "Richland",
+     "SmartyAddressId": "efab4744-4aff-47ad-96e1-f2517a6af257"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5a397474-6ac8-465f-a18b-39088126ada4:2537005",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Grading Foreman",
+    "department": null
+   }
+  },
+  {
+   "token": "5a397474-6ac8-465f-a18b-39088126ada4",
+   "company": "CONTOUR",
+   "item": {
+    "JobId": 2538122,
+    "JobTitle": "Utility Foreman",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-14T09:22:45-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 2459992,
+     "ModuleId": 32922,
+     "Name": "Home Office",
+     "Address": "141 Cort Rd",
+     "Address2": null,
+     "Metro": "Columbia",
+     "City": "Columbia",
+     "State": "SC",
+     "Zip": "29203-3654",
+     "Country": "USA",
+     "County": "Richland",
+     "SmartyAddressId": "efab4744-4aff-47ad-96e1-f2517a6af257"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:5a397474-6ac8-465f-a18b-39088126ada4:2538122",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Utility Foreman",
+    "department": null
+   }
+  },
+  {
+   "token": "cb387878-51da-4aa4-b82f-cc136e5dbaf5",
+   "company": "Allied National, Inc",
+   "item": {
+    "JobId": 4495018,
+    "JobTitle": "Client Services Representative I",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-10T14:14:50-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4420307,
+     "ModuleId": 12690,
+     "Name": "Home Office",
+     "Address": "4551 W 107th St",
+     "Address2": null,
+     "Metro": null,
+     "City": "Overland Park",
+     "State": "KS",
+     "Zip": "66207",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "5b90c544-d293-4669-b562-4b9a667b7958"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:cb387878-51da-4aa4-b82f-cc136e5dbaf5:4495018",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Client Services Representative I",
+    "department": null
+   }
+  },
+  {
+   "token": "4e06b373-2360-4a93-9530-0073436a58ee",
+   "company": "The Harold Grinspoon Foundation",
+   "item": {
+    "JobId": 4491192,
+    "JobTitle": "Creative Project Manager",
+    "LocationName": "Home Office-Harold Grinspoon Foundation",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-09T15:18:40-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4416478,
+     "ModuleId": 3441,
+     "Name": "Home Office-Harold Grinspoon Foundation",
+     "Address": "67 Hunt Street",
+     "Address2": "Suite 100",
+     "Metro": null,
+     "City": "Agawam",
+     "State": "MA",
+     "Zip": "01001",
+     "Country": "USA",
+     "County": "Hampden",
+     "SmartyAddressId": "0023bc06-7529-40a7-a6a6-52fe8d87309c"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:4e06b373-2360-4a93-9530-0073436a58ee:4491192",
+    "location": "Home Office-Harold Grinspoon Foundation",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Creative Project Manager",
+    "department": null
+   }
+  },
+  {
+   "token": "83cf1880-dda4-4633-a181-5ad02433c88e",
+   "company": "CENTREVILLE BANK",
+   "item": {
+    "JobId": 4490003,
+    "JobTitle": "Contact Center Representative",
+    "LocationName": "HOME OFFICE DEPARTMENTS",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-09T12:31:55-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4415290,
+     "ModuleId": 18379,
+     "Name": "HOME OFFICE DEPARTMENTS",
+     "Address": "1218 Main St",
+     "Address2": null,
+     "Metro": null,
+     "City": "West Warwick",
+     "State": "RI",
+     "Zip": "02893",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "475491eb-ee82-43e7-8174-665ab70fc60e"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:83cf1880-dda4-4633-a181-5ad02433c88e:4490003",
+    "location": "HOME OFFICE DEPARTMENTS",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Contact Center Representative",
+    "department": null
+   }
+  },
+  {
+   "token": "dd37a518-4bdb-48fb-a0c8-92b2645041f5",
+   "company": "Next Level",
+   "item": {
+    "JobId": 3696521,
+    "JobTitle": "Nurse Practitioner – PRIME Remote",
+    "LocationName": "HOME OFFICE",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-08T14:28:49-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 3621259,
+     "ModuleId": 38319,
+     "Name": "HOME OFFICE",
+     "Address": "5718 Westheimer Rd",
+     "Address2": null,
+     "Metro": null,
+     "City": "Houston",
+     "State": "TX",
+     "Zip": "77057",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "514e7d77-5836-4fe0-836c-b08389b7ed91"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:dd37a518-4bdb-48fb-a0c8-92b2645041f5:3696521",
+    "location": "HOME OFFICE",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Nurse Practitioner – PRIME Remote",
+    "department": null
+   }
+  },
+  {
+   "token": "dd37a518-4bdb-48fb-a0c8-92b2645041f5",
+   "company": "Next Level",
+   "item": {
+    "JobId": 4397256,
+    "JobTitle": "Multi-State Licensure Specialist",
+    "LocationName": "HOME OFFICE",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-08T13:17:56-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4322499,
+     "ModuleId": 38319,
+     "Name": "HOME OFFICE",
+     "Address": "5718 Westheimer Rd",
+     "Address2": null,
+     "Metro": null,
+     "City": "Houston",
+     "State": "TX",
+     "Zip": "77057",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "514e7d77-5836-4fe0-836c-b08389b7ed91"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:dd37a518-4bdb-48fb-a0c8-92b2645041f5:4397256",
+    "location": "HOME OFFICE",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Multi-State Licensure Specialist",
+    "department": null
+   }
+  },
+  {
+   "token": "89b87da1-6d34-4ace-94bb-abc21a14975c",
+   "company": "NeighborHealth Center",
+   "item": {
+    "JobId": 4468363,
+    "JobTitle": "Pharmacy Technician",
+    "LocationName": "HOME OFFICE",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-09-11T10:24:59-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 4393636,
+     "ModuleId": 21871,
+     "Name": "HOME OFFICE",
+     "Address": "2605 BLUE RIDGE RD",
+     "Address2": "SUITE 225",
+     "Metro": null,
+     "City": "RALEIGH",
+     "State": "NC",
+     "Zip": "27607",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "625dfd7a-4859-4fbf-a8e3-fd797e9597cd"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:89b87da1-6d34-4ace-94bb-abc21a14975c:4468363",
+    "location": "HOME OFFICE",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Pharmacy Technician",
+    "department": null
+   }
+  },
+  {
+   "token": "3d9d88e7-a15e-4131-9518-e1b3477addb5",
+   "company": "San Andreas Regional Center",
+   "item": {
+    "JobId": 2999542,
+    "JobTitle": "Licensed Psychologist",
+    "LocationName": "San Jose, Watsonville, or Salinas (the applicant’s choice of home office)",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-08-31T18:24:34-05:00",
+    "IsInternal": false,
+    "HiringDepartment": null,
+    "JobLocation": {
+     "LocationId": 2922476,
+     "ModuleId": 35035,
+     "Name": "San Jose, Watsonville, or Salinas (the applicant’s choice of home office)",
+     "Address": null,
+     "Address2": null,
+     "Metro": "Hybrid Schedule - Learn more",
+     "City": null,
+     "State": null,
+     "Zip": null,
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "6bed85b4-f30f-4058-872e-8f739da372a5"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:3d9d88e7-a15e-4131-9518-e1b3477addb5:2999542",
+    "location": "San Jose, Watsonville, or Salinas (the applicant’s choice of home office)",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "Licensed Psychologist",
+    "department": null
+   }
+  },
+  {
+   "token": "0978f925-ec4c-4c38-ac13-46fec51a7bd7",
+   "company": "Buck Management Corporation",
+   "item": {
+    "JobId": 3871911,
+    "JobTitle": "District Manager- Bluewater Market Gas & Convenience Stores",
+    "LocationName": "Home Office",
+    "ShouldDisplayLocation": true,
+    "PublishedDate": "2026-08-28T09:36:25-05:00",
+    "IsInternal": false,
+    "HiringDepartment": "Buck Management",
+    "JobLocation": {
+     "LocationId": 3796748,
+     "ModuleId": 3099,
+     "Name": "Home Office",
+     "Address": "78 Ashley Pointe Drive",
+     "Address2": "Suite 300",
+     "Metro": null,
+     "City": "Charleston",
+     "State": "SC",
+     "Zip": "29407",
+     "Country": "USA",
+     "County": null,
+     "SmartyAddressId": "ccfb4be2-391d-4adf-bf08-e8fbd05a4545"
+    },
+    "IsRemote": false
+   },
+   "stored": {
+    "id": "paylocity:0978f925-ec4c-4c38-ac13-46fec51a7bd7:3871911",
+    "location": "Home Office",
+    "work_mode": "remote",
+    "remote": true,
+    "country": "US",
+    "title": "District Manager- Bluewater Market Gas & Convenience Stores",
+    "department": "Buck Management"
+   }
+  }
+ ]
+}
