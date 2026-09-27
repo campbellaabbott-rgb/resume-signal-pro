@@ -512,6 +512,13 @@
       "when": 1790450083556,
       "tag": "0072_20260925164510_an_arm_written_before_the_control",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1790472158969,
+      "tag": "0073_20260926143012_a_delete_with_no_where_is_refused_on_the_path_this_runs_on",
+      "breakpoints": true
     }
   ]
 }
