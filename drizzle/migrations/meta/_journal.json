@@ -533,6 +533,13 @@
       "when": 1790544140245,
       "tag": "0075_20260927192417_a_funnel_stage_is_not_a_repeat_of_the_landing",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1790544158630,
+      "tag": "0076_20260927202451_a_window_of_sixty_minutes_is_not_sixty_windows_of_one",
+      "breakpoints": true
     }
   ]
 }
