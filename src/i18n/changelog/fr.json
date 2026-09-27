@@ -1183,6 +1183,34 @@
     "activelyHiringHidLargeEmployers": {
       "title": "Le filtre « Recrute activement » masquait les plus gros employeurs",
       "description": "Un filtre appelé « Recrute activement » a l’air de savoir qui recrute. Il ne le savait pas. Il comptait les postes que nous avions vus quitter la page carrières d’un employeur et y rester retirés — ce qui suppose de lire cette page jusqu’au bout, et chez les plus gros employeurs nous n’y arrivions pas. Le filtre les écartait donc en silence : mesuré sur les trente plus gros employeurs du tableau, dix-sept d’entre eux et 91 535 postes sur 154 979 étaient masqués, dont un employeur avec 34 000 offres ouvertes. Il présentait les limites de ce que nous pouvons lire comme un fait sur qui recrute. Il s’appelle désormais « Retire ses annonces », c’est-à-dire la chose que nous avons réellement vue se produire. Les employeurs pour lesquels nous n’avons aucun relevé ne sont plus traités comme ne recrutant pas — ils sont mis de côté, comptés à l’écran avec la raison indiquée, et un bouton les ramène. Et lorsque nous ne pouvons pas distinguer un employeur qui laisse ses annonces en ligne d’un employeur dont nous n’avons simplement jamais vu une annonce disparaître, nous le disons désormais, au lieu de ne rien vous montrer."
+    },
+    "dayThirtyFiguresFell": {
+      "title": "Nos chiffres au jour 30 étaient trop élevés ; ils sont désormais plus bas",
+      "description": "Le Ghost Job Index indique combien de postes sont encore affichés trente jours après leur apparition. Jusqu'à aujourd'hui, ce chiffre comptait aussi des employeurs dont nous n'avons jamais vu un seul poste quitter la page carrières — et un poste que nous ne voyons jamais retiré ressemble, de là où nous sommes, à un poste resté ouvert. Ces employeurs sont désormais exclus du chiffre, et le nombre de chaque domaine a baissé d'environ vingt à vingt-huit points en conséquence. Chaque domaine indique aussi maintenant quelle part de son chiffre vient d'un seul employeur. Les anciens chiffres étaient gonflés par une lacune dans ce que nous pouvions observer, et non par des postes réellement restés ouverts."
+    },
+    "aHospitalFiledUnderIsrael": {
+      "title": "Un hôpital de Boston était classé en Israël",
+      "description": "Le filtre par pays s'appuyait sur les mots de l'annonce, et certains noms d'employeurs contiennent un pays. Le Beth Israel Deaconess Medical Center, à Boston, était servi à quiconque filtrait sur Israël — cinquante-quatre postes sur les six cent cinquante-six que nous affichions pour ce pays. Le nom d'une entreprise ne peut plus fournir de pays, et la même correction couvre les annonces dont la localisation nomme deux États différents : elles n'en nomment désormais aucun plutôt que d'en deviner un."
+    },
+    "postingsWithTheirOwnPage": {
+      "title": "Des annonces que vous pouvez partager par lien",
+      "description": "Une offre n'existait qu'à l'intérieur du tableau : en l'ouvrant, la barre d'adresse ne changeait pas, il n'y avait donc rien à envoyer à personne. Plusieurs centaines d'annonces ont maintenant leur propre page : un vrai lien que vous pouvez partager, avec l'employeur, le lieu, le salaire s'il est indiqué et la description, écrite pour que les moteurs de recherche et les assistants IA puissent la lire aussi. C'est un ensemble limité et non tout le tableau, et seules les pages qui existent réellement sont déclarées aux moteurs de recherche."
+    },
+    "whatOntarioPostingsMustState": {
+      "title": "Ce qu'une annonce de l'Ontario est tenue d'indiquer",
+      "description": "Depuis janvier, la loi de l'Ontario exige qu'une offre d'emploi indique la rémunération prévue, précise si le poste est réellement à pourvoir et révèle si une intelligence artificielle trie les candidatures — et elle interdit d'exiger une expérience canadienne. Sur les annonces de l'Ontario, nous citons désormais ce que l'annonce dit elle-même sur chacun de ces quatre points, avec l'article de la loi à côté. Nous citons ; nous ne jugeons pas. Qu'un employeur soit soumis ou non à la loi dépend de sa taille, ce qu'une annonce ne nous dit pas : rien ici n'affirme donc qu'un employeur a enfreint une règle."
+    },
+    "aSourceWithNothingBehindIt": {
+      "title": "Un filtre de source sans aucune offre derrière",
+      "description": "Le menu des sources proposait USAJOBS, le flux des offres fédérales des États-Unis, et filtrer dessus ne renvoyait absolument rien : la connexion à ce flux n'a jamais été activée. Il n'apparaît plus dans le menu. L'entrée est conservée plutôt que supprimée, pour qu'elle revienne le jour où le flux reviendra."
+    },
+    "layoffFilingsBesideAPosting": {
+      "title": "Les déclarations de licenciements, à côté des postes",
+      "description": "Quand un employeur déclare à une autorité qu'il supprime des emplois — un 8-K déposé auprès de la SEC, ou un avis WARN déposé auprès d'un État —, cette déclaration apparaît désormais à côté des annonces de cet employeur, avec la date et un lien vers le document lui-même. Nous rattachons une déclaration à un employeur seulement quand le nom est sans ambiguïté : une annonce sans cette ligne signifie donc que nous n'avons trouvé aucune déclaration dont nous étions sûrs, jamais qu'il n'en existe aucune."
+    },
+    "yourAgentCanLookWithoutAKey": {
+      "title": "Votre agent peut regarder avant que vous ne créiez de compte",
+      "description": "Un assistant IA peut désormais lire le tableau sans aucune clé — les totaux du tableau, une petite recherche et un moyen de récupérer une annonce précise — dans la limite d'un quota quotidien, afin que vous puissiez pointer un agent vers nous et voir s'il vous est utile avant de créer quoi que ce soit. Le serveur est inscrit dans l'annuaire public où les assistants cherchent leurs outils, et il dit clairement à un agent ce qu'il peut et ne peut pas faire avec la clé qu'il détient."
     }
   }
 }

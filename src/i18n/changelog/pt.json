@@ -1183,6 +1183,34 @@
     "activelyHiringHidLargeEmployers": {
       "title": "O filtro “A contratar ativamente” estava a esconder os maiores empregadores",
       "description": "Um filtro chamado “A contratar ativamente” parece saber quem está a contratar. Não sabia. Contava as vagas que tínhamos visto sair da página de carreiras de um empregador e continuar fora — o que exige ler essa página até ao fim, e nos maiores empregadores não conseguíamos. Por isso o filtro retirava-os sem dizer nada: medido sobre os trinta maiores empregadores do quadro, dezassete deles e 91.535 das 154.979 vagas estavam a ser escondidos, incluindo um empregador com 34.000 vagas abertas. Estava a apresentar os limites daquilo que conseguimos ler como um facto sobre quem está a contratar. Passa a chamar-se “Retira vagas”, que é aquilo que realmente vimos acontecer. Os empregadores para os quais não temos qualquer registo deixaram de ser tratados como se não estivessem a contratar — ficam postos de parte, contados no ecrã com a razão indicada, e um botão trá-los de volta. E quando não conseguimos distinguir se um empregador deixa as vagas no ar ou se simplesmente nunca vimos nenhuma sair, passamos a dizê-lo, em vez de não lhe mostrarmos nada."
+    },
+    "dayThirtyFiguresFell": {
+      "title": "Os nossos números do dia 30 estavam demasiado altos e agora são mais baixos",
+      "description": "O Ghost Job Index diz quantas vagas continuam anunciadas trinta dias depois de aparecerem. Até hoje, esse número contava também empregadores de cuja página de carreiras nunca vimos sair uma única vaga — e uma vaga que nunca vemos ser retirada parece-nos, daqui, uma vaga que ficou aberta. Esses empregadores ficam agora de fora do número, e por isso o número de cada área desceu cerca de vinte a vinte e oito pontos. Cada área mostra agora também quanto do seu número vem de um único empregador. Os números antigos estavam inflacionados por uma falha naquilo que conseguíamos observar, não por essas vagas estarem realmente abertas."
+    },
+    "aHospitalFiledUnderIsrael": {
+      "title": "Um hospital de Boston estava classificado em Israel",
+      "description": "O filtro de país seguia as palavras do anúncio, e alguns nomes de empregadores têm um país lá dentro. O Beth Israel Deaconess Medical Center, em Boston, era servido a quem filtrasse por Israel — cinquenta e quatro vagas das seiscentas e cinquenta e seis que mostrávamos para esse país. O nome de uma empresa já não pode fornecer um país, e a mesma correção cobre os anúncios cuja localização nomeia dois estados diferentes: agora não nomeiam nenhum, em vez de adivinharem um."
+    },
+    "postingsWithTheirOwnPage": {
+      "title": "Anúncios que pode partilhar por link",
+      "description": "Uma vaga existia apenas dentro do quadro — abria-a e a barra de endereço não mudava, por isso não havia nada para enviar a ninguém. Várias centenas de anúncios têm agora uma página própria: um link verdadeiro que pode partilhar, com o empregador, a localização, o salário se estiver indicado e a descrição, escrita para que os motores de busca e os assistentes de IA também a possam ler. É um conjunto limitado e não o quadro inteiro, e só são listadas para os motores de busca as páginas que existem de facto."
+    },
+    "whatOntarioPostingsMustState": {
+      "title": "O que um anúncio de Ontario é obrigado a dizer",
+      "description": "Desde janeiro, a lei de Ontario exige que um anúncio de emprego indique a remuneração prevista, diga se a vaga é real e revele se uma inteligência artificial filtra as candidaturas — e proíbe pedir experiência canadiana. Nos anúncios de Ontario passamos a citar o que o próprio anúncio diz sobre cada um desses quatro pontos, com o artigo da lei ao lado. Citamos; não julgamos. Se um empregador está ou não abrangido pela lei depende da sua dimensão, e isso um anúncio não nos diz, pelo que nada aqui afirma que um empregador infringiu uma regra."
+    },
+    "aSourceWithNothingBehindIt": {
+      "title": "Um filtro de fonte sem vagas por trás",
+      "description": "O menu de fontes oferecia o USAJOBS, o feed federal de empregos dos Estados Unidos, e filtrar por ele não devolvia absolutamente nada: a ligação a esse feed nunca foi ativada. Deixou de aparecer no menu. A entrada é mantida em vez de apagada, para que volte no dia em que o feed voltar."
+    },
+    "layoffFilingsBesideAPosting": {
+      "title": "As comunicações de despedimentos, ao lado das vagas",
+      "description": "Quando um empregador comunica a um regulador que vai cortar pessoal — um 8-K entregue à SEC, ou um aviso WARN entregue a um estado —, essa comunicação passa a aparecer ao lado dos anúncios desse empregador, com a data e um link para o próprio documento. Só ligamos um empregador a uma comunicação quando o nome é inequívoco, pelo que um anúncio sem essa linha ao lado significa que não encontrámos nenhuma comunicação de que estivéssemos seguros, nunca que não exista nenhuma."
+    },
+    "yourAgentCanLookWithoutAKey": {
+      "title": "O seu agente pode espreitar antes de se registar",
+      "description": "Um assistente de IA já pode ler o quadro sem chave nenhuma — os totais do quadro, uma pesquisa pequena e uma forma de buscar um anúncio — dentro de um limite diário, para que possa apontar um agente para nós e ver se lhe serve antes de criar o que seja. O servidor está listado no diretório público que os assistentes usam para encontrar ferramentas, e diz claramente a um agente o que pode e não pode fazer com a chave que tem."
     }
   }
 }

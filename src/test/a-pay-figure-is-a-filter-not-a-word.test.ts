@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -87,17 +87,92 @@ describe("a pay figure is a filter, not a word to search for", () => {
   it("says out loud what it did, on EVERY list path and not just the one", () => {
     // The disclosures lived at the recency return only, so browsers were told
     // and searchers were not. Four list returns, four spreads.
+    // NINE since 2026-09-26: the newest-sorted text search got its own exit
+    // (searchRoute NEWEST, ordered by posted_at in SQL over the whole title-match
+    // set). The count rose because that exit carries this spread like the other
+    // eight — a path that had gone mute would have LOWERED it.
+    //
+    // THIS PIN WAS THE SIBLING THAT GOT MISSED. Two other files pin the same
+    // count and both were moved to 9 with that exact reason; this one was not, so
+    // the tree was red on the full suite while its own message still said EIGHT.
+    // A literal spelled once per file is a literal that drifts once per file, so
+    // "every pin over this spread agrees with the code" is now itself a property
+    // — see the case below, which finds the next one wherever it is written.
     const calls = FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? [];
     expect(
       calls.length,
-      `searchDisclosures must be spread at all EIGHT list returns; found ${calls.length}`,
-    ).toBe(8);
+      `searchDisclosures must be spread at all NINE list returns; found ${calls.length}`,
+    ).toBe(9);
     // No inline copy may come back alongside it — a second definition is how
     // these drift apart again.
     expect(
       (FN.match(/const d = queryTerms\(body\.q\)\.dropped/g) ?? []).length,
       "an inline droppedTerms block has reappeared outside the shared helper",
     ).toBe(0);
+  });
+
+  it("no other guard pins a DIFFERENT number for this same spread", () => {
+    /* GUARDS THE MISS ITSELF, not the number.
+     *
+     * WHAT WENT WRONG. A ninth list exit landed (newestTextSort) and the same
+     * `...searchDisclosures(body, applied, maxAgeClamped)` count is pinned in
+     * three separate test files. Two were moved 8 -> 9 in that change; the third
+     * — the one above — was not, so the working tree was RED on the full suite
+     * while its own failure message still said "all EIGHT list returns". Nothing
+     * caught it because each pin only knows its own literal.
+     *
+     * WHY THIS IS THE FIX AND NOT A FOURTH PIN. The property is not "the number
+     * is nine", it is "every guard that pins this count agrees with the code" —
+     * so this case DERIVES the count from the edge function and then holds every
+     * pin in src/test to it, wherever the next one is written and whatever file
+     * it lands in. A tenth exit now fails every stale pin at once and names each
+     * file and line, instead of failing whichever one the author happened to
+     * remember.
+     *
+     * The count itself stays asserted (above) rather than merely cross-checked:
+     * a new exit MUST fail a guard, because the whole reason the number is pinned
+     * is to force the author to carry the disclosures onto it.
+     *
+     * Read on RAW source on purpose — the thing being scanned is a test file's
+     * assertion text, and a pin commented out is a pin that stopped guarding, so
+     * a commented copy is exactly what must NOT be counted. Hence the pattern
+     * requires the live `expect(...).toBe(n)` shape, and the comment-stripped
+     * reading is what the count above uses.
+     */
+    const real = (FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length;
+    expect(real, "the spread is gone from the edge function entirely").toBeGreaterThan(0);
+    const dir = resolve(__dirname);
+    // The regex literal as a guard writes it, i.e. with the parens escaped.
+    const NEEDLE = "\\.\\.\\.searchDisclosures\\(body, applied, maxAgeClamped\\)";
+    const offenders: string[] = [];
+    for (const f of readdirSync(dir).filter((n) => /\.test\.tsx?$/.test(n))) {
+      const src = readFileSync(resolve(dir, f), "utf8");
+      let from = src.indexOf(NEEDLE);
+      while (from !== -1) {
+        // The pin is written either inline (`(FN.match(/…/g) ?? []).length).toBe(9)`)
+        // or two-step (`const calls = FN.match(/…/g) …` then `.toBe(9)` below), so
+        // read a WINDOW after the needle rather than a line — the two-step form
+        // puts the assertion four lines down with a message string in between.
+        //
+        // THE FIRST `.toBe(<digits>)` ONLY, and this is the whole correctness of
+        // the scan. Taking every match in the window made this case fail against
+        // ITSELF on its first run: the pin above is immediately followed by an
+        // unrelated `.toBe(0)` (the inline-droppedTerms assertion), which sits
+        // well inside any window wide enough to catch the two-step form, so the
+        // guard reported "pins 0" for a file that pins 9 correctly. One needle,
+        // one pin — the next assertion in the block is somebody else's.
+        const m = /\.toBe\((\d+)\)/.exec(src.slice(from, from + 700));
+        if (m && Number(m[1]) !== real) {
+          const line = src.slice(0, from).split("\n").length;
+          offenders.push(`${f}:~${line} pins ${m[1]}`);
+        }
+        from = src.indexOf(NEEDLE, from + 1);
+      }
+    }
+    expect(
+      offenders,
+      `the edge function spreads searchDisclosures at ${real} list returns; these guards pin a different number: ${offenders.join(", ")}`,
+    ).toEqual([]);
   });
 
   it("reads the pay disclosure off the DERIVED filter, never the raw body", () => {

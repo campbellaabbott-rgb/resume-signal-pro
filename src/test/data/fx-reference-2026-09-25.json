@@ -1,0 +1,27 @@
+{
+  "_what": "A DATED REFERENCE SNAPSHOT, checked in so the pinned FX table can be compared to something other than itself. The heartbeat's FX check (scan-heartbeat/index.ts) validates the pay filter against its own hand copy of the SAME pinned numbers, so it stays green at any drift: a consistency guard, not a freshness one. This file is the freshness half, and it is a snapshot with a date on it rather than a live fetch, because a test that calls the network fails on a plane and passes on a stale cache.",
+  "_source": "https://api.frankfurter.dev/v1/latest?base=USD — ECB reference rates. Fetched 2026-09-26; the response's own date field said 2026-09-25 (the ECB publishes on business days, and 2026-09-26 was a Saturday).",
+  "_units": "usdPerUnit = 1 / (units of that currency per USD), i.e. the same units as the CASE arms of salary_rank_usd, which multiply salary_min_annual by it.",
+  "_yardstick": "A mid-market reference rate is the right yardstick for a magnitude-ranking column, and it is not the only defensible one. Drift figures computed from it are exact under this yardstick and would move a little under another.",
+  "asOf": "2026-09-25",
+  "base": "USD",
+  "usdPerUnit": {
+    "EUR": 1.1403029,
+    "GBP": 1.3252405,
+    "CAD": 0.7070636,
+    "AUD": 0.7030371,
+    "NZD": 0.5670863,
+    "CHF": 1.2073066,
+    "SEK": 0.1010009,
+    "DKK": 0.152539,
+    "NOK": 0.1051934,
+    "PLN": 0.260831,
+    "INR": 0.0104362,
+    "SGD": 0.783024,
+    "JPY": 0.0063456,
+    "BRL": 0.192972,
+    "MXN": 0.0565007,
+    "PHP": 0.0160056,
+    "HKD": 0.127486
+  }
+}

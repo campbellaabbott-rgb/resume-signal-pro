@@ -60,7 +60,22 @@ describe("a page fills up", () => {
   it("tops up only when the buffer was genuinely exhausted", () => {
     // Not "fewer than limit" alone — a search with 12 real matches must not
     // trigger a pointless second query on every request.
-    expect(FN).toMatch(/grouped\.jobs\.length < limit &&\s*\n\s*!newestFirst &&[^\n]*\n\s*mappedRows\.length >= fetchLimit/);
+    //
+    // THE `!newestFirst` TERM IS GONE FROM THIS GATE AND MUST STAY GONE. It was
+    // written when "newest" was an opt-in sort, and its stated reason ("a thin
+    // newest page stays thin") was about the ANCHOR rather than the order. Since
+    // the ordinary browse asks for sort:"newest" on every request, that term
+    // retired this mechanism on the board's most common page — and the starvation
+    // it exists for was measured exactly there ("retail sales" 39 cards under a
+    // total of 3,437). The anchor now follows the order instead; see the keyset
+    // case below.
+    expect(FN).toMatch(/grouped\.jobs\.length < limit &&\s*\n\s*mappedRows\.length >= fetchLimit/);
+    const gate = FN.slice(
+      FN.indexOf("groupSimilar && !twoSubset && !sortSalary && !countOnly &&"),
+      FN.indexOf("mappedRows.length >= fetchLimit"),
+    );
+    expect(gate, "the top-up is gated off the newest order again — that is now every browse page")
+      .not.toMatch(/!newestFirst/);
   });
 
   it("tops up EXACTLY ONCE — never loops until full", () => {
@@ -72,10 +87,22 @@ describe("a page fills up", () => {
     expect(block).not.toMatch(/for\s*\(\s*(let|const|var)\b/);
   });
 
-  it("anchors the top-up on the keyset cursor, so it cannot repeat or skip", () => {
+  it("anchors the top-up on the keyset cursor, in whichever column the page is ordered by", () => {
+    /* THE ANCHOR FOLLOWS THE ORDER. It used to be hardcoded to
+     * `effective_posted`, which is why the gate above had to exclude the newest
+     * order: continuing an effective_posted coordinate through a
+     * (posted_at DESC NULLS LAST, id) ordering moves rows across a page boundary
+     * the cursor knows nothing about. Naming the column from `newestFirst` makes
+     * the same two-arm seek correct in both orders, so the exclusion is no longer
+     * needed and the mechanism reaches the ordinary browse again. */
     const block = TOPUP;
-    expect(block).toMatch(/effective_posted\.lt\."\$\{lastRaw\.effective_posted\}"/);
-    expect(block).toMatch(/id\.gt\."\$\{lastRaw\.id\}"/);
+    expect(block).toMatch(/const anchorCol = newestFirst \? "posted_at" : "effective_posted";/);
+    expect(block).toMatch(/const anchorVal = newestFirst \? lastRaw\?\.posted_at : lastRaw\?\.effective_posted;/);
+    // Two arms against that one column, id tiebreak inside the eq arm only.
+    expect(block).toMatch(/\$\{anchorCol\}\.lt\."\$\{anchorVal\}",and\(\$\{anchorCol\}\.eq\."\$\{anchorVal\}",id\.gt\."\$\{lastRaw\.id\}"\)/);
+    // SKIPPED, NOT FAKED, when the last raw row carries no date: a posted_at
+    // comparison cannot describe the undated tail, and a short page is honest there.
+    expect(block).toMatch(/if \(anchorVal && lastRaw\?\.id\)/);
   });
 
   it("stays off the paths with their own offset arithmetic", () => {
@@ -105,7 +132,7 @@ describe("a page fills up", () => {
     // The top-up's own anchor reads the same raw array. It read the mapped one
     // too, which is why the top-up had NEVER RUN: its gate is
     // `lastRaw?.effective_posted`, and that was always undefined.
-    expect(FN).toMatch(/const lastRaw = rawKeys\[rawKeys\.length - 1\];/);
+    expect(FN).toMatch(/const lastRaw = rawKeys\[rawKeys\.length - 1\] as \{ effective_posted\?: string; posted_at\?: string; id\?: string \} \| undefined;/);
   });
 
   it("the ranked top-up stayed deleted, and hasMore still measures the merged sequence", () => {
@@ -175,7 +202,11 @@ describe("a metro abbreviation searches the metro", () => {
     // who TYPED "SF" was never told it had been read as San Francisco — the
     // disclosure is now spread at all four list returns.
     expect(FN).toMatch(/out\.locationExpandedFrom = l\.expandedFrom; out\.locationSearched = l\.terms/);
-    expect((FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length).toBe(8);
+    // NINE since 2026-09-26: the newest-sorted text search got its own exit
+    // (searchRoute NEWEST, ordered by posted_at in SQL over the whole title-match
+    // set). The count rose because that exit carries this spread like the other
+    // eight — a path that had gone mute would have LOWERED it.
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length).toBe(9);
   });
 
   it("leaves a non-alias location exactly as typed", () => {

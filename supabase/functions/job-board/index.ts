@@ -143,7 +143,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.73"; // .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.76"; // .76: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). REVIEW CORRECTIONS TO .75 — four exits could serve sort=newest and only two said what they had ordered, so the page invented the rest. (a) THE EMPLOYER ROUTE NEVER DATE-SORTED. newestTextSort stands down for the company retriever, and the routed exit ordered by effective_posted with no re-sort and emitted no sortScope: MEASURED live 2026-09-26, q="Spectrum Health"+sort=newest served workday:spectrumhealth~wd5~CorewellHealthCareers:R228442 with postedAt NULL at position 1 above seven rows stamped 2026-09-25, and the client's absent-sortScope arm printed "Newest first within the closest 200 matches" over it — a number no response ever sent, on a route whose window is ROUTE_WINDOW 400. The company half now orders posted_at DESC NULLS LAST, id ASC (block arithmetic unchanged: the key is still total and stable) and publishes sortScope matchSet + sortMatcher company; the routed block stands down entirely for a date sort on any OTHER retriever, because there it hands rows to rerankWindow and the ranked path below already serves that body with sortScope relevanceWindow and its real seam. (b) BOTH OF newestTextSort'S STAND-DOWNS WERE DEAD CODE UNDER A FILTER. They read routeDecision, which is hardcoded to BROWSE whenever any filter is applied, so the EMPLOYER and SYMBOL exclusions could never fire on a filtered body: MEASURED, {"q":"c++","country":"US","sort":"newest"} and the same body with q="c#" return total 1,430 with byte-identical title lists containing neither symbol (both collapse to the tsquery 'c'), and that set would have been published as the whole title-match set. The two exclusions now read `qClass`, the same pickRoute call computed from the query alone; the router itself still stands down under a filter. (c) THE DATED KEYSET WALK DROPPED THE UNDATED TAIL AND CALLED IT THE END. Both arms of the k:"pa" seek compare posted_at, and a NULL comparison is unknown, so the walk ended where the dated rows did with hasMore false — on the unfiltered board that is ~12,350 Load-more presses away and disclosed, but MEASURED on filtered pages it is a quarter of the answer: vendor=pinpoint+country=GB 244 undated of 860 (28.4%) after ~10 presses, vendor=pinpoint 959 of 3,554 (27.0%), while the header went on printing the full total. A short seek is now the SEAM, not the end: one .range() read at the accumulated offset crosses it (that read has always included the tail, which is why page one served it) and the walk continues by offset from there, exactly as it did before the keyset existed. (d) The grouping top-up's `!newestFirst` gate is gone. Its rationale was about the ANCHOR, not the order, and with every browse now sending sort:"newest" it had retired the mechanism on the board's most common request — the starvation it was built for was measured there ("retail sales" 39 cards under a total of 3,437). The anchor follows the order instead: the same two-arm seek on posted_at, skipped rather than faked when the last raw row carries no date. (e) The two-bucket includeUncategorised page publishes bucketedOrder: it returns the chosen field's rows followed by the "other" rows, each half ordered, so the date claim above the list is true inside a group and false across the seam; the page now discloses the grouping instead. (f) filterCoverage carries filterCoverageAt, the stamp of the pass that counted it, written INSIDE the coverage block (refreshedAt on the same row is patched between passes and would date a figure to a pass that never measured it). A reply that leaned on the 2026-08-25 pinned fallback ships the figures with NO stamp, and the client withholds every percentage when the stamp is absent — silence rather than a dated claim about numbers that date was not taken on. (g) The comment above the ranked exit's in-memory date sort said it ordered "the MATCHING set … which is what the control they chose promises" four lines above the field that publishes sortScope relevanceWindow; it now says which set it saw. logSearch("ranked") on the NEWEST exit is annotated with the guard that closes the label set, so nobody reads a per-route rate off a bucket holding three regimes. .75: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE ORDINARY BROWSE NEVER ASKED FOR THE ORDER IT CLAIMED. The list orders by posted_at nulls-last only when body.sort === "newest", and Jobs.tsx sent that only when there was a query, so a no-query browse sent no sort at all and fell back to effective_posted = coalesce(posted_at, first_seen) — every posting its employer never dated took OUR crawl stamp and sorted to the top. MEASURED live with the anon key on the body the UI actually sends, {"action":"list","limit":60}: 59 of 60 page-one rows undated (0 of 60 on the same body with sort=newest), and in the company state {"action":"list","limit":30,"groupSimilar":false,"companies":["classicfls"]} an undated row was served above four dated ones under a page printing "newest first, company-stated dates before undated" in nine languages. Jobs.tsx now sends sort:"newest" whenever the order on screen is newest, the no-query browse included, and names this function's effective_posted date fallback "discovered" so the undated rows stay one click away instead of 12,350 Load-more presses: page one of the discovery order is 59 of 60 undated, while under the dated order the first undated row sits between offset 740,000 and 742,000 of 746,300 (measured 2026-09-26). The dated walk also gains the keyset it never had: nextCursor now carries k:"pa" with the last raw row's posted_at, and the reader refuses any coordinate whose kind does not match the order the request pages in, so moving the ordinary browse onto sort=newest does not trade a wrong order for a lossy one (offset paging overlapped 4 of 8 page transitions, 2026-08-18). The untagged effective_posted cursor is unchanged. The stale "10% of the corpus with no date / 540,437 that DO carry one" figures above `ordered` are corrected to the measured ~0.7%. .74: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). "NEWEST FIRST" ON A SEARCH WAS THE NEWEST OF THE 200 MOST RELEVANT. sort=newest sets scoreRanked false, so deepPageable is false and planRankedPage reads search_jobs at p_offset 0 / p_limit 200 — the page then date-sorts THOSE 200 in memory, and the rows a date order needs are the ones least likely to rank. Measured live with the anon key before this change: {"q":"nurse","sort":"newest","limit":60} returned 3 cards, hasMore false, nextOffset 200, under total 10000 countCapped (the relevance top-200 was 199 requisitions from one employer under two titles), and a countOnly probe with postedAfter=<that page's newest row> counts 39 nurse title matches strictly newer than the top card, 224 for q="engineer". newestTextSort now serves that body the way salaryTextSort serves sort=salary: buildQuery matching titles on the simple-config index WITH alias expansion, ordered in SQL by posted_at DESC NULLS LAST, id ASC over the whole match set, paged by a plain offset — no window, and no total (the only count available describes a different set). It stands down for the EMPLOYER route (title matcher would return nothing for a company name) and for SYMBOL (identical tsquery for c++ and c#, and the literal-substring rule cannot run in SQL), and a zero-row read falls through so the description tier and the fuzzy/semantic/location-split rescues are never lost. Both regimes now SAY which set the order saw: sortScope matchSet + sortMatcher title here, sortScope relevanceWindow + sortScopeRows <seam> on the ranked exit, and Jobs.tsx prints its order claim from those fields instead of from the requested sort — the select, the line under the search box and the hint beside the select used to make three different claims on one screen. .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -7770,7 +7770,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       ...(f.sourcesFacet && typeof f.sourcesFacet === "object" && !Array.isArray(f.sourcesFacet)
         ? { sourcesFacet: f.sourcesFacet }
         : {}),
-      ...(coverage ? { coverage } : {}),
+      // STAMPED INSIDE THE BLOCK, not beside it. `refreshedAt` on this row is the
+      // pass stamp and is patched between passes by refresh_headline_open, so a
+      // reader pairing the coverage fractions with it can be told a figure was
+      // measured by a pass that only touched the total. The date the page prints
+      // has to be a property of the numbers it prints, so it travels in the same
+      // object and cannot be moved without moving them — a figure whose basis
+      // date can drift away from it is the claim-drift shape in a single row.
+      ...(coverage ? { coverage: { ...coverage, at: startIso } } : {}),
       // Facet fields above are LAST pass's, carried through an aggregate
       // failure so the upsert-replaces-whole-v write cannot clobber them —
       // named so a reader of this row can tell a carried total from a fresh one.
@@ -7808,7 +7815,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // IS the tracked corpus (the unfiltered count this same pass took), and
       // 20260828001000 teaches the patcher to keep both rows fresh between
       // passes.
-      ...(coverage ? { coverage: { ...coverage, tracked: v.total } } : {}),
+      // The stamp rides the SERVED row too — serving reads refresh_head, and a
+      // block with no `at` is one coverageDisclosure must publish without a date,
+      // which means the page prints no percentage at all.
+      ...(coverage ? { coverage: { ...coverage, tracked: v.total, at: v.refreshedAt } } : {}),
       // The carried-facets marker must ride the SERVED row, not only the fat
       // one — serving reads refresh_head. Stamped here it left no trace on the
       // row anyone actually reads, so a carried (stale) total served as current
@@ -9885,6 +9895,17 @@ function coverageDisclosure(
   // this costs the new filters nothing in practice — it only decides the cold
   // case, and the cold case is the one where silence is honest.
   if (!cov) return {};
+  // AND NO STAMP, NO NUMBERS EITHER — the same rule as no cache, for the same
+  // reason. Every figure in this block is a snapshot: the docblock's own
+  // measurement is that the same probes read 0.235/0.232/0.452/0.928 and, two
+  // hours later, 0.239/0.233/0.457/0.933. A percentage whose basis date the page
+  // cannot print is a claim rather than a measurement (project_stat_provenance),
+  // and the page interpolates this stamp into the sentence, so a block written
+  // before the stamp existed must fall back to silence and not to an undated
+  // figure. It self-heals on the next completed refresh pass, which is where the
+  // stamp is written beside the numbers it describes.
+  const covAt = (cov as { at?: unknown }).at;
+  if (typeof covAt !== "string" || !covAt) return {};
   const out: Record<string, number> = {};
   // LIVE FIRST, SNAPSHOT AS FALLBACK. These four rode pinned constants because
   // the pass could not afford four more separate scans; get_filter_coverage()
@@ -9895,7 +9916,21 @@ function coverageDisclosure(
   // for a filter that is actively hiding rows, and it is replaced by the next
   // completed pass. `vendor` stays pinned at 1: source is complete by
   // construction and a count would be a scan proving a tautology.
-  const liveOr = (live: unknown, pinned: number) => (typeof live === "number" ? live : pinned);
+  //
+  // THE FALLBACK IS NOW RECORDED, BECAUSE THE SENTENCE CARRIES A DATE. `covAt`
+  // is the stamp of the pass that wrote this block, and printing a 2026-08-25
+  // snapshot under it would date a measurement to a pass that did not take it —
+  // the "right number under the wrong noun" shape, one field over. So a reply
+  // that leaned on a pinned figure ships the figures WITHOUT the stamp, and the
+  // client withholds every percentage when the stamp is absent. `vendor` is
+  // exempt by construction, not by convenience: `source` is non-null on every
+  // row, so that fraction is 1 on any date and no stamp can be wrong about it.
+  let pinnedUsed = false;
+  const liveOr = (live: unknown, pinned: number) => {
+    if (typeof live === "number") return live;
+    pinnedUsed = true;
+    return pinned;
+  };
   if (applied.payBasis) out.payBasis = liveOr(cov.payBasis, MEASURED_COVERAGE.payBasis);
   if (applied.hasStatedPay) out.hasStatedPay = liveOr(cov.hasStatedPay, MEASURED_COVERAGE.hasStatedPay);
   if (applied.maxYears != null) out.maxYears = liveOr(cov.maxYears, MEASURED_COVERAGE.maxYears);
@@ -9927,7 +9962,14 @@ function coverageDisclosure(
   // so filtering to one does silently drop them — which is what this
   // disclosure is for.
   if (applied.country && typeof cov.country === "number") out.country = cov.country;
-  return Object.keys(out).length ? { filterCoverage: out } : {};
+  // THE BASIS DATE RIDES WITH THE FIGURES OR THEY DO NOT GO OUT. Same reply, so
+  // a stamp cannot be paired with another pass's numbers by a caller — and the
+  // client withholds every percentage when this key is absent, which is how an
+  // older deployed bundle degrades to silence rather than to an undated claim
+  // (this project's >4.5MB deploy serves the previous version while reporting
+  // success), and how the pinned-fallback pass above degrades too.
+  if (!Object.keys(out).length) return {};
+  return pinnedUsed ? { filterCoverage: out } : { filterCoverage: out, filterCoverageAt: covAt };
 }
 
 
@@ -14250,14 +14292,37 @@ async function serveList(
   // nextCursor is rejected and the request falls back to offset paging —
   // fail open to the old behaviour, never a 500 on a stale bookmark.
   const cursor = (() => {
-    const c = body.cursor as { ep?: unknown; id?: unknown } | undefined;
+    const c = body.cursor as { ep?: unknown; id?: unknown; k?: unknown } | undefined;
     if (!c || typeof c !== "object") return null;
     const ep = typeof c.ep === "string" ? c.ep : "";
     const id = typeof c.id === "string" ? c.id : "";
+    // WHICH ORDERING THIS COORDINATE IS WRITTEN IN. The board has two date
+    // orders and one pair of coordinate names: "ep" is effective_posted =
+    // coalesce(posted_at, first_seen) — the discovery order — and "pa" is
+    // posted_at DESC NULLS LAST, the employer's date, which is what every
+    // "Newest first" page walks and what the ordinary browse now asks for.
+    //
+    // A cursor of the wrong kind is DROPPED, not applied: interpolating one
+    // order's coordinates into the other's successor predicate pages through one
+    // ordering using another's coordinates, which is exactly the defect that
+    // made sorted page two repeat page one, and it is silent. Dropping it falls
+    // back to offset paging, the same fail-open every other check here takes.
+    //
+    // `body.sort === "newest"` is spelled again here rather than read from
+    // `newestFirst`, which is declared far below this point — a const read above
+    // its own declaration is this repo's own live outage (the hoisted function
+    // that read one from the TDZ and took ranked search down in silence). The
+    // two spellings are pinned to agree by
+    // src/test/newest-first-must-order-by-date.test.tsx.
+    const wantK = body.sort === "newest" ? "pa" : "ep";
+    // Absent means "ep": a cursor issued by the previous deploy, which only ever
+    // issued them for the effective_posted walk, still seeks instead of 500ing.
+    const k = c.k === undefined ? "ep" : typeof c.k === "string" ? c.k : "";
     if (!ep || !id || id.length > 200) return null;
+    if (k !== wantK) return null;
     if (!/^\d{4}-\d{2}-\d{2}T[0-9:.+]+$/.test(ep)) return null;
     if (/[",()\\]/.test(id)) return null;
-    return { ep, id };
+    return { ep, id, k };
   })();
   // Location-cluster collapsing is on unless a caller opts out (the lander and
   // company views WANT every location listed). Over-fetch so there is material
@@ -15282,9 +15347,31 @@ async function serveList(
   // from a subset — the very hand-maintained-list rot isUnfiltered exists to
   // end. isUnfiltered counts q itself as a filter, so blank q to ask "is this
   // the bare board plus a query?"; any real filter, present or future, trips it.
+  // THE QUERY'S CLASS IS A PROPERTY OF THE QUERY, NOT OF THE FILTER BAR.
+  //
+  // pickRoute reads the typed string and nothing else, so classifying it costs
+  // one pure call and can be done unconditionally. `routeDecision` below still
+  // stands the ROUTER down under any filter (a 400-row window cannot answer a
+  // filtered query honestly — see the gate's own note), but the two exclusions
+  // the date sort needs are not the router's decision, they are facts about the
+  // query, and reading them off `routeDecision` made both of them DEAD CODE the
+  // moment a filter was set: routeDecision is hardcoded to BROWSE there, and
+  // RETRIEVER_FOR.BROWSE is "browse", so `!== "company"` and `!== "SYMBOL"` were
+  // unconditionally true on exactly the bodies they had to exclude.
+  //
+  // MEASURED live 2026-09-26, anon key: {"action":"list","limit":20,"q":"c++",
+  // "country":"US","sort":"newest"} and the same body with q="c#" both return
+  // total 1,430 with byte-identical title lists ("Material Operator C - 2nd
+  // Shift", "P&C Insurance Sales Executive", …) — neither list contains the typed
+  // symbol, because both queries collapse to the tsquery 'c'. Served by the date
+  // branch below that set would have been published as sortScope matchSet +
+  // sortMatcher title, which the page renders as "every posting whose title
+  // matches": a false statement about the set, reachable with one filter on.
+  const qClass = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
+  const qClassRetriever = qClass ? RETRIEVER_FOR[qClass.route] : null;
   const onlyQuery = isUnfiltered({ ...applied, q: "" });
-  const routeDecision = qText && onlyQuery
-    ? pickRoute(qText, EMPLOYER_ALIASES)
+  const routeDecision = qText && onlyQuery && qClass
+    ? qClass
     : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
   const routedRetriever = RETRIEVER_FOR[routeDecision.route];
   // ONE window constant for both the routed count and the routed list. Two
@@ -15825,7 +15912,206 @@ async function serveList(
     }
   } catch { /* fall through to the substring path this query used before */ }
 
-  if (!countOnly && (routedRetriever === "company" || routedRetriever === "simple")) try {
+  // "NEWEST FIRST" ON A SEARCH WAS THE NEWEST OF THE 200 MOST RELEVANT.
+  //
+  // MEASURED live 2026-09-26 with the anon key against production:
+  //   {"action":"list","limit":60,"q":"nurse","sort":"newest"} -> 3 cards,
+  //   hasMore false, nextOffset 200, total 10000, countCapped true. The
+  //   relevance top-200 for "nurse" was 199 requisitions from ONE employer
+  //   under two titles, so date-sorting them folded to three cards and the
+  //   list dead-ended under a headline of 10,000+.
+  //   {"action":"list","limit":1,"q":"nurse","sort":"newest","postedAfter":
+  //   <the newest row that page could serve>} counts 39 title matches STRICTLY
+  //   NEWER than the top card; the same probe on q="engineer" counts 224.
+  //
+  // WHY: sort=newest sets scoreRanked false, so deepPageable is false and
+  // planRankedPage reads search_jobs at p_offset 0 with p_limit 200. The RPC
+  // orders by ts_rank_cd and clamps its output at 200 rows, and the page is
+  // then date-sorted IN MEMORY (see `newestFirst` below). So the rows a page
+  // labelled "Newest first" could ever hold were the 200 most RELEVANT rows —
+  // and the genuinely newest postings are the least likely to rank, which is
+  // precisely why they were the ones missing.
+  //
+  // THE THIRD OPTION THE SALARY SORT ALREADY TOOK, applied to the column this
+  // control names: order in SQL on a DIFFERENT query. buildQuery matches titles
+  // through the simple-config index — with the alias expansion the SIMPLE route
+  // binds, so "rn" still reaches "Registered Nurse" — and orders on posted_at,
+  // the plain column the no-query newest browse already orders on (measured 5x
+  // cheaper than effective_posted's coalesce). The DATABASE orders the whole
+  // match set, so `offset` is a position inside one stable ordering and there
+  // is no window to fall off the end of.
+  //
+  // WHAT IS KNOWN ABOUT THE PLAN, AND WHAT IS NOT. The ordering has an index
+  // that matches it exactly — job_board_postings_posted_at_idx is
+  // (posted_at DESC NULLS LAST, id), migration 20260711103500 — and the matcher
+  // has one too (job_board_postings_title_simple_fts_idx, gin over
+  // to_tsvector('simple', title)). The COMBINATION is new here: the shipped
+  // twins pair that matcher with salary_rank_usd (salaryTextSort, measured
+  // 0.25-0.46s at concurrency 4) and with effective_posted (the routed window,
+  // 0.34-0.78s), and the no-query browse pairs posted_at with no matcher at all
+  // (0.20-0.37s, five times cheaper than effective_posted's coalesce). Those are
+  // proxies, not this query: the anon key cannot read the table or EXPLAIN, so
+  // the plan for THIS pair is a post-deploy measurement — a timed
+  // {"q":"engineer","sort":"newest"} and {"q":"nurse","sort":"newest","offset":
+  // 600} against the deployed function, and the branch must show searchRoute
+  // NEWEST with sortScope matchSet. The deadline below falls through to the
+  // ranked path rather than failing the request if that measurement is bad.
+  //
+  // WHAT IT COSTS, SAID OUT LOUD ON THE RESPONSE rather than left for a reader
+  // to discover: this matcher is TITLE-ONLY. It does not read the description
+  // tier, and the rescue ladder does not run for it. So a page served here is
+  // "every posting whose TITLE matches, newest first" — a narrower set than the
+  // relevance page, and one that can be named in a single true sentence, where
+  // the old page was a relevance window wearing a date-order label. sortScope
+  // and sortMatcher carry that to the client, which prints the order claim from
+  // them and NEVER from the requested sort (src/pages/Jobs.tsx).
+  //
+  // NOT FOR THE EMPLOYER ROUTE: those tokens are company names, and a title
+  // matcher returns nothing for q="Domino's".
+  // NOT FOR SYMBOL: q="c++" and q="c#" produce the identical tsquery ('c') and
+  // only the scorer's literal-substring rule separates them — that rule cannot
+  // run in SQL, so this route would date-order rows that do not contain the
+  // symbol at all. It is the same exclusion deepPageable makes, for the same
+  // measured reason.
+  //
+  // BOTH STAND-DOWNS READ `qClass`, NOT `routeDecision`. routeDecision is
+  // BROWSE under any filter, so spelling these against it made them inert on
+  // exactly the filtered bodies they exist to exclude — see qClass's own note
+  // for the measured q="c++"/q="c#" collision that reached this branch with one
+  // country filter set. qClass is the same pickRoute call, computed from the
+  // query alone, so the exclusions hold filtered and unfiltered alike.
+  // ZERO ROWS FALL THROUGH rather than ending the search: the ranked path below
+  // owns the description tier and the fuzzy/semantic/location-split rescues,
+  // and a title-only miss must not cost the reader any of them.
+  const newestTextSort = !countOnly && !!qText && newestFirst
+    && qClassRetriever !== "company" && qClass?.route !== "SYMBOL";
+
+  if (newestTextSort) try {
+    const t_newest_sorted = Date.now();
+    const newestExpand = expandQuery(qText);
+    const { data: newRows, error: newErr } = await withDeadline(
+      buildQuery("effective_posted", false, undefined, { skipTerms: true })
+        .textSearch(
+          "title",
+          newestExpand.expansions.length ? ftsSafe(newestExpand.q) : ftsQuery(qText),
+          { type: "websearch", config: "simple" },
+        )
+        // posted_at with NULLS LAST, not effective_posted: an undated posting
+        // takes our crawl stamp there, and 57 of 60 rows on the old browse sort
+        // were undated rows claiming to be the newest thing on the board. The
+        // FRESHNESS WINDOW stays on effective_posted (buildQuery's dateCol), so
+        // an undated posting is still served — it just cannot lead a page
+        // labelled with the employer's own date.
+        .order("posted_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: true })
+        // fetchLimit, not limit: clustering folds same-role rows, and a page
+        // that reads only `limit` raw rows hands back 3 cards for 60 rows read.
+        // rawConsumed below is what advances the offset, so nothing is skipped.
+        .range(offset, offset + fetchLimit - 1),
+      Math.min(7_000, budgetLeft()),
+    ) as { data: unknown[] | null; error?: unknown };
+    markFrom("newest_sorted", t_newest_sorted);
+    if (newRows === null) console.warn(`[JOB-BOARD] newest-sorted search hit its deadline for q=${JSON.stringify(qText)}`);
+    if (!newErr && Array.isArray(newRows) && newRows.length > 0) {
+      const newJobs = (newRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+      const newGrouped = groupSimilar
+        ? collapseClusters(newJobs, limit)
+        : { jobs: newJobs.slice(0, limit), rawConsumed: Math.min(newJobs.length, limit) };
+      const newServed = preferMatchedLocation(await attachRecheckedAt(client, newGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
+      // "ranked" IS A CLOSED SET, AND THIS ROUTE IS NOT ONE OF ITS MEMBERS.
+      //
+      // The label vocabulary in job_board_search_events is pinned to exactly
+      // ["fuzzy","ranked","recency","semantic"] by
+      // src/test/search-quality-needs-a-denominator.test.ts, so a fifth value
+      // cannot be introduced here without moving that guard and whatever reads the
+      // column. Until it is moved, three retrieval regimes share this bucket — the
+      // relevance window, salaryTextSort and this date-ordered SQL route — so the
+      // denominator CANNOT separate them, and nobody should read a per-route
+      // conversion rate off it (project_partial_instrumentation: an instrument
+      // that covers part of a thing reads as if it covered all of it). The wire
+      // DOES separate them: `searchRoute` is NEWEST on this exit, SALARY on the
+      // pay one, and absent from the relevance window.
+      logSearch("ranked", newGrouped.jobs.length, null, null, newServed);
+      return json({
+        jobs: newServed,
+        searchId,
+        ...searchDisclosures(body, applied, maxAgeClamped),
+        ...intentDisclosure(intentLift),
+        ...exclusionDisclosure(excludedTerms),
+        ...coverageDisclosure(applied, meta),
+        ...honesty(newGrouped.jobs),
+        // THE ORDER CLAIM THE PAGE IS ALLOWED TO PRINT, as data.
+        //
+        // "matchSet" means the database applied the requested order to every
+        // row the matcher selected — not to a window of them — so "newest
+        // first" is true of the whole set and a plain offset pages it.
+        // sortMatcher names WHICH set that is, because the sentence on the page
+        // has to name it too: title matches, not every posting the relevance
+        // page would have shown.
+        sortScope: "matchSet",
+        sortMatcher: "title",
+        // The alias expansion is part of what was matched, so it is disclosed
+        // the same way the ranked path discloses it.
+        ...(newestExpand.expansions.length ? { aliases: newestExpand.expansions } : {}),
+        // Ordered in SQL over the whole match set, so paging is a plain offset
+        // into one stable ordering. NO TOTAL: the count this page could publish
+        // is search_jobs' title-tier count, which counts a DIFFERENT set (it
+        // weights company and department into title_tsv and carries its own
+        // description tier), and publishing it over these rows is the
+        // one-body-two-answers defect the routed count block exists to prevent.
+        // The client renders "Showing N matching openings" — no figure it
+        // cannot stand behind, which is also what retires the "3 cards under a
+        // headline of 10,000+" reading of this control.
+        total: null,
+        countUnavailable: true,
+        // Raw rows left over the page could not fold, or a full read: either
+        // way there is another page. Same arithmetic as the recency exit.
+        hasMore: newJobs.length > newGrouped.rawConsumed || newJobs.length >= fetchLimit,
+        nextOffset: offset + newGrouped.rawConsumed,
+        searchRoute: "NEWEST",
+        searchRouteReason: "date-sorted text search, ordered on posted_at over the whole title-match set",
+        ...exclusionCountsCaveat(excludedTerms),
+        // The SERVABLE board-wide count, beside the withheld per-search one —
+        // the same figure `total` publishes on the unfiltered browse.
+        totalAllCompanies: safeMetaTotal ?? 0,
+        ...(trackedTotal !== null ? { trackedTotal } : {}),
+        companies: [],
+        companiesCount: ((metaV.companiesCount as number | undefined) ?? ((metaV.companiesFacet as unknown[]) ?? []).length),
+        ...(typeof metaV.companiesOpenCount === "number" ? { companiesOpenCount: metaV.companiesOpenCount } : {}),
+        // THE SHAPE IS PART OF THE CONTRACT, NOT JUST THE VALUES — the salary
+        // exit shipped without these and every pay-sorted search rendered
+        // "Something went wrong", because the client's type declares them
+        // non-optional and no checker sees across the runtime boundary.
+        //
+        // The industry rail keeps its numbers through the SAME gate every other
+        // exit uses: visibleCategories withholds the board-wide facet under any
+        // narrowing rather than printing it beside a narrowed page (the
+        // "Engineering 67,898" over a 19,633-row country page defect). Choosing a
+        // date order is not a reason for the rail to go blank — the salary exit
+        // sends a bare {} and does blank it, which is a trade this one does not
+        // have to repeat.
+        categories: visibleCategories(metaV.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),
+        failedSources: (metaV.failedSources as string[]) ?? [],
+        failedCount: (metaV.failedCount as number | undefined) ?? 0,
+        refreshedAt: (metaV.refreshedAt as string) ?? null,
+      });
+    }
+  } catch { /* fall through to the ranked path, which owns the description tier and the rescue ladder */ }
+
+  // NOT UNDER A DATE SORT UNLESS IT CAN PRODUCE ONE, which is the company half
+  // only. For every other routed retriever this block hands `mapped` to
+  // rerankWindow — a RELEVANCE permutation of a block selected by
+  // effective_posted — so a page it served under sort=newest was neither
+  // date-ordered nor relevance-windowed, and it emitted nothing saying which.
+  // MEASURED live 2026-09-26: q="accenture" + sort=newest took this exit with no
+  // sortScope on the wire, and the client's absent-sortScope arm printed "Newest
+  // first within the closest 200 matches" over rows ordered by our crawl stamp,
+  // on a route whose window is 400. The SIMPLE route only reaches here under a
+  // date sort when newestTextSort above already declined or fell through, and the
+  // ranked path below serves that body with sortScope relevanceWindow and its
+  // real seam — an honest windowed claim instead of an unlabelled one.
+  const routedServesThisOrder = routedRetriever === "company" || !newestFirst;
+  if (!countOnly && routedServesThisOrder && (routedRetriever === "company" || routedRetriever === "simple")) try {
     // Window anchored at rank 0 and sliced AFTER scoring, so `offset` is a
     // position inside ONE stable ordering. Paging a re-ranked list by a
     // retriever-ordered offset is what made sorted page two repeat page one.
@@ -15869,8 +16155,26 @@ async function serveList(
         { type: "websearch", config: "simple" },
       );
     const t_routed_retriever = Date.now();
+    // THE EMPLOYER PAGE ORDERS BY WHICHEVER DATE IT IS ABOUT TO CLAIM.
+    //
+    // An employer page applies no relevance scoring at all (`ordered` below is
+    // `mapped` for this retriever), so the only thing the reader can be told
+    // about its order is the column it came back in — and under sort=newest that
+    // has to be the employer's own stated date, or the page claims a date order
+    // over effective_posted = coalesce(posted_at, first_seen). MEASURED live
+    // 2026-09-26 on the old ordering: q="Spectrum Health" + sort=newest served
+    // workday:spectrumhealth~wd5~CorewellHealthCareers:R228442 with postedAt null
+    // at position 1, above seven rows stamped 2026-09-25.
+    //
+    // The block arithmetic is untouched by the swap: (posted_at DESC NULLS LAST,
+    // id ASC) is as total and as stable as (effective_posted DESC, id ASC), so
+    // blocks stay disjoint and the undated tail is ordered last inside the
+    // employer's own set rather than exiled behind the whole board.
+    const routedRead = newestFirst && routedRetriever === "company"
+      ? rq.order("posted_at", { ascending: false, nullsFirst: false })
+      : rq.order("effective_posted", { ascending: false });
     const { data: routedRows, error: rErr } = await withDeadline(
-      rq.order("effective_posted", { ascending: false }).order("id", { ascending: true })
+      routedRead.order("id", { ascending: true })
         .range(blockStart, blockStart + ROUTE_WINDOW - 1),
       // Shape-sized (see ROUTED_DEADLINE_MS) and clamped to the request
       // budget, like every sibling on the serving path — a bare deadline here
@@ -15953,6 +16257,20 @@ async function serveList(
           // unavailable)" on every short query: rn, swe, qa, pm, sde. A false
           // apology is still a false statement about what the board did.
           ...(routedRetriever === "company" ? {} : { ranked: true }),
+          // WHICH SET THE ORDER SAW, from the one exit that used to say nothing.
+          //
+          // Only the company half can be reached under a date sort at all (see
+          // routedServesThisOrder), and for it the whole employer set IS the set
+          // the database ordered: the retriever's key is total and stable, blocks
+          // are disjoint slices of that one ordering, and no scoring permutes it.
+          // So "matchSet" is the honest value and sortMatcher names the set the
+          // page has to name — this employer's postings, not title matches. The
+          // client prints its sentence from these two and never from the sort it
+          // asked for, so an exit that stays silent can only ever get the weaker
+          // sentence.
+          ...(newestFirst && routedRetriever === "company"
+            ? { sortScope: "matchSet", sortMatcher: "company" }
+            : {}),
           // Say which alias phrases were also searched, exactly as the ranked
           // path does. Emitted only when an expansion actually bound, so the
           // line can never claim a phrase the query did not look for.
@@ -17185,12 +17503,20 @@ async function serveList(
         const includeFacets0 = (body as { includeFacets?: boolean }).includeFacets !== false;
         const fullCompanies0 = (v0.companiesFacet as Array<{ count?: number }>) ?? [];
         const rankedRows = (ranked as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
-        // Newest-first over the MATCHING set. The RPC picked the rows by
-        // relevance (that is what makes them matches at all); this orders the
-        // page the reader is looking at by date, which is what the control they
-        // chose promises. Undated rows sort last rather than first — an absent
-        // date is not evidence of newness, and treating it as such is how a
-        // board ends up leading with rows whose age it does not know.
+        // NEWEST-FIRST OVER search_jobs' TOP `seam` BY RELEVANCE — a WINDOW, and
+        // not the matching set. That distinction is the whole reason this exit
+        // publishes sortScope "relevanceWindow" and sortScopeRows a few dozen
+        // lines below: the rows reaching here were chosen by ts_rank_cd, so
+        // date-ordering them produces "the newest of the closest matches", and
+        // `total` beside them counts the match set. The only exit that orders the
+        // match set itself is the newestTextSort branch above, which is why this
+        // one may not borrow its sentence.
+        //
+        // The sort stays — it is what makes the window date-ordered, and paging
+        // is monotone because it runs before the offset slice. Undated rows sort
+        // last rather than first: an absent date is not evidence of newness, and
+        // treating it as such is how a board ends up leading with rows whose age
+        // it does not know.
         if (newestFirst) {
           rankedRows.sort((a, b) => {
             const da = Date.parse(String(a.postedAt ?? "")) || 0;
@@ -17721,6 +18047,21 @@ async function serveList(
           ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
           ...(augmented ? { countUnavailable: true } : {}),
+          // A DATE ORDER APPLIED TO A RELEVANCE WINDOW SAYS SO.
+          //
+          // When newestTextSort declined this body (the EMPLOYER route, the
+          // SYMBOL route) or its query found nothing and fell through, the rows
+          // reaching this exit are search_jobs' top `seam` by ts_rank_cd, date-
+          // sorted in memory a few lines above. That is "newest of the closest
+          // matches", never "newest of the match set" — and `total` beside it
+          // counts the match set, so the two can only coexist in one honest
+          // sentence if the page is told which of them the ORDER saw.
+          // sortScopeRows is that seam, so the sentence can carry the number
+          // instead of hand-waving. Emitted only under the sort it describes: a
+          // relevance page makes no order claim for this to qualify.
+          ...(newestFirst
+            ? { sortScope: "relevanceWindow", sortScopeRows: ringMerged ? RING_WINDOW : RANKED_WINDOW }
+            : {}),
           // A ring-merged page that exhausts its pool hands the walk to the SQL
           // regime at the FIXED seam — offset+rawConsumed is a pool position,
           // and the deep regime would misread it as SQL rank (the hole half of
@@ -17908,8 +18249,21 @@ async function serveList(
   // dateCol is effective_posted = coalesce(posted_at, first_seen), so a posting
   // with no company-stated date takes our crawl time and sorts to the very top.
   // MEASURED on the live board: 57 of 60 rows on sort=newest had postedAt=null,
-  // 95% of the page. The 10% of the corpus with no date was crowding out the
-  // 540,437 postings that DO carry one.
+  // 95% of the page. The undated rows were crowding out every posting that does
+  // carry a date.
+  //
+  // THE SIZE OF THE UNDATED POPULATION, RE-MEASURED 2026-09-26, because the two
+  // figures that used to sit in this paragraph ("the 10% of the corpus with no
+  // date" and "the 540,437 postings that DO carry one") were an order of
+  // magnitude stale and they mis-price this decision for the next reader: they
+  // make burying the undated rows look ~13x more costly than it is. Counted at
+  // the boundary of THIS order, which is the only stable instrument for it
+  // (single-offset shares are not reproducible — the undated block is ordered by
+  // first_seen and arrives in lumps): under sort=newest the first undated row
+  // sits between offset 740,000 and 742,000 of a 746,300-row board, so undated
+  // is roughly 4,300-6,300 rows, about 0.7% of the corpus. On the SAME day the
+  // no-sort effective_posted order served 59 of 60 undated rows on page one —
+  // 0.7% of the board owning 98% of the first screen.
   //
   // Ordering on posted_at with nulls last is both honest and CHEAPER — measured
   // at concurrency 4: posted_at 0.20-0.37s against effective_posted 1.03-1.23s,
@@ -17918,6 +18272,18 @@ async function serveList(
   // The freshness WINDOW still uses effective_posted. That is deliberate: an
   // undated posting should still be served, it just should not claim to be the
   // newest thing on the board.
+  //
+  // WHICH IS WHY THE FALL-THROUGH BRANCH BELOW IS A NAMED ORDER, NOT A DEFAULT.
+  // Ordering by dateCol is the DISCOVERY order — newest by when WE first saw a
+  // posting, which for an undated row is all anyone knows about it — and
+  // Jobs.tsx asks for it by name with sort:"discovered". It is the one place the
+  // undated tail is reachable at page one instead of past offset 740,000, so the
+  // page offers it beside the date claim rather than exiling those rows. Nothing
+  // branches on the value: "discovered" is neither "newest" nor "salary", so it
+  // arrives here, and src/test/newest-first-must-order-by-date.test.tsx pins that
+  // this is still true of the expression below. A `sort` this function does not
+  // know is served the same way — the honest reading of "no order asked for" is
+  // still an order, and this is it.
   const ordered = (q: any, dateCol: string, salaryCol: string) =>
     (sortSalary
       ? q.order(salaryCol, { ascending: false, nullsFirst: false })
@@ -17961,6 +18327,56 @@ async function serveList(
         return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
           .or(`${dateCol}.lt."${cursor.ep}",and(${dateCol}.eq."${cursor.ep}",id.gt."${cursor.id}")`)
           .limit(fetchLimit);
+      }
+      // THE SAME SEEK FOR THE ORDER THE ORDINARY BROWSE NOW WALKS.
+      //
+      // "Newest first" orders by posted_at DESC NULLS LAST, id ASC (see
+      // `ordered` below), and it had no cursor at all: every page after the
+      // first was an OFFSET walk over a table taking ~70k inserts a day. That
+      // cost little while only the sort control asked for this order. It is the
+      // ordinary browse's order now — because it is the order the page CLAIMS —
+      // and offset paging over it is the shape measured on 2026-08-18 before the
+      // keyset shipped: 4 of 8 page-one-to-page-two transitions overlapped, the
+      // worst pair repeating 9 of 60 rows and silently hiding 9 others.
+      //
+      // Two arms, the same shape as the branch above, against an index that is
+      // literally (posted_at DESC NULLS LAST, id): `lt` on the date, the id
+      // tiebreak only inside the `eq` arm. The cursor's kind is already checked
+      // where it is parsed, so a coordinate written in effective_posted cannot
+      // arrive here; the `k` term is repeated for a reader.
+      //
+      // A NULL COMPARISON IS UNKNOWN, SO THE SEEK CANNOT DESCRIBE THE UNDATED
+      // TAIL — AND THE WALK MUST NOT END THERE.
+      //
+      // Both arms compare posted_at, so neither can return a row whose posted_at
+      // is NULL. On the unfiltered board that costs nothing a reader would ever
+      // notice: the dated rows run to ~offset 741,000 of 746,300, which is
+      // ~12,350 "Load more" presses, and the tail is one click away in the
+      // discovery order the page offers beside the claim. On a FILTERED newest
+      // page it is a quarter of the answer. MEASURED live 2026-09-26, binary-
+      // searching the first undated row under sort=newest:
+      //     vendor=pinpoint + country=GB   total 860, dated 616, undated 244 (28.4%)
+      //     vendor=pinpoint                total 3,554, dated 2,595, undated 959 (27.0%)
+      //     vendor=bamboohr + country=US   109 of 6,322 (1.7%)
+      // The seek came back short after ~10 presses, hasMore went false, and the
+      // header went on printing "of 860" over 616 served rows.
+      //
+      // So a SHORT seek is not the end of the set, it is the seam — and the read
+      // that crosses it already exists and is already correct: `.range()` under
+      // this same ordering includes the undated tail (posted_at DESC NULLS LAST
+      // puts it last), which is why page one always served those rows. One extra
+      // query, once per walk, at the one page where the keyset runs out; the
+      // cursor emitter then finds no posted_at on the last raw row and hands back
+      // null, so the tail pages by offset exactly as it did before the keyset
+      // existed. Offset paging's drift is the documented cost of that one page
+      // and is strictly smaller than dropping 27% of the matches.
+      if (cursor && cursor.k === "pa" && !sortSalary && newestFirst) {
+        const seek = await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
+          .or(`posted_at.lt."${cursor.ep}",and(posted_at.eq."${cursor.ep}",id.gt."${cursor.id}")`)
+          .limit(fetchLimit);
+        if (seek.error || ((seek.data ?? []) as unknown[]).length >= fetchLimit) return seek;
+        return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
+          .range(offset, offset + fetchLimit - 1);
       }
       return await ordered(buildQuery(dateCol, withCount), dateCol, salaryCol)
         .range(offset, offset + fetchLimit - 1);
@@ -18251,11 +18667,30 @@ async function serveList(
   if (
     groupSimilar && !twoSubset && !sortSalary && !countOnly &&
     grouped.jobs.length < limit &&
-    !newestFirst &&                          // a thin newest page stays thin — the cursor emitter wrote this rationale; the top-up anchors in effective_posted, which is not the order a newest page walks
     mappedRows.length >= fetchLimit          // the buffer was exhausted, not just short
   ) {
-    const lastRaw = rawKeys[rawKeys.length - 1];
-    if (lastRaw?.effective_posted && lastRaw?.id) {
+    // THE GATE THAT SAID "a thin newest page stays thin" IS GONE, BECAUSE THE
+    // ORDINARY BROWSE IS NOW A NEWEST PAGE.
+    //
+    // That `!newestFirst` was written when newest was an opt-in sort, and its
+    // stated reason was true of the anchor rather than of the order: the top-up
+    // is a keyset continuation, and continuing an effective_posted coordinate
+    // through a posted_at ordering would move rows across a page boundary the
+    // cursor knows nothing about. Since Jobs.tsx asks for sort:"newest" on every
+    // browse, keeping the gate would have retired the mechanism on the board's
+    // single most common request — the one the starvation was measured on
+    // ("retail sales" 39 cards under a total of 3,437).
+    //
+    // So the ANCHOR follows the order instead. It is the same two-arm seek the
+    // keyset branch above uses, on the same column, against the same
+    // (posted_at DESC NULLS LAST, id) index — the arithmetic carries over
+    // unchanged. And it is skipped, not faked, when the last raw row carries no
+    // posted_at: that is the undated tail, which a posted_at comparison cannot
+    // describe, and a short page is the honest answer there.
+    const anchorCol = newestFirst ? "posted_at" : "effective_posted";
+    const lastRaw = rawKeys[rawKeys.length - 1] as { effective_posted?: string; posted_at?: string; id?: string } | undefined;
+    const anchorVal = newestFirst ? lastRaw?.posted_at : lastRaw?.effective_posted;
+    if (anchorVal && lastRaw?.id) {
       try {
         // Keyset-anchored, exactly like page 2: start strictly after the last
         // raw row this page read, so the top-up cannot repeat or skip.
@@ -18269,7 +18704,7 @@ async function serveList(
         const topUp = await withDeadline(
           ordered(
             buildQuery("effective_posted", false).or(
-              `effective_posted.lt."${lastRaw.effective_posted}",and(effective_posted.eq."${lastRaw.effective_posted}",id.gt."${lastRaw.id}")`,
+              `${anchorCol}.lt."${anchorVal}",and(${anchorCol}.eq."${anchorVal}",id.gt."${lastRaw.id}")`,
             ),
             "effective_posted",
             "salary_rank_usd",
@@ -18362,11 +18797,26 @@ async function serveList(
     ...(rankedFellBack ? { rankedFellBack } : {}),
     ...(semanticDegraded ? { semanticDegraded } : {}),
     nextCursor: (() => {
-      // The SAME condition the cursor READER uses. A cursor written in
-      // effective_posted cannot describe the posted_at ordering sort=newest
-      // pages in, so issuing one under that sort promises a seek the very next
-      // request refuses — silently falling back to offset paging from a
-      // coordinate the caller thinks is a cursor.
+      // THE DATED WALK NAMES ITS OWN COORDINATE, in the column it orders by.
+      //
+      // This used to return null for sort=newest, and the reason given was
+      // right: a cursor written in effective_posted cannot describe a posted_at
+      // ordering, so issuing one promised a seek the next request would refuse.
+      // The answer is to write the cursor in the column the order uses and SAY
+      // which one it is (`k`), not to leave the order without a cursor — the
+      // ordinary browse walks this order now, and an uncursored walk over an
+      // inserting table repeats and hides rows (see the keyset branch above).
+      //
+      // posted_at, never effective_posted, and null when the last raw row has no
+      // date: that is the undated tail, which this order puts last and this
+      // keyset cannot describe. A null cursor is the honest answer there — the
+      // caller pages by offset, exactly as it did before this branch existed.
+      if (!twoSubset && !sortSalary && newestFirst) {
+        const rp = rawKeys[Math.max(0, grouped.rawConsumed - 1)] as { posted_at?: string; id?: string } | undefined;
+        return rp?.posted_at && rp?.id ? { ep: rp.posted_at, id: rp.id, k: "pa" } : null;
+      }
+      // The SAME condition the cursor READER uses, for the discovery order:
+      // (effective_posted, id), untagged, unchanged.
       if (twoSubset || sortSalary || newestFirst) return null;
       const r = rawKeys[Math.max(0, grouped.rawConsumed - 1)];
       return r?.effective_posted && r?.id ? { ep: r.effective_posted, id: r.id } : null;
@@ -18384,6 +18834,18 @@ async function serveList(
     // fewer rows by design, and measuring "was the page full?" against a size
     // it never requests answers no every time.
     hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchUsed,
+    // TWO BUCKETS CONCATENATED IS NOT ONE ORDERING, AND THE PAGE HAS TO SAY SO.
+    //
+    // The includeUncategorised path returns the chosen field's rows followed by
+    // the "other" rows (see pageWithInner's twoSubset branch) — each half
+    // internally ordered by the requested key, the halves in sequence, because
+    // splitPage walks bucket A to its end before it enters bucket B. The order
+    // claim above the list says "newest by the date each employer states", which
+    // is true INSIDE each group and false across the seam, and nothing on the
+    // wire distinguished this page from a single ordering. One flag, so the page
+    // can disclose the grouping the same way it discloses the employer weave and
+    // the undated tail rather than making a claim it cannot support.
+    ...(twoSubset ? { bucketedOrder: true } : {}),
     ...exclusionCountsCaveat(excludedTerms),
     totalAllCompanies: safeMetaTotal ?? count ?? 0,
     ...(trackedTotal !== null ? { trackedTotal } : {}),

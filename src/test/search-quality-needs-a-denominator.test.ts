@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { codeOf } from "./helpers/strip-comments";
 import { resolve } from "node:path";
 
 /**
@@ -39,7 +40,18 @@ import { resolve } from "node:path";
  *     telemetry stops. A zero-result rate with that bug would report perfect
  *     health precisely when it had stopped recording.
  */
-const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
+/**
+ * COMMENT-STRIPPED, because this file COUNTS occurrences of a literal.
+ *
+ * `logSearch("ranked"` now appears in the BUILD_VERSION deploy note — it had to,
+ * because the note's job is to record that the NEWEST exit reuses the "ranked"
+ * label while the wire separates the routes — and a raw read counted that sentence
+ * as a tenth call site against nine exits. That is the logged guard-literal trap
+ * exactly (writing a guard's literal in a comment has broken guards here four
+ * times), and the house rule is the fix: a guard that pins or counts a literal
+ * reads comment-stripped code.
+ */
+const FN = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8"));
 const UI = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
 const MIG_DIR = resolve(__dirname, "../../supabase/migrations");
 const MIG = (() => {
@@ -59,7 +71,7 @@ describe("search quality has a denominator and an outcome", () => {
       [...new Set(routes)].sort(),
       "every list return must log. A missing path is an invisible hole in the denominator.",
     ).toEqual(["fuzzy", "ranked", "recency", "semantic"]);
-    expect(routes.length, "eight list exits, eight logSearch calls").toBe(8);
+    expect(routes.length, "nine list exits, nine logSearch calls").toBe(9);
   });
 
   it("issues a search id and returns it on every list response", () => {
@@ -68,9 +80,9 @@ describe("search quality has a denominator and an outcome", () => {
     // from that path can never be attributed and its results are unmeasurable.
     expect(
       (FN.match(/^\s*searchId,$/gm) ?? []).length,
-      "searchId must be returned by all EIGHT list paths — a click on a page that " +
+      "searchId must be returned by all NINE list paths — a click on a page that " +
         "carries no search id can never be attributed to the search that produced it",
-    ).toBe(8);
+    ).toBe(9);
   });
 
   it("does not swallow a failed write", () => {

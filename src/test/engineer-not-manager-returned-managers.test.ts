@@ -87,6 +87,11 @@ describe("engineer not manager returned managers", () => {
     // a-ring-that-breaks-a-seam-serves-a-row-twice.test.ts.
     // TEN since 2026-08-30: the past-the-end exit joined (it was answering a
     // filtered request with the bare board's total and no disclosures at all).
-    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(10);
+    // ELEVEN since 2026-09-26: the newest-sorted text search got its own exit
+    // (searchRoute NEWEST, ordered by posted_at in SQL over the whole title-match
+    // set rather than date-permuting a 200-row relevance window). It carries the
+    // pair, so the number ROSE — a new exit that had dropped the disclosure would
+    // have left this at ten while a page silently stopped saying what it removed.
+    expect((FN.match(/\.\.\.exclusionDisclosure\(excludedTerms\),/g) ?? []).length).toBe(11);
   });
 });

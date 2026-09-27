@@ -1183,6 +1183,34 @@
     "activelyHiringHidLargeEmployers": {
       "title": "Itinatago ng filter na “Aktibong nagha-hire” ang pinakamalalaking employer",
       "description": "Ang filter na tinatawag na “Aktibong nagha-hire” ay parang alam kung sino ang kumukuha ng tao. Hindi nito alam. Binibilang nito ang mga posisyong nakita naming naalis sa careers page ng isang employer at nanatiling wala roon — ibig sabihin, kailangang mabasa ang pahinang iyon hanggang dulo, at sa pinakamalalaking employer ay hindi namin iyon nagawa. Kaya tahimik silang inalis ng filter: sa pagsukat laban sa tatlumpung pinakamalaking employer sa board, labimpito sa kanila at 91,535 sa 154,979 na posisyon ang itinatago, kabilang ang isang employer na may 34,000 bakante. Iniuulat nito ang hangganan ng kaya naming basahin bilang isang katotohanan tungkol sa kung sino ang kumukuha ng tao. “Nag-aalis ng roles” na ang tawag dito ngayon, na siyang bagay na talagang nakita naming nangyari. Ang mga employer na wala kaming talang pagsara ay hindi na itinuturing na hindi kumukuha ng tao — isinasantabi sila, binibilang sa screen kasama ang dahilan, at isang pindot lang ang kailangan para maibalik sila. At kung saan hindi namin matukoy kung iniiwang nakabukas ng isang employer ang mga posisyon nito o hindi lang talaga kami nakakita ng isang naalis, sinasabi na namin iyon ngayon, sa halip na wala kaming ipakita sa iyo."
+    },
+    "dayThirtyFiguresFell": {
+      "title": "Masyadong mataas ang aming mga bilang sa ika-30 araw, at mas mababa na ngayon",
+      "description": "Iniuulat ng Ghost Job Index kung ilang posisyon ang nakapaskil pa rin tatlumpung araw matapos lumitaw. Hanggang ngayon, kasama sa bilang na iyon ang mga employer na ni minsan ay wala kaming nakitang posisyong naalis sa careers page nila — at ang posisyong hindi namin nakitang naalis ay mukhang, para sa amin, posisyong nanatiling bukas. Hindi na kasama ang mga employer na iyon sa bilang, at bumaba ang numero ng bawat larangan ng mga dalawampu hanggang dalawampu't walong puntos dahil dito. Ipinapakita rin ngayon ng bawat larangan kung gaano kalaki ang bahagi ng bilang nito na galing sa isang employer lamang. Pinalaki ang mga lumang numero ng butas sa kaya naming obserbahan, hindi ng mga posisyong tunay na nanatiling bukas."
+    },
+    "aHospitalFiledUnderIsrael": {
+      "title": "Isang ospital sa Boston ang naka-file sa ilalim ng Israel",
+      "description": "Ang pag-filter ayon sa bansa ay umaasa sa mga salita sa posting, at may mga pangalan ng employer na may bansa sa loob. Ang Beth Israel Deaconess Medical Center, sa Boston, ay ipinapakita sa kahit sinong nag-filter para sa Israel — limampu't apat na posisyon sa 656 na ipinapakita namin para sa bansang iyon. Hindi na maaaring magbigay ng bansa ang pangalan ng isang kumpanya, at saklaw din ng parehong pagwawasto ang mga posting na ang lokasyon ay nagpapangalan ng dalawang magkaibang estado: wala na silang pinapangalanan ngayon, sa halip na hulaan ang isa."
+    },
+    "postingsWithTheirOwnPage": {
+      "title": "Mga posting na maaari mong i-link",
+      "description": "Dati, umiiral ang isang trabaho sa loob lamang ng board — kapag binuksan mo ito, hindi nagbabago ang address bar, kaya wala kang maipapadala kaninuman. May sariling pahina na ngayon ang ilang daang posting: isang tunay na link na maibabahagi mo, kasama ang employer, ang lokasyon, ang sahod kung nakasaad, at ang deskripsyon, nakasulat sa paraang mababasa rin ito ng mga search engine at ng mga AI assistant. Limitado ang set na ito at hindi ito ang buong board, at tanging ang mga pahinang tunay na umiiral ang nakalista para sa mga search engine."
+    },
+    "whatOntarioPostingsMustState": {
+      "title": "Ang kailangang sabihin ng isang posting sa Ontario",
+      "description": "Mula Enero, iniaatas ng batas ng Ontario na sabihin ng isang job posting ang inaasahang bayad, sabihin kung tunay ang bakante, at ilahad kung may artificial intelligence na nagsasala ng mga aplikante — at ipinagbabawal nito ang paghingi ng karanasan sa Canada. Sa mga posting sa Ontario, sinisipi namin ngayon ang sinasabi mismo ng posting sa bawat isa sa apat na puntong iyon, kasama sa tabi ang seksyon ng Batas. Sinisipi namin; hindi kami humahatol. Ang pagiging saklaw ng batas ng isang employer ay depende sa laki nito, at hindi iyon sinasabi ng posting, kaya walang anuman dito na nagsasabing lumabag sa alituntunin ang isang employer."
+    },
+    "aSourceWithNothingBehindIt": {
+      "title": "Isang filter ng pinagmulan na walang trabaho sa likod",
+      "description": "Inaalok ng menu ng pinagmulan ang USAJOBS, ang pederal na feed ng trabaho ng Estados Unidos, at wala talagang naibabalik ang pag-filter dito — ni minsan ay hindi naka-on ang koneksyon sa feed na iyon. Wala na ito sa menu. Pinananatili ang entry sa halip na burahin, kaya babalik ito sa araw na bumalik ang feed."
+    },
+    "layoffFilingsBesideAPosting": {
+      "title": "Mga filing ng layoff, katabi ng mga posisyon",
+      "description": "Kapag sinabi ng isang employer sa isang regulator na nagbabawas ito ng tao — isang 8-K na isinampa sa SEC, o isang WARN notice na isinampa sa isang estado — lumalabas na ngayon ang filing na iyon katabi ng mga posting ng employer na iyon, kasama ang petsa at isang link sa filing mismo. Itinutugma namin ang isang employer sa isang filing lamang kapag walang alinlangan ang pangalan, kaya ang posting na walang linyang katabi ay nangangahulugang wala kaming nahanap na filing na sigurado kami — hindi kailanman na wala talagang filing."
+    },
+    "yourAgentCanLookWithoutAKey": {
+      "title": "Makakasilip ang agent mo bago ka pa mag-sign up",
+      "description": "Mababasa na ngayon ng isang AI assistant ang board nang wala kahit anong key — ang kabuuang bilang sa board, isang maliit na paghahanap, at isang paraan para kunin ang isang posting — sa loob ng pang-araw-araw na alokasyon, kaya maituturo mo sa amin ang isang agent at makikita kung kapaki-pakinabang ito bago ka gumawa ng anuman. Nakalista ang server sa pampublikong direktoryo na ginagamit ng mga assistant para maghanap ng tools, at malinaw nitong sinasabi sa agent kung ano ang kaya at hindi nitong gawin sa key na hawak nito."
     }
   }
 }

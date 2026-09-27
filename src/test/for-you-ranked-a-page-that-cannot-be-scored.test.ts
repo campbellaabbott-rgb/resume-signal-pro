@@ -64,8 +64,16 @@ describe("for you ranked a page that cannot be scored", () => {
     // relevance ranking — a real loss, on the pages that score 85-95% anyway.
     expect(JOBS, "sending it unconditionally is the regression")
       .not.toMatch(/hasDescription: true,/);
-    // A changed request must actually re-fetch.
-    expect(JOBS).toMatch(/\[filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions\],/);
+    // A changed request must actually re-fetch. The list is pinned by CONTENT,
+    // not spelled out in full: `discoveredView` joined it on 2026-09-26 when the
+    // ordinary browse started asking for the order it prints (a third order the
+    // body can carry), and a pin that named the whole array would have failed
+    // for a reason that has nothing to do with fit scoring.
+    const fetchDeps = /\[filterState,([^\]]*)\],/.exec(JOBS)?.[1] ?? "";
+    expect(fetchDeps, "fetchJobs' dependency list not found").not.toBe("");
+    for (const dep of ["q", "sortMode", "searchNewestFirst", "fitBrowseNeedsDescriptions"]) {
+      expect(fetchDeps.split(/[\s,]+/).includes(dep), `fetchJobs must re-run when ${dep} changes`).toBe(true);
+    }
     // And the fit effect must wait for that page rather than spending a scoring
     // call on the recency page still on screen.
     expect(JOBS).toMatch(/if \(!searched && !q\.trim\(\) && !company && !landerCompany\) fitAwaitingPage\.current = true;/);

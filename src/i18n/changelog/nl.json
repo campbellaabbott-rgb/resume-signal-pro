@@ -1183,6 +1183,34 @@
     "activelyHiringHidLargeEmployers": {
       "title": "Het filter “Actief aan het werven” verborg de grootste werkgevers",
       "description": "Een filter dat “Actief aan het werven” heet, klinkt alsof het weet wie er werft. Dat wist het niet. Het telde vacatures die we van de vacaturepagina van een werkgever hadden zien verdwijnen en weg hadden zien blijven — en dat betekent die pagina helemaal tot het einde lezen, en bij de grootste werkgevers konden we dat niet. Dus haalde het filter ze stilletjes weg: gemeten aan de dertig grootste werkgevers op het bord werden er zeventien verborgen, en 91.535 van de 154.979 vacatures, waaronder één werkgever met 34.000 openstaande vacatures. Het rapporteerde de grenzen van wat wij kunnen lezen als een feit over wie er werft. Het heet nu “Haalt vacatures offline”, want dat is wat we werkelijk hebben zien gebeuren. Werkgevers waarvoor we niets hebben vastgelegd worden niet langer behandeld alsof ze niet werven — ze worden apart gezet, op het scherm geteld met de reden erbij, en één knop haalt ze terug. En waar we niet kunnen zien of een werkgever vacatures laat staan of dat wij er simpelweg nooit een offline hebben zien gaan, zeggen we dat nu, in plaats van je niets te tonen."
+    },
+    "dayThirtyFiguresFell": {
+      "title": "Onze cijfers voor dag 30 waren te hoog en zijn nu lager",
+      "description": "De Ghost Job Index zegt hoeveel vacatures dertig dagen na hun verschijnen nog online staan. Tot vandaag telde dat cijfer ook werkgevers mee bij wie we nog nooit één vacature van de vacaturepagina hebben zien verdwijnen — en een vacature die we nooit zien verdwijnen, lijkt voor ons een vacature die is blijven staan. Die werkgevers blijven nu buiten het cijfer, en het getal van elk vakgebied daalde daardoor met ongeveer twintig tot achtentwintig punten. Elk vakgebied laat nu ook zien hoeveel van zijn cijfer van één enkele werkgever komt. De oude cijfers waren opgeblazen door een gat in wat wij kunnen zien, niet doordat die vacatures echt nog openstonden."
+    },
+    "aHospitalFiledUnderIsrael": {
+      "title": "Een ziekenhuis in Boston stond geboekt onder Israël",
+      "description": "Het landenfilter ging uit van de woorden in een vacature, en sommige werkgeversnamen hebben een land in zich. Het Beth Israel Deaconess Medical Center in Boston werd voorgeschoteld aan iedereen die op Israël filterde — vierenvijftig vacatures van de zeshonderdzesenvijftig die we voor dat land toonden. De naam van een bedrijf kan nu geen land meer aanleveren, en dezelfde correctie geldt voor vacatures waarvan de locatie twee verschillende staten noemt: die noemen er nu geen, in plaats van er een te gokken."
+    },
+    "postingsWithTheirOwnPage": {
+      "title": "Vacatures waarnaar je kunt linken",
+      "description": "Een vacature bestond alleen binnen het bord — je opende hem en de adresbalk veranderde niet, dus er was niets om iemand te sturen. Enkele honderden vacatures hebben nu een eigen pagina: een echte link die je kunt delen, met de werkgever, de locatie, het salaris als het vermeld staat en de omschrijving, zo geschreven dat zoekmachines en AI-assistenten hem ook kunnen lezen. Het is een begrensde set en niet het hele bord, en voor zoekmachines staan alleen pagina's vermeld die echt bestaan."
+    },
+    "whatOntarioPostingsMustState": {
+      "title": "Wat een vacature in Ontario moet vermelden",
+      "description": "Sinds januari verplicht de wet van Ontario een vacature om het verwachte salaris te noemen, te zeggen of de functie echt te vervullen is en te melden of kunstmatige intelligentie sollicitanten selecteert — en verbiedt zij het vragen naar Canadese werkervaring. Bij vacatures uit Ontario citeren we nu wat de vacature zelf over elk van die vier punten zegt, met het artikel van de wet ernaast. We citeren; we beoordelen niet. Of een werkgever onder de wet valt, hangt af van zijn grootte, en dat staat niet in een vacature — niets hiervan zegt dus dat een werkgever een regel heeft overtreden."
+    },
+    "aSourceWithNothingBehindIt": {
+      "title": "Een bronfilter zonder vacatures erachter",
+      "description": "Het bronmenu bood USAJOBS aan, de federale vacaturefeed van de Verenigde Staten, en filteren daarop leverde helemaal niets op: de verbinding met die feed is nooit aangezet. Hij staat niet meer in het menu. De vermelding blijft staan in plaats van verwijderd te worden, zodat hij terugkomt op de dag dat de feed terugkomt."
+    },
+    "layoffFilingsBesideAPosting": {
+      "title": "Meldingen van ontslagrondes, naast de vacatures",
+      "description": "Als een werkgever aan een toezichthouder meldt dat hij personeel schrapt — een 8-K bij de SEC, of een WARN-melding bij een staat — dan staat die melding nu naast de vacatures van die werkgever, met de datum en een link naar de melding zelf. We koppelen een melding alleen aan een werkgever als de naam ondubbelzinnig is, dus staat er bij een vacature geen regel, dan betekent dat dat we geen melding vonden waarvan we zeker waren — nooit dat er geen is."
+    },
+    "yourAgentCanLookWithoutAKey": {
+      "title": "Je agent kan rondkijken voordat je je aanmeldt",
+      "description": "Een AI-assistent kan het bord nu zonder enige sleutel lezen — totalen van het bord, een kleine zoekopdracht en een manier om één vacature op te halen — binnen een daglimiet, zodat je een agent op ons kunt richten en kunt zien of het iets oplevert voordat je iets aanmaakt. De server staat in de openbare gids waarin assistenten hun tools zoeken, en hij vertelt een agent onomwonden wat hij wel en niet kan doen met de sleutel die hij heeft."
     }
   }
 }

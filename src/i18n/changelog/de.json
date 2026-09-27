@@ -1183,6 +1183,34 @@
     "activelyHiringHidLargeEmployers": {
       "title": "Der Filter „Stellt aktiv ein“ hat die größten Arbeitgeber versteckt",
       "description": "Ein Filter namens „Stellt aktiv ein“ klingt, als wüsste er, wer einstellt. Das tat er nicht. Er zählte Stellen, die wir von der Karriereseite eines Arbeitgebers haben verschwinden und verschwunden bleiben sehen — was heißt, diese Seite bis zum Ende zu lesen, und bei den größten Arbeitgebern konnten wir das nicht. Also hat der Filter sie stillschweigend entfernt: gemessen an den dreißig größten Arbeitgebern auf dem Board wurden siebzehn von ihnen und 91.535 von 154.979 Stellen ausgeblendet, darunter ein Arbeitgeber mit 34.000 offenen Stellen. Er meldete die Grenzen dessen, was wir lesen können, als Tatsache darüber, wer einstellt. Er heißt jetzt „Nimmt Stellen herunter“ — das, was wir tatsächlich beobachtet haben. Arbeitgeber, für die wir nichts erfasst haben, gelten nicht länger als nicht einstellend — sie werden zurückgestellt, auf dem Bildschirm gezählt, mit angegebenem Grund, und eine Schaltfläche holt sie zurück. Und wo wir nicht unterscheiden können, ob ein Arbeitgeber seine Stellen stehen lässt oder wir schlicht nie eine haben herunterfallen sehen, sagen wir das jetzt, statt Ihnen nichts zu zeigen."
+    },
+    "dayThirtyFiguresFell": {
+      "title": "Unsere Zahlen zu Tag 30 waren zu hoch und sind jetzt niedriger",
+      "description": "Der Ghost Job Index nennt, wie viele Stellen dreißig Tage nach ihrem Erscheinen noch ausgeschrieben sind. Bis heute zählte dieser Wert auch Arbeitgeber mit, von deren Karriereseite wir noch nie eine einzige Stelle haben verschwinden sehen — und eine Stelle, die wir nie entfernt sehen, sieht für uns aus wie eine Stelle, die offen geblieben ist. Diese Arbeitgeber bleiben jetzt außen vor, und die Zahl jedes Bereichs ist dadurch um etwa zwanzig bis achtundzwanzig Punkte gefallen. Jeder Bereich zeigt jetzt außerdem, wie viel seiner Zahl auf einen einzelnen Arbeitgeber zurückgeht. Die alten Zahlen waren durch eine Lücke in dem, was wir beobachten konnten, aufgebläht — nicht dadurch, dass diese Stellen wirklich noch offen waren."
+    },
+    "aHospitalFiledUnderIsrael": {
+      "title": "Ein Krankenhaus in Boston lief unter Israel",
+      "description": "Der Länderfilter richtete sich nach den Wörtern in einer Anzeige, und manche Arbeitgebernamen enthalten ein Land. Das Beth Israel Deaconess Medical Center in Boston wurde jedem ausgeliefert, der nach Israel filterte — vierundfünfzig der 656 Stellen, die wir für dieses Land zeigten. Der Name eines Unternehmens kann jetzt kein Land mehr liefern, und dieselbe Korrektur gilt für Anzeigen, deren Ort zwei verschiedene Bundesstaaten nennt: Sie nennen jetzt keinen, statt einen zu erraten."
+    },
+    "postingsWithTheirOwnPage": {
+      "title": "Anzeigen, die Sie verlinken können",
+      "description": "Eine Stelle existierte bisher nur innerhalb des Boards — beim Öffnen änderte sich die Adresszeile nicht, es gab also nichts, was man jemandem schicken konnte. Mehrere hundert Anzeigen haben jetzt eine eigene Seite: einen echten Link, den Sie teilen können, mit dem Arbeitgeber, dem Ort, dem Gehalt, falls es genannt ist, und der Beschreibung — so geschrieben, dass Suchmaschinen und KI-Assistenten sie ebenfalls lesen können. Es ist eine begrenzte Auswahl und nicht das ganze Board, und für Suchmaschinen sind nur Seiten aufgeführt, die wirklich existieren."
+    },
+    "whatOntarioPostingsMustState": {
+      "title": "Was eine Anzeige in Ontario angeben muss",
+      "description": "Seit Januar schreibt das Gesetz in Ontario vor, dass eine Stellenanzeige das erwartete Gehalt nennt, sagt, ob die Stelle wirklich zu besetzen ist, und offenlegt, ob künstliche Intelligenz Bewerbungen vorsortiert — und es verbietet, kanadische Berufserfahrung zu verlangen. Bei Anzeigen aus Ontario zitieren wir jetzt, was die Anzeige selbst zu jedem dieser vier Punkte sagt, mit dem Paragrafen des Gesetzes daneben. Wir zitieren; wir urteilen nicht. Ob ein Arbeitgeber überhaupt unter das Gesetz fällt, hängt von seiner Größe ab, und die verrät eine Anzeige nicht — nichts hiervon sagt also, dass ein Arbeitgeber gegen eine Vorschrift verstoßen hat."
+    },
+    "aSourceWithNothingBehindIt": {
+      "title": "Ein Quellenfilter ohne Stellen dahinter",
+      "description": "Im Quellen-Menü stand USAJOBS, der Stellen-Feed der US-Bundesbehörden, und das Filtern darauf ergab überhaupt nichts — die Verbindung zu diesem Feed war nie eingeschaltet. Er erscheint nicht mehr im Menü. Der Eintrag wird behalten und nicht gelöscht, damit er an dem Tag zurückkommt, an dem der Feed zurückkommt."
+    },
+    "layoffFilingsBesideAPosting": {
+      "title": "Meldungen über Stellenabbau, direkt neben den Stellen",
+      "description": "Wenn ein Arbeitgeber einer Behörde mitteilt, dass er Personal abbaut — ein bei der SEC eingereichtes 8-K oder eine bei einem Bundesstaat eingereichte WARN-Meldung —, erscheint diese Meldung jetzt neben den Anzeigen dieses Arbeitgebers, mit dem Datum und einem Link auf die Meldung selbst. Wir ordnen einem Arbeitgeber eine Meldung nur dann zu, wenn der Name eindeutig ist; steht neben einer Anzeige keine solche Zeile, heißt das also, dass wir keine Meldung gefunden haben, bei der wir sicher waren — nie, dass es keine gibt."
+    },
+    "yourAgentCanLookWithoutAKey": {
+      "title": "Ihr Agent kann sich umsehen, bevor Sie sich anmelden",
+      "description": "Ein KI-Assistent kann das Board jetzt ganz ohne Schlüssel lesen — Gesamtzahlen des Boards, eine kleine Suche und einen Weg, eine einzelne Anzeige abzurufen — innerhalb eines Tageskontingents. So können Sie einen Agenten auf uns richten und sehen, ob er nützlich ist, bevor Sie überhaupt etwas anlegen. Der Server ist in dem öffentlichen Verzeichnis eingetragen, in dem Assistenten nach Werkzeugen suchen, und er sagt einem Agenten klar, was er mit dem Schlüssel, den er hat, tun kann und was nicht."
     }
   }
 }

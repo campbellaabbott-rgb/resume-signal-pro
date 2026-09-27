@@ -74,14 +74,27 @@ function boardMock(extra: Record<string, unknown>) {
   });
 }
 
-/** Mount and search, so the sort line (query-only) renders. */
+/**
+ * Mount and search, so the sort line (query-only) renders.
+ *
+ * READ FROM THE SLOT, NOT FROM A PROSE PREFIX. This used to wait for the text
+ * "Sorted by" and then slice the page text from there — which located the sentence
+ * only while every arm of the claim began with those two words. Two arms have since
+ * been CORRECTED to stop claiming a sort they do not perform (the exact-word tier
+ * and the recency fall-through both order by `effective_posted`, our crawl stamp,
+ * so they now say "Ordered by when we first saw each posting" and "Exact whole-word
+ * matches…"), and the helper stopped finding them. A guard that breaks when the
+ * copy becomes true is worse than no guard. `data-sort-claim` marks the slot; every
+ * assertion below is still about the words in it.
+ */
 async function search(extra: Record<string, unknown>) {
   boardMock(extra);
   render(<MemoryRouter><Jobs /></MemoryRouter>);
   await waitFor(() => expect(invoke).toHaveBeenCalled(), SLOW);
   fireEvent.change(screen.getByPlaceholderText(/Title or keyword/i), { target: { value: "nurse" } });
-  await waitFor(() => expect(document.body.textContent).toMatch(/Sorted by/), SLOW);
-  return (document.body.textContent ?? "").match(/Sorted by[^·]*/)?.[0]?.trim() ?? "";
+  await waitFor(() => expect(document.querySelector("[data-sort-claim]")?.textContent ?? "").not.toBe(""), SLOW);
+  const el = document.querySelector("[data-sort-claim]");
+  return (el?.textContent ?? "").split("·")[0].trim();
 }
 
 describe("a deliberate fallback must not read as an outage", () => {
@@ -109,11 +122,26 @@ describe("a deliberate fallback must not read as an outage", () => {
     expect(new Set([ranked, exact, broken]).size).toBe(3);
   });
 
-  it("behaviour: the exact-word line still says the rows are newest-first, because they are", async () => {
-    // The tier concatenates two `ORDER BY effective_posted DESC` reads. Saying
-    // so is the whole content of the disclosure.
+  it("behaviour: the exact-word line names OUR date, because that is the order it has", async () => {
+    /* THIS CASE ASSERTED THE FALSEHOOD. It required the sentence to say "newest
+     * first", on the reasoning that the tier's two reads are date-ordered — but
+     * they are `ORDER BY effective_posted DESC`, and effective_posted is
+     * `coalesce(posted_at, first_seen)`: for every posting the employer never
+     * dated it is OUR CRAWL STAMP. "Newest first" over that is the claim this
+     * build exists to retire, and the two reads are not even globally ordered
+     * relative to each other. `jobsPage.sortedExactWord` ("Sorted by newest first
+     * — exact whole-word matches, not relevance-ranked") is deleted from all nine
+     * locales rather than edited, because a locale value overrides an inline
+     * default.
+     *
+     * So the disclosure's content is now: which tier ran, and WHOSE date the rows
+     * are in. */
     const exact = await search({ exactWordMatch: "nurse" });
-    expect(exact).toMatch(/newest first/i);
+    expect(exact, "the retired claim is back: these rows are not in the employer's date order")
+      .not.toMatch(/newest first/i);
+    expect(exact, "the tier must name the order it actually has").toMatch(/when we first saw each posting/i);
+    expect(exact, "and say the date is ours, not the employer's").toMatch(/our date, not the employer's/i);
+    expect(exact, "and that it is not relevance-ranked").toMatch(/not relevance-ranked/i);
     // ...and the page still names the tier itself, separately.
     expect(document.body.textContent).toMatch(/exact whole-word matches for/i);
   });
@@ -130,15 +158,24 @@ describe("a deliberate fallback must not read as an outage", () => {
     expect(files.length, "expected nine locale files").toBe(9);
     for (const f of files) {
       const jp = JSON.parse(readFileSync(resolve(LOCALE_DIR, f), "utf8")).jobsPage ?? {};
-      expect(typeof jp.sortedExactWord, `${f}: jobsPage.sortedExactWord is missing`).toBe("string");
-      expect(String(jp.sortedExactWord).trim().length, `${f}: jobsPage.sortedExactWord is empty`).toBeGreaterThan(0);
+      // THE RENAMED KEYS. `sortedExactWord` and `sortedNewestFallback` both began
+      // "Sorted by newest first" over an effective_posted order and are DELETED
+      // from every locale, not edited — an edited English default is overridden by
+      // eight untouched translations. Their replacements name whose date the rows
+      // carry.
+      expect(jp.sortedExactWord, `${f} still carries the retired jobsPage.sortedExactWord`).toBeUndefined();
+      expect(jp.sortedNewestFallback, `${f} still carries the retired jobsPage.sortedNewestFallback`).toBeUndefined();
+      expect(typeof jp.sortedExactWordDiscovery, `${f}: jobsPage.sortedExactWordDiscovery is missing`).toBe("string");
+      expect(String(jp.sortedExactWordDiscovery).trim().length, `${f}: jobsPage.sortedExactWordDiscovery is empty`).toBeGreaterThan(0);
+      expect(typeof jp.sortedDiscoveryFallback, `${f}: jobsPage.sortedDiscoveryFallback is missing`).toBe("string");
       // Distinct from the outage sentence in EVERY language, not just English —
       // a translator who reused the fallback string would undo the whole fix.
-      expect(jp.sortedExactWord, `${f}: the deliberate tier and the outage read identically`).not.toBe(jp.sortedNewestFallback);
+      expect(jp.sortedExactWordDiscovery, `${f}: the deliberate tier and the outage read identically`).not.toBe(jp.sortedDiscoveryFallback);
     }
     for (const f of ["de.json", "es.json", "fr.json", "nl.json", "pt.json", "hi.json", "tl.json"]) {
       const jp = JSON.parse(readFileSync(resolve(LOCALE_DIR, f), "utf8")).jobsPage;
-      expect(jp.sortedExactWord, `${f} still holds the English text`).not.toBe(en.sortedExactWord);
+      expect(jp.sortedExactWordDiscovery, `${f} still holds the English text`).not.toBe(en.sortedExactWordDiscovery);
+      expect(jp.sortedDiscoveryFallback, `${f} still holds the English text`).not.toBe(en.sortedDiscoveryFallback);
     }
   });
 });

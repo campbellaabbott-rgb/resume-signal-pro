@@ -241,7 +241,13 @@ describe("state and request cannot disagree", () => {
     expect(deps).toContain("searchNewestFirst");
     // One predicate for the write and both lander gates.
     const effect = JOBS.slice(eff, depsStart);
-    expect(effect).toMatch(/const sortParam = sortMode === "salary" \? "salary" : q && searchNewestFirst \? "newest" : ""/);
+    // `q.trim()`, NOT `q`. The body, the sort select's options, the undated-tail
+    // disclosure, the weave and the claim chain all test "is there a query" by
+    // trimming — boardFilterBody drops a whitespace-only `q` outright — so a URL
+    // writer branching on the raw string wrote `sort=newest` into a link whose page
+    // is served as an ordinary browse, and the shared link then disagreed with the
+    // page that produced it. One definition, every reader.
+    expect(effect).toMatch(/const sortParam = sortMode === "salary" \? "salary" : q\.trim\(\) && searchNewestFirst \? "newest" : ""/);
     expect(effect).toMatch(/if \(sortParam\) p\.set\("sort", sortParam\)/);
     expect((effect.match(/&& !sortParam\) \{/g) ?? []).length, "both lander gates refuse any sort, not only salary").toBe(2);
     // And the read side exists.

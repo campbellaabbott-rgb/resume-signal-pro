@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 
 /**
  * PAGE 1 OF A 598,066-JOB BOARD WAS ELEVEN EMPLOYERS.
@@ -27,7 +28,24 @@ import { resolve } from "node:path";
  * pin: no posting may be dropped, hidden, or made unreachable to sell a
  * prettier first screen.
  */
-const SRC = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+/**
+ * COMMENT-STRIPPED, because the guard below pins i18n KEY NAMES.
+ *
+ * The raw reading is what let this file go green over a deleted key. It asserted
+ * `SRC.includes("orderNewestWoven")` and had TWO satisfiers that are not the
+ * behaviour: the replacement key `orderNewestWovenDated` contains the retired one
+ * as a SUBSTRING, and Jobs.tsx's own comment explaining the retirement contains
+ * the literal spelling. `orderNewestWoven` had meanwhile been deleted from all
+ * nine locale files — so the guard claimed to pin a key that no longer existed.
+ * That is the inverse of the logged "guard literal in a comment" trap and the
+ * house rule that answers both: a guard pinning a literal reads comment-stripped
+ * code, through src/test/helpers/strip-comments.
+ */
+const SRC = codeOf(readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8"));
+/** The English values, so the assertion can be about what a reader SEES rather
+ *  than about which identifier the code happens to spell. */
+const EN = JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8")).jobsPage as Record<string, string>;
+const LOCALES = resolve(__dirname, "../i18n/locales");
 
 /** The groupedJobs memo body, bounded — never a whole-file regex. */
 const memo = (() => {
@@ -155,9 +173,43 @@ describe("page 1 shows many employers, without hiding anything", () => {
   });
 
   it("says so in the sort label instead of still claiming plain 'newest first'", () => {
-    // Strict date order IS relaxed. Saying "newest first" and quietly meaning
-    // something else is the class of claim this codebase keeps paying for.
-    expect(SRC.includes("orderNewestWoven")).toBe(true);
-    expect(SRC).toMatch(/spread across employers/);
+    /* Strict date order IS relaxed. Saying "newest first" and quietly meaning
+     * something else is the class of claim this codebase keeps paying for.
+     *
+     * ASSERTED ON THE ARM AND ON THE RENDERED VALUE, not on a substring. The old
+     * version of this case read the raw file for the bare text "orderNewestWoven"
+     * and was satisfied by a superstring and by a comment while the key it named
+     * was gone from every locale. So: find the woven branch of the order-claim
+     * chain in stripped code, take the KEY it resolves to, and hold that key's
+     * English value to both halves of the claim — whose date, and the weave. The
+     * non-woven arm must carry neither, or the two states are indistinguishable
+     * to a reader.
+     */
+    const chain = /interleaveEmployers\s*\?\s*t\("jobsPage\.(\w+)",[\s\S]{0,400}?:\s*t\("jobsPage\.(\w+)"/g;
+    const arms = [...SRC.matchAll(chain)];
+    expect(arms.length, "the woven/non-woven order-claim arms were not found").toBeGreaterThan(0);
+    // The DATE-ordered pair is the one this file is about (the discovery order has
+    // its own pair, and names our stamp rather than the employer's).
+    const dated = arms.find(([, woven]) => woven === "orderNewestWovenDated");
+    expect(dated, "no woven arm resolves to the dated key — the weave claim moved or was retired").toBeTruthy();
+    const [, wovenKey, bareKey] = dated!;
+    const woven = EN[wovenKey];
+    const bare = EN[bareKey];
+    expect(typeof woven, `en.json lacks jobsPage.${wovenKey}`).toBe("string");
+    expect(typeof bare, `en.json lacks jobsPage.${bareKey}`).toBe("string");
+    // The woven claim says WHOSE date AND that the order is permuted.
+    expect(woven, `jobsPage.${wovenKey} does not attribute the date to the employer`).toMatch(/each employer states/);
+    expect(woven, `jobsPage.${wovenKey} does not disclose the weave`).toMatch(/spread across employers/);
+    // The non-woven claim must not claim a weave that does not run.
+    expect(bare, `jobsPage.${bareKey} claims the weave on a page where it stands down`).not.toMatch(/spread across employers/);
+    // And the retired spelling is gone from the CODE and from every locale — a
+    // superstring is not a survival, and neither is a comment.
+    const keys = [...SRC.matchAll(/t\("jobsPage\.(\w+)"/g)].map((m) => m[1]);
+    expect(keys, "the retired unqualified weave key is still referenced in code").not.toContain("orderNewestWoven");
+    for (const f of readdirSync(LOCALES).filter((n) => n.endsWith(".json"))) {
+      const jp = JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, string>;
+      expect(jp.orderNewestWoven, `${f} still carries the retired jobsPage.orderNewestWoven`).toBeUndefined();
+      expect(typeof jp[wovenKey], `${f} lacks jobsPage.${wovenKey}`).toBe("string");
+    }
   });
 });

@@ -1193,7 +1193,15 @@ const PINNED = {
   //   fills a placeholder only, subdivision refused for a one-of-N site). Two
   //   mis-parses fixed alongside it: a country read out of an organisation name
   //   and a region read out of the leftmost of several states.
-  buildVersion: "2026-09-09.73",
+  //   .76: review corrections to .75 — the employer route now date-sorts and
+  //   publishes sortScope matchSet/company, newestTextSort's EMPLOYER and SYMBOL
+  //   stand-downs read a classification computed from the query rather than from
+  //   a routeDecision that is BROWSE under any filter, the dated keyset walk
+  //   crosses the seam into the undated tail instead of reporting the end, the
+  //   grouping top-up anchors in the column the order walks, the two-bucket page
+  //   discloses its grouping, and filterCoverage carries the stamp of the pass
+  //   that counted it (no stamp, no percentage).
+  buildVersion: "2026-09-09.76",
 };
 
 /**

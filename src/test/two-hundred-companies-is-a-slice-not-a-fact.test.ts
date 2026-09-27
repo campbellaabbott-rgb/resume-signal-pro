@@ -20,10 +20,20 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
-const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-const BOARD = strip(read("supabase/functions/job-board/index.ts"));
+/**
+ * THE SHARED STRIPPER. The two-regex version that was here (block comments first,
+ * then line comments) is the one strip-comments.ts documents as reading the `/*`
+ * inside index.ts:106's LINE comment (`../_shared/*`) as a block-comment opener and
+ * deleting everything to the next `*​/` far below — so whichever pinned literal
+ * happens to sit in that span silently vanishes from what this file reads, and a
+ * guard reading a file with a hole passes against anything. Which literal falls in
+ * the hole changes every time a comment above it is edited, which is how this file
+ * went red on a change that never touched the line it pins.
+ */
+const BOARD = codeOf(read("supabase/functions/job-board/index.ts"));
 const MIG = read("supabase/migrations/20260828001000_the_headline_patcher_missed_the_row_the_board_now_serves.sql");
 
 describe("a truncated facet's length is never published as the employer count", () => {
@@ -41,7 +51,11 @@ describe("a truncated facet's length is never published as the employer count", 
   it("the head row's coverage carries tracked at write time", () => {
     // trackedTotal reads coverage.tracked; a head row without it silently
     // deletes the homepage's second true number.
-    expect(BOARD).toMatch(/coverage: \{ \.\.\.coverage, tracked: v\.total \}/);
+    // The write carries a THIRD field now (`at`, the stamp of the pass that counted
+    // the coverage — a percentage the page prints has to be dateable). So this pins
+    // what it is about, the tracked total riding the same write, and does not
+    // re-break the next time the block gains a field.
+    expect(BOARD).toMatch(/coverage: \{ \.\.\.coverage, tracked: v\.total[,}]/);
   });
 });
 

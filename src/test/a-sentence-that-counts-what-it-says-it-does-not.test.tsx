@@ -190,7 +190,7 @@ describe("1. the work-mode banner counts the postings that state no mode", () =>
     expect(block).toMatch(/probe\(\{ workMode: "remote,hybrid,onsite", remoteOnly: false \}\)/);
     expect(block).toMatch(/hidden = without - anyStated/);
     expect(block).toMatch(/if \(kind === "salary"\) \{\s*hidden = without - data\.total;/);
-    expect(block, "a capped stated half must refuse").toMatch(/stated\?\.countCapped\) \{ setDisclosure\(null\); return; \}/);
+    expect(block, "a capped stated half must refuse").toMatch(/stated\?\.countCapped\) \{ setDisclosure\(null\); setHiddenMeasured\(null\); return; \}/);
   });
 
   it("keys: discWorkMode2 in en and en-GB with both placeholders; discWorkMode retired from all nine; the page calls the new one", () => {
@@ -240,18 +240,37 @@ describe("2. every filterCoverage key the server can emit has a renderer clause"
 });
 
 describe("3. the legacy remote=1 binding gets the work-mode coverage sentence", () => {
-  const meta = { v: { coverage: { workMode: 0.281, salaryFloor: 0.201 } } };
+  /**
+   * `at` IS PART OF THE CACHED BLOCK NOW, and a fixture without it measures the
+   * cold path rather than this one.
+   *
+   * coverageDisclosure returns {} unless the block carries the stamp of the pass
+   * that counted it: every fraction in it is a snapshot (the same probes read
+   * 0.235/0.232/0.452/0.928 and, two hours later, 0.239/0.233/0.457/0.933), the
+   * page interpolates the stamp into the sentence, and a percentage whose basis
+   * date cannot be printed is a claim rather than a measurement. So this fixture
+   * carries one — otherwise the walk below asserts the silence rule, not the
+   * remote=1 binding it is about.
+   */
+  const meta = { v: { coverage: { at: "2026-09-26", workMode: 0.281, salaryFloor: 0.201 } } };
+  const AT = { filterCoverageAt: "2026-09-26" };
 
   it("walk: coverageDisclosure({remote:true}) emits workMode, exactly as {workMode:'remote'} does", () => {
     const cd = loadCoverageDisclosure();
-    expect(cd({ workMode: "remote" }, meta)).toEqual({ filterCoverage: { workMode: 0.281 } });
-    expect(cd({ remote: true }, meta), "remote=1 narrows to the stated-mode slice and must say so").toEqual({ filterCoverage: { workMode: 0.281 } });
-    expect(cd({ remote: true, workMode: "hybrid" }, meta)).toEqual({ filterCoverage: { workMode: 0.281 } });
+    expect(cd({ workMode: "remote" }, meta)).toEqual({ filterCoverage: { workMode: 0.281 }, ...AT });
+    expect(cd({ remote: true }, meta), "remote=1 narrows to the stated-mode slice and must say so").toEqual({ filterCoverage: { workMode: 0.281 }, ...AT });
+    expect(cd({ remote: true, workMode: "hybrid" }, meta)).toEqual({ filterCoverage: { workMode: 0.281 }, ...AT });
     // And nothing for nothing: an unfiltered request emits no coverage, and a
     // cold cache emits none either — the early return the intent test pins.
     expect(cd({}, meta)).toEqual({});
     expect(cd({ remote: true }, null)).toEqual({});
     expect(cd({ remote: false }, meta)).toEqual({});
+    // A BLOCK WITH NUMBERS AND NO STAMP IS ALSO SILENCE. Same figures, no `at`:
+    // the reply cannot date them, so it publishes none of them.
+    expect(
+      cd({ remote: true }, { v: { coverage: { workMode: 0.281 } } }),
+      "an undated coverage block still published its percentages",
+    ).toEqual({});
   });
 
   it("teeth: the pre-fix copy of the function, called the same way, is silent for remote=1", () => {

@@ -637,15 +637,30 @@ describe("every control in the picture sends what it names", () => {
 
   it("C23 the sort select sends sort:salary, and the default caption names the weave", async () => {
     mount(); await settled();
-    // Same undefined-valued-key shape as hasDescription: judge the value.
-    expect(lastBody().sort).toBeUndefined();
+    // THIS LINE USED TO ASSERT THE DEFECT. It read `toBeUndefined()`, and an
+    // absent sort is exactly what made the caption beside it false: the server's
+    // no-sort fallback orders by effective_posted = coalesce(posted_at,
+    // first_seen), so every posting the employer never dated took our crawl
+    // stamp and led the page. MEASURED live 2026-09-26 on this body: 59 of 60
+    // page-one rows undated, against 0 of 60 with sort:"newest". The browse now
+    // asks for the order it prints; the pairing is guarded state by state in
+    // src/test/newest-first-must-order-by-date.test.tsx.
+    expect(lastBody().sort).toBe("newest");
     expect(text()).toContain("spread across employers");
+    expect(text()).toContain("newest by the date each employer states");
     fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "salary" } });
     await waitFor(() => expect(lastBody().sort).toBe("salary"), SLOW);
-    expect(text()).toContain("ordered by stated salary floor");
+    // The caption moved on 2026-09-26 and this line moved with it. It said
+    // "ordered by stated salary floor", and the ordering is salary_rank_usd —
+    // the posting's figure times an FX factor frozen since 2026-07-16 — so a
+    // 720,000 AUD row legitimately sits between two USD rows near $476k and the
+    // page read out of order. The tail clause is still true on THIS browse path
+    // and false on a salary-sorted text search; both halves are guarded in
+    // src/test/the-pay-controls-say-what-they-compare.test.tsx.
+    expect(text()).toContain("ordered by stated pay in approximate US dollars");
     expect(text()).not.toContain("spread across employers");
     fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "newest" } });
-    await waitFor(() => expect(lastBody().sort).toBeUndefined(), SLOW);
+    await waitFor(() => expect(lastBody().sort).toBe("newest"), SLOW);
   });
 
   // ── Jump back in ────────────────────────────────────────────────────────
