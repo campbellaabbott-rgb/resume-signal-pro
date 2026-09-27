@@ -530,8 +530,14 @@ const servableJobs = (r: Record<string, unknown>): Array<Record<string, unknown>
  *
  * ABSENT, NOT NULL, when the posting does not state one — the compact-card
  * rule the disclosure flags already follow. Absence is stated in the
- * outputSchema so it cannot be read as zero: ~87% of the board states no pay
- * and ~71% no years, and a card full of nulls would be most of the payload.
+ * outputSchema so it cannot be read as zero: ~76% of the board carries no
+ * annualised figure and ~71% no years, and a card full of nulls would be most of
+ * the payload. RE-MEASURED 2026-09-27 (filterCoverage read live at 03:29:32Z:
+ * hasStatedPay 0.237, salaryFloor 0.237, payBasis 0.131): these fields are the
+ * PARSED ones, so their absence rate is the annualised column's — 100 - 23.7.
+ * The old ~87% was neither column's. A posting can still print a wage this card
+ * omits: the verbatim pay text is carried as `salary`, on ~28% of the board, and
+ * that is the wider set has_stated_pay selects.
  */
 const CARD_STRUCTURED_FIELDS = [
   "salaryMinAnnual", "salaryMaxAnnual", "salaryPeriod", "salaryCurrency",
@@ -574,8 +580,13 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       "droppedTerms", "locationSplit", "coverage", "fuzzyExtra", "semanticExtra",
       "locationExpandedFrom", "locationSearched", "maxAgeClampedTo", "searchRoute",
       // salaryStatedOnly is ROW-SELECTING, not cosmetic: a pay-sorted search
-      // drops the ~87% of the board with no stated pay. An agent that isn't
-      // told that reads a filtered page as the whole market — the exact
+      // drops the ~76% of the board carrying no annualised figure in approximate
+      // dollars (100 - 23.7, live 2026-09-27T03:29:32Z — the old ~87% here
+      // described no column the board holds). Note which set: the pay ORDER
+      // needs a comparable amount, which is a NARROWER requirement than
+      // hasStatedPay's since 2026-09-27, so a page can be excluded from the sort
+      // and still be a posting whose employer published a wage. An agent that
+      // isn't told that reads a filtered page as the whole market — the exact
       // disclosure the site shows and the MCP layer must never swallow.
       "salaryStatedOnly",
       // Row-selecting for the same reason: the agency opt-out hides disclosed
@@ -636,7 +647,17 @@ const SEARCH_PROPERTIES = {
       "WIDENS an active salaryMin/salaryMax band to also admit postings that state no pay at all. " +
       "Inert with no band set (unpriced rows are already included). The response says salaryStatedOnly when a band is narrowing without it.",
   },
-  hasStatedPay: { type: "boolean", description: "Only postings that state a salary (excludes the ~87% that don't)." },
+  // The share was wrong twice over: it named the pay FLOOR's population (~13%
+  // at the time) for a filter bound to a different column, and that column then
+  // moved. Measured on one scan of the servable board, 2026-09-27T02:07:00Z:
+  // 207,108 of 733,190 rows carry a pay figure the employer published, 173,826
+  // carry one a floor can compare. Both are named, because an agent choosing
+  // between this filter and salaryFloor needs to know they are not the same set.
+  hasStatedPay: {
+    type: "boolean",
+    description:
+      "Only postings whose pay field carries a figure the employer published — hourly and per-shift rates included, read from the `salary` field. About 28% of the board (2026-09-27). Narrower than it sounds only for RANKING: salaryFloor compares an annualised figure in approximate US dollars, which about 24% carry, so some rows this returns cannot be filtered by pay amount.",
+  },
   payBasis: { type: "string", enum: ["hourly", "salaried"], description: "Restrict to hourly or salaried pay." },
   maxYears: { type: "number", description: "Only roles asking for at most N years of experience." },
   vendor: {
@@ -704,7 +725,16 @@ const DISCLOSURE_SCHEMA = {
   excludedTerms: { type: "array", items: { type: "string" } },
   intentFilters: { type: "array", items: { type: "string" }, description: "Words read out of the query as filters." },
   didYouMean: { type: "string" },
-  salaryStatedOnly: { type: "boolean", description: "Row-selecting: this page excludes the ~87% of postings with no stated pay." },
+  // AN AGENT READS THIS ONE, so it names the set precisely and carries its date.
+  // The pay order compares an annualised figure converted to approximate US
+  // dollars; ~24% of the board carries one (2026-09-27). "Stated pay" means
+  // something WIDER here since 2026-09-27 — see hasStatedPay's own description —
+  // so this excludes rows that do state a wage.
+  salaryStatedOnly: {
+    type: "boolean",
+    description:
+      "Row-selecting: this page excludes the ~76% of postings with no annualised figure in approximate US dollars (2026-09-27), including postings that publish an hourly rate.",
+  },
   agenciesExcluded: { type: "boolean", description: "Row-selecting: disclosed agency inventory is hidden from this page." },
 };
 

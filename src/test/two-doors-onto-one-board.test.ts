@@ -26,6 +26,10 @@ import { resolve } from "node:path";
 const ROOT = resolve(__dirname, "../..");
 const MCP = readFileSync(resolve(ROOT, "supabase/functions/agent-mcp/index.ts"), "utf8");
 const API = readFileSync(resolve(ROOT, "supabase/functions/public-api/index.ts"), "utf8");
+/** The third door, and the one that MOVES FIRST. This file used to read only
+ *  the two surfaces it is named for, which meant it could never fail in the
+ *  direction the drift actually travels: the BOARD changes and /v1 lags. */
+const BOARD = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
 
 /** The board keys MCP's searchBody reads off its args, i.e. its real filter set. */
 function mcpFilters(): string[] {
@@ -107,7 +111,24 @@ describe("two doors onto one board", () => {
   it("mirrors the board's own column semantics rather than inventing new ones", () => {
     // Each of these is copied from job-board's buildQuery. If the board changes
     // how it reads one, /v1 must change with it or the two disagree.
-    expect(API).toMatch(/qb\.not\("salary_min_annual", "is", null\)/);
+    //
+    // has_stated_pay IS DERIVED FROM THE BOARD, NOT PINNED HERE, and that is the
+    // correction this case needed. On 2026-09-27 the board moved the predicate
+    // off the annualised column onto the employer's verbatim pay field — a
+    // posting printing "£12.71 to £14.00" was being filtered out as stating
+    // nothing — and /v1 moved in the same change. But a pin on the /v1 side ONLY
+    // cannot fail in the direction this drift travels: reverting the BOARD and
+    // leaving /v1 alone left both this file and the /v1 contract guard green
+    // while the two doors answered one documented filter two different ways.
+    // So the column is read out of buildQuery and /v1 is required to match
+    // whatever it says. Any of the three spellings changing alone fails here.
+    const boardCol = /applied\.hasStatedPay\) q = q\.not\("(\w+)", "is", null\)/.exec(BOARD);
+    expect(boardCol, "no hasStatedPay predicate found in the board's buildQuery — this assertion would be vacuous").not.toBeNull();
+    const v1Col = /qb\.not\("(\w+)", "is", null\)[\s\S]{0,40}salary_period/.exec(API)
+      ?? /statedPay === true\) qb = qb\.not\("(\w+)", "is", null\)/.exec(API);
+    expect(v1Col, "no has_stated_pay predicate found in /v1's listJobs").not.toBeNull();
+    expect(v1Col![1], `/v1 binds has_stated_pay to ${v1Col![1]} while the board binds ${boardCol![1]} — one documented filter, two answers`)
+      .toBe(boardCol![1]);
     expect(API).toMatch(/qb\.eq\("salary_period", "hour"\)/);
     expect(API).toMatch(/qb\.in\("salary_period", \["year", "month"\]\)/);
     expect(API).toMatch(/qb\.lte\("min_years", maxYears\)/);

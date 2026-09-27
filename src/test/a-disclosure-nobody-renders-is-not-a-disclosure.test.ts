@@ -128,12 +128,16 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     // that unstated is not the same as absent.
     expect(SRC).toMatch(/filterCoverage/);
     expect(SRC).toMatch(/Math\.round\(\s*fc\.salaryFloor \* 100\s*\)/);
-    expect(SRC).toMatch(/jobsPage\.filterCoverage/);
+    // THE DATED KEY, exactly. `jobsPage.filterCoverage` was retired when the
+    // sentence gained its basis date (a percentage with no as-of is a claim, not a
+    // measurement), and it is a SUBSTRING of the replacement — so the loose pin
+    // below would have survived the key's deletion from all nine locales.
+    expect(SRC).toMatch(/jobsPage\.filterCoverageDated/);
   });
 
   it("every new disclosure string exists in all nine locales", () => {
     const keys = [
-      "droppedTerms", "filterCoverage", "coveragePay", "coverageWorkMode", "coverageExperience",
+      "droppedTerms", "filterCoverageDated", "coveragePay", "coverageWorkMode", "coverageExperience",
       "intentFilters", "salaryStatedOnly", "locationExpanded", "salaryFromQuery",
       "maxAgeClamped", "postedAfterStatedDate", "companyMatched", "exactWordMatch",
     ];
@@ -150,7 +154,7 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     // A copy-paste of the English default into de.json renders English to a
     // German reader while passing every parity check. Compare against en.
     const en = JSON.parse(readFileSync(resolve(LOCALE_DIR, "en.json"), "utf8")).jobsPage;
-    const keys = ["filterCoverage", "intentFilters", "salaryStatedOnly", "postedAfterStatedDate"];
+    const keys = ["filterCoverageDated", "intentFilters", "salaryStatedOnly", "postedAfterStatedDate"];
     for (const f of ["de.json", "es.json", "fr.json", "nl.json", "pt.json", "hi.json", "tl.json"]) {
       const jp = JSON.parse(readFileSync(resolve(LOCALE_DIR, f), "utf8")).jobsPage;
       const untranslated = keys.filter((k) => jp[k] === en[k]);
@@ -163,7 +167,7 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     const ph = (s: string) => [...s.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort().join(",");
     const en = JSON.parse(readFileSync(resolve(LOCALE_DIR, "en.json"), "utf8")).jobsPage;
     const keys = [
-      "droppedTerms", "filterCoverage", "coveragePay", "coverageWorkMode", "coverageExperience",
+      "droppedTerms", "filterCoverageDated", "coveragePay", "coverageWorkMode", "coverageExperience",
       "intentFilters", "locationExpanded", "salaryFromQuery", "maxAgeClamped", "companyMatched", "exactWordMatch",
     ];
     for (const f of readdirSync(LOCALE_DIR).filter((x) => x.endsWith(".json"))) {
@@ -185,7 +189,7 @@ describe("a disclosure nobody renders is not a disclosure", () => {
     const split = JOBS.indexOf(") : jobs.length === 0 ? (");
     expect(split, "the results/empty split moved — re-point this guard").toBeGreaterThan(0);
     for (const key of [
-      "jobsPage.filterCoverage", "jobsPage.intentFilters", "jobsPage.salaryStatedOnly",
+      "jobsPage.filterCoverageDated", "jobsPage.intentFilters", "jobsPage.salaryStatedOnly",
       "jobsPage.droppedTerms", "jobsPage.ignoredFilters", "jobsPage.locationExpanded",
       "jobsPage.salaryFromQuery", "jobsPage.maxAgeClamped", "jobsPage.postedAfterStatedDate",
       "jobsPage.companyMatched", "jobsPage.exactWordMatch",

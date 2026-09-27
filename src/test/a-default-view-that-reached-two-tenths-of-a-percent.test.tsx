@@ -709,7 +709,14 @@ describe("5. every priced thing is priced by the query its own link runs", () =>
     const chipIds = new Set(CONSTRAINT_CHIPS.map((c) => c.id));
     const inFamily = new Set<string>();
     for (const f of COVERAGE_FAMILIES) {
-      expect(["work_mode_n", "stated_pay_n", "experience_n", "employment_type_n"]).toContain(f.col);
+      // pay_text_n replaced stated_pay_n for the pay family on 2026-09-27: the
+      // states-pay FILTER moved onto the employer's verbatim pay field, and a
+      // denominator must count the column its own chip tests. Measured on the
+      // field grid's board block at 2026-09-27T02:07:00Z, the two differ by
+      // 33,240 postings of 733,190, so this is not a rounding question. Both
+      // spellings stay accepted here because the grid still carries both columns
+      // and a future family may legitimately want the annualised one.
+      expect(["work_mode_n", "stated_pay_n", "pay_text_n", "experience_n", "employment_type_n"]).toContain(f.col);
       if (f.floorCol !== undefined) expect(f.floorCol).toBe("pay_floor_n");
       for (const id of f.chips) {
         expect(chipIds.has(id), `family ${f.id} names a chip that does not exist: ${id}`).toBe(true);

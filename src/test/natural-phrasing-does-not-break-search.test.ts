@@ -115,7 +115,11 @@ describe("natural job-search phrasing survives", () => {
     // four list returns rather than the recency one alone — searchers were
     // never told what had been dropped.
     expect(FN).toMatch(/out\.droppedTerms = dropped/);
-    expect((FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length).toBe(8);
+    // NINE since 2026-09-26: the newest-sorted text search got its own exit
+    // (searchRoute NEWEST, ordered by posted_at in SQL over the whole title-match
+    // set). The count rose because that exit carries this spread like the other
+    // eight — a path that had gone mute would have LOWERED it.
+    expect((FN.match(/\.\.\.searchDisclosures\(body, applied, maxAgeClamped\)/g) ?? []).length).toBe(9);
     expect(UI).toMatch(/droppedTerms\?: string\[\];/);
     expect(UI).toMatch(/jobsPage\.droppedTerms/);
   });

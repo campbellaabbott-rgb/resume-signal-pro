@@ -1,0 +1,86 @@
+-- A RATE TABLE WITH NO DATE CANNOT BE CALLED STALE
+--
+-- salary_rank_usd is the column the pay FLOOR, the pay CEILING and the pay SORT
+-- all compare. It is GENERATED ALWAYS ... STORED from seventeen FX factors that
+-- are hardcoded, twice, in two byte-identical migrations of 2026-07-16:
+-- 20260716160824_f578f66d-... created it, and 20260716180000_salary_rank_usd.sql
+-- re-states the same CASE under ADD COLUMN IF NOT EXISTS, so it is a no-op
+-- duplicate that carries the docblock. Neither file names a DATE. A stored
+-- generated column changes only when a migration changes it, so those factors
+-- are frozen, and nothing in the product, the database or the heartbeat can
+-- tell that the market has moved underneath them.
+--
+-- THIS MIGRATION ADDS NO COLUMN AND REWRITES NO ROW. It writes the vintage and
+-- the measured drift into the catalog, beside the column, where the next person
+-- to read the definition finds them. Moving the rates is a different and much
+-- more expensive change (below), and the user-visible half of the honest answer
+-- shipped with this: every pay control on /jobs now says that it converts, and
+-- says since when (SALARY_FX_PINNED_SINCE in src/pages/Jobs.tsx, pinned against
+-- these migrations by src/test/the-pinned-fx-table-cannot-drift-in-silence
+-- .test.ts because SQL cannot import the constant).
+--
+-- WHY THE ORIGINAL DEFENCE DOES NOT COVER THE FILTERS. 20260716180000 argues the
+-- approximation is harmless: "ordering needs magnitude, not precision; a stale
+-- rate reorders neighbors, it never changes a shown number". That is true of the
+-- SORT and false of the FLOOR and the CEILING, which use the same column to
+-- decide MEMBERSHIP. A stale rate there does not reorder anything -- it silently
+-- changes which postings a searcher is allowed to see, in both directions, and
+-- the wrongly-excluded side is invisible to them by construction.
+--
+-- MEASURED DRIFT, 2026-09-26, against ECB reference rates dated 2026-09-25
+-- (api.frankfurter.dev, USD base, inverted to USD-per-unit). All sixteen
+-- non-USD factors are off; the directions differ, so no single board-wide
+-- correction exists. pinned -> reference (signed error of the PINNED value):
+--   MXN 0.055   -> 0.056500    -2.7%     PHP 0.017   -> 0.016006    +6.2%
+--   CAD 0.73    -> 0.707064    +3.2%     BRL 0.18    -> 0.192972    -6.7%
+--   JPY 0.0066  -> 0.0063456   +4.0%     CHF 1.12    -> 1.207307    -7.2%
+--   PLN 0.25    -> 0.260831    -4.2%     NZD 0.61    -> 0.567086    +7.6%
+--   GBP 1.27    -> 1.325241    -4.2%     NOK 0.094   -> 0.105193   -10.6%
+--   DKK 0.145   -> 0.152539    -4.9%     INR 0.012   -> 0.010436   +15.0%
+--   EUR 1.08    -> 1.140303    -5.3%
+--   SGD 0.74    -> 0.783024    -5.5%
+--   SEK 0.095   -> 0.101001    -5.9%
+--   AUD 0.66    -> 0.703037    -6.1%
+--
+-- WHAT THAT COSTS A SEARCHER, measured the same day on the live board with the
+-- anon key (country-scoped so no total is capped):
+--   * GB, $60k floor: 1,207 rows returned. GBP is pinned 4.2% LOW, so rows are
+--     wrongly EXCLUDED -- the rate-corrected floor (60000 x 1.27/1.325241 =
+--     57,500) returns 1,276, i.e. 69 GB postings clear $60k at the 2026-09-25
+--     rate and are hidden. Reading 60 of those 69 gives GBP 53 / USD 6 / EUR 1,
+--     so ~61 of the 69 are FX-caused: 5.1% of the rows the searcher is shown,
+--     1.2% of the 4,998 GB postings that state pay.
+--   * CA, $60k floor: 2,624 rows returned. CAD is pinned 3.2% HIGH, so rows are
+--     wrongly INCLUDED -- the corrected floor (61,947) returns 2,518, i.e. 106
+--     shown postings are under US$60k at that rate. A full census of that band
+--     (106 of 106 read) is CAD 85 / USD 21, so 85 rows: 3.2% of the rows shown.
+--     One named example: oracle:iaejup~ocs~CX_1:4417, "$83,195 to $93,603" CAD
+--     -- 83,195 x 0.73 = 60,732 clears the floor; at 0.70706 it is US$58,826.
+--   * The big drifts have no inventory: INR is pinned 15.0% high and India has
+--     57 stated-pay postings in total, 10 above a $60k floor.
+-- No DISPLAYED figure is wrong: salary text is stored verbatim and rendered
+-- verbatim, in the posting's own currency.
+--
+-- A SEVENTEENTH CURRENCY IS DETECTED AND HAS NO ARM. _shared/salary-extract.ts
+-- resolves HKD three ways (P_ISO, the HK$ sign, and BARE_DOLLAR_BY_COUNTRY for
+-- country HK) and the CASE has no HKD branch, so every HKD posting falls to
+-- ELSE NULL: it is dropped by the floor, by the ceiling and by the salary-sorted
+-- text search, which excludes salary_rank_usd IS NULL outright. That arm can
+-- only be added by the rewrite below, so it is recorded here rather than fixed.
+-- Measured 2026-09-26: {country:"HK"} returns 1,007 postings, of which 2 pass
+-- hasStatedPay (icims:careers.chenega.com:42165, "$15.99/Hour", salary_min_annual
+-- 33,259, currency HKD) and ZERO pass salaryFloor=1 — the lowest floor an integer
+-- can express, so the drop is the NULL rank and not the magnitude.
+--
+-- WHAT THE REWRITE WOULD COST, for whoever schedules it. Changing a factor means
+-- DROP COLUMN + ADD COLUMN over ~750k rows plus rebuilding
+-- job_board_postings_salary_rank_idx, on a disk with an auto-scale trap -- so it
+-- is measured on a copy first, and it lands with an as-of date in its header.
+-- The durable fix is to stop storing a generated column at all: put the rates in
+-- a small table a sweep can refresh into an ordinary indexed numeric column, so
+-- moving a rate is a data write and not a migration. Whatever lands, the copy on
+-- /jobs and SALARY_FX_PINNED_SINCE move in the same change -- the guard test
+-- fails if a newer migration re-issues these factors while that date stays put.
+
+COMMENT ON COLUMN public.job_board_postings.salary_rank_usd IS
+  'Approximate USD magnitude for pay ordering AND for pay-band membership (the floor and the ceiling compare it). GENERATED ALWAYS ... STORED from 17 FX factors pinned 2026-07-16 in migrations 20260716160824 and 20260716180000 (byte-identical; the second is a no-op ADD COLUMN IF NOT EXISTS). The factors carry no as-of date and a stored generated column only moves on a migration: measured 2026-09-26 against ECB reference rates of 2026-09-25, all 16 non-USD factors are off by 2.7% (MXN) to 15.0% (INR), which on the live board hides ~61 GB postings that clear a $60k floor and admits ~85 CA postings that do not. HKD is detected by the parser and has no arm here, so HKD rows rank NULL and are dropped by every pay filter. Displayed salaries are the posting''s own verbatim text and are never converted. See migration 20260926191137 for the measurements and the cost of refreshing them.';

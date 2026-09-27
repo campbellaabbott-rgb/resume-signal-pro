@@ -2169,7 +2169,7 @@ describe("filters send and show one honest definition", () => {
   it("the hidden-openings disclosure refuses a capped denominator", () => {
     // Subtracting a filtered total from a CAPPED one understates without bound:
     // rendered 9,863 against a true 19,361.
-    expect(jobs).toMatch(/if \(r\?\.countCapped\) \{ setDisclosure\(null\); return; \}/);
+    expect(jobs).toMatch(/if \(r\?\.countCapped\) \{ setDisclosure\(null\); setHiddenMeasured\(null\); return; \}/);
   });
 
   it("the country control does not vanish when its facet RPC fails", () => {

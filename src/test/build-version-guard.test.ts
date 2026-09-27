@@ -1193,7 +1193,30 @@ const PINNED = {
   //   fills a placeholder only, subdivision refused for a one-of-N site). Two
   //   mis-parses fixed alongside it: a country read out of an organisation name
   //   and a region read out of the leftmost of several states.
-  buildVersion: "2026-09-09.73",
+  //   .76: review corrections to .75 — the employer route now date-sorts and
+  //   publishes sortScope matchSet/company, newestTextSort's EMPLOYER and SYMBOL
+  //   stand-downs read a classification computed from the query rather than from
+  //   a routeDecision that is BROWSE under any filter, the dated keyset walk
+  //   crosses the seam into the undated tail instead of reporting the end, the
+  //   grouping top-up anchors in the column the order walks, the two-bucket page
+  //   discloses its grouping, and filterCoverage carries the stamp of the pass
+  //   that counted it (no stamp, no percentage).
+  //   .77: index.ts + filters.ts; sources.ts UNCHANGED, so no board waits on the
+  //   bootstrap lane and the two catalog pins above are untouched. "States pay"
+  //   stopped calling a printed wage silence — the predicate moved from the
+  //   annualised figure to the employer's own pay field in the edge builder and,
+  //   in the same change, inside the three SQL functions that carry it
+  //   (migration 20260927034117), because a count bound to one column under a
+  //   page bound to the other is the 2026-07-25 work-mode defect. 33,240
+  //   postings board-wide (207,108 with pay text against 173,868 with an annual,
+  //   one scan, 2026-09-27T02:07:00Z), and the coverage sentence now reads the
+  //   same column the filter tests. The filter-integrity sensor moved with it or
+  //   it would have flagged all 33,240 as violations.
+  //   DEPLOY ORDER: this bundle first — with public-api and agent-mcp in ONE
+  //   publish — then migration 20260927034117. That is the reverse of the usual
+  //   order here and cappedCount's stand-down is why it is safe; verify-deploy
+  //   5y says which check reads which half and what a failure means.
+  buildVersion: "2026-09-09.77",
 };
 
 /**

@@ -595,9 +595,22 @@ let mcpToken = null;
   // "$120k-$140k DOE" to sort its own results.
   const r = await mcp("tools/call", { name: "search_jobs", arguments: { query: "nurse", hasStatedPay: true, limit: 10 } });
   const jobs = toolJson(r.body)?.jobs ?? [];
-  const priced = jobs.filter((x) => typeof x.salaryMinAnnual === "number");
-  ok(jobs.length > 0 && priced.length === jobs.length,
-    "hasStatedPay rows carry a numeric salaryMinAnnual", `${priced.length}/${jobs.length}`);
+  // THE FILTER'S OWN PROMISE, AGAINST THE COLUMN IT BINDS SINCE 2026-09-27.
+  // This asserted every returned row carried a numeric annualised figure, which
+  // was the old predicate's promise — and was the reason a posting printing
+  // "£14.80 per hour" was filtered out as stating nothing. The filter now binds
+  // the employer's verbatim pay field, so the promise is that every row carries
+  // THAT, and an hourly row with no annual is a PASS rather than a violation.
+  const withText = jobs.filter((x) => typeof x.salary === "string" && x.salary.trim() !== "");
+  ok(jobs.length > 0 && withText.length === jobs.length,
+    "hasStatedPay rows carry the employer's own pay text", `${withText.length}/${jobs.length}`);
+  // AND THE NESTING THE WIDENING RESTS ON, which is the half of the old
+  // assertion that is still a real invariant: the annualised figure is parsed
+  // OUT of that text, so a row carrying one must carry the text too. A row with
+  // an annual and no text would mean a figure was written with nothing behind it
+  // and the widened predicate would be dropping it.
+  ok(jobs.every((x) => typeof x.salaryMinAnnual !== "number" || (typeof x.salary === "string" && x.salary.trim() !== "")),
+    "every annualised figure still has the employer's text behind it");
   ok(jobs.every((x) => x.salaryMinAnnual === undefined || typeof x.salaryMinAnnual === "number"),
     "a card never states pay it does not have — the field is ABSENT, never 0");
 }

@@ -120,8 +120,19 @@ const FACET: Record<string, number> = {
 };
 const REFRESHED_AT = "2026-09-10T14:56:24.605Z";
 const GRID_AT = "2026-09-10T15:07:00Z";
-const FINANCE_ROW = { n: 33_910, work_mode_n: 10_350, stated_pay_n: 8_032, pay_floor_n: 8_031, experience_n: 19_745, employment_type_n: 7_636 };
-const DESIGN_ROW = { n: 4_176, work_mode_n: 1_592, stated_pay_n: 1_033, pay_floor_n: 1_033, experience_n: 2_888, employment_type_n: 1_265 };
+// pay_text_n IS DERIVED, NOT MEASURED, AND SAYS SO. The pay family's
+// denominator moved from stated_pay_n to pay_text_n on 2026-09-27, because the
+// states-pay FILTER moved onto the employer's verbatim pay field; the grid has
+// carried the column since 20260909110000 but this 2026-09-10 fixture predates
+// the change, and inventing a measurement for a date nobody measured it on is
+// what this file exists to prevent. So each value is CONSTRUCTED to round to the
+// same integer as the row's pay_floor_n, which keeps the "the floor's clause is
+// appended only when it rounds differently" branch below exercised on the same
+// numbers it always was. The appended branch is exercised separately, with an
+// explicit pay_floor_n. Board-wide the real ratio is 1.19 (207,108 pay text
+// against 173,868 annualised, one scan 2026-09-27T02:07:00Z).
+const FINANCE_ROW = { n: 33_910, work_mode_n: 10_350, stated_pay_n: 8_032, pay_text_n: 8_138, pay_floor_n: 8_031, experience_n: 19_745, employment_type_n: 7_636 };
+const DESIGN_ROW = { n: 4_176, work_mode_n: 1_592, stated_pay_n: 1_033, pay_text_n: 1_040, pay_floor_n: 1_033, experience_n: 2_888, employment_type_n: 1_265 };
 /** The board-wide block every probe carries. If any of these reaches the
  *  screen the page is printing the board's share beside a field's count. */
 const BOARD_COVERAGE = { workMode: 0.231, hasStatedPay: 0.219, salaryFloor: 0.219, experience: 0.434, employmentType: 0.273, country: 0.85 };
@@ -217,7 +228,8 @@ describe("1. the field percentage separates fields, and no chip carries one", ()
     mount();
     await openField("finance");
     await waitFor(() => expect(panelText()).toContain("31%"));
-    // work_mode 10,350/33,910 → 31; pay 8,032/33,910 → 24; experience → 58;
+    // work_mode 10,350/33,910 → 31; pay 8,138/33,910 → 24 (the pay FIELD, the
+    // column the chip's own filter binds since 2026-09-27); experience → 58;
     // employment type → 23. The board's 23/22/43/27 and 85 appear nowhere.
     for (const s of ["31%", "24%", "58%", "23%"]) expect(panelText()).toContain(s);
     expect(panelText()).toContain("Across all of Finance & Accounting");
@@ -230,8 +242,8 @@ describe("1. the field percentage separates fields, and no chip carries one", ()
     for (const a of chipAnchors()) {
       expect(a.textContent ?? "", `a chip face carries a percentage: ${a.textContent}`).toMatch(/^[^%]*$/);
     }
-    // …and the pay floor rounds to the same integer as stated pay here
-    // (8,031 against 8,032), so its clause is NOT appended.
+    // …and the pay floor rounds to the same integer as the pay-field share here
+    // (8,031 against 8,138), so its clause is NOT appended.
     expect(panelText()).not.toContain("currency we could price");
 
     await closeField("finance");
@@ -271,7 +283,12 @@ describe("1. the field percentage separates fields, and no chip carries one", ()
     expect(panelText()).toContain("$80,000+ chip compares against");
     const pay = (COVERAGE_FAMILIES ?? []).find((f) => f.id === "pay");
     expect(pay?.floorCol).toBe("pay_floor_n");
-    expect(pay?.col).toBe("stated_pay_n");
+    // RE-PINNED 2026-09-27 with the filter it describes: the chip patches
+    // hasStatedPay, which binds the verbatim pay field, so the denominator counts
+    // that column. The floor column is unchanged, because the $80,000+ chip really
+    // does bind the converted one — and the two now diverge for real, which is
+    // exactly when this appended clause earns its place.
+    expect(pay?.col).toBe("pay_text_n");
   });
 });
 
@@ -508,6 +525,9 @@ describe("9. every mirrored constant is pinned to the SQL it mirrors", () => {
     // salary_min_annual's — the two-columns-one-fact history in the page.
     expect(grid).toMatch(/salary_rank_usd IS NOT NULL\)::int AS pay_floor_n/);
     expect(grid).toMatch(/salary_min_annual IS NOT NULL\)::int AS stated_pay_n/);
+    // …and pay_text_n really is the verbatim pay field, which is the column the
+    // states-pay filter binds and therefore the pay family's denominator.
+    expect(grid).toMatch(/salary IS NOT NULL\)::int AS pay_text_n/);
     const serve = EXPLORE.match(/const SERVE_WINDOW_DAYS = (\d+);/);
     const win = grid.match(/'window_days',\s*(\d+)/);
     expect(serve?.[1]).toBeTruthy();

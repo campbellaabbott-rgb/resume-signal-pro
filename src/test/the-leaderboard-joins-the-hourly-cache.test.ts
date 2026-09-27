@@ -32,10 +32,27 @@
 // Every source assertion runs against comment-stripped SQL: the header quotes
 // the shape it introduces, and a guard satisfied by prose is the trap this
 // repo has fallen into seven times.
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+
+// PGLITE BOOTS A POSTGRES AND REPLAYS MIGRATIONS, SO ITS HOOK IS NOT A UNIT TEST.
+// vitest's default hookTimeout is 10s and none of the eleven pglite files ever
+// set one; the cost of a boot is not constant, it grows with the migration
+// lane each file replays, so the default was a deadline nobody was tracking
+// against a number that only rises. It came due on 2026-09-27: three
+// migrations landed in one day and two files began failing in beforeAll with
+// "Hook timed out in 10000ms" -- a red suite that said nothing about the code
+// under test. The budget below is the boot's, not the assertions': tests still
+// use the default testTimeout, so a hanging QUERY still fails fast.
+// The assertions here are SQL too, so they get a budget of their own: the
+// first pass raised only the hook, and a TEETH case that runs a query over
+// the real catalogue then failed at 5,849ms against the 5s default. The two
+// numbers differ on purpose -- a boot replays a whole migration lane, a
+// single query should not take half a minute -- so a genuinely hung query
+// still fails long before the boot budget would.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const NEW_FILE = "20260909228000_a_leaderboard_read_live_on_every_visit_joins_the_hourly_cache.sql";

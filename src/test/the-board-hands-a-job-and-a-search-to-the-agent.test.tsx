@@ -668,8 +668,18 @@ describe("3. the prerender links the hand-off and lists the attach menu from the
 
 describe("3. the changelog entry is one, dated, and count-free in every locale", () => {
   const ID = "aPassAndAHandOff";
-  it("is the newest entry", () => {
-    expect(changelog[0]).toEqual({ id: ID, date: "2026-09-16", tags: ["new"] });
+  // ONE ENTRY, DATED, AND NOT "THE NEWEST". This asserted changelog[0] until
+  // 2026-09-26, which pinned position as a proxy for the properties it is
+  // actually about: that the pass ships as a SINGLE entry (not one per
+  // control), that it keeps its date, and that no locale states a count that
+  // can go stale. Position is none of those, and the next entry to ship --
+  // seven of them, that day -- failed it while every property it guards still
+  // held. A guard that fails on correct behaviour teaches people to edit
+  // guards.
+  it("appears exactly once, with its date and tag", () => {
+    const rows = changelog.filter((e) => e.id === ID);
+    expect(rows, `${ID} must appear exactly once`).toHaveLength(1);
+    expect(rows[0]).toEqual({ id: ID, date: "2026-09-16", tags: ["new"] });
   });
   const dir = resolve(ROOT, "src/i18n/changelog");
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {

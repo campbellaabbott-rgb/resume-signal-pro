@@ -103,7 +103,7 @@ describe("the card carries what the board already parsed", () => {
 
   it("says in the schema that an absent pay field is unstated, never zero", () => {
     const schema = between(MCP, "const JOB_CARD_SCHEMA = {", "\nconst DISCLOSURE_SCHEMA");
-    expect(schema, "the ~87% with no stated pay must not read as free labour")
+    expect(schema, "the ~76% with no ANNUALISED figure (2026-09-27) must not read as free labour")
       .toMatch(/ABSENT when the posting states no pay — absence is not zero/);
     expect(schema).toMatch(/experienceBand: \{ type: "string", enum: \["entry", "mid", "senior", "expert"\]/);
     expect(schema, "the board keeps adding honest fields; a closed schema would reject the next one")
@@ -328,6 +328,13 @@ describe("the surface says it changed, and the live probe checks it", () => {
       .toMatch(/key_status refuses the paid features in ADVANCE/);
     expect(PROBE, "accepted is not applied — the board's cardinal rule, on this surface too")
       .toMatch(/experience is APPLIED and the band is returned/);
-    expect(PROBE).toMatch(/hasStatedPay rows carry a numeric salaryMinAnnual/);
+    // RE-PINNED, NOT DELETED (2026-09-27). The old assertion demanded a numeric
+    // annualised figure on every hasStatedPay row, which is the promise of the
+    // predicate that CAUSED this defect — a posting printing an hourly wage was
+    // excluded as stating nothing. The filter now binds the employer's verbatim
+    // pay text, so the probe checks that, plus the nesting the widening rests on.
+    expect(PROBE).toMatch(/hasStatedPay rows carry the employer's own pay text/);
+    expect(PROBE, "the invariant the widened predicate depends on must still be probed live")
+      .toMatch(/every annualised figure still has the employer's text behind it/);
   });
 });

@@ -132,10 +132,26 @@ describe("hasStatedPay — the honest half of what salaryFloor already does", ()
     expect(norm({ hasStatedPay: false }).applied.hasStatedPay).toBe(false);
   });
 
+  /* INVERTED 2026-09-27, NOT DELETED. This case required a row with no
+   * ANNUALISED figure to be flagged — which was the old predicate's promise, and
+   * was exactly why a posting printing "£12.71 to £14.00" was excluded as saying
+   * nothing about pay while the card showed the wage. The filter binds the
+   * employer's verbatim pay field now, so the row audit does too, and the case
+   * keeps its job: a page served under this filter must hold nothing the filter
+   * would have excluded.
+   *
+   * MEASURED, two complete country strata walked row by row: IE 312 rows with
+   * pay text against 282 with an annual (2026-09-27T02:01:53Z), NZ 161 against
+   * 143. Board-wide 207,108 against 173,868 of 733,190 servable rows on one scan
+   * at 02:07:00Z — 33,240 postings the old audit would now report as violations. */
   it("flags a row with no stated figure", () => {
     const a = norm({ hasStatedPay: true }).applied;
-    expect(filterViolations([{ salaryMinAnnual: 90_000 }], a)).toEqual([]);
-    expect(filterViolations([{ salaryMinAnnual: null }], a)[0]?.field).toBe("hasStatedPay");
+    expect(filterViolations([{ salary: "$90,000 - $110,000", salaryMinAnnual: 90_000 }], a)).toEqual([]);
+    // The rate the parser declined to annualise is STATED pay, and the board
+    // prints it. Flagging it is the retired behaviour.
+    expect(filterViolations([{ salary: "£12.71 to £14.00", salaryMinAnnual: null }], a)).toEqual([]);
+    // A posting whose employer wrote nothing in the pay field is still the defect.
+    expect(filterViolations([{ salary: null, salaryMinAnnual: null }], a)[0]?.field).toBe("hasStatedPay");
   });
 });
 
@@ -521,7 +537,11 @@ describe("buildQuery — the ONE binder actually binds all six", () => {
       // one line; both arms are asserted below so a half-written binding still
       // cannot pass.
       ["salaryCeiling -> salary_rank_usd", /applied\.salaryCeiling !== null\)[\s\S]{0,400}?lte\("salary_rank_usd", applied\.salaryCeiling\)/s],
-      ["hasStatedPay -> salary_min_annual IS NOT NULL", /applied\.hasStatedPay\).*not\("salary_min_annual", "is", null\)/s],
+      // RE-PINNED 2026-09-27: the control is named for the employer's act, so it
+      // binds the employer's pay field and not our annualisation of it. The old
+      // column is asserted ABSENT below, because a contract table that merely
+      // stops naming a retired predicate cannot fail when it comes back.
+      ["hasStatedPay -> salary IS NOT NULL", /applied\.hasStatedPay\).*not\("salary", "is", null\)/s],
       ["payBasis hourly -> salary_period = 'hour'", /applied\.payBasis === "hourly"\).*eq\("salary_period", "hour"\)/s],
       ["payBasis salaried -> salary_period IN (year, month)", /applied\.payBasis === "salaried"\).*in\("salary_period", \[\.\.\.SALARIED_PERIODS\]\)/s],
       ["maxYears -> min_years <= n", /applied\.maxYears !== null\).*lte\("min_years", applied\.maxYears\)/s],
@@ -541,6 +561,13 @@ describe("buildQuery — the ONE binder actually binds all six", () => {
       BUILD_QUERY,
       "the ceiling must share includeUnstatedPay's widening, or it re-arms the NULL discard",
     ).toMatch(/salary_rank_usd\.lte\.\$\{applied\.salaryCeiling\},salary_rank_usd\.is\.null/);
+    // AND THE RETIRED STATED-PAY COLUMN, ASSERTED ABSENT. A table that merely
+    // stops naming a predicate cannot fail when that predicate comes back, which
+    // is how the annualised binding would return with every case above green.
+    expect(
+      BUILD_QUERY,
+      "hasStatedPay is bound to the annualised column again — that predicate excluded 33,240 postings whose wage the card prints",
+    ).not.toMatch(/applied\.hasStatedPay\).*not\("salary_min_annual", "is", null\)/s);
   });
 
   it("reads the derived filters, never the raw body", () => {
@@ -578,7 +605,12 @@ describe("coverageDisclosure — a fraction, published in the unit the page rend
     // The numbers from the live measurement, not rounded-off approximations of
     // them: 59,505 / 112,524 / 162,032 / 226,631 / 559,805 over 559,805.
     expect(measured.payBasis).toBe(0.106);
-    expect(measured.hasStatedPay).toBe(0.201);
+    // RE-MEASURED with the predicate, not carried: the constant describes the
+    // verbatim pay field now (206,996 of 732,018 servable rows, 28.3%, hourly
+    // scan stamped 2026-09-27T01:07:00Z), where 0.201 was the annualised column
+    // on 2026-08-25. A constant that silently changes which column it describes
+    // is how a number stays plausible while going wrong.
+    expect(measured.hasStatedPay).toBe(0.283);
     expect(measured.maxYears).toBe(0.289);
     expect(measured.department).toBe(0.405);
     expect(measured.vendor).toBe(1);

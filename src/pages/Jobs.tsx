@@ -760,6 +760,32 @@ export function dayLabel(iso: string | null | undefined, lang: string): string {
     return iso.slice(0, 10);
   }
 }
+/**
+ * A calendar date, WITH ITS YEAR, in the reader's own language.
+ *
+ * SALARY_FX_PINNED_SINCE and the coverage block's stamp are ISO strings because
+ * a machine-readable single source is what the cross-runtime guards parse — but
+ * interpolating one straight into prose printed "…die seit 2026-07-16 unverändert
+ * sind" in German and "… {{since}} से अपरिवर्तित …" with a bare 2026-07-16 in
+ * Hindi: an en-US-shaped machine date inside otherwise fully localised copy, in
+ * all nine locales. The constant stays ISO; only what a reader sees is formatted.
+ *
+ * The YEAR is not optional here, unlike dayLabel's observation days: these dates
+ * are vintages ("unchanged since …"), and a month and day with no year cannot be
+ * read as one. UTC on both ends for the same reason dayLabel is — a date is a
+ * date, and shifting it through the browser's zone prints the day before for
+ * every reader west of it.
+ */
+export function vintageLabel(iso: string, lang: string): string {
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  try {
+    return d.toLocaleDateString(lang, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 /** A signed growth rate as whole percent for copy. */
 const growthPct = (g: Pick<GrowthRow, "rate">) => Math.round((g.rate ?? 0) * 100);
 // The horizon the curve is read at, everywhere. It is not a threshold on a
@@ -1012,6 +1038,38 @@ const MAX_YEARS_STEPS = [1, 2, 3, 5, 7, 10, 15, 20] as const;
 // roles they are overqualified for and will not be called about).
 const SALARY_FLOOR_STEPS = [40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000] as const;
 const SALARY_CEILING_STEPS = [60_000, 80_000, 100_000, 120_000, 150_000, 200_000, 250_000, 300_000] as const;
+/**
+ * THE DATE THE PAY BAND'S EXCHANGE RATES STOPPED MOVING.
+ *
+ * The floor, the ceiling and the pay sort all compare `salary_rank_usd`, a
+ * GENERATED ALWAYS ... STORED column whose seventeen FX factors are written into
+ * two byte-identical migrations of 2026-07-16 (20260716160824 and
+ * 20260716180000 — the second is `ADD COLUMN IF NOT EXISTS`, so it is a no-op
+ * duplicate that carries the docblock). A stored generated column only changes
+ * when a migration changes it, so those factors are frozen at that date and
+ * nothing in the product or the database can tell that they have moved.
+ *
+ * They have. Measured 2026-09-26 against ECB reference rates dated 2026-09-25
+ * (api.frankfurter.dev, USD base, inverted to USD-per-unit): all sixteen
+ * non-USD factors are off, by 2.7% (MXN) to 15.0% (INR) — GBP pinned 4.2% low,
+ * CAD 3.2% high, EUR 5.3% low, AUD 6.1% low, NOK 10.6% low, NZD 7.6% high.
+ * The migration's own defence ("a stale rate reorders neighbors, it never
+ * changes a shown number") holds for the SORT and fails for the floor and the
+ * ceiling, which decide MEMBERSHIP on the same column. Measured on the live
+ * board the same day: a GB $60k floor returns 1,207 rows and 69 more (~61 of
+ * them GBP or EUR, from a 60-of-69 read of the band) clear $60k at the
+ * 2026-09-25 rate and are hidden; a CA $60k floor returns 2,624 of which 106
+ * (85 CAD, a full census of the band) are under US$60k at that rate.
+ *
+ * Refreshing them is a DROP COLUMN + ADD COLUMN rewrite of ~750k rows plus an
+ * index rebuild, so this build discloses the vintage instead of moving it: every
+ * pay control that compares the column now says it converts, and says since
+ * when. THIS CONSTANT IS THE PAGE'S HALF OF A CROSS-RUNTIME MIRROR — the SQL
+ * cannot import it, so src/test/the-pinned-fx-table-cannot-drift-in-silence
+ * .test.ts parses the migrations and fails if a newer one re-issues the rates
+ * while this date stays put, which is exactly how the copy would go false.
+ */
+export const SALARY_FX_PINNED_SINCE = "2026-07-16";
 // Vendor: `source` on every posting, 100% populated — the one new filter that
 // hides nothing, which is why its coverage line reads 100% rather than being
 // omitted. ONE LIST, the same one the apply-agent tiers and the "Sources:" note
@@ -1240,6 +1298,126 @@ export function activeBoardFilterKeys(s: BoardFilterState): string[] {
   return Object.keys(boardFilterBody(s)).filter((k) => k !== "q" && k !== "includeUncategorised");
 }
 
+/**
+ * MAY A COVERAGE PERCENTAGE STILL PRINT ON THIS PAGE?
+ *
+ * The same defect as the country picker above, one sentence over, and this one
+ * was worse because the sentence exists to explain a THIN result. get_filter_
+ * coverage() takes no parameters either: it is one scan over every posting the
+ * board can serve, and coverageDisclosure() in the edge function uses the
+ * applied filters ONLY to pick which keys to emit — never to scope a value. So
+ * the fraction is the board's, always, and the page printed it in the results
+ * header of a narrowed page as "Employers state … on 23% of postings".
+ *
+ * MEASURED LIVE 2026-09-26 (anon key, countOnly probes, both halves uncapped):
+ *
+ *   filterCoverage.hasStatedPay came back 0.235 on every probe, including the
+ *   unfiltered board, while the same slice really states an annual figure on
+ *     country=SE ................  6 / 3,119 =  0.2%   (printed 24%, 123x)
+ *   CA + healthcare ............ 1,300 / 2,243 = 58.0%   (printed 24%)
+ *   filterCoverage.workMode came back 0.232 on every probe, while
+ *     vendor=pinpoint .......... 3,557 / 3,557 =  100%   (printed 23%, and
+ *                                that filter hides not one row of the page)
+ *
+ * Wrong in both directions, so a reader cannot even treat it as a floor.
+ *
+ * AND THE FIGURE DOES MOVE — WITH THE REFRESH PASS, NEVER WITH THE SCOPE. Two
+ * hours later the same probes returned 0.239 / 0.233 / 0.457 / 0.933, again
+ * identical across a one-filter body and a five-filter body. That is the whole
+ * shape of the defect in one observation: the number is a property of the board
+ * at a moment, and the page was attributing it to a slice.
+ *
+ * WHY THE FIX IS TO DROP THE FIGURE RATHER THAN SCOPE IT. Scoped shares were
+ * priced first, live: a scoped share needs a counted numerator AND a counted
+ * denominator per field, and one countOnly probe on this board took 438-1,242ms
+ * (ten probes above, median ~800ms). Nine coverage fields is up to eighteen
+ * counted queries — 12-16s of counting for one sentence — and four of the
+ * fields cannot be scoped at all, because "states a country", "states a
+ * department", "states a pay basis" and "states a year count" are not
+ * expressible through the list API's filters. On top of that, any slice over
+ * COUNT_CAP returns a capped total on both halves, and a share of two capped
+ * counts is not a measurement. So: ABSENT IS NOT ZERO, AND BOARD-WIDE IS NOT
+ * FILTERED. A clause keeps its percentage only while its own filter family is
+ * the only thing narrowing the board; otherwise the percentage goes and the
+ * sentence says why. The page's scoped, EXACT figures already exist for the two
+ * families that can be counted for free — the `disclosure` probes below — and
+ * they are counts, not shares, so they cannot round 0.2% into a comfortable 24%.
+ *
+ * DERIVED FROM THE REQUEST BODY THAT THE RESPONSE ANSWERED, never from a
+ * hand-written list of filters, and it FAILS CLOSED: a body key this map does
+ * not know is treated as a narrowing, so a twelfth filter costs the sentence
+ * its percentage (silence) rather than leaving a board-wide number under a
+ * narrowed page (a false claim). The families below are the filter keys that
+ * bind the SAME column as the coverage figure — the whole pay band is one
+ * family because dropping one of its controls still leaves the others hiding
+ * the postings the figure is about.
+ */
+export const COVERAGE_FAMILIES = {
+  pay: ["salaryFloor", "salaryCeiling", "payBasis", "hasStatedPay", "includeUnstatedPay"],
+  workMode: ["workMode", "remote"],
+  experience: ["experience"],
+  country: ["country"],
+  maxYears: ["maxYears"],
+  department: ["department"],
+  employmentType: ["employmentType"],
+  vendor: ["vendor"],
+} as const;
+export type CoverageFamily = keyof typeof COVERAGE_FAMILIES;
+export function coverageStillBoardWide(narrowing: readonly string[], family: CoverageFamily): boolean {
+  const own = COVERAGE_FAMILIES[family] as readonly string[];
+  return narrowing.every((k) => own.includes(k));
+}
+
+/**
+ * The keys of a list body that NARROW the board, as opposed to shaping the page.
+ *
+ * Read off the body the request actually carried, so a filter added later is
+ * counted the day it exists. Only paging and response-shape keys are removed;
+ * everything else — `q`, `location`, `hasDescription`, a `sort` that excludes
+ * unpriced rows — genuinely changes which postings the page is drawn from, and
+ * a coverage figure taken over the whole board does not describe any of them.
+ */
+export function narrowingBodyKeys(body: Record<string, unknown>): string[] {
+  const SHAPE = new Set(["action", "limit", "offset", "cursor", "includeFacets", "countOnly", "facetCounts"]);
+  return Object.keys(body).filter((k) => {
+    if (SHAPE.has(k) || body[k] === undefined) return false;
+    // AN ORDER IS NOT A NARROWING — EXCEPT THE ONE ORDER THAT MIGHT BE, AND THIS
+    // FAILS CLOSED ON IT.
+    //
+    // `sort` rides every list body (the default browse asks for newest explicitly
+    // so undated rows stop taking our crawl stamp), and reordering rows cannot
+    // change which postings a coverage figure describes. `sort: "salary"` is
+    // treated as a narrowing anyway, and the reason is that this function runs
+    // BEFORE the reply: it cannot know which salary route answered. On a
+    // salary-sorted TEXT search the server does drop every posting with no
+    // comparable figure and says so (`salaryStatedOnly`, set at exactly one exit),
+    // so that page is genuinely narrower than the board; on a salary-sorted BROWSE
+    // nothing is dropped — unpriced rows sort last, which is what this file's own
+    // order caption says two hundred lines down, and the audit's verifier measured
+    // offset 200,000 of that sort returning 10 of 10 rows with no annual figure.
+    // Since one of the two is narrower and the request cannot tell them apart, the
+    // key counts as a narrowing: the cost is silence on a browse where a
+    // board-wide percentage would in fact have been true, and the alternative is a
+    // board-wide percentage under a page that dropped 87% of the board. Judged by
+    // the VALUE and not the key, because treating the key itself as a narrowing
+    // would have silenced the sentence on every page the day the default browse
+    // started naming its order.
+    if (k === "sort") return body[k] === "salary";
+    return true;
+  });
+}
+
+/**
+ * ONE SHAPE FOR THE KEYSET COORDINATE, so the response type and the ref that
+ * carries it between requests cannot disagree about it.
+ *
+ * Exported because the round-trip is the property under test: a guard has to be
+ * able to assert that the `k` the server sent comes back in the next request
+ * body, which is the cross-runtime check project_claim_drift asks for and which
+ * two source regexes over the edge function cannot see.
+ */
+export type BoardCursor = { ep: string; id: string; k?: "pa" };
+
 interface BoardResponse {
   jobs: BoardJob[];
   // Issued by the server per list response; echoed back on click so relevance
@@ -1299,6 +1477,18 @@ interface BoardResponse {
    * usable 241,198 (43.1% — 318,607 of the non-null values are "unspecified"
    * and match nothing).
    *
+   * THE PAY-STATED LINE ABOVE IS A 2026-08-25 READING OF A COLUMN THIS FIELD NO
+   * LONGER DESCRIBES, and it is left dated rather than deleted because that is
+   * the only form a superseded measurement may survive in. It counted the
+   * ANNUALISED figure. On 2026-09-27 the states-pay filter moved onto the
+   * employer's verbatim pay field and the server's `hasStatedPay` here is that
+   * column's share: read live from this board at 2026-09-27T03:29:32Z the block
+   * is payBasis 0.131, hasStatedPay 0.237, salaryFloor 0.237 against a deployed
+   * bundle still binding the old column, and 0.283 is the pay field's share on a
+   * board-wide scan the same morning. So this field's pay figure is ~28% (2026-09-27),
+   * not the 20.1% above, which was measured 2026-08-25, once the matching bundle is serving — and salaryFloor's ~23.7% is the
+   * one that still describes the annualised-and-convertible column.
+   *
    * `vendor` IS here and IS rendered, at 100%: `source` is populated on every
    * row, and "all of it" is a real answer to "what can this filter see".
    * Omitting it would make the line's silence about vendor indistinguishable
@@ -1313,6 +1503,33 @@ interface BoardResponse {
      *  employers leave blank most often published no coverage at all. */
     employmentType?: number;
   };
+  /**
+   * WHEN THE FIGURES ABOVE WERE COUNTED, and they do not print without it.
+   *
+   * Every fraction in `filterCoverage` is a snapshot of the board at one moment —
+   * MEASURED 2026-09-26, the same five probes read 0.235/0.232/0.452/0.928 and,
+   * two hours later, 0.239/0.233/0.457/0.933 — and project_stat_provenance's rule
+   * is that a public stat names its date basis. The server stamps the coverage
+   * block with the pass that counted it and withholds the stamp on the one path
+   * that can still substitute a 2026-08-25 pinned constant, so an absent stamp
+   * means "this reply cannot date these numbers" and the renderer prints no
+   * percentage at all. An older deployed bundle therefore degrades to silence,
+   * never to an undated claim.
+   */
+  filterCoverageAt?: string;
+  /**
+   * HOW MANY ROWS ON THIS PAGE THE PAY FLOOR, CEILING AND ORDER CANNOT COMPARE.
+   *
+   * Counted by the server from the rows it served, so unlike every fraction in
+   * filterCoverage it is PAGE-scoped and stays true under any narrowing — which
+   * is why it is the one pay figure that may print beside a filtered count.
+   * `rows` is a floor, not a total: it counts postings printing a rate with no
+   * annualised figure behind it and cannot see one we annualised but could not
+   * convert to dollars (42 such rows board-wide, 2026-09-27T02:07:00Z). Absent
+   * when zero, and absent from an older deployed bundle, in which case the page
+   * prints nothing rather than guessing.
+   */
+  payTextWithoutAnnual?: { rows?: number; of?: number };
   /** Phrases lifted OUT of the query and applied as filters instead — typing
    *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
    *  good; doing it silently is not. */
@@ -1338,6 +1555,54 @@ interface BoardResponse {
   companyMatched?: string;
   /** Exact whole-word tier answered, rather than the ranked scorer. */
   exactWordMatch?: string;
+  /**
+   * WHICH SET THE REQUESTED ORDER WAS APPLIED TO — the field the order claim on
+   * this page is printed FROM, never the sort the page asked for.
+   *
+   * "matchSet"        the database ordered every row the matcher selected, so
+   *                   the order is true of the whole set and a plain offset
+   *                   pages it. `sortMatcher` names that set.
+   * "relevanceWindow" the order was applied to search_jobs' top `sortScopeRows`
+   *                   by relevance and to nothing else. Measured on production
+   *                   2026-09-26 before this field existed: q="nurse" with
+   *                   sort=newest served 3 cards, hasMore false, under total
+   *                   10,000+, while 39 nurse postings with a NEWER stated date
+   *                   sat outside the window — and the page said "Sorted by
+   *                   newest first" over them.
+   *
+   * ABSENT means the server made no statement, and an absent field is not a
+   * licence to claim the strong one: every branch below treats missing as
+   * "window", so an older deployed bundle (this project's ~4.5MB deploy that
+   * silently serves the previous version) degrades to the weaker true sentence
+   * rather than to the false one.
+   */
+  sortScope?: "matchSet" | "relevanceWindow";
+  /**
+   * How many rows the order could see, when it only saw a window.
+   *
+   * OPTIONAL-ABSENT, AND NEVER DEFAULTED. This was read as
+   * `data?.sortScopeRows ?? 200` in two places, so every exit that ordered
+   * something and said nothing about it printed "the closest 200 matches" — a
+   * bound no response had sent, over a route whose window is 400. A number the
+   * server did not measure may not appear on the page (house rule: never state a
+   * figure the data cannot support), so the sentence has a bound-free form and
+   * the numeric one is reachable only through a `typeof … === "number"` test.
+   */
+  sortScopeRows?: number;
+  /** The set a "matchSet" order covers, because the sentence has to name it: a
+   *  title match set is not every posting the relevance page would show (the
+   *  description tier is outside it), and an employer set is not a title match at
+   *  all — the routed company exit matches on company_token. */
+  sortMatcher?: "title" | "company";
+  /**
+   * The page is TWO ORDERED GROUPS, not one ordering.
+   *
+   * Set by the includeUncategorised browse, which serves the chosen field's rows
+   * and then the fieldless ones, each half ordered by the requested key. The date
+   * claim above the list is true inside a group and false across the seam, so the
+   * page discloses the grouping rather than quietly making the stronger claim.
+   */
+  bucketedOrder?: boolean;
   /** The query's tail was read as a place and the search re-run as q+location
    *  ("nurse london" -> nurse IN London). The board changed what was asked, so
    *  it says so — and offers to make the split real. */
@@ -1348,7 +1613,23 @@ interface BoardResponse {
   // clusters are folded, displayed rows no longer equal rows read, so paging by
   // jobs.length would re-show a collapsed result's siblings as new hits.
   nextOffset?: number;
-  nextCursor?: { ep: string; id: string } | null;
+  /**
+   * The keyset successor, WITH THE KIND OF COORDINATE IT IS.
+   *
+   * `k` is declared because the server now REFUSES a cursor whose kind does not
+   * match the order being paged (`wantK`, and `if (k !== wantK) return null`):
+   * the dated walk's coordinate is a posted_at value (k "pa") and the discovery
+   * walk's is an effective_posted value (k absent). It survived here only because
+   * JavaScript copies the whole object — the type said `{ep, id}` and so did the
+   * ref — and any future normalisation of either would have dropped `k` silently,
+   * at which point every cursor on the ordinary browse is refused and the board's
+   * most common request falls back to the offset paging this change exists to
+   * avoid (measured 2026-08-18: 4 of 8 page-one-to-page-two transitions
+   * overlapped, the worst pair repeating 9 of 60 rows and hiding 9 others).
+   * Declared as the union the server can send rather than `string`, so a value it
+   * does not know cannot be invented here either.
+   */
+  nextCursor?: BoardCursor | null;
   totalAllCompanies: number;
   /** The corpus INCLUDING closed postings. Optional: absent until the count
    *  has been taken, and never defaulted to totalAllCompanies — equating the
@@ -2053,6 +2334,11 @@ function JobAgentHandoff({ job, compact, track }: {
 
 export default function Jobs() {
   const { t, i18n } = useTranslation();
+  // The FX vintage as a reader sees it, once per language rather than five times
+  // per render. The constant itself stays ISO — it is the page's half of a mirror
+  // the SQL cannot import, and the cross-runtime guard parses it — but a machine
+  // date read wrong inside localised prose in eight of nine languages.
+  const fxSince = useMemo(() => vintageLabel(SALARY_FX_PINNED_SINCE, i18n.language), [i18n.language]);
   // How far the agent actually reaches, from the DEPLOYED bundle rather than a
   // literal in this one. Shared with AgentReachNote so the two cannot disagree.
   const agentReach = useAgentReach();
@@ -2244,8 +2530,13 @@ export default function Jobs() {
     return v === "hourly" || v === "salaried" ? v : "";
   });
   // "Only postings that state pay." Anyone who sets a salary floor is ALREADY
-  // narrowed to this 20.1% and is never told; making it a control of its own is
-  // the honest half of the same fact.
+  // narrowed to a stated-pay population and is never told; making it a control
+  // of its own is the honest half of the same fact. The two populations are NOT
+  // the same one, and saying "this 20.1%" claimed they were: since 2026-09-27
+  // this checkbox binds the employer's verbatim pay field (~28.3% of the board)
+  // while the floor binds the annualised-and-converted figure (~23.7%, read live
+  // 2026-09-27T03:29:32Z), so the checkbox is a strict SUPERSET of the floor's
+  // reach rather than an alias for it.
   const [statedPayOnly, setStatedPayOnly] = useState(initial.get("statedPay") === "1");
   const [includeUnstatedPay, setIncludeUnstatedPay] = useState(initial.get("inclUnstatedPay") === "1");
   // "Hide staffing agencies" — the opt-in decline of the inventory the
@@ -2343,6 +2634,18 @@ export default function Jobs() {
   // arrives with a field bound) and read it whenever the field is the only
   // thing bound. A ref, not state: the reply that fills it re-renders anyway.
   const unfilteredCatsRef = useRef<Record<string, number> | null>(null);
+
+  // WHICH FILTERS THE RESPONSE ON SCREEN WAS DRAWN UNDER — not which ones are
+  // selected right now.
+  //
+  // The coverage sentence asks "does this board-wide figure still describe what
+  // the reader is looking at", and the honest subject of that question is the
+  // body that produced `data`, not the live filter state: a filter change keeps
+  // the old list on screen while the replacement loads, and reading the live
+  // state during that window would label the OLD page with the NEW scope. Set
+  // beside unfilteredCatsRef, immediately before the setData that re-renders,
+  // for the same reason: the render that reads it sees the reply it belongs to.
+  const coverageScopeRef = useRef<string[]>([]);
 
   // THE DIRECT FACET IS THE PRIMARY SOURCE OF COUNTRY COUNTS AGAIN.
   //
@@ -2580,7 +2883,23 @@ export default function Jobs() {
   // side; unsalaried postings sort last). Fit ordering is owned by "For you".
   // Honors ?sort=salary from the URL (e.g. Explore's "Where the pay is" cards),
   // otherwise defaults to newest.
-  const [sortMode, setSortMode] = useState<"newest" | "salary">(() => (initial.get("sort") === "salary" ? "salary" : "newest"));
+  /**
+   * THE THREE ORDERS THIS PAGE CAN ASK FOR, and the third one is why the other
+   * two can be honest.
+   *
+   * "newest" is the employer's own date, newest first, undated last. "salary" is
+   * the pay band. "discovered" is the board's own crawl order — newest by when
+   * WE first saw a posting — and it exists because ordering by the employer's
+   * date puts every undated posting behind ~741,000 dated ones (measured
+   * 2026-09-26: the first undated row under sort=newest sits between offset
+   * 740,000 and 742,000 of 746,300, about 12,350 "Load more" presses at PAGE 60).
+   * Those rows must not lead a page that says "newest", and they must not become
+   * unreachable either; this order is where they live, at page one, and the
+   * caption says whose date it is.
+   */
+  const [sortMode, setSortMode] = useState<"newest" | "salary" | "discovered">(() => (
+    initial.get("sort") === "salary" ? "salary" : initial.get("sort") === "discovered" ? "discovered" : "newest"
+  ));
   // S3: search results default to relevance ranking; this flips them to
   // strict newest-first (server bypasses the ranked path).
   // READ ON MOUNT AS WELL AS WRITTEN. Under a query this toggle is the whole
@@ -3356,7 +3675,7 @@ export default function Jobs() {
   // (measured 2026-08-18: 4 of 8 transitions overlapped, worst 9/60 duplicated
   // + 9 hidden). Sent only when continuing a list (offset > 0); a fresh load
   // starts from the top and takes a fresh cursor from its own response.
-  const nextCursorRef = useRef<{ ep: string; id: string } | null>(null);
+  const nextCursorRef = useRef<BoardCursor | null>(null);
 
   // Refetch whenever the filter set changes. Debounced so dragging a salary
   // slider does not fire eighteen counts per pixel, and sequence-guarded so a
@@ -3414,6 +3733,29 @@ export default function Jobs() {
    */
   const fitBrowseNeedsDescriptions = fitRanking && !q.trim() && !company && !landerCompany;
 
+  /**
+   * THE DISCOVERY ORDER IS DERIVED, NEVER JUST REQUESTED.
+   *
+   * DERIVED because the server cannot serve this order beside a text query: with
+   * `q` present the ranked path selects rows by relevance and no date order is
+   * applied to them at all, so a page asking for "discovered" with a query would
+   * print a claim about an order that did not happen. That is the defect class
+   * this build is fixing, so the state that produces the claim is computed from
+   * the same conditions the request body is, and the two cannot disagree.
+   *
+   * Fit ranking is excluded for the same reason: it re-sorts the page in the
+   * browser, so its own caption is the true one.
+   *
+   * `q.trim()`, and every other reader of "is there a query" on this ordering
+   * path uses the same test — the request body, the select's option, the
+   * undated-tail disclosure and the claim chain's relevance arm. A query of
+   * nothing but spaces is not sent as a query (boardFilterBody drops it), so a
+   * state keyed on the raw string would print one order's claim over another
+   * order's rows: one state, two orders, which is the defect class rather than an
+   * edge case.
+   */
+  const discoveredView = sortMode === "discovered" && !q.trim() && !fitRanking;
+
   const fetchJobs = useCallback(
     async (offset: number) => {
       const seq = ++reqSeq.current;
@@ -3440,7 +3782,41 @@ export default function Jobs() {
           // put a chip on screen the reader never set and cannot clear.
           hasDescription: fitBrowseNeedsDescriptions || undefined,
           // Searches default to relevance ranking; the toggle bypasses it.
-          sort: sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : undefined,
+          // THE ORDER ON SCREEN IS THE ORDER IN THE BODY, and for the most
+          // common request on this board it was not.
+          //
+          // This sent a sort ONLY when there was a query. With no query it sent
+          // nothing, and the server's no-sort fallback is effective_posted =
+          // coalesce(posted_at, first_seen) — so every posting the employer never
+          // dated took OUR crawl stamp and led the page, under a control reading
+          // "Newest first" and a caption promising dated postings first.
+          // MEASURED live on this exact body, {"action":"list","limit":60}:
+          // 59 of 60 page-one rows had no employer date (0 of 60 with
+          // sort:"newest"), and with a company filter the page served an undated
+          // row above four dated ones while printing "company-stated dates
+          // before undated" in nine languages.
+          //
+          // Relevance is the ONLY order that sends no key: it is the server's
+          // ranked path, which has no date ordering to name. Every other branch
+          // names the order the reader can see.
+          //
+          // FIT RANKING ASKS FOR NO ORDER, BECAUSE ASKING NARROWS THE POOL IT
+          // SCORES. A fit browse re-sorts the page in the browser and its caption
+          // (`jobsPage.orderFit`) makes no claim about dates, so it has nothing to
+          // gain from a date key — and something to lose: `discoveredView`
+          // requires `!fitRanking`, so a fit browse would fall through to
+          // "newest", and posted_at NULLS LAST puts the ~5,000 undated postings
+          // past offset 740,000. They would leave the candidate pool the scorer
+          // ever sees, with nothing on screen saying the pool had narrowed (the
+          // undated-tail disclosure is suppressed under fitRanking, precisely
+          // because that page's order is not this one). No key means the server's
+          // effective_posted order, which is the wider pool and the behaviour the
+          // fit page has always had.
+          sort: sortMode === "salary" ? "salary"
+            : discoveredView ? "discovered"
+            : fitRanking ? undefined
+            : q.trim() && !searchNewestFirst ? undefined
+            : "newest",
           limit: PAGE,
           offset,
           cursor: offset > 0 ? nextCursorRef.current ?? undefined : undefined,
@@ -3513,6 +3889,10 @@ export default function Jobs() {
           && br.categories && Object.keys(br.categories).length > 0) {
           unfilteredCatsRef.current = br.categories;
         }
+        // The scope THIS reply's coverage figures have to survive, taken from
+        // the body that was sent rather than from the filter state a later
+        // render will read. Same write-before-setData rule as the facet above.
+        coverageScopeRef.current = narrowingBodyKeys(body);
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -3552,7 +3932,7 @@ export default function Jobs() {
         }
       }
     },
-    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions],
+    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions, discoveredView],
   );
 
   // THE SURVIVING HISTORY ENTRY CAN BE STALE. Opening the detail panel pushes
@@ -3622,8 +4002,16 @@ export default function Jobs() {
     // while the select had shown Newest. The same predicate gates both lander
     // forms below, so a lander cannot swallow a sort the way it once
     // swallowed activelyHiring.
-    const sortParam = sortMode === "salary" ? "salary" : q && searchNewestFirst ? "newest" : "";
+    // q.trim(), like every other reader on this path: on the raw string a
+    // whitespace-only query wrote ?sort=newest into a URL whose reload sends no
+    // query at all, so the link reproduced a state the sender was not in.
+    const sortParam = sortMode === "salary" ? "salary" : q.trim() && searchNewestFirst ? "newest" : "";
     if (sortParam) p.set("sort", sortParam);
+    // The discovery order is written the same way, from the DERIVED view rather
+    // than from the raw sortMode, so a shared link reproduces the order the
+    // sender was actually looking at (sortMode alone can say "discovered" while
+    // a query is present, and that page is relevance-ordered).
+    else if (discoveredView) p.set("sort", "discovered");
     // `from` is only read into state at mount, so this rewrite stripped it and
     // took the Back-to-Explore affordance with it.
     const fromParam = new URLSearchParams(window.location.search).get("from");
@@ -3681,11 +4069,11 @@ export default function Jobs() {
     // "Actively hiring" on rewrote the bare lander URL and a reload or shared
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !sortParam) {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
       window.history.replaceState({}, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !sortParam) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
       window.history.replaceState({}, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
@@ -4495,9 +4883,22 @@ export default function Jobs() {
   // the search handed to an agent read the same expression, so the two
   // cannot disagree about which order the person was looking at.
   const shownSort: SearchSort = sortMode === "salary" ? "salary" : (q.trim() && !searchNewestFirst ? "relevance" : "newest");
+  /**
+   * WHAT THE SORT CONTROL DISPLAYS, which is not always a search_jobs order.
+   *
+   * The discovery order is the board's own crawl order; search_jobs has no such
+   * argument (SearchSort is relevance | newest | salary), so it cannot be handed
+   * to an agent and must not be silently re-labelled as one of the three that
+   * can. The select shows it, the handoff below omits the order and SAYS it
+   * omitted it — the same rule the client-side "Actively hiring" filter follows.
+   */
+  const shownSortControl: SearchSort | "discovered" = discoveredView ? "discovered" : shownSort;
   const sendSearchToAgent = () => {
-    const args = toSearchJobsArgs(boardFilterBody(filterState), shownSort);
-    const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly });
+    const args = toSearchJobsArgs(boardFilterBody(filterState), discoveredView ? undefined : shownSort);
+    const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly })
+      + (discoveredView
+        ? " The board is showing them in the order we first saw each posting, which search_jobs has no argument for, so the order is not included here."
+        : "");
     trackBoard("agent_handoff_search", { keys: Object.keys(args), host: rememberedHostName() });
     void copyText(prompt).then((ok) => toast({
       title: ok
@@ -5213,9 +5614,19 @@ export default function Jobs() {
    *    would make the sort label false
    *  - a search query — relevance order is the answer to what they typed
    * Freshness/recency browsing stays woven, which is the case that was broken.
+   *
+   * `q.trim()`, THE SAME TEST AS EVERY OTHER READER OF "IS THERE A QUERY" on this
+   * ordering path — the request body, the sort select's option, discoveredView,
+   * the undated-tail disclosure and the claim chain's relevance arm. On the raw
+   * string this state disagreed with the page it describes: boardFilterBody drops
+   * a whitespace-only `q`, so `?q=%20%20` is served by the SQL path, where the
+   * weave is unconditional for every non-salary page (`if (!sortSalary)
+   * grouped.jobs = interleaveByCompany(grouped.jobs)`) — and this const said
+   * false, so the page printed the NON-woven claim over a woven page. One state,
+   * two answers, which is the defect class rather than an edge case.
    */
   const interleaveEmployers =
-    !company && !landerCompany && !q && sortMode !== "salary" && !fitRanking;
+    !company && !landerCompany && !q.trim() && sortMode !== "salary" && !fitRanking;
 
   const groupedJobs = useMemo(() => {
     const map = new Map<string, { primary: BoardJob; siblings: BoardJob[] }>();
@@ -5334,6 +5745,30 @@ export default function Jobs() {
    * "drop this filter — N openings" button would have to ask.
    */
   const endCountUnknown = !data || data.countUnavailable === true || typeof data.total !== "number";
+  /**
+   * THE ORDER RAN OUT, NOT THE FILTERS.
+   *
+   * `sortScope: "relevanceWindow"` is the server saying it could only apply the
+   * requested order to search_jobs' closest `sortScopeRows` rows. Paging then
+   * stops at that window's edge while `total` still names a much larger match
+   * set, and the page must not read that ending as a filter problem. Measured on
+   * production 2026-09-26: q="nurse" with sort=newest returned 3 cards and
+   * hasMore false under total 10,000+, `activeFilters` held exactly one entry —
+   * the query itself — and the terminal card therefore offered "Remove “nurse” —
+   * 748,074 openings", blaming a term that matches over ten thousand postings
+   * while the remedy that works (Relevance, which pages far past this point) was
+   * never named, because a sort is not a filter and never reaches activeFilters.
+   *
+   * DECLARED HERE, ABOVE endTarget, and reading data.hasMore directly rather
+   * than the later endServerConfirmed: endTarget gates a two-call countOnly
+   * burst against a rate budget ordinary browsing has already exhausted once,
+   * and it must not fire for wideners this card will not render. A const read
+   * above its own declaration is this repo's own live outage (the hoisted
+   * function that read a const from the TDZ and took ranked search down
+   * silently), so the definition moves rather than the reader.
+   */
+  const endOrderWindowed = !!data && data.sortScope === "relevanceWindow"
+    && searchNewestFirst && data.hasMore === false;
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // New-since-last-visit: where the divider goes in the (recency-sorted) list —
@@ -6004,7 +6439,12 @@ export default function Jobs() {
    * happens when they do.
    */
   const endTarget = listExhausted && jobs.length > 0 && jobs.length <= PAGE
-    && !endCountUnknown && !activelyHiringOnly && activeFilters.length > 0;
+    && !endCountUnknown && !activelyHiringOnly && activeFilters.length > 0
+    // NEVER WHEN THE ORDER IS WHAT ENDED THE LIST. endOrderWindowed pages get
+    // the sortWindow card, which names the order and offers the order — so a
+    // widener burst here would spend two board calls to build buttons nothing
+    // renders, against the budget browsing has already exhausted once.
+    && !endOrderWindowed;
   useEffect(() => {
     // ROWS ON SCREEN MEAN THIS IS NOT A ZERO RESULT. `data.total` is the EXACT
     // segment, so a query matching only in descriptions has total 0 and a full
@@ -6224,10 +6664,21 @@ export default function Jobs() {
    *    results — 0 openings shown for these filters" over an empty list, and
    *    offer wideners measured against a page nobody can see.
    */
-  const endKind: "unknown" | "narrow" | "broad" | "unconfirmed" | "hidden" =
+  /**
+   * WHICH ENDING THE TERMINAL CARD IS RENDERING — six now, not five.
+   *
+   * "sortWindow" is the ending endOrderWindowed describes (declared above
+   * endTarget, with the measurement). It sits AFTER "unknown" deliberately: its
+   * body quotes the match count, so it may only fire where the server published
+   * one it stands behind. A newest page the database ordered over the WHOLE
+   * match set publishes no count at all (total null) and ends as "unknown",
+   * which is the honest card for it.
+   */
+  const endKind: "unknown" | "narrow" | "broad" | "unconfirmed" | "hidden" | "sortWindow" =
     !endServerConfirmed ? "unconfirmed"
     : shownCount === 0 ? "hidden"
     : endCountUnknown ? "unknown"
+    : endOrderWindowed ? "sortWindow"
     : activeFilters.length > 0 && jobs.length <= PAGE ? "narrow"
     : "broad";
 
@@ -6241,6 +6692,24 @@ export default function Jobs() {
   // the disclosure filter dropped gives the honest denominator; it only fires
   // while such a filter is active, so the common path costs nothing.
   const [disclosure, setDisclosure] = useState<{ kind: "salary" | "workMode"; shown: number; hidden: number } | null>(null);
+  /**
+   * HOW MANY ROWS THIS PAGE'S OWN FILTER FAMILY ACTUALLY HIDES — kept even when it
+   * is not worth a sentence, because ZERO is the answer that changes other copy.
+   *
+   * `disclosure` above is set only when the count is worth printing, so it
+   * collapses "we measured nothing hidden" and "we could not measure" into the
+   * same `null`. The withheld-coverage sentence needs to tell those apart: it
+   * asserts "roles that don't say are hidden by it, not absent", and on a page
+   * where the filter hides nothing that clause describes behaviour the page does
+   * not have. MEASURED live 2026-09-26: {"action":"list","vendor":"pinpoint"} and
+   * the same body with workMode "remote,hybrid,onsite" both return total 3,554 —
+   * every pinpoint posting states a mode, so the mode filter hides exactly zero
+   * rows, and the sentence still said some were hidden.
+   *
+   * null means "no exact measurement" (no family on this page, a capped
+   * denominator, a cancelled probe) and the sentence keeps its general wording.
+   */
+  const [hiddenMeasured, setHiddenMeasured] = useState<number | null>(null);
   const discSigRef = useRef("");
   useEffect(() => {
     // Category is the same defect in a different coat: 35% of the board was
@@ -6258,6 +6727,7 @@ export default function Jobs() {
         : (workMode || remoteOnly) ? "workMode" : null;
     if (!kind || loading || refreshing || error || !data || typeof data.total !== "number" || data.total === 0) {
       setDisclosure(null);
+      setHiddenMeasured(null);
       discSigRef.current = "";
       return;
     }
@@ -6306,7 +6776,7 @@ export default function Jobs() {
         // exact understates it without bound: measured hidden 9,863 against a
         // true 19,361 — 49.1% short. If the denominator is capped we cannot
         // state the gap, so we say nothing rather than a comfortable number.
-        if (r?.countCapped) { setDisclosure(null); return; }
+        if (r?.countCapped) { setDisclosure(null); setHiddenMeasured(null); return; }
         let hidden: number;
         if (kind === "salary") {
           hidden = without - data.total;
@@ -6314,11 +6784,41 @@ export default function Jobs() {
           // Both halves of a difference must be exact, or the difference is
           // not a number this page can publish.
           const anyStated = stated?.total;
-          if (typeof anyStated !== "number" || stated?.countCapped) { setDisclosure(null); return; }
+          if (typeof anyStated !== "number" || stated?.countCapped) { setDisclosure(null); setHiddenMeasured(null); return; }
           hidden = without - anyStated;
         }
-        // Only worth saying when the silent majority is actually large.
-        setDisclosure(hidden > data.total ? { kind, shown: data.total, hidden } : null);
+        // WHEN "MOSTLY" STOPPED BEING THE BAR.
+        //
+        // This printed only while the hidden rows OUTNUMBERED the shown ones,
+        // on the reasoning that a silent majority is the only thing worth
+        // saying. But the board-wide coverage percentage in the results header
+        // is now withheld on any narrowed page (coverageStillBoardWide), so on
+        // a slice that states pay on more than half its rows this exact,
+        // in-scope sentence was the ONLY figure left — and it was the one being
+        // suppressed. MEASURED live 2026-09-26: country=CA + healthcare states
+        // an annual figure on 1,300 of 2,243 (58.0%), so 943 openings were
+        // hidden by the filter and nothing on the page said so, while the
+        // header said 24%. Any number of hidden rows is worth a sentence; zero
+        // is not, and zero is the case where the old bar was doing real work
+        // (vendor=pinpoint + all three work modes hides not one row).
+        //
+        // The bar drops to "anything at all" ONLY where `hidden` is exactly the
+        // postings that DIDN'T SAY, which is what the sentence claims it is:
+        //   • the work-mode kind, by construction — dropped − any-stated;
+        //   • the pay kind only when "States pay" is the whole band, so
+        //     dropped − total is exactly the rows with no annual figure.
+        // With a floor, a ceiling or a pay basis in the band, `hidden` also
+        // contains rows that DID state pay and fell outside the band, and that
+        // difference is not the sentence's subject — so those keep the old
+        // majority bar rather than printing more often under a wording that
+        // does not describe them.
+        const unstatedExactly = kind === "workMode" || (statedPayOnly && !salaryFloor && !salaryCeiling && !payBasis);
+        const worthSaying = unstatedExactly ? hidden > 0 : hidden > data.total;
+        setDisclosure(worthSaying ? { kind, shown: data.total, hidden } : null);
+        // RECORDED WHETHER OR NOT IT IS PRINTED. This is the exact, in-scope
+        // number, and the withheld-coverage sentence below reads it to decide
+        // whether it may claim that rows are hidden at all.
+        setHiddenMeasured(hidden);
       } catch { /* advisory only — never block the board */ }
     })();
     return () => { cancelled = true; };
@@ -8346,16 +8846,32 @@ export default function Jobs() {
             {/* PAY, AS A BAND AND AS A BASIS — three controls over the same
                 published figure, grouped so they read as one question.
                 The floor was the only one of them the page had, and it silently
-                implied the third: setting it already restricts you to the 20.1%
-                of postings that state pay, which is what "States pay" now says
-                out loud on its own. */}
+                implied the third: setting it already restricts you to postings
+                that state pay, which is what "States pay" now says out loud on
+                its own. It never restricted you to the same SET, and the figure
+                that used to stand here (20.1%) was the annualised column's
+                2026-08-25 reading, which is neither control's population today:
+                the floor compares the annualised figure converted to approximate
+                dollars (~23.7% of the board) and the checkbox asks only whether
+                the employer wrote a figure at all (~28.3%), both read live
+                2026-09-27. */}
             <div role="group" aria-label={t("jobsPage.payFieldLabel", "Pay")} className="flex flex-wrap gap-2">
+              {/* WHAT THE FLOOR ACTUALLY COMPARES, both halves of it. The old
+                  sentence named the annualization and not the CURRENCY
+                  CONVERSION, then blamed every disappearance on "postings that
+                  don't publish pay" — so a £14.80/hour posting the board is
+                  displaying, and a CAD posting that clears the floor only
+                  because the pinned rate is 3.2% stale, were both filed under
+                  employer silence. The comparison is: annualize if we can,
+                  convert to approximate USD at rates frozen since
+                  SALARY_FX_PINNED_SINCE, then compare. Both limits are ours and
+                  both are named here. */}
               <select
                 value={salaryFloor || ""}
                 onChange={(e) => setSalaryFloor(Number(e.target.value) || 0)}
                 className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 aria-label={t("jobsPage.salaryFieldLabel", "Minimum stated pay")}
-                title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states (hourly and monthly rates annualized). Postings that don't publish pay are hidden while this is on — that's most of them.")}
+                title={t("jobsPage.salaryFloorTip", "Filters on pay the posting itself states, annualized where we can and compared in approximate US dollars at fixed rates unchanged since {{since}}. Hidden while this is on: postings that publish no figure — most of the board — and figures we cannot turn into a comparable yearly dollar amount, like an hourly rate on a part-time role or a currency we don't convert.", { since: fxSince })}
               >
                 <option value="">{t("jobsPage.anySalary", "Any salary")}</option>
                 {SALARY_FLOOR_STEPS.map((f) => (
@@ -8374,7 +8890,7 @@ export default function Jobs() {
                 onChange={(e) => setSalaryCeiling(Number(e.target.value) || 0)}
                 className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 aria-label={t("jobsPage.salaryCeilingFieldLabel", "Maximum stated pay")}
-                title={t("jobsPage.salaryCeilingTip", "The other end of the band, on the same annualized figure as the floor. Useful for screening out roles you're overqualified for — and, like the floor, it can only see the fifth of postings that publish pay.")}
+                title={t("jobsPage.salaryCeilingTip", "The other end of the band, on the same annualized and approximately converted figure as the floor (fixed rates unchanged since {{since}}). Useful for screening out roles you're overqualified for — and, like the floor, it can only see postings whose figure we could convert.", { since: fxSince })}
               >
                 <option value="">{t("jobsPage.anyCeiling", "No maximum")}</option>
                 {SALARY_CEILING_STEPS.map((c) => (
@@ -8398,12 +8914,92 @@ export default function Jobs() {
                 <option value="salaried">{t("jobsPage.payBasisSalaried", "Salaried")}</option>
               </select>
               {/* THE HALF OF THE PAY FLOOR NOBODY WAS TOLD ABOUT, on its own.
-                  salary_min_annual IS NOT NULL — 112,524 rows. Someone who only
-                  wants postings that name a figure, at any figure, had no way to
-                  ask for that except by setting a floor they did not mean. */}
+                  Someone who only wants postings that name a figure, at any
+                  figure, had no way to ask for that except by setting a floor
+                  they did not mean.
+                  "WHATEVER IT IS" WAS NOT TRUE, AND THE PAGE DISPROVED IT ITSELF.
+                  The control bound the ANNUALISED figure — a figure OUR parser
+                  could turn into a comparable year — while the card prints the
+                  employer's verbatim pay text. A posting stating "£14.80 per
+                  hour" had a figure, had it printed in bold on its own card two
+                  hundred lines below this, and was excluded here. Measured
+                  2026-09-26 on a systematic 20-page walk of the live board (925
+                  rows, offsets spread over the uncapped 746,871): 201 rows print
+                  a figure, 181 carry an annual, so 20 of the 201 (10.0%,
+                  +/-4.1pp) were invisible to this control while showing their
+                  rate; an independent 981-row walk the same day put it at 39 of
+                  338 (11.5%).
+
+                  FIXED ON 2026-09-27 BY MOVING THE PREDICATE, which is the
+                  opposite of what this block used to prescribe. It called for a
+                  stored indexed boolean written by all four salary writers and
+                  forbade reading the pay column directly, on the grounds that
+                  doing so would re-admit prose like "Competitive" and put an
+                  unindexed arm in the hot query. BOTH HALVES WERE MEASURED AND
+                  NEITHER HELD. Prose: 0 of 5,472 stored pay texts carry no digit
+                  (2026-09-26/27 walks), 0 of 5,350 in a 12,000-row walk of the
+                  two vendors with structured pay fields (2026-09-27T03:30Z), and
+                  0 carrying "competitive", "DOE" or "negotiable" — the column
+                  holds figures, not prose, and get_filter_coverage publishes a
+                  nesting check over the three pay columns on every hourly pass so
+                  a change in that would surface as data. Cost: the pay column
+                  carries no index, and timed from outside against the indexed
+                  annualised column on a stratum whose count does not cap, the
+                  unindexed column was not slower. Re-measured from outside at
+                  2026-09-27T03:57:58Z, three runs each on a GB stratum whose
+                  count does not cap: the UNINDEXED period column answered
+                  677/414/753ms (1,870 rows) against the INDEXED annualised
+                  column's 693/823/571ms (4,825 rows) — the ranges overlap
+                  completely and the unindexed one is if anything faster. It is a
+                  single NULL test on a DENSER column (28.3% against 13.1% for the
+                  period column an existing filter already tests without an
+                  index), not an added OR arm.
+
+                  WHAT IS STILL TRUE OF THE ROWS: the parser's refusal to invent a
+                  schedule for a load-dependent part-time rate stands
+                  (_shared/salary-extract.ts v7, after
+                  {"q":"teacher","salaryFloor":90000} served fourteen hourly
+                  part-timers out of fifteen — a $44/hr read as 91,520), so those
+                  rows still carry no yearly amount and the pay floor, the pay
+                  ceiling and the pay order still cannot compare them. What
+                  changed is that a control labelled for the EMPLOYER'S act no
+                  longer answers with OUR arithmetic. The remaining divergence is
+                  disclosed per page rather than left for the reader to discover.
+
+                  ACCEPTED WITH IT: about 0.7% of the newly-admitted rows carry a
+                  figure of zero — 11 of 1,674 in the walk above, every one of
+                  them a vendor default of the "EUR 0 - 0" or "$0" shape — and the
+                  card prints that text, so the checkbox and the card agree about
+                  them, which is the property this change is about. Excluding them
+                  needs a nonzero-VALUE test in four runtimes; that decision has
+                  not been made. */}
               <label
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
-                title={t("jobsPage.statedPayTip", "Show only postings that publish a pay figure, whatever it is. About a fifth of the board does. Setting a pay floor already does this silently — this makes it a choice.")}
+                /* THE PROMISE THE CHECKBOX NOW KEEPS. Until 2026-09-27 this
+                   control bound the ANNUALISED figure, so a posting printing
+                   "£14.80 per hour" was served with its wage in bold and
+                   classified as stating nothing — the tooltip had to apologise
+                   for it and point at the hourly control as a workaround. The
+                   predicate moved to the employer's own pay field (33,240
+                   postings board-wide, 2026-09-27T02:07:00Z), so the apology is
+                   retired and the {{hourly}} placeholder with it. What the
+                   sentence must still carry is the NEW divergence: the floor,
+                   the ceiling and the order compare a yearly amount, so this
+                   checkbox is a superset of what they can rank.
+
+                   AND THE PROMISE IS QUALIFIED, BECAUSE THE PAGE CANNOT ALWAYS
+                   KEEP IT. The gap count is taken over the rows the server
+                   SERVED, and the three comparing controls exclude the very rows
+                   it would count — the ranking column is generated from the
+                   annualised figure, so a floor, a ceiling or the pay order
+                   leaves every served row carrying one and the count is
+                   structurally zero. An unqualified "the page says how many" was
+                   therefore false in exactly the state where the exclusion bites,
+                   so the sentence now says WHEN the page says it. Counting the
+                   EXCLUDED rows instead would take a second count query with the
+                   rank arm dropped; that is a larger change than this one and is
+                   not pretended to exist here. */
+                title={t("jobsPage.statedPayTip", "Show only postings whose pay field carries a figure the employer published — an hourly or per-shift rate counts, part-time and casual roles included, and the card shows it. The pay floor, the pay ceiling and “{{order}}” compare a yearly amount instead, so some postings this admits cannot be compared by those three; the page says how many, but only while no pay floor, no pay ceiling and no “{{order}}” is narrowing the page.", { order: t("jobsPage.sortSalary", "Highest stated salary") })}
               >
                 <input
                   type="checkbox"
@@ -8871,10 +9467,14 @@ export default function Jobs() {
                 selected whenever it is what's happening; choosing Newest
                 routes through the existing searchNewestFirst toggle. */}
             <select
-              value={shownSort}
+              value={shownSortControl}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "salary") { setSortMode("salary"); return; }
+                // The discovery order is only ever served without a query (see
+                // discoveredView), so choosing it clears the query's own newest
+                // toggle rather than leaving a second order claim behind it.
+                if (v === "discovered") { setSortMode("discovered"); setSearchNewestFirst(false); return; }
                 setSortMode("newest");
                 if (q.trim()) setSearchNewestFirst(v === "newest");
               }}
@@ -8884,6 +9484,11 @@ export default function Jobs() {
               {q.trim() && <option value="relevance">{t("jobsPage.sortRelevance", "Relevance")}</option>}
               <option value="newest">{t("jobsPage.sortNewest", "Newest first")}</option>
               <option value="salary">{t("jobsPage.sortSalary", "Highest stated salary")}</option>
+              {/* OFFERED ONLY WHERE IT CAN BE SERVED. With a query the ranked
+                  path orders by relevance and no date order is applied, so an
+                  option that cannot happen is not shown — and the caption for it
+                  says whose date it is, because ours is not the employer's. */}
+              {!q.trim() && <option value="discovered">{t("jobsPage.sortDiscovered", "Recently found by us")}</option>}
             </select>
             {/* "SEND THIS SEARCH TO MY AGENT" — the board's own request body,
                 renamed into search_jobs arguments (src/lib/agent-handoff.ts;
@@ -8928,16 +9533,159 @@ export default function Jobs() {
                       ? t("jobsPage.orderFitPartial", "ordered by fit — {{n}} of {{m}} scored", { n: scoredCount, m: jobs.length })
                       : t("jobsPage.orderFit", "ordered by fit to your résumé"))
                 : sortMode === "salary"
-                  ? t("jobsPage.orderSalary", "ordered by stated salary floor — postings without stated pay sort last")
-                  : q
-                    ? t("jobsPage.orderRelevance", "ordered by relevance to your search")
-                    : interleaveEmployers
-                      ? t("jobsPage.orderNewestWoven", "newest first, spread across employers so one company can't fill the page")
-                      : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
+                  /* ONE CAPTION WAS DESCRIBING TWO DIFFERENT ORDERINGS, and on
+                     one of them it was flatly false. It said "ordered by stated
+                     salary floor — postings without stated pay sort last":
+                       (a) the key is salary_rank_usd, the posting's figure times
+                           a frozen FX factor, while the card prints the figure in
+                           its OWN currency — so 720,000 AUD legitimately sits
+                           between 477,300 and 475,000 USD and the page reads out
+                           of order to anyone who does not know it converts.
+                           Measured 2026-09-26 walking 600 browse rows: 15 of 590
+                           adjacent pairs descend out of order (2.54%), every one
+                           a currency crossing; page 1 looks clean only because
+                           it is 60 of 60 USD.
+                       (b) "sort last" is TRUE on browse (offset 200000 of the
+                           salary sort returns 10 of 10 rows with no annual) and
+                           FALSE on a salary-sorted TEXT search, which takes the
+                           SALARY route and excludes salary_rank_usd IS NULL
+                           outright (salaryStatedOnly, total null — live on 3 of 3
+                           queries here, 8 of 8 in the audit). That page was
+                           printing "postings without stated pay sort last" a few
+                           hundred pixels above the server's own disclosure that
+                           they do not appear at all.
+                     So the branch splits on the flag the server already sends,
+                     and both halves name the actual key. */
+                  ? (data?.salaryStatedOnly
+                      ? t("jobsPage.orderSalaryStated", "ordered by stated pay in approximate US dollars (fixed rates unchanged since {{since}}) — only postings whose figure we can compare appear here", { since: fxSince })
+                      : t("jobsPage.orderSalaryUsd", "ordered by stated pay in approximate US dollars (fixed rates unchanged since {{since}}) — postings we cannot compare sort last", { since: fxSince }))
+                  /* TRIMMED, because a query of nothing but spaces is not sent
+                     as a query: boardFilterBody drops it, so the server ranks
+                     nothing and serves a plain date-ordered browse. Branching
+                     this arm on the raw string printed "ordered by relevance to
+                     your search" over exactly that page — one state, a claim and
+                     a body describing different orders, which is the defect this
+                     build exists to remove rather than an edge case. The request
+                     body, the sort select's options and the undated-tail
+                     disclosure all use the same trimmed test. */
+                  : q.trim()
+                    /* THE HINT HAD NO ARM FOR THE SORT SITTING NEXT TO IT.
+                       With Newest chosen the select read "Newest first" and this
+                       line read "ordered by relevance to your search" — two
+                       contradictory claims an inch apart, and on that page the
+                       true one was neither. Both newest branches are printed
+                       from `sortScope`, the server's word for which set it
+                       ordered, so this line cannot drift from the list again. */
+                    /* AND EVERY DATE ARM NOW REQUIRES THE SERVER TO HAVE MADE A
+                       STATEMENT, not merely for the reader to have asked. Four
+                       exits can serve a text search under sort=newest and only
+                       two of them date-order anything; the two that do not were
+                       reaching the windowed arm through `sortScope` being ABSENT.
+                       MEASURED live 2026-09-26: q="accenture"+sort=newest took
+                       the routed EMPLOYER exit with no sortScope on the wire, and
+                       this line printed "newest of the closest matches only" over
+                       rows the exit had ordered by effective_posted and never
+                       re-sorted. So: a claim about a date order only under
+                       `sortScope`, and the exact-word tier — which concatenates
+                       two effective_posted reads and scores nothing, whatever
+                       sort was requested — names its own order first, because it
+                       is the one thing on this page that is true of it. */
+                    ? data?.exactWordMatch
+                      ? t("jobsPage.orderExactWord", "exact whole-word matches, in the order we first saw each posting — our date, not the employer's")
+                      : data?.sortScope === "matchSet"
+                        ? data?.sortMatcher === "company"
+                          ? t("jobsPage.orderNewestWholeSetCompany", "newest first across every posting from this employer")
+                          : t("jobsPage.orderNewestWholeSet", "newest first across every posting whose title matches")
+                        : data?.sortScope === "relevanceWindow"
+                          ? t("jobsPage.orderNewestWindow", "newest of the closest matches only — not the newest on the board")
+                          : data?.ranked
+                            ? t("jobsPage.orderRelevance", "ordered by relevance to your search")
+                            /* NO sortScope, NO `ranked`: the recency fall-through
+                               answered, and WHICH date it ordered by depends on
+                               the body. With sort=newest the server orders
+                               posted_at nulls-last; without it, effective_posted
+                               = coalesce(posted_at, first_seen), our own crawl
+                               stamp. One arm for each, because one sentence over
+                               both is false half the time. */
+                            : searchNewestFirst
+                              ? t("jobsPage.orderNewest", "newest first, company-stated dates before undated")
+                              : t("jobsPage.orderDiscovered", "ordered by when we first saw each posting — our date, not the employer's")
+                    /* WHOSE DATE, NAMED, IN EVERY ARM — and until this build the
+                       two arms below were printed over rows ordered by OUR crawl
+                       stamp. The no-query browse sent no `sort`, so the server
+                       ordered by effective_posted = coalesce(posted_at,
+                       first_seen): measured live 2026-09-26, 59 of 60 page-one
+                       rows had no employer date at all, and the company-filtered
+                       state served an undated row above four dated ones under
+                       "company-stated dates before undated" — the exact inverse
+                       of what it served, in nine languages. The body now asks for
+                       the order these sentences describe (see `sort` in
+                       fetchJobs), and src/test/newest-first-must-order-by-date
+                       .test.tsx fails if any arm here is reachable from a body
+                       that does not produce its order.
+
+                       `orderNewestWoven` was RETIRED rather than edited: it said
+                       "newest first" without saying whose date that is, which is
+                       the whole distinction this defect turned on. A locale value
+                       overrides an inline default, so the old key is deleted from
+                       all nine locale files — otherwise nine translated copies of
+                       the unqualified claim would go on rendering (the
+                       agentPitchScope lesson). */
+                    : discoveredView
+                      ? (interleaveEmployers
+                        ? t("jobsPage.orderDiscoveredWoven", "ordered by when we first saw each posting — our date, not the employer's — spread across employers so one company can't fill the page")
+                        : t("jobsPage.orderDiscovered", "ordered by when we first saw each posting — our date, not the employer's"))
+                      : interleaveEmployers
+                        ? t("jobsPage.orderNewestWovenDated", "newest by the date each employer states, spread across employers so one company can't fill the page")
+                        : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
             </span>
+            {/* TWO GROUPS, NOT ONE ORDERING — said out loud for the same reason
+                the weave and the undated tail are.
+                The includeUncategorised page is served as the chosen field's rows
+                followed by the fieldless ones (pageWithInner's twoSubset branch
+                returns `[...bucketA, ...bucketB]`, and splitPage walks A to its
+                end before entering B), each half ordered by the requested key. So
+                the claim above — "newest by the date each employer states" — holds
+                inside a group and not across the seam, and the reader who scrolls
+                past the boundary sees the dates start again. Printed from the
+                server's own flag rather than from the checkbox, because the flag
+                is what the page that answered actually did: the widening is
+                DROPPED on a salary sort and named in ignoredFilters, and this
+                sentence must not appear there. */}
+            {data?.bucketedOrder && (
+              <span className="text-[11px] text-muted-foreground">
+                {t("jobsPage.orderBucketed", "Postings in the field you chose come first, then those whose employer named no field — the date order runs inside each group, not across both.")}
+              </span>
+            )}
+            {/* WHERE THE UNDATED POSTINGS WENT, AND HOW TO GET TO THEM.
+                Ordering by the employer's date with nulls last is the honest
+                order, and on this board it puts ~5,000 undated postings behind
+                ~741,000 dated ones: MEASURED 2026-09-26, the first undated row
+                under sort=newest sits between offset 740,000 and 742,000 of
+                746,300 — about 12,350 "Load more" presses at PAGE 60, which is
+                exile, not ordering. So the placement is disclosed and the order
+                that reaches those rows at page ONE is offered beside it (the
+                same rows, the same board, a different key — measured the same
+                day: page one of the discovery order was 59 of 60 undated).
+                Printed only where it is true: the salary sort has its own
+                caption, fit re-sorts in the browser, a text search takes the
+                server's own newest path (which says "undated last" itself), and
+                inside the discovery order undated rows are at the front. */}
+            {!q.trim() && sortMode !== "salary" && !fitRanking && !discoveredView && (
+              <span className="hidden sm:inline text-[11px] text-muted-foreground">
+                {t("jobsPage.orderUndatedTail", "Postings whose employer states no date sort after every dated one.")}{" "}
+                <button
+                  type="button"
+                  onClick={() => { setSortMode("discovered"); setSearchNewestFirst(false); }}
+                  className="underline underline-offset-2 hover:text-foreground transition-colors"
+                >
+                  {t("jobsPage.orderUndatedShow", "See them in the order we found them")}
+                </button>
+              </span>
+            )}
             {salaryFloor > 0 && (
               <span className="text-[11px] text-muted-foreground">
-                {t("jobsPage.salaryFloorNote", "Only postings that state pay of ${{amount}}k+ (annualized) — most companies don't publish pay, so this hides them.", { amount: salaryFloor / 1000 })}
+                {t("jobsPage.salaryFloorNote", "Only postings whose stated pay converts to about ${{amount}}k+ a year (approximate US dollars, fixed rates unchanged since {{since}}) — most companies publish no figure we can compare, so this hides them.", { amount: salaryFloor / 1000, since: fxSince })}
               </span>
             )}
             {!q && !company && (
@@ -9340,38 +10088,199 @@ export default function Jobs() {
                   {(() => {
                     const fc = data?.filterCoverage;
                     if (!fc) return null;
+                    // NO BASIS DATE, NO PERCENTAGE — project_stat_provenance's
+                    // rule, applied to the one surface that was breaking it.
+                    // These fractions are a snapshot of the board at one moment
+                    // (MEASURED 2026-09-26: the same five probes read 0.235 /
+                    // 0.232 / 0.452 / 0.928 and, two hours later, 0.239 / 0.233 /
+                    // 0.457 / 0.933 — identical across a one-filter and a
+                    // five-filter body both times, which is the whole shape of the
+                    // defect in one observation). The server stamps the block with
+                    // the pass that counted it and WITHHOLDS the stamp on the one
+                    // path that can still substitute a 2026-08-25 pinned constant,
+                    // so an absent stamp means "this reply cannot date these
+                    // numbers" — and the honest answer to that is the same one a
+                    // cold cache already gets: silence. An older deployed bundle
+                    // degrades here too, to no figure rather than an undated one.
+                    const covAt = data?.filterCoverageAt;
+                    if (!covAt) return null;
+                    // The stamp names a refresh PASS, not a day: the two probes
+                    // above were two hours apart and disagreed, so the time is part
+                    // of the basis. Formatted in the reader's language for the same
+                    // reason the FX vintage is — an ISO string is a machine's date.
+                    const coverageAsOf = (() => {
+                      const d = new Date(covAt);
+                      if (Number.isNaN(d.getTime())) return covAt;
+                      try { return d.toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" }); }
+                      catch { return covAt; }
+                    })();
+                    // EVERY FIGURE HERE IS THE WHOLE BOARD'S, so a clause may
+                    // only print while the whole board is what the reader is
+                    // looking at through that filter — see coverageStillBoardWide
+                    // above for the live measurements that forced this and for
+                    // why a scoped share is not computed instead. The scope is
+                    // the body THIS reply answered, not the live filter state.
+                    const narrowing = coverageScopeRef.current;
                     const parts: string[] = [];
-                    if (typeof fc.salaryFloor === "number") parts.push(t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
-                    if (typeof fc.workMode === "number") parts.push(t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
-                    if (typeof fc.experience === "number") parts.push(t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
+                    // Set by any clause whose figure had to be withheld, so the
+                    // reader is told the percentage is missing rather than left
+                    // with a sentence that quietly lost a field.
+                    let withheld = false;
+                    const cov = (family: CoverageFamily, clause: string) => {
+                      if (coverageStillBoardWide(narrowing, family)) parts.push(clause);
+                      else withheld = true;
+                    };
+                    if (typeof fc.salaryFloor === "number") cov("pay", t("jobsPage.coveragePay", "pay on {{pct}}%", { pct: Math.round(fc.salaryFloor * 100) }));
+                    if (typeof fc.workMode === "number") cov("workMode", t("jobsPage.coverageWorkMode", "work mode on {{pct}}%", { pct: Math.round(fc.workMode * 100) }));
+                    if (typeof fc.experience === "number") cov("experience", t("jobsPage.coverageExperience", "experience level on {{pct}}%", { pct: Math.round(fc.experience * 100) }));
                     // Country was the only one of the four filters with no
                     // caveat, while being the thinnest on some vendors.
-                    if (typeof fc.country === "number") parts.push(t("jobsPage.coverageCountry", "a country on {{pct}}%", { pct: Math.round(fc.country * 100) }));
+                    if (typeof fc.country === "number") cov("country", t("jobsPage.coverageCountry", "a country on {{pct}}%", { pct: Math.round(fc.country * 100) }));
                     // THE FIVE NEW PARTLY-POPULATED FILTERS, on the same line
                     // and by the same rule: a filter over a column employers
                     // often leave blank must publish what it can even see, or a
                     // thin page reads as a verdict on the market instead of on
                     // the data. `vendor` follows them, and the note beside it
                     // says why a 100% figure is still worth printing.
-                    if (typeof fc.salaryCeiling === "number") parts.push(t("jobsPage.coverageCeiling", "a pay figure to cap on {{pct}}%", { pct: Math.round(fc.salaryCeiling * 100) }));
-                    if (typeof fc.hasStatedPay === "number") parts.push(t("jobsPage.coverageStatedPay", "any pay at all on {{pct}}%", { pct: Math.round(fc.hasStatedPay * 100) }));
-                    if (typeof fc.payBasis === "number") parts.push(t("jobsPage.coveragePayBasis", "hourly or salaried on {{pct}}%", { pct: Math.round(fc.payBasis * 100) }));
-                    if (typeof fc.maxYears === "number") parts.push(t("jobsPage.coverageMaxYears", "years of experience on {{pct}}%", { pct: Math.round(fc.maxYears * 100) }));
-                    if (typeof fc.department === "number") parts.push(t("jobsPage.coverageDepartment", "a department on {{pct}}%", { pct: Math.round(fc.department * 100) }));
+                    if (typeof fc.salaryCeiling === "number") cov("pay", t("jobsPage.coverageCeiling", "a pay figure to cap on {{pct}}%", { pct: Math.round(fc.salaryCeiling * 100) }));
+                    // THE CLAUSE FOLLOWS THE PREDICATE, AND THE PREDICATE MOVED.
+                    // This fraction used to be our annualisation coverage under a
+                    // line framed "Employers state …", which charged employers
+                    // for postings whose printed rate WE declined to annualise —
+                    // so the clause was reworded to name whose limit it was. On
+                    // 2026-09-27 the filter itself moved to the employer's
+                    // verbatim pay field and the server now sends that column's
+                    // share here (28.3% against the annualised 23.7%, both read
+                    // live), which makes the fraction genuinely a statement about
+                    // what employers published — so the clause says that, plainly,
+                    // and no longer describes a narrower population than the count
+                    // printed above it.
+                    if (typeof fc.hasStatedPay === "number") cov("pay", t("jobsPage.coverageStatedPay", "a pay figure of some kind on {{pct}}%", { pct: Math.round(fc.hasStatedPay * 100) }));
+                    if (typeof fc.payBasis === "number") cov("pay", t("jobsPage.coveragePayBasis", "hourly or salaried on {{pct}}%", { pct: Math.round(fc.payBasis * 100) }));
+                    if (typeof fc.maxYears === "number") cov("maxYears", t("jobsPage.coverageMaxYears", "years of experience on {{pct}}%", { pct: Math.round(fc.maxYears * 100) }));
+                    if (typeof fc.department === "number") cov("department", t("jobsPage.coverageDepartment", "a department on {{pct}}%", { pct: Math.round(fc.department * 100) }));
                     // Emitted by the server since the employment-type filter
                     // shipped, read by nothing until now — the disclosure-
                     // nobody-renders defect, one key later.
-                    if (typeof fc.employmentType === "number") parts.push(t("jobsPage.coverageEmploymentType", "employment type on {{pct}}%", { pct: Math.round(fc.employmentType * 100) }));
+                    if (typeof fc.employmentType === "number") cov("employmentType", t("jobsPage.coverageEmploymentType", "employment type on {{pct}}%", { pct: Math.round(fc.employmentType * 100) }));
                     // 100%, and rendered anyway. The server emits it, and the
                     // honest answer to "how much of the board can this filter
                     // see" is sometimes "all of it" — leaving it out would make
                     // the line's silence about vendor indistinguishable from the
                     // silence about a filter nobody switched on.
-                    if (typeof fc.vendor === "number") parts.push(t("jobsPage.coverageVendor", "which system they post on for {{pct}}%", { pct: Math.round(fc.vendor * 100) }));
-                    if (!parts.length) return null;
+                    //
+                    // AND IT IS GATED LIKE EVERY OTHER CLAUSE, although 100% is
+                    // the one figure that survives any narrowing (a subset of a
+                    // population where every row states a value has every row
+                    // stating it). Exempting it would put a rule in this block
+                    // that reads the VALUE rather than the scope, and the next
+                    // field to touch 100% for a pass would inherit the
+                    // exemption silently. A clause nobody can act on is not
+                    // worth that.
+                    if (typeof fc.vendor === "number") cov("vendor", t("jobsPage.coverageVendor", "which system they post on for {{pct}}%", { pct: Math.round(fc.vendor * 100) }));
+                    if (!parts.length && !withheld) return null;
                     return (
-                      <p className="text-xs text-muted-foreground mb-2">
-                        {t("jobsPage.filterCoverage", "Employers state {{fields}} of postings. A filter can only search what was published — roles that don't say are hidden here, not absent.", { fields: parts.join(", ") })}
+                      <>
+                        {parts.length > 0 && (
+                          <p className="text-xs text-muted-foreground mb-2" data-coverage-scope="board">
+                            {/* THE SCOPE AND THE DATE ARE BOTH PLACEHOLDERS, and
+                                `jobsPage.filterCoverage` is RETIRED rather than
+                                edited: a sentence that gains a basis date is a
+                                different claim, and a locale VALUE overrides an
+                                inline default, so editing the English string alone
+                                would have left eight translated copies of the
+                                undated sentence rendering. The same build that
+                                interpolated SALARY_FX_PINNED_SINCE into five pay
+                                strings — for exactly this reason — left these
+                                percentages with no vintage at all, while the
+                                docblock above recorded them moving with the
+                                refresh pass. */}
+                            {t("jobsPage.filterCoverageDated", "Across {{scope}}, as counted on {{asOf}}, employers state {{fields}}. A filter can only find what an employer published: roles that don't say are hidden by it, not absent.", {
+                              asOf: coverageAsOf,
+                              // THE SCOPE IS A PLACEHOLDER, NOT PROSE A
+                              // TRANSLATOR TYPES. A locale value beats this
+                              // inline default, so the qualifier has to be
+                              // something a translation cannot drop without
+                              // dropping a placeholder — the same move
+                              // {{since}} makes on the salary notes. Nine
+                              // sentences that each forgot to say "board-wide"
+                              // is exactly how this defect would come back in
+                              // eight languages while English reads correctly.
+                              scope: t("jobsPage.coverageScopeBoard", "the whole board, not just this filtered page"),
+                              fields: parts.join(", "),
+                            })}
+                          </p>
+                        )}
+                        {withheld && (
+                          <p className="text-xs text-muted-foreground mb-2" data-coverage-scope="withheld">
+                            {/* THE "HIDDEN BY IT" CLAUSE IS A CLAIM ABOUT THIS
+                                PAGE, so it goes where this page's own probe
+                                measured nothing hidden. MEASURED live
+                                2026-09-26: vendor=pinpoint returns 3,554 rows
+                                and the same body with every work mode set
+                                returns 3,554 — the filter hides zero rows, and
+                                the sentence went on saying some were hidden.
+                                Vacuously true is still copy describing
+                                behaviour the code does not have. `null` (no
+                                exact measurement) keeps the general wording;
+                                only a measured zero drops the clause. */}
+                            {hiddenMeasured === 0
+                              ? t("jobsPage.coverageNarrowedNoneHidden", "The percentages we publish are counted across the whole board, and this page is narrower than that, so none is shown here. On this page the filter is hiding nothing: every posting it could reach says.")
+                              : t("jobsPage.coverageNarrowed", "A filter can only find what an employer published: roles that don't say are hidden by it, not absent. The percentages we publish are counted across the whole board, and this page is narrower than that, so none is shown here.")}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                  {/* THE GAP BETWEEN THE CHECKBOX AND THE THREE CONTROLS THAT
+                      RANK, COUNTED ON THIS PAGE.
+
+                      "States pay" admits every posting whose employer wrote a
+                      figure in the pay field. The pay floor, the pay ceiling and
+                      the pay order compare a yearly amount in approximate
+                      dollars, which only exists where we were willing to
+                      annualise — so the checkbox is now a strict superset of the
+                      three, and 33,240 postings board-wide sit in the gap
+                      (207,108 with pay text against 173,868 with an annual
+                      figure, one scan, 2026-09-27T02:07:00Z).
+
+                      NOT GATED BY coverageStillBoardWide, and that is the point.
+                      Every percentage above it is board-wide and therefore
+                      withheld the moment the reader narrows the page — the
+                      blocker that sentence exists under. This number is counted
+                      from the rows the server actually served, so it is true of
+                      the page in front of the reader no matter how narrow it is,
+                      and it is the one figure that can be printed there.
+
+                      "AT LEAST" IS IN THE COPY BECAUSE THE COUNT CANNOT SEE ALL
+                      OF ITS OWN POPULATION: a figure we annualised but could not
+                      convert to dollars is also uncomparable and carries no
+                      marker the served row exposes. Board-wide that miss is 42
+                      rows (173,868 annualised against 173,826 convertible, same
+                      scan), so the floor is a tight one — but a count that
+                      cannot see part of what it describes is published as a
+                      floor, never as a total. */}
+                  {(() => {
+                    const g = data?.payTextWithoutAnnual;
+                    if (!g || typeof g.rows !== "number" || g.rows <= 0) return null;
+                    // THE SENTENCE IS ABOUT THREE CONTROLS, SO IT PRINTS ONLY
+                    // WHERE ONE OF THEM IS IN USE. Gated here as well as on the
+                    // server, and not because the server cannot be trusted: a
+                    // deployed bundle older than 2026-09-27 emits this field
+                    // whenever any served row printed a rate we had not
+                    // annualised, which on an ordinary browse is most pages
+                    // (measured live 2026-09-27T03:29:49Z-03:30:23Z: 10 of 20
+                    // default-shape pages from offset 0 to 494,000 carried at
+                    // least one such row, 24 rows of 1,176 served). Reading that
+                    // field's presence as permission to print would tell a reader
+                    // who has touched no pay control that three controls they
+                    // never used cannot compare part of the page — the same
+                    // objection this file raises against printing a zero, and
+                    // against a board-wide percentage under a narrowed count.
+                    if (!(statedPayOnly || salaryFloor > 0 || salaryCeiling > 0 || sortMode === "salary")) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground mb-2" data-pay-gap="page">
+                        {t("jobsPage.payNotComparable", "{{rows}} of the {{of}} listings shown here print a rate we have not turned into a yearly figure — at least that many cannot be compared by the pay floor, the pay ceiling or the pay order.", { rows: g.rows, of: g.of })}
                       </p>
                     );
                   })()}
@@ -9970,8 +10879,17 @@ export default function Jobs() {
                   {t("jobsPage.fuzzyExtraLine", "Only a few exact matches for “{{q}}” — {{count}} close-match titles are included below, labeled.", { q: data.fuzzyExtra.q, count: data.fuzzyExtra.count })}
                 </p>
               )}
+              {/* `data-sort-claim` IS A TEST HOOK AND IT EARNS ITS PLACE.
+                  Three guards used to find this sentence by matching the prose
+                  prefix "Sorted by" — which was fine while every arm began that
+                  way, and broke the moment two arms correctly stopped claiming a
+                  sort they do not perform ("Ordered by when we first saw each
+                  posting…", "Exact whole-word matches…"). A guard that locates
+                  copy by its first two words fails whenever the copy is CORRECTED,
+                  which is the opposite of what a guard should do. The attribute
+                  names the slot; the assertions stay on the words. */}
               {q.trim() && sortMode !== "salary" && !data?.fuzzy && !data?.semantic && (
-                <p className="text-[11px] text-muted-foreground mb-2 -mt-1">
+                <p className="text-[11px] text-muted-foreground mb-2 -mt-1" data-sort-claim="1">
                   {/* The relevance claim is only made when the ranked path
                       actually served this page. If it errored, the recency
                       fallback answered — saying "sorted by relevance" over
@@ -9994,13 +10912,84 @@ export default function Jobs() {
                       names a specific tier, `ranked` is a generic flag, and if
                       that tier ever re-acquires the flag it would go back to
                       claiming a relevance order it does not produce. */}
-                  {searchNewestFirst
-                    ? t("jobsPage.sortedNewest", "Sorted by newest first")
-                    : data?.exactWordMatch
-                      ? t("jobsPage.sortedExactWord", "Sorted by newest first — exact whole-word matches, not relevance-ranked")
-                      : data?.ranked
-                        ? t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")
-                        : t("jobsPage.sortedNewestFallback", "Sorted by newest first (relevance ranking briefly unavailable)")}
+                  {/* THE DATE CLAIM IS PRINTED FROM WHAT THE SERVER ORDERED,
+                      NOT FROM WHAT THE READER ASKED FOR.
+
+                      This said "Sorted by newest first" unconditionally. On a
+                      text search that was false: the sort=newest path read
+                      search_jobs at p_offset 0 / p_limit 200 and date-sorted
+                      THOSE 200 rows, which are the 200 most RELEVANT — and the
+                      newest postings are the least likely to rank. Measured on
+                      production 2026-09-26: q="nurse" served 3 cards under a
+                      headline of 10,000+ while 39 nurse postings with a newer
+                      stated date could not be reached at any offset; q=
+                      "engineer" 224. Three statements sat on that screen (this
+                      line, the select reading "Newest first", and the hint
+                      beside it reading "ordered by relevance to your search")
+                      and no two agreed.
+
+                      `sortScope` is the server's own word for which set it
+                      ordered, so the strong sentence is reachable ONLY when the
+                      database ordered the whole match set. Absent or
+                      "relevanceWindow" prints the true, weaker one — an old
+                      bundle degrades to the honest sentence, never to the
+                      false one. The old `jobsPage.sortedNewest` key is DELETED
+                      from all nine locale files rather than edited: a locale
+                      value overrides an inline default, so nine translated
+                      copies of the unqualified claim would have gone on
+                      rendering (the agentPitchScope lesson). */}
+                  {/* READ TOP TO BOTTOM, THIS IS "WHAT DID THE SERVER SAY IT
+                      DID", and the ORDER of the arms is the fix rather than a
+                      style. `searchNewestFirst` used to be tested FIRST, so
+                      picking Newest made every other arm unreachable — and two of
+                      the four exits that can serve a newest-sorted text search
+                      apply no date order at all. MEASURED live 2026-09-26:
+                      q="accenture" + sort=newest took the routed EMPLOYER exit
+                      (searchRoute EMPLOYER, no sortScope, no ranked) and this line
+                      printed "Newest first within the closest 200 matches" — a
+                      bound no reply had sent, over rows ordered by our crawl
+                      stamp, on a route whose window is 400.
+
+                      So the tier that names itself is asked first, the date claims
+                      require the server's own sortScope, and the bound is printed
+                      only where a number arrived. The exact-word tier concatenates
+                      two `ORDER BY effective_posted DESC` reads whatever sort was
+                      requested, which is why its sentence names our date and not
+                      the employer's — `jobsPage.sortedExactWord` said "Sorted by
+                      newest first" over exactly those rows and is RETIRED, not
+                      edited, along with `jobsPage.sortedNewestFallback`, which
+                      said it over the effective_posted fall-through. Both are
+                      deleted from all nine locale files: a locale value overrides
+                      an inline default, so an edited English string would have
+                      left eight translated copies of the old claim rendering. */}
+                  {data?.exactWordMatch
+                    ? t("jobsPage.sortedExactWordDiscovery", "Exact whole-word matches, ordered by when we first saw each posting — our date, not the employer's, and not relevance-ranked")
+                    : data?.sortScope === "matchSet"
+                      ? data?.sortMatcher === "company"
+                        ? t("jobsPage.sortedNewestWholeSetCompany", "Sorted by newest first — every posting from this employer, by the employer's own date, undated last")
+                        : t("jobsPage.sortedNewestWholeSet", "Sorted by newest first — every posting whose title matches, by the employer's own date, undated last")
+                      : data?.sortScope === "relevanceWindow"
+                        /* THE BOUND COMES FROM THE SERVER OR THE SENTENCE GOES
+                           WITHOUT ONE. `?? 200` put a figure on screen that no
+                           response had measured, in nine languages — the defect
+                           class this build exists to remove. */
+                        ? typeof data?.sortScopeRows === "number"
+                          ? t("jobsPage.sortedNewestWindow", "Newest first within the closest {{n}} matches this order can reach — not the newest of every match", { n: data.sortScopeRows.toLocaleString() })
+                          : t("jobsPage.sortedNewestWindowUnbounded", "Newest first among the closest matches this order could reach — not the newest of every match")
+                        : data?.ranked
+                          ? t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")
+                          /* An employer page is UNSCORED ON PURPOSE (every row
+                             matches the name typed, so scoring by title
+                             similarity would demote roles for not repeating it),
+                             and the old arm told those readers that relevance
+                             ranking was "briefly unavailable" — a false apology,
+                             and it blinded the one sentence that makes a real
+                             ranked-path outage visible. */
+                          : data?.companyMatched
+                            ? t("jobsPage.sortedEmployerDiscovery", "Ordered by when we first saw each posting — our date, not the employer's. These aren't relevance-ranked: every one of them is {{company}}.", { company: data.companyMatched })
+                            : searchNewestFirst
+                              ? t("jobsPage.sortedNewestDatedFallback", "Sorted by newest first, by the date each employer states, undated last (relevance ranking briefly unavailable)")
+                              : t("jobsPage.sortedDiscoveryFallback", "Ordered by when we first saw each posting — our date, not the employer's (relevance ranking briefly unavailable)")}
                   {" · "}
                   <button type="button" className="text-primary hover:underline" onClick={() => setSearchNewestFirst((v) => !v)}>
                     {searchNewestFirst
@@ -10011,7 +11000,16 @@ export default function Jobs() {
                   <span title={t("jobsPage.phraseTipLong", "Search also looks inside job descriptions. Wrap words in quotes to match an exact phrase.")}>
                     {t("jobsPage.phraseTip", 'tip: "quotes" match exact phrases')}
                   </span>
-                  {!searchNewestFirst && data?.aliases && data.aliases.length > 0 && (
+                  {/* THE GATE CAME OFF THE DATE SORT BECAUSE THE EXPANSION DID
+                      NOT. `!searchNewestFirst` was correct while a newest-sorted
+                      search ran no alias expansion; both paths that serve one
+                      now do (newestTextSort binds the SIMPLE route's expansion,
+                      and the ranked window always did), so hiding the line left
+                      a reader looking at "Registered Nurse" rows under a search
+                      for "rn" with nothing on the page saying why. The line is
+                      emitted per response, so it appears only where the server
+                      actually expanded. */}
+                  {data?.aliases && data.aliases.length > 0 && (
                     <span className="text-foreground/80">
                       {" · "}
                       {t("jobsPage.aliasLine", "also matching: {{terms}}", { terms: data.aliases.join(", ") })}
@@ -11185,6 +12183,13 @@ export default function Jobs() {
                       ? t("jobsPage.endNarrowTitle", "End of results — {{n}} openings shown for these filters", { n: shownCount.toLocaleString() })
                       : endKind === "broad"
                       ? t("jobsPage.endBroadTitle", "You've reached the end — {{n}} openings shown", { n: shownCount.toLocaleString() })
+                      /* The figure is the cards shown, like every other branch;
+                         what changes is the noun it is attached to. This page
+                         reached the end of what its ORDER can reach, which is
+                         not the end of what matches — and saying "for these
+                         filters" here was the misattribution. */
+                      : endKind === "sortWindow"
+                      ? t("jobsPage.endSortWindowTitle", "End of what “newest first” can reach — {{n}} openings shown", { n: shownCount.toLocaleString() })
                       : t("jobsPage.endUnknownTitle", "That's the last page for this search")}
                   </p>
                   {endKind === "unconfirmed" ? (
@@ -11199,6 +12204,46 @@ export default function Jobs() {
                     <p className="text-sm text-muted-foreground mb-2">
                       {t("jobsPage.endHiddenBody", "There's no further page to load, and every posting this one returned is hidden by a filter you set in your browser — the lines above bring them back.")}
                     </p>
+                  ) : endKind === "sortWindow" ? (
+                    /* THE CAUSE, NAMED, AND THE REMEDY THAT ACTUALLY WORKS.
+                       The board could only date-order the closest matches for
+                       this search, so the list ends at that window's edge and
+                       not at the end of the match set — the count in the header
+                       is still true, which is exactly why it has to be said out
+                       loud that the two describe different things. The button is
+                       the order, not a filter: measured on production
+                       2026-09-26, q="nurse" ended after 3 cards under sort=
+                       newest and 60 cards with a live "load more" under
+                       relevance, and the old card offered only to delete the
+                       search term. */
+                    <>
+                      {/* NO SERVER COUNT IN THIS CARD, and the omission is a
+                          rule rather than brevity: every figure here is on the
+                          `shownCount` basis (cards rendered), while `total`
+                          counts UNGROUPED rows and disagrees with the page on
+                          most terminal cards — the card quoted "1,682" three
+                          inches under a header reading "Showing 178". The count
+                          the reader needs is already in the results summary
+                          above, on its own basis and labelled; this sentence
+                          only has to say that the ORDER, not the match set, is
+                          what ran out. Pinned by a-list-that-ended-in-nothing's
+                          SERVER_COUNTS rule. */}
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {/* SAME RULE AS THE ORDER LINE: the window's size is the
+                            server's figure or it is absent. `?? 200` made this
+                            card quote a bound no reply had sent. */}
+                        {typeof data?.sortScopeRows === "number"
+                          ? t("jobsPage.endSortWindowBody", "The board could only put the closest {{n}} matches in date order for this search, so the list stops here rather than at the end of everything that matches. Relevance order pages through more of them.", {
+                            n: data.sortScopeRows.toLocaleString(),
+                          })
+                          : t("jobsPage.endSortWindowBodyUnbounded", "The board could only put the closest matches it could reach in date order for this search, so the list stops here rather than at the end of everything that matches. Relevance order pages through more of them.")}
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setSearchNewestFirst(false)}>
+                          {t("jobsPage.endSortWindowCta", "Sort by relevance instead")}
+                        </Button>
+                      </div>
+                    </>
                   ) : endKind === "unknown" ? (
                     /* NO CAUSE IS NAMED, because the client cannot observe one.
                        This used to assert a deadline — "couldn't finish counting

@@ -169,13 +169,24 @@ export type AppliedFilters = {
    */
   payBasis: string | null;
   /**
-   * "Only postings that state pay at all" -> salary_min_annual IS NOT NULL.
+   * "Only postings that state pay at all" -> the employer's VERBATIM pay field
+   * carries something, in every runtime that answers this. It bound the
+   * annualised figure until 2026-09-27, which made it ask whether the employer
+   * stated pay AND whether we were willing to multiply that rate into a year —
+   * so a posting whose hourly wage the card was printing counted as silent. The
+   * column it reads now is the same one rowToJob maps to `salary` and the same
+   * one the card renders from; see the predicate's own note in buildQuery
+   * (job-board index.ts) for the measurement and the three candidates refused.
    *
    * THE HONEST HALF OF A FACT THE BOARD ALREADY ACTS ON. Anyone who sets
-   * salaryFloor is ALREADY confined to this population — a posting with no
-   * stated pay cannot clear any floor — and has never been told. Making it a
+   * salaryFloor is ALREADY confined to a stated-pay population — a posting with
+   * no stated pay cannot clear any floor — and has never been told. Making it a
    * filter of its own means the narrowing can be asked for, seen, and taken
-   * off, instead of arriving as a side effect of moving a slider.
+   * off, instead of arriving as a side effect of moving a slider. It is not the
+   * SAME population: the floor compares an annualised figure converted to
+   * approximate dollars, so this flag is a strict superset of what the floor,
+   * the ceiling and the pay order can compare, and the board discloses the gap
+   * per page rather than implying the two sets are one.
    */
   hasStatedPay: boolean;
   /**
@@ -333,6 +344,23 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
  */
 export function payParams(a: AppliedFilters): Record<string, unknown> {
   return {
+    // p_pay_stated CARRIES THE SAME QUESTION buildQuery ASKS, and the question
+    // is decided in SQL, not here. It asks whether the employer put a figure in
+    // the verbatim pay field — NOT whether we annualised it — in all three
+    // functions that take this parameter (20260927034117). This key is where the
+    // two runtimes meet, so a predicate moved in one and not the other shows up
+    // as a count that describes a different population than the page under it:
+    // the 2026-07-25 work-mode defect. The cross-runtime guard in
+    // src/test/the-pay-controls-say-what-they-compare.test.tsx reads both sides
+    // and fails if the SOURCES ever name different columns again.
+    //
+    // THAT GUARD CANNOT SEE THE DEPLOY WINDOW, and the window is the same defect
+    // on a timer: it reads source files, not deployed versions, and these two
+    // runtimes ship down different pipes. The cover for that is in cappedCount
+    // (job-board index.ts), which stands down from this RPC's count whenever a
+    // stated-pay request would get an answer the two versions could disagree
+    // about, and in the category rail beside it. Both are dated and removable;
+    // verify-deploy's 5y section says when.
     ...(a.hasStatedPay ? { p_pay_stated: true } : {}),
     ...(a.includeUnstatedPay ? { p_include_unstated: true } : {}),
   };
@@ -603,23 +631,31 @@ export function normalizeFilters(
   if (body.includeUnstatedPay !== undefined && body.includeUnstatedPay !== null && typeof body.includeUnstatedPay !== "boolean") {
     ignored.push("includeUnstatedPay");
   }
-  // STATES PAY AND THE UNSTATED WIDENING CANNOT BOTH BIND. hasStatedPay ANDs
-  // `salary_min_annual IS NOT NULL` into the row query; the widening ORs
-  // `salary_rank_usd IS NULL` back into the floor and ceiling arms. Under that
+  // STATES PAY AND THE UNSTATED WIDENING CANNOT BOTH BIND. hasStatedPay ANDs a
+  // NOT-NULL test on the employer's verbatim pay field into the row query; the
+  // widening ORs a rank-IS-NULL arm back into the floor and ceiling. Under that
   // AND, every row the OR-arm re-admits for stating NO pay is thrown straight
   // back out — so the page could light both controls, send both keys, and get
   // a result the widening did not widen, with nothing naming it (the body the
   // controls guard's C12 case records). A request this file cannot honour is
   // named, never carried silently: the widening is dropped here and reported.
   //
-  // THIS CHANGES RESULTS; IT IS NOT PURE DISCLOSURE. salary_rank_usd is a
-  // GENERATED column — salary_min_annual times a per-currency factor for the
-  // currencies the table can convert, ELSE NULL. A posting that states pay in
-  // a currency it cannot convert has salary_min_annual set (it passes the AND)
-  // and salary_rank_usd NULL (it fails a bare floor) — and the OR-arm WAS
-  // admitting that slice: stated, unconvertible, above nobody's floor. Binding
-  // false drops it. Its size is unmeasured (a subset of the roughly one in
-  // five postings that state a figure at all); the trade is that slice for a
+  // THIS CHANGES RESULTS; IT IS NOT PURE DISCLOSURE, and the slice it drops GREW
+  // when the states-pay predicate moved to the pay field (2026-09-27). The rank
+  // column is GENERATED from the annualised figure times a per-currency factor,
+  // ELSE NULL, so two populations now pass the stated-pay AND and fail a bare
+  // floor: a figure in a currency the table cannot convert, and — new — a rate
+  // we declined to annualise at all, which is the part-time and casual wage
+  // population. The OR-arm was re-admitting both; binding false drops both. The
+  // second one is BOARD-WIDE measurable — 33,240 rows carry pay text with no
+  // annual figure (2026-09-27T02:07:00Z) — and it is still UNMEASURED ON THE
+  // PAGE, which is the number that would matter here. payTextWithoutAnnual
+  // counts gap rows among the rows that WERE SERVED, and in exactly this state
+  // (stated pay, a floor bound, the widening dropped) the floor's rank arm
+  // excludes every gap row, so that counter is structurally zero and the page
+  // says nothing about what the drop cost. Reporting it would take a count of
+  // this same body with the rank-NULL arm restored, alongside the ignoredFilters
+  // entry; that is not built. The trade itself is unchanged — that slice for a
   // body whose every key means what the control beside it says.
   //
   // Neither public-api nor nl-search imports this function: public-api
@@ -998,7 +1034,36 @@ export function filterViolations(
       const ok = a.payBasis === "hourly" ? per === "hour" : (SALARIED_PERIODS as readonly string[]).includes(per);
       if (!ok) push("payBasis", a.payBasis, r.salaryPeriod);
     }
-    if (a.hasStatedPay && r.salaryMinAnnual == null) push("hasStatedPay", "stated", r.salaryMinAnnual);
+    // THE SENSOR READS THE COLUMN THE PREDICATE READS, or it reports every row
+    // the filter correctly admitted as a violation. This checked the annualised
+    // figure while the query bound it too; on 2026-09-27 the query moved to the
+    // employer's verbatim pay field, and a sensor left behind would have flagged
+    // roughly 33,000 legitimately-admitted postings board-wide — an integrity
+    // channel that floods is an integrity channel somebody switches off.
+    // rowToJob maps the column straight through, so a served row that carries no
+    // pay text under this filter is the defect, exactly as an undated row under
+    // maxAgeDays is.
+    //
+    // DELIBERATELY STRICTER THAN THE QUERY ON ONE CASE, AND THAT ASYMMETRY IS
+    // NAMED RATHER THAN GLOSSED. Every query arm is a bare NOT-NULL test — the
+    // edge builder's and all three SQL bodies' — so a pay field holding only
+    // whitespace is ADMITTED by all four, while this test also rejects a blank.
+    // The asymmetry cannot stop such a row being served, and claiming the two
+    // tests are the same one would be exactly the kind of comment this change
+    // exists to retire. What it can do, and all it does, is turn one bad row into
+    // a reported incident on every page that serves it — a FALSE incident by the
+    // predicate's own definition, since the query admitted the row on purpose.
+    // The cost is bounded and the population is unobserved: 0 blank or
+    // whitespace-only pay strings in 12,000 rows walked live 2026-09-27T03:30Z
+    // and 0 in the earlier 18,000-row walk. It is kept strict because a vendor
+    // sending whitespace is a real ingest defect worth one console line — clean()
+    // strips NUL bytes and the writers' `|| null` turns "" into null, but neither
+    // trims, so "   " can reach the column. Closing it properly means trimming at
+    // the writers (an ingest change) or a btrim arm in four runtimes, one of
+    // which — PostgREST — cannot express btrim; not a comment's decision to make.
+    if (a.hasStatedPay && (typeof r.salary !== "string" || r.salary.trim() === "")) {
+      push("hasStatedPay", "stated", r.salary);
+    }
     // An unstated requirement is EXCLUDED by the predicate at the database, so a
     // row with no min_years arriving under this filter is itself the defect —
     // the same reading maxAgeDays gives an undated posting.

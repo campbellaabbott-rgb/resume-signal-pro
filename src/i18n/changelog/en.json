@@ -1183,6 +1183,34 @@
     "activelyHiringHidLargeEmployers": {
       "title": "The “Actively hiring” filter was hiding the biggest employers",
       "description": "A filter called “Actively hiring” sounds like it knows who is hiring. It did not. It counted roles we had watched come off an employer’s careers page and stay off — which means reading that page all the way to the end, and on the largest employers we could not. So the filter quietly removed them: measured against the thirty biggest employers on the board, seventeen of them and 91,535 of 154,979 roles were being hidden, including one employer with 34,000 openings. It was reporting the limits of what we can read as a fact about who is hiring. It is now called “Takes roles down”, which is the thing we actually watched happen. Employers we hold no record for are no longer treated as not hiring — they are set aside, counted on screen with the reason given, and one button brings them back. And where we cannot tell whether an employer leaves roles up or we simply never saw one come down, we now say that, instead of showing you nothing."
+    },
+    "dayThirtyFiguresFell": {
+      "title": "Our day-30 figures were too high, and are now lower",
+      "description": "The Ghost Job Index reports how many roles are still advertised thirty days after they appear. Until today that figure counted employers whose careers pages we have never once seen a role come down from — and a role we never see removed looks, to us, like a role that stayed open. Those employers are now left out of the figure, and every field's number fell by roughly twenty to twenty-eight points as a result. Each field also now shows how much of its figure comes from any single employer. The old numbers were flattering because of a gap in what we could observe, not because the roles were real."
+    },
+    "aHospitalFiledUnderIsrael": {
+      "title": "A Boston hospital was filed under Israel",
+      "description": "Filtering by country used the words in a posting, and some employer names contain a country. Beth Israel Deaconess Medical Center, in Boston, was being served to anyone filtering for Israel — fifty-four roles of the six hundred and fifty-six we showed for that country. A company's name can no longer supply a country, and the same fix covers postings whose location names two different states, which now name neither rather than guessing one."
+    },
+    "postingsWithTheirOwnPage": {
+      "title": "Postings you can link to",
+      "description": "A job used to exist only inside the board — open it and the address bar did not change, so there was nothing to send anyone. Several hundred postings now have a page of their own: a real link you can share, with the employer, the location, the pay if it is stated, and the description, written so search engines and AI assistants can read it too. It is a bounded set rather than the whole board, and only pages that genuinely exist are listed for search engines."
+    },
+    "whatOntarioPostingsMustState": {
+      "title": "What an Ontario posting is required to say",
+      "description": "Since January, Ontario law has required a job posting to state the expected pay, to say whether the vacancy is real, and to disclose whether artificial intelligence screens applicants — and has forbidden asking for Canadian experience. On Ontario postings we now quote what the posting itself says on each of those four points, with the section of the Act beside it. We quote; we do not judge. Whether an employer is covered by the law depends on its size, which a posting does not tell us, so nothing here says an employer broke a rule."
+    },
+    "aSourceWithNothingBehindIt": {
+      "title": "A source filter with no jobs behind it",
+      "description": "The source menu offered USAJOBS, the United States federal jobs feed, and filtering by it returned nothing at all — the connection to that feed has never been switched on. It no longer appears in the menu. The entry is kept rather than deleted, so it comes back the day the feed does."
+    },
+    "layoffFilingsBesideAPosting": {
+      "title": "Layoff filings, beside the roles",
+      "description": "When an employer tells a regulator it is cutting staff — an 8-K filed with the SEC, or a WARN notice filed with a state — that filing now appears beside that employer's postings, with the date and a link to the filing itself. We match an employer to a filing only when the name is unambiguous, so a posting with no line beside it means we found no filing we were sure of, never that none exists."
+    },
+    "yourAgentCanLookWithoutAKey": {
+      "title": "Your agent can look before you sign up",
+      "description": "An AI assistant can now read the board without any key at all — board totals, a small search, and a way to fetch one posting — within a daily allowance, so you can point an agent at us and see whether it is useful before creating anything. The server is listed in the public directory assistants use to find tools, and it tells an agent plainly what it can and cannot do with the key it holds."
     }
   }
 }

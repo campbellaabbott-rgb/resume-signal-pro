@@ -957,7 +957,27 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     // filter about one, so it is excluded rather than guessed at — the same
     // reading the board publishes coverage for.
     if (employmentType) qb = qb.eq("employment_type", employmentType);
-    if (statedPay === true) qb = qb.not("salary_min_annual", "is", null);
+    // has_stated_pay ASKS THE EMPLOYER'S QUESTION, NOT OUR PARSER'S, and it
+    // moved here on 2026-09-27 in the same change as the board's.
+    //
+    // It bound the annualised figure, which meant it answered "the employer
+    // stated pay AND we were willing to multiply that rate into a year" — so a
+    // posting whose hourly wage this very response CARRIES in `salary` was
+    // filtered out as stating nothing. Measured on complete country strata read
+    // through the board: IE 312 rows with pay text against 282 with an annual,
+    // NZ 161 against 143; board-wide 207,108 against 173,868 of 733,190
+    // servable rows on one scan stamped 2026-09-27T02:07:00Z, so 33,240
+    // postings were excluded by a name that did not describe them.
+    //
+    // THIS IS A BEHAVIOUR CHANGE ON A PAID SURFACE AND IT IS DELIBERATE. It
+    // widens: a caller gets strictly more rows, and some of those rows carry no
+    // salary_min_annual. A client that read that field off every has_stated_pay
+    // row must now read `salary`, which is the field the employer actually
+    // published. The alternative was worse — the MCP tools proxy the board's
+    // list action, so their predicate moved whatever this line did, and leaving
+    // it here would have made the REST and MCP halves of ONE api answer the same
+    // documented filter two different ways with nothing saying so.
+    if (statedPay === true) qb = qb.not("salary", "is", null);
     if (payBasis === "hourly") qb = qb.eq("salary_period", "hour");
     else if (payBasis === "salaried") qb = qb.in("salary_period", ["year", "month"]);
     // "Does not demand more than n years": NULL <= n is not true, so an
@@ -1104,8 +1124,24 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
       note: "Only postings still live in the employer's own feed within the last 30 days. Withdrawn postings are excluded, never re-dated.",
+      // THIS BLOCK IS EMITTED UNDER A SALARY FLOOR, SO IT MUST QUOTE THE
+      // FLOOR'S OWN COLUMN. It quoted the annualised-figure share (0.201, dated
+      // 2026-08-25) beside a filter that binds the CONVERTED figure — the exact
+      // mis-citation 20260909100000 exists to forbid, because the two columns
+      // answer different questions and the wider one overstates a floor's reach.
+      // Re-measured on the field grid's board block, one scan stamped
+      // 2026-09-27T02:07:00Z: 173,826 of 733,190 servable rows carry a figure a
+      // floor can compare (23.7%), against 207,108 (28.3%) whose employer wrote
+      // any figure at all. The share below is the first of those, and the note
+      // names which of the two it is rather than saying "state pay", which reads
+      // as the second.
       ...(Number.isFinite(salaryMin) && salaryMin > 0
-        ? { statedPayShare: 0.201, statedPayNote: "About 20% of postings state pay; a salary filter can only ever see those unless include_unstated_pay=true." }
+        ? {
+          statedPayShare: 0.237,
+          statedPayShareBasis: "salary_rank_usd IS NOT NULL, 173,826 of 733,190 servable postings, counted 2026-09-27T02:07:00Z",
+          statedPayNote:
+            "A salary floor compares an annualised figure converted to approximate US dollars, which about 24% of postings carry; it cannot see the rest unless include_unstated_pay=true. A wider 28% state some pay figure — including hourly rates we do not annualise — and has_stated_pay=true selects those.",
+        }
         : {}),
     },
     // explain=1: the endpoint's own decision trace. Honest about THIS engine —
