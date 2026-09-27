@@ -1216,7 +1216,41 @@ const PINNED = {
   //   publish — then migration 20260927034117. That is the reverse of the usual
   //   order here and cappedCount's stand-down is why it is safe; verify-deploy
   //   5y says which check reads which half and what a failure means.
-  buildVersion: "2026-09-09.77",
+  //   .78: _shared/salary-extract.ts + SALARY_PARSE_VERSION 7->8; index.ts
+  //   otherwise unchanged from .77 and sources.ts UNCHANGED, so the two catalog
+  //   pins above are untouched and no board waits on the bootstrap lane. A
+  //   three-decimal HOURLY rate was being read as a thousands group: P_MONEY's
+  //   first alternative matches "23.170" as 23,170, the unlabeled-annual branch
+  //   fired at multiplier 1, and Saskatchewan Health Authority's $23.17/hour pay
+  //   band was stored as a $23,170 ANNUAL salary — below SK minimum wage for
+  //   full-time work. The tenant's own CX API says "RequisitionType": "Hourly"
+  //   beside "Salary or Pay Band: Pay Band 12 $23.170 to $24.840 (3 step
+  //   range)". Measured live 2026-09-26 over 176,575 rows — complete coverage of
+  //   the 12k-120k band for all 20 vendors, where a misread rate necessarily
+  //   lands, plus 31,586 rows in 120k-2M where nothing qualifies: 1,404 rows on
+  //   FIVE boards and two vendors (oracle HealthCareersInSask.ca 1,294, oracle
+  //   DPS 96, workday Scarborough Health Network 11, workday Richmond
+  //   University Medical Center 2, oracle Northwell 1), 1,323 holding a wrong
+  //   stored annual and 81 storing NULL. salary_rank_usd is GENERATED from
+  //   salary_min_annual and is the column the pay floor, ceiling and sort all
+  //   compare, so every one of them filtered and sorted at ~half its true pay —
+  //   the same column .77 and migration 20260926191137 are about, which is why
+  //   this lands after them rather than beside them.
+  //   readsDotThreeAsRate re-reads the group as a decimal only when that is the
+  //   only plausible reading, and it is conditioned on the posting's LOCALE, not
+  //   on the separator — parseMoney's deliberate European reading is untouched
+  //   and 385 EUR rows in the same band are unchanged. It also requires: no
+  //   comma-grouped figure elsewhere in the string, no stated annual/monthly
+  //   basis, every money figure a bare dot-3 group, and no group round to the
+  //   hundred — a dot-as-thousands TYPO writes a round annual ("$110.400 TO
+  //   $184.000", "$50.000-$100.000"), and without that last test the re-read
+  //   fired on 240 measured rows at 2080x. min/max only are rewritten, so
+  //   annualisation stays the audited path and the part-time guard still applies.
+  //   NO MIGRATION and no deploy-order constraint. SALARY_PARSE_VERSION 7->8
+  //   makes the chained backfill-salary sweep re-fill the stored columns on the
+  //   next refresh pass; it skips rows already matching the current parse, so it
+  //   writes only the ~1,404 corrections.
+  buildVersion: "2026-09-09.78",
 };
 
 /**
