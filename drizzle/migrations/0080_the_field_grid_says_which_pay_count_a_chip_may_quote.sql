@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260927042251_the_field_grid_says_which_pay_count_a_chip_may_quote.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260927042251_the_field_grid_says_which_pay_count_a_chip_may_quote.sql';
