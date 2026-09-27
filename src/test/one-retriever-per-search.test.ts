@@ -214,6 +214,7 @@ describe("employer diversity demotes, never drops", () => {
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 const PAGING = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/paging.ts"), "utf8");
 
@@ -223,7 +224,18 @@ const PAGING = readFileSync(resolve(__dirname, "../../supabase/functions/job-boa
  * only for the properties that would fail silently.
  */
 describe("routed retrieval is wired so it cannot fail quietly", () => {
-  const BLK = /── ROUTED RETRIEVAL[\s\S]*?catch \{ \/\* fall through to the path this query would have taken anyway \*\/ \}/.exec(FN)?.[0] ?? "";
+  // The region is located by CODE and read with its comments gone. It used to
+  // be sliced from a section banner to the sentence inside the routed catch,
+  // and the banner moved to docs/job-board-index-notes.md with every other
+  // long comment run, which emptied the region and failed all seven guards
+  // below for a reason that had nothing to do with routing. It now runs from
+  // the route decision to the declaration that follows the routed try/catch,
+  // over codeOf(), so a comment quoting one of the pinned lines cannot stand
+  // in for the line.
+  const CODE = codeOf(FN);
+  const routedStart = CODE.indexOf("const routeDecision = ");
+  const routedEnd = CODE.indexOf("let rankedFellBack", routedStart);
+  const BLK = routedStart > -1 && routedEnd > routedStart ? CODE.slice(routedStart, routedEnd) : "";
 
   it("is present, and decides the route BEFORE any SQL", () => {
     expect(BLK, "the routed branch is missing").not.toBe("");
@@ -316,7 +328,13 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
     // A route that returns an empty page would be WORSE than the path it
     // replaced — the query must still reach the retriever it would have used.
     expect(/if \(routedGrouped\.jobs\.length > 0\) \{/.test(BLK)).toBe(true);
-    expect(/catch \{ \/\* fall through/.test(BLK)).toBe(true);
+    // The property, not the note beside it: the catch that closes the routed
+    // try is the last one in the region, and it must neither rethrow nor
+    // answer for the route. Logging there is fine; a throw is a 500 and a
+    // return is the empty page this guard exists to forbid.
+    const routedCatch = BLK.slice(BLK.lastIndexOf("} catch"));
+    expect(routedCatch.startsWith("} catch"), "the routed try has no catch — a failing route would error instead of falling through").toBe(true);
+    expect(/\b(?:throw|return)\b/.test(routedCatch), "the routed catch must fall through, not rethrow or answer for the route").toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 
 /**
  * SIX list exits since routed retrieval landed (recency, ranked, fuzzy,
@@ -41,20 +42,39 @@ const SHARED = readFileSync(resolve(__dirname, "../../supabase/functions/_shared
 
 
 /**
- * The top-up block, sliced to its real END rather than a guessed width.
+ * The top-up block, sliced between two lines of CODE and read two ways.
  *
- * A [0, 2600] window missed a `catch` that sits at 2,646 — the fourth
- * fixed-width slice to silently mis-scope an assertion in this suite. A magic
- * number turns "the code changed slightly" into "the guard tests nothing",
- * and it fails in the direction that looks like success.
+ * It used to be sliced between two comment sentences: the heading of the
+ * block's own rationale and the heading of the paragraph after it. On
+ * 2026-09-27 every long comment run in index.ts moved to
+ * docs/job-board-index-notes.md (the deploy-upload cap counts raw source
+ * bytes), both landmarks left with them, and this slicer returned "" — three
+ * assertions went red over a move that changed no code. Prose beside a block
+ * can be moved, reworded or trimmed without the block changing, so it is not
+ * a position. The block is now located by its own gate (the first condition
+ * of its `if`) and by the statement that follows it, each unique in the file.
+ *
+ * Missing either landmark yields "" and the not-found assertion, never a
+ * slice that runs on to the end of the file. A [0, 2600] window once missed
+ * a `catch` that sat at 2,646 — the fourth fixed-width slice to silently
+ * mis-scope an assertion in this suite — and an open-ended slice fails the
+ * same way: the guard reads a region it did not mean, in the direction that
+ * looks like success.
  */
-const TOPUP = (() => {
-  const start = FN.indexOf("ONE TOP-UP WHEN CLUSTERING");
-  if (start < 0) return "";
-  // Ends at the statement that follows the block.
-  const end = FN.indexOf("// Interleave the RETURNED page only", start);
-  return end > start ? FN.slice(start, end) : FN.slice(start);
-})();
+const TOPUP_GATE = "groupSimilar && !twoSubset && !sortSalary && !countOnly &&";
+const TOPUP_NEXT = "if (!sortSalary) grouped.jobs = interleaveByCompany(grouped.jobs);";
+function topUpBlockOf(src: string): string {
+  const gate = src.indexOf(TOPUP_GATE);
+  if (gate < 0) return "";
+  const start = src.lastIndexOf("if (", gate);
+  if (start < 0 || src.slice(start, gate).trim() !== "if (") return "";
+  const end = src.indexOf(TOPUP_NEXT, gate);
+  return end < 0 ? "" : src.slice(start, end);
+}
+/** Comments gone: what every assertion about the block's CODE reads. */
+const TOPUP_CODE = topUpBlockOf(codeOf(FN));
+/** Comments kept: for the one check that is about the note inside the catch. */
+const TOPUP = topUpBlockOf(FN);
 
 describe("a page fills up", () => {
   it("tops up only when the buffer was genuinely exhausted", () => {
@@ -81,7 +101,7 @@ describe("a page fills up", () => {
   it("tops up EXACTLY ONCE — never loops until full", () => {
     // Looping would turn a heavy search into an unbounded fan of queries,
     // which is the shape that took the board down on 2026-08-17.
-    const block = TOPUP;
+    const block = TOPUP_CODE;
     expect(block, "top-up block not found").not.toBe("");
     expect(block).not.toMatch(/\bwhile\s*\(/);
     expect(block).not.toMatch(/for\s*\(\s*(let|const|var)\b/);
@@ -95,7 +115,8 @@ describe("a page fills up", () => {
      * the cursor knows nothing about. Naming the column from `newestFirst` makes
      * the same two-arm seek correct in both orders, so the exclusion is no longer
      * needed and the mechanism reaches the ordinary browse again. */
-    const block = TOPUP;
+    const block = TOPUP_CODE;
+    expect(block, "top-up block not found").not.toBe("");
     expect(block).toMatch(/const anchorCol = newestFirst \? "posted_at" : "effective_posted";/);
     expect(block).toMatch(/const anchorVal = newestFirst \? lastRaw\?\.posted_at : lastRaw\?\.effective_posted;/);
     // Two arms against that one column, id tiebreak inside the eq arm only.
@@ -163,8 +184,23 @@ describe("a page fills up", () => {
   });
 
   it("serves the page it already has if the top-up fails", () => {
-    const block = TOPUP;
-    expect(block).toMatch(/catch \{ \/\* the page we already have is still correct/);
+    const block = TOPUP_CODE;
+    expect(block, "top-up block not found").not.toBe("");
+    // ONE catch in the block, and it is empty of code: nothing rethrown,
+    // nothing returned, so the page assembled before the try is what goes
+    // out. Read with comments gone — the note inside the braces used to be
+    // the whole assertion, and a catch that rethrew behind that note would
+    // have passed it.
+    expect((block.match(/\bcatch\b/g) ?? []).length, "one catch, the top-up's own").toBe(1);
+    // After `catch`: an optional binding, an optional pair of empty braces,
+    // then the brace that closes the enclosing block. The braces are optional
+    // because the stripper folds a brace pair holding only a block comment
+    // into one space; the emptiness is not optional.
+    const after = block.slice(block.search(/\bcatch\b/) + "catch".length);
+    expect(after, "the catch runs code before the page is served").toMatch(/^\s*(\([^)]*\)\s*)?(\{\s*\})?\s*\}/);
+    // The swallow says why, inside the braces, so the next reader does not
+    // delete an "empty" catch as a bug. The shape is pinned, not the words.
+    expect(TOPUP).toMatch(/catch \{ \/\*[^*]+\*\/ \}/);
   });
 });
 

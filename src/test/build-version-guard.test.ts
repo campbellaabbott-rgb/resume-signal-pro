@@ -1347,7 +1347,11 @@ const PINNED = {
   //   the demand-weighted detail lane keeps the pay it fetches, a period-only pay
   //   change is logged again, and ~700 first reads of a newly-read vendor field
   //   are not recorded as employer edits.
-  buildVersion: "2026-09-09.80",
+  // 2026-09-09.81: index.ts only, comments only — 420 comment runs longer than six
+  // lines moved to docs/job-board-index-notes.md (483KB of a 1.2MB file; the
+  // 4.5MB upload cap counts raw source). Code proven identical line-for-line
+  // after comment stripping. sources.ts UNCHANGED (hash below still pins .80).
+  buildVersion: "2026-09-09.81",
 };
 
 /**

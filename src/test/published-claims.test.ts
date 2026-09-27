@@ -1376,12 +1376,25 @@ describe("verify-on-apply cannot destroy a live posting on one probe", () => {
     // the base-id retry, and the authoritative CXS detail endpoint. Measured
     // over 172 postings seen live in the feed that same second — 5 false
     // closures before, 0 after, with fabricated ids still reading gone 30/30.
-    const wd = fn.slice(fn.indexOf('if (src.source === "workday") {\n      // Workday has no by-id endpoint'));
-    expect(wd.slice(0, 3600)).toMatch(/externalId\.replace\(\/-\\d\+\$\/, ""\)/);
-    expect(wd.slice(0, 3600)).toMatch(/workdayCxsUrl\(applyUrl\)/);
+    //
+    // The region is located by CODE — the probe function, its workday arm, and
+    // the memoised-board fallback that begins where the arm ends — and read
+    // with comments stripped. The sentence that used to sit above the arm now
+    // lives in docs/job-board-index-notes.md, and a second call to the CXS
+    // helper exists further down the file, so the arm is bounded at both ends
+    // rather than by a character window.
+    const code = codeOf(fn);
+    const live = code.slice(code.indexOf("async function checkLive("));
+    const start = live.indexOf('if (src.source === "workday") {');
+    const end = live.indexOf("const memoKey", start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    const wd = live.slice(start, end);
+    expect(wd).toMatch(/externalId\.replace\(\/-\\d\+\$\/, ""\)/);
+    expect(wd).toMatch(/workdayCxsUrl\(applyUrl\)/);
     // A non-404 on the authoritative probe is unknown, never a closure.
-    expect(wd.slice(0, 3600)).toMatch(/if \(det\.status === 404\) return false;/);
-    expect(wd.slice(0, 3600)).toMatch(/if \(!det\.ok\) return null;/);
+    expect(wd).toMatch(/if \(det\.status === 404\) return false;/);
+    expect(wd).toMatch(/if \(!det\.ok\) return null;/);
   });
 
   it("both callers hand the probe the apply_url it needs to be authoritative", () => {

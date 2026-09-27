@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 
 /**
  * FIVE QUERY-SIDE FIXES MOVED NOTHING, BECAUSE THE TOKEN WAS NEVER STORED.
@@ -30,6 +31,23 @@ const MIG = (() => {
   const f = readdirSync(d).find((x) => x.includes("the_index_could_not_see_the_word_IT"));
   expect(f, "the simple-config index migration is missing").toBeTruthy();
   return readFileSync(resolve(d, f!), "utf8");
+})();
+
+/**
+ * THE SIMPLE-CONFIG TIER, LOCATED BY ITS CODE. This region used to be sliced
+ * from the banner comment that stood above the tier to the comment inside its
+ * catch; that prose now lives in docs/job-board-index-notes.md (section
+ * n372-qtext-length-2-try), and a region anchored on prose is a region that
+ * vanishes when the prose moves. It now runs from the tier's own proof flag to
+ * the trigram tier's gate -- both code, both unique in the file -- and is read
+ * with comments stripped, so no explanation inside the tier can satisfy or trip
+ * a spelling asserted below.
+ */
+const SIMPLE_TIER = (() => {
+  const code = codeOf(FN);
+  const from = code.indexOf("let simpleTierProvedEmpty = false;");
+  const to = code.indexOf("if (qText.length >= 3) try {", from);
+  return from === -1 || to === -1 ? "" : code.slice(from, to);
 })();
 
 describe("the index can see the words people search for", () => {
@@ -70,15 +88,15 @@ describe("the index can see the words people search for", () => {
   });
 
   it("fires only on an already-empty page, so it cannot slow a working query", () => {
-    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    const blk = SIMPLE_TIER;
     expect(blk, "the simple tier is missing").not.toBe("");
     expect(/if \(qText\.length >= 2\) try \{/.test(blk)).toBe(true);
     // AND IT MUST NOT STAND DOWN UNDER A NARROWING. It once did, and that was
     // half of "one typo plus any filter returns zero jobs" — measured live
     // 2026-08-22. The fence exists for rescue RPCs that cannot filter; this tier
     // is buildQuery with a different matcher, so it was the one rescue that never
-    // needed it. Pinned as an ABSENCE so the fence cannot creep back. Any comment
-    // added inside this tier must therefore avoid the identifier.
+    // needed it. Pinned as an ABSENCE so the fence cannot creep back; the region
+    // is read with comments stripped, so only code can trip it.
     expect(/filtersActive/.test(blk),
       "this tier binds every filter through buildQuery; it must not gate on them").toBe(false);
     // Bounded window: withDeadline is Promise.race and does NOT cancel the SQL,
@@ -110,11 +128,13 @@ describe("the index can see the words people search for", () => {
     // is indistinguishable from "no matches".
     expect(/exceeded its deadline/.test(blk), "a silent degradation is the bug this repo keeps rediscovering").toBe(true);
     expect(/\.range\(0, Math\.max\(limit \* 2 - 1, 0\)\)/.test(blk), "must read a bounded window").toBe(true);
-    expect(/catch \{/.test(blk), "a failure must degrade to the empty page, never an error").toBe(true);
+    // The stripper collapses a block that holds only a comment to a single
+    // space, so the clause is asserted by its keyword, not its brace.
+    expect(/\} catch\b/.test(blk), "a failure must degrade to the empty page, never an error").toBe(true);
   });
 
   it("searches COMPANY as well as title, as two indexed queries not one or()", () => {
-    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    const blk = SIMPLE_TIER;
     expect(blk, "the simple tier is missing").not.toBe("");
     // An employer name lives in company. Title-only is why q="AT&T" reached the
     // 23 postings with AT&T in their TITLE and none of the 493 whose EMPLOYER
@@ -184,7 +204,7 @@ describe("the index can see the words people search for", () => {
   });
 
   it("survives one half of the pair failing", () => {
-    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    const blk = SIMPLE_TIER;
     // The company index may not exist yet: measured today, title answers in
     // 0.21-0.27s while company 500s at 3.31s on "dominos". Promise.all would
     // let that discard the working title results.
@@ -194,7 +214,7 @@ describe("the index can see the words people search for", () => {
   });
 
   it("dedupes the merged pair, title first", () => {
-    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    const blk = SIMPLE_TIER;
     // Concatenating two result sets means a posting matching BOTH appears
     // twice, and each query is ordered only within itself.
     expect(/const seenSimple = new Set<string>\(\)/.test(blk)).toBe(true);
@@ -231,7 +251,7 @@ describe("the index can see the words people search for", () => {
   });
 
   it("publishes no total it cannot stand behind, and discloses the tier", () => {
-    const blk = /── THE SIMPLE-CONFIG TIER[\s\S]*?catch \{ \/\* the empty page the visitor already had \*\/ \}/.exec(FN)?.[0] ?? "";
+    const blk = SIMPLE_TIER;
     // It reads a bounded window, so any count would be the window size wearing
     // a total's clothing — the defect the fuzzy tier already carries.
     expect(/total: null,/.test(blk)).toBe(true);
