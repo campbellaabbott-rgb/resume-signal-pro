@@ -1211,6 +1211,34 @@
     "yourAgentCanLookWithoutAKey": {
       "title": "O seu agente pode espreitar antes de se registar",
       "description": "Um assistente de IA já pode ler o quadro sem chave nenhuma — os totais do quadro, uma pesquisa pequena e uma forma de buscar um anúncio — dentro de um limite diário, para que possa apontar um agente para nós e ver se lhe serve antes de criar o que seja. O servidor está listado no diretório público que os assistentes usam para encontrar ferramentas, e diz claramente a um agente o que pode e não pode fazer com a chave que tem."
+    },
+    "newestFirstMeansPosted": {
+      "title": "«Mais recentes primeiro» ordenava pelo dia em que nós encontrámos a vaga",
+      "description": "«Mais recentes primeiro» ordenava as vagas pelo dia em que apareceram aqui pela primeira vez, não pelo dia em que o empregador as publicou. Uma vaga publicada há três semanas, a que só chegámos ontem, ficava acima de uma publicada na véspera, e tudo o que vinha de uma página de carreiras acabada de juntar parecia novinho em folha. Agora ordena pela data de publicação do próprio empregador. As poucas vagas sem data do empregador — cerca de uma em cada cem — passam agora para o fim, e uma terceira ordenação, «Encontradas recentemente por nós», ordena todas as vagas pelo dia em que apareceram aqui, a única data que uma vaga sem data tem. Numa pesquisa, a lista passa a dizer dentro de que conjunto «Mais recentes primeiro» mostra as mais recentes — todas as vagas cujo título corresponde, ou apenas as correspondências mais próximas que esta ordem conseguiu alcançar —, e não as mais recentes de todo o quadro."
+    },
+    "aPostedWageIsStatedPay": {
+      "title": "«Indica remuneração» deixava de fora as vagas que indicavam um valor à hora",
+      "description": "O filtro «Indica remuneração» só contava uma vaga quando conseguíamos converter a sua remuneração num valor anual. Um empregador que escrevia «$18.50 an hour» tinha indicado a remuneração tão claramente como outro que escrevia um salário anual, e o valor estava impresso no próprio cartão da vaga — mas um valor a tempo parcial ou ocasional não é multiplicado por um ano, por isso o filtro tratava a vaga como se estivesse calada e deixava-a de fora. «Indica remuneração» significa agora o que diz: o empregador publicou um valor, e um valor à hora conta tanto como um salário. Isso vale em todos os sítios onde o quadro responde a essa pergunta — ao navegar, na pesquisa, nas contagens junto aos chips de filtro e nas ferramentas que um agente chama —, e a contagem junto ao chip e o número de vagas na página passam a coincidir."
+    },
+    "twoWaysAPayFigureWasMisread": {
+      "title": "Duas formas de um valor de remuneração ser mal lido",
+      "description": "Duas das nossas leituras de um valor de remuneração publicado estavam erradas. Um valor à hora escrito com três casas decimais, como «$23.170», era lido como 23.170 por ano com separador de milhares. E uma vírgula antes de exatamente dois dígitos — «€14,61», ou «€ 18,10 – € 19,51» — era lida como separador de milhares em vez de decimal, pelo que €14,61 passava a 1.461: 643 vagas em nove quadros europeus não mostravam valor nenhum, e 41 mostravam um valor errado, entre elas uma função de 33.000 € por ano que aparecia no topo da ordenação por remuneração com 200.000 €. Ambos são agora lidos corretamente no momento em que lemos uma vaga. Os valores já guardados são relidos na próxima passagem completa de cada quadro, por isso uma vaga mais antiga pode demorar algumas horas a mostrar o valor corrigido."
+    },
+    "payFromThreeMoreSystems": {
+      "title": "Remuneração publicada de mais três sistemas de recrutamento",
+      "description": "Três sistemas de recrutamento trazem a remuneração indicada pelo empregador num sítio que não estávamos a ler. Os feeds do Personio trazem-na e nunca a tínhamos lido — cerca de uma em cada dez vagas do Personio indica um valor, pelo que aproximadamente 500 deverão ganhar um à medida que as suas páginas forem relidas nos próximos dias; no dia em que isto entrou em vigor, várias dezenas já o tinham. As páginas de vaga do Paylocity e do Breezy trazem um valor de remuneração separado e rotulado ao lado da descrição que já líamos, e agora lemo-lo também. Quando o valor de um empregador contradiz o seu próprio rótulo — um montante anual rotulado como mensal, um valor à hora rotulado como anual —, a vaga fica em silêncio em vez de mostrar um número que não pode estar certo; na amostra que verificámos, foram recusadas 60 contradições dessas. Um valor mostrado aqui é o do próprio empregador, tal como o empregador o rotulou."
+    },
+    "theEmployersOwnWorkModeDropdown": {
+      "title": "A modalidade escolhida pelo próprio empregador nas vagas UKG",
+      "description": "Os empregadores que publicam através do UKG escolhem Presencial, Híbrido ou Remoto numa lista pendente, e essa escolha viaja com a vaga. Não a estávamos a ler; adivinhávamos a modalidade apenas a partir da redação da descrição. Agora lemos a escolha do empregador, e ela prevalece sobre tudo o que for adivinhado a partir do texto. Quando as duas discordam — a lista diz presencial e a descrição diz remoto —, a vaga não mostra modalidade nenhuma em vez de escolher uma, porque uma contradição entre duas afirmações do próprio empregador não é algo que possamos resolver por ele. As vagas que já estão no quadro adotam isto à medida que a página de cada empregador é relida, por isso uma vaga mais antiga pode ainda mostrar o palpite antigo durante algumas horas."
+    },
+    "aHomeOfficeIsABuilding": {
+      "title": "Um «Home Office» é um edifício, não uma política",
+      "description": "Alguns empregadores que publicam através do Paylocity chamam «Home Office» à sua sede, e quando esse nome aparecia sozinho como local de uma vaga, estávamos a lê-lo como uma política de trabalho a partir de casa. Um técnico de lubrificação e um encarregado de terraplenagem apareciam aqui como funções remotas porque o edifício onde se deviam apresentar se chamava Home Office. O nome de um edifício, por si só, nada diz sobre onde o trabalho é feito, e deixa de fornecer uma modalidade: essas vagas já não afirmam ser remotas, e um simples nome de local já não pode definir uma sozinho."
+    },
+    "thePanelSaidFifteen": {
+      "title": "O painel dizia quinze sistemas de recrutamento; o quadro serve dezanove",
+      "description": "O painel da página inicial que nomeia os sistemas de recrutamento de onde vem cada emprego listava quinze. Na realidade o quadro serve dezanove — o Paylocity, o UKG, o ADP e o JazzHR faltavam na lista, e entre os quatro fornecem cerca de um emprego em cada oito. O painel ficava assim aquém de onde vêm os empregos, e a frase por baixo contava apenas os sistemas que nomeava. Agora lista os dezanove, cada um com uma contagem ao vivo das vagas que fornece neste momento, e a frase conta-os corretamente."
     }
   }
 }

@@ -1211,6 +1211,34 @@
     "yourAgentCanLookWithoutAKey": {
       "title": "Your agent can look before you sign up",
       "description": "An AI assistant can now read the board without any key at all — board totals, a small search, and a way to fetch one posting — within a daily allowance, so you can point an agent at us and see whether it is useful before creating anything. The server is listed in the public directory assistants use to find tools, and it tells an agent plainly what it can and cannot do with the key it holds."
+    },
+    "newestFirstMeansPosted": {
+      "title": "“Newest first” was sorting by the day we found a posting",
+      "description": "“Newest first” ordered postings by the day they first turned up here, not the day the employer published them. A role posted three weeks ago that we only reached yesterday sat above one posted the day before, and everything from a careers page we had just added looked brand new. It now sorts by the employer's own posting date. The handful of postings with no employer date — roughly one in a hundred — now go last, and a third sort, “Recently found by us”, orders every posting by the day it turned up here, the only date an undated posting has. On a search, the list now says which set “Newest first” is newest within — every posting whose title matches, or only the closest matches this order could reach — not the newest on the whole board."
+    },
+    "aPostedWageIsStatedPay": {
+      "title": "“States pay” left out postings that stated an hourly rate",
+      "description": "The “States pay” filter counted a posting only when we could turn its pay into a yearly figure. An employer that wrote “$18.50 an hour” had stated its pay as plainly as one that wrote a salary, and the rate was printed on the posting's own card — but a part-time or casual rate is not multiplied up into a year, so the filter treated the posting as silent and left it out. “States pay” now means what it says: the employer published a figure, and an hourly rate counts every bit as much as a salary. That holds wherever the board answers the question — browsing, search, the counts beside the filter chips, and the tools an agent calls — and the count beside the chip and the number of postings on the page now tally."
+    },
+    "twoWaysAPayFigureWasMisread": {
+      "title": "Two ways a pay figure was misread",
+      "description": "Two of our readings of a published pay figure were wrong. An hourly rate written with three decimal places, such as “$23.170”, was read as a thousands-grouped 23,170 a year. And a comma before exactly two digits — “€14,61”, or “€ 18,10 – € 19,51” — was read as a thousands separator rather than a decimal one, so €14,61 became 1,461: 643 postings on nine European boards showed no figure whatsoever, and 41 showed a wrong one, among them a €33,000-a-year role sitting at the top of the pay sort at €200,000. Both are now read correctly the moment we read a posting. Figures already stored are re-read on each board's next full pass, so an older posting can take a few hours to show its corrected number."
+    },
+    "payFromThreeMoreSystems": {
+      "title": "Published pay from three more hiring systems",
+      "description": "Three hiring systems carry the employer's stated pay somewhere we were not reading. Personio feeds carry it and we had never read it — around one Personio posting in ten states a figure, so roughly 500 ought to gain one as their pages are re-read over the coming days; on the day this went live, several dozen had. Paylocity and Breezy posting pages carry a separate, labelled pay figure alongside the description we were already reading, and we now read that as well. Where an employer's figure contradicts its own label — an annual sum labelled monthly, an hourly rate labelled yearly — the posting stays silent rather than show a number that cannot be right; in the sample we checked, 60 such contradictions were refused. A figure shown here is the employer's own, as the employer labelled it."
+    },
+    "theEmployersOwnWorkModeDropdown": {
+      "title": "The employer's own working-pattern choice on UKG postings",
+      "description": "Employers posting through UKG choose On-site, Hybrid or Remote from a dropdown, and that choice travels with the posting. We were not reading it; we were guessing the work mode from the wording of the description alone. We now read the employer's choice, and it takes precedence over anything guessed from the text. Where the two disagree — the dropdown says on-site while the description says remote — the posting shows no work mode at all rather than plumping for one, because a contradiction between two of an employer's own statements is not ours to settle on their behalf. Postings already on the board pick this up as each employer's site is re-read, so for a few hours an older posting may still show its old guess."
+    },
+    "aHomeOfficeIsABuilding": {
+      "title": "A “Home Office” is a building, not a policy",
+      "description": "Some employers posting through Paylocity call their headquarters the “Home Office”, and where that name stood alone as a posting's location we were reading it as a working-from-home arrangement. A lube technician and a grading foreman were listed here as remote roles because the building they would report to went by the name Home Office. A building's name by itself says nothing about where the work is done, and it no longer supplies a work mode: those postings no longer claim to be remote, and a bare site name can no longer set one on its own."
+    },
+    "thePanelSaidFifteen": {
+      "title": "The panel said fifteen hiring systems; the board serves nineteen",
+      "description": "The panel on the front page naming the hiring systems every job comes from listed fifteen of them. The board actually serves nineteen — Paylocity, UKG, ADP and JazzHR were missing from the list, and between them they supply roughly one job in eight. So the panel understated where the jobs come from, and the sentence beneath it counted only the systems it named. It now lists all nineteen, each with a live count of the postings it currently supplies, and the sentence counts them properly."
     }
   }
 }
