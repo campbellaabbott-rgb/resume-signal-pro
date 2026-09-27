@@ -568,6 +568,13 @@
       "when": 1790549640459,
       "tag": "0080_the_field_grid_says_which_pay_count_a_chip_may_quote",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1790549647107,
+      "tag": "0081_a_rate_table_with_no_date_cannot_be_called_stale",
+      "breakpoints": true
     }
   ]
 }

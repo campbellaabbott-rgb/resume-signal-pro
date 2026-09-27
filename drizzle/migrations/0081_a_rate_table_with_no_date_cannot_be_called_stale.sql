@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260926191137_a_rate_table_with_no_date_cannot_be_called_stale.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260926191137_a_rate_table_with_no_date_cannot_be_called_stale.sql';
