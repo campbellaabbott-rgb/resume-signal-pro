@@ -1048,6 +1048,48 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_starts: {
+        Row: {
+          amount_cents: number | null
+          checkout_function: string
+          created_at: string
+          currency: string | null
+          metadata: Json
+          mode: string | null
+          origin_path: string | null
+          product_id: string | null
+          product_type: string
+          stripe_session_id: string
+          visitor_id: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          checkout_function: string
+          created_at?: string
+          currency?: string | null
+          metadata?: Json
+          mode?: string | null
+          origin_path?: string | null
+          product_id?: string | null
+          product_type: string
+          stripe_session_id: string
+          visitor_id?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          checkout_function?: string
+          created_at?: string
+          currency?: string | null
+          metadata?: Json
+          mode?: string | null
+          origin_path?: string | null
+          product_id?: string | null
+          product_type?: string
+          stripe_session_id?: string
+          visitor_id?: string | null
+        }
+        Relationships: []
+      }
       cohort_weekly_reports: {
         Row: {
           created_at: string
@@ -6036,6 +6078,21 @@ export type Database = {
         Returns: boolean
       }
       record_board_pool_sample: { Args: never; Returns: number }
+      record_checkout_start: {
+        Args: {
+          p_amount_cents?: number
+          p_checkout_function: string
+          p_currency?: string
+          p_metadata?: Json
+          p_mode?: string
+          p_origin_path?: string
+          p_product_id?: string
+          p_product_type: string
+          p_stripe_session_id: string
+          p_visitor_id?: string
+        }
+        Returns: boolean
+      }
       record_scan_feedback: {
         Args: {
           p_ats_score?: number
