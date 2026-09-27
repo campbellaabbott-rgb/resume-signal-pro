@@ -334,6 +334,78 @@ echo "== 5x. the place the employer stated =="
 J '{"action":"list","vendor":["workday"],"limit":100}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const rows=j.jobs||[];const noCountry=rows.filter(r=>!r.country).length;const placeless=rows.filter(r=>/^\s*\d+\s+(locations|sites)\s*$/i.test(String(r.location||""))).length;console.log("INFO  workday sample "+rows.length+": no country "+noCountry+" ("+Math.round(100*noCountry/Math.max(1,rows.length))+"%), \"N Locations\" "+placeless+" -- baseline was 50.3% and 10.4%; the sweep fills these as it re-reads, so a first-day read is EXPECTED to look close to baseline")})'
 J '{"action":"list","country":"IL","limit":100}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const rows=j.jobs||[];const bad=rows.filter(r=>/beth israel|israel deaconess/i.test(String(r.company||"")+" "+String(r.location||"")));console.log((bad.length===0?"PASS":"FAIL")+"  no Boston hospital filed under country=IL in a "+rows.length+"-row sample ("+bad.length+" found)");console.log("INFO  country=IL total "+j.total)})'
 
+echo "== 5y. .77: a posted wage counts as stated pay, and the count agrees with the page =="
+# DEPLOY ORDER FOR THIS RELEASE: the EDGE BUNDLE (.77 job-board, plus public-api
+# and agent-mcp, in ONE publish) goes FIRST, and migration 20260927034117 second,
+# as soon after as possible. That is the opposite of the usual order here and the
+# reason is in cappedCount: .77 stands down from count_jobs_capped for a
+# stated-pay count it could disagree with, so with the bundle in front the page
+# and its own headline agree in either SQL version. Bundle-second is the harmful
+# order — the old bundle's page would be narrower than the migrated count (a
+# headline over by ~16% below the count cap) and the old row audit would report
+# every newly-admitted ranked row as an integrity violation, which is a flood on
+# an unsampled channel.
+#
+# WHAT EACH CHECK READS, because two of them changed meaning with the gate:
+#   (a) and (a2) read THE EDGE BUNDLE. A stated-pay page must contain at least one
+#       row that prints a rate with no annualised figure; under the old predicate
+#       that row could not be served at all, so one sighting is proof.
+#   (b) reads THE MIGRATION. It is the only live tell for the SQL, judged ONLY by
+#       `ranked: true` — a ranked path that quietly fell back to recency would
+#       otherwise pass by serving buildQuery's rows. All three SQL functions move
+#       in one file, so search_jobs answering with a gap row is that file landing.
+#       (b) FAILING WHILE (a) PASSES IS THE HALF-APPLIED STATE: the browse serves
+#       the wider set, the ranked tier serves the narrower one, and the migration
+#       still needs applying. Nothing is wrong on the page in that state, but the
+#       ranked tier is hiding rows it should reach.
+#   (c) reads THE EDGE BUNDLE, NOT THE SQL, and it used to read the SQL. Under
+#       .77 this count is answered by the exact buildQuery path (see cappedCount's
+#       stand-down), so a difference here proves the edge builder moved and says
+#       nothing about count_jobs_capped. Do not read a PASS here as the migration.
+#   (d) is the check the 2026-07-25 work-mode defect would have failed: walk every
+#       row of the filtered body and compare with the published total.
+#   (e) is the cost of moving a hot predicate off an index. The pay field carries
+#       none; the claim is that one NULL test on a denser column is not slower
+#       than the indexed column it replaced, and a claim about latency needs a
+#       timing, not an analogy.
+# IE is the stratum: small enough to walk exhaustively, and walked row by row
+# before the change (2,575 rows / 312 with pay text / 282 with an annual figure,
+# 2026-09-27T02:01:53Z). B and K are shell locals here, so they are exported.
+B="$B" K="$K" node -e '
+const B=process.env.B, K=process.env.K;
+const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
+const timed=async(b)=>{const t=Date.now();const j=await J(b);return [Date.now()-t, j]};
+const gap=(rows)=>rows.filter(r=>typeof r.salary==="string"&&r.salary.trim()!==""&&r.salaryMinAnnual==null);
+const med=(a)=>a.slice().sort((x,y)=>x-y)[Math.floor(a.length/2)];
+(async()=>{
+  const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+  const page=await J({action:"list",country:"IE",hasStatedPay:true,limit:100,groupSimilar:false});
+  const g=gap(page.jobs||[]);
+  ok(g.length>0,"(a) edge: "+g.length+" of "+(page.jobs||[]).length+" stated-pay rows print a rate with no annual figure"+(g[0]?" e.g. "+JSON.stringify(g[0].salary):" — ZERO means the edge builder is still on the annualised column"));
+  const d=page.payTextWithoutAnnual;
+  ok(!!d&&typeof d.rows==="number"&&d.rows===g.length,"(a2) the page publishes payTextWithoutAnnual and it matches what the rows show: "+JSON.stringify(d)+" vs counted "+g.length);
+  const plain=await J({action:"list",country:"IE",limit:60});
+  ok(plain.payTextWithoutAnnual===undefined,"(a3) no pay control, no gap sentence: an ordinary browse must not publish payTextWithoutAnnual (got "+JSON.stringify(plain.payTextWithoutAnnual)+")");
+  const rk=await J({action:"list",q:"assistant",country:"IE",hasStatedPay:true,limit:50});
+  if(rk.ranked===true){const rg=gap(rk.jobs||[]);ok(rg.length>0,"(b) MIGRATION TELL — ranked RPC: "+rg.length+" of "+(rk.jobs||[]).length+" rows print a rate with no annual figure. ZERO means 20260927034117 has not landed (or was re-staged under another name) and the deploy is half-applied: apply it, then re-run this section.");}
+  else console.log("INFO  (b) that query did not answer ranked (ranked="+rk.ranked+"), so search_jobs was not exercised — retry with another term, and do NOT record the migration as verified until it answers");
+  const c1=await J({action:"list",countOnly:true,limit:1,country:"IE",hasStatedPay:true});
+  const c2=await J({action:"list",countOnly:true,limit:1,country:"IE",hasStatedPay:true,salaryFloor:1});
+  ok((c1.total||0)-(c2.total||0)>0,"(c) EDGE, not SQL — stated-pay "+c1.total+" exceeds stated-pay+$1-floor "+c2.total+" by "+((c1.total||0)-(c2.total||0))+" (0 means the edge builder still reads the annualised column)");
+  let seen=new Map(), off=0, guard=0;
+  while(guard++<40){const p=await J({action:"list",country:"IE",hasStatedPay:true,limit:100,offset:off,groupSimilar:false,sort:"discovered"});
+    for(const r of (p.jobs||[])) seen.set(r.id,1);
+    if(!p.hasMore) break; off = p.nextOffset ?? off+(p.jobs||[]).length;}
+  const within = c1.total!=null && Math.abs(seen.size-c1.total)<=Math.max(5,Math.round(0.03*c1.total));
+  ok(within,"(d) the page and its headline agree: walked "+seen.size+" distinct rows against a published total of "+c1.total+" (3% band for drift during the walk)");
+  const un=[],ix=[];
+  for(let i=0;i<3;i++){const [t]=await timed({action:"list",countOnly:true,limit:1,country:"GB",hasStatedPay:true});un.push(t);
+                       const [t2]=await timed({action:"list",countOnly:true,limit:1,country:"GB",salaryFloor:1});ix.push(t2);}
+  const mu=med(un), mi=med(ix);
+  ok(mu < mi*2.5,"(e) the unindexed pay field is not a latency regression: stated-pay count median "+mu+"ms "+JSON.stringify(un)+" against the indexed floor-column count "+mi+"ms "+JSON.stringify(ix)+" (band 2.5x; a FAIL here is the missing-index case — ship a partial index on the pay field in its own migration)");
+})().catch(e=>console.log("FAIL  5y probe threw: "+e.message));
+'
+
 echo "== 6. /companies renders =="
 echo "INFO  GET /companies -> HTTP $(curl -s -m 30 -o /dev/null -w '%{http_code}' "$SITE/companies")"
 echo "done."

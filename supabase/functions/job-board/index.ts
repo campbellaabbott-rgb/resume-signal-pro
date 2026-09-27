@@ -143,7 +143,7 @@ const SITEMAP_DAYS = 30;
 // slice duration in absolute milliseconds and would have read the longer
 // healthy slice as distress, cutting concurrency to 3 — below where .63 had
 // it. The cold shed lines are re-derived in the same commit.
-const BUILD_VERSION = "2026-09-09.76"; // .76: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). REVIEW CORRECTIONS TO .75 — four exits could serve sort=newest and only two said what they had ordered, so the page invented the rest. (a) THE EMPLOYER ROUTE NEVER DATE-SORTED. newestTextSort stands down for the company retriever, and the routed exit ordered by effective_posted with no re-sort and emitted no sortScope: MEASURED live 2026-09-26, q="Spectrum Health"+sort=newest served workday:spectrumhealth~wd5~CorewellHealthCareers:R228442 with postedAt NULL at position 1 above seven rows stamped 2026-09-25, and the client's absent-sortScope arm printed "Newest first within the closest 200 matches" over it — a number no response ever sent, on a route whose window is ROUTE_WINDOW 400. The company half now orders posted_at DESC NULLS LAST, id ASC (block arithmetic unchanged: the key is still total and stable) and publishes sortScope matchSet + sortMatcher company; the routed block stands down entirely for a date sort on any OTHER retriever, because there it hands rows to rerankWindow and the ranked path below already serves that body with sortScope relevanceWindow and its real seam. (b) BOTH OF newestTextSort'S STAND-DOWNS WERE DEAD CODE UNDER A FILTER. They read routeDecision, which is hardcoded to BROWSE whenever any filter is applied, so the EMPLOYER and SYMBOL exclusions could never fire on a filtered body: MEASURED, {"q":"c++","country":"US","sort":"newest"} and the same body with q="c#" return total 1,430 with byte-identical title lists containing neither symbol (both collapse to the tsquery 'c'), and that set would have been published as the whole title-match set. The two exclusions now read `qClass`, the same pickRoute call computed from the query alone; the router itself still stands down under a filter. (c) THE DATED KEYSET WALK DROPPED THE UNDATED TAIL AND CALLED IT THE END. Both arms of the k:"pa" seek compare posted_at, and a NULL comparison is unknown, so the walk ended where the dated rows did with hasMore false — on the unfiltered board that is ~12,350 Load-more presses away and disclosed, but MEASURED on filtered pages it is a quarter of the answer: vendor=pinpoint+country=GB 244 undated of 860 (28.4%) after ~10 presses, vendor=pinpoint 959 of 3,554 (27.0%), while the header went on printing the full total. A short seek is now the SEAM, not the end: one .range() read at the accumulated offset crosses it (that read has always included the tail, which is why page one served it) and the walk continues by offset from there, exactly as it did before the keyset existed. (d) The grouping top-up's `!newestFirst` gate is gone. Its rationale was about the ANCHOR, not the order, and with every browse now sending sort:"newest" it had retired the mechanism on the board's most common request — the starvation it was built for was measured there ("retail sales" 39 cards under a total of 3,437). The anchor follows the order instead: the same two-arm seek on posted_at, skipped rather than faked when the last raw row carries no date. (e) The two-bucket includeUncategorised page publishes bucketedOrder: it returns the chosen field's rows followed by the "other" rows, each half ordered, so the date claim above the list is true inside a group and false across the seam; the page now discloses the grouping instead. (f) filterCoverage carries filterCoverageAt, the stamp of the pass that counted it, written INSIDE the coverage block (refreshedAt on the same row is patched between passes and would date a figure to a pass that never measured it). A reply that leaned on the 2026-08-25 pinned fallback ships the figures with NO stamp, and the client withholds every percentage when the stamp is absent — silence rather than a dated claim about numbers that date was not taken on. (g) The comment above the ranked exit's in-memory date sort said it ordered "the MATCHING set … which is what the control they chose promises" four lines above the field that publishes sortScope relevanceWindow; it now says which set it saw. logSearch("ranked") on the NEWEST exit is annotated with the guard that closes the label set, so nobody reads a per-route rate off a bucket holding three regimes. .75: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE ORDINARY BROWSE NEVER ASKED FOR THE ORDER IT CLAIMED. The list orders by posted_at nulls-last only when body.sort === "newest", and Jobs.tsx sent that only when there was a query, so a no-query browse sent no sort at all and fell back to effective_posted = coalesce(posted_at, first_seen) — every posting its employer never dated took OUR crawl stamp and sorted to the top. MEASURED live with the anon key on the body the UI actually sends, {"action":"list","limit":60}: 59 of 60 page-one rows undated (0 of 60 on the same body with sort=newest), and in the company state {"action":"list","limit":30,"groupSimilar":false,"companies":["classicfls"]} an undated row was served above four dated ones under a page printing "newest first, company-stated dates before undated" in nine languages. Jobs.tsx now sends sort:"newest" whenever the order on screen is newest, the no-query browse included, and names this function's effective_posted date fallback "discovered" so the undated rows stay one click away instead of 12,350 Load-more presses: page one of the discovery order is 59 of 60 undated, while under the dated order the first undated row sits between offset 740,000 and 742,000 of 746,300 (measured 2026-09-26). The dated walk also gains the keyset it never had: nextCursor now carries k:"pa" with the last raw row's posted_at, and the reader refuses any coordinate whose kind does not match the order the request pages in, so moving the ordinary browse onto sort=newest does not trade a wrong order for a lossy one (offset paging overlapped 4 of 8 page transitions, 2026-08-18). The untagged effective_posted cursor is unchanged. The stale "10% of the corpus with no date / 540,437 that DO carry one" figures above `ordered` are corrected to the measured ~0.7%. .74: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). "NEWEST FIRST" ON A SEARCH WAS THE NEWEST OF THE 200 MOST RELEVANT. sort=newest sets scoreRanked false, so deepPageable is false and planRankedPage reads search_jobs at p_offset 0 / p_limit 200 — the page then date-sorts THOSE 200 in memory, and the rows a date order needs are the ones least likely to rank. Measured live with the anon key before this change: {"q":"nurse","sort":"newest","limit":60} returned 3 cards, hasMore false, nextOffset 200, under total 10000 countCapped (the relevance top-200 was 199 requisitions from one employer under two titles), and a countOnly probe with postedAfter=<that page's newest row> counts 39 nurse title matches strictly newer than the top card, 224 for q="engineer". newestTextSort now serves that body the way salaryTextSort serves sort=salary: buildQuery matching titles on the simple-config index WITH alias expansion, ordered in SQL by posted_at DESC NULLS LAST, id ASC over the whole match set, paged by a plain offset — no window, and no total (the only count available describes a different set). It stands down for the EMPLOYER route (title matcher would return nothing for a company name) and for SYMBOL (identical tsquery for c++ and c#, and the literal-substring rule cannot run in SQL), and a zero-row read falls through so the description tier and the fuzzy/semantic/location-split rescues are never lost. Both regimes now SAY which set the order saw: sortScope matchSet + sortMatcher title here, sortScope relevanceWindow + sortScopeRows <seam> on the ranked exit, and Jobs.tsx prints its order claim from those fields instead of from the requested sort — the select, the line under the search box and the hint beside the select used to make three different claims on one screen. .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
+const BUILD_VERSION = "2026-09-09.77"; // .77: index.ts + filters.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE BOARD PRINTED THE EMPLOYER'S WAGE AND THE FILTER CALLED THE POSTING SILENT. All four pay controls decided "states pay" from the ANNUALISED figure, while the card renders its pay span from the verbatim pay TEXT — so every posting whose rate we declined to multiply into a year was served with its wage in bold on a row classified as stating nothing, and the population that decline lands on is not random: the shared parser deliberately refuses a 2,080-hour year for a rate carrying a part-time, casual, per-diem or on-call signal. MEASURED with the anon key through this function's own read paths, every figure stamped because the corpus moves ~2% an hour: two complete country strata walked row by row, no sampling — IE 2,575 rows / 312 with pay text / 282 with an annual (2026-09-27T02:01:53Z), NZ 1,455 / 161 / 143 (02:02:42Z), i.e. 30 and 18 postings printing a wage under a control calling them silent, and BOTH walks matched this function's own counted answer for the same stratum exactly (282 and 143). The hourly slice counted per country at 02:00:55Z-02:01:10Z, hourly against hourly-and-flagged: CA 2,170/1,461, GB 1,875/905, AU 464/168, IE 82/68, NZ 38/23, DE 26/23, NL 24/13. Board-wide, one scan at 2026-09-27T02:07:00Z over 733,190 servable rows: 207,108 carry pay text, 173,868 an annual figure, 173,826 a figure a pay floor can compare — so the predicate admits 33,240 postings and the control's published reach moves 23.71% -> 28.25%. hasStatedPay now binds the pay field in buildQuery AND inside search_jobs, count_jobs_capped and fuzzy_title_search (migration 20260927034117, each body extracted from ITS OWN latest definition and exactly one line changed): a count bound to one column under a page bound to the other is the 2026-07-25 p_work_mode defect, and a cross-runtime guard now fails if the four ever name different columns again. Four things moved WITH the predicate or they would each have gone quietly wrong: filterViolations reads the pay field (left behind it would have reported all 33,240 legitimately-admitted rows as integrity violations, and a channel that floods gets switched off); the coverage disclosure reads get_filter_coverage's salaryText instead of its hasStatedPay, so the percentage describes the population the count was taken over (the pass now stores that key — the scan has computed it since 20260909100000 and nothing kept it); MEASURED_COVERAGE.hasStatedPay was RE-MEASURED to 0.283 rather than carried, because a constant that silently changes which column it describes is how a number stays plausible while going wrong; and jobsPage.statedPayTip + jobsPage.coverageStatedPay were rewritten in all nine locales, since both promised "a yearly figure" and the apology pointing at the hourly control is retired. The FLOOR, the CEILING and the SORT are deliberately UNCHANGED — they compare an approximate-USD generated column that does not exist for a rate we would not annualise, and annualising a part-time wage to close the gap is how a $44/hr rate was once served at a $90k floor as 91,520. That makes the checkbox a strict superset of the three, so honesty() publishes payTextWithoutAnnual — the rows ON THIS PAGE printing a rate with no annual behind them, counted from the served rows, exact for the page and therefore printable where the board-wide fractions are withheld. It is published as a FLOOR, not a total: it cannot see a figure we annualised but could not convert (42 such rows board-wide, same scan), and it counts CARDS, not postings (60 cards stood for 68 postings on one live IE stated-pay page, 2026-09-27T03:29Z) — so the copy says "at least" and says "listings shown here". It is emitted ONLY under a pay control: ungated it printed on 10 of 20 default-shape browse pages spread from offset 0 to 494,000 (24 rows of 1,176 served, 03:29:49Z-03:30:23Z), telling readers who had touched no pay control that three controls they never used could not compare part of the page, and the client mirrors the gate rather than trusting the field's presence. DEPLOY ORDER, AND IT IS THE REVERSE OF THE USUAL ONE HERE: this bundle FIRST — together with public-api and agent-mcp in ONE publish, because all three answer the same documented filter — and migration 20260927034117 immediately after. The two halves ship down different pipes and cannot land together, so cappedCount stands down from count_jobs_capped for any stated-pay count the two SQL versions could disagree about (an UNCAPPED answer; a capped one is "10,000+" under both, the new predicate being a superset) and the exact buildQuery count answers instead, bounded by the same 10,000-row ceiling. The category rail withholds its numbers on a stated-pay text search for the same window rather than printing counts taken over the other population, and both stand-downs are dated and removable once verify-deploy 5y(b) shows the migration live. Bundle-second is the harmful order and is why the order is stated: the old bundle's page is NARROWER than the migrated count, and the old row audit reports every newly-admitted ranked row as an integrity violation on an unsampled channel. Also corrected here rather than left to drift: the click rollup's salary_present stays on the annualised column DELIBERATELY (a different question, named as such, dated) and the sentence claiming that column holds "Competitive"/"DOE" prose is retired — 0 of 5,350 pay texts in a 12,000-row walk of the two structured-pay vendors carry no digit, and the zero-VALUE rows that walk did find (11 of 1,674 newly-admitted, "EUR 0 - 0" and "$0" shapes, 0.66%) are an accepted cost stated as such, not a digit question. .76: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). REVIEW CORRECTIONS TO .75 — four exits could serve sort=newest and only two said what they had ordered, so the page invented the rest. (a) THE EMPLOYER ROUTE NEVER DATE-SORTED. newestTextSort stands down for the company retriever, and the routed exit ordered by effective_posted with no re-sort and emitted no sortScope: MEASURED live 2026-09-26, q="Spectrum Health"+sort=newest served workday:spectrumhealth~wd5~CorewellHealthCareers:R228442 with postedAt NULL at position 1 above seven rows stamped 2026-09-25, and the client's absent-sortScope arm printed "Newest first within the closest 200 matches" over it — a number no response ever sent, on a route whose window is ROUTE_WINDOW 400. The company half now orders posted_at DESC NULLS LAST, id ASC (block arithmetic unchanged: the key is still total and stable) and publishes sortScope matchSet + sortMatcher company; the routed block stands down entirely for a date sort on any OTHER retriever, because there it hands rows to rerankWindow and the ranked path below already serves that body with sortScope relevanceWindow and its real seam. (b) BOTH OF newestTextSort'S STAND-DOWNS WERE DEAD CODE UNDER A FILTER. They read routeDecision, which is hardcoded to BROWSE whenever any filter is applied, so the EMPLOYER and SYMBOL exclusions could never fire on a filtered body: MEASURED, {"q":"c++","country":"US","sort":"newest"} and the same body with q="c#" return total 1,430 with byte-identical title lists containing neither symbol (both collapse to the tsquery 'c'), and that set would have been published as the whole title-match set. The two exclusions now read `qClass`, the same pickRoute call computed from the query alone; the router itself still stands down under a filter. (c) THE DATED KEYSET WALK DROPPED THE UNDATED TAIL AND CALLED IT THE END. Both arms of the k:"pa" seek compare posted_at, and a NULL comparison is unknown, so the walk ended where the dated rows did with hasMore false — on the unfiltered board that is ~12,350 Load-more presses away and disclosed, but MEASURED on filtered pages it is a quarter of the answer: vendor=pinpoint+country=GB 244 undated of 860 (28.4%) after ~10 presses, vendor=pinpoint 959 of 3,554 (27.0%), while the header went on printing the full total. A short seek is now the SEAM, not the end: one .range() read at the accumulated offset crosses it (that read has always included the tail, which is why page one served it) and the walk continues by offset from there, exactly as it did before the keyset existed. (d) The grouping top-up's `!newestFirst` gate is gone. Its rationale was about the ANCHOR, not the order, and with every browse now sending sort:"newest" it had retired the mechanism on the board's most common request — the starvation it was built for was measured there ("retail sales" 39 cards under a total of 3,437). The anchor follows the order instead: the same two-arm seek on posted_at, skipped rather than faked when the last raw row carries no date. (e) The two-bucket includeUncategorised page publishes bucketedOrder: it returns the chosen field's rows followed by the "other" rows, each half ordered, so the date claim above the list is true inside a group and false across the seam; the page now discloses the grouping instead. (f) filterCoverage carries filterCoverageAt, the stamp of the pass that counted it, written INSIDE the coverage block (refreshedAt on the same row is patched between passes and would date a figure to a pass that never measured it). A reply that leaned on the 2026-08-25 pinned fallback ships the figures with NO stamp, and the client withholds every percentage when the stamp is absent — silence rather than a dated claim about numbers that date was not taken on. (g) The comment above the ranked exit's in-memory date sort said it ordered "the MATCHING set … which is what the control they chose promises" four lines above the field that publishes sortScope relevanceWindow; it now says which set it saw. logSearch("ranked") on the NEWEST exit is annotated with the guard that closes the label set, so nobody reads a per-route rate off a bucket holding three regimes. .75: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE ORDINARY BROWSE NEVER ASKED FOR THE ORDER IT CLAIMED. The list orders by posted_at nulls-last only when body.sort === "newest", and Jobs.tsx sent that only when there was a query, so a no-query browse sent no sort at all and fell back to effective_posted = coalesce(posted_at, first_seen) — every posting its employer never dated took OUR crawl stamp and sorted to the top. MEASURED live with the anon key on the body the UI actually sends, {"action":"list","limit":60}: 59 of 60 page-one rows undated (0 of 60 on the same body with sort=newest), and in the company state {"action":"list","limit":30,"groupSimilar":false,"companies":["classicfls"]} an undated row was served above four dated ones under a page printing "newest first, company-stated dates before undated" in nine languages. Jobs.tsx now sends sort:"newest" whenever the order on screen is newest, the no-query browse included, and names this function's effective_posted date fallback "discovered" so the undated rows stay one click away instead of 12,350 Load-more presses: page one of the discovery order is 59 of 60 undated, while under the dated order the first undated row sits between offset 740,000 and 742,000 of 746,300 (measured 2026-09-26). The dated walk also gains the keyset it never had: nextCursor now carries k:"pa" with the last raw row's posted_at, and the reader refuses any coordinate whose kind does not match the order the request pages in, so moving the ordinary browse onto sort=newest does not trade a wrong order for a lossy one (offset paging overlapped 4 of 8 page transitions, 2026-08-18). The untagged effective_posted cursor is unchanged. The stale "10% of the corpus with no date / 540,437 that DO carry one" figures above `ordered` are corrected to the measured ~0.7%. .74: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). "NEWEST FIRST" ON A SEARCH WAS THE NEWEST OF THE 200 MOST RELEVANT. sort=newest sets scoreRanked false, so deepPageable is false and planRankedPage reads search_jobs at p_offset 0 / p_limit 200 — the page then date-sorts THOSE 200 in memory, and the rows a date order needs are the ones least likely to rank. Measured live with the anon key before this change: {"q":"nurse","sort":"newest","limit":60} returned 3 cards, hasMore false, nextOffset 200, under total 10000 countCapped (the relevance top-200 was 199 requisitions from one employer under two titles), and a countOnly probe with postedAfter=<that page's newest row> counts 39 nurse title matches strictly newer than the top card, 224 for q="engineer". newestTextSort now serves that body the way salaryTextSort serves sort=salary: buildQuery matching titles on the simple-config index WITH alias expansion, ordered in SQL by posted_at DESC NULLS LAST, id ASC over the whole match set, paged by a plain offset — no window, and no total (the only count available describes a different set). It stands down for the EMPLOYER route (title matcher would return nothing for a company name) and for SYMBOL (identical tsquery for c++ and c#, and the literal-substring rule cannot run in SQL), and a zero-row read falls through so the description tier and the fuzzy/semantic/location-split rescues are never lost. Both regimes now SAY which set the order saw: sortScope matchSet + sortMatcher title here, sortScope relevanceWindow + sortScopeRows <seam> on the ranked exit, and Jobs.tsx prints its order claim from those fields instead of from the requested sort — the select, the line under the search box and the hint beside the select used to make three different claims on one screen. .73: index.ts + normalize.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). THE EMPLOYER TOLD US WHERE THE JOB IS AND WE DROPPED IT. fetchVendorDetail's Workday branch already downloaded the CXS detail and already read remoteType and startDate out of it; it now also reads the place through workdayDetailPlace (normalize.ts), so the country and the display location cost ZERO extra requests. Measured 2026-09-23 on a 4,500-row cursor walk of live Workday rows: 43.6% carry no country, 11.0% carry an "N Locations" placeholder and 7.4% an empty location; Workday is 216,035 of 770,705 servable rows. Across 367 unplaced postings fetched live the field path used here is present on 367/367 and the path one level deeper — the one first proposed — on 0/367, which is why a guard walks captured payloads instead of trusting a comment. Both detail sweeps write it: the country REPLACES a stored one (vendor structured field over our text inference, the same precedence work_mode already takes; it agreed with 136/136 rows we had placed correctly and disagrees only where we were wrong), the location fills ONLY a placeless placeholder, and region_code is re-derived with the pair so the columns cannot drift. structured-sweep's work_mode-IS-NULL race guard now rides the update only when the patch writes a work mode — unconditionally it would have silently dropped the country on any row that gained a work mode mid-hop, the correction desc-sweep's salvage block already documented. Two mis-parses fixed in normalize.ts: the country pattern could read a country out of an ORGANISATION name (100 of 682 walked country=IL rows, 14.7%, are a Boston hospital system — the vendor says US on 14/14), and detectRegion's spelled-out-state-name branch took the leftmost of several states ("Kansas City, Missouri" filed under Kansas) and now refuses a string naming two different states, 14 of 1,253 rows, every one currently wrong or falsely precise. COUNTRY_MAP_VERSION 5->6, REGION_MAP_VERSION 1->2. NOT fixed here and still open: structured-sweep selects work_mode IS NULL, so rows that already have a work mode and no country are reachable by neither sweep. REVIEW CORRECTIONS, same version number because .73 never deployed — a new stamp would imply a shipped .73 that does not exist. (a) The multi-site signal was computed and thrown away: workdayDetailPlace returned additionalCount and nothing read it, so a requisition listing 52 sites was filed at one of them and a region_code derived from that one site (52% of the region codes such a write produced are contradicted by another site of the SAME requisition; worst live case, a RELX requisition stored '52 Locations' became Ohio/US-OH beside fifty-one other states). Both sweeps now go through one placeWrite helper which refuses the subdivision — writes NULL — whenever the location it would derive from is the vendor's one-of-N display string, and workdayDetailPlace refuses the COUNTRY outright when any further site resolves to a different country. (b) workdayDetailPlace's disagreement check compared the alpha-2 code with jobPostingInfo.country.descriptor, a sibling field absent on 1 of 253 live payloads, instead of with the display location it actually protects; it now refuses on a contradiction from either reading. (c) isPlacelessLocation carried three unobserved non-English words and missed the French form that occurs; the vocabulary is now exactly what a 15,000-row cursor walk of live Workday rows saw (locations, sites, emplacements, standorte, locaties) and the docblock names the walk rather than a board-wide rate, because two samples of the same corpus the same day disagree by 4x on that share. (d) desc-sweep's salvage guard was conditional on the VENDOR stating a work mode rather than on the ROW lacking one, and desc-sweep's select does not filter work_mode at all — so for a row that already held a work mode the place, country and date in the same patch were dropped deterministically, not as a race. (e) the mined salary's currency was derived from the country the same statement was replacing. (f) detectCountry filed US towns named after countries abroad ('Peru, IN' x2 and 'Peru, IL' in the PE bucket, 'Turkey, TX' x2 in TR, walked live); a named two-word guard fixes those, and reordering the whole table was REFUTED by the same walk ('Shanghai, SD, China' — SD is Shandong). COUNTRY_MAP_VERSION 6->7. .72: filters.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). normalizeFilters no longer binds includeUnstatedPay while hasStatedPay is true and names the dropped widening in ignoredFilters — the page lit both controls, sent both keys, and the OR-arm the widening added was cancelled by the stated-pay AND with nothing saying so (controls guard C12). Result change, not disclosure only: the stated-but-unconvertible-currency slice (salary_rank_usd NULL with salary_min_annual set) that the OR-arm still admitted under the AND is now excluded when both are sent. .71: index.ts + stale-lane.ts; sources.ts UNCHANGED (no board waits on the bootstrap lane). The stale window was filling with what it cannot fix — the first live pass after .70 read asked 60 / oversize 59 / prototype_name 1 / unexplained 0, windowFull, fetched 0, every pass. The lane now passes p_exclude = staleExclusion() (Object.prototype names ∪ OVERSIZE_BOARDS ∪ unresolved tokens, ≤ STALE_EXCLUDE_MAX 400) to get_stalest_boards, revised in migration 20260909222000 to filter INSIDE its capped scan; windowFull means "60 rows after exclusion and still nothing unexplained" and is also a warn line; `excluded` rides the meta row and status; a PGRST202 from a pre-migration RPC falls back once to the unexcluded ask. The tries fold forgets any token the slice stamped, the rotation's stamps included, so an excluded 'unresolved' board that recovers is not hidden from the window for good; status names the excluded unresolved tokens (`excludedUnresolved`) from the tries map, since the window no longer shows them. .70: index.ts only; sources.ts UNCHANGED (no board waits on the bootstrap lane). (1) The head row carries sourcesFacet (one entry per source, ~20 keys — not the per-employer map the row was split to avoid) and the facets action forwards it as `sources` + `sourcesAt` under the categories' own stamp, null (never {}) on a pre-build row, so the vendor dropdown can print each source's board-wide servable inventory beside its name. (2) coverageDisclosure emits filterCoverage.workMode for the legacy remote=1 binding as well as applied.workMode — a ?remote=1 link hid every work_mode-NULL row with no coverage sentence. .69: index.ts + dormancy.ts + two new pure modules; sources.ts UNCHANGED. (1) The four live Object.prototype traps closed: deepCursors is a Map bridged by token-map.ts, the companiesOpen facet read is hasOwn-guarded, and dormancy.ts reads its three token-keyed maps through own() — 'constructor' (a catalogued ashby board, skipped as dormant on every cold slice since 2026-07-14) fetches again. (2) The stale lane (stale-lane.ts) is WIRED: cold slices only, get_stalest_boards once per hop (absent RPC = warn + no lane), classified, up to STALE_PER_SLICE 'unexplained' boards through the ordinary fetch/budget/failure path, tries under meta stale_lane, staleLane on status. (3) maybeRekickDeadChain (chain-watchdog.ts): a non-forced hop-0 kick when the chain's freshest pulse (slice_trace per board, refresh_progress per hop, slice_stats.workAt/at) is older than 2x coldEmaMs + SLICE_LOCK_MS and chain_kick does not prove it alive ('continued' counts only until a later pulse supersedes it — the stamp is one hop behind); sent from status only (in-hop it observes), throttled by a conditional chain_watchdog stamp; hop-0 admission in runRefresh is compare-and-set on refresh_progress so two non-forced kicks in the lock's gap cannot both run. (4) status exposes the re-issued freshness rollup's dark_boards bucket (migration 20260909221000). .68: Oracle sub-site dedupe — one stored row per tenant requisition under the best-ranked site (sub-site-only reqs kept), req_key on new Oracle rows, 19 dev-tenant tokens and 4 measured pure-mirror sites out of sources.ts (the orphan prune exits their rows as untracked once migration 20260909216000 lowers the high-water mark). .33: (1) descCoverage per vendor in status (rollup 20260903210000) and the desc sweep now fills NEWEST postings first across vendors; (2) lastUpsertError rides slice_stats and chainKick exposes `at`; (3) location aliases lifted to _shared/location-terms.ts (unchanged behaviour here) so /v1's default engine can mean the same place; (4) fit-terms/fit-batch kept for older bundles — the scorer now lives in job-fit.
 // .67: A NON-LOGGING `facets` EXIT, so /explore can read the eighteen field
 // counts off the SAME refresh_head row the field landers print from without
 // (a) writing a synthetic zero-query browse into job_board_search_events on
@@ -7644,9 +7644,27 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // The five that were pinned constants until this scan existed.
             payBasis: keep("payBasis"),
             hasStatedPay: keep("hasStatedPay"),
+            // THE COLUMN THE STATES-PAY FILTER BINDS, carried through because
+            // the disclosure has to read it. get_filter_coverage has counted it
+            // on this same scan since 20260909100000 and nothing stored it, so
+            // the sentence under a stated-pay page had no way to describe the
+            // population that page was actually narrowed to. Cost: zero extra
+            // work — the count was already in the payload being discarded.
+            salaryText: keep("salaryText"),
             maxYears: keep("maxYears"),
             department: keep("department"),
             employmentType: keep("employmentType"),
+            // THE PER-ROW INVARIANT THE STATES-PAY WIDENING RESTS ON, stored as
+            // a RAW COUNT and not a fraction, because the only value that means
+            // anything here is zero. The predicate that moved on 2026-09-27 is a
+            // superset of the retired one only while every annualised figure has
+            // the employer's text behind it; get_filter_coverage publishes the
+            // count of rows that break that (20260927041903) and this is what
+            // keeps it, so the invariant is checkable from outside instead of
+            // being asserted in a comment. Absent from a pre-20260927041903
+            // definition, in which case it is stored as null — "not measured",
+            // never zero, which would be a claim.
+            annualWithoutText: typeof fc.annual_without_text === "number" ? fc.annual_without_text : null,
             ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
           };
         }
@@ -7733,9 +7751,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           country: keep("country", ctry),
           payBasis: carryLive("payBasis"),
           hasStatedPay: carryLive("hasStatedPay"),
+          // Carried for the same reason as its four neighbours: the upsert
+          // replaces the whole block, so omitting the figure the states-pay
+          // disclosure reads deletes it and that sentence goes silent until the
+          // next successful scan.
+          salaryText: carryLive("salaryText"),
           maxYears: carryLive("maxYears"),
           department: carryLive("department"),
           employmentType: carryLive("employmentType"),
+          // Carried for the same reason, and it is a COUNT rather than a
+          // fraction: this path runs when the one-scan RPC failed, so there is
+          // nothing to re-measure it from, and dropping it would delete the only
+          // external evidence for the invariant the states-pay widening rests on.
+          annualWithoutText: carryLive("annualWithoutText"),
           ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
         };
         // `open` doubles as the honest board total — see the headline note in
@@ -9821,6 +9849,16 @@ function exclusionCeiling(excluded: readonly string[], ceiling: number | null): 
  *   department        226,631  40.5%
  *   source            559,805  100%
  *
+ * hasStatedPay NO LONGER COUNTS salary_min_annual, so its constant was
+ * RE-MEASURED rather than carried over. The filter binds the verbatim pay text
+ * now (see the predicate's own note in buildQuery), and the honest fraction for
+ * it is the widest of the three pay columns: 206,996 of 732,018 servable rows,
+ * 28.3%, from the hourly per-field scan stamped 2026-09-27T01:07:00Z — the same
+ * serving population every figure above uses (present on the feed, inside the
+ * freshness window). The old 0.201 is left in the table above as the 2026-08-25
+ * reading OF A DIFFERENT COLUMN, because a constant that silently changes which
+ * column it describes is how a number stays plausible while going wrong.
+ *
  * Constants rather than live counts because each one is a full count over a
  * partly-populated column, and the pass that could take them cheaply already
  * takes four and is the pass that once bound its results to the wrong names.
@@ -9829,7 +9867,8 @@ function exclusionCeiling(excluded: readonly string[], ceiling: number | null): 
  */
 const MEASURED_COVERAGE = {
   payBasis: 0.106,
-  hasStatedPay: 0.201,
+  // The verbatim pay field, 2026-09-27 — NOT the 0.201 annualised reading above.
+  hasStatedPay: 0.283,
   maxYears: 0.289,
   department: 0.405,
   vendor: 1,
@@ -9849,6 +9888,16 @@ const MEASURED_COVERAGE = {
  * MEASURED against 599,316 open postings: salary stated on 12.9%, work mode on
  * 29.9%, experience on 40.4%. A searcher who sets a salary floor is seeing an
  * eighth of the market and currently has no way to know it.
+ *
+ * THAT 12.9% IS A 2026-08-27 READING AND THE FLOOR'S REACH HAS SINCE MOVED, so
+ * do not reuse it: on one scan over 733,190 servable rows at
+ * 2026-09-27T02:07:00Z, 173,826 carry a figure a floor can compare (23.71%),
+ * 173,868 carry an annualised figure at all (23.72% — the two are 42 rows apart,
+ * so the unconvertible-currency slice is now tiny) and 207,108 carry pay text
+ * the employer published (28.25%). "An eighth of the market" was true of the
+ * older reading and is about a quarter today. The live figures are what this
+ * function publishes; these lines are history with dates on them, which is the
+ * only form a superseded measurement may survive in.
  */
 function coverageDisclosure(
   applied: {
@@ -9875,6 +9924,16 @@ function coverageDisclosure(
       country?: number | null;
       payBasis?: number | null;
       hasStatedPay?: number | null;
+      // THE COLUMN hasStatedPay ACTUALLY BINDS. get_filter_coverage counts both
+      // on the same scan: `hasStatedPay` is the annualised figure and
+      // `salaryText` is the verbatim pay field. The filter moved to the pay
+      // field, so the DISCLOSURE has to read salaryText or the sentence
+      // describes a narrower population than the count printed above it — which
+      // is the exact shape the coverage blocker names. The old key stays typed
+      // because the floor's and the ceiling's figures still come off this block
+      // and because a pass written before this bundle carries it and not the new
+      // one.
+      salaryText?: number | null;
       maxYears?: number | null;
       department?: number | null;
       employmentType?: number | null;
@@ -9932,7 +9991,16 @@ function coverageDisclosure(
     return pinned;
   };
   if (applied.payBasis) out.payBasis = liveOr(cov.payBasis, MEASURED_COVERAGE.payBasis);
-  if (applied.hasStatedPay) out.hasStatedPay = liveOr(cov.hasStatedPay, MEASURED_COVERAGE.hasStatedPay);
+  // THE FRACTION FOLLOWS THE PREDICATE. hasStatedPay binds the verbatim pay
+  // field, so the number under it is salaryText's — cov.hasStatedPay counts the
+  // annualised column and would understate this control's reach by ~4.6 points
+  // (23.7% against 28.3%, both read live 2026-09-27) while sitting directly
+  // under a count taken with the wider predicate. A coverage pass written by a
+  // bundle older than this one carries no salaryText, and that is exactly what
+  // the pinned fallback is for: it ships the figure WITHOUT the stamp, and the
+  // client withholds every percentage when the stamp is absent, so the deploy
+  // window degrades to silence rather than to the wrong column.
+  if (applied.hasStatedPay) out.hasStatedPay = liveOr(cov.salaryText, MEASURED_COVERAGE.hasStatedPay);
   if (applied.maxYears != null) out.maxYears = liveOr(cov.maxYears, MEASURED_COVERAGE.maxYears);
   if (applied.department) out.department = liveOr(cov.department, MEASURED_COVERAGE.department);
   if (applied.vendors?.length) out.vendor = MEASURED_COVERAGE.vendor;
@@ -13266,12 +13334,31 @@ Deno.serve(async (req) => {
           ? {
             company_token: (p.company_token as string | null) ?? null,
             category: (p.category as string | null) ?? null,
-            // "Did this listing disclose pay" — EXACTLY as the column defines
-            // it: salary_min_annual IS NOT NULL. It read `salary || min_annual`
-            // and so counted "Competitive" and "DOE" as disclosure, which is
-            // the opposite of what a pay-transparency question means and what
-            // the rollup's `count(*) FILTER (WHERE salary_present)` will freeze
-            // into an immutable summary the raw rows can no longer correct.
+            // "DID THIS LISTING CARRY A COMPARABLE YEARLY FIGURE" — the
+            // annualised column, and since 2026-09-27 that is DELIBERATELY a
+            // different question from the one the states-pay filter answers.
+            //
+            // This rollup feeds `count(*) FILTER (WHERE salary_present)` into an
+            // immutable summary the raw rows can no longer correct, so it is
+            // pinned to the column whose meaning does not depend on how well we
+            // parse: whether we hold a comparable yearly amount for the row a
+            // searcher clicked. buildQuery's states-pay predicate, /v1's
+            // has_stated_pay and the transparency surfaces all ask the WIDER
+            // question — did the employer write a figure at all — off the
+            // verbatim pay field (see the predicate's own note in buildQuery).
+            // Two questions, two columns, named here so the next reader does not
+            // take either for the definition.
+            //
+            // THE JUSTIFICATION THAT USED TO STAND HERE WAS REFUTED, and it is
+            // corrected rather than left, because it was the last place in this
+            // repository claiming prose in the pay column. It said reading
+            // `salary || min_annual` "counted 'Competitive' and 'DOE' as
+            // disclosure". Measured: 0 of 5,472 stored pay texts carry no digit,
+            // 0 of 5,350 in a 12,000-row walk of the two vendors with structured
+            // pay fields (2026-09-27T03:30Z), and not one "Competitive", "DOE" or
+            // "negotiable" string in either. The column holds figures. What makes
+            // the annualised one right HERE is the question, not the prose.
+            //
             // null, not false, when the posting is already gone: we cannot
             // observe what we no longer hold, and false would be a claim.
             salary_present: p.salary_min_annual != null,
@@ -14662,11 +14749,63 @@ async function serveList(
         }, { onConflict: "k" }),
       ).then(() => {}).catch(() => {}));
     }
+    // THE ROWS THE PAY FLOOR AND THE PAY SORT CANNOT COMPARE, COUNTED ON THIS
+    // PAGE — because the only other figure available is board-wide.
+    //
+    // "States pay" now admits every posting whose employer wrote a figure in the
+    // pay field, while the floor, the ceiling and the sort still compare an
+    // approximate-USD column that only exists where we were willing to
+    // annualise. So the checkbox is a strict superset of the three, and the
+    // reader has to be told the size of the gap on the page in front of them.
+    // The board-wide coverage fractions cannot do that job: they read the same
+    // on a filtered page as on the whole board, which is why they are withheld
+    // under a narrowed body in the first place.
+    //
+    // EXACT, AND A FLOOR RATHER THAN A TOTAL. Counted from the served rows, so
+    // it is true of this page by construction and costs no query. It counts the
+    // rows that print a rate with NO annualised figure behind them; a figure we
+    // annualised but could not convert to dollars is also uncomparable and this
+    // number cannot see it, because the mapped row carries no converted column.
+    // So the copy above it must say "at least", never "all" — a count that
+    // cannot see part of its own population must not be published as the total.
+    // Emitted only when it is non-zero: a zero here is not news, and every list
+    // exit spreads this helper.
+    //
+    // THE SECOND REASON IT IS A FLOOR, AND IT IS NOT IN THE ARITHMETIC: `jobs`
+    // is the array AFTER similar requisitions are folded into one card, which is
+    // the default. A folded sibling is invisible to both halves of this fraction,
+    // so the number counts CARDS and the copy that prints it says so — measured
+    // live 2026-09-27T03:29Z, one IE stated-pay page served 60 cards standing for
+    // 68 postings. Counting raw rows instead would restore the word "postings"
+    // and lose the correspondence with the page the reader is looking at, which
+    // is the whole reason this figure exists.
+    //
+    // ONLY UNDER A PAY CONTROL. This sentence describes the pay floor, the pay
+    // ceiling and the pay order to a reader who may have touched none of them —
+    // and the field was previously emitted whenever ANY served row had pay text
+    // and no annual figure, which on an ordinary browse is most pages: measured
+    // live 2026-09-27T03:29:49Z-03:30:23Z over 20 default-shape pages spread from
+    // offset 0 to 494,000, 10 of the 20 carried at least one such row (24 rows of
+    // 1,176 served, worst page 4 of 60). A disclosure that prints where nothing
+    // has been disclosed is the same defect as a board-wide percentage printed
+    // under a narrowed count, and the client's own test forbids the zero case for
+    // exactly this reason. The gate is the state in which the gap can actually
+    // bite: the checkbox, either end of the band, or the pay order. The client
+    // mirrors this gate rather than trusting the field's presence, because a
+    // server older than this bundle sends it ungated.
+    const payControlActive = applied.hasStatedPay === true
+      || applied.salaryFloor !== null
+      || applied.salaryCeiling !== null
+      || body.sort === "salary";
+    const notAnnualised = !payControlActive ? 0 : jobs.filter((j) =>
+      typeof j.salary === "string" && j.salary.trim() !== "" && j.salaryMinAnnual == null
+    ).length;
     return {
       ...(ignoredFilters.length ? { ignoredFilters } : {}),
       ...(v.length
         ? { filterIntegrity: { violations: v.length, rows: jobs.length, fields: [...new Set(v.map((x) => x.field))] } }
         : {}),
+      ...(notAnnualised > 0 ? { payTextWithoutAnnual: { rows: notAnnualised, of: jobs.length } } : {}),
       // Every list exit spreads this helper, so one line gives all seven of
       // them a server-side timing that can be read from outside without DB
       // access.
@@ -14964,13 +15103,72 @@ async function serveList(
         ? q.or(`salary_rank_usd.lte.${applied.salaryCeiling},salary_rank_usd.is.null`)
         : q.lte("salary_rank_usd", applied.salaryCeiling);
     }
-    // "Only postings that state pay at all." salary_min_annual, NOT
-    // salary_rank_usd: the rank column additionally requires a currency we can
-    // identify, so binding it here would answer a narrower question than the
-    // filter's name — 20.1% of the board states a figure, and fewer than that
-    // state one we can convert. Anyone who sets salaryFloor is inside this
-    // population already; this is the filter that lets them say so on purpose.
-    if (applied.hasStatedPay) q = q.not("salary_min_annual", "is", null);
+    // "ONLY POSTINGS THAT STATE PAY AT ALL" — THE VERBATIM PAY FIELD, and the
+    // reason it is that column rather than either parsed one.
+    //
+    // Three pay columns nest: the employer's raw pay text, the figure we parsed
+    // and annualised out of it, and that figure converted to approximate USD.
+    // This control was bound to the MIDDLE one, which made it ask "did the
+    // employer state pay AND were we willing to multiply it into a year" while
+    // its label asked only the first half. The card is gated on the TEXT
+    // (Jobs.tsx renders the pay span whenever that text exists), so the board
+    // printed the employer's wage in bold on rows this filter classified as
+    // silent — and the rows it dropped are not a random slice: the shared
+    // parser deliberately refuses a 2,080-hour year for a rate carrying a
+    // part-time, casual, per-diem or on-call signal, so the dropped population
+    // is exactly the part-time and casual work whose seekers most need a posted
+    // wage.
+    //
+    // MEASURED, anon key, through this function's own read paths, every figure
+    // stamped because this corpus moves ~2% an hour. Two complete country
+    // strata walked row by row, no sampling: IE 2,575 rows / 312 with pay text
+    // / 282 with an annual (2026-09-27T02:01:53Z), NZ 1,455 / 161 / 143
+    // (02:02:42Z) — 30 and 18 postings printing a wage under a control calling
+    // them silent, and both walks matched this function's own counted answer
+    // for the same stratum exactly. The hourly slice alone, counted per country
+    // at 02:00:55Z-02:01:10Z as hourly against hourly-and-flagged: CA
+    // 2,170/1,461, GB 1,875/905, AU 464/168, NL 24/13. Board-wide, two hourly
+    // scans over the SAME serving predicates: 206,996 rows carry pay text
+    // (28.28% of 732,018, stamped 01:07:00Z) against 23.7% carrying an annual
+    // (02:00:18Z) — so this predicate admits on the order of 33,000-34,000
+    // postings and moves the published reach by ~4.6 points.
+    //
+    // THE PLAIN NULL TEST, AND NOT A CLEVERER ONE. An extra arm demanding a
+    // nonzero DIGIT was measured and dropped because it would have excluded
+    // nothing: this column holds no prose at all — 0 of 5,472 stored texts carry
+    // no digit, 0 of the 473 pay-stating rows in the two walked strata, and 0 of
+    // 5,350 pay texts in a 12,000-row walk of the two vendors with structured pay
+    // fields (2026-09-27T03:30:38Z-03:33:10Z), with no "competitive", "DOE" or
+    // "negotiable" string in any of the three.
+    //
+    // A ZERO-VALUED FIGURE IS A DIFFERENT QUESTION AND IS ACCEPTED, NOT ANSWERED.
+    // The arm that would exclude a pay field reading "EUR 0 - 0" is a
+    // nonzero-VALUE test; the digit measurement above says nothing about it,
+    // because every such row carries digits. In the same walk, 11 of the 1,674
+    // newly-admitted rows (0.66%) carry a figure whose every number is zero —
+    // eight "EUR 0 - 0", one "GBP 0 - 0", one "USD 0 - 0", one "$0", each a
+    // vendor's empty structured salary rendered as text — and 8 more carry a zero
+    // lower bound beside a real upper one, which do state pay. That ~0.7% is
+    // accepted against the 33,240 rows recovered, because the card prints the same
+    // text: the reader sees "EUR 0 - 0" and can judge it, so the control and the
+    // card agree about the row, which is the property this change is about.
+    // Excluding them means a value test spelled once in PostgREST and three times
+    // in plpgsql, on an unindexed column, and it must not land in one runtime
+    // alone. A single NULL test cannot mean two different things in two runtimes.
+    //
+    // THE FLOOR, THE CEILING AND THE SORT DO NOT MOVE WITH IT, so this control
+    // is now a strict SUPERSET of what they can compare. That divergence is
+    // disclosed per page by payTextWithoutAnnual in honesty() rather than left
+    // for the reader to discover; annualising a part-time wage at 2,080 hours to
+    // close it is how a $44/hr rate was once served at a $90k floor as 91,520.
+    //
+    // MIRRORED IN SQL, and it has to be: p_pay_stated carries this same
+    // question into the ranked search, the capped count and the rescue tier
+    // (20260927034117). A count bound to one column under a page bound to the
+    // other is the 2026-07-25 work-mode defect, and the cross-runtime guard in
+    // src/test/the-pay-controls-say-what-they-compare.test.tsx fails if these
+    // four ever name different columns again.
+    if (applied.hasStatedPay) q = q.not("salary", "is", null);
     // "Only postings we can actually score." See the field's own note in
     // filters.ts: in résumé mode an undescribed row can only ever say "no
     // score", and the newest rows — the default browse — are exactly those.
@@ -15115,7 +15313,51 @@ async function serveList(
       if (error || !Array.isArray(data) || !data.length) return null;
       const row = data[0] as { n?: number | string; capped?: boolean };
       const n = Number(row.n);
-      return Number.isFinite(n) ? { n, capped: row.capped === true } : null;
+      if (!Number.isFinite(n)) return null;
+      // DEPLOY-WINDOW COVER FOR THE ONE PREDICATE THAT MOVED IN TWO RUNTIMES.
+      // Delete this block, and the same gate in the category rail below, once
+      // verify-deploy 5y(c) reports the migration live (its own header says how).
+      //
+      // This bundle binds the stated-pay question to the employer's verbatim pay
+      // field; migration 20260927034117 moves the SAME question inside this RPC.
+      // The two ship down DIFFERENT PIPES — a function publish and a staged SQL
+      // apply, minutes to days apart, with publishes known to skip functions
+      // outright — so for one release the page and its own headline can be taken
+      // over populations 33,240 rows apart (207,108 pay-text rows against
+      // 173,868 annualised, one scan 2026-09-27T02:07:00Z). That is the
+      // 2026-07-25 p_work_mode defect arriving through the deploy rather than
+      // through a missing parameter, and NOTHING would report it: the SQL has
+      // accepted p_pay_stated since 20260826041500, so the old definition answers
+      // 200 with a narrower number and no error, no PGRST404, no fallback.
+      // The cross-runtime guard cannot see this window at all — it reads source
+      // files, not deployed versions.
+      //
+      // WHY A CAPPED ANSWER NEEDS NO COVER, and this is what keeps the cover
+      // cheap. A capped count is published as COUNT_CAP + countCapped, i.e.
+      // "10,000+". The new predicate is a strict SUPERSET of the old one (every
+      // annualised figure has the employer's text behind it — get_filter_coverage
+      // publishes that nesting check on every pass), so if the OLD definition
+      // already reached the cap the new one does too and the published payload is
+      // byte-identical. Only an UNCAPPED answer can differ between the two
+      // versions, and an uncapped answer means fewer than COUNT_CAP matches —
+      // so the exact count the caller falls back to is bounded by the same
+      // ceiling this RPC was introduced to respect. Board-wide the two columns
+      // are 1.19x apart, so the fallback counts on the order of 12,000 rows at
+      // worst, nowhere near the 150k-190k band where the exact count times out.
+      // What it costs is named rather than hidden: on the list path the page is
+      // re-read with the count attached, so a narrow stated-pay page pays one
+      // extra bounded read for one release, and a broad one pays nothing at all.
+      //
+      // Standing down here is exactly right for these callers and would be wrong
+      // for the ranked exit: cappedCount answers the countOnly action and the
+      // buildQuery browse, both of which SERVE buildQuery rows, so their count
+      // belongs to buildQuery. The ranked exit takes its total from the same
+      // search_jobs call that produced its rows, so it agrees with itself in
+      // either version and is deliberately untouched. Adding hasStatedPay to
+      // rpcBlindFilters would have been the blunt version of this and would also
+      // strip the ranked, fuzzy and semantic tiers that 20260826041500 restored.
+      if (applied.hasStatedPay && row.capped !== true) return null;
+      return { n, capped: row.capped === true };
     } catch {
       return null; // RPC missing — caller keeps the old exact-count behaviour
     }
@@ -15234,8 +15476,30 @@ async function serveList(
       // multi-term queries down it rather than to the RPC.
       const facetQ = queryTerms(body.q).terms;
       const facetUseRpc = qText && facetQ.length <= 1;
+      // A NUMBER TAKEN OVER A DIFFERENT POPULATION IS WITHHELD, NOT PRINTED.
+      // Delete this with the matching block inside cappedCount once verify-deploy
+      // 5y(c) reports migration 20260927034117 live.
+      //
+      // Same window, same cause: this rail's numbers come from the RPC whose
+      // stated-pay predicate lands through the SQL pipe, while the page's rows
+      // come from buildQuery, whose predicate lands with this bundle. Until both
+      // have landed a stated-pay chip can be up to ~16% low against the page
+      // clicking it delivers.
+      //
+      // WITHHELD RATHER THAN RE-ROUTED, and the choice matters. The else-branch
+      // below is buildQuery's substring ILIKE, and with a text query present that
+      // is a DIFFERENT MATCHER from the one serving the list — measured 7,343x
+      // apart on q="IT", the second of the two defects the comment above this
+      // loop records. Trading a ~16% pay-column skew for that is not a fix. A
+      // category that arrives without a number is a degradation this loop already
+      // performs between chunks and the rail already renders, so for one release
+      // a stated-pay text search numbers no chips instead of numbering them wrong.
+      // Unaffected: every stated-pay browse with no query, which never reaches
+      // this branch and counts through buildQuery already.
+      const facetPayWindow = applied.hasStatedPay === true;
       const chunkWork = Promise.all(chunk.map(async (c) => {
         try {
+          if (facetUseRpc && facetPayWindow) return [c, null, false] as const;
           if (facetUseRpc) {
             // EVERY predicate the list binds, or the rail promises a different
             // board than clicking delivers. This branch hand-picked nine of the

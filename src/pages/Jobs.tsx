@@ -1477,6 +1477,18 @@ interface BoardResponse {
    * usable 241,198 (43.1% — 318,607 of the non-null values are "unspecified"
    * and match nothing).
    *
+   * THE PAY-STATED LINE ABOVE IS A 2026-08-25 READING OF A COLUMN THIS FIELD NO
+   * LONGER DESCRIBES, and it is left dated rather than deleted because that is
+   * the only form a superseded measurement may survive in. It counted the
+   * ANNUALISED figure. On 2026-09-27 the states-pay filter moved onto the
+   * employer's verbatim pay field and the server's `hasStatedPay` here is that
+   * column's share: read live from this board at 2026-09-27T03:29:32Z the block
+   * is payBasis 0.131, hasStatedPay 0.237, salaryFloor 0.237 against a deployed
+   * bundle still binding the old column, and 0.283 is the pay field's share on a
+   * board-wide scan the same morning. So this field's pay figure is ~28% (2026-09-27),
+   * not the 20.1% above, which was measured 2026-08-25, once the matching bundle is serving — and salaryFloor's ~23.7% is the
+   * one that still describes the annualised-and-convertible column.
+   *
    * `vendor` IS here and IS rendered, at 100%: `source` is populated on every
    * row, and "all of it" is a real answer to "what can this filter see".
    * Omitting it would make the line's silence about vendor indistinguishable
@@ -1505,6 +1517,19 @@ interface BoardResponse {
    * never to an undated claim.
    */
   filterCoverageAt?: string;
+  /**
+   * HOW MANY ROWS ON THIS PAGE THE PAY FLOOR, CEILING AND ORDER CANNOT COMPARE.
+   *
+   * Counted by the server from the rows it served, so unlike every fraction in
+   * filterCoverage it is PAGE-scoped and stays true under any narrowing — which
+   * is why it is the one pay figure that may print beside a filtered count.
+   * `rows` is a floor, not a total: it counts postings printing a rate with no
+   * annualised figure behind it and cannot see one we annualised but could not
+   * convert to dollars (42 such rows board-wide, 2026-09-27T02:07:00Z). Absent
+   * when zero, and absent from an older deployed bundle, in which case the page
+   * prints nothing rather than guessing.
+   */
+  payTextWithoutAnnual?: { rows?: number; of?: number };
   /** Phrases lifted OUT of the query and applied as filters instead — typing
    *  "work from home nurse" searches "nurse" among remote roles. The rewrite is
    *  good; doing it silently is not. */
@@ -2505,8 +2530,13 @@ export default function Jobs() {
     return v === "hourly" || v === "salaried" ? v : "";
   });
   // "Only postings that state pay." Anyone who sets a salary floor is ALREADY
-  // narrowed to this 20.1% and is never told; making it a control of its own is
-  // the honest half of the same fact.
+  // narrowed to a stated-pay population and is never told; making it a control
+  // of its own is the honest half of the same fact. The two populations are NOT
+  // the same one, and saying "this 20.1%" claimed they were: since 2026-09-27
+  // this checkbox binds the employer's verbatim pay field (~28.3% of the board)
+  // while the floor binds the annualised-and-converted figure (~23.7%, read live
+  // 2026-09-27T03:29:32Z), so the checkbox is a strict SUPERSET of the floor's
+  // reach rather than an alias for it.
   const [statedPayOnly, setStatedPayOnly] = useState(initial.get("statedPay") === "1");
   const [includeUnstatedPay, setIncludeUnstatedPay] = useState(initial.get("inclUnstatedPay") === "1");
   // "Hide staffing agencies" — the opt-in decline of the inventory the
@@ -8816,9 +8846,15 @@ export default function Jobs() {
             {/* PAY, AS A BAND AND AS A BASIS — three controls over the same
                 published figure, grouped so they read as one question.
                 The floor was the only one of them the page had, and it silently
-                implied the third: setting it already restricts you to the 20.1%
-                of postings that state pay, which is what "States pay" now says
-                out loud on its own. */}
+                implied the third: setting it already restricts you to postings
+                that state pay, which is what "States pay" now says out loud on
+                its own. It never restricted you to the same SET, and the figure
+                that used to stand here (20.1%) was the annualised column's
+                2026-08-25 reading, which is neither control's population today:
+                the floor compares the annualised figure converted to approximate
+                dollars (~23.7% of the board) and the checkbox asks only whether
+                the employer wrote a figure at all (~28.3%), both read live
+                2026-09-27. */}
             <div role="group" aria-label={t("jobsPage.payFieldLabel", "Pay")} className="flex flex-wrap gap-2">
               {/* WHAT THE FLOOR ACTUALLY COMPARES, both halves of it. The old
                   sentence named the annualization and not the CURRENCY
@@ -8878,37 +8914,92 @@ export default function Jobs() {
                 <option value="salaried">{t("jobsPage.payBasisSalaried", "Salaried")}</option>
               </select>
               {/* THE HALF OF THE PAY FLOOR NOBODY WAS TOLD ABOUT, on its own.
-                  salary_min_annual IS NOT NULL — 112,524 rows. Someone who only
-                  wants postings that name a figure, at any figure, had no way to
-                  ask for that except by setting a floor they did not mean.
+                  Someone who only wants postings that name a figure, at any
+                  figure, had no way to ask for that except by setting a floor
+                  they did not mean.
                   "WHATEVER IT IS" WAS NOT TRUE, AND THE PAGE DISPROVED IT ITSELF.
-                  The predicate is salary_min_annual IS NOT NULL (job-board
-                  index.ts, the hasStatedPay branch of buildQuery), i.e. a figure
-                  OUR parser could turn into a comparable year. A posting stating
-                  "£14.80 per hour" has a figure, has it printed in bold on its
-                  own card two hundred lines below this, and is excluded here:
-                  _shared/salary-extract.ts refuses on purpose to annualize a
-                  load-dependent rate on a part-time/casual posting (v7, after
+                  The control bound the ANNUALISED figure — a figure OUR parser
+                  could turn into a comparable year — while the card prints the
+                  employer's verbatim pay text. A posting stating "£14.80 per
+                  hour" had a figure, had it printed in bold on its own card two
+                  hundred lines below this, and was excluded here. Measured
+                  2026-09-26 on a systematic 20-page walk of the live board (925
+                  rows, offsets spread over the uncapped 746,871): 201 rows print
+                  a figure, 181 carry an annual, so 20 of the 201 (10.0%,
+                  +/-4.1pp) were invisible to this control while showing their
+                  rate; an independent 981-row walk the same day put it at 39 of
+                  338 (11.5%).
+
+                  FIXED ON 2026-09-27 BY MOVING THE PREDICATE, which is the
+                  opposite of what this block used to prescribe. It called for a
+                  stored indexed boolean written by all four salary writers and
+                  forbade reading the pay column directly, on the grounds that
+                  doing so would re-admit prose like "Competitive" and put an
+                  unindexed arm in the hot query. BOTH HALVES WERE MEASURED AND
+                  NEITHER HELD. Prose: 0 of 5,472 stored pay texts carry no digit
+                  (2026-09-26/27 walks), 0 of 5,350 in a 12,000-row walk of the
+                  two vendors with structured pay fields (2026-09-27T03:30Z), and
+                  0 carrying "competitive", "DOE" or "negotiable" — the column
+                  holds figures, not prose, and get_filter_coverage publishes a
+                  nesting check over the three pay columns on every hourly pass so
+                  a change in that would surface as data. Cost: the pay column
+                  carries no index, and timed from outside against the indexed
+                  annualised column on a stratum whose count does not cap, the
+                  unindexed column was not slower. Re-measured from outside at
+                  2026-09-27T03:57:58Z, three runs each on a GB stratum whose
+                  count does not cap: the UNINDEXED period column answered
+                  677/414/753ms (1,870 rows) against the INDEXED annualised
+                  column's 693/823/571ms (4,825 rows) — the ranges overlap
+                  completely and the unindexed one is if anything faster. It is a
+                  single NULL test on a DENSER column (28.3% against 13.1% for the
+                  period column an existing filter already tests without an
+                  index), not an added OR arm.
+
+                  WHAT IS STILL TRUE OF THE ROWS: the parser's refusal to invent a
+                  schedule for a load-dependent part-time rate stands
+                  (_shared/salary-extract.ts v7, after
                   {"q":"teacher","salaryFloor":90000} served fourteen hourly
-                  part-timers out of fifteen — a $44/hr read as 91,520). The
-                  refusal is right; calling the row "doesn't publish a pay figure"
-                  was not. Measured 2026-09-26 on a systematic 20-page walk of the
-                  live board (925 rows, offsets spread over the uncapped 746,871):
-                  201 rows print a figure, 181 carry an annual, so 20 of the 201
-                  (10.0%, +/-4.1pp) are invisible to this control while showing
-                  their rate; an independent 981-row walk the same day put it at
-                  39 of 338 (11.5%). Half carry a stored period and are reachable
-                  through "Paid hourly" (10 of 20 here, 18 of 39 there); the other
-                  half state a range whose period the parser could not fix
-                  ("$37.62 to $54.90", "EUR 3180 - 4273") and are reachable by
-                  neither. Fixing the SET needs a stored pay_stated written by all
-                  four salary writers (an indexed boolean, never an `OR salary IS
-                  NOT NULL` arm — that re-admits "Competitive" and puts an
-                  unindexed arm in the hot query) plus the matching row audit in
-                  filters.ts; until that lands the control says what it can see. */}
+                  part-timers out of fifteen — a $44/hr read as 91,520), so those
+                  rows still carry no yearly amount and the pay floor, the pay
+                  ceiling and the pay order still cannot compare them. What
+                  changed is that a control labelled for the EMPLOYER'S act no
+                  longer answers with OUR arithmetic. The remaining divergence is
+                  disclosed per page rather than left for the reader to discover.
+
+                  ACCEPTED WITH IT: about 0.7% of the newly-admitted rows carry a
+                  figure of zero — 11 of 1,674 in the walk above, every one of
+                  them a vendor default of the "EUR 0 - 0" or "$0" shape — and the
+                  card prints that text, so the checkbox and the card agree about
+                  them, which is the property this change is about. Excluding them
+                  needs a nonzero-VALUE test in four runtimes; that decision has
+                  not been made. */}
               <label
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
-                title={t("jobsPage.statedPayTip", "Show only postings whose stated pay we could read as a yearly figure. A posting printing an hourly or per-shift rate we won't turn into a year — part-time, casual and per-diem roles above all — is left out even though the board shows its rate; “{{hourly}}” finds many of those. Setting a pay floor already does this silently — this makes it a choice.", { hourly: t("jobsPage.payBasisHourly", "Paid hourly") })}
+                /* THE PROMISE THE CHECKBOX NOW KEEPS. Until 2026-09-27 this
+                   control bound the ANNUALISED figure, so a posting printing
+                   "£14.80 per hour" was served with its wage in bold and
+                   classified as stating nothing — the tooltip had to apologise
+                   for it and point at the hourly control as a workaround. The
+                   predicate moved to the employer's own pay field (33,240
+                   postings board-wide, 2026-09-27T02:07:00Z), so the apology is
+                   retired and the {{hourly}} placeholder with it. What the
+                   sentence must still carry is the NEW divergence: the floor,
+                   the ceiling and the order compare a yearly amount, so this
+                   checkbox is a superset of what they can rank.
+
+                   AND THE PROMISE IS QUALIFIED, BECAUSE THE PAGE CANNOT ALWAYS
+                   KEEP IT. The gap count is taken over the rows the server
+                   SERVED, and the three comparing controls exclude the very rows
+                   it would count — the ranking column is generated from the
+                   annualised figure, so a floor, a ceiling or the pay order
+                   leaves every served row carrying one and the count is
+                   structurally zero. An unqualified "the page says how many" was
+                   therefore false in exactly the state where the exclusion bites,
+                   so the sentence now says WHEN the page says it. Counting the
+                   EXCLUDED rows instead would take a second count query with the
+                   rank arm dropped; that is a larger change than this one and is
+                   not pretended to exist here. */
+                title={t("jobsPage.statedPayTip", "Show only postings whose pay field carries a figure the employer published — an hourly or per-shift rate counts, part-time and casual roles included, and the card shows it. The pay floor, the pay ceiling and “{{order}}” compare a yearly amount instead, so some postings this admits cannot be compared by those three; the page says how many, but only while no pay floor, no pay ceiling and no “{{order}}” is narrowing the page.", { order: t("jobsPage.sortSalary", "Highest stated salary") })}
               >
                 <input
                   type="checkbox"
@@ -10052,15 +10143,19 @@ export default function Jobs() {
                     // the data. `vendor` follows them, and the note beside it
                     // says why a 100% figure is still worth printing.
                     if (typeof fc.salaryCeiling === "number") cov("pay", t("jobsPage.coverageCeiling", "a pay figure to cap on {{pct}}%", { pct: Math.round(fc.salaryCeiling * 100) }));
-                    // "ANY PAY AT ALL" NAMED THE WRONG POPULATION. The fraction
-                    // is salary_min_annual coverage — a figure our parser could
-                    // read as a comparable year — and this line's frame is
-                    // "Employers state …", so the clause was charging employers
-                    // for the postings whose printed rate WE decline to
-                    // annualize (10.0% of the rows that print a figure, measured
-                    // 2026-09-26; see the States-pay note above). The clause now
-                    // says whose limit the number is.
-                    if (typeof fc.hasStatedPay === "number") cov("pay", t("jobsPage.coverageStatedPay", "pay we can read as a yearly figure on {{pct}}%", { pct: Math.round(fc.hasStatedPay * 100) }));
+                    // THE CLAUSE FOLLOWS THE PREDICATE, AND THE PREDICATE MOVED.
+                    // This fraction used to be our annualisation coverage under a
+                    // line framed "Employers state …", which charged employers
+                    // for postings whose printed rate WE declined to annualise —
+                    // so the clause was reworded to name whose limit it was. On
+                    // 2026-09-27 the filter itself moved to the employer's
+                    // verbatim pay field and the server now sends that column's
+                    // share here (28.3% against the annualised 23.7%, both read
+                    // live), which makes the fraction genuinely a statement about
+                    // what employers published — so the clause says that, plainly,
+                    // and no longer describes a narrower population than the count
+                    // printed above it.
+                    if (typeof fc.hasStatedPay === "number") cov("pay", t("jobsPage.coverageStatedPay", "a pay figure of some kind on {{pct}}%", { pct: Math.round(fc.hasStatedPay * 100) }));
                     if (typeof fc.payBasis === "number") cov("pay", t("jobsPage.coveragePayBasis", "hourly or salaried on {{pct}}%", { pct: Math.round(fc.payBasis * 100) }));
                     if (typeof fc.maxYears === "number") cov("maxYears", t("jobsPage.coverageMaxYears", "years of experience on {{pct}}%", { pct: Math.round(fc.maxYears * 100) }));
                     if (typeof fc.department === "number") cov("department", t("jobsPage.coverageDepartment", "a department on {{pct}}%", { pct: Math.round(fc.department * 100) }));
@@ -10135,6 +10230,58 @@ export default function Jobs() {
                           </p>
                         )}
                       </>
+                    );
+                  })()}
+                  {/* THE GAP BETWEEN THE CHECKBOX AND THE THREE CONTROLS THAT
+                      RANK, COUNTED ON THIS PAGE.
+
+                      "States pay" admits every posting whose employer wrote a
+                      figure in the pay field. The pay floor, the pay ceiling and
+                      the pay order compare a yearly amount in approximate
+                      dollars, which only exists where we were willing to
+                      annualise — so the checkbox is now a strict superset of the
+                      three, and 33,240 postings board-wide sit in the gap
+                      (207,108 with pay text against 173,868 with an annual
+                      figure, one scan, 2026-09-27T02:07:00Z).
+
+                      NOT GATED BY coverageStillBoardWide, and that is the point.
+                      Every percentage above it is board-wide and therefore
+                      withheld the moment the reader narrows the page — the
+                      blocker that sentence exists under. This number is counted
+                      from the rows the server actually served, so it is true of
+                      the page in front of the reader no matter how narrow it is,
+                      and it is the one figure that can be printed there.
+
+                      "AT LEAST" IS IN THE COPY BECAUSE THE COUNT CANNOT SEE ALL
+                      OF ITS OWN POPULATION: a figure we annualised but could not
+                      convert to dollars is also uncomparable and carries no
+                      marker the served row exposes. Board-wide that miss is 42
+                      rows (173,868 annualised against 173,826 convertible, same
+                      scan), so the floor is a tight one — but a count that
+                      cannot see part of what it describes is published as a
+                      floor, never as a total. */}
+                  {(() => {
+                    const g = data?.payTextWithoutAnnual;
+                    if (!g || typeof g.rows !== "number" || g.rows <= 0) return null;
+                    // THE SENTENCE IS ABOUT THREE CONTROLS, SO IT PRINTS ONLY
+                    // WHERE ONE OF THEM IS IN USE. Gated here as well as on the
+                    // server, and not because the server cannot be trusted: a
+                    // deployed bundle older than 2026-09-27 emits this field
+                    // whenever any served row printed a rate we had not
+                    // annualised, which on an ordinary browse is most pages
+                    // (measured live 2026-09-27T03:29:49Z-03:30:23Z: 10 of 20
+                    // default-shape pages from offset 0 to 494,000 carried at
+                    // least one such row, 24 rows of 1,176 served). Reading that
+                    // field's presence as permission to print would tell a reader
+                    // who has touched no pay control that three controls they
+                    // never used cannot compare part of the page — the same
+                    // objection this file raises against printing a zero, and
+                    // against a board-wide percentage under a narrowed count.
+                    if (!(statedPayOnly || salaryFloor > 0 || salaryCeiling > 0 || sortMode === "salary")) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground mb-2" data-pay-gap="page">
+                        {t("jobsPage.payNotComparable", "{{rows}} of the {{of}} listings shown here print a rate we have not turned into a yearly figure — at least that many cannot be compared by the pay floor, the pay ceiling or the pay order.", { rows: g.rows, of: g.of })}
+                      </p>
                     );
                   })()}
                   {/* We rewrote their query. Say so. */}

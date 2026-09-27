@@ -158,14 +158,25 @@ const META = {
       // the page cannot state is a claim and not a measurement. The value here is
       // the day this fixture's numbers were read off the live board.
       at: "2026-09-26",
-      hasStatedPay: 0.235, workMode: 0.232, experience: 0.452, country: 0.928,
+      // THE STATES-PAY CLAUSE READS salaryText, NOT hasStatedPay, SINCE 2026-09-27.
+      // The filter moved onto the employer's verbatim pay field, so the sentence
+      // under a stated-pay page has to count that column or it describes a
+      // narrower population than the count printed above it. Both keys are in the
+      // fixture and they DIFFER on purpose: an expectation of 0.283 fails the
+      // moment the disclosure reads the annualised key again. Live on one scan at
+      // 2026-09-27T02:07:00Z, 207,108 of 733,190 servable rows carry pay text
+      // (28.25%) against 173,868 carrying an annual figure (23.72%).
+      hasStatedPay: 0.235, salaryText: 0.283, workMode: 0.232, experience: 0.452, country: 0.928,
       salaryFloor: 0.129, payBasis: 0.106, maxYears: 0.289, department: 0.405, employmentType: 0.273,
     },
   },
 };
 /** Every board-wide percentage the fixture above can print, as it would reach
  *  the screen. Not one of them may appear on a narrowed page. */
-const BOARD_PERCENTS = ["24%", "23%", "45%", "93%", "13%", "11%", "29%", "41%", "27%", "100%"];
+// 28% is the states-pay clause's figure since it started counting the pay field;
+// 24% stays listed because the fixture still carries the annualised figure and a
+// clause that started printing it again would be exactly the regression.
+const BOARD_PERCENTS = ["28%", "24%", "23%", "45%", "93%", "13%", "11%", "29%", "41%", "27%", "100%"];
 
 /** coverageDisclosure and the constant it reads, transpiled out of the Deno
  *  source and CALLED — so the numbers this page renders in the tests below came
@@ -310,9 +321,9 @@ describe("1. a board-wide percentage prints only while the whole board is what t
     mount("/jobs?statedPay=1", { page: 1_300, dropped: 2_243 }, "salary");
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     await waitFor(() => expect(scoped("board")).toBeTruthy(), SLOW);
-    expect(servedCoverage(), "the server did send the block").toMatchObject({ hasStatedPay: 0.235 });
+    expect(servedCoverage(), "the server did send the block").toMatchObject({ hasStatedPay: 0.283 });
     const s = scoped("board")!;
-    expect(s, "0.235 must reach the screen as a percentage").toContain("24%");
+    expect(s, "0.283 must reach the screen as a percentage").toContain("28%");
     expect(s, "and it must say whose population that is").toContain("the whole board, not just this filtered page");
     expect(scoped("withheld"), "nothing was withheld on this page").toBeNull();
   });
@@ -324,7 +335,7 @@ describe("1. a board-wide percentage prints only while the whole board is what t
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     await waitFor(() => expect(scoped("withheld")).toBeTruthy(), SLOW);
     expect(servedCoverage(), "the wrong figure really did arrive — this is not a mock that went quiet")
-      .toMatchObject({ hasStatedPay: 0.235, country: 0.928 });
+      .toMatchObject({ hasStatedPay: 0.283, country: 0.928 });
     expect(scoped("board"), "a board-wide percentage under a narrowed page").toBeNull();
     for (const p of BOARD_PERCENTS) {
       expect(text(), `${p} is a board-wide figure and this page is narrower than the board`).not.toContain(p);
@@ -552,11 +563,11 @@ describe("3. a scope too thin for a percentage refuses to print one, in every la
      * but its own family, so the gate lets the figure through and only the
      * missing stamp stops it. */
     const { filterCoverage } = coverageDisclosure({ hasStatedPay: true }, META) as { filterCoverage: Record<string, number> };
-    expect(filterCoverage.hasStatedPay, "the fixture must really carry the figure this case suppresses").toBe(0.235);
+    expect(filterCoverage.hasStatedPay, "the fixture must really carry the figure this case suppresses").toBe(0.283);
     mount("/jobs?statedPay=1", { page: 1_300, dropped: 2_243 }, "salary", false, { stripStamp: true });
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     expect(servedCoverage(), "the figure really did arrive — this is not a mock that went quiet")
-      .toMatchObject({ hasStatedPay: 0.235 });
+      .toMatchObject({ hasStatedPay: 0.283 });
     expect(
       served.some((r) => r.filterCoverageAt !== undefined),
       "the stamp was not actually removed, so this case proves nothing",
@@ -584,7 +595,9 @@ describe("4. the server's figure does not move when the scope does — so the cl
     expect(whole).toEqual(narrow);
     // …and every scope the bar can add leaves the figures untouched.
     const base = coverageDisclosure({ hasStatedPay: true }, META) as { filterCoverage: Record<string, number> };
-    expect(base.filterCoverage.hasStatedPay).toBe(0.235);
+    // 0.283 is salaryText's value in the fixture and 0.235 is the annualised
+    // key's, so this also pins WHICH key the disclosure reads.
+    expect(base.filterCoverage.hasStatedPay).toBe(0.283);
     for (const scope of [
       { country: "SE" }, { category: "healthcare" }, { vendors: ["pinpoint"] },
       { employmentType: "internship" }, { department: "Nursing" }, { q: "nurse" },
@@ -594,7 +607,7 @@ describe("4. the server's figure does not move when the scope does — so the cl
         out.filterCoverage.hasStatedPay,
         `coverageDisclosure now answers ${JSON.stringify(scope)} with its own figure. If that is deliberate, the ` +
         "client must stop labelling it board-wide: jobsPage.coverageScopeBoard and the gate in Jobs.tsx are what to change.",
-      ).toBe(0.235);
+      ).toBe(0.283);
     }
   });
 

@@ -604,11 +604,23 @@ export const CONSTRAINT_CHIPS: readonly ConstraintChip[] = [
  *  thing at all, over the same `n` the row carries. The families map onto the
  *  chips that FILTER on that thing, which is why remote and onsite are one
  *  family — `work_mode IS NOT NULL` is the denominator of both — and why the
- *  two pay chips are one family with a `floorCol`: "states the pay" counts
- *  salary_min_annual and the $80,000+ floor binds salary_rank_usd, a
- *  different column (the PayCoverage note below has the history), so the
- *  floor's own share is quoted only when it rounds differently from the
- *  stated-pay share rather than duplicated beside it.
+ *  two pay chips are one family with a `floorCol`: "states the pay" and the
+ *  $80,000+ floor bind DIFFERENT columns (the PayCoverage note below has the
+ *  history), so the floor's own share is quoted only when it rounds differently
+ *  from the stated-pay share rather than duplicated beside it.
+ *
+ *  THE STATED-PAY CHIP'S DENOMINATOR MOVED WITH THE FILTER IT DESCRIBES. That
+ *  chip patches hasStatedPay, and on 2026-09-27 that filter stopped binding the
+ *  annualised figure and started binding the employer's verbatim pay field. So
+ *  this family reads `pay_text_n`, the count of the column the filter now tests,
+ *  and not `stated_pay_n`, which counts the annualised one: measured on the
+ *  field grid's own board block at 2026-09-27T02:07:00Z, those are 207,108 and
+ *  173,868 of 733,190 servable rows, so the old column would have understated
+ *  the chip's reach by 33,240 postings — a denominator describing a different
+ *  population from the chip above it, which is the defect this whole block
+ *  exists to prevent. The scan has carried pay_text_n since 20260909110000;
+ *  nothing had to change in SQL. `floorCol` still points at the convertible
+ *  column, because the $80,000+ chip really does bind that one.
  *
  *  NO FAMILY FOR week OR apply. field_grid carries dated_n and week_n, and the
  *  reason they are not read is in the ConstraintChip note above; apply has no
@@ -617,14 +629,14 @@ export const CONSTRAINT_CHIPS: readonly ConstraintChip[] = [
  *  stated-country population. Silence over a guess. */
 export interface CoverageFamily {
   id: "workMode" | "pay" | "experience" | "employmentType";
-  col: "work_mode_n" | "stated_pay_n" | "experience_n" | "employment_type_n";
+  col: "work_mode_n" | "pay_text_n" | "experience_n" | "employment_type_n";
   floorCol?: "pay_floor_n";
   chips: readonly string[];
 }
 
 export const COVERAGE_FAMILIES: readonly CoverageFamily[] = [
   { id: "workMode", col: "work_mode_n", chips: ["remote", "onsite"] },
-  { id: "pay", col: "stated_pay_n", floorCol: "pay_floor_n", chips: ["statedPay", "pay80k"] },
+  { id: "pay", col: "pay_text_n", floorCol: "pay_floor_n", chips: ["statedPay", "pay80k"] },
   { id: "experience", col: "experience_n", chips: ["entry"] },
   { id: "employmentType", col: "employment_type_n", chips: ["fullTime"] },
 ];
@@ -1204,7 +1216,11 @@ export interface Priced {
  *  is the header's chip-grain defect. The stated-pay share a reader sees now
  *  is the FIELD's, from COVERAGE_FAMILIES over the hourly per-field scan, and
  *  the floor's column (salary_rank_usd, `pay_floor_n`) is quoted only when it
- *  rounds differently from the stated-pay column (`stated_pay_n`). Nothing on
+ *  rounds differently from the stated-pay column — which is `pay_text_n` since
+ *  2026-09-27, because that is the day the states-pay FILTER moved onto the
+ *  employer's verbatim pay field and a denominator must count the column its
+ *  chip tests. Board-wide on the same scan the two differ by 33,240 postings,
+ *  so this is not a rounding question. Nothing on
  *  this page reads the probe reply's board-wide coverage block any more: a
  *  read with no sentence is the number waiting to be re-rendered. */
 

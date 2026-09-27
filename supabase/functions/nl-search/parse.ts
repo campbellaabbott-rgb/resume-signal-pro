@@ -259,7 +259,7 @@ export const NL_FILTERS: readonly NlFilter[] = [
   {
     key: "hasStatedPay",
     prompt:
-      'true when the user asks for postings that STATE the pay ("that say what they pay", "salary listed", "no hidden pay"). ~20% of postings do.',
+      'true when the user asks for postings that STATE the pay ("that say what they pay", "salary listed", "no hidden pay"). ~28% of postings do (2026-09-27), counting hourly and per-shift rates — the filter asks whether the employer published a figure, not whether we turned it into a yearly amount.',
     type: "boolean",
     schema: "true only when the user asks for postings that publish a pay figure",
     take: flag,
