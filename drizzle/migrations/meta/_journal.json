@@ -575,6 +575,13 @@
       "when": 1790549647107,
       "tag": "0081_a_rate_table_with_no_date_cannot_be_called_stale",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1790549654546,
+      "tag": "0082_a_head_office_is_a_building_and_never_a_work_from_home_policy",
+      "breakpoints": true
     }
   ]
 }
