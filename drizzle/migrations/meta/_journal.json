@@ -526,6 +526,13 @@
       "when": 1790472197204,
       "tag": "0074_20260926143145_the_same_landmine_in_the_function_that_got_away_with_it",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1790544140245,
+      "tag": "0075_20260927192417_a_funnel_stage_is_not_a_repeat_of_the_landing",
+      "breakpoints": true
     }
   ]
 }
