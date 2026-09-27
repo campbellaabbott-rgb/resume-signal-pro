@@ -554,6 +554,13 @@
       "when": 1790549624776,
       "tag": "0078_a_wage_on_the_card_is_a_stated_wage_in_every_path",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1790549631554,
+      "tag": "0079_the_catalogue_stops_forbidding_what_the_board_now_does",
+      "breakpoints": true
     }
   ]
 }

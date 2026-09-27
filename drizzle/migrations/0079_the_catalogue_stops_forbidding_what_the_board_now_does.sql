@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260927041903_the_catalogue_stops_forbidding_what_the_board_now_does.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260927041903_the_catalogue_stops_forbidding_what_the_board_now_does.sql';
