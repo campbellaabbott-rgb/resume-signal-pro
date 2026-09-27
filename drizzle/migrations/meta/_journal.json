@@ -547,6 +547,41 @@
       "when": 1790544179208,
       "tag": "0077_20260927211436_a_checkout_that_began_is_recorded_where_the_session_is_minted",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1790549624776,
+      "tag": "0078_a_wage_on_the_card_is_a_stated_wage_in_every_path",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1790549631554,
+      "tag": "0079_the_catalogue_stops_forbidding_what_the_board_now_does",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1790549640459,
+      "tag": "0080_the_field_grid_says_which_pay_count_a_chip_may_quote",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1790549647107,
+      "tag": "0081_a_rate_table_with_no_date_cannot_be_called_stale",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1790549654546,
+      "tag": "0082_a_head_office_is_a_building_and_never_a_work_from_home_policy",
+      "breakpoints": true
     }
   ]
 }

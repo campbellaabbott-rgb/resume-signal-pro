@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260927034117_a_wage_on_the_card_is_a_stated_wage_in_every_path.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260927034117_a_wage_on_the_card_is_a_stated_wage_in_every_path.sql';

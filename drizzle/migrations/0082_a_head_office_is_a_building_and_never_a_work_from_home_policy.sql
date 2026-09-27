@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20260927113742_a_head_office_is_a_building_and_never_a_work_from_home_policy.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20260927113742_a_head_office_is_a_building_and_never_a_work_from_home_policy.sql';
