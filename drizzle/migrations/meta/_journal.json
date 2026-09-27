@@ -547,6 +547,13 @@
       "when": 1790544179208,
       "tag": "0077_20260927211436_a_checkout_that_began_is_recorded_where_the_session_is_minted",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1790549624776,
+      "tag": "0078_a_wage_on_the_card_is_a_stated_wage_in_every_path",
+      "breakpoints": true
     }
   ]
 }
