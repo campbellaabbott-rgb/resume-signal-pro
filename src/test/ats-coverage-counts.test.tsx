@@ -34,7 +34,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { AtsCoverage } from "../components/AtsCoverage";
-import { ATS_VENDORS, ATS_VENDOR_LIST } from "../config/ats-vendors";
+import { ATS_VENDORS, ATS_VENDOR_LIST, SERVING_SOURCES, DORMANT_SOURCES, UNMEASURED_ATS_SOURCES } from "../config/ats-vendors";
 
 /**
  * Source with its comments removed, for the assertions below that pin a
@@ -399,5 +399,72 @@ describe("the page names no platform the catalog does not carry", () => {
     for (const v of ATS_VENDORS) {
       expect(sources.includes(`"${v.key}"`), `${v.key} named on the front page but absent from sources.ts`).toBe(true);
     }
+  });
+});
+
+/**
+ * THE STRIP NAMES EVERY SOURCE THE BOARD SERVES, AND ITS SENTENCE COUNTS THEM.
+ *
+ * Found 2026-09-27 on the homepage panel the owner likes: the strip rendered
+ * ATS_VENDORS (fifteen) under "Every job here comes straight from these
+ * systems" and "Read directly from all 15", while the board served nineteen
+ * sources. Paylocity, UKG, ADP and JazzHR — about 100,000 postings, one in
+ * eight — came from systems the panel did not show. Each named item was true;
+ * the sentence was false by omission, which the config's own docblock on
+ * UNMEASURED_ATS_SOURCES already forbids. The guards below pin the rule:
+ *
+ *   1. every SERVING source is a tile, and no DORMANT one is (USAJOBS while
+ *      its secrets are unset serves nothing, and its absence is the point);
+ *   2. the count in the sentence is the number of tiles above it, read from
+ *      the same list, so the two cannot drift apart;
+ *   3. the legend says how many sources it lists without a measured agent
+ *      tier, instead of claiming the agent's reach on them;
+ *   4. the component maps the serving list, pinned on comment-stripped code —
+ *      a comment explaining the fix necessarily names ATS_VENDORS.
+ *
+ * TEETH (each applied to the component, run, restored): mapping ATS_VENDORS
+ * again → 1 and 4 red (Paylocity missing, literal present); count from
+ * ATS_VENDORS.length → 2 red ("all 15" beside nineteen tiles); the old legend
+ * → 3 red.
+ */
+describe("the strip names every source the board serves, and its sentence counts them", () => {
+  const live = Object.fromEntries(SERVING_SOURCES.map((v, i) => [v.key, 1_000 + i]));
+
+  it("renders a tile for every serving source and none for a dormant one", async () => {
+    route(facets(live));
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("1,000")).toBeInTheDocument());
+    for (const v of SERVING_SOURCES) expect(screen.getByText(v.label), v.label).toBeInTheDocument();
+    expect(DORMANT_SOURCES.length, "not vacuous: something is dormant to keep out").toBeGreaterThan(0);
+    for (const v of DORMANT_SOURCES) expect(screen.queryByText(v.label), `${v.label} is dormant`).toBeNull();
+    // the four the old strip omitted are named, by name, so this cannot pass on a list that merely grew
+    for (const v of UNMEASURED_ATS_SOURCES) expect(screen.getByText(v.label), v.label).toBeInTheDocument();
+  });
+
+  it("counts, in its sentence, exactly the tiles above it", async () => {
+    route(facets(live));
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("1,000")).toBeInTheDocument());
+    const n = SERVING_SOURCES.length;
+    expect(n, "the board serves more than the fifteen measured platforms").toBeGreaterThan(ATS_VENDORS.length);
+    expect(screen.getByText(new RegExp(`Read directly from all ${n} `))).toBeInTheDocument();
+    expect(screen.queryByText(/Read directly from all 15 /)).toBeNull();
+  });
+
+  it("the legend names how many sources carry no measured agent tier, rather than claiming reach on them", async () => {
+    route(facets(live), true);
+    render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("1,000")).toBeInTheDocument());
+    const legend = screen.getByText(/The agent submits these for you/);
+    expect(legend.textContent).toMatch(new RegExp(`${UNMEASURED_ATS_SOURCES.length} are listed for where their jobs come from`));
+    expect(legend.textContent).not.toMatch(/The rest it fills in completely/);
+  });
+
+  it("maps the serving list, not the measured fifteen (comment-stripped)", () => {
+    const src = codeOf(readFileSync(resolve(__dirname, "../components/AtsCoverage.tsx"), "utf8"));
+    expect(src).toMatch(/const stripSources = order\(SERVING_SOURCES\)/);
+    expect(src).toMatch(/\{stripSources\.map\(/);
+    expect(src).toMatch(/count: stripSources\.length/);
+    expect(src, "the strip must never fall back to the measured subset").not.toMatch(/order\(ATS_VENDORS\)\.map/);
   });
 });

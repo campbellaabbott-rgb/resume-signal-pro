@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Bot, MousePointerClick, Database } from "lucide-react";
-import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS, type AtsVendor } from "@/config/ats-vendors";
+import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS, SERVING_SOURCES, UNMEASURED_ATS_SOURCES, type AtsVendor, type BoardSource } from "@/config/ats-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
 
@@ -35,7 +35,7 @@ import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
  */
 
 /** Vendor pill: the platform name, and its live count when we have one. */
-function VendorPill({ v, count, auto = false }: { v: AtsVendor; count?: number; auto?: boolean }) {
+function VendorPill({ v, count, auto = false }: { v: BoardSource; count?: number; auto?: boolean }) {
   return (
     <li className="rounded-lg border bg-background px-3 py-2 flex items-baseline gap-2">
       {auto && <Bot className="w-3.5 h-3.5 text-primary self-center flex-shrink-0" aria-hidden />}
@@ -72,10 +72,23 @@ export function AtsCoverage({
   // Biggest first once we can measure — the ordering itself is informative, and
   // a reader scanning for a platform they recognise finds the large ones first.
   // Falls back to the config's deliberate order while counts are unknown.
-  const order = (list: readonly AtsVendor[]) =>
+  const order = <T extends BoardSource>(list: readonly T[]): readonly T[] =>
     ready
       ? [...list].sort((a, b) => (counts[b.key] ?? -1) - (counts[a.key] ?? -1))
       : list;
+  // THE STRIP NAMES EVERY SOURCE THE BOARD SERVES, NOT ONLY THE MEASURED ONES.
+  // It rendered ATS_VENDORS (fifteen) under "every job here comes straight from
+  // these systems" while the board served nineteen: Paylocity, UKG, ADP and
+  // JazzHR — about 100,000 postings, one in eight — came from systems the panel
+  // did not show, and "read directly from all 15" undercounted what we read
+  // from. The config's own rule (UNMEASURED_ATS_SOURCES docblock) says a
+  // "where these jobs come from" that omits a source is false by omission;
+  // this list is that rule applied. Dormant sources (serving: false, USAJOBS
+  // while its secrets are unset) are not here, because their absence is the
+  // point. The bot mark still means a MEASURED auto tier; an unmeasured source
+  // shows no mark and the legend says why.
+  const tierOf = new Map<string, AtsVendor["tier"]>(ATS_VENDORS.map((v) => [v.key, v.tier]));
+  const stripSources = order(SERVING_SOURCES);
 
   // Counts are of a live, churning table. Saying when they were true is the
   // difference between a measurement and a decoration.
@@ -109,17 +122,17 @@ export function AtsCoverage({
         {/* SIZED DOWN ON SMALL SCREENS, NOT TRIMMED. At the desktop size this
             row is eight lines and 557px tall on a 375px phone — an entire
             screen of hero given to one list. The fix is smaller pills, never a
-            shorter list: "all fifteen" is the claim, and quietly showing ten on
+            shorter list: "all {{count}}" is the claim, and quietly showing ten on
             mobile would make the sentence underneath it false. */}
         <ul className="flex flex-wrap justify-center gap-1 sm:gap-2">
-          {order(ATS_VENDORS).map((v) => {
+          {stripSources.map((v) => {
             const n = counts[v.key];
             return (
               <li
                 key={v.key}
                 className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-border bg-card/60 hover:border-primary/40 transition-colors"
               >
-                {online && v.tier === "auto" && (
+                {online && tierOf.get(v.key) === "auto" && (
                   <Bot className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-success shrink-0" aria-hidden />
                 )}
                 <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{v.label}</span>
@@ -149,7 +162,7 @@ export function AtsCoverage({
               competing number beside it. */}
           <p className="text-xs sm:text-sm text-muted-foreground">
             {t("atsCoverage.stripSub", "Read directly from all {{count}} — never scraped from a search engine.", {
-              count: ATS_VENDORS.length,
+              count: stripSources.length,
             })}
           </p>
 
@@ -166,7 +179,7 @@ export function AtsCoverage({
             <p className="mt-1.5 flex items-start justify-center gap-1.5 max-w-xl mx-auto text-xs text-muted-foreground">
               <Bot className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" aria-hidden />
               <span className="text-left sm:text-center">
-                {t("atsCoverage.stripLegend", "The agent submits these for you. The rest it fills in completely — you press send, because they use a human check we will not bypass.")}
+                {t("atsCoverage.stripLegend", "The agent submits these for you. Where we have measured the form, it fills the rest in and you press send — a human check we will not bypass. {{unmeasured}} are listed for where their jobs come from; the agent's reach on them is not yet measured.", { unmeasured: UNMEASURED_ATS_SOURCES.length })}
               </span>
             </p>
           )}
@@ -200,7 +213,7 @@ export function AtsCoverage({
           Icon: MousePointerClick,
           title: t("atsCoverage.allTitle", "Applications prepared for you"),
           blurb: t("atsCoverage.allBlurb", "We pull jobs directly from these systems and prepare your application for each one."),
-          vendors: order(ATS_VENDORS),
+          vendors: order(SERVING_SOURCES),
         },
       ];
 
@@ -221,10 +234,10 @@ export function AtsCoverage({
           {ready && openTotal !== null
             ? t("atsCoverage.subCounted", "{{total}} open roles, read straight from the {{count}} applicant tracking systems below — not scraped from a search engine.", {
                 total: openTotal.toLocaleString(),
-                count: ATS_VENDORS.length,
+                count: SERVING_SOURCES.length,
               })
             : t("atsCoverage.sub", "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.", {
-                count: ATS_VENDORS.length,
+                count: SERVING_SOURCES.length,
               })}
         </p>
       </div>
