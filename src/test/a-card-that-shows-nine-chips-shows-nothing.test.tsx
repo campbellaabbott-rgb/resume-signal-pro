@@ -240,7 +240,12 @@ function mount(path = "/jobs", field: unknown[] = FIELD_CURVE) {
   window.history.replaceState({}, "", path);
   rpc.mockImplementation(async (fn: string) => {
     if (fn === "get_company_fill_curve") return { data: CURVE, error: null };
-    if (fn === "get_category_fill_curve") return { data: field, error: null };
+    // The field table arrives as a stamped part of the hourly cache row; the
+    // page no longer calls the live function (a 60-second timeout on 2026-09-27).
+    if (fn === "get_stats_cache") {
+      const at = new Date().toISOString();
+      return { data: { computed_at: at, fill_curve: { computed_at: at, rows: field } }, error: null };
+    }
     return { data: [], error: null };
   });
   invoke.mockImplementation(async (fn: string, o: { body?: Record<string, unknown> } | undefined) => {

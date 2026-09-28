@@ -215,15 +215,19 @@ describe("the gate is the board's, not a second copy of it", () => {
       .not.toMatch(/filled_roles_ceiling/);
   });
 
-  it("the field curve is fetched by the surface that still publishes it, and by no other", () => {
-    // WHERE PROPERTY 1 LIVES NOW. /jobs' field lander reads
-    // get_category_fill_curve, honours the RPC's own `sufficient`, and does not
-    // rebuild the three thresholds out of n_at_risk_14 and fills_le_14 — which
-    // is how two surfaces come to publish and refuse the same record.
+  it("the field curve is read by the surface that still publishes it, and by no other", () => {
+    // WHERE PROPERTY 1 LIVES NOW. /jobs' field lander reads the field table
+    // off the hourly stats cache through the shared reader (the live function
+    // hit its own 60-second timeout on 2026-09-27), honours the RPC's own
+    // `sufficient`, and does not rebuild the three thresholds out of
+    // n_at_risk_14 and fills_le_14 — which is how two surfaces come to publish
+    // and refuse the same record.
     const jobs = read("src/pages/Jobs.tsx")
       .replace(/\/\*[\s\S]*?\*\//g, " ")
       .split("\n").map((l) => l.replace(/(^|[^:])\/\/.*$/, "$1")).join("\n");
-    expect(jobs).toMatch(/rpc\("get_category_fill_curve"\)/);
+    expect(jobs).toMatch(/readCachedFillCurve<FieldCurve>\(cacheRow\)/);
+    expect(jobs, "/jobs is paying for the live field-curve scan again")
+      .not.toMatch(/get_category_fill_curve/);
     const gate = /export function canStateFillRate\([\s\S]*?\n\}/.exec(jobs)?.[0] ?? "";
     expect(gate, "the gate must read the RPC's own sufficiency finding").toMatch(/\.sufficient\b/);
     for (const code of [jobs, CODE]) {

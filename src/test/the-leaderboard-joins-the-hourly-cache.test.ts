@@ -72,14 +72,30 @@ const NEW = stripSql(refreshFn(NEW_RAW));
 const OLD = stripSql(refreshFn(read(OLD_FILE)));
 
 describe("the migration: one function, the seventh part, nothing else moved", () => {
-  it("is the newest migration defining refresh_stats_cache, so the pins follow it", () => {
-    // The same selector published-claims uses: mentions the function with a
-    // body. An OLDER definition sorting last would leave every guard here
-    // asserting dead text.
+  it("the seventh part survives, verbatim, in the newest definition of refresh_stats_cache", () => {
+    // This file pins the APPLIED 20260909228000 text, which is immutable; the
+    // function has since been re-issued (2026-09-28, an eighth part), and the
+    // newest-definition tripwire now lives in that re-issue's own guard. What
+    // must hold here across every later re-issue is the property, not the
+    // filename: the seventh part's block -- its clock stamp, both handler
+    // arms carrying the previous object, the empty guard -- is still in the
+    // definition that runs, whitespace aside. The same selector
+    // published-claims uses: mentions the function with a body.
     const newest = readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort()
       .filter((f) => { const s = read(f); return /FUNCTION\s+public\.refresh_stats_cache\s*\(/.test(s) && s.includes("$$"); })
       .pop();
-    expect(newest).toBe(NEW_FILE);
+    expect(newest).toBeTruthy();
+    expect(newest! >= NEW_FILE, "an OLDER definition sorting last would leave every guard here asserting dead text").toBe(true);
+    const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+    const start = NEW.indexOf("hiring_at := clock_timestamp();");
+    const blockStart = NEW.lastIndexOf("BEGIN", start);
+    const guardAt = NEW.indexOf("IF NOT ('actively_hiring' = ANY(stale))", start);
+    const blockEnd = NEW.indexOf("END IF;", guardAt) + "END IF;".length;
+    expect(blockStart).toBeGreaterThan(-1);
+    expect(guardAt).toBeGreaterThan(start);
+    const seventh = norm(NEW.slice(blockStart, blockEnd));
+    expect(seventh.length).toBeGreaterThan(400);
+    expect(norm(stripSql(refreshFn(read(newest!))))).toContain(seventh);
   });
 
   it("defines exactly one function and drops none", () => {

@@ -99,9 +99,12 @@ describe("the scorer in its own isolate", () => {
     // 2026-09-23.1 makes the sources under a display-only licence structurally
     // absent from every row /v1 returns, and refuses them by name with 451
     // rather than answering an empty page — a change to what the contract
-    // CONTAINS, so it is a version, not a patch.
-    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-23\.1"/);
-    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1"]) {
+    // CONTAINS, so it is a version, not a patch. 2026-09-27.1 serves
+    // /v1/stats data.lifecycle.fillCurve for the first time, dated by the
+    // cache part's own stamp and carrying an additive carriedForward flag — a
+    // field that was null on every request is now a value.
+    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-27\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1"]) {
       expect(API, `the API still reports the superseded version ${old}`)
         .not.toMatch(new RegExp(`"${old}"`));
     }

@@ -43,8 +43,45 @@ J '{"action":"list","q":"non-remote","workMode":"remote","limit":10}' | node -e 
 echo "== 3. company counts are servable =="
 J '{"action":"list","limit":1,"includeFacets":true}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const c=(j.companies||[])[0]||{};console.log((("open" in c)&&!("count" in c)?"PASS":"FAIL")+"  facet row carries `open` and no `count`");console.log("INFO  companiesOpenCount="+j.companiesOpenCount+" totalAllCompanies="+j.totalAllCompanies)})'
 
-echo "== 4. S(30): columns present, the 1.0 leak not live =="
-R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  fill curve non-JSON")}if(!Array.isArray(j))return console.log("INFO  "+JSON.stringify(j).slice(0,120));console.log((j.length&&"still_open_30" in j[0]?"PASS":"FAIL")+"  still_open_30 present ("+j.length+" rows)");console.log((j.filter(r=>r.still_open_30===1).length===0?"PASS":"FAIL")+"  no field publishes still_open_30 = 1.0")})'
+echo "== 4. S(30): columns present, the 1.0 leak not live (rows from the hourly cache) =="
+# ONE READ SERVES 4, 4a, 4b, 4d AND 4e. Until 2026-09-27 each of those sections
+# called the category curve RPC live -- five calls a run at 34-60s each -- and
+# that day the function began exhausting its own 60s statement_timeout on the
+# REST path (34s on 09-25, 47s at 14:xx, no rows at 18:xx and 23:xx). The two
+# pages that had called it on every visit moved the same evening to reading it
+# from refresh_stats_cache's fill_curve arm, so the claim this file checks is
+# the one a visitor now sees: the rows in stats_cache.fill_curve, and WHEN they
+# were computed. The live function is observed once, in 4e, as INFO: it is no
+# longer on any path a visitor waits on, and its header may now run to minutes.
+#
+# Two storage shapes are accepted because the arm and this file were written
+# in the same hour by different hands: a bare array of rows (dated by the
+# cache root's computed_at, or a sibling fill_curve_computed_at), or
+# {computed_at, rows} -- the actively_hiring shape -- dated by its own stamp.
+# stale_parts naming the curve means the last refresh kept the previous rows.
+MAX_CACHE_MS=2000
+MAX_CURVE_AGE_H=3
+export MAX_CACHE_MS MAX_CURVE_AGE_H
+T0=$(date +%s.%N); R get_stats_cache '{}' > /tmp/vd_sc.json; T1=$(date +%s.%N)
+node -e '
+const fs=require("fs");const t0=Number(process.argv[1]),t1=Number(process.argv[2]);
+let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_sc.json","utf8"))}catch{}
+const c=(j&&!Array.isArray(j))?j:(Array.isArray(j)&&j[0])?j[0]:{};
+const fc=c.fill_curve;
+const rows=Array.isArray(fc)?fc:(fc&&typeof fc==="object"&&Array.isArray(fc.rows))?fc.rows:null;
+const own=(fc&&!Array.isArray(fc)&&typeof fc.computed_at==="string")?fc.computed_at:(typeof c.fill_curve_computed_at==="string"?c.fill_curve_computed_at:null);
+const stale=Array.isArray(c.stale_parts)?c.stale_parts:[];
+fs.writeFileSync("/tmp/vd_cat.json",JSON.stringify(rows));
+const err=(c.fill_curve_error&&typeof c.fill_curve_error==="object")?c.fill_curve_error:null;
+const variant=(fc&&!Array.isArray(fc)&&fc.variant&&typeof fc.variant==="object")?fc.variant:null;
+fs.writeFileSync("/tmp/vd_cat_meta.json",JSON.stringify({cache_ms:Math.round((t1-t0)*1000),cache_keys:Object.keys(c),present:"fill_curve" in c,rows:rows?rows.length:null,own_stamp:own,computed_at:own||(typeof c.computed_at==="string"?c.computed_at:null),root_computed_at:c.computed_at??null,carried:stale.includes("fill_curve"),stale_parts:stale,error:err,variant:variant}));
+' "$T0" "$T1"
+# Every section below reads what the read above wrote: rows = the curve rows
+# or null, m = the meta beside them. No section re-fetches.
+CAT() { node -e 'const fs=require("fs");const MAX_CACHE_MS=Number(process.env.MAX_CACHE_MS),MAX_CURVE_AGE_H=Number(process.env.MAX_CURVE_AGE_H);const m=JSON.parse(fs.readFileSync("/tmp/vd_cat_meta.json","utf8"));let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_cat.json","utf8"))}catch{}const rows=Array.isArray(j)&&j.length?j:null;const N=v=>v===null||v===undefined?null:Number(v);(()=>{'"$1"'})();'; }
+CAT 'if(!rows)return console.log("FAIL  no fill_curve rows in the cache (4e says why)");
+console.log(("still_open_30" in rows[0]?"PASS":"FAIL")+"  still_open_30 present ("+rows.length+" rows)");
+console.log((rows.filter(r=>r.still_open_30===1).length===0?"PASS":"FAIL")+"  no field publishes still_open_30 = 1.0");'
 
 # ── 4a-4e. THE POSITIVE CONTROL ON THE DAY-30 GATE (20260925163517 / 163842 /
 # 164237 / 164510). Section 4 above predates this deploy and CANNOT tell a
@@ -55,39 +92,35 @@ R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e 'let s="";proc
 # here go through a staged runner that has been observed editing a file and
 # staging it under another name.
 echo "== 4a. the re-issued curves publish the counts their gate is built from =="
-for FN in get_category_fill_curve get_company_fill_curve; do
-  if [ "$FN" = "get_category_fill_curve" ]; then ARGS='{"p_days":90,"p_min_n":300}'; else ARGS='{"p_tokens":["dominos","workday~wd5~Workday"]}'; fi
-  R "$FN" "$ARGS" | FN="$FN" node -e '
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const fn=process.env.FN;
+# The category rows come from the cache read above; the company curve is
+# token-scoped and cheap, so it is still read live.
+CAT 'if(!rows)return console.log("FAIL  cached category curve rows absent (not written, or the arm timed out on every run so far)");
+const need=["events_30","fills_30","relists_30"];
+const missing=need.filter(k=>!(k in rows[0]));
+// WITHOUT THIS THE FRONTEND WITHHOLDS ALL EIGHTEEN FIELDS FOREVER AND LOOKS
+// LIKE A WORKING DEPLOY: its uncontrolled path refuses any row with no
+// published event count, so a non-apply is indistinguishable from a page that
+// simply has nothing to say until this key is present.
+console.log((missing.length===0?"PASS":"FAIL")+"  cached category curve: events_30/fills_30/relists_30 present on the row ("+rows.length+" rows)"+(missing.length?" MISSING "+missing.join(","):""));
+for(const k of ["top_board_share_30","dated_cohort_n_30"])
+  console.log((k in rows[0]?"PASS":"FAIL")+"  cached category curve: "+k+" present (the two disclosures a pooled figure needs)");'
+R get_company_fill_curve '{"p_tokens":["dominos","workday~wd5~Workday"]}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const fn="get_company_fill_curve";
 let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  "+fn+" non-JSON (not applied, or it timed out)")}
 if(!Array.isArray(j))return console.log("FAIL  "+fn+" -> "+JSON.stringify(j).slice(0,160));
 if(!j.length)return console.log("INFO  "+fn+" returned no rows");
 const need=["events_30","fills_30","relists_30"];
 const missing=need.filter(k=>!(k in j[0]));
-// WITHOUT THIS THE FRONTEND WITHHOLDS ALL EIGHTEEN FIELDS FOREVER AND LOOKS
-// LIKE A WORKING DEPLOY: its `uncontrolled` path refuses any row with no
-// published event count, so a non-apply is indistinguishable from a page that
-// simply has nothing to say until this key is present.
 console.log((missing.length===0?"PASS":"FAIL")+"  "+fn+": events_30/fills_30/relists_30 present on the row ("+j.length+" rows)"+(missing.length?" MISSING "+missing.join(","):""));
-if(fn==="get_category_fill_curve"){
-  for(const k of ["top_board_share_30","dated_cohort_n_30"])
-    console.log((k in j[0]?"PASS":"FAIL")+"  "+fn+": "+k+" present (the two disclosures a pooled figure needs)");
-}})'
-done
+})'
 
 echo "== 4b. no published share rests on fewer events, fills or precision than the gate names =="
-# The category curve is the heaviest read in this file (18 fields over a 90-day
-# cohort) and it answers in tens of seconds. R()'s 60s was enough before the
-# gate added three counted columns and is not reliably enough now: a timeout
-# came back as `non-JSON`, which reads as a broken deploy rather than a slow
-# one. This probe gets its own budget and says which of the two happened.
-Rslow() { curl -s -m 240 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-{\}}"; }
-Rslow get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e '
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  the category curve did not answer within 240s — slow, not necessarily wrong; re-run this section alone")}
-if(!Array.isArray(j))return console.log("FAIL  "+JSON.stringify(j).slice(0,160));
-const N=v=>v===null||v===undefined?null:Number(v);
+# Judged on the cached rows: they ARE the rows the page renders, and the
+# 240-second live read this section used to make is the call that stopped
+# answering. Same gates as before.
+CAT 'if(!rows)return console.log("FAIL  no cached category rows to judge the gate on");
 const MIN_EVENTS=5, MIN_FILLS=5, MAX_HW=0.15, MAX_REL=0.5;
-const bad=(pred)=>j.filter(r=>r.sufficient_30===true&&pred(r)).map(r=>r.category);
+const bad=(pred)=>rows.filter(r=>r.sufficient_30===true&&pred(r)).map(r=>r.category);
 const noEv=bad(r=>N(r.events_30)===null||N(r.events_30)<MIN_EVENTS);
 const noFi=bad(r=>N(r.fills_30)===null||N(r.fills_30)<MIN_FILLS);
 const rel =bad(r=>N(r.relists_30)!==null&&N(r.fills_30)!==null&&N(r.relists_30)>N(r.fills_30));
@@ -102,8 +135,7 @@ line(noFi,"sufficient_30 with fills_30 below the floor");
 line(rel,"sufficient_30 with relists outnumbering fills");
 line(hw,"sufficient_30 with an absolute half-width over the ceiling");
 line(prec,"sufficient_30 with a half-width wider than half its own complement");
-console.log("INFO  sufficient_30 true on "+j.filter(r=>r.sufficient_30===true).length+" of "+j.length+" fields");
-})'
+console.log("INFO  sufficient_30 true on "+rows.filter(r=>r.sufficient_30===true).length+" of "+rows.length+" fields");'
 
 echo "== 4c. the board that opened the defect is refused, by its own published count =="
 # p_tokens is PLURAL; p_token singular answers nothing. dominos published
@@ -124,25 +156,74 @@ echo "== 4d. the coverage the new pool leaves, per field, and how much of it is 
 # 2026-09-25T21:33Z, before this change, and it MUST fall. Printing it is what
 # makes the drop visible, and top_board_share_30 is the residual the control
 # does not close -- a cap on it would need exactly this measurement first.
-R get_category_fill_curve '{"p_days":90,"p_min_n":300}' | node -e '
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  non-JSON")}
-if(!Array.isArray(j))return;
-for(const r of j)console.log("INFO  "+String(r.category).padEnd(20)+" gate_share="+String(r.gate_share_30).padEnd(7)+" top_board="+String(r.top_board_share_30).padEnd(7)+" S30="+String(r.still_open_30).padEnd(7)+" n="+String(r.n_at_risk_30).padEnd(7)+" events="+String(r.events_30).padEnd(6)+" sufficient="+r.sufficient_30);
-})'
+CAT 'if(!rows)return console.log("INFO  no cached category rows to print");
+for(const r of rows)console.log("INFO  "+String(r.category).padEnd(20)+" gate_share="+String(r.gate_share_30).padEnd(7)+" top_board="+String(r.top_board_share_30).padEnd(7)+" S30="+String(r.still_open_30).padEnd(7)+" n="+String(r.n_at_risk_30).padEnd(7)+" events="+String(r.events_30).padEnd(6)+" sufficient="+r.sufficient_30);'
 
-echo "== 4e. the field curve still answers inside its own statement timeout =="
-# It reports 60s and the page calls it live on every visit inside a caught
-# Promise.all, so a timeout blanks the whole field section rather than one line.
-# 34.36s at 2026-09-25T21:33Z, BEFORE the two added CTEs; over ~45s, raise the
-# function's own statement_timeout rather than leave the section to disappear.
-T0=$(date +%s); R get_category_fill_curve '{"p_days":90,"p_min_n":300}' > /tmp/vd_cat.json; T1=$(date +%s)
-# A FAST ANSWER THAT IS NOT AN ANSWER MUST NOT PASS. A 401, a 500 or a cancelled
-# statement all come back in well under the bar, and timing an error reads as the
-# best result in the file.
-node -e 'const fs=require("fs");const t=Number(process.argv[1]);let j=null;
-try{j=JSON.parse(fs.readFileSync("/tmp/vd_cat.json","utf8"))}catch{}
+echo "== 4e. the field curve is served from the hourly cache, and the cache says when =="
+# THE VERDICT HERE IS THE CACHE PATH: how fast get_stats_cache answered, whether
+# its fill_curve part carries rows, and how old the stamp on THOSE rows is.
+# Before 2026-09-27 this section timed the live function and passed under 45s
+# with rows; the pages no longer wait on that call, so its speed is no longer a
+# claim a visitor can feel. A cache that is present but stale must show as
+# stale -- the bar is the hourly cron plus two missed runs. When stale_parts
+# names the curve the last refresh kept the previous rows and their earlier
+# stamp; that is reported, and the page must print that stamp, not the root.
+CAT 'console.log((m.cache_ms<MAX_CACHE_MS?"PASS":"FAIL")+"  get_stats_cache answered in "+m.cache_ms+"ms (bar "+MAX_CACHE_MS+"ms; the pages read this and nothing slower)");
+if(!m.present)return console.log("FAIL  stats_cache carries no fill_curve key (keys: "+m.cache_keys.join(",")+"; root computed_at "+m.root_computed_at+"). The refresh_stats_cache arm runs at :27 each hour (20260928011742; :12 before it) -- if that root stamp postdates the migration, the arm did not land");
+if(!rows)return console.log("FAIL  fill_curve present but carries no rows: "+JSON.stringify({own_stamp:m.own_stamp,carried:m.carried,stale_parts:m.stale_parts}));
+const ageH=(Date.now()-Date.parse(m.computed_at))/36e5;
+console.log((Number.isFinite(ageH)&&ageH<MAX_CURVE_AGE_H?"PASS":"FAIL")+"  fill_curve computed_at="+m.computed_at+" ("+ageH.toFixed(2)+"h old, bar "+MAX_CURVE_AGE_H+"h; "+rows.length+" rows; own stamp on the part: "+(m.own_stamp?"yes":"no, root used")+")");
+if(m.carried)console.log("INFO  stale_parts names fill_curve: these rows were carried forward from an earlier run; the page must print "+m.computed_at+", not the root "+m.root_computed_at);
+if(m.error)console.log("INFO  fill_curve_error on this run: reason="+m.error.reason+" sqlstate="+(m.error.sqlstate||"-")+" at="+m.error.at+" -- "+String(m.error.message||"").slice(0,160)+" (57014 after ~300s = the callee header fired; after ~600s = the outer; after ~1800s = the role default)");
+if(m.variant)console.log(((m.variant.p_days===90&&m.variant.p_min_n===300)?"PASS":"FAIL")+"  fill_curve.variant = "+JSON.stringify(m.variant)+" (the pages and /v1 claim the (90, 300) variant)");'
+# ONE LIVE OBSERVATION, INFO ONLY, NEVER A VERDICT, AND OFF BY DEFAULT. The
+# function's own header is five minutes (20260928003117) and it is still
+# anon-callable; a client that gives up at 70s does not cancel the statement
+# on the server, so every run of this script would otherwise pin a pooled
+# connection for the full header on a path no visitor waits on. Opt in with
+# SKIP_LIVE_CURVE=0 when the observation is wanted; the default skips it.
+if [ "${SKIP_LIVE_CURVE:-1}" != "1" ]; then
+  T0=$(date +%s); curl -s -m 70 -X POST "$B/rest/v1/rpc/get_category_fill_curve" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"p_days":90,"p_min_n":300}' > /tmp/vd_cat_live.json; T1=$(date +%s)
+  node -e 'const fs=require("fs");const t=Number(process.argv[1]);let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_cat_live.json","utf8"))}catch{}
 const answered=Array.isArray(j)&&j.length>0;
-console.log((answered&&t<45?"PASS":"FAIL")+"  get_category_fill_curve answered in "+t+"s with "+(answered?j.length+" rows":"no rows -- "+JSON.stringify(j).slice(0,120))+" (34s before the change; over 45 needs a timeout raise)")' "$((T1-T0))"
+console.log("INFO  live get_category_fill_curve(90,300) on the REST path: "+(answered?j.length+" rows in "+t+"s":(j===null?"no answer within 70s":"no rows in "+t+"s -- "+JSON.stringify(j).slice(0,120)))+" (34s on 09-25, 60s timeouts on 09-27; no visitor waits on this path now)")' "$((T1-T0))"
+fi
+
+echo "== 4g. /v1/stats serves the same cached curve to API customers, with its date =="
+# /v1 IS NOT ANON-REACHABLE, BY DESIGN: every path past the index requires a
+# /v1 key (Authorization: Bearer <key>, checked by api_key_check), and the
+# project anon JWT is not one -- measured 2026-09-27T23:55Z: 401 invalid_key.
+# The first line below proves that refusal still holds. The read path is the
+# owner's own free key from .env.local (RB_API_KEY); without it the rest of
+# this section is INFO, not a failure of the deploy.
+acode=$(curl -s -m 20 -o /dev/null -w '%{http_code}' "$B/functions/v1/public-api/v1/stats" -H "Authorization: Bearer $K" -H "apikey: $K")
+[ "$acode" = "401" ] && echo "PASS  /v1/stats with the anon JWT -> 401 (a /v1 key is required; the anon key is not one)" || echo "FAIL  /v1/stats with the anon JWT -> $acode (expected 401)"
+if [ -z "$RB" ]; then
+  echo "INFO  RB_API_KEY missing from .env.local -- the keyed read of /v1/stats is skipped"
+else
+  vcode=$(curl -s -m 40 -o /tmp/vd_v1s.json -D /tmp/vd_v1s.h -w '%{http_code}' "$B/functions/v1/public-api/v1/stats" -H "Authorization: Bearer $RB" -H "apikey: $K")
+  VCODE="$vcode" VVER="$(tr -d '\r' < /tmp/vd_v1s.h | grep -i '^x-api-version:' | sed -E 's/^[^:]+: *//')" node -e '(()=>{
+const fs=require("fs");const MAX_CURVE_AGE_H=Number(process.env.MAX_CURVE_AGE_H);
+let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_v1s.json","utf8"))}catch{}
+let m={};try{m=JSON.parse(fs.readFileSync("/tmp/vd_cat_meta.json","utf8"))}catch{}
+console.log((process.env.VCODE==="200"?"PASS":"FAIL")+"  GET /v1/stats with the owner key -> HTTP "+process.env.VCODE+" X-Api-Version="+process.env.VVER+" apiVersion="+(j&&j.apiVersion));
+const l=j&&j.data&&j.data.lifecycle;
+if(!l)return console.log("FAIL  data.lifecycle is null: ghost_stats missing from the cache the endpoint read");
+const fc=l.fillCurve;
+const served=!!(fc&&Array.isArray(fc.data)&&fc.data.length>0);
+console.log((served?"PASS":"FAIL")+"  data.lifecycle.fillCurve "+(served?"carries "+fc.data.length+" fields":"is "+JSON.stringify(fc))+" -- the endpoint reads stats_cache.fill_curve, the key 4e judged");
+// THE DEPRECATION NOTICE MUST POINT AT A FIELD THAT IS IN THE PAYLOAD. The
+// basis is written twice in the function and which one ships is decided by
+// whether fillCurve is served; this line checks that the two agree.
+const names=/Use fillCurve below instead\./.test(String(l.medianDaysToCloseBasis||""));
+console.log(((served?names:!names)?"PASS":"FAIL")+"  medianDaysToCloseBasis "+(names?"names the replacement":"says the replacement is not served yet")+" and fillCurve is "+(served?"served":"null"));
+if(!served)return;
+const ageH=(Date.now()-Date.parse(String(fc.asOf)))/36e5;
+console.log((Number.isFinite(ageH)&&ageH<MAX_CURVE_AGE_H?"PASS":"FAIL")+"  fillCurve.asOf="+fc.asOf+" ("+ageH.toFixed(2)+"h old, bar "+MAX_CURVE_AGE_H+"h) carriedForward="+fc.carriedForward);
+console.log((m.computed_at&&fc.asOf===m.computed_at?"PASS":"INFO")+"  fillCurve.asOf "+(fc.asOf===m.computed_at?"equals":"differs from")+" the cache stamp 4e read ("+m.computed_at+")"+(fc.asOf===m.computed_at?"":" -- an hourly refresh between the two reads explains one run of difference"));
+console.log(("carriedForward" in fc?"PASS":"FAIL")+"  fillCurve publishes carriedForward (the flag that makes a kept curve visibly older than the cache around it)");
+})();'
+fi
 
 echo "== 4f. the third day-30 chain on the same page carries the same control =="
 R get_layoff_partition '{}' | node -e '

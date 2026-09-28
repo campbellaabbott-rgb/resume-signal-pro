@@ -4259,6 +4259,8 @@
     "verdictFillRate": "retira el {{pct}}% de sus vacantes en {{d}} días",
     "verdictSlowFill": "nunca vemos que la mitad de sus vacantes se retire dentro de {{d}} días",
     "fieldCurveBasis": "De nuestro registro del ciclo de vida: cada vacante que seguimos, medida desde la fecha de publicación que indica la propia empresa y desde ninguna otra. Las vacantes aún publicadas, y las que superaron nuestro límite de 30 días, cuentan como sin terminar en lugar de quedar fuera — dejarlas fuera es lo que hacía que la cifra antigua saliera igual en todos los campos. Un campo con un registro demasiado escaso no recibe cifra alguna.",
+    "fieldCurveAsOf": "Cifras del sector a fecha de {{when}}.",
+    "fieldCurveAsOfCarried": "Cifras del sector a fecha de {{when}}, arrastradas: el último recálculo horario no terminó, así que esta cifra es la de la ejecución anterior.",
     "fieldCurveCompare": "El {{gone}}% de las vacantes de {{field}} salen del tablón en {{d}} días — el {{fillPct}}% retiradas definitivamente, el resto republicadas. Medido sobre {{n}} vacantes en los últimos {{window}} días.",
     "fillCoverageQualifier": "Sobre el {{pct}}% de estas vacantes que llevan una fecha de publicación de la propia empresa.",
     "fieldMedianCensored": "No vimos que la mitad de ellas se retirara dentro de {{d}} días, así que no hay una cifra típica que dar.",

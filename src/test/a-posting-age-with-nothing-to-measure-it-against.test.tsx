@@ -190,10 +190,13 @@ function mount(
   let releaseCompany: () => void = () => {};
   const fieldLanded = new Promise<void>((r) => { releaseCompany = r; });
   rpc.mockImplementation(async (fn: string) => {
-    if (fn === "get_category_fill_curve") {
+    // The field table arrives as a stamped part of the hourly cache row; the
+    // page no longer calls the live function (a 60-second timeout on 2026-09-27).
+    if (fn === "get_stats_cache") {
       releaseCompany();
       if (opts.fieldError) return { data: null, error: opts.fieldError };
-      return { data: opts.field ?? FIELD, error: null };
+      const at = new Date().toISOString();
+      return { data: { computed_at: at, fill_curve: { computed_at: at, rows: opts.field ?? FIELD } }, error: null };
     }
     if (fn === "get_company_fill_curve") {
       await fieldLanded;
@@ -400,20 +403,21 @@ describe("a posting age with nothing to measure it against", () => {
   });
 
   it("behaviour: the field curve table is fetched at most once, however many postings are opened", async () => {
-    // COUNTED, not read off a call site. The RPC takes no arguments and returns
-    // every qualifying category, so a request per posting would be pure waste.
+    // COUNTED, not read off a call site. The cache row carries every
+    // qualifying category in one part, so a request per posting would be pure
+    // waste.
     mount([row(), row({ id: "j1", title: "Frontend Engineer", applyUrl: "https://x/1" })]);
     await waitFor(() => expect(panelText()).toContain(FIELD_LINE), SLOW);
-    const fillCalls = rpc.mock.calls.filter((c) => c[0] === "get_category_fill_curve");
+    const fillCalls = rpc.mock.calls.filter((c) => c[0] === "get_stats_cache");
     expect(fillCalls.length).toBe(1);
     // "AT MOST ONE SUCCESSFUL FETCH" is the property, not "at most one attempt".
     // A RESOLVED PostgREST error is still an error — supabase-js hands failures
-    // back through `error` rather than by throwing — so a deploy window in
-    // which the function does not exist yet must not become the session's
-    // answer. The ask-once ref is released on both failure paths, and this is
-    // pinned in code rather than by loosening the count above.
+    // back through `error` rather than by throwing — so an outage of the cache
+    // read must not become the session's answer. The ask-once ref is released
+    // on both failure paths (an error, or a row that came back as nothing),
+    // and this is pinned in code rather than by loosening the count above.
     expect(JOBS, "a failed fetch must release the ask-once ref, not cache the failure")
-      .toMatch(/if \(error \|\| !Array\.isArray\(rows\)\) \{ fillCurveAsked\.current = false; return; \}/);
+      .toMatch(/if \(error \|\| cached\.state === "unreadable"\) \{ fillCurveAsked\.current = false; return; \}/);
   });
 
   it("behaviour: a failed field fetch is silence, not a manufactured figure", async () => {
@@ -478,9 +482,11 @@ describe("a posting age with nothing to measure it against", () => {
   });
 
   it("the whole lander fetch is derived from the shared map, not a second request", () => {
-    // Two fetches of the same zero-argument RPC would be the shape that let the
-    // lander keep one row and throw the rest away in the first place.
-    expect((JOBS.match(/rpc\("get_category_fill_curve"\)/g) ?? []).length).toBe(1);
+    // Two reads of the same cache row for the same table would be the shape
+    // that let the lander keep one row and throw the rest away in the first
+    // place.
+    expect((JOBS.match(/rpc\("get_stats_cache"\)/g) ?? []).length).toBe(1);
+    expect(JOBS, "the field table is read through the shared cache reader").toMatch(/readCachedFillCurve<FieldCurve>\(cacheRow\)/);
     expect(JOBS).toMatch(/const fieldCurve = useMemo\(/);
     expect(JOBS).toMatch(/fillCurveByCategory\?\.\[landerCategory\] \?\? null/);
     // …and the DETAIL PANEL reads the same map, which is what makes "shared"

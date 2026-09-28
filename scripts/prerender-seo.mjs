@@ -408,7 +408,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   // them; these four just never used the machinery.
   //
   // Read exactly the way /explore's facets are read: the SAME cached RPCs the
-  // React pages call (get_stats_cache at :12, get_transparency_cache at :37,
+  // React pages call (get_stats_cache at :27, get_transparency_cache at :37,
   // get_freshness_stats off the 15-minute rollup), anon key, short timeouts,
   // every failure swallowed. A build that cannot reach the board prints the
   // pages' prose with no figures and SAYS it could not read them -- the same

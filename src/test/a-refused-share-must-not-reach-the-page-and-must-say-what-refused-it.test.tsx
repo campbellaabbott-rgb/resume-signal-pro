@@ -154,10 +154,13 @@ const UNCONTROLLED = (() => {
 const row = (category: string, day30: Record<string, unknown>) => ({ ...base(category), ...day30 });
 
 function mount(curve: unknown[]) {
+  // The curve arrives as a stamped part of the hourly cache row -- the page no
+  // longer calls the live function (a 60-second timeout on 2026-09-27). The
+  // row carries nothing else, so the tiles still read live below.
+  const at = new Date().toISOString();
   rpc.mockImplementation(async (fn: string) => {
-    if (fn === "get_stats_cache") return { data: null };
+    if (fn === "get_stats_cache") return { data: { computed_at: at, fill_curve: { computed_at: at, rows: curve } } };
     if (fn === "get_ghost_job_index_stats") return { data: [{ total_open: 1000, total_companies: 50, closed_90d: 200, median_days_open: 9, median_days_to_close: null, observed_days: 60 }] };
-    if (fn === "get_category_fill_curve") return { data: curve };
     if (fn === "get_actively_hiring_companies") return { data: [] };
     if (fn === "get_freshness_stats") return { data: [] };
     if (fn === "get_audit_result") return { data: null };

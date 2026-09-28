@@ -4258,6 +4258,8 @@
     "verdictFillRate": "retire {{pct}}% de ses postes en {{d}} jours",
     "verdictSlowFill": "nous ne voyons jamais la moitié de ses postes disparaître en {{d}} jours",
     "fieldCurveBasis": "Depuis notre journal du cycle de vie : chaque poste observé, mesuré depuis la date de publication indiquée par l'employeur lui-même et depuis aucune autre. Les postes encore en ligne, et ceux ayant dépassé notre plafond de 30 jours, comptent comme inachevés au lieu d'être écartés — les écarter est précisément ce qui rendait l'ancien chiffre identique dans tous les domaines. Un domaine au relevé trop mince n'obtient aucun chiffre.",
+    "fieldCurveAsOf": "Chiffres du secteur au {{when}}.",
+    "fieldCurveAsOfCarried": "Chiffres du secteur au {{when}}, reportés : le dernier recalcul horaire ne s'est pas terminé, ce chiffre provient donc de l'exécution précédente.",
     "fieldCurveCompare": "{{gone}}% des postes en {{field}} quittent le tableau en {{d}} jours — {{fillPct}}% retirés définitivement, le reste republié. Mesuré sur {{n}} postes au cours des {{window}} derniers jours.",
     "fillCoverageQualifier": "Sur les {{pct}}% de ces postes portant une date de publication indiquée par l'entreprise elle-même.",
     "fieldMedianCensored": "Nous n'avons pas vu la moitié d'entre eux disparaître en {{d}} jours : il n'y a donc aucun chiffre typique à donner.",

@@ -4258,6 +4258,8 @@
     "verdictFillRate": "haalt {{pct}}% van zijn functies binnen {{d}} dagen weg",
     "verdictSlowFill": "we zien nooit de helft van zijn functies binnen {{d}} dagen verdwijnen",
     "fieldCurveBasis": "Uit ons levenscyclusregister: elke gevolgde functie, gemeten vanaf de door de werkgever zelf vermelde plaatsingsdatum en vanaf geen andere. Functies die nog online staan, en functies voorbij onze 30-dagengrens, tellen als onafgerond in plaats van weg te vallen — ze weglaten is precies waarom het oude cijfer in elk vakgebied hetzelfde uitkwam. Een vakgebied met een te dun register krijgt helemaal geen cijfer.",
+    "fieldCurveAsOf": "Vakgebiedcijfers per {{when}}.",
+    "fieldCurveAsOfCarried": "Vakgebiedcijfers per {{when}}, doorgeschoven: de laatste uurlijkse herberekening is niet afgerond, dus dit cijfer komt uit de vorige run.",
     "fieldCurveCompare": "{{gone}}% van de {{field}}-functies is binnen {{d}} dagen van het bord — {{fillPct}}% definitief weggehaald, de rest opnieuw geplaatst. Gemeten over {{n}} functies in de afgelopen {{window}} dagen.",
     "fillCoverageQualifier": "Over de {{pct}}% van deze functies met een door het bedrijf zelf vermelde plaatsingsdatum.",
     "fieldMedianCensored": "We zagen de helft ervan niet binnen {{d}} dagen verdwijnen, dus er is geen typisch cijfer te geven.",

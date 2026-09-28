@@ -4258,6 +4258,8 @@
     "verdictFillRate": "retira {{pct}}% das suas vagas em {{d}} dias",
     "verdictSlowFill": "nunca vemos metade das suas vagas sair em {{d}} dias",
     "fieldCurveBasis": "Do nosso registo de ciclo de vida: cada vaga que acompanhámos, medida a partir da data de publicação indicada pelo próprio empregador e de mais nenhuma. As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora — deixá-las de fora é o que fazia a antiga cifra sair igual em todas as áreas. Uma área com registo demasiado escasso não recebe cifra alguma.",
+    "fieldCurveAsOf": "Números do setor à data de {{when}}.",
+    "fieldCurveAsOfCarried": "Números do setor à data de {{when}}, transportados: o último recálculo horário não terminou, por isso este número é o da execução anterior.",
     "fieldCurveCompare": "{{gone}}% das vagas de {{field}} saem do quadro em {{d}} dias — {{fillPct}}% retiradas em definitivo, as restantes republicadas. Medido sobre {{n}} vagas nos últimos {{window}} dias.",
     "fillCoverageQualifier": "Sobre os {{pct}}% destas vagas que indicam uma data de publicação da própria empresa.",
     "fieldMedianCensored": "Não vimos metade delas sair em {{d}} dias, por isso não há cifra típica a dar.",

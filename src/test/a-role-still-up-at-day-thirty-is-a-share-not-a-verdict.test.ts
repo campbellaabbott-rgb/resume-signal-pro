@@ -69,7 +69,17 @@ const TABLE_FILE = "20260909217800_the_bucket_we_computed_and_threw_away.sql";
 // a guard asserting dead text. The day-30 gate itself is guarded by
 // a-day-thirty-gate-must-have-seen-the-cohort-produce-an-event.
 const LIVE_COMPANY_FILE = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
-const LIVE_CATEGORY_FILE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
+// TWO NOUNS, BECAUSE A RE-ISSUE CAN MOVE ONE WITHOUT THE OTHER. On 2026-09-27
+// the category curve was re-issued a third time with ONLY its own header
+// raised (its sixty seconds had become a blank section on two pages); the
+// body is the 2026-09-25 text byte for byte, so that file changed no shape,
+// dropped nothing from the catalogue and restated no COMMENT ON -- all three
+// survive CREATE OR REPLACE. The pins on the BODY follow the definition that
+// runs (`file`); the pins on the catalogue drop and the COMMENT ON follow the
+// last file that CHANGED the shape (`shape`), and a check below computes both
+// from the migration lane rather than trusting either constant.
+const LIVE_CATEGORY_FILE = "20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql";
+const SHAPE_CATEGORY_FILE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
 
 /** Executable text only: `--` to end of line, and block comments. */
 const stripSql = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/--[^\n]*/g, "");
@@ -256,10 +266,18 @@ function mirrorViolations(code: string): string[] {
   return v;
 }
 
-const CURVES: Array<{ fn: string; grain: "tok" | "cat"; file: string }> = [
-  { fn: "get_company_fill_curve", grain: "tok", file: LIVE_COMPANY_FILE },
-  { fn: "get_category_fill_curve", grain: "cat", file: LIVE_CATEGORY_FILE },
+/** `file`: the definition that runs. `shape`: the last file that changed the result shape -- where the catalogue drop and the COMMENT ON live. */
+const CURVES: Array<{ fn: string; grain: "tok" | "cat"; file: string; shape: string }> = [
+  { fn: "get_company_fill_curve", grain: "tok", file: LIVE_COMPANY_FILE, shape: LIVE_COMPANY_FILE },
+  { fn: "get_category_fill_curve", grain: "cat", file: LIVE_CATEGORY_FILE, shape: SHAPE_CATEGORY_FILE },
 ];
+
+const ALL_FILES = readdirSync(DIR).filter((f) => f.endsWith(".sql")).sort();
+/** The newest migration whose comment-stripped text matches, or null. */
+const newestFileMatching = (re: RegExp): string | null =>
+  ALL_FILES.filter((f) => re.test(stripSql(readFileSync(resolve(DIR, f), "utf8")))).pop() ?? null;
+const commentOnRe = (fn: string) => new RegExp(`COMMENT ON FUNCTION public\\.${fn}\\(`);
+const catalogDropRe = (fn: string) => new RegExp(`p\\.proname = '${fn}'[\\s\\S]*EXECUTE 'DROP FUNCTION ' \\|\\| r\\.sig::text;`);
 
 describe("still advertised at day 30 is published as a share, gated, and never past the cap", () => {
   it("found the definitions at all (guards the guard)", () => {
@@ -271,7 +289,7 @@ describe("still advertised at day 30 is published as a share, gated, and never p
     expect(LIVE.get("refresh_closure_population")).toBeTruthy();
   });
 
-  for (const { fn, grain, file } of CURVES) {
+  for (const { fn, grain, file, shape } of CURVES) {
     describe(fn, () => {
       const live = LIVE.get(fn)!;
       const prior = PRIOR_DEFS.get(fn)!;
@@ -279,6 +297,21 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       it("is live in the day-30 migration, one function per file", () => {
         expect(live.file).toBe(file);
         expect(definitionsIn(file).size, "the OUT-param guard slices one function per file").toBe(1);
+      });
+
+      it("`shape` is the newest file that carries the COMMENT ON and the catalogue drop, and a header-only re-issue after it carries neither", () => {
+        // Computed from the lane, so neither constant can quietly name the
+        // wrong file: if a later re-issue restates the comment or drops the
+        // catalogue again, `shape` must move to it and this says so.
+        expect(newestFileMatching(commentOnRe(fn))).toBe(shape);
+        expect(newestFileMatching(catalogDropRe(fn))).toBe(shape);
+        expect(shape <= file, "the shape file cannot sort after the definition that runs").toBe(true);
+        if (shape !== file) {
+          const later = stripSql(readFileSync(resolve(DIR, file), "utf8"));
+          expect(later).not.toMatch(/DROP FUNCTION/);
+          expect(later).not.toMatch(commentOnRe(fn));
+          expect(definitionsIn(shape).size).toBe(1);
+        }
       });
 
       it("carries every day-30 property against comment-stripped code", () => {
@@ -313,7 +346,9 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       });
 
       it("names the cap, the floor and the gate in its COMMENT ON, and never the two forbidden words", () => {
-        const sql = readFileSync(resolve(DIR, file), "utf8");
+        // The COMMENT ON lives in the shape file and survives a header-only
+        // CREATE OR REPLACE; the forbidden words are checked in BOTH files.
+        const sql = readFileSync(resolve(DIR, shape), "utf8");
         const comment = sql.slice(sql.indexOf("COMMENT ON FUNCTION"));
         expect(comment).toMatch(/2026-08-07/);
         expect(comment).toMatch(/2026-09-06/);
@@ -322,12 +357,15 @@ describe("still advertised at day 30 is published as a share, gated, and never p
         expect(comment).toMatch(/checked rather than asserted/);
         expect(comment).toMatch(/closure never means hired/);
         expect(comment).toMatch(/section 10/);
-        expect(sql).not.toMatch(/\bghost/i);
-        expect(sql).not.toMatch(/\bfake\b/i);
+        for (const f of new Set([shape, file])) {
+          const text = readFileSync(resolve(DIR, f), "utf8");
+          expect(text, `${f} uses a forbidden word`).not.toMatch(/\bghost/i);
+          expect(text, `${f} uses a forbidden word`).not.toMatch(/\bfake\b/i);
+        }
       });
 
       it("re-grants after the catalog drop, so the drop is not an outage", () => {
-        const sql = stripSql(readFileSync(resolve(DIR, file), "utf8"));
+        const sql = stripSql(readFileSync(resolve(DIR, shape), "utf8"));
         expect(sql).toMatch(new RegExp(`p\\.proname = '${fn}'[\\s\\S]*EXECUTE 'DROP FUNCTION ' \\|\\| r\\.sig::text;`));
         expect(sql).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${fn}\\([^)]*\\) TO anon, authenticated, service_role;`));
         expect(sql).toMatch(/RAISE EXCEPTION/);
@@ -401,9 +439,9 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       // already there however the schema was built -- and a re-issue that
       // sorted BEFORE the definition it replaces would be silently reverted in
       // filename order, which this repo has been bitten by twice.
-      expect(TABLE_FILE < LIVE_COMPANY_FILE && LIVE_COMPANY_FILE < LIVE_CATEGORY_FILE).toBe(true);
+      expect(TABLE_FILE < LIVE_COMPANY_FILE && LIVE_COMPANY_FILE < SHAPE_CATEGORY_FILE && SHAPE_CATEGORY_FILE < LIVE_CATEGORY_FILE).toBe(true);
       expect(readdirSync(DIR)).toEqual(
-        expect.arrayContaining([COMPANY_FILE, CATEGORY_FILE, TABLE_FILE, LIVE_COMPANY_FILE, LIVE_CATEGORY_FILE]),
+        expect.arrayContaining([COMPANY_FILE, CATEGORY_FILE, TABLE_FILE, LIVE_COMPANY_FILE, SHAPE_CATEGORY_FILE, LIVE_CATEGORY_FILE]),
       );
     });
   });

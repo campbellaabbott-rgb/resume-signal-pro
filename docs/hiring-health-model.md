@@ -457,14 +457,25 @@ backed by hundreds of observations and its `median_censored` is always a finding
 — which is why `/v1/stats`, which serves the category curve and not the company
 one, is not exposed to it.
 
-**6. `/v1/stats.fillCurve` is served from a cache key nothing writes.** The
-endpoint reads `stats_cache.fill_curve`; `refresh_stats_cache` builds a fixed key
-set that does not include it. Until a migration adds the arm —
-`payload := payload || jsonb_build_object('fill_curve', (SELECT
-COALESCE(jsonb_agg(row_to_json(x)), '[]'::jsonb) FROM
-public.get_category_fill_curve() x));` in the same BEGIN/EXCEPTION idiom as
-`date_coverage` — the field is null on every request, and the deprecation notice
-on `medianDaysToClose` must not name it as the replacement.
+**6. `/v1/stats.fillCurve` was served from a cache key nothing wrote — CLOSED by
+`20260928004823`.** The endpoint read `stats_cache.fill_curve` from 2026-09-06;
+`refresh_stats_cache` built a fixed key set that did not include it, so the field
+was null on every request and the deprecation notice on `medianDaysToClose` could
+not name it as the replacement. The arm now exists, and not in the bare-array
+one-liner this entry used to prescribe: the part is stored as
+`{computed_at, variant: {p_days: 90, p_min_n: 300}, rows}` with a stamp of its
+own (the shape `actively_hiring` uses), computed as the LAST block of the hourly
+refresh under the curve's own five-minute header (`20260928003117`), and on a
+timeout, an error or an empty answer the previous object is carried forward
+whole — rows and stamp — with `fill_curve` named in `stale_parts` and a sibling
+`fill_curve_error {at, reason, sqlstate, message}` recording why. A first run
+that fails writes a JSON null under the key. Both data pages and `/v1/stats` read
+that part through a normaliser that dates the rows by the part's stamp, never
+the cache root's, so a carried curve is visibly old; the deprecation notice names
+`fillCurve` exactly when it is served. The two crons that compute the curve were
+five minutes apart until `20260928011742` moved `refresh-stats-cache` to minute
+27. Until the first tick after those migrations apply, the key is absent and the
+pages render the section as "not yet computed", never as an error.
 
 **7. `ghost_stats.closed_90d` is the loosest closure count we publish.** It
 filtered neither relists nor suspect batches — the one figure in the system that

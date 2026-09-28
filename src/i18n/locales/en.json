@@ -4258,6 +4258,8 @@
     "verdictFillRate": "takes {{pct}}% of its roles down within {{d}} days",
     "verdictSlowFill": "we never see half its roles come down inside {{d}} days",
     "fieldCurveBasis": "From our lifecycle log: every role we watched, measured from the employer's own stated posting date and from no other date. Roles that are still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out — leaving them out is what made the old figure the same in every field. A field with too thin a record gets no figure at all.",
+    "fieldCurveAsOf": "Field figures as of {{when}}.",
+    "fieldCurveAsOfCarried": "Field figures as of {{when}}, carried forward: the latest hourly recomputation did not finish, so this is the previous run's figure.",
     "fieldCurveCompare": "{{gone}}% of {{field}} roles are off the board within {{d}} days — {{fillPct}}% taken down for good, the rest re-listed. Measured over {{n}} roles in the last {{window}} days.",
     "fillCoverageQualifier": "Across the {{pct}}% of these roles that carry a posting date from the company itself.",
     "fieldMedianCensored": "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.",

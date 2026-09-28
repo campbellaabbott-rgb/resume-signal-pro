@@ -12,6 +12,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { VIZ_SERIES_A } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
 import { LayoffPartitionSection } from "@/components/ghost/LayoffPartitionSection";
@@ -625,6 +626,19 @@ export default function GhostJobIndex() {
   // that fell back to our own first sighting when the employer stated no date.
   // Replaced by the fill curve, which censors rather than deletes.
   const [fillCurve, setFillCurve] = useState<FillCurveRow[]>([]);
+  /** When the curve's rows were computed -- the cache part's OWN stamp, which
+   *  on a carried run is older than the row it arrived in. Null until the
+   *  cache answers with a usable part; there is no live read to be null for. */
+  const [fillCurveComputedAt, setFillCurveComputedAt] = useState<string | null>(null);
+  /** The refresh named the part in stale_parts: these rows are a carry-forward
+   *  from an earlier run, and the date beside them says so. */
+  const [fillCurveCarried, setFillCurveCarried] = useState(false);
+  /** Which of the section's states to draw. "pending" until the cache read
+   *  settles; "ready" when a stamped part came back (with or without rows);
+   *  "absent" when the row carries no usable part, which the section says as
+   *  "not yet computed"; "unreadable" when the row itself could not be read,
+   *  which it says as a fact about our read. Never an error, never a live call. */
+  const [fillCurveStatus, setFillCurveStatus] = useState<"pending" | "ready" | "absent" | "unreadable">("pending");
   const [audit, setAudit] = useState<AuditResult | null>(null);
   // Distinguishes "audit could not be read" from "not fetched yet", so the
   // page can say which rather than showing a confident blank.
@@ -645,6 +659,26 @@ export default function GhostJobIndex() {
         // when that part is unusable.
         const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
         const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
+        // THE FIELD CURVE COMES OFF THE SAME ROW, AND OFF NOTHING ELSE.
+        //
+        // This page read it live on every visit, inside the caught Promise.all
+        // below: 34s on 2026-09-25, 47s at 14:xx on 2026-09-27, and a 60s
+        // statement timeout with NO rows at 18:xx and 23:xx the same day --
+        // which blanked the whole "by field" section exactly as an empty
+        // answer would have. The hourly refresh now writes the curve as a part
+        // of this row; the page reads that part through the one shared reader
+        // and keeps the part's OWN stamp, so a carried copy is dated by the
+        // run that computed it and not by the row it arrived in. There is
+        // deliberately no live fallback: the section says "not yet computed"
+        // when the part is absent and "could not be read" when the row is,
+        // and never pays for the scan.
+        const cachedCurve = readCachedFillCurve<FillCurveRow>(cache);
+        if (cachedCurve.state === "ready") {
+          setFillCurve(cachedCurve.rows);
+          setFillCurveComputedAt(cachedCurve.computedAt);
+          setFillCurveCarried(cachedCurve.carried);
+        }
+        setFillCurveStatus(cachedCurve.state);
         // THE STATS TILES DO NOT WAIT FOR THE LEADERBOARD. They used to sit
         // inside the same Promise.all as get_actively_hiring_companies, which
         // answered in 15.9s on 2026-09-10 after 20260909217000 made the fill
@@ -712,10 +746,15 @@ export default function GhostJobIndex() {
           // (verified live: every tile went "—"). Promise.resolve assimilates
           // the thenable into a real Promise first.
           Promise.resolve(rpc("get_freshness_stats")).catch(() => ({ data: null })),
-          // The fill curve by field — returns [] (or 404s, caught here) until
-          // the migration lands, and the section simply doesn't render. Never
-          // awaited into anything the rest of the page needs.
-          Promise.resolve(rpc("get_category_fill_curve", { p_days: 90, p_min_n: 300 })).catch(() => ({ data: null })),
+          // Per-vendor date coverage: the cache first (the live RPC full-scans
+          // 557k rows), the live read only when the cache has no copy. It
+          // joins this array so a cache miss pays for it concurrently with the
+          // two reads above rather than after the stats retry below. The
+          // third slot used to be the field curve read LIVE, which is the
+          // 60-second timeout the cache read above exists to retire.
+          cache?.date_coverage
+            ? Promise.resolve({ data: cache.date_coverage })
+            : Promise.resolve(rpc("get_date_coverage")).catch(() => ({ data: null })),
         ]);
         // WHEN THESE NUMBERS WERE COMPUTED, carried alongside them.
         //
@@ -741,7 +780,6 @@ export default function GhostJobIndex() {
           srow = Array.isArray(s2.data) ? (s2.data[0] as Stats) : null;
         }
         if (srow) setStats(srow);
-        if (Array.isArray(b.data)) setFillCurve(b.data as FillCurveRow[]);
         const frow = Array.isArray(f.data) ? (f.data[0] as FreshnessStats) : null;
         if (frow && typeof frow.p50_min === "number") setFreshness(frow);
         // The RPC returns the stored value directly; the old table read
@@ -752,10 +790,8 @@ export default function GhostJobIndex() {
         if (av && typeof av.accuracyPct === "number") setAudit(av);
         else setAuditUnavailable(true);
         // RPC shape is (source, total, dated) — the pct is ours to compute.
-        // Prefer the cache (the live RPC full-scans 557k rows); fall back live.
-        const dc = cache?.date_coverage
-          ? { data: cache.date_coverage }
-          : await Promise.resolve(rpc("get_date_coverage")).catch(() => ({ data: null }));
+        // Read above, in the Promise.all: the cache's copy or the live fallback.
+        const dc = b;
         if (Array.isArray(dc.data)) {
           setDateCov((dc.data as Array<{ source: string; total: number; dated: number }>)
             .filter((r) => r && typeof r.total === "number" && r.total > 0)
@@ -1358,6 +1394,23 @@ export default function GhostJobIndex() {
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Briefcase className="w-4 h-4 text-primary" /> How often roles are actually filled, by field
             </h2>
+            {/* THE CURVE'S OWN DATE. These rows come off the hourly cache with
+                the stamp of the run that computed THEM, which on a carried run
+                is not the run that wrote the row and can sit hours behind the
+                tiles above. So the line prints fillCurveComputedAt and nothing
+                else: not the row's computed_at, not the tiles' statsComputedAt,
+                not the leaderboard's. When the refresh named the part stale
+                the sentence says "carried" beside the date, because an older
+                table served under a fresh-looking heading is the shape the
+                stats tiles were caught in for four days in August. */}
+            {fillCurveComputedAt && (
+              <p className="text-[11px] text-muted-foreground mb-2">
+                {`Field figures as of ${new Date(fillCurveComputedAt).toLocaleString()}`}
+                {fillCurveCarried
+                  ? " — carried forward from that earlier run: the latest hourly recomputation of these figures did not finish, so every row here dates from that earlier run, not from the latest hourly refresh."
+                  : " — recomputed hourly from our own lifecycle log; every row here is from the same run."}
+              </p>
+            )}
             {/* WHICH LISTED FIELDS HAVE NO DAY-30 LINE, AND WHY EACH HAS NONE,
                 said once, and only when the RPC carried the gate that decides
                 it. This used to be one sentence giving one reason for every
@@ -1516,6 +1569,27 @@ export default function GhostJobIndex() {
                 </>
               )}
               Measured from our own lifecycle log over the last {shownCurve[0]?.window_days ?? 90} days — never an estimate.
+            </p>
+          </div>
+        )}
+
+        {/* THE SECTION'S TWO EMPTY STATES, said as what they are. The table
+            above renders only from a cached, stamped copy of the curve. When
+            the row carries no such part the heading stays and the sentence
+            says the refresh has not published one yet; when the row itself
+            could not be read the sentence says that instead. Neither is a
+            finding about any field and neither is an error: this page argues
+            that job numbers must say what they rest on, and a section that
+            vanished on a timeout said nothing at all. */}
+        {(fillCurveStatus === "absent" || fillCurveStatus === "unreadable") && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+              <Briefcase className="w-4 h-4 text-primary" /> How often roles are actually filled, by field
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {fillCurveStatus === "absent"
+                ? "These figures have not been computed yet: the hourly refresh that builds them from our lifecycle log has not published a copy since this reading was added. That is an absence in our own record, not a finding about any field."
+                : "These figures could not be read just now: the hourly cache that carries them did not answer. That is a fact about our read, not about any field — an unreadable table is not an empty one."}
             </p>
           </div>
         )}

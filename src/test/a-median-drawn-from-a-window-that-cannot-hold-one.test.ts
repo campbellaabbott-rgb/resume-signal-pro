@@ -510,8 +510,14 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // seven-day-floor property guarded above is untouched by that change; the
     // pins follow the functions so the body check reads the text the database
     // runs.
+    // MOVED, NOT DROPPED, a fifth time, for the category curve alone: on
+    // 2026-09-27 the same function was re-issued with only its own header
+    // raised (its sixty seconds had become a blank section on two pages),
+    // body byte-identical to the 2026-09-25 text -- a guard of its own
+    // compares the two with that one line masked. The seven-day-floor
+    // property is again untouched; the pin follows the definition that runs.
     const COMPANY_CURVE = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
-    const CATEGORY_CURVE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
+    const CATEGORY_CURVE = "20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });

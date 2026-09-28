@@ -4258,6 +4258,8 @@
     "verdictFillRate": "nimmt {{pct}}% seiner Stellen innerhalb von {{d}} Tagen herunter",
     "verdictSlowFill": "wir sehen nie, dass die Hälfte seiner Stellen innerhalb von {{d}} Tagen verschwindet",
     "fieldCurveBasis": "Aus unserem Lebenszyklus-Protokoll: jede beobachtete Stelle, gemessen ab dem vom Arbeitgeber selbst angegebenen Veröffentlichungsdatum und ab keinem anderen. Stellen, die noch online sind, und Stellen jenseits unserer 30-Tage-Grenze zählen als unabgeschlossen statt herauszufallen — sie herauszulassen ist genau der Grund, warum die alte Kennzahl in jedem Bereich gleich aussah. Ein Bereich mit zu dünner Datenlage bekommt gar keine Zahl.",
+    "fieldCurveAsOf": "Branchenwerte, Stand {{when}}.",
+    "fieldCurveAsOfCarried": "Branchenwerte, Stand {{when}}, fortgeschrieben: Die letzte stündliche Neuberechnung wurde nicht abgeschlossen, daher stammt dieser Wert aus dem vorherigen Lauf.",
     "fieldCurveCompare": "{{gone}}% der Stellen in {{field}} sind innerhalb von {{d}} Tagen vom Board verschwunden — {{fillPct}}% endgültig heruntergenommen, der Rest neu eingestellt. Gemessen über {{n}} Stellen in den letzten {{window}} Tagen.",
     "fillCoverageQualifier": "Bezogen auf die {{pct}}% dieser Stellen mit einem vom Unternehmen selbst angegebenen Veröffentlichungsdatum.",
     "fieldMedianCensored": "Wir haben nicht gesehen, dass die Hälfte davon innerhalb von {{d}} Tagen verschwindet — es gibt also keinen typischen Wert anzugeben.",

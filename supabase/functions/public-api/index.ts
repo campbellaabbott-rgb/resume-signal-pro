@@ -28,6 +28,7 @@ import { searchCallerHeader } from "../_shared/search-caller.ts";
 // the pass is sold as "your agent", never "your script" — which the shared
 // predicate guarantees and three inline copies could not.
 import { isPaidKeyTier } from "../_shared/key-tier.ts";
+import { fillCurveFromCache } from "./fill-curve-cache.ts";
 // THE CLOSED DOMAINS, IMPORTED RATHER THAN RETYPED. A hand-copied list of
 // vendors or categories is a second list, and every filter defect this board
 // has shipped was two lists disagreeing. These are the same constants the
@@ -54,7 +55,14 @@ import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../
 // /v1/changes closed[] rows -- whether closed_at is an event date or the date
 // we could first see the event. scripts/api-contract-probe.mjs pins this
 // literal and moves with it.
-const API_VERSION = "2026-09-23.1";
+//
+// 2026-09-27.1: /v1/stats data.lifecycle.fillCurve is SERVED for the first
+// time, read from the stats cache's fill_curve arm (see fill-curve-cache.ts),
+// dated by that part's own stamp rather than the cache root's, and carrying an
+// additive carriedForward flag that is true when the last hourly refresh kept
+// the previous rows. medianDaysToCloseBasis switches to its "use fillCurve"
+// wording on the same request. Nothing a caller had is renamed or removed.
+const API_VERSION = "2026-09-27.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -1734,22 +1742,28 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
   // did not.
   const cacheAsOf = typeof cache?.computed_at === "string" ? cache.computed_at : null;
   // FROM THE CACHE, NOT FROM A LIVE CALL. get_category_fill_curve is a windowed
-  // scan over closures, exits and live postings across every category; running
-  // it inside a paid request would put a multi-second aggregate on the hot path
-  // of an endpoint that is otherwise three cheap reads. It rides the same
-  // hourly refresh as ghost_stats, and is absent — not empty — until that
-  // refresh publishes the key.
-  const fillCurveRows = Array.isArray(cache?.fill_curve) ? cache.fill_curve : null;
-  // NOTHING WRITES THIS KEY YET, AND THE COPY BELOW MUST NOT PRETEND OTHERWISE.
-  // refresh_stats_cache builds a fixed key set (ghost_stats, trending_categories,
-  // date_coverage, entry_stats, …); `fill_curve` is not among them, so until a
-  // migration adds that arm this is null on every request. A deprecation notice
-  // that redirects a paying caller to a field which does not exist is strictly
-  // worse than no notice: it labels the one lifecycle figure we do serve as
-  // untrustworthy and then sends the reader nowhere. So the basis string is
-  // written twice — once naming the replacement, once not — and which one ships
-  // is decided by whether the replacement is actually in the payload.
-  const hasFillCurve = fillCurveRows !== null;
+  // scan over closures, exits and live postings across every category, and on
+  // 2026-09-27 it began exhausting its own 60 s statement_timeout on the REST
+  // path; running it inside a paid request would put that on the hot path of
+  // an endpoint that is otherwise three cheap reads. It rides the hourly
+  // refresh_stats_cache run beside ghost_stats, and is absent — not empty —
+  // until that run publishes the key.
+  //
+  // THE ARM THAT WRITES IT IS BUILT TO FAIL ALONE: when the curve times out the
+  // other keys still refresh and the previous rows are kept under their own
+  // earlier stamp, named in stale_parts. So the part is read by a normaliser
+  // that accepts either storage shape (a bare array, or {computed_at, rows})
+  // and answers with the rows, the stamp THOSE rows carry, and whether they
+  // were carried forward — the earlier one-line read dated the block with the
+  // cache root's stamp, which is exactly the silently-old figure the basis
+  // strings on this endpoint exist to forbid.
+  //
+  // A deprecation notice that redirects a paying caller to a field which is
+  // not in the payload is strictly worse than no notice, so the basis string
+  // below is written twice — once naming the replacement, once not — and which
+  // one ships is decided by whether the replacement is actually served.
+  const fillCurve = fillCurveFromCache(cache);
+  const hasFillCurve = fillCurve !== null;
   const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
   const open = typeof v.coverage?.open === "number" ? v.coverage.open : null;
   const tracked = typeof v.coverage?.tracked === "number" ? v.coverage.tracked : null;
@@ -1861,14 +1875,19 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
             // Null — never [] and never a zero — until that cache carries the
             // key: an empty array here would read as "no field has a measurable
             // fill rate", which is a different and false claim.
-            fillCurve: Array.isArray(fillCurveRows)
+            fillCurve: fillCurve
               ? {
                   horizonDays: 14,
-                  windowDays: num((fillCurveRows[0] ?? {}).window_days),
+                  windowDays: num((fillCurve.rows[0] ?? {}).window_days),
                   basis:
-                    "Aalen-Johansen cumulative incidence of a genuine fill by day 14, measured from the employer's own stated post date and from no other date. Postings still open, and postings that passed the 30-day freshness cap, are right-censored rather than excluded; same-title re-listings are a competing event, not a fill. fillRate14Lo/Hi is a 95% interval from Greenwood's formula on the event-free survival, carried across by the observed fill share — an APPROXIMATION, exact only where that share is constant over the window. relistRate14 and any churn figure are FLOORS: the collector logs at most one re-list per role title per company per 24h. sufficient is the render gate (at least 25 roles at risk at day 14, at least 5 observed fills, CI half-width at most 0.15); datedCoverage is reported separately and says what share of that field's roles carry a company-stated date, so a caller can decide what the figure speaks for. medianDaysToFill is min{t <= 30 : R(t) >= 0.5}, read off the FILL cumulative incidence and not off the event-free survival: it is the day half of a field's roles have been genuinely filled, and re-listings do not move it. It is null whenever medianCensored is true, meaning the fill incidence never reached one half inside the 30 days we can observe and no median exists inside our record — a bound, never a number. medianCensored is a finding, not an absence, on every row of this endpoint: the category estimator returns a row only where at least p_min_n observations back it.",
-                  asOf: cacheAsOf,
-                  data: (fillCurveRows as Array<Record<string, unknown>>).map((r) => ({
+                    "Aalen-Johansen cumulative incidence of a genuine fill by day 14, measured from the employer's own stated post date and from no other date. Postings still open, and postings that passed the 30-day freshness cap, are right-censored rather than excluded; same-title re-listings are a competing event, not a fill. fillRate14Lo/Hi is a 95% interval from Greenwood's formula on the event-free survival, carried across by the observed fill share — an APPROXIMATION, exact only where that share is constant over the window. relistRate14 and any churn figure are FLOORS: the collector logs at most one re-list per role title per company per 24h. sufficient is the render gate (at least 25 roles at risk at day 14, at least 5 observed fills, CI half-width at most 0.15); datedCoverage is reported separately and says what share of that field's roles carry a company-stated date, so a caller can decide what the figure speaks for. medianDaysToFill is min{t <= 30 : R(t) >= 0.5}, read off the FILL cumulative incidence and not off the event-free survival: it is the day half of a field's roles have been genuinely filled, and re-listings do not move it. It is null whenever medianCensored is true, meaning the fill incidence never reached one half inside the 30 days we can observe and no median exists inside our record — a bound, never a number. medianCensored is a finding, not an absence, on every row of this endpoint: the category estimator returns a row only where at least p_min_n observations back it. asOf is when THESE rows were computed by the hourly refresh, which can be earlier than the cache around them: when carriedForward is true the last refresh could not recompute the curve inside its budget and kept the previous rows, and asOf is that earlier run's stamp.",
+                  // THE PART'S OWN STAMP, NOT THE CACHE ROOT'S. A curve carried
+                  // forward from an earlier run is older than the ghost_stats
+                  // beside it, and dating it with the root would publish it as
+                  // fresh. The site prints the same stamp on the field table.
+                  asOf: fillCurve.asOf,
+                  carriedForward: fillCurve.carriedForward,
+                  data: fillCurve.rows.map((r) => ({
                     category: String(r.category),
                     nAtRisk14: num(r.n_at_risk_14),
                     fills14: num(r.fills_le_14),
@@ -1900,12 +1919,12 @@ async function stats(client: SupabaseClient, headers: Record<string, string>) {
                     // mirrors the column moves with it. This is that field.
                     //
                     // Renaming an API field is normally a breaking change; it
-                    // is safe exactly here because fillCurve has never served a
-                    // value — it is read from stats_cache.fill_curve, a key
-                    // nothing writes yet (docs §11 defect 6), so this object is
-                    // null on every request and no integration can be reading
-                    // the old spelling. If that cache arm lands before this
-                    // does, serve both keys for a release instead.
+                    // was safe exactly here because fillCurve had never served a
+                    // value — stats_cache.fill_curve was unwritten until
+                    // 2026-09-27 (docs §11 defect 6), so this object was null on
+                    // every request and no integration could have been reading
+                    // the old spelling. The rename shipped before the arm did,
+                    // so the first rows ever served carry this name only.
                     medianDaysToFill: num(r.median_days_to_fill),
                     // TRUE means "survival had not reached one half inside 30
                     // days". Read straight through, and that is safe HERE and

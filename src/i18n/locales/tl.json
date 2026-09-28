@@ -4258,6 +4258,8 @@
     "verdictFillRate": "inaalis ang {{pct}}% ng mga posisyon nito sa loob ng {{d}} araw",
     "verdictSlowFill": "hindi pa namin nakikitang naaalis ang kalahati ng mga posisyon nito sa loob ng {{d}} araw",
     "fieldCurveBasis": "Mula sa aming lifecycle log: bawat posisyong binantayan namin, sinukat mula sa mismong petsa ng pag-post na isinaad ng employer at wala nang iba. Ang mga posisyong nakapaskil pa, at ang mga lumagpas sa aming 30-araw na hangganan, ay binibilang na hindi pa tapos sa halip na iwanan — ang pag-iwan sa kanila ang dahilan kung bakit pare-pareho ang lumalabas na lumang bilang sa bawat larangan. Ang larangang masyadong manipis ang talaan ay walang ibinibigay na bilang.",
+    "fieldCurveAsOf": "Mga bilang ng larangan noong {{when}}.",
+    "fieldCurveAsOfCarried": "Mga bilang ng larangan noong {{when}}, dala mula sa naunang run: hindi natapos ang pinakabagong oras-oras na muling pagkalkula, kaya ito ang bilang mula sa naunang run.",
     "fieldCurveCompare": "{{gone}}% ng mga posisyon sa {{field}} ay wala na sa board sa loob ng {{d}} araw — {{fillPct}}% ang inalis nang tuluyan, ang iba ay muling ipinost. Sinukat sa {{n}} posisyon sa nakaraang {{window}} araw.",
     "fillCoverageQualifier": "Sa {{pct}}% ng mga posisyong ito na may petsa ng pag-post mula mismo sa kumpanya.",
     "fieldMedianCensored": "Hindi namin nakitang naalis ang kalahati sa kanila sa loob ng {{d}} araw, kaya walang tipikal na bilang na maibibigay.",

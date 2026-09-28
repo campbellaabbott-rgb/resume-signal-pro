@@ -64,6 +64,7 @@ import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
 import { readBoardFacets } from "@/lib/board-facets";
+import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -5986,19 +5987,40 @@ export default function Jobs() {
     return () => { cancelled = true; };
   }, [landerCompany]);
 
-  // What actually happens to roles in a FIELD, from the lifecycle log
-  // (get_category_fill_curve). The RPC carries its own honesty floor and
-  // returns no row below it, and marks a row `sufficient: false` when it is
-  // present but too thin to quote — so a thin field is silence, not a guess.
+  // What actually happens to roles in a FIELD, from the lifecycle log. The
+  // function that computes it carries its own honesty floor and returns no
+  // row below it, and marks a row `sufficient: false` when it is present but
+  // too thin to quote — so a thin field is silence, not a guess.
+  //
+  // OFF THE HOURLY CACHE, NEVER LIVE. This page called the function on every
+  // mount that showed a card: 34s on 2026-09-25, 47s at 14:xx on 2026-09-27,
+  // and a 60-second statement timeout with NO rows at 18:xx and 23:xx the
+  // same day — and because a failure released the ask-once ref, the next
+  // render paid for the timeout again. The hourly stats refresh now writes
+  // the whole table as a part of the row the Ghost Job Index reads its
+  // statistics from; this page reads that part through the one shared reader
+  // and prints the part's OWN stamp beside every clause drawn from it.
   //
   // THE WHOLE TABLE, NOT ONE ROW. This kept exactly one category's row — the
   // lander's — and threw the rest of the response away, so the board's one
   // genuinely uncopyable answer ("what happens to roles in this field?")
   // existed on eighteen landing pages and nowhere near a posting a reader was
-  // deciding about. The RPC returns every qualifying category in the same
-  // call, so keeping the map costs nothing and lets any posting be measured
-  // against its own field.
+  // deciding about. The cached part carries every qualifying category, so
+  // keeping the map costs nothing and lets any posting be measured against
+  // its own field.
   const [fillCurveByCategory, setFillCurveByCategory] = useState<Record<string, FieldCurve> | null>(null);
+  /** When the cached table was computed — the part's OWN stamp, never the
+   *  row's. Null until a usable part has been read; there is no live read. */
+  const [fillCurveComputedAt, setFillCurveComputedAt] = useState<string | null>(null);
+  /** The refresh named the part in stale_parts: the map is a carry-forward
+   *  from an earlier run, and every clause drawn from it says so. */
+  const [fillCurveCarried, setFillCurveCarried] = useState(false);
+  const fillCurveWhen = useMemo(
+    () => (fillCurveComputedAt
+      ? new Date(fillCurveComputedAt).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" })
+      : ""),
+    [fillCurveComputedAt, i18n.language],
+  );
   // Asked at most once per mount. `detailJob` is in the deps so a reader who
   // opens a posting gets the data, and the ref is what stops that from being a
   // request per open.
@@ -6017,18 +6039,28 @@ export default function Jobs() {
     fillCurveAsked.current = true;
     void (async () => {
       try {
+        // The hourly stats cache row, read through its anon accessor (the
+        // table itself is not anon-readable). ~18KB, 0.48s measured
+        // 2026-09-27T23:47Z against the 60.63s timeout it replaces.
+        const { data: cacheRow, error } = await (supabase as unknown as {
+          rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+        }).rpc("get_stats_cache");
+        const cached = readCachedFillCurve<FieldCurve>(cacheRow);
         // A RESOLVED ERROR IS STILL AN ERROR. supabase-js hands PostgREST
         // failures back through `error`, never by throwing, so the catch below
-        // could not see the deploy window in which get_category_fill_curve does
-        // not exist yet. On a failure the ask-once ref is RELEASED, so a later
+        // cannot see a failed read. On a failed read — an error, or a row that
+        // came back as nothing — the ask-once ref is RELEASED, so a later
         // render (a lander, an opened posting) tries again rather than the
-        // whole session inheriting one 404 as "the log is too thin to speak".
-        const { data: rows, error } = await (supabase as unknown as {
-          rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
-        }).rpc("get_category_fill_curve");
-        if (error || !Array.isArray(rows)) { fillCurveAsked.current = false; return; }
+        // whole session inheriting one outage as "the log is too thin to speak".
+        if (error || cached.state === "unreadable") { fillCurveAsked.current = false; return; }
+        // AN ABSENT PART IS THIS HOUR'S ANSWER. The row was read and carries no
+        // usable copy of the table (the refresh has not published one since
+        // this reading was added, or an older row is being served). Asking
+        // again on the next render would read the same row; the ref stays
+        // set, and every surface that reads the map stands without it.
+        if (cached.state === "absent") return;
         const map: Record<string, FieldCurve> = {};
-        for (const r of rows as FieldCurve[]) {
+        for (const r of cached.rows) {
           if (!r?.category) continue;
           const m = r.median_days_to_fill;
           // Same two-estimator reconciliation the company curve gets — see
@@ -6055,10 +6087,12 @@ export default function Jobs() {
         }
         // AN EMPTY MAP IS THE SAME ANSWER AS `null` — every reader here treats
         // a missing category as "the log is too thin to speak" — so storing it
-        // buys nothing and costs a render of the whole board. The RPC returns
-        // no row below its own floor, so an empty result is its normal shape on
-        // a young log, not an error.
+        // buys nothing and costs a render of the whole board. The function
+        // returns no row below its own floor, so an empty table is its normal
+        // shape on a young log, not an error.
         if (Object.keys(map).length === 0) return;
+        setFillCurveComputedAt(cached.computedAt);
+        setFillCurveCarried(cached.carried);
         setFillCurveByCategory(map);
       } catch {
         // Additive — every surface that reads this stands without it. Released
@@ -7762,6 +7796,14 @@ export default function Jobs() {
                         ) : (
                           <> {t("jobsPage.fieldMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(field.median_days_to_fill ?? 0) })}</>
                         )}
+                        {/* THE TABLE'S OWN DATE, on every clause drawn from it:
+                            the stamp of the run that computed the map, and
+                            "carried" when the refresh named it stale. */}
+                        {fillCurveComputedAt && (
+                          <> {fillCurveCarried
+                            ? t("jobsPage.fieldCurveAsOfCarried", "Field figures as of {{when}}, carried forward: the latest hourly recomputation did not finish, so this is the previous run's figure.", { when: fillCurveWhen })
+                            : t("jobsPage.fieldCurveAsOf", "Field figures as of {{when}}.", { when: fillCurveWhen })}</>
+                        )}
                       </p>
                     )}
                     {outlived && (
@@ -8254,6 +8296,12 @@ export default function Jobs() {
                 )}
                 {coverageBand(fieldCurve!.dated_coverage) === "qualified" && (
                   <> {t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(fieldCurve!.dated_coverage) })}</>
+                )}
+                {/* The same stamp the card clause prints: one map, one run. */}
+                {fillCurveComputedAt && (
+                  <> {fillCurveCarried
+                    ? t("jobsPage.fieldCurveAsOfCarried", "Field figures as of {{when}}, carried forward: the latest hourly recomputation did not finish, so this is the previous run's figure.", { when: fillCurveWhen })
+                    : t("jobsPage.fieldCurveAsOf", "Field figures as of {{when}}.", { when: fillCurveWhen })}</>
                 )}
               </span>
             </p>

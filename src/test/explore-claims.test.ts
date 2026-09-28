@@ -1686,10 +1686,12 @@ describe("the hiring answer ranks by odds, not by size", () => {
       .not.toMatch(/n_at_risk_14\s*[<>]=|fills_le_14\s*[<>]=/);
     expect(CODE, "the field curve is being fetched again").not.toMatch(/get_category_fill_curve/);
     // /jobs still owns and applies the single predicate. Removing a claim from
-    // one surface is not permission to loosen the gate on the other.
+    // one surface is not permission to loosen the gate on the other. The table
+    // it applies the predicate to now comes off the hourly stats cache through
+    // the shared reader, not from the live function.
     const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
     expect(jobs).toMatch(/export function canStateFillRate/);
-    expect(jobs).toMatch(/rpc\("get_category_fill_curve"\)/);
+    expect(jobs).toMatch(/readCachedFillCurve<FieldCurve>\(cacheRow\)/);
   });
 });
 
