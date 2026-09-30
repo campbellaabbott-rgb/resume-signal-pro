@@ -206,17 +206,63 @@ describe("a three-decimal rate is not a thousands group", () => {
     expect(p?.annualMax).toBe(Math.round(50.07 * 2080));
   });
 
-  it("fixes the other measured rows on the same board", () => {
+  // READS THE RATE. Whether that rate becomes an annual figure is a SEPARATE
+  // decision, taken by the part-time guard, and these calls pass NO context —
+  // so they isolate the reading and say nothing about what any one requisition
+  // ends up storing. The distinction is not academic: verified live 2026-09-30
+  // after this shipped, two of the three bands below resolve to NULL in
+  // production, and that is the correct answer. The employer states the load in
+  // the same payload that states the rate:
+  //   96440  Nurse A         "Type: Full-time temporary"  FTE: 1     -> 80,246
+  //   136415 LPN             "Type: Part-time temporary"  FTE: 0.71  -> NULL
+  //   136435 Pharmacy Tech   "Type: Part-time regular"    FTE: 0.57  -> NULL
+  // An earlier version of this file called that "fixing" those rows and quoted
+  // 75,213 and 69,555 as their true pay. Both figures were rate x 2080 with the
+  // stated FTE ignored — the guard refused them, and the guard was right. The
+  // band is not the row: a DIFFERENT, full-time LPN requisition carrying the
+  // identical "$36.160 to $38.720" IS stored at 75,213 (measured the same day).
+  it("reads the rate in the other measured bands", () => {
+    expect(parseSalaryStructured("$36.160 to $38.720", "CA")?.min).toBe(36.16);
     expect(parseSalaryStructured("$36.160 to $38.720", "CA")?.annualMin).toBe(Math.round(36.16 * 2080));
     expect(parseSalaryStructured("$33.440 to $35.830", "CA")?.annualMin).toBe(Math.round(33.44 * 2080));
-    // the rows that stored NULL because 23,170 clears neither the 20k
-    // unlabeled-annual floor nor the <200 hourly window
     expect(parseSalaryStructured("$23.170 to $24.840", "CA")?.annualMin).toBe(Math.round(23.17 * 2080));
     // the other four boards
     expect(parseSalaryStructured("$23.178 to $27.698", "US")?.annualMin).toBe(Math.round(23.178 * 2080));
     expect(parseSalaryStructured("$46.762 - $54.209", "CA")?.annualMin).toBe(Math.round(46.762 * 2080));
     expect(parseSalaryStructured("$25.835-$27.162", "US")?.annualMin).toBe(Math.round(25.835 * 2080));
     expect(parseSalaryStructured("$54.051 - $93.846", "US")?.annualMin).toBe(Math.round(54.051 * 2080));
+  });
+
+  // The stated load decides the annual figure, and the descriptions here are the
+  // employers' own wording from the requisitions named above. This case exists
+  // because the comment it replaces got this backwards once already.
+  it("leaves annualising to the part-time guard, which reads the stated FTE", () => {
+    const ft = parseSalaryStructured("$38.580 to $50.070", "CA", {
+      title: "Nurse A - Registered Nurse General Duty Nurse",
+      description: "Department: Chronic Resident Unit Type: Full-time temporary Expected Up to Date: September 10, 2027 FTE: 1 Shift Information: Days, Nights, Weekends",
+    });
+    expect(ft?.annualMin, "a stated full-time load annualises at 2080").toBe(Math.round(38.58 * 2080));
+    expect(ft?.partTimeSignal).toBeNull();
+
+    const pt = parseSalaryStructured("$36.160 to $38.720", "CA", {
+      title: "Licensed Practical Nurse",
+      description: "Department: LTC Nursing Unit - Unit 3-6 Type: Part-time temporary Expected Up to Date: August 28, 2027 FTE: 0.71 Shift Information: Days, Nights, Evenings, Weekends, Stats",
+    });
+    expect(pt?.min, "the rate is still read, and still displayed").toBe(36.16);
+    expect(pt?.annualMin, "0.71 FTE — a 2080-hour year is not what this posting offers").toBeNull();
+    expect(pt?.partTimeSignal).toBe("part-time");
+  });
+
+  // Below the 20k unlabeled-annual floor the OLD thousands reading stored NULL,
+  // not a wrong number: "$18.890" read as 18,890 clears neither that floor nor
+  // the <200 hourly window. 81 of the 1,404 affected rows were this shape, so
+  // the fix GIVES them a figure rather than correcting one. ("$23.170" is NOT
+  // one of them — 23,170 clears the floor, so that row stored 23,170.)
+  it("gives a figure to the rows the thousands reading left NULL", () => {
+    // oracle:emqk~ca3~CX_1, "Entrance Attendant" — stored annual was NULL
+    const p = parseSalaryStructured("$18.890 to $20.240", "CA");
+    expect(p?.min).toBe(18.89);
+    expect(p?.annualMin).toBe(Math.round(18.89 * 2080));
   });
 
   it("KEEPS the European thousands reading — the separator alone decides nothing", () => {
