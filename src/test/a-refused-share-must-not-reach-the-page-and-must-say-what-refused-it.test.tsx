@@ -65,6 +65,7 @@
 // Guards read COMMENT-STRIPPED source and COMMENT-STRIPPED SQL. Nothing any
 // assertion below requires is spelled inside a comment in the file it reads.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -102,7 +103,13 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 const stripTs = (s: string) => s.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 const PAGE = stripTs(read("src/pages/GhostJobIndex.tsx"));
-const SLOW = { timeout: 8000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW here was 8000 -- ABOVE vitest's default 5000 ms per-test
+// budget, so it was dead on arrival and every stuck wait was reported as a
+// bare test timeout instead of as the assertion that never came true. This
+// file has room on the clock (slowest case 252 ms on the 2026-09-30 loaded
+// run); what it lacked was the ability to say what failed.
+vi.setConfig(MOUNT_TEST_BUDGET);
 const body = () => document.body.textContent ?? "";
 
 // ── fixtures ────────────────────────────────────────────────────────────────

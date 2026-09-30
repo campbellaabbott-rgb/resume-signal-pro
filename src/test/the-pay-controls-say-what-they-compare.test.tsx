@@ -113,6 +113,7 @@
  * before reading it as a defect.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, waitFor } from "@testing-library/react";
@@ -214,6 +215,14 @@ function mountWith(reply: Record<string, unknown>, url: string) {
 const text = () => document.body.textContent ?? "";
 const titles = () => [...document.querySelectorAll("[title]")].map((e) => e.getAttribute("title") ?? "").join("\n");
 
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. This file had no shared constant -- inline five-second wait
+// literals, level with vitest's default per-test budget of the same five
+// seconds and so unreachable, in cases that chain two of them. A stuck wait
+// was reported as a bare test timeout naming nothing. The slowest case
+// measured 2048 ms on the 2026-09-30 loaded run.
+vi.setConfig(MOUNT_TEST_BUDGET);
+
 describe("the pay-sorted page describes the ordering it actually has", () => {
   beforeEach(() => {
     window.history.replaceState({}, "", "/jobs");
@@ -227,8 +236,8 @@ describe("the pay-sorted page describes the ordering it actually has", () => {
    * salary floor". */
   it("a browse pay sort names approximate US dollars and keeps the tail it really has", async () => {
     mountWith({}, "/jobs?sort=salary");
-    await waitFor(() => expect(text()).toContain("Staff Engineer"), { timeout: 5000 });
-    await waitFor(() => expect(text()).toContain("approximate US dollars"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
+    await waitFor(() => expect(text()).toContain("approximate US dollars"), SLOW);
     expect(text()).toContain("sort last");
     expect(text(), "the caption dates the frozen rates it compares with, in the reader's own date form").toContain(PINNED_SINCE_LABEL);
     expect(text(), "the retired claim: the ordering is not on the posting's own stated floor").not.toContain("ordered by stated salary floor");
@@ -241,8 +250,8 @@ describe("the pay-sorted page describes the ordering it actually has", () => {
       { salaryStatedOnly: true, total: null, countUnavailable: true, searchRoute: "SALARY", jobs: [PRICED_ROW] },
       "/jobs?q=nurse&sort=salary",
     );
-    await waitFor(() => expect(text()).toContain("Staff Engineer"), { timeout: 5000 });
-    await waitFor(() => expect(text()).toContain("only postings whose figure we can compare"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
+    await waitFor(() => expect(text()).toContain("only postings whose figure we can compare"), SLOW);
     expect(text(), "the server excluded every unpriced row; the caption cannot say they sort last").not.toContain("sort last");
     // The server's own disclosure is still on the page, and now agrees with it.
     expect(text()).toContain("only roles that state a salary appear here");
@@ -264,7 +273,7 @@ describe("a control that shows a wage does not call the posting silent", () => {
    * the checkbox became a superset of the three controls that compare amounts. */
   it("the States-pay control does not promise a figure it cannot read", async () => {
     mountWith({}, "/jobs");
-    await waitFor(() => expect(text()).toContain("Temporary Sales Assistant"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Temporary Sales Assistant"), SLOW);
     // The wage is on the page. That is the whole reason the old sentence was false.
     expect(text()).toContain("£14.80");
     const tips = titles();
@@ -316,7 +325,7 @@ describe("a control that shows a wage does not call the posting silent", () => {
       expect(v, `${f} still promises a yearly figure the filter no longer requires`).not.toMatch(/yearly figure/i);
     }
     mountWith({ filterCoverage: { hasStatedPay: 0.235 } }, "/jobs?statedPay=1");
-    await waitFor(() => expect(text()).toContain("Staff Engineer"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     expect(text(), "the retired clause must not reach a rendered page by any route").not.toContain("any pay at all");
   });
 
@@ -324,8 +333,8 @@ describe("a control that shows a wage does not call the posting silent", () => {
    * amount is compared against a converted figure, so it says so. */
   it("the floor's note says the dollar figure is a conversion, and dates it", async () => {
     mountWith({}, "/jobs?salaryFloor=60000");
-    await waitFor(() => expect(text()).toContain("Staff Engineer"), { timeout: 5000 });
-    await waitFor(() => expect(text()).toContain("$60k+"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
+    await waitFor(() => expect(text()).toContain("$60k+"), SLOW);
     expect(text()).toContain("approximate US dollars");
     expect(text()).toContain(PINNED_SINCE_LABEL);
   });
