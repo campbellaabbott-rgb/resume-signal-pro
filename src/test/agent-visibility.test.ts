@@ -195,16 +195,82 @@ describe("a decision module that nothing renders is the bug it was written to fi
   // agent is doing, and which nothing displays, is precisely the "carefully
   // computed, then shown as silence" defect the whole file exists to end. Tests
   // passing is not evidence anybody can see the output.
+  //
+  // WHAT COUNTS AS A CONSUMER: a file under src/ that names the module in an
+  // import specifier (".../lib/<mod>" closed by either quote), is not the
+  // module itself, and is not a test. A lib importing a lib counts — the chain
+  // refusalCopy → agentState → AgentStatusBand → pages/Agent.tsx is a rendered
+  // one, and demanding a *component* importer would fail it wrongly.
+  //
+  // THE SEARCH HAS TO BE ABLE TO SAY "I COULD NOT LOOK". This guard spent its
+  // whole life able to report only one of its two outcomes. It shelled out to
+  //     /usr/bin/grep -rl '…' ${root}/src || true
+  // with root interpolated unquoted, so in any checkout whose path contains a
+  // space — an agent worktree under "New Folder With Items", say — the shell
+  // split the root into four words, grep said "No such file or directory" four
+  // times, `|| true` swallowed the exit code, and the empty output read as
+  // "no file imports this module". All four modules were reported invisible
+  // while AgentStatusBand, ApplyQueuePanel, ApplyProfilePanel and
+  // AgentNightSummary were rendering them on /agent and /account the whole
+  // time. A red that says "your module is dead" when it means "I could not
+  // read the directory" is worse than no guard: it is the same failure the
+  // gate exists to catch, wearing the same colour, so the push gate gets
+  // bypassed and the next real one goes with it.
+  //
+  // Three things keep that from recurring: the path is passed as an argv
+  // element and never through a shell, grep's exit 1 (searched, no match) is
+  // separated from exit >= 2 (could not search) and only the first is a
+  // verdict about the module, and a positive control proves the search read
+  // this tree before any empty result is believed.
   const root = resolve(__dirname, "../..");
   const MUST_BE_RENDERED = ["agentState", "refusalCopy", "applyReadiness", "packetState"];
 
+  /** Files under src/ matching ERE `re`. No shell: the tree path is an argv
+   *  element, so spaces in it are just characters. Exit 1 is an answer
+   *  ("nothing matched"); anything else is this helper failing, and it throws
+   *  rather than returning the empty list that looks like an answer. */
+  function filesMatching(re: string): string[] {
+    const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
+    try {
+      return execFileSync("/usr/bin/grep", ["-rlE", re, resolve(root, "src")], { encoding: "utf8" })
+        .split("\n").filter(Boolean);
+    } catch (err) {
+      const e = err as { status?: number; stderr?: string | Buffer; message?: string };
+      if (e.status === 1) return [];
+      throw new Error(
+        `the consumer search could not run (grep exit ${e.status}) — this is the guard ` +
+        `being broken, NOT a module without consumers: ${String(e.stderr ?? e.message ?? "")}`);
+    }
+  }
+
+  // A test is any file under a test directory OR named *.test.* — this repo
+  // has both layouts (src/test/*.test.tsx and colocated src/lib/*.test.ts), and
+  // matching only the directory would let a module whose sole importer is its
+  // own colocated unit test pass as "visible to users".
+  const isTest = (f: string) => f.includes("/test/") || /\.test\.[cm]?[jt]sx?$/.test(f);
+
+  const consumers = (mod: string) =>
+    // Either quote style: 125 files import "@/lib/…" and some of them use
+    // single quotes, so a double-quote-only pattern can miss a real consumer.
+    filesMatching(`lib/${mod}["']`).filter((f) => !isTest(f) && !f.endsWith(`/lib/${mod}.ts`));
+
+  // THE POSITIVE CONTROL, and the reason the four assertions below can be
+  // trusted. Every one of them reads a zero as a verdict about the module; a
+  // search that returns zero for its own reasons makes all four lie at once.
+  // This one asserts against a fact about the tree rather than about any
+  // module under test: src/ imports from "@/lib/" in scores of places, so a
+  // result near zero means the search, not the code, is what is broken.
+  it("the consumer search can actually read this tree", () => {
+    const anyLibImport = filesMatching('from ["\']@/lib/');
+    expect(anyLibImport.length,
+      "the search found almost no @/lib import in src — it is not reading the tree, " +
+      "so every 'no consumer' verdict below would be about the search, not the code")
+      .toBeGreaterThan(20);
+  });
+
   it.each(MUST_BE_RENDERED)("src/lib/%s.ts has a non-test consumer", (mod) => {
-    const { execSync } = require("node:child_process") as typeof import("node:child_process");
-    const hits = execSync(
-      `/usr/bin/grep -rl 'lib/${mod}"' ${root}/src || true`, { encoding: "utf8" })
-      .split("\n")
-      .filter((f) => f && !f.includes("/test/") && !f.endsWith(`/lib/${mod}.ts`));
-    expect(hits.length, `nothing imports lib/${mod} outside tests — it is invisible to users`)
+    expect(consumers(mod).length,
+      `nothing imports lib/${mod} outside tests — it is invisible to users`)
       .toBeGreaterThan(0);
   });
 });
