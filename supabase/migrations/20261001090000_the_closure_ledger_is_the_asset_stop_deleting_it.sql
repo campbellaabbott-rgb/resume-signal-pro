@@ -321,3 +321,178 @@ BEGIN
       $job$ SELECT public.roll_up_and_prune_exits(NULL); $job$);
   END IF;
 END $$;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- THE SAME FIX FOR job_board_closures, WHICH IS THE LEDGER /v1 ACTUALLY SELLS.
+--
+-- Protecting job_board_exits alone would have missed the product. /v1/changes
+-- reads job_board_closures (public-api/index.ts:1370); job_board_exits has no
+-- reader in the public API at all. So the ledger a paying customer receives was
+-- still on an UNCONDITIONAL delete: roll_up_and_prune_closures(180), scheduled
+-- at 03:17 by job-board-closures-rollup-retention, with no keep branch.
+--
+-- AND THE CEILING THAT CREATES. CHANGES_MAX_DAYS_PAID is 180 and this prune
+-- deleted at 180, so the deepest history a paid key could ever be sold was
+-- exactly the retention that destroyed it. "Depth is what the tiers sell" --
+-- the API's own words -- could never become true, because depth could not
+-- accrue. Turning this off is the precondition for any history-priced tier;
+-- without it every such tier is a claim with an expiry date on it.
+--
+-- Identical treatment, for the identical reason, so the two ledgers cannot
+-- drift apart: NULL means roll up and keep, the DELETE and its roll-up-first
+-- EXISTS guard are retained inside the IF, and the COMMENT extends rather than
+-- replaces the original.
+
+CREATE OR REPLACE FUNCTION public.roll_up_and_prune_closures(p_keep_days integer DEFAULT 180)
+RETURNS TABLE (months_rolled integer, rows_pruned integer)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  -- NULL / <= 0 means KEEP THE RAW LEDGER FOREVER, exactly as the exits
+  -- prune above. The roll-up still runs; only the DELETE is skipped.
+  v_cutoff timestamptz := CASE
+    WHEN p_keep_days IS NULL OR p_keep_days <= 0 THEN NULL
+    ELSE now() - make_interval(days => GREATEST(p_keep_days, 30))
+  END;
+  v_months integer := 0;
+  v_pruned integer := 0;
+BEGIN
+  WITH src AS (
+    SELECT
+      c.company_token,
+      max(c.company) AS company,
+      COALESCE(NULLIF(c.category, ''), 'other') AS category,
+      date_trunc('month', c.closed_at)::date AS month,
+      count(*) FILTER (
+        WHERE NOT c.superseded
+          AND NOT COALESCE(c.suspect, false)
+          AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+      )::int AS fills,
+      count(*) FILTER (WHERE c.superseded
+                         AND c.absence_basis IS DISTINCT FROM 'lap_backfill')::int AS relists,
+      -- The events the four aggregates above no longer admit, kept as a count
+      -- so the prune cannot make them disappear.
+      count(*) FILTER (WHERE c.absence_basis = 'lap_backfill')::int AS backfill_n,
+      percentile_cont(0.5) WITHIN GROUP (
+        ORDER BY extract(epoch FROM (c.closed_at - c.posted_at)) / 86400.0
+      ) FILTER (WHERE NOT c.superseded AND NOT COALESCE(c.suspect, false)
+                  AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+                  AND c.posted_at IS NOT NULL
+                  AND c.closed_at >= c.posted_at
+                  AND c.closed_at - c.posted_at <= interval '365 days') AS p50,
+      percentile_cont(0.75) WITHIN GROUP (
+        ORDER BY extract(epoch FROM (c.closed_at - c.posted_at)) / 86400.0
+      ) FILTER (WHERE NOT c.superseded AND NOT COALESCE(c.suspect, false)
+                  AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+                  AND c.posted_at IS NOT NULL
+                  AND c.closed_at >= c.posted_at
+                  AND c.closed_at - c.posted_at <= interval '365 days') AS p75,
+      count(*) FILTER (WHERE NOT c.superseded AND NOT COALESCE(c.suspect, false)
+                         AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+                         AND c.posted_at IS NOT NULL
+                         AND c.closed_at >= c.posted_at
+                         AND c.closed_at - c.posted_at <= interval '365 days')::int AS dated_n,
+      min(c.closed_at) AS first_c,
+      max(c.closed_at) AS last_c
+    FROM public.job_board_closures c
+    WHERE c.closed_at < v_cutoff
+      AND c.company_token <> ''
+    GROUP BY c.company_token, COALESCE(NULLIF(c.category, ''), 'other'), date_trunc('month', c.closed_at)::date
+  )
+  INSERT INTO public.job_board_closure_rollup AS r
+    (company_token, company, category, month, fills, relists, dated_n, backfill_n, p50_days_open, p75_days_open, first_closed_at, last_closed_at, rolled_at)
+  SELECT company_token, company, category, month, fills, relists, dated_n, backfill_n,
+         round(p50::numeric, 1), round(p75::numeric, 1), first_c, last_c, now()
+  FROM src
+  ON CONFLICT (company_token, category, month) DO UPDATE SET
+    fills = EXCLUDED.fills,
+    relists = EXCLUDED.relists,
+    dated_n = EXCLUDED.dated_n,
+    backfill_n = EXCLUDED.backfill_n,
+    p50_days_open = EXCLUDED.p50_days_open,
+    p75_days_open = EXCLUDED.p75_days_open,
+    first_closed_at = LEAST(r.first_closed_at, EXCLUDED.first_closed_at),
+    last_closed_at = GREATEST(r.last_closed_at, EXCLUDED.last_closed_at),
+    rolled_at = now();
+  GET DIAGNOSTICS v_months = ROW_COUNT;
+
+  IF v_cutoff IS NULL THEN
+    v_pruned := 0;
+  ELSE
+  DELETE FROM public.job_board_closures c
+  WHERE c.closed_at < v_cutoff
+    AND EXISTS (
+      SELECT 1 FROM public.job_board_closure_rollup rr
+      WHERE rr.company_token = c.company_token
+        AND rr.category = COALESCE(NULLIF(c.category, ''), 'other')
+        AND rr.month = date_trunc('month', c.closed_at)::date
+    );
+  GET DIAGNOSTICS v_pruned = ROW_COUNT;
+  END IF;
+
+  RETURN QUERY SELECT v_months, v_pruned;
+END;
+$$;
+
+COMMENT ON FUNCTION public.roll_up_and_prune_closures(integer) IS
+  'Rolls closures older than p_keep_days into job_board_closure_rollup, then '
+  'deletes them. DATE BASIS: p50/p75 are measured from the employer''s stated '
+  'posted_at ALONE over the closures that carry one, exclude relists and '
+  'suspect batches, and carry the same two sanity guards the live read paths '
+  'carry (closed_at >= posted_at, and the duration under a year) — a closure '
+  'whose feed-supplied post date lands after its close date used to contribute '
+  'a NEGATIVE value here while being excluded from every live median. dated_n '
+  'is the count behind those percentiles; `fills` counts a LARGER population, '
+  'because it does not require a post date, so dated_n / fills is this row''s '
+  'dated coverage and the count/median split is visible instead of baked in. '
+  'This writes the ONLY copy of history that survives the prune, and a stored '
+  'definition that differs from the live one cannot be detected afterwards, '
+  'which is why the two are kept in step deliberately rather than by luck. NOTE '
+  'the one place they are NOT in step: the live functions also drop unstamped '
+  'feed-dark batches via a read-time proxy against contemporaneous company '
+  'snapshots, and those snapshots are pruned at 35 days, so the proxy cannot be '
+  'reconstructed at rollup time (180 days). Batches the collector stamped '
+  'suspect ARE excluded here, and from 2026-09-06 every batch carries that '
+  'stamp, so the gap closes on its own and is confined to rows rolled from the '
+  'pre-stamp era.'
+  ' ADMITTED ABSENCE BASES: full_read, lap, and NULL -- NULL is a row '
+  'written before the column existed on 2026-09-08 and is a full_read '
+  'closure, not an unknown one. lap_backfill is EXCLUDED and must stay '
+  'excluded: it is a takedown from a big board''s FIRST observable laps, '
+  'so its closed_at is the day we could finally see it and is late by an '
+  'unknown amount up to the freshness window. It is a count of events, '
+  'never a dated one -- see COMMENT ON COLUMN '
+  'public.job_board_closures.absence_basis, and get_closure_population() '
+  'for how many such rows exist. '
+  'fills, relists, dated_n, p50_days_open and p75_days_open all exclude '
+  'it; backfill_n counts it, so the archive still knows those events '
+  'happened after the rows themselves are deleted. This is the one caller '
+  'where the decision is irreversible: a month rolled with a backfilled '
+  'duration inside its p50 keeps it forever, because the rows the median '
+  'was drawn from are gone. first_closed_at / last_closed_at deliberately '
+  'DO span backfill rows -- they bound when we observed the month, which '
+  'is what that closed_at truthfully is.'
+  ' RETENTION, CHANGED 20261001090000: the prune runs ONLY when p_keep_days '
+  'is a positive number. NULL or <= 0 -- which is what the '
+  '''job-board-closures-rollup-retention'' cron now passes -- means roll up '
+  'and KEEP. This is the ledger /v1/changes actually serves '
+  '(public-api/index.ts reads job_board_closures, not job_board_exits), and '
+  'the paid changes window CHANGES_MAX_DAYS_PAID is 180 while this prune '
+  'deleted at 180 -- so the depth the tiers sell could never grow past its '
+  'own retention. Keeping the rows is what lets that window ever widen.';
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'job-board-closures-rollup-retention') THEN
+      PERFORM cron.unschedule('job-board-closures-rollup-retention');
+    END IF;
+    -- NULL = roll up, never prune.
+    PERFORM cron.schedule(
+      'job-board-closures-rollup-retention', '17 3 * * *',
+      $job$ SELECT public.roll_up_and_prune_closures(NULL); $job$);
+  END IF;
+END $$;

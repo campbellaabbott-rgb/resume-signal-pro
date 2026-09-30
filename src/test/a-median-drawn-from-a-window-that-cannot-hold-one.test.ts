@@ -462,11 +462,30 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // an OLDER definition sorting last cannot leave that check asserting dead
     // text, so they follow the functions to their current file.
     const LATE_DATE_FIX = "20260909201000_the_same_late_date_in_thirteen_more_places.sql";
+    // roll_up_and_prune_closures MOVED ON 20261001090000, which is the case the
+    // paragraph above describes: a function legitimately re-issued in a LATER
+    // migration, so its pin follows it. It was re-issued to give the prune a
+    // NULL-means-keep branch — /v1/changes serves job_board_closures, and an
+    // unconditional 180-day delete under a 180-day paid window meant the depth
+    // the tiers sell could never accrue. The body was carried verbatim, so the
+    // property THIS block exists to protect is asserted directly below rather
+    // than assumed: if a future re-issue drops the lap_backfill exclusion, that
+    // assertion fails even though the pin is satisfied.
+    const CLOSURE_KEEP_FIX = "20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it.sql";
+    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that turned its prune off").toBe(CLOSURE_KEEP_FIX);
+    expect(
+      LIVE.get("roll_up_and_prune_closures")?.code,
+      "the re-issue must carry the late-closed_at fix forward: lap_backfill rows are excluded from the duration statistics",
+    ).toMatch(/absence_basis IS DISTINCT FROM 'lap_backfill'/);
+    // ...and it must still be a prune that cannot outrun its own summary.
+    expect(
+      LIVE.get("roll_up_and_prune_closures")?.code,
+      "the roll-up-first EXISTS guard must survive the re-issue",
+    ).toMatch(/DELETE FROM public\.job_board_closures[\s\S]*EXISTS\s*\(/);
     for (const name of [
       "get_company_hiring_health",
       "get_category_fill_speed",
       "get_employer_benchmarks",
-      "roll_up_and_prune_closures",
       "get_actively_hiring_companies",
     ]) {
       expect(LIVE.get(name)?.file, `${name} must resolve to the late-closed_at migration`).toBe(LATE_DATE_FIX);
