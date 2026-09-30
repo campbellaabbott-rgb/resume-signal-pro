@@ -488,6 +488,60 @@ export function isHomeOfficeSiteLabel(locationName: string | null | undefined): 
 }
 
 /**
+ * THE OTHER GRAMMAR A BUILDING ARRIVES IN, and the one the residue rule above
+ * deliberately answers NO to: the employer writes the PLACE, a separator, and
+ * then the name of the site standing at that place.
+ *
+ * MEASURED 2026-09-30 on the employer that survived the first build, by reading
+ * its whole board rather than the two rows that were wrong. Ranch and Home
+ * Supply publishes 89 postings and writes LocationName as "City, ST" optionally
+ * followed by " - <site>". The sites in its own vocabulary are "Bozeman, MT -
+ * Home Office", "Bozeman, MT - Four Corners", "Butte, MT - Distribution Center"
+ * and "Laramie, WY - Distribution Center", and the payload states City
+ * "Bozeman" and State "MT" structurally on the head-office rows themselves. The
+ * token sits in the SAME slot as a distribution centre, one row down, beside
+ * the same place the vendor already gives us. Nobody reads "Butte, MT -
+ * Distribution Center" as a work-from-home policy, and the field does not
+ * change meaning between two rows of one employer's site list.
+ *
+ * THE VENDOR'S OWN FLAG AGREES, re-fetched the same day: across the 15 tenants
+ * of the original census, 54 live rows carry the token and IsRemote is false on
+ * 54 of 54. WITH THE POSITIVE CONTROL THE FIRST BUILD DID NOT PRINT, because a
+ * flag no employer ever sets is silence and not a refutation: 3 of those 15
+ * tenants do set it true on other postings (6 of 13, 1 of 5, 1 of 4), so the
+ * field is live on this vendor — but THIS employer never sets it on any of its
+ * 89 rows, which is exactly why the label grammar above, and not the flag,
+ * is what this rule rests on.
+ *
+ * IT DOES NOT REOPEN THE REFUTED GATE. "A place beside the token" is still
+ * refuted and is still not what this reads. Every string on the audit's refuted
+ * list answers null here: "Home Office (Belfast)" and "Palo Alto Home Office"
+ * (ashby's own workplaceType says Remote) have no separator in front of the
+ * token, "FL - Home Office" and "TX Home Office" (the Workday jurisdiction
+ * class, 20 of 24 Remote) put no city before the two-letter code, "Home Office,
+ * Columbus, OH, US" leads with the token, and "US-CA California Los
+ * Angeles/Orange County Home Office" has no separator either. One shape is
+ * read: <place>, <two-letter code>, a dash, the token, end of field.
+ *
+ * AND THE PREFIX MAY NOT ITSELF STATE REMOTE, so a hypothetical "Remote, US -
+ * Home Office" keeps its claim. That costs nothing on the measured population
+ * — 0 of the 54 labels carry a second mode token — which is precisely why it is
+ * written down and tested rather than assumed.
+ */
+export const HOME_OFFICE_PLACE_SUFFIX_SOURCE = "^(.+,\\s*[A-Za-z]{2})\\s*[-–—]\\s*home\\s+office\\s*$";
+const P_HOME_OFFICE_PLACE_SUFFIX = new RegExp(HOME_OFFICE_PLACE_SUFFIX_SOURCE, "i");
+
+/** The place a head-office SUFFIX is hung on, or null when the field is not
+ *  written in that grammar — or when the place itself states remote. Exported
+ *  so the guard and the repair migration read the same answer. */
+export function homeOfficePlaceSuffix(locationName: string | null | undefined): string | null {
+  const m = String(locationName ?? "").trim().match(P_HOME_OFFICE_PLACE_SUFFIX);
+  if (!m) return null;
+  const place = m[1].trim();
+  return detectWorkMode(place) === "remote" ? null : place;
+}
+
+/**
  * THE HEAD-OFFICE TOKEN REMOVED FROM A STRING THAT IS NOT THE POSTING'S OWN
  * WORDS ABOUT THE ROLE, so a building or an organisational unit can never be
  * read as a work-from-home policy. Returns null when nothing is left, which is
@@ -2568,12 +2622,27 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
       // Office") is worth less to a reader than the city the employer typed
       // beside it, and every other remote posting on this board already prints
       // whatever place its vendor states. Live count of rows this affects: 0
-      // (IsRemote is false on 39 of 39 census rows), so it is a decided
-      // behaviour with no shipping footprint, and the guard asserts it.
+      // (IsRemote false on 39 of 39 census rows, and on 54 of 54 when the same
+      // 15 tenants were re-read on 2026-09-30), so it is a decided behaviour
+      // with no shipping footprint, and the guard asserts it.
       const siteName = String(j.LocationName ?? "").trim();
       const cityState = [loc.City, loc.State].filter(Boolean).join(", ").trim();
+      // TWO GRAMMARS, ONE ANSWER. The residue rule reads a label that IS a
+      // building ("1000-Home Office"); the suffix rule reads a label that hangs
+      // the building off a place the vendor also states structurally ("Bozeman,
+      // MT - Home Office", one row below "Butte, MT - Distribution Center").
+      // Either way the field names a SITE, so the place wins and the token
+      // never reaches the detector. Neither rule answers the class the audit
+      // refuted — see homeOfficePlaceSuffix for the strings that must stay.
       const siteLabel = isHomeOfficeSiteLabel(siteName);
-      const location = siteLabel && cityState ? cityState : siteName || cityState;
+      const suffixPlace = homeOfficePlaceSuffix(siteName);
+      const namesASite = siteLabel || suffixPlace !== null;
+      // The payload's own structured City/State first; the place the label
+      // itself puts in front of the suffix only when the payload states none,
+      // so a site name is never the last thing left standing when a real place
+      // was available in either field.
+      const statedPlace = cityState || suffixPlace || "";
+      const location = namesASite && statedPlace ? statedPlace : siteName || cityState;
       const title = String(j.JobTitle ?? "").trim();
       const dept = typeof j.HiringDepartment === "string" && j.HiringDepartment.trim() ? j.HiringDepartment.trim() : null;
       const externalId = String(j.JobId ?? "").trim();
@@ -2594,7 +2663,7 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
       // there the phrase is the posting's own words. The repair migration's
       // evidence string masks the same column for the same reason, so the two
       // runtimes cannot disagree about these rows.
-      const modeLocation = siteLabel ? cityState : location;
+      const modeLocation = namesASite ? statedPlace : location;
       const workMode = j.IsRemote === true
         ? "remote" as const
         : detectWorkMode(modeLocation, title, withoutHomeOfficeToken(dept));

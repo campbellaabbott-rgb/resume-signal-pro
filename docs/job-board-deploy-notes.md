@@ -8,6 +8,24 @@ earlier are still in `index.ts` around the constant. New notes go here, newest f
 `BUILD_VERSION` itself still moves with every deploy, and `src/test/build-version-guard.test.ts`
 still pins it.
 
+## 2026-09-09.82
+
+normalize.ts only; sources.ts UNCHANGED. Ships migration `20260930202400`, and the migration must not land ahead of this bundle.
+
+THE DEFECT. `20260927113742` cleared 35 of 39 false remotes and its own header names the two it declined: "the two rows reading as a Montana city beside the token". Those two — Staff Accountant and Front End Operations Specialist at Ranch and Home Supply, location `Bozeman, MT - Home Office` — kept publishing `work_mode='remote'` for three days, live-confirmed against the anon board on 2026-09-30 (`{"action":"list","vendor":"paylocity","location":"Home Office"}` → 4 rows, 2 still remote).
+
+WHY THE RESIDUE RULE COULD NOT REACH THEM, AND WHY THAT WAS RIGHT. Removing the token from that label leaves `Bozeman, MT`, a PLACE — and "a place beside the token" was refuted as evidence of a building (Ashby answers workplaceType Remote on "Home Office (Belfast)" and on "Palo Alto Home Office"; of the Workday jurisdiction-class rows carrying a structured remote type, 20 of 24 say Remote). No word was added to the site-label list and the refuted set is re-run, unchanged, against the new rule in both runtimes.
+
+WHAT SETTLED IT — the employer's WHOLE board, not its two wrong rows (2026-09-30). Ranch and Home Supply publishes 89 postings and writes `LocationName` as `City, ST` optionally followed by ` - <site>`: `Bozeman, MT - Home Office` (4), `Bozeman, MT - Four Corners` (3), `Butte, MT - Distribution Center` (2), `Laramie, WY - Distribution Center` (1). The token occupies that employer's SITE slot, beside the `City`/`State` the same payload states structurally. Nobody reads "Butte, MT - Distribution Center" as a work-from-home policy.
+
+THE FLAG, WITH THE POSITIVE CONTROL THE FIRST CENSUS DID NOT PRINT. Re-fetched across the 15 tenants of that census: 54 live rows carry the token, `IsRemote` false on 54 of 54. A flag nobody ever sets would be silence rather than a refutation — so, measured: 3 of the 15 tenants DO set it true on other postings (6/13, 1/5, 1/4), which makes the field live on this vendor, while THIS employer sets it on none of its 89 rows. The rule therefore rests on the label grammar, not on the flag. A wider sweep found no second population: every 12th token of 6,236 paylocity tenants (520 boards, 10,583 live postings) carries the token 0 times.
+
+THE RULE, in one written shape and not a presence test: a place, a comma, a two-letter code, a separator, the token, END OF FIELD (`HOME_OFFICE_PLACE_SUFFIX_SOURCE`, mirrored as `v_place` in the migration and compared byte-for-byte by the guard). The place in front may not itself state remote, so `Remote, US - Home Office` keeps its claim. `normalizePaylocity` then serves the payload's own City/State, falling back to the label's own place when the payload states none, and the token never reaches the detector. Census effect: the module's silent set moves 35 → 37; the two rows still remote are the only ones a HUMAN wrote — a "Prime Remote" title, and a sentence offering the applicant their choice of home office.
+
+NOT LOAD-BEARING FOR CORRECTNESS, only for when: Ranch and Home Supply is a live board, so the bundle alone clears these two on its next lap via the boolean-moved branch. The migration is the accelerator, same as its sibling.
+
+Guards: `src/test/a-site-hung-on-a-city-is-still-a-building.test.ts` (pglite, both repairs in deploy order, every predicate mutated) and the new describe block in `a-head-office-is-a-building-not-a-work-from-home-policy.test.ts`. `deno check` clean, `tsc` clean.
+
 ## 2026-09-09.81
 
 index.ts only, comments only; sources.ts UNCHANGED. The .80 bundle did not reach production: live stayed at .73 after the publish, the same silent non-deploy the upload cap produces. Every full-line comment run longer than six lines in index.ts moved to docs/job-board-index-notes.md (410 runs, 453 KB), each leaving a one-line pointer that names its section and each section quoting the code line it stood above; runs of six lines or fewer stayed, and so did ten longer runs that a guard requires to stay written down beside their constant (the guards read the raw file on purpose and went red when the prose moved). Five guards that had used a comment sentence only as a landmark now slice their region by code. Proof of zero behaviour change: the comment-stripped code is identical line for line before and after (7,906 lines), and deno check is clean. job-board + _shared now 3,136 KB + 700 KB by the deployer's tally (from 4,268 KB). No migration, no behaviour; the version moves only so the deploy is provable.

@@ -103,7 +103,7 @@ const json = (body: unknown, status = 200) =>
 // Rationale: docs/job-board-index-notes.md#n001-sitemap-days
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.81"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.82"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so

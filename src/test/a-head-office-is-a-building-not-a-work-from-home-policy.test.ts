@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   detectWorkMode,
+  homeOfficePlaceSuffix,
   homeOfficeResidue,
   isHomeOfficeSiteLabel,
   normalizePaylocity,
@@ -47,6 +48,16 @@ import { codeOf } from "./helpers/strip-comments";
  * and no others — nothing left, a bare cost-centre number, or a residue naming
  * an organisation or a department — and the third describe block below is the
  * one that holds that line.
+ *
+ * THE TWO ROWS THAT LINE LEFT PUBLISHED, and what settled them three days
+ * later. "Bozeman, MT - Home Office" survived the rule above and kept its false
+ * remote until 2026-09-30, when the employer's WHOLE board was read instead of
+ * its two wrong rows: the same field carries "Bozeman, MT - Four Corners" and
+ * "Butte, MT - Distribution Center", so the token sits in that employer's SITE
+ * slot, beside the City and State the payload already states structurally. The
+ * fifth describe block below reads that one written shape — a place, a
+ * separator, the token, end of field — and re-runs the whole refuted list
+ * against it, because the gate it must not become is the one above.
  *
  * THE ENTITY ARM IS NOT ANCHORED, AND THAT IS THE MEASURED CHOICE. Two of the
  * 39 labels are "Property Management, Inc. Home Office" and "Home
@@ -186,9 +197,14 @@ describe("a head-office site label yields to the place in the same payload", () 
 });
 
 describe("silence is never on-site, and a stated mode is never removed", () => {
-  it("writes no work mode for the 35 rows whose only remote evidence was the building", () => {
+  it("writes no work mode for the 37 rows whose only remote evidence was the building", () => {
     const shipped = CENSUS.map((r) => ({ r, row: ship(r) }));
-    expect(shipped.filter((s) => s.row.workMode === null)).toHaveLength(35);
+    // 35 under the residue rule alone; 37 once the suffix rule below reads the
+    // two "Bozeman, MT - Home Office" rows as the site name they are. The two
+    // that remain are the only rows on this census where a HUMAN wrote the
+    // policy: a title saying Prime Remote, and a sentence offering the
+    // applicant their choice of home office.
+    expect(shipped.filter((s) => s.row.workMode === null)).toHaveLength(37);
     // THE RULE THIS FILE EXISTS UNDER. The vendor flag reading false is the
     // employer saying nothing, not the employer saying on-site.
     expect(
@@ -381,23 +397,24 @@ describe("a place beside the token is not evidence of a building", () => {
     ).toBe(false);
   });
 
-  it("the three census rows that still name a place are untouched", () => {
+  it("the three census rows that still name a place are not settled by THIS rule", () => {
     const kept = CENSUS.filter((r) => !isHomeOfficeSiteLabel(r.item.LocationName));
     expect(kept).toHaveLength(3);
-    for (const r of kept) {
-      const row = ship(r);
-      expect(row.location).toBe(r.item.LocationName);
-      // Still remote, on purpose and stated as a known residue: the two
-      // Montana rows and the Californian sentence are not settled by anything
-      // we can read, and a wrong demotion here is the refuted gate.
-      expect(row.workMode).toBe("remote");
-    }
     expect(new Set(kept.map((r) => r.item.LocationName))).toEqual(
       new Set([
         "Bozeman, MT - Home Office",
         "San Jose, Watsonville, or Salinas (the applicant’s choice of home office)",
       ]),
     );
+    // And the residue rule alone would have published all three as remote,
+    // which is the state this file shipped in and the state the suffix rule
+    // below was built to answer for two of them.
+    for (const r of kept) {
+      expect(
+        detectWorkMode(r.item.LocationName, r.item.JobTitle, r.stored.department),
+        `${r.stored.id} was never a false remote under the residue rule`,
+      ).toBe("remote");
+    }
   });
 
   /**
@@ -464,6 +481,138 @@ describe("a place beside the token is not evidence of a building", () => {
   });
 });
 
+/**
+ * THE SITE HUNG OFF A CITY, which the residue rule above deliberately answers
+ * no to and which left two rows at a ranch-supply store published as
+ * work-from-home for three days after the first build.
+ *
+ * WHY THIS IS NOT THE REFUTED GATE COMING BACK. "A place beside the token" is
+ * still refuted and is still not what this reads. The rule is a SUFFIX
+ * grammar — a place, a comma, a two-letter code, a separator, the token, END
+ * OF FIELD — and MUST_NOT_BE_A_SITE_LABEL above is re-run against it below,
+ * unchanged, because the refuted strings are the whole point.
+ *
+ * THE EVIDENCE, MEASURED 2026-09-30 by reading the employer's WHOLE board
+ * rather than the two rows that were wrong. Ranch and Home Supply publishes 89
+ * postings and writes LocationName as "City, ST" optionally followed by
+ * " - <site>". Its live site vocabulary:
+ *     Bozeman, MT - Home Office          4 rows
+ *     Bozeman, MT - Four Corners         3 rows
+ *     Butte, MT - Distribution Center    2 rows
+ *     Laramie, WY - Distribution Center  1 row
+ * The token sits in the SAME slot as a distribution centre, and the payload
+ * states City "Bozeman" and State "MT" structurally on the head-office rows
+ * themselves. A field does not change meaning between two rows of one
+ * employer's site list.
+ *
+ * THE FLAG, RE-FETCHED THE SAME DAY, WITH THE POSITIVE CONTROL THE FIRST
+ * CENSUS DID NOT PRINT. Across the 15 tenants of that census, 54 live rows
+ * carry the token and IsRemote is false on 54 of 54. A flag no employer ever
+ * sets would be silence rather than a refutation, so: 3 of those 15 tenants do
+ * set it true on other postings (6 of 13, 1 of 5, 1 of 4), which makes the
+ * field live on this vendor — but THIS employer sets it on none of its 89
+ * rows. So the rule rests on the label grammar, and this docblock says so
+ * rather than quoting 54-of-54 as if it settled the row by itself.
+ *
+ * AND NO SECOND POPULATION EXISTS TO WORRY ABOUT: every 12th token of the
+ * 6,236 paylocity tenants — 520 boards, 10,583 live postings, 2026-09-30 —
+ * carries the token zero times.
+ */
+describe("a site name hung off a city is still a site name", () => {
+  it.each([
+    ["Bozeman, MT - Home Office", "Bozeman, MT", "the live shape, dash separator"],
+    ["Bozeman, MT \u2014 Home Office", "Bozeman, MT", "em dash, same field"],
+    ["bozeman, mt - home office", "bozeman, mt", "case does not matter"],
+    ["Butte, MT - Home Office", "Butte, MT", "the same employer's other town"],
+  ])("%s hangs its site on %s (%s)", (label, place) => {
+    expect(homeOfficePlaceSuffix(label)).toBe(place);
+  });
+
+  it.each([
+    ["Home Office", "the bare label is the residue rule's, not this one's"],
+    ["1000-Home Office", "so is the cost-centre code"],
+    ["Bozeman, MT - Four Corners", "a site with no token is nobody's business here"],
+    ["Bozeman, MT - Home Office Inc", "the token is not the last thing in the field"],
+    ["Bozeman MT - Home Office", "no comma: this reads one written shape, not any place"],
+    ["Bozeman, Montana - Home Office", "and the code is two letters, not a spelt-out state"],
+    ["Remote, US - Home Office", "THE ONE WAY THIS GRAMMAR COULD DELETE A STATEMENT"],
+    ["San Jose, Watsonville, or Salinas (the applicant\u2019s choice of home office)",
+      "a sentence about where the applicant may work is the employer speaking"],
+  ])("%s is not a site suffix (%s)", (label) => {
+    expect(homeOfficePlaceSuffix(label)).toBeNull();
+  });
+
+  it("answers null on every string the audit refuted, unchanged", () => {
+    // THE SAME LIST, RE-RUN. A rule that reopened the refuted gate would take
+    // the ashby Belfast row (workplaceType Remote) and the Workday
+    // jurisdiction class (20 of 24 Remote) with it, and it would do so
+    // silently, because those strings are not in this census.
+    for (const [label, why] of MUST_NOT_BE_A_SITE_LABEL) {
+      expect(homeOfficePlaceSuffix(label), `${label} — ${why}`).toBeNull();
+    }
+    expect(MUST_NOT_BE_A_SITE_LABEL.length).toBeGreaterThanOrEqual(14);
+  });
+
+  it("takes the two Montana rows off the board and serves the payload's own place", () => {
+    const suffixed = CENSUS.filter((r) => homeOfficePlaceSuffix(r.item.LocationName) !== null);
+    expect(suffixed).toHaveLength(2);
+    for (const r of suffixed) {
+      const row = ship(r);
+      expect(row.location, `${r.stored.id} did not take the payload's place`).toBe("Bozeman, MT");
+      expect(row.workMode, `${r.stored.id} still reads a building as a policy`).toBeNull();
+      expect(row.remote).toBe(false);
+      // The place the label itself names and the place the payload states are
+      // the same string on all of them, which is the measurement this rule
+      // rests on and not a coincidence worth leaving unasserted.
+      expect(homeOfficePlaceSuffix(r.item.LocationName)).toBe(cityState(r));
+    }
+  });
+
+  it("uses the label's own place when the payload states none", () => {
+    // Losing the only location we have would be a second error, exactly as it
+    // would be for a bare site label: the place in front of the suffix is a
+    // real place and the row keeps it.
+    const [job] = normalizePaylocity(
+      [{
+        JobId: "NO-CITYSTATE",
+        JobTitle: "Staff Accountant",
+        LocationName: "Bozeman, MT - Home Office",
+        IsRemote: false,
+        JobLocation: null,
+      }] as never,
+      "Employer",
+      "fe274438-11df-4742-b18e-18a43cb5c6b7",
+    );
+    expect(job.location).toBe("Bozeman, MT");
+    expect(job.workMode).toBeNull();
+  });
+
+  it("never overrides the vendor's structured remote flag", () => {
+    // The same collateral-damage check the residue rule gets: our reading of a
+    // string must not start beating the vendor's own field.
+    for (const r of CENSUS.filter((x) => homeOfficePlaceSuffix(x.item.LocationName) !== null)) {
+      const row = ship(r, { IsRemote: true });
+      expect(row.workMode).toBe("remote");
+      expect(row.location).toBe("Bozeman, MT");
+    }
+  });
+
+  it("leaves a suffixed row whose own title states a mode", () => {
+    const [job] = normalizePaylocity(
+      [{
+        JobId: "TITLE-STATES",
+        JobTitle: "Prime Remote Claims Adjuster",
+        LocationName: "Bozeman, MT - Home Office",
+        IsRemote: false,
+        JobLocation: { City: "Bozeman", State: "MT", Country: "USA" },
+      }] as never,
+      "Employer",
+      "fe274438-11df-4742-b18e-18a43cb5c6b7",
+    );
+    expect(job.workMode, "the posting's own words stopped winning").toBe("remote");
+  });
+});
+
 describe("the rule stays inside the vendor arm its census covers", () => {
   const src = codeOf(readFileSync(NORMALIZE_PATH, "utf8"));
 
@@ -486,6 +635,23 @@ describe("the rule stays inside the vendor arm its census covers", () => {
       consumers,
       "the census this rule is measured on covers ONE vendor; another arm reading it " +
         "is measured on nothing. The Workday ordinal class needs its own build.",
+    ).toEqual(["normalizePaylocity"]);
+  });
+
+  it("the suffix rule is read by exactly one vendor arm too", () => {
+    // Same reasoning, same hazard, same comment-stripped read: the grammar
+    // below was measured on ONE employer of ONE vendor, and the Workday
+    // ordinal and jurisdiction classes still need their own build.
+    const callsOnly = src.replace(/export function homeOfficePlaceSuffix\(/g, "DECL_MASKED(");
+    expect(
+      [...callsOnly.matchAll(/homeOfficePlaceSuffix\(/g)].length,
+      "the suffix rule is now read in more than one place",
+    ).toBe(1);
+    const arms = callsOnly.split(/(?=export function normalize[A-Z])/);
+    expect(
+      arms
+        .filter((body) => /homeOfficePlaceSuffix\(/.test(body))
+        .map((body) => body.match(/export function (normalize\w+)/)?.[1] ?? "(module scope)"),
     ).toEqual(["normalizePaylocity"]);
   });
 

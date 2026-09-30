@@ -277,14 +277,37 @@ beforeAll(async () => { db = await boot(); });
 afterAll(async () => { await db?.close(); });
 
 describe("the two runtimes agree on which stored rows were wrong", () => {
-  it("clears exactly the census rows the normalizer stops calling remote", async () => {
-    const expected = CENSUS.filter((r) => normalizerMode(r) === null).map((r) => r.stored.id);
+  it("clears exactly the census rows the normalizer stops calling remote AND this rule reads", async () => {
+    // THE SET SPLIT ON 2026-09-30 AND THIS FILE ONLY OWNS HALF OF IT. The
+    // normalizer now stops calling 37 of the 39 remote, not 35: a sibling
+    // migration (20260930202400) reads the SUFFIX grammar this file's residue
+    // rule declines — "Bozeman, MT - Home Office", the shape whose own header
+    // paragraph says it is deliberately untouched — and its own guard proves
+    // that half. So the parity asserted here is the one this file can keep:
+    // every row the module stops calling remote AND whose label this rule
+    // reads, and no other.
+    const stops = CENSUS.filter((r) => normalizerMode(r) === null);
+    expect(stops, "the module's silent set moved; re-read both repairs").toHaveLength(37);
+    const mine = stops.filter((r) => isHomeOfficeSiteLabel(r.stored.location)).map((r) => r.stored.id);
     // The measured figure, stated so a silent drift in either direction fails
     // rather than quietly re-agreeing on a different number.
-    expect(expected).toHaveLength(35);
+    expect(mine).toHaveLength(35);
     const cleared = await clearedIds(db);
     const censusCleared = cleared.filter((id) => CENSUS.some((r) => r.stored.id === id));
-    expect(censusCleared.sort()).toEqual([...expected].sort());
+    expect(censusCleared.sort()).toEqual([...mine].sort());
+  });
+
+  it("does not reach the suffix rows, which is why the sibling migration exists", async () => {
+    // TEETH FOR THE SPLIT ABOVE. If this file ever started clearing them, the
+    // residue rule would have been widened into the gate the audit refuted and
+    // the sibling would be dead code nobody noticed.
+    const bozeman = CENSUS.filter((r) => /Bozeman/.test(r.item.LocationName));
+    expect(bozeman).toHaveLength(2);
+    for (const r of bozeman) {
+      expect(normalizerMode(r), `${r.stored.id} is still a false remote in the module`).toBeNull();
+      expect((await modeOf(db, r.stored.id)).work_mode, `${r.stored.id} was cleared by the wrong file`)
+        .toBe("remote");
+    }
   });
 
   it("clears the boolean with the enum, so the badge and the filter cannot disagree", async () => {
@@ -300,10 +323,13 @@ describe("the two runtimes agree on which stored rows were wrong", () => {
     expect(await modeOf(db, stated.stored.id)).toEqual({ work_mode: "remote", remote: true });
   });
 
-  it("leaves the three rows whose label still names a place", async () => {
+  it("leaves the rows a human, not a building, made remote", async () => {
     const kept = CENSUS.filter((r) => normalizerMode(r) === "remote");
-    // Four: the three place-bearing labels plus the title-stated one above.
-    expect(kept).toHaveLength(4);
+    // Two, since 2026-09-30: the sentence offering the applicant their choice
+    // of home office, and the posting whose own title says Prime Remote. The
+    // two Montana rows left this set when the suffix rule shipped — they are
+    // still remote in the database here, and the case above says so.
+    expect(kept).toHaveLength(2);
     for (const r of kept) {
       expect((await modeOf(db, r.stored.id)).work_mode, `${r.stored.id} was demoted`).toBe("remote");
     }
