@@ -1,13 +1,13 @@
 /**
  * ONE TIMEOUT POLICY FOR THE FULL-PAGE-MOUNT GUARDS.
  *
- * WHY THIS EXISTS. Twelve files mounted a whole page in jsdom and each carried
- * its own hand-copied waiting budget: `const SLOW = { timeout: 4000 }` in
- * eight of them, 5000 in two, 8000 in one, seven inline `{ timeout: 5000 }`
- * literals in another. None of those numbers was a measurement -- 4000 was a
- * convention copied forward -- and every one of them was wrong in the same
- * way, which is the argument helpers/catalog.ts already makes about four
- * guards with four matchers.
+ * WHY THIS EXISTS. Eighteen files mounted a whole page in jsdom and each
+ * carried its own hand-copied waiting budget: ten at 4000, three at 5000, one
+ * at 6000, one at 8000, and fifteen inline five-second literals across two
+ * more. None of those numbers was a measurement -- 4000 was a convention
+ * copied forward -- and every one of them was wrong in the same way, which is
+ * the argument helpers/catalog.ts already makes about four guards with four
+ * matchers.
  *
  * THE WAY THEY WERE WRONG. vitest's default per-test budget is 5 s for the
  * WHOLE case. A per-assertion budget of 4000-8000 ms sits at or above it, so
@@ -41,7 +41,15 @@
  *     a-deliberate-fallback-must-not-read-as-an-outage      873 ms
  *     explore-claims                                        248 ms
  *
- * One file was over the 5 s ceiling and four more were within 1.4x of it.
+ * Ranking every case in that run against the budget it actually runs under
+ * added six more files to the twelve first reported: four whose per-assertion
+ * budget sat AT or ABOVE the per-test budget and so could never be reached
+ * (a-coverage-percentage 5000, the-pay-controls inline 5000, a-role-still-up
+ * 6000, a-refused-share 8000), and two with no per-test budget and no margin
+ * (a-load-more-that-killed-the-board, slowest case 10351 ms loaded against
+ * 1389 ms quiet; a-list-that-ended-in-nothing, 4920 ms).
+ *
+ * One file was over the 5 s ceiling and four more were within 1.6x of it.
  * Nothing in the suite controls how loaded the machine is, so 1.4x is not
  * headroom -- it is the next file to fail. The suite already holds single
  * cases at 19.9 s, 12.7 s and 11.2 s under the same load, so 30 s is this
@@ -65,9 +73,14 @@
  *
  * WHAT THIS IS NOT. It is not a licence to widen the budget when a control is
  * slow for a reason. If a case needs more than this, the thing to find out is
- * what it is waiting for -- explore-claims was re-reading all 707 migrations
- * on each of 25 calls, and that was fixed by not doing it rather than by
- * waiting longer for it.
+ * what it is waiting for. Two cases in this sweep were slow for a reason and
+ * neither took a bigger budget: explore-claims was re-reading all 707
+ * migrations on each of 25 calls (2.51 s -> 315 ms once read once), and
+ * a-table-nothing-reads-yet-is-still-load-bearing ran an UNBOUNDED `[\s\S]*?`
+ * over 2.6 MB of joined migrations six times (1112 ms -> 6 ms once bounded to
+ * `[^;]*?`, the statement it was always meant to stay inside). That file is
+ * not in the list below and takes no budget from here: it was fixed by being
+ * made fast, which is the outcome to prefer.
  */
 
 /**
