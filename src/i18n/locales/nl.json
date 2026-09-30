@@ -4797,6 +4797,8 @@
     "autoBlurb": "De agent vult de sollicitatie zelf in en verstuurt hem.",
     "clickTitle": "Ingevuld, jij drukt op versturen",
     "clickBlurb": "Deze gebruiken een CAPTCHA of een menselijke controle. Die lossen of omzeilen we nooit, dus je sollicitatie komt kant-en-klaar aan en jij verstuurt hem.",
+    "unmeasuredTitle": "Deze lezen we ook",
+    "unmeasuredBlurb": "Hun vacatures staan op het bord. We hebben hun sollicitatieformulieren niet onderzocht, dus we doen geen uitspraak over het bereik van de agent.",
     "allTitle": "Sollicitaties voor je klaargezet",
     "allBlurb": "We halen vacatures rechtstreeks uit deze systemen en zetten je sollicitatie voor elke vacature klaar."
   },

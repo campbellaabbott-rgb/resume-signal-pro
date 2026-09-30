@@ -4797,6 +4797,8 @@
     "autoBlurb": "L'agent remplit et envoie lui-même la candidature.",
     "clickTitle": "Remplie, vous appuyez sur envoyer",
     "clickBlurb": "Ceux-ci utilisent un CAPTCHA ou une vérification humaine. Nous ne les résolvons ni ne les contournons : votre candidature arrive prête et vous l'envoyez.",
+    "unmeasuredTitle": "Nous lisons aussi celles-ci",
+    "unmeasuredBlurb": "Leurs offres figurent sur le tableau. Nous n'avons pas examiné leurs formulaires de candidature ; nous n'affirmons donc rien sur la portée de l'agent.",
     "allTitle": "Candidatures préparées pour vous",
     "allBlurb": "Nous récupérons les offres directement dans ces systèmes et préparons votre candidature pour chacune."
   },

@@ -37,11 +37,19 @@ import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
 /** Vendor pill: the platform name, and its live count when we have one. */
 function VendorPill({ v, count, auto = false }: { v: BoardSource; count?: number; auto?: boolean }) {
   return (
-    <li className="rounded-lg border bg-background px-3 py-2 flex items-baseline gap-2">
+    <li className="rounded-lg border bg-background px-3 py-2 flex items-baseline gap-2 min-w-0">
       {auto && <Bot className="w-3.5 h-3.5 text-primary self-center flex-shrink-0" aria-hidden />}
-      <span className="text-sm font-medium">{v.label}</span>
+      {/* THE COUNT NEVER CLIPS; THE NAME MAY. A pill is a name plus a measured
+          number inside a fixed grid cell, and "SmartRecruiters 75,100" is wider
+          than a third of a card: measured on the live page, four pills had
+          their number cut off by the card edge — Greenhouse rendered as
+          "52,31". A truncated NAME is still a name, a truncated NUMBER is a
+          different number, and this panel's whole claim is that the figures
+          are checkable. So the label shrinks and ellipses, the number is
+          shrink-0, and the full name stays available as a title. */}
+      <span className="text-sm font-medium truncate min-w-0" title={v.label}>{v.label}</span>
       {count !== undefined && (
-        <span className="text-xs text-muted-foreground tabular-nums">
+        <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0 ml-auto">
           {count.toLocaleString()}
         </span>
       )}
@@ -89,6 +97,11 @@ export function AtsCoverage({
   // shows no mark and the legend says why.
   const tierOf = new Map<string, AtsVendor["tier"]>(ATS_VENDORS.map((v) => [v.key, v.tier]));
   const stripSources = order(SERVING_SOURCES);
+  // Serving, but carrying no measured apply tier — so neither auto nor click
+  // card can hold them. DERIVED from the same two lists the cards are built
+  // from rather than re-listed by hand: a vendor added to ATS_VENDORS leaves
+  // this set automatically, and one added to the board without a tier joins it.
+  const unmeasuredServing = SERVING_SOURCES.filter((v) => !tierOf.has(v.key));
 
   // Counts are of a live, churning table. Saying when they were true is the
   // difference between a measurement and a decoration.
@@ -206,6 +219,29 @@ export function AtsCoverage({
           blurb: t("atsCoverage.clickBlurb", "These use a CAPTCHA or a human check. We never solve or bypass one, so your application arrives ready and you send it."),
           vendors: order(CLICK_VENDORS),
         },
+        // THE SAME FIX THE STRIP ALREADY CARRIES, APPLIED TO THE LAYOUT THAT
+        // ACTUALLY QUOTES A TOTAL. The comment above records that the strip
+        // once showed fifteen sources under a nineteen-source claim and was
+        // corrected to SERVING_SOURCES; this branch was not, so the sentence
+        // read "read straight from the 19 applicant tracking systems BELOW"
+        // over two cards holding fifteen. Worse here than in the strip,
+        // because this variant also prints openTotal: the headline counted
+        // nineteen sources while the breakdown under it could only account for
+        // fifteen, so the pills could never sum to the number above them
+        // (~754,763 against ~666,000 on the live page, the ~88,000 gap being
+        // exactly these four). A reader adding up the tiles finds the panel
+        // contradicting itself, which is the one thing a "checkable figures"
+        // panel must not do. Their absence is not a tier claim: they have no
+        // measured apply tier, and the blurb says so instead of implying one.
+        ...(unmeasuredServing.length
+          ? [{
+              key: "unmeasured",
+              Icon: Database,
+              title: t("atsCoverage.unmeasuredTitle", "We read these too"),
+              blurb: t("atsCoverage.unmeasuredBlurb", "Their postings are on the board. We have not sampled their application forms, so we make no claim about the agent's reach on them."),
+              vendors: order(unmeasuredServing),
+            }]
+          : []),
       ]
     : [
         {

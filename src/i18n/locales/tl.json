@@ -4797,6 +4797,8 @@
     "autoBlurb": "Ang agent mismo ang bubuo at magpapadala ng aplikasyon.",
     "clickTitle": "Napunan na, ikaw ang pipindot ng send",
     "clickBlurb": "May CAPTCHA o pagsusuri ng tao ang mga ito. Hindi namin nilulutas o nilalampasan, kaya handa nang dumating ang aplikasyon mo at ikaw ang magpapadala.",
+    "unmeasuredTitle": "Binabasa rin namin ang mga ito",
+    "unmeasuredBlurb": "Nasa board ang kanilang mga trabaho. Hindi pa namin nasusuri ang kanilang mga application form, kaya wala kaming inaangkin tungkol sa abot ng agent.",
     "allTitle": "Mga aplikasyong inihanda para sa iyo",
     "allBlurb": "Direktang kinukuha namin ang mga trabaho sa mga sistemang ito at inihahanda ang aplikasyon mo sa bawat isa."
   },

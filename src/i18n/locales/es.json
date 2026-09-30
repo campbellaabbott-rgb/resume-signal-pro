@@ -4797,6 +4797,8 @@
     "autoBlurb": "El agente completa y envía la solicitud por su cuenta.",
     "clickTitle": "Rellenada; tú pulsas enviar",
     "clickBlurb": "Estos usan CAPTCHA o una verificación humana. Nunca los resolvemos ni los evitamos, así que tu solicitud llega lista y la envías tú.",
+    "unmeasuredTitle": "También leemos estas",
+    "unmeasuredBlurb": "Sus ofertas están en el tablón. No hemos analizado sus formularios de solicitud, así que no afirmamos nada sobre el alcance del agente.",
     "allTitle": "Solicitudes preparadas para ti",
     "allBlurb": "Extraemos las ofertas directamente de estos sistemas y preparamos tu solicitud para cada una."
   },

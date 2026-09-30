@@ -4797,6 +4797,8 @@
     "autoBlurb": "Der Agent füllt die Bewerbung selbst aus und sendet sie ab.",
     "clickTitle": "Ausgefüllt, Sie drücken senden",
     "clickBlurb": "Diese nutzen ein CAPTCHA oder eine menschliche Prüfung. Wir lösen und umgehen keines – Ihre Bewerbung kommt fertig an und Sie senden sie.",
+    "unmeasuredTitle": "Diese lesen wir ebenfalls",
+    "unmeasuredBlurb": "Ihre Stellenanzeigen sind auf dem Board. Wir haben ihre Bewerbungsformulare nicht geprüft und machen daher keine Aussage über die Reichweite des Agenten.",
     "allTitle": "Bewerbungen für Sie vorbereitet",
     "allBlurb": "Wir holen Stellen direkt aus diesen Systemen und bereiten Ihre Bewerbung für jede einzelne vor."
   },

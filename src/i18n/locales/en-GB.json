@@ -4797,6 +4797,8 @@
     "autoBlurb": "The agent completes and submits the application itself.",
     "clickTitle": "Filled in, you press send",
     "clickBlurb": "These use a CAPTCHA or a human check. We never solve or bypass one, so your application arrives ready and you send it.",
+    "unmeasuredTitle": "We read these too",
+    "unmeasuredBlurb": "Their postings are on the board. We have not sampled their application forms, so we make no claim about the agent's reach on them.",
     "allTitle": "Applications prepared for you",
     "allBlurb": "We pull jobs directly from these systems and prepare your application for each one."
   },

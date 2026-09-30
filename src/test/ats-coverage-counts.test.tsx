@@ -468,3 +468,52 @@ describe("the strip names every source the board serves, and its sentence counts
     expect(src, "the strip must never fall back to the measured subset").not.toMatch(/order\(ATS_VENDORS\)\.map/);
   });
 });
+
+describe("the two-card layout counts the platforms it actually shows", () => {
+  // EVERY TEST ABOVE RENDERS THE OFFLINE BRANCH. `route()` defaults
+  // senderOnline to false, and that branch renders ONE card built from
+  // SERVING_SOURCES — which is why "names every platform the config carries"
+  // passed for months while the online layout was wrong. The online branch
+  // builds two cards from AUTO_VENDORS + CLICK_VENDORS (fifteen) and printed
+  // them under a sentence reading "read straight from the 19 applicant
+  // tracking systems BELOW", with a board-wide openTotal above them: measured
+  // on the live page 2026-09-30, 754,763 over tiles summing to ~666,000,
+  // Paylocity, UKG, ADP and JazzHR missing. These cases render the branch the
+  // visitor with a live sender actually sees.
+  it("names every SERVING source, not only the ones with a measured tier", async () => {
+    route(facets({ greenhouse: 48_102 }), true);
+    render(<AtsCoverage />);
+    await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
+    for (const v of SERVING_SOURCES) {
+      expect(screen.getByText(v.label), `${v.label} missing from the online layout`).toBeInTheDocument();
+    }
+    // the four that were absent, named so a regression reads as itself
+    for (const v of UNMEASURED_ATS_SOURCES) {
+      expect(screen.getByText(v.label), `${v.label} is served and must be shown`).toBeInTheDocument();
+    }
+  });
+
+  it("does not show a DORMANT source — its absence is the point", async () => {
+    route(facets({ greenhouse: 48_102 }), true);
+    render(<AtsCoverage />);
+    await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
+    for (const v of DORMANT_SOURCES) {
+      expect(screen.queryByText(v.label), `${v.label} serves nothing and must not be listed`).not.toBeInTheDocument();
+    }
+  });
+
+  // THE ASSERTION THAT WOULD HAVE CAUGHT IT. The sentence says "the N systems
+  // below"; N came from SERVING_SOURCES while "below" came from two other
+  // lists. Binding the printed number to the rendered labels is the only form
+  // of this check that cannot drift, because it reads BOTH from the DOM.
+  it("the number in the sentence equals the number of platforms rendered under it", async () => {
+    route(facets({ greenhouse: 48_102 }, 561_004), true);
+    render(<AtsCoverage />);
+    await waitFor(() => expect(screen.getByText("48,102")).toBeInTheDocument());
+    const shown = SERVING_SOURCES.filter((v) => screen.queryByText(v.label) !== null).length;
+    expect(
+      screen.getByText(new RegExp(`read straight from the ${shown} applicant tracking systems below`, "i")),
+      `the sentence must claim ${shown} — the number of platforms actually on screen`,
+    ).toBeInTheDocument();
+  });
+});
