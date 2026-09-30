@@ -22,6 +22,7 @@
 // So there are three states now, and the point of this guard is that the
 // deliberate one and the broken one must never render the same words.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -51,7 +52,13 @@ import Jobs from "../pages/Jobs";
 
 const ROOT = resolve(__dirname, "../..");
 const LOCALE_DIR = resolve(ROOT, "src/i18n/locales");
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// so a stuck wait could only be reported as "Test timed out in 5000ms",
+// naming nothing. The slowest case measured 873 ms on the 2026-09-30 loaded
+// run -- the most headroom here, and it takes the shared policy so there is
+// one number to change, not eleven.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const ROWS = Array.from({ length: 3 }, (_, i) => ({
   id: `j${i}`, company: `Employer ${i}`, title: `Nurse Role ${i}`, location: "Remote",

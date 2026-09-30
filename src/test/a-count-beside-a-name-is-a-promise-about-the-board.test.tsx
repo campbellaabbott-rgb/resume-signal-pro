@@ -39,6 +39,7 @@
 // popover opened, the row text read); source guards against comment-stripped
 // text for the server hops a render cannot reach; teeth proven on mutants.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -68,16 +69,6 @@ import Jobs, { vendorOptionsWithCounts } from "../pages/Jobs";
 import { readBoardFacets } from "../lib/board-facets";
 import { ALL_BOARD_SOURCES, DORMANT_SOURCES, SERVING_SOURCE_KEYS } from "../config/ats-vendors";
 
-// A CASE THAT CHAINS SEVERAL WAITS NEEDS A BUDGET LARGER THAN THEIR SUM. Every
-// wait below is bounded (SLOW, 4 s), but vitest's default per-test budget is
-// 5 s for the WHOLE case, and a case that clicks six chips in sequence can
-// spend that under load without any single wait failing. Three gate runs on
-// 2026-09-15 each timed out a different case of this kind at 4 workers while
-// the same file passed alone every time. The budget is set here, per file,
-// rather than in vitest.config.ts, so it names the reason and covers only the
-// click-through files that chain waits.
-vi.setConfig({ testTimeout: 30_000 });
-
 const ROOT = resolve(__dirname, "../..");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const FN = strip(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
@@ -85,7 +76,14 @@ const JOBS = strip(readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8"));
 const LOCALES = resolve(ROOT, "src/i18n/locales");
 const LOCALE_FILES = readdirSync(LOCALES).filter((f) => f.endsWith(".json")).sort();
 const jp = (f: string) => JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, unknown>;
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, now shared: helpers/mount-budget.ts. This file already
+// carried the 30 s per-test budget (it was written after the 2026-09-15 gate
+// runs that found the need), so the retired comment above this line has
+// moved there along with the eleven siblings that lacked it. What it still
+// had wrong was the per-assertion half: SLOW was 4000, and its slowest case
+// measured 3724 ms under the 2026-09-30 loaded run -- inside its own wait
+// budget by 276 ms.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 /** The facets action, from its `if` to the next action's. */
 function facetsAction(): string {

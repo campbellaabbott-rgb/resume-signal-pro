@@ -41,6 +41,7 @@
 // reader sees, so they are read off the rendered DOM — not grepped out of the
 // source, where a swapped call site would still look fine.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -67,7 +68,12 @@ function stubTable() {
 
 import Jobs from "../pages/Jobs";
 
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// so a stuck wait could only be reported as "Test timed out in 5000ms",
+// naming nothing. The slowest case measured 1753 ms on the 2026-09-30 loaded
+// run.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const ROWS = [
   {

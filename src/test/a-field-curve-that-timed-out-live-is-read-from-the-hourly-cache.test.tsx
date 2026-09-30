@@ -30,6 +30,7 @@
 // file: the names live in constants, so a guard here cannot be satisfied by
 // its own prose.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -66,7 +67,12 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 const GHOST_PAGE = codeOf(read("src/pages/GhostJobIndex.tsx"));
 const JOBS_PAGE = codeOf(read("src/pages/Jobs.tsx"));
-const SLOW = { timeout: 8000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW here was 8000 -- ABOVE vitest's default 5000 ms per-test
+// budget, so it was dead on arrival: no wait could ever reach it, and every
+// stuck one was reported as "Test timed out in 5000ms" instead. The slowest
+// case measured 2674 ms on the 2026-09-30 loaded run.
+vi.setConfig(MOUNT_TEST_BUDGET);
 const body = () => document.body.textContent ?? "";
 const iso = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
 const HOUR = 3_600_000;
