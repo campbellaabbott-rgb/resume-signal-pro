@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef } from 'react';
 import { postTrackEvent } from '@/lib/track-transport';
 
 // Cohort dimensions for segmentation
+export const TRAFFIC_SOURCES = ['organic','paid','social','referral','direct','email'] as const;
+
 export interface CohortData {
   // Traffic source cohorts
-  trafficSource: 'organic' | 'paid' | 'social' | 'referral' | 'direct' | 'email';
+  trafficSource: (typeof TRAFFIC_SOURCES)[number];
   utmSource: string | null;
   utmMedium: string | null;
   utmCampaign: string | null;
@@ -50,45 +52,104 @@ const getCohortSessionId = (): string => {
 // event with the browser's one id (src/lib/track-transport.ts). This file
 // used to keep a private copy under a private storage key.
 
+/* Declared ABOVE its callers, not below them. detectTrafficSource reads this,
+ * and a const arrow function referenced before its initialiser runs is a
+ * temporal-dead-zone throw — the shape that took ranked search down silently
+ * for days. It happens to be safe here because nothing calls the detector
+ * during module evaluation; "happens to be" is not the standard this repo
+ * holds after that incident. */
+const getReferrerDomain = (): string | null => {
+  if (!document.referrer) return null;
+  try {
+    return new URL(document.referrer).hostname;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * THE SEARCH BRANCH WAS UNREACHABLE, WHICH IS WHY THIS FUNNEL HAS NEVER SHOWN
+ * A SEARCH VISIT.
+ *
+ * The referral test ran first and returned for ANY external referrer, so the
+ * search test below it could never be reached: a visitor arriving from
+ * google.com has a referrer that is not our hostname, and left as 'referral'.
+ * Checked by running the old order over every engine in its own list — all of
+ * them answered 'referral', and no input at all could produce 'organic'. The
+ * value existed in the type, in the dashboard and in the cohort reader, and
+ * nothing could ever emit it.
+ *
+ * What that cost: 30 days to 2026-10-01 read 131,336 direct / 22 referral /
+ * 15 social and NO organic row, and the 22 is every external referrer there
+ * is — search, blogs and all. The one channel that could grow this was not
+ * merely small on the dashboard, it was unrepresentable.
+ *
+ * MATCHED ON THE HOSTNAME, NOT ON A SUBSTRING OF THE URL. The old tests were
+ * `referrer.includes('google')` against the whole referrer string, so
+ * https://example.com/?q=google read as a Google visit, and
+ * `referrer.includes(window.location.hostname)` made
+ * https://notresumebooster.work.example.com one of ours. getReferrerDomain()
+ * already parses the host properly for referrerDomain; this now uses it.
+ */
+
+/** `host` is `name` or a subdomain of it — never a substring of either. */
+const hostIs = (host: string, name: string): boolean =>
+  host === name || host.endsWith(`.${name}`);
+const hostIn = (host: string, names: readonly string[]): boolean =>
+  names.some((n) => hostIs(host, n));
+
+const SOCIAL_HOSTS = [
+  'facebook.com', 'fb.com', 'twitter.com', 'x.com', 'linkedin.com', 'lnkd.in',
+  'instagram.com', 'tiktok.com', 'youtube.com', 'youtu.be', 'reddit.com',
+  'pinterest.com', 'threads.net', 'bsky.app', 't.co',
+] as const;
+
+const SEARCH_HOSTS = [
+  'bing.com', 'duckduckgo.com', 'yahoo.com', 'search.yahoo.com', 'baidu.com',
+  'yandex.com', 'yandex.ru', 'ecosia.org', 'startpage.com', 'qwant.com',
+  'search.brave.com', 'naver.com', 'sogou.com', 'ask.com', 'aol.com',
+  'seznam.cz', 'mojeek.com',
+] as const;
+
+/* Google needs its own test: it serves search from ~190 ccTLDs (google.co.uk,
+ * google.de, …) that no fixed list keeps up with, while several of its
+ * subdomains are not search at all and must stay 'referral' rather than be
+ * counted as a search visit we did not earn. GB is a first-class market for
+ * this board, so reading google.co.uk as a blog link is not a rounding error. */
+const GOOGLE_HOST = /(^|\.)google(\.[a-z]{2,3}){1,2}$/;
+const GOOGLE_NOT_SEARCH = ['mail', 'docs', 'drive', 'groups', 'news', 'translate', 'sites', 'meet'];
+const isGoogleSearch = (host: string): boolean =>
+  GOOGLE_HOST.test(host) && !GOOGLE_NOT_SEARCH.includes(host.split('.')[0]);
+
 // Detect traffic source from URL and referrer
-const detectTrafficSource = (): CohortData['trafficSource'] => {
+export const detectTrafficSource = (): CohortData['trafficSource'] => {
   const params = new URLSearchParams(window.location.search);
   const utmSource = params.get('utm_source')?.toLowerCase();
   const utmMedium = params.get('utm_medium')?.toLowerCase();
-  const referrer = document.referrer;
-  
-  // Check for paid traffic
+  const refHost = getReferrerDomain();
+
+  // A campaign the visitor arrived under outranks where they came from: a paid
+  // click and an email click both usually carry a referrer too.
   if (utmMedium === 'cpc' || utmMedium === 'ppc' || utmMedium === 'paid') {
     return 'paid';
   }
-  
-  // Check for email traffic
   if (utmSource === 'email' || utmMedium === 'email') {
     return 'email';
   }
-  
-  // Check for social traffic
-  const socialDomains = ['facebook', 'twitter', 'linkedin', 'instagram', 'tiktok', 'youtube', 'reddit', 'pinterest'];
-  if (utmSource && socialDomains.some(s => utmSource.includes(s))) {
+  if (utmSource && SOCIAL_HOSTS.some((h) => utmSource.includes(h.split('.')[0]))) {
     return 'social';
   }
-  if (referrer && socialDomains.some(s => referrer.includes(s))) {
-    return 'social';
-  }
-  
-  // Check for referral traffic
-  if (referrer && !referrer.includes(window.location.hostname)) {
-    return 'referral';
-  }
-  
-  // Check for organic search
-  const searchEngines = ['google', 'bing', 'yahoo', 'duckduckgo', 'baidu'];
-  if (referrer && searchEngines.some(s => referrer.includes(s))) {
-    return 'organic';
-  }
-  
-  // Direct traffic
-  return 'direct';
+
+  // No referrer, or our own pages: nothing external brought them here.
+  if (!refHost) return 'direct';
+  if (hostIs(refHost, window.location.hostname)) return 'direct';
+
+  // Named sources BEFORE the catch-all, which is the ordering bug this block
+  // exists to end. 'referral' means "external, and none of the above" — put it
+  // first and every other label becomes unreachable.
+  if (hostIn(refHost, SOCIAL_HOSTS)) return 'social';
+  if (isGoogleSearch(refHost) || hostIn(refHost, SEARCH_HOSTS)) return 'organic';
+  return 'referral';
 };
 
 // Get device type
@@ -122,15 +183,6 @@ const getOS = (): string => {
 };
 
 // Get referrer domain
-const getReferrerDomain = (): string | null => {
-  if (!document.referrer) return null;
-  try {
-    return new URL(document.referrer).hostname;
-  } catch {
-    return null;
-  }
-};
-
 // Get week number
 const getWeekNumber = (): number => {
   const now = new Date();
