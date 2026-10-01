@@ -110,7 +110,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.82"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.83"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -4126,12 +4126,40 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             patch.salary_period = rp?.period ?? null;
             patch.salary_currency = rp?.currency ?? null;
           }
-          if (typeof row.remote === "boolean" && row.remote !== prev.remote) {
-            patch.remote = row.remote;
-            note("remote", prev.remote, row.remote);
-            // Rationale: docs/job-board-index-notes.md#n115-nextmode
-            const nextMode = (row as Record<string, unknown>).work_mode ?? null;
-            if (nextMode !== prev.work_mode) {
+          // Rationale: docs/job-board-index-notes.md#n115-nextmode
+          if (typeof row.remote === "boolean") {
+            if (row.remote !== prev.remote) {
+              patch.remote = row.remote;
+              note("remote", prev.remote, row.remote);
+            }
+            // A REFUSAL THAT CANNOT BE WRITTEN IS NOT A REFUSAL. This used to
+            // sit INSIDE the `row.remote !== prev.remote` test above, so the
+            // trinary could only move when the boolean moved with it — and
+            // remote is false for hybrid, for onsite AND for null, so every
+            // transition inside that set was unwritable. put() above cannot
+            // carry them either: it is stated-only and returns on a null.
+            //
+            // Net effect, measured live 2026-10-01 on
+            // ukg:…:692bd5bf-2be4-4ddd-9e24-e32c507bb43f: a UKG dropdown
+            // reading On-site under the title "Pre-Visit Specialist I - Call
+            // Center *Hybrid*". normalizeUkg refuses that contradiction and
+            // answers null, as .78 intended — and the row still served
+            // "hybrid", because hybrid→null leaves remote false→false and
+            // nothing wrote it. The fabrication .78 was shipped to remove
+            // outlived the bundle that removed it, on every row where the
+            // correction did not happen to flip the boolean.
+            //
+            // The pair is ONE fact (every normalizer derives
+            // `remote: workMode === "remote"` from the one trinary), so the
+            // gate is "did the normalizer compute the pair at all", not "did
+            // the boolean change". A null under that gate is this visit's
+            // computed answer, not vendor silence — which is the distinction
+            // the stated-only put() cannot make.
+            const nextMode = ((row as Record<string, unknown>).work_mode ?? null) as string | null;
+            // `patch.work_mode === undefined` keeps this from re-noting a
+            // non-null change put() already wrote: two change-log rows for one
+            // edit would overstate the employer's own edits.
+            if (nextMode !== prev.work_mode && patch.work_mode === undefined) {
               patch.work_mode = nextMode;
               note("work_mode", prev.work_mode, nextMode);
             }
