@@ -1351,7 +1351,7 @@ const PINNED = {
   // lines moved to docs/job-board-index-notes.md (483KB of a 1.2MB file; the
   // 4.5MB upload cap counts raw source). Code proven identical line-for-line
   // after comment stripping. sources.ts UNCHANGED (hash below still pins .80).
-  buildVersion: "2026-09-09.81",
+  buildVersion: "2026-09-09.82",
 };
 
 /**

@@ -177,3 +177,68 @@ describe.skipIf(!built)("the built sitemap advertises no posting URL without a p
     expect(advertisedPostingPaths(xml).length).toBeLessThanOrEqual(cap);
   });
 });
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * AND THE ENDPOINT ITSELF, BECAUSE REMOVING THE SIGN DOES NOT CLOSE THE ROAD.
+ *
+ * The describe above pins robots.txt, on the reasoning stated at the top of
+ * this file: "the lever that produced the 767,391 was one line in a text file,
+ * not code". That was wrong, and it cost a week of traffic to find out.
+ *
+ * Taking the Sitemap line out of robots.txt removed the ADVERTISEMENT. The
+ * board function kept SERVING the index, and a crawler does not consult
+ * robots.txt to decide whether to re-fetch a URL it already has — Google had
+ * already counted 767,391 of them. Measured live on 2026-10-01, eight days
+ * after the "fix": ?action=sitemap still answered with a 30-page index, page 0
+ * still carried 24,449 URLs in 3.3 MB, uncached at the CDN, 7.4 s per page,
+ * and 200 to Bytespider, Baiduspider, PetalBot and curl alike. ~733,000 URLs
+ * at ~81 KB each is about 59 GB of uncached egress per full crawl, per
+ * crawler. The owner reported it as a flood of foreign traffic and asked
+ * whether they were being spammed. They were not; we were serving it.
+ *
+ * So this half checks the SERVER, not the text file: there is no branch left
+ * that builds a sitemap of board URLs, and the action that used to is answered
+ * 410 — the terminal status that empties a crawler's queue, where a 404 is
+ * retried for months.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+describe("the board function serves no sitemap, and says so terminally", () => {
+  const FN = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
+
+  it("reads the function, not an empty string", () => {
+    expect(FN.length, "the board function read as empty — every check below would pass vacuously")
+      .toBeGreaterThan(50_000);
+    expect(FN, "the sitemap action is gone entirely, so re-point this file").toContain('"sitemap"');
+  });
+
+  it("builds no sitemap of board URLs anywhere in the function", () => {
+    // The two shapes it used to emit. Either one returning is the 767,391 back.
+    for (const shape of ["<sitemapindex", "<urlset"]) {
+      expect(
+        FN.includes(shape),
+        `the function builds ${shape} again — that is a sitemap of /jobs?job= shells, ` +
+          "which is the thing this whole file exists to keep off the wire",
+      ).toBe(false);
+    }
+    expect(
+      /<loc>/.test(FN),
+      "the function emits sitemap <loc> entries again",
+    ).toBe(false);
+  });
+
+  it("answers the retired action 410, not 404 and not a payload", () => {
+    const i = FN.indexOf('u.searchParams.get("action") === "sitemap"');
+    expect(i, "nothing handles the retired sitemap action — it must be answered, not fall through " +
+      "to the generic 405, or crawlers keep retrying it").toBeGreaterThan(0);
+    const branch = FN.slice(i, i + 700);
+    expect(branch, "the retired sitemap action must answer 410 Gone; a 404 is retried for months")
+      .toMatch(/status:\s*410/);
+  });
+
+  it("handles it exactly once, so no earlier branch can still serve one", () => {
+    const hits = [...FN.matchAll(/u\.searchParams\.get\("action"\) === "sitemap"/g)].length;
+    expect(hits, "more than one sitemap branch: the 410 may sit behind one that still serves")
+      .toBe(1);
+  });
+});

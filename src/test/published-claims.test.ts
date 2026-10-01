@@ -1339,8 +1339,28 @@ describe("dropped postings are unreachable by EVERY route", () => {
   });
 
   it("the sitemap does not submit them to search engines", () => {
-    const sm = fn.slice(fn.indexOf('.select("id, posted_at")'));
-    expect(sm.slice(0, 300)).toMatch(/\.is\("missing_since", null\)/);
+    // SATISFIED BY THERE BEING NO SITEMAP, since 2026-10-01 — the route was
+    // answered 410 after it turned out to be still serving ~733,000
+    // /jobs?job= URLs a week after robots.txt stopped advertising it.
+    //
+    // Written as a real either/or rather than deleted. The property is about
+    // a dropped posting never reaching a crawler, and "no sitemap exists" is
+    // a stronger way to hold it than "the sitemap filters correctly" — but
+    // only while no sitemap exists, so the filter arm has to stay armed for
+    // whoever brings one back. The previous form could not tell the two
+    // apart: it did indexOf on the query's select, and when that query went
+    // away slice(-1) handed it the file's last newline, which is the shape of
+    // a check reading nothing rather than a check with an answer.
+    const at = fn.indexOf('.select("id, posted_at")');
+    if (at === -1) {
+      expect(
+        /<urlset|<sitemapindex/.test(fn),
+        "no sitemap query, yet the function still emits sitemap XML — it is building one " +
+          "from somewhere else and this check can no longer see what it submits",
+      ).toBe(false);
+      return;
+    }
+    expect(fn.slice(at, at + 300)).toMatch(/\.is\("missing_since", null\)/);
   });
 });
 

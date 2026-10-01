@@ -101,9 +101,16 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 // Rationale: docs/job-board-index-notes.md#n001-sitemap-days
+// RETAINED WITH NO READER, ON PURPOSE. Its one consumer — the live sitemap
+// index — was retired on 2026-10-01 (see the 410 in the GET handler). Four
+// guards read this declaration as a comment-stripper canary, asserting it
+// survives codeOf: a stripper that eats a region of this file is invisible
+// unless something named is known to live there. Deleting it would blind
+// them rather than tidy the file. See
+// a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.81"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.82"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -7139,76 +7146,44 @@ Deno.serve(async (req) => {
   // Rationale: docs/job-board-index-notes.md#n198-req-method-get
   if (req.method === "GET") {
     const u = new URL(req.url);
-    // No page param → a sitemapindex with one entry per day of the freshness
-    // window. Coverage still tracks the dated corpus (every dated posting
-    // falls in exactly one day), but the page count no longer depends on a
-    // live COUNT and no page depends on a deep OFFSET.
-    if (u.searchParams.get("action") === "sitemap" && !u.searchParams.has("page")) {
-      // One page per DAY of the freshness window, not count/10k. Offset-based
-      // paging made page N cost a scan of N*10,000 rows, and the deep pages
-      // timed out — silently, see the page handler below. A day is a bounded,
-      // indexed slice that never gets more expensive as the corpus grows.
-      const pages = SITEMAP_DAYS;
-      const self = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      const entries = Array.from({ length: pages }, (_, i) =>
-        `<sitemap><loc>${self}?action=sitemap&amp;page=${i}</loc></sitemap>`).join("");
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries}</sitemapindex>`;
-      return new Response(xml, {
-        headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=21600" },
-      });
-    }
+    // THE SITEMAP THIS SERVED IS GONE, AND 410 IS HOW A CRAWLER LEARNS THAT.
+    //
+    // On 2026-09-23 the second sitemap line was taken out of robots.txt because
+    // the index behind it asked crawlers to index 767,391 board URLs that every
+    // one of them served the same bytes for. Only the ADVERTISEMENT was removed.
+    // This endpoint kept serving, and a crawler does not need robots.txt to
+    // reach a URL it already has.
+    //
+    // Measured 2026-10-01, a week after that change: the index still answered
+    // with its 30 pages, page 0 still listed 24,449 URLs in 3.3 MB, uncached at
+    // the edge, 7.4 s a page, and 200 to Bytespider, Baiduspider, PetalBot and
+    // curl alike. A full walk is ~733,000 URLs at ~81 KB each: about 59 GB of
+    // uncached egress, per crawler, as often as each one cares to repeat it.
+    // That is what the owner saw as a flood of foreign traffic, and none of it
+    // was anybody attacking us — we were handing it out.
+    //
+    // The guard written at the time pins robots.txt, reasoning that the lever
+    // behind the 767,391 was one line in a text file and not code. The lever
+    // was the road, not the sign. the-sitemap-never-advertises-a-posting-url-
+    // with-no-page.test.ts now holds both.
+    //
+    // 410 and not 404, deliberately: a 404 says "not here, maybe later" and
+    // crawlers retry it for months, while 410 is the terminal one that drops
+    // the URL from the queue. Nothing in this repo calls this action — no code,
+    // no robots line, no test asserting it exists — so there is no caller to
+    // break. Cached for a week so the refusal does not become its own traffic.
     if (u.searchParams.get("action") === "sitemap") {
-      const page = Math.max(0, Math.min(SITEMAP_DAYS - 1, Number(u.searchParams.get("page")) || 0));
-      const client = db();
-      // Page N = postings whose COMPANY-STATED date falls in day N of the
-      // window. Bounded by an indexed range instead of a growing OFFSET, so
-      // every page costs the same and the last page is as cheap as the first.
-      const dayEnd = new Date(Date.now() - page * 86_400_000).toISOString();
-      const dayStart = new Date(Date.now() - (page + 1) * 86_400_000).toISOString();
-      // PostgREST caps any single select at 1,000 rows regardless of range()
-      // — measured live: the first ship of this route silently served 1,000
-      // URLs per "10k" page. Page through with a KEYSET cursor on id: no
-      // offset ever, so a deep chunk is no more expensive than the first.
-      const rows: Array<{ id: string; posted_at: string }> = [];
-      let lastId = "";
-      for (let c = 0; c < 50; c++) { // 50k = the sitemap-protocol ceiling per file
-        let q = client
-          .from("job_board_postings")
-          .select("id, posted_at")
-          // Never submit a dropped posting to a search engine — the sitemap is
-          // the other surface 20260728120000 missed.
-          .is("missing_since", null)
-          .gte("posted_at", dayStart)
-          .lt("posted_at", dayEnd)
-          .order("id", { ascending: true })
-          .limit(1_000);
-        if (lastId) q = q.gt("id", lastId);
-        const { data: chunk, error: chunkErr } = await q;
-        // NEVER swallow this. The old code destructured the error away, so a
-        // failed read was indistinguishable from "no more rows" — it broke the
-        // loop and served a PARTIAL or EMPTY urlset as a confident 200 with an
-        // hour of caching. Measured 2026-07-27: the same page returned 10,000,
-        // 8,000 and 0 URLs on consecutive requests. Telling a crawler "this
-        // site has no jobs" is the same class of lie as a wrong count.
-        if (chunkErr) {
-          console.error("[JOB-BOARD] sitemap page", page, "read failed:", chunkErr.message);
-          return new Response("sitemap temporarily unavailable", {
-            status: 503,
-            headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-          });
-        }
-        if (!chunk?.length) break;
-        rows.push(...(chunk as Array<{ id: string; posted_at: string }>));
-        lastId = String(chunk[chunk.length - 1].id);
-        if (chunk.length < 1_000) break;
-      }
-      const urls = rows.map((r) =>
-        `<url><loc>https://resumebooster.work/jobs?job=${encodeURIComponent(String(r.id))}</loc><lastmod>${String(r.posted_at).slice(0, 10)}</lastmod></url>`
-      ).join("");
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
-      return new Response(xml, {
-        headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600" },
-      });
+      return new Response(
+        "Gone. Individual openings have their own pages; the sitemap that lists "
+          + "them is https://resumebooster.work/sitemap.xml",
+        {
+          status: 410,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "public, max-age=604800",
+          },
+        },
+      );
     }
     return json({ error: "POST only" }, 405);
   }

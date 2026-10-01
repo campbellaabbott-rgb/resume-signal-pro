@@ -591,4 +591,25 @@ DESC=$(printf '%s' "$PR" | grep -o '<meta name="description" content="[^"]*"' | 
 case "$DESC" in *"pass for your own agent."\") echo "PASS  /pricing description ends with the pass sentence";; *) echo "FAIL  /pricing description: ${DESC:0:200} (baseline: cut at 'purchases (\"')";; esac
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
 for T in 99 29; do N=$(printf '%s' "$AG" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /agents carries \$$T x$N (want >= 5; baseline 0)" || echo "FAIL  /agents carries \$$T x$N (want >= 5)"; done
+
+echo "== 7e. the retired job sitemap is GONE, terminally (the ~733k-URL crawl trap) =="
+# .82's claim. Removing the robots.txt line on 2026-09-23 removed the sign; the
+# route kept serving, and eight days later the index still answered with 30
+# pages and page 0 still listed 24,449 URLs in 3.3 MB, uncached, to any crawler
+# that asked. 410 and not 404 is the whole point: a 404 is retried for months.
+for Q in "action=sitemap" "action=sitemap&page=0"; do
+  C=$(curl -s -m 60 -o /tmp/vd_sm.txt -w '%{http_code}' "$B/functions/v1/job-board?$Q")
+  SZ=$(wc -c < /tmp/vd_sm.txt | tr -d ' ')
+  case "$C" in
+    410) echo "PASS  ?$Q -> 410 Gone (${SZ}b)";;
+    200) echo "FAIL  ?$Q -> 200 (${SZ}b) — the old bundle is still serving the sitemap; the deploy did not land";;
+    404) echo "FAIL  ?$Q -> 404 — crawlers retry a 404 for months; this must be 410";;
+    *)   echo "FAIL  ?$Q -> HTTP $C (${SZ}b)";;
+  esac
+done
+# And it really is gone, not merely refusing one spelling: no sitemap XML in the body.
+grep -qiE '<urlset|<sitemapindex|<loc>' /tmp/vd_sm.txt \
+  && echo "FAIL  the response still carries sitemap XML" \
+  || echo "PASS  no sitemap XML in the response body"
+
 echo "done."
