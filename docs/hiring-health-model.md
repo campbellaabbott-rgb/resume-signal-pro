@@ -290,6 +290,29 @@ cannot be re-derived later — and carries `suspect`, `batch_removed` and
 `batch_live_before` so the call is auditable and can be overturned. Exclusion
 happens at READ time, in the estimator.
 
+**The read-time exclusion covers every published takedown count, not only the
+estimator.** This section used to be read as scoping it to the fill, health,
+benchmark and ghost-stats family, and two anon readers sat outside it: the
+weekly series behind `/hiring-trends` (`get_hiring_trends`) and the `/jobs`
+ticker (`get_takedowns_today`). Both counted suspect batches while
+`ghost_stats.closed_90d` did not, so on 2026-10-01 the page printed 806,570
+takedowns for one week beside a 90-day total of 1,852,789, and the ticker read
+130,373 for one day. `20261002113617` applies `NOT COALESCE(suspect, false)` to
+both. The weekly series also returns `closed_flagged`, the count the filter
+removed, so `closed + closed_flagged` is exactly the figure it used to publish
+and the exclusion can be sized from outside.
+
+Consistent is not the same as correct. The guard fires only when a pass loses
+more than 30% of what the board held, so small phantom batches stay in the
+admitted count, and every real takedown on a flagged board is excluded with the
+batch. A week whose flagged records outnumber its admitted ones is therefore
+withheld on the page rather than printed (`src/lib/hiring-trends-trust.ts`,
+mirrored in the prerender's figure builder and held to it by
+`a-week-of-takedowns-cannot-outnumber-its-own-quarter.test.ts`). Still carrying
+suspect rows, each by an open decision rather than by oversight:
+`get_board_flow` (an operator flow metric on `/status`) and `/v1/changes`
+(which emits every row as `outcome: "closed"` and does not expose the flag).
+
 **There is no promotion path, and this section used to promise one.** It said a
 suspect batch is promoted back to counted after a later successful fetch
 declines to restore the postings. Nothing implements that, so `suspect` is

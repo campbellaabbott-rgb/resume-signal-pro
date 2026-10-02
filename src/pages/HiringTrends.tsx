@@ -1,9 +1,18 @@
 // Weekly Hiring Trends — how many new roles companies posted this week, which
-// fields they're in, and how many roles got filled/closed, computed live from
-// the board's own postings and closure log. Honesty guards: weekly counts use
-// the company's own posting date and only include postings we observed near
-// their posting time (so catalog growth never fakes a hiring spike), and
-// closure history starts from when we began logging it — we say so.
+// fields they're in, and how many postings came down, computed live from the
+// board's own postings and closure log. Honesty guards: weekly counts use the
+// company's own posting date and only include postings we observed near their
+// posting time (so catalog growth never fakes a hiring spike), and closure
+// history starts from when we began logging it — we say so.
+//
+// A WEEK'S TAKEDOWN COUNT IS PRINTED ONLY WHEN closureVerdict SAYS IT MAY BE.
+// This page printed 806,570 "roles filled or closed last week" beside a 90-day
+// closure record of 1,852,789 on 2026-10-01 — a week larger than its own
+// quarter and larger than the whole board — because the weekly series counted
+// batches our collector had itself flagged as possible read failures. The
+// SQL now excludes them and reports how many it excluded (closed_flagged);
+// src/lib/hiring-trends-trust.ts decides, per week, whether what is left may
+// be printed, and the prerender runs a mirror of the same rules.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -15,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { WeeklyBars } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
+import { closureVerdict, heldClosureSentence, type ClosureRecord } from "@/lib/hiring-trends-trust";
 
 interface WeekRow {
   week_start: string;
@@ -22,6 +32,9 @@ interface WeekRow {
   entry_new: number;
   remote_new: number;
   closed: number;
+  /** Takedown records the collector flagged and the SQL excluded from `closed`.
+   *  Absent on a row written before 20261002113617. */
+  closed_flagged?: number;
 }
 interface CatTrend {
   category: string;
@@ -46,6 +59,9 @@ const CAT_LABELS: Record<string, string> = {
 export default function HiringTrends() {
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
   const [cats, setCats] = useState<CatTrend[]>([]);
+  // The 90-day closure record the week is judged against, read from the SAME
+  // cache row as the weeks so the two can never come from different hours.
+  const [ghost, setGhost] = useState<ClosureRecord | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -54,6 +70,8 @@ export default function HiringTrends() {
         // ~4s). Falls through to the live RPCs if the cache row isn't there.
         const { data: cacheRaw } = await Promise.resolve(rpc("get_stats_cache")).catch(() => ({ data: null }));
         const cache = (cacheRaw && typeof cacheRaw === "object" && !Array.isArray(cacheRaw)) ? (cacheRaw as Record<string, unknown>) : null;
+        const g = cache?.ghost_stats;
+        if (g && typeof g === "object" && !Array.isArray(g)) setGhost(g as ClosureRecord);
         if (cache && Array.isArray(cache.hiring_trends) && (cache.hiring_trends as unknown[]).length > 0) {
           setWeeks(cache.hiring_trends as WeekRow[]);
           if (Array.isArray(cache.trending_categories)) setCats(cache.trending_categories as CatTrend[]);
@@ -93,6 +111,9 @@ export default function HiringTrends() {
   // Same idea for the rolling 7d-vs-prior-7d category deltas: meaningful only
   // once the prior rolling window falls inside fully-tracked territory.
   const deltasMature = !!prevFull && prevFull.new_postings > 0;
+  // Last week's takedown figure, or the reason it is withheld. Never printed
+  // unconditionally: the number that was is the incident in the header.
+  const lastClosure = lastFull ? closureVerdict(lastFull, ghost) : null;
 
   const weekLabel = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -101,7 +122,7 @@ export default function HiringTrends() {
     <div className="min-h-screen bg-background">
       <SEO
         title="Weekly Hiring Trends — how many jobs were really posted this week?"
-        description="Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote shares, and how many roles actually got filled — no estimates, no surveys."
+        description="Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote counts, and how many postings came down — no estimates, no surveys."
         path="/hiring-trends"
       />
       <Header />
@@ -112,7 +133,8 @@ export default function HiringTrends() {
         </div>
         <p className="text-muted-foreground mb-1">
           Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies
-          dated this week on their own boards, which fields they're in, and how many roles came down — filled or closed.
+          dated this week on their own boards, which fields they're in, and how many postings came down. A posting coming
+          down is never called a hire: a hire, a withdrawal, a cancelled requisition and a retitle look the same from a feed.
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Counted from companies' <b>official</b> job boards only, using each posting's own stated date. Postings from
@@ -145,8 +167,18 @@ export default function HiringTrends() {
               <div className="text-[11px] text-muted-foreground mt-0.5">of last week's new roles are remote</div>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <div className="text-2xl font-bold text-foreground">{fmt(lastFull.closed)}</div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">roles filled or closed last week</div>
+              <div className="text-2xl font-bold text-foreground">
+                {lastClosure?.state === "published" ? fmt(lastClosure.closed) : "—"}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">takedowns logged last week</div>
+              {lastClosure?.state === "published" && (lastClosure.flagged ?? 0) > 0 && (
+                <div className="text-[10px] leading-snug text-muted-foreground mt-1">
+                  excludes {fmt(lastClosure.flagged)} records our collector flagged as possible read failures of its own
+                </div>
+              )}
+              {lastClosure?.state === "held" && (
+                <div className="text-[10px] leading-snug text-muted-foreground mt-1">{heldClosureSentence(lastClosure)}</div>
+              )}
             </div>
           </div>
         )}
@@ -159,19 +191,26 @@ export default function HiringTrends() {
             </h2>
             <WeeklyBars
               seriesA="New postings"
-              seriesB="Filled or closed"
-              data={weeks.map((w, i) => ({
-                label: `${weekLabel(w.week_start)}${i === weeks.length - 1 ? " (so far)" : ""}`,
-                a: w.new_postings,
-                b: w.closed,
-                aDetail: `${fmt(w.new_postings)} new${w.entry_new > 0 ? ` (${fmt(w.entry_new)} entry-level)` : ""}`,
-                bDetail: `${fmt(w.closed)} filled or closed`,
-                muted: i === weeks.length - 1,
-              }))}
+              seriesB="Taken down"
+              data={weeks.map((w, i) => {
+                // A held week passes no bar at all, rather than a bar of the
+                // number that was refused.
+                const v = closureVerdict(w, ghost);
+                return {
+                  label: `${weekLabel(w.week_start)}${i === weeks.length - 1 ? " (so far)" : ""}`,
+                  a: w.new_postings,
+                  b: v.state === "published" ? v.closed : undefined,
+                  aDetail: `${fmt(w.new_postings)} new${w.entry_new > 0 ? ` (${fmt(w.entry_new)} entry-level)` : ""}`,
+                  bDetail: v.state === "published" ? `${fmt(v.closed)} taken down` : "takedowns withheld",
+                  muted: i === weeks.length - 1,
+                };
+              })}
             />
             <p className="text-[11px] text-muted-foreground mt-3">
               {current ? "The newest week is partial — it fills in as companies post." : ""} Counts include only postings
-              whose companies date them themselves; boards we added mid-window are excluded from that window.
+              whose companies date them themselves; boards we added mid-window are excluded from that window. A week with no
+              takedown bar is withheld: its flagged records outnumbered the ones we could vouch for, or it read far above our
+              own 90-day closure record.
             </p>
           </div>
         )}
@@ -224,7 +263,7 @@ export default function HiringTrends() {
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
             <li>· "New postings" are counted by the date the company itself put on the role, straight from its official applicant-tracking feed — never scraped, never estimated.</li>
             <li>· When we add new companies to our catalog, their existing postings are excluded from weekly counts — coverage growth is not a hiring trend.</li>
-            <li>· "Filled or closed" counts come from our closure log: we record the moment a company takes a posting down. Reposted-role churn is excluded.</li>
+            <li>· "Taken down" counts a posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded — the same filter as the Ghost Job Index's 90-day total. A posting coming down is never called a hire.</li>
             <li>· Some feeds don't publish posting dates; those roles appear on the board but not in these weekly counts.</li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-4">
@@ -241,8 +280,8 @@ export default function HiringTrends() {
         </div>
         <HowWeMeasure
           items={[
-            { term: "New postings per week", method: "Counted by each posting's own stated post date — never by when we first saw it. A posting only counts if we observed it within 3 days of its stated date, so adding new companies to our catalog can never show up as a fake hiring spike." },
-            { term: "Filled or closed", method: "Postings whose company's feed stopped serving them, confirmed on a second pass, dated by the company's stated post date. Same-title relistings are excluded as churn." },
+            { term: "New postings per week", method: "Counted by each posting's own stated post date — never by when we first saw it. A posting only counts if we observed it within 3 days of its stated date, so adding new companies to our catalog can never show up as a fake hiring spike. A posting counts once, however many times it came down and came back." },
+            { term: "Taken down", method: "A posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone — not by the company's post date. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded. A week is withheld when its flagged records outnumber the ones we can vouch for, or when it reads at more than twice the daily average of our 90-day closure record. A posting coming down is never called a hire." },
             { term: "The current week", method: "Shown dimmed and marked '(so far)' — it fills in as companies post. We'd rather show a partial week honestly than extrapolate one." },
           ]}
         />
