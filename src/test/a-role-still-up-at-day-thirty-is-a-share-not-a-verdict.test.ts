@@ -68,7 +68,16 @@ const TABLE_FILE = "20260909217800_the_bucket_we_computed_and_threw_away.sql";
 // leaving them on the superseded files would be this tree's oldest failure --
 // a guard asserting dead text. The day-30 gate itself is guarded by
 // a-day-thirty-gate-must-have-seen-the-cohort-produce-an-event.
-const LIVE_COMPANY_FILE = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
+// MOVED AGAIN 2026-10-02, both curves: each was re-issued with a per-board
+// WATCH FLOOR on its day-30 chain -- a role counts only if its board was read
+// in full from before it was posted -- because a lap board whose first
+// provable lap postdated its whole cohort published 0.9431 with sufficient_30
+// true. The company curve's shape changed (two appended columns), so its new
+// file restates the catalogue drop and the COMMENT ON and is `shape` as well
+// as `file`. The category curve's shape did not, so `shape` stays on
+// 20260925163842. The watch floor itself is guarded by
+// a-day-thirty-share-needs-thirty-days-of-reading-in-full.
+const LIVE_COMPANY_FILE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
 // TWO NOUNS, BECAUSE A RE-ISSUE CAN MOVE ONE WITHOUT THE OTHER. On 2026-09-27
 // the category curve was re-issued a third time with ONLY its own header
 // raised (its sixty seconds had become a blank section on two pages); the
@@ -78,7 +87,13 @@ const LIVE_COMPANY_FILE = "20260925163517_a_gate_made_of_width_alone_admits_a_bo
 // runs (`file`); the pins on the catalogue drop and the COMMENT ON follow the
 // last file that CHANGED the shape (`shape`), and a check below computes both
 // from the migration lane rather than trusting either constant.
-const LIVE_CATEGORY_FILE = "20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql";
+const LIVE_CATEGORY_FILE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+/** The re-issues that repeat the observability table's DDL without owning it. */
+const WATCH_FLOOR_FILES = [
+  LIVE_COMPANY_FILE,
+  LIVE_CATEGORY_FILE,
+  "20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql",
+];
 const SHAPE_CATEGORY_FILE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
 
 /** Executable text only: `--` to end of line, and block comments. */
@@ -406,7 +421,7 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       // Every file that repeats it -- each reader must be able to run on a
       // schema built from the migrations alone, and a second spelling of the
       // same table is a second table waiting to happen.
-      for (const f of [COMPANY_FILE, LIVE_COMPANY_FILE]) {
+      for (const f of [COMPANY_FILE, "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql", ...WATCH_FLOOR_FILES]) {
         expect(ddl(readFileSync(resolve(DIR, f), "utf8")), `${f} repeats a different DDL`).toBe(owner);
       }
     });
@@ -438,8 +453,16 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       // The re-issued readers sort after all three, so the table they read is
       // already there however the schema was built -- and a re-issue that
       // sorted BEFORE the definition it replaces would be silently reverted in
-      // filename order, which this repo has been bitten by twice.
-      expect(TABLE_FILE < LIVE_COMPANY_FILE && LIVE_COMPANY_FILE < SHAPE_CATEGORY_FILE && SHAPE_CATEGORY_FILE < LIVE_CATEGORY_FILE).toBe(true);
+      // filename order, which this repo has been bitten by twice. Stated per
+      // curve, because the two now move independently: the company curve's
+      // re-issue sorts after the category curve's shape file, and that order
+      // between the two curves carries no meaning.
+      expect(TABLE_FILE < SHAPE_CATEGORY_FILE && SHAPE_CATEGORY_FILE < LIVE_CATEGORY_FILE).toBe(true);
+      expect(TABLE_FILE < LIVE_COMPANY_FILE).toBe(true);
+      for (const { fn, file } of CURVES) {
+        const earlier = ALL_FILES.filter((f) => f !== file && definitionsIn(f).has(fn));
+        expect(earlier.every((f) => f < file), `${fn}: an earlier definition sorts after ${file}`).toBe(true);
+      }
       expect(readdirSync(DIR)).toEqual(
         expect.arrayContaining([COMPANY_FILE, CATEGORY_FILE, TABLE_FILE, LIVE_COMPANY_FILE, SHAPE_CATEGORY_FILE, LIVE_CATEGORY_FILE]),
       );

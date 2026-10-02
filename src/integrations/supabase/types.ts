@@ -5026,6 +5026,7 @@ export type Database = {
           fills_30: number
           fills_90d: number
           fills_le_14: number
+          insufficient_reason_30: string
           median_censored: boolean
           median_days_to_fill: number
           n_at_risk_14: number
@@ -5046,6 +5047,7 @@ export type Database = {
           taken_down_30: number
           tracking_days: number
           undated_n: number
+          watched_from: string
         }[]
       }
       get_company_financials: { Args: { p_token: string }; Returns: Json }

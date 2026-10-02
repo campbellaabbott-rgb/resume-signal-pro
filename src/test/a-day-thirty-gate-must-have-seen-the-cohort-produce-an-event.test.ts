@@ -79,8 +79,21 @@ const mig = (f: string) => readFileSync(resolve(DIR, f), "utf8");
 
 const OLD_COMPANY = "20260909217000_a_role_still_up_at_day_thirty_is_a_share_not_a_verdict.sql";
 const OLD_CATEGORY = "20260909217500_a_field_is_only_as_open_as_the_boards_we_can_read.sql";
-const NEW_COMPANY = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
-const NEW_CATEGORY = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
+/** The files that introduced the positive control; the text assertions about its contract stay pinned here. */
+const GATE_COMPANY = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
+const GATE_CATEGORY = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
+// RE-POINTED 2026-10-02, BEHAVIOUR AND CODE ONLY. Both curves were re-issued
+// with a per-board watch floor on the day-30 chain (a role counts only if its
+// board was read in full from before it was posted). The control this file
+// guards is carried into those bodies unchanged, and a guard that executed
+// the superseded text would keep passing while the running functions went
+// unguarded -- so the executed lane and the code checker follow the
+// functions. The contract assertions (the REVOKEs by name, the self-check on
+// the counts, the COMMENT naming the control) are about the files that
+// introduced the control and stay on GATE_COMPANY / GATE_CATEGORY: the field
+// re-issue changes no shape and restates neither.
+const NEW_COMPANY = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
+const NEW_CATEGORY = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
 
 /** Executable text only: `--` to end of line, and block comments. */
 const stripSql = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/--[^\n]*/g, "");
@@ -95,7 +108,7 @@ const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
    retires itself. Events land at day 5, 6, 10 or 30, all inside the 90-day
    event window.
 
-   A  giant-eventless    lap_proven  engineering  20,000 age-outs at day 30,
+   A  giant-eventless    full_read   engineering  20,000 age-outs at day 30,
                                                   nothing else. n30 = 20,000,
                                                   S(30) = 1, interval [1,1].
    B  outside-the-cohort full_read   other        200 age-outs at day 30 inside
@@ -140,7 +153,19 @@ const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
    Snapshots are sized so the feed-dark proxy never fires: a batch is censored
    when it removes more than max(5, 0.30 x the board size at the time), and
-   every batch below is well inside that. */
+   every batch below is well inside that.
+
+   A WAS lap_proven, the bucket of the board that opened this defect, until
+   2026-10-02. From then a lap board is refused at day 30 for a reason of its
+   own -- 'lap', read before the events floor (20261002121417) -- so a
+   lap_proven A would be testing that refusal instead of this control. It is
+   full_read now, which is where 67 of the 71 live offenders sat anyway.
+
+   EVERY BOARD HAS A WATCH ROW, first observed eighty days ago, so the watch
+   floor the re-issued curves carry admits every cohort member (all dated 33
+   days ago) and the figures below are the control's alone. The table is
+   created here in its owner's shape (20260909212000) because the definitions
+   this file runs FIRST predate it. */
 const TOKENS = ["A", "B", "C", "D", "E", "F", "G", "H", "R", "U"] as const;
 
 async function boot(lane: string[]): Promise<PGlite> {
@@ -165,6 +190,10 @@ async function boot(lane: string[]): Promise<PGlite> {
     );
     CREATE TABLE public.job_board_company_snapshots (
       company_token text, snapshot_date date, open_roles integer, PRIMARY KEY (company_token, snapshot_date)
+    );
+    CREATE TABLE public.job_board_board_watch (
+      company_token text PRIMARY KEY, first_observed_on date NOT NULL, first_observed_basis text NOT NULL,
+      is_censored boolean NOT NULL DEFAULT false, updated_at timestamptz NOT NULL DEFAULT now()
     );
   `);
 
@@ -231,9 +260,12 @@ async function boot(lane: string[]): Promise<PGlite> {
   // its writer lives in 20260909217800 and is not needed to state a bucket.
   await db.exec(`
     INSERT INTO public.job_board_board_observability (company_token, bucket) VALUES
-      ('A','lap_proven'), ('B','full_read'), ('C','full_read'),
+      ('A','full_read'), ('B','full_read'), ('C','full_read'),
       ('E','full_read'), ('F','full_read'), ('G','lap_pending'),
       ('D','full_read'), ('H','full_read'), ('R','full_read'), ('U','full_read');
+    INSERT INTO public.job_board_board_watch (company_token, first_observed_on, first_observed_basis, is_censored)
+    SELECT t, current_date - 80, 'company_snapshot', true
+      FROM unnest(ARRAY['A','B','C','D','E','F','G','H','R','U']) t;
   `);
   return db;
 }
@@ -262,9 +294,11 @@ beforeAll(async () => {
   dbs.push(oldDb);
   before = { co: await company(oldDb), cat: await category(oldDb) };
   // The same rows, then the re-issued definitions over them: one fixture, two
-  // verdicts, so the difference cannot be a difference in the data.
-  await oldDb.exec(mig(NEW_COMPANY));
-  await oldDb.exec(mig(NEW_CATEGORY));
+  // verdicts, so the difference cannot be a difference in the data. The lane
+  // is the one the database ran: the files that introduced the control, then
+  // the watch-floor re-issues that carry it (the field curve's re-issue keeps
+  // its shape, so it needs the shape its predecessor installed).
+  for (const f of [GATE_COMPANY, GATE_CATEGORY, NEW_COMPANY, NEW_CATEGORY]) await oldDb.exec(mig(f));
   after = { co: await company(oldDb), cat: await category(oldDb) };
 }, 240_000);
 
@@ -296,7 +330,9 @@ describe("the day-30 sufficiency gate refuses a cohort that never produced an ev
     expect(num(a.still_open_30)).toBe(1);
     expect(num(a.n_at_risk_30)).toBe(20000);
     expect(num(a.ageouts_at_30)).toBe(20000);
-    expect(a.observability_bucket).toBe("lap_proven");
+    expect(a.observability_bucket).toBe("full_read");
+    // ...and the refusal names this control, not the watch floor beside it.
+    expect(a.insufficient_reason_30).toBe("events");
   });
 
   it("refuses the near-degenerate board: events in the 90-day window are a different population", () => {
@@ -623,9 +659,9 @@ describe("the positive control is spelled where the database can run it", () => 
   });
 
   it("re-issues rather than edits, and refuses to report success without the new term", () => {
-    for (const f of [NEW_COMPANY, NEW_CATEGORY]) {
+    for (const f of [GATE_COMPANY, GATE_CATEGORY]) {
       const raw = mig(f), code = stripSql(raw);
-      const fn = f === NEW_COMPANY ? "get_company_fill_curve" : "get_category_fill_curve";
+      const fn = f === GATE_COMPANY ? "get_company_fill_curve" : "get_category_fill_curve";
       expect(code).toMatch(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${fn}\\s*\\(`));
       // THE REACHABLE SET IS STATED, NOT INHERITED. Each file DROPS the function
       // from the catalogue before recreating it, which discards every grant, and
@@ -655,7 +691,10 @@ describe("the positive control is spelled where the database can run it", () => 
   });
 
   it("names the control and its exclusions in the contract the function carries", () => {
-    for (const f of [NEW_COMPANY, NEW_CATEGORY]) {
+    // The field curve's COMMENT ON is still the one GATE_CATEGORY wrote: no
+    // later file restates it. The company curve's re-issue restates its
+    // contract with the control's paragraph intact.
+    for (const f of [GATE_COMPANY, GATE_CATEGORY, NEW_COMPANY]) {
       const raw = mig(f);
       // Adjacent SQL literals joined first: the contract is the TEXT the
       // database stores, and a guard that reads the line wrapping instead

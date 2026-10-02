@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -682,10 +682,29 @@ const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
 // not move: every clause this file mirrors is byte-identical in the
 // successors. The pins follow the functions, because a mirror asserted against
 // a body the database has stopped running is decoration.
-const COMPANY_SQL = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
-const CATEGORY_SQL = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
+// MOVED, NOT DROPPED, a fifth time. On 2026-10-02 both curves were re-issued
+// with a per-board watch floor on the day-30 chain -- a role counts at day 30
+// only if its board was read in full from before it was posted -- and the
+// category pin had already been left on 20260925163842 when 20260928003117
+// raised only that curve's header. Both now name the definitions the
+// database runs. Every clause this file mirrors is byte-identical in them.
+// The field curve's re-issue keeps its shape and restates no COMMENT ON, so
+// the prose assertion reads the contract from the newest file that wrote one
+// (COMMENT_SQL below), not from the file that runs.
+const COMPANY_SQL = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
+const CATEGORY_SQL = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+const FN_OF: Record<string, string> = { [COMPANY_SQL]: "get_company_fill_curve", [CATEGORY_SQL]: "get_category_fill_curve" };
 
 const readRaw = (f: string) => readFileSync(resolve(MIGRATIONS, f), "utf8");
+/** The newest migration, at or before `file`, that wrote the function's COMMENT ON: the contract it carries. */
+const COMMENT_SQL = (file: string): string => {
+  const fn = FN_OF[file];
+  const hits = readdirSync(MIGRATIONS)
+    .filter((f) => f.endsWith(".sql") && f <= file)
+    .sort()
+    .filter((f) => readRaw(f).includes(`COMMENT ON FUNCTION public.${fn}(`));
+  return hits[hits.length - 1];
+};
 const stripComments = (raw: string) =>
   raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*--.*$/gm, "");
 
@@ -807,7 +826,12 @@ describe("the shipped SQL mirrors the reference estimator", () => {
         // bootstrap rollup and is exact only if the fill share is constant in
         // t; presenting it as an exact Aalen-Johansen interval is the lie this
         // sentence prevents.
-        const comment = RAW.slice(RAW.indexOf("COMMENT ON FUNCTION"));
+        // The contract the database carries: this file's own COMMENT ON, or
+        // the last one written before it when a re-issue kept the shape.
+        expect(COMMENT_SQL(file), `no COMMENT ON for ${FN_OF[file]} at or before ${file}`).toBeTruthy();
+        if (COMMENT_SQL(file) !== file) expect(RAW).not.toMatch(/COMMENT ON FUNCTION/);
+        const source = readRaw(COMMENT_SQL(file));
+        const comment = source.slice(source.indexOf(`COMMENT ON FUNCTION public.${FN_OF[file]}(`));
         expect(comment).toMatch(/APPROXIMATION|approximation/);
         expect(comment).toMatch(/fill share/);
       });

@@ -535,8 +535,15 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // body byte-identical to the 2026-09-25 text -- a guard of its own
     // compares the two with that one line masked. The seven-day-floor
     // property is again untouched; the pin follows the definition that runs.
-    const COMPANY_CURVE = "20260925163517_a_gate_made_of_width_alone_admits_a_board_that_showed_us_nothing.sql";
-    const CATEGORY_CURVE = "20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql";
+    // MOVED, NOT DROPPED, a sixth time, both curves together: on 2026-10-02
+    // each was re-issued with a per-board watch floor on its day-30 chain, so
+    // a role counts at day 30 only if its board was read in full from before
+    // it was posted (a lap board's first provable lap postdated its whole
+    // cohort and still published 0.9431 with sufficient_30 true). The day-14
+    // chain and the seven-day-floor property are untouched by that change;
+    // the pins follow the definitions that run.
+    const COMPANY_CURVE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
+    const CATEGORY_CURVE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });

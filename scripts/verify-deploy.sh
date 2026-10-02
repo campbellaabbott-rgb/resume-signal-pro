@@ -612,4 +612,74 @@ grep -qiE '<urlset|<sitemapindex|<loc>' /tmp/vd_sm.txt \
   && echo "FAIL  the response still carries sitemap XML" \
   || echo "PASS  no sitemap XML in the response body"
 
+echo "== 7h. a day-30 share needs thirty days of reading in full (the watch floor: 20261002121417 / 121843 / 122309) =="
+# The three re-issues admit a role to any day-30 chain only if its board was
+# read in full from before the role was posted; lap boards are refused for a
+# reason of their own. The staged runner has renamed and edited files before,
+# so every line below judges BEHAVIOUR: the two new columns on the company
+# curve are the proof it applied, and the named boards are the ones the defect
+# was reproduced on (careers.ulta.com published 0.9431 with sufficient_30 true
+# on 2026-10-01). Read-only: two RPC reads on board tokens, one facet list for
+# the largest boards (the same call section 3 makes), the cached field rows
+# section 4 already read, and the stored layoff arms.
+R get_company_fill_curve '{"p_tokens":["careers.ulta.com","dominos","catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers","AbbVie"]}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_company_fill_curve non-JSON: "+s.slice(0,160))}
+if(!Array.isArray(j)||!j.length)return console.log("FAIL  get_company_fill_curve -> "+JSON.stringify(j).slice(0,160));
+const keyed=j.every(r=>("watched_from" in r)&&("insufficient_reason_30" in r));
+console.log((keyed?"PASS":"FAIL")+"  every row carries watched_from and insufficient_reason_30"+(keyed?" (20261002121417 applied)":" -- the old shape is serving: 20261002121417 did not apply"));
+if(!keyed)return;
+const by=Object.fromEntries(j.map(r=>[r.company_token,r]));
+const line=r=>"bucket="+r.observability_bucket+" sufficient_30="+r.sufficient_30+" S30="+r.still_open_30+" watched_from="+r.watched_from+" reason="+r.insufficient_reason_30+" cohort_to="+r.cohort_to;
+for(const t of ["careers.ulta.com","dominos"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
+  if(r.observability_bucket!=="lap_proven"){console.log("INFO  "+t+" is no longer lap_proven: "+line(r));continue}
+  const ok=r.insufficient_reason_30==="lap"&&r.sufficient_30===false&&r.still_open_30===null;
+  console.log((ok?"PASS":"FAIL")+"  "+t+" refused as a lap board: "+line(r)+" (baseline: Ulta 0.9431, sufficient_30 TRUE)")}
+for(const t of ["catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
+  if(r.observability_bucket==="lap_proven"){console.log((r.insufficient_reason_30==="lap"?"PASS":"FAIL")+"  "+t+" is lap_proven now and must read lap: "+line(r));continue}
+  // A truncated read inside 2026-09-23..10-01 (measured the night of the fix)
+  // must hold the floor at or after its day; the ledger is never pruned, so
+  // this stays true until the board stops being full_read.
+  const ok=typeof r.watched_from==="string"&&r.watched_from>="2026-09-23";
+  console.log((ok?"PASS":"FAIL")+"  "+t+" floored at its last cut-short read: "+line(r)+" (want watched_from >= 2026-09-23; baseline S30 0.87-0.93 with sufficient_30 TRUE)")}
+const a=by["AbbVie"];
+if(!a)console.log("INFO  AbbVie returned no row");
+else if(a.watched_from===null&&a.insufficient_reason_30==="watch")console.log("FAIL  AbbVie reads watch with no floor: job_board_board_watch holds no row for it -- the tenure table is not seeded, and every full_read board is being refused ("+line(a)+")");
+else{const ok=a.sufficient_30===true&&a.insufficient_reason_30===null&&typeof a.watched_from==="string"&&a.watched_from<="2026-08-06";
+  console.log((ok?"PASS":"FAIL")+"  AbbVie (read in full since 2026-08-02) keeps its figure: "+line(a)+" (want sufficient, floor on or before 2026-08-06, S30 about 0.29)")}
+})'
+J '{"action":"list","limit":1,"includeFacets":true}' > /tmp/vd_7h_facets.json
+TOKS=$(node -e 'try{const j=require("/tmp/vd_7h_facets.json");const t=(j.companies||[]).map(c=>c&&c.token).filter(x=>typeof x==="string").slice(0,200);process.stdout.write(JSON.stringify({p_tokens:t}))}catch{process.stdout.write("{\"p_tokens\":[]}")}')
+R get_company_fill_curve "$TOKS" | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  largest-boards read non-JSON: "+s.slice(0,160))}
+if(!Array.isArray(j)||!j.length)return console.log("INFO  largest-boards read returned no rows ("+JSON.stringify(j).slice(0,120)+")");
+if(!j.every(r=>"insufficient_reason_30" in r))return console.log("FAIL  largest "+j.length+" boards: no watch-floor columns on the rows -- the old get_company_fill_curve is serving, so nothing below can be judged");
+const bad=j.filter(r=>r.sufficient_30===true&&(r.observability_bucket==="lap_proven"||r.watched_from===null||r.watched_from===undefined||String(r.watched_from)>=String(r.cohort_to)));
+console.log((bad.length===0?"PASS":"FAIL")+"  largest "+j.length+" boards: no sufficient_30 row is lap_proven or lacks a floor before cohort_to"+(bad.length?" -- "+bad.slice(0,8).map(r=>r.company_token+"("+r.observability_bucket+","+r.watched_from+")").join(", "):""));
+const lapWrong=j.filter(r=>r.observability_bucket==="lap_proven"&&r.insufficient_reason_30!=="lap");
+console.log((lapWrong.length===0?"PASS":"FAIL")+"  every lap_proven board among them reads reason lap"+(lapWrong.length?" -- "+lapWrong.slice(0,8).map(r=>r.company_token+"="+r.insufficient_reason_30).join(", "):""));
+const mute=j.filter(r=>(r.sufficient_30===true)!==(r.insufficient_reason_30===null));
+console.log((mute.length===0?"PASS":"FAIL")+"  a refused row always names its reason and a sufficient row never does"+(mute.length?" -- "+mute.slice(0,8).map(r=>r.company_token).join(", "):""));
+const tally={};for(const r of j){const k=r.insufficient_reason_30===null?"sufficient":r.insufficient_reason_30;tally[k]=(tally[k]||0)+1}
+console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (before the fix 107 of the top 150 were sufficient, 100 of them lap_proven)");
+})'
+# The field rows are the hourly cache section 4 read. The re-issue removes the
+# cached part at apply time, so straight after a deploy this reads as absent
+# until the :27 run; after it, every field's gate_share_30 must sit below its
+# 2026-10-01T22:07Z reading (explore cache, the same call), because the floor
+# removes every lap board and every recently cut-short board from the pool.
+CAT 'const BASE={admin:0.4266,legal:0.4213,other:0.66,sales:0.6321,design:0.3867,data_ai:0.5074,finance:0.6104,product:0.4726,science:0.5127,customer:0.475,security:0.54,education:0.6513,marketing:0.421,people_hr:0.4206,healthcare:0.6069,operations:0.6433,engineering:0.6534,hospitality_retail:0.5703};
+if(!rows)return console.log("INFO  no cached field rows to judge: the watch-floor re-issue removes the pre-fix part at apply, so this is expected until the next :27 refresh writes rows under the floor (section 4e says what the cache holds and why)");
+let fell=0,held=[];for(const r of rows){const b=BASE[r.category],g=N(r.gate_share_30);if(b===undefined)continue;if(g===null||g<b)fell++;else held.push(r.category+" "+g+" >= "+b)}
+console.log((held.length===0?"PASS":"FAIL")+"  gate_share_30 fell below its pre-fix reading on "+fell+" field(s)"+(held.length?"; HELD on "+held.join(", ")+" -- these rows were computed without the floor":"")+" (rows computed_at "+m.computed_at+")");
+const emptied=rows.filter(r=>r.sufficient_30!==true).map(r=>r.category+"(gate="+r.gate_share_30+")");
+console.log("INFO  fields not sufficient after the floor: "+(emptied.length?emptied.join(", "):"none")+" -- each must render a reason on the page, never a number");'
+R get_layoff_partition '{}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_layoff_partition non-JSON")}
+const rows=Array.isArray(j)?j:[j];const c=rows.find(r=>r&&r.lp_arm==="control");
+if(!c)return console.log("FAIL  no control arm");
+if(rows.every(r=>r.lp_reason==="uncontrolled"))return console.log("PASS  both stored arms withheld (reason uncontrolled): 20261002122309 applied and the 05:10 refresh has not re-run since; control computed_at="+c.lp_computed_at);
+const ok=c.lp_reason!=="uncontrolled"&&Number(c.lp_gate_share_30)<0.7395;
+console.log((ok?"PASS":"FAIL")+"  control arm recomputed under the floor: gate_share_30="+c.lp_gate_share_30+" (pre-fix 0.7395) S30="+c.lp_still_open_30+" (pre-fix 0.4909) sufficient="+c.lp_sufficient_30+" reason="+c.lp_reason+" computed_at="+c.lp_computed_at);
+})'
+
 echo "done."
