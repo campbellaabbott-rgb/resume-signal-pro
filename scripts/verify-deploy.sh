@@ -612,4 +612,70 @@ grep -qiE '<urlset|<sitemapindex|<loc>' /tmp/vd_sm.txt \
   && echo "FAIL  the response still carries sitemap XML" \
   || echo "PASS  no sitemap XML in the response body"
 
+echo "== 7i. .84: the marquee boards too big to hold serve again (light set 500; lever/ashby read a posting at a time) =="
+# .84's claim. On 2026-10-01 these nine served ZERO while their own feeds held
+# 12-602 postings inside the 30-day window: the 4 MB byte bound refused their
+# list bodies, a refused board is deferred with no verification stamp, and the
+# 03:41 sweep then hides everything it holds. Greenhouse recovers when each
+# board trips once more and enrols in the (now 500-slot) light set, so give it
+# TWO cold rotations after the deploy; lever/ashby read in the same visit, so
+# ONE. lastRotationAgeMin below resets at each wrap. Every probe is a read: the
+# board's own list/status actions, and the vendors' public GET feeds. The
+# detail action is NOT used here — it writes a fetched description back.
+J '{"action":"status"}' > /tmp/vd_7i_status.json
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
+ok(j.version==="2026-09-09.84","status.version = "+j.version+" (want 2026-09-09.84; .81 means the bundle did not deploy)");
+const ss=j.sliceStats||{};
+ok(typeof ss.lightSet==="number"&&typeof ss.lightCap==="number"&&ss.lightSet>=100&&ss.lightSet<ss.lightCap,"sliceStats.lightSet = "+ss.lightSet+" of lightCap "+ss.lightCap+" (want 100 <= set < cap: populated, not saturated)");
+console.log("INFO  lastRotationAgeMin = "+j.lastRotationAgeMin+" — greenhouse needs two cold rotations after the deploy, lever/ashby one");
+const ck=j.chainKick||{};ok(ck.status===200,"chainKick.status = "+ck.status+" ("+ck.outcome+", ageMin "+ck.ageMin+")");
+ok(ss.wallStopped===false,"sliceStats.wallStopped = "+ss.wallStopped+" (a streamed read must not push slices into the wall)");
+ok(typeof ss.heapMb==="number"&&ss.heapMb<100,"sliceStats.heapMb = "+ss.heapMb+" (want < 100; baseline 37-45)");
+let prev=null;try{prev=JSON.parse(fs.readFileSync("/tmp/vd_status.json","utf8"))}catch{}
+if(prev&&prev.cursor&&j.cursor){const a=prev.cursor,b=j.cursor;const moved=b.cold!==a.cold||b.coldDone!==a.coldDone||b.hot!==a.hot;console.log((moved?"PASS":"INFO")+"  cursor "+JSON.stringify(a)+" -> "+JSON.stringify(b)+(moved?" (ingest is moving)":" (no motion since section 1: a hot phase parks the cold cursor; re-run before calling the chain dead)"))}
+const nine=["anthropic","databricks","cloudflare","mongodb","okta","spacex","openai","snowflake","palantir"];
+const ob=Array.isArray(j.oversizeBoards)?j.oversizeBoards:[];
+const named=ob.filter(e=>nine.includes(e.token));
+ok(named.length===0,"oversizeBoards names none of the nine"+(named.length?": "+named.map(e=>e.source+":"+e.token+" "+e.mb+"MB").join(", "):""));
+const followUp=["lush","samsara","pulse","liquidpersonnel"];
+const gh=ob.filter(e=>e.source==="greenhouse");const ghOther=gh.filter(e=>!followUp.includes(e.token));
+ok(ghOther.length===0,"greenhouse registry entries are only the shared-token / oversize-light-list follow-up ("+gh.map(e=>e.token).join(", ")+")"+(ghOther.length?" — unexpected: "+ghOther.map(e=>e.token).join(", "):""));
+const lv=ob.filter(e=>e.source==="lever"),ab=ob.filter(e=>e.source==="ashby");
+console.log("INFO  lever entries still deferred (slow or over budget): "+(lv.map(e=>e.token+" "+e.mb+"MB").join(", ")||"none"));
+console.log("INFO  ashby entries still deferred (bjakcareer expected: over the retained budget): "+(ab.map(e=>e.token+" "+e.mb+"MB").join(", ")||"none"));
+console.log("INFO  oversizeBoardCount = "+j.oversizeBoardCount+" (140 on 2026-10-01; status shows only the newest 50, so judge the drop, not zero)");'
+# Served vs the vendor's own in-window count, per board. In-window is the field
+# each normaliser stores: greenhouse first_published, ashby publishedAt, lever createdAt.
+for VT in greenhouse:anthropic greenhouse:databricks greenhouse:cloudflare greenhouse:mongodb greenhouse:okta greenhouse:spacex ashby:openai ashby:snowflake lever:palantir; do
+  V=${VT%%:*}; T=${VT#*:}
+  case "$V" in
+    greenhouse) U="https://boards-api.greenhouse.io/v1/boards/$T/jobs";;
+    ashby) U="https://api.ashbyhq.com/posting-api/job-board/$T";;
+    lever) U="https://api.lever.co/v0/postings/$T?mode=json";;
+  esac
+  curl -s --compressed -m 120 "$U" -o /tmp/vd_7i_feed.json
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"$V\"],\"groupSimilar\":false,\"limit\":1}" > /tmp/vd_7i_list.json
+  node -e '(()=>{
+const fs=require("fs");const [V,T]=process.argv.slice(1);const cut=Date.now()-30*86400000;
+let feed;try{feed=JSON.parse(fs.readFileSync("/tmp/vd_7i_feed.json","utf8"))}catch{return console.log("INFO  "+V+":"+T+" vendor feed unreadable — cannot judge")}
+const t=(x)=>{const n=typeof x==="number"?x:Date.parse(String(x??""));return Number.isFinite(n)&&n>=cut};
+const want=V==="greenhouse"?(feed.jobs||[]).filter(x=>t(x.first_published)).length:V==="ashby"?(feed.jobs||[]).filter(x=>x.isListed!==false&&t(x.publishedAt)).length:(Array.isArray(feed)?feed:[]).filter(x=>t(x.createdAt)).length;
+let l;try{l=JSON.parse(fs.readFileSync("/tmp/vd_7i_list.json","utf8"))}catch{return console.log("FAIL  "+V+":"+T+" list non-JSON")}
+const got=Number(l.total);const tol=Math.max(2,Math.round(want*0.1));
+const pass=got>0&&Math.abs(got-want)<=tol;
+console.log((pass?"PASS":"FAIL")+"  "+V+":"+T+" serves "+got+" vs "+want+" in-window on its own feed (want within +/-"+tol+")"+(got===0?" — still dark; judge only after "+(V==="greenhouse"?"two cold rotations":"one cold rotation")+" since the deploy":""));})();' "$V" "$T"
+done
+# The flapping. The 03:41 UTC sweep zeroed boards that went 48 h unread; re-run
+# this line on each of the next two mornings AFTER 03:41 UTC.
+for T in okta anthropic axon; do
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"greenhouse\"],\"groupSimilar\":false,\"limit\":1}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  list non-JSON")}const n=Number(j.total);console.log((n>0?"PASS":"FAIL")+"  greenhouse:'"$T"' total = "+n+" (must not return to 0 after a 03:41 UTC sweep; repeat on the next two mornings)")})'
+done
+# Streamed descriptions arrive with the read (lever/ashby have no filler): the
+# share of openai rows holding stored text, read through the list filter.
+OA=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"limit":1}')
+OD=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"hasDescription":true,"limit":1}')
+node -e 'const a=JSON.parse(process.argv[1]||"{}"),d=JSON.parse(process.argv[2]||"{}");const n=Number(a.total),k=Number(d.total);console.log((n>0&&k>=0.9*n?"PASS":"FAIL")+"  ashby:openai rows with a stored description: "+k+" of "+n+" (want >= 90%; 4 of 281 were the oldest, dropped by the retention ceiling, on 2026-10-01)")' "$OA" "$OD"
+
 echo "done."

@@ -1,0 +1,541 @@
+{
+ "measuredAt": "2026-10-01",
+ "what": "Every greenhouse board whose ?content=true list measured over MAX_RESPONSE_BYTES (over) or whose description content measured at least AUTO_LIGHT_THRESHOLD_CHARS (volume), from a census of all 5,130 catalogue greenhouse boards on 2026-10-01; stripe and zscaler are excluded because they are static LIGHT_DESC_TOKENS. The replay visits them in file order; the property it checks does not depend on the order.",
+ "boards": [
+  {
+   "token": "svetness",
+   "cls": "over",
+   "contentMB": 34.62
+  },
+  {
+   "token": "eu~prolificacademicltd",
+   "cls": "over",
+   "contentMB": 40.02
+  },
+  {
+   "token": "spacex",
+   "cls": "over",
+   "contentMB": 29.82
+  },
+  {
+   "token": "carvana",
+   "cls": "over",
+   "contentMB": 19.6
+  },
+  {
+   "token": "centriaautism",
+   "cls": "over",
+   "contentMB": 7.78
+  },
+  {
+   "token": "urpt",
+   "cls": "over",
+   "contentMB": 27.02
+  },
+  {
+   "token": "veterinaryemergencygroupst",
+   "cls": "over",
+   "contentMB": 11.58
+  },
+  {
+   "token": "privateequityinsights",
+   "cls": "over",
+   "contentMB": 8.51
+  },
+  {
+   "token": "equipmentsharecom",
+   "cls": "over",
+   "contentMB": 14.17
+  },
+  {
+   "token": "blueskytelepsych",
+   "cls": "over",
+   "contentMB": 5.16
+  },
+  {
+   "token": "wppmedia",
+   "cls": "over",
+   "contentMB": 16.18
+  },
+  {
+   "token": "databricks",
+   "cls": "over",
+   "contentMB": 9.57
+  },
+  {
+   "token": "oosmanagementcorp",
+   "cls": "over",
+   "contentMB": 8.54
+  },
+  {
+   "token": "aloyoga",
+   "cls": "over",
+   "contentMB": 25.55
+  },
+  {
+   "token": "plscareers",
+   "cls": "over",
+   "contentMB": 7.06
+  },
+  {
+   "token": "ouihelp",
+   "cls": "over",
+   "contentMB": 5.17
+  },
+  {
+   "token": "capco",
+   "cls": "over",
+   "contentMB": 7.21
+  },
+  {
+   "token": "coupang",
+   "cls": "over",
+   "contentMB": 12.91
+  },
+  {
+   "token": "anthropic",
+   "cls": "over",
+   "contentMB": 9.17
+  },
+  {
+   "token": "housebuyersofamerica",
+   "cls": "volume",
+   "contentMB": 3.96
+  },
+  {
+   "token": "bayada",
+   "cls": "over",
+   "contentMB": 28.74
+  },
+  {
+   "token": "accenturefederalservices",
+   "cls": "over",
+   "contentMB": 11.54
+  },
+  {
+   "token": "herewithgmbh",
+   "cls": "over",
+   "contentMB": 6.09
+  },
+  {
+   "token": "rocketlab",
+   "cls": "over",
+   "contentMB": 10.39
+  },
+  {
+   "token": "eosfitness",
+   "cls": "over",
+   "contentMB": 37.42
+  },
+  {
+   "token": "eu~michelscorporation",
+   "cls": "over",
+   "contentMB": 5.36
+  },
+  {
+   "token": "langanengineeringandenvironmentalservicesllc",
+   "cls": "over",
+   "contentMB": 6.45
+  },
+  {
+   "token": "axon",
+   "cls": "over",
+   "contentMB": 8.02
+  },
+  {
+   "token": "feverup",
+   "cls": "over",
+   "contentMB": 8.51
+  },
+  {
+   "token": "asm",
+   "cls": "over",
+   "contentMB": 6.74
+  },
+  {
+   "token": "westernveterinarypartnersllc",
+   "cls": "over",
+   "contentMB": 6.79
+  },
+  {
+   "token": "medelitellc",
+   "cls": "over",
+   "contentMB": 4.01
+  },
+  {
+   "token": "coupanginternal",
+   "cls": "over",
+   "contentMB": 9.54
+  },
+  {
+   "token": "doordashusa",
+   "cls": "over",
+   "contentMB": 8.67
+  },
+  {
+   "token": "esri",
+   "cls": "over",
+   "contentMB": 5.1
+  },
+  {
+   "token": "datadog",
+   "cls": "over",
+   "contentMB": 5.56
+  },
+  {
+   "token": "wundermanthompson",
+   "cls": "over",
+   "contentMB": 8.71
+  },
+  {
+   "token": "lucidmotors",
+   "cls": "over",
+   "contentMB": 11.44
+  },
+  {
+   "token": "ecpcareers",
+   "cls": "over",
+   "contentMB": 8.24
+  },
+  {
+   "token": "hellofresh",
+   "cls": "over",
+   "contentMB": 4.15
+  },
+  {
+   "token": "morganmorganjobsapplynow",
+   "cls": "volume",
+   "contentMB": 3.89
+  },
+  {
+   "token": "olsson",
+   "cls": "volume",
+   "contentMB": 3.97
+  },
+  {
+   "token": "sohohouseco",
+   "cls": "over",
+   "contentMB": 4.13
+  },
+  {
+   "token": "vitalcaringgroup",
+   "cls": "over",
+   "contentMB": 10.01
+  },
+  {
+   "token": "dhpace",
+   "cls": "volume",
+   "contentMB": 3.95
+  },
+  {
+   "token": "cloudflare",
+   "cls": "over",
+   "contentMB": 7.07
+  },
+  {
+   "token": "andurilindustries",
+   "cls": "over",
+   "contentMB": 41.97
+  },
+  {
+   "token": "infuse",
+   "cls": "volume",
+   "contentMB": 3.42
+  },
+  {
+   "token": "luminishealth",
+   "cls": "over",
+   "contentMB": 6.37
+  },
+  {
+   "token": "onemedical",
+   "cls": "over",
+   "contentMB": 6.6
+  },
+  {
+   "token": "stone",
+   "cls": "volume",
+   "contentMB": 3.89
+  },
+  {
+   "token": "mongodb",
+   "cls": "over",
+   "contentMB": 4.42
+  },
+  {
+   "token": "elastic",
+   "cls": "over",
+   "contentMB": 7.87
+  },
+  {
+   "token": "nebius",
+   "cls": "over",
+   "contentMB": 6.76
+  },
+  {
+   "token": "purestorage",
+   "cls": "over",
+   "contentMB": 4.23
+  },
+  {
+   "token": "benchmarkpt",
+   "cls": "over",
+   "contentMB": 9.71
+  },
+  {
+   "token": "liquidpersonnel",
+   "cls": "over",
+   "contentMB": 26.72
+  },
+  {
+   "token": "okta",
+   "cls": "over",
+   "contentMB": 4.71
+  },
+  {
+   "token": "flyzipline",
+   "cls": "volume",
+   "contentMB": 3.94
+  },
+  {
+   "token": "loenbro",
+   "cls": "over",
+   "contentMB": 7.71
+  },
+  {
+   "token": "holderconstruction",
+   "cls": "volume",
+   "contentMB": 3.7
+  },
+  {
+   "token": "braze",
+   "cls": "over",
+   "contentMB": 6.04
+  },
+  {
+   "token": "relativity",
+   "cls": "over",
+   "contentMB": 5.98
+  },
+  {
+   "token": "okx",
+   "cls": "over",
+   "contentMB": 6.82
+  },
+  {
+   "token": "lush",
+   "cls": "over",
+   "contentMB": 5.29
+  },
+  {
+   "token": "coreweave",
+   "cls": "over",
+   "contentMB": 5.08
+  },
+  {
+   "token": "tegnainc",
+   "cls": "volume",
+   "contentMB": 3.8
+  },
+  {
+   "token": "verkada",
+   "cls": "volume",
+   "contentMB": 3.62
+  },
+  {
+   "token": "monks",
+   "cls": "over",
+   "contentMB": 5.04
+  },
+  {
+   "token": "agoda",
+   "cls": "over",
+   "contentMB": 5.94
+  },
+  {
+   "token": "avepoint",
+   "cls": "over",
+   "contentMB": 4.62
+  },
+  {
+   "token": "charliehealth",
+   "cls": "volume",
+   "contentMB": 3.47
+  },
+  {
+   "token": "resultspt",
+   "cls": "over",
+   "contentMB": 4.98
+  },
+  {
+   "token": "toast",
+   "cls": "over",
+   "contentMB": 4.26
+  },
+  {
+   "token": "revolutionmedicines",
+   "cls": "volume",
+   "contentMB": 3.58
+  },
+  {
+   "token": "convenientmd",
+   "cls": "over",
+   "contentMB": 11.76
+  },
+  {
+   "token": "accelschools",
+   "cls": "over",
+   "contentMB": 5.47
+  },
+  {
+   "token": "k2spacecorporation",
+   "cls": "over",
+   "contentMB": 5.38
+  },
+  {
+   "token": "samsara",
+   "cls": "over",
+   "contentMB": 4.06
+  },
+  {
+   "token": "curaleaf",
+   "cls": "over",
+   "contentMB": 7.02
+  },
+  {
+   "token": "xometry",
+   "cls": "volume",
+   "contentMB": 3.44
+  },
+  {
+   "token": "celonis",
+   "cls": "over",
+   "contentMB": 4.01
+  },
+  {
+   "token": "roku",
+   "cls": "volume",
+   "contentMB": 3.83
+  },
+  {
+   "token": "pulse",
+   "cls": "over",
+   "contentMB": 38.71
+  },
+  {
+   "token": "scoutmotors",
+   "cls": "over",
+   "contentMB": 6.36
+  },
+  {
+   "token": "greenthumbindustries",
+   "cls": "over",
+   "contentMB": 5.34
+  },
+  {
+   "token": "veeamsoftware",
+   "cls": "over",
+   "contentMB": 4.49
+  },
+  {
+   "token": "wpp",
+   "cls": "volume",
+   "contentMB": 3.7
+  },
+  {
+   "token": "gitlab",
+   "cls": "volume",
+   "contentMB": 3.22
+  },
+  {
+   "token": "trueanomalyinc",
+   "cls": "over",
+   "contentMB": 4.68
+  },
+  {
+   "token": "fivetran",
+   "cls": "volume",
+   "contentMB": 3.87
+  },
+  {
+   "token": "atwellgroup",
+   "cls": "volume",
+   "contentMB": 3.95
+  },
+  {
+   "token": "connectionshealthsolutions",
+   "cls": "over",
+   "contentMB": 7.56
+  },
+  {
+   "token": "helsing",
+   "cls": "volume",
+   "contentMB": 3.68
+  },
+  {
+   "token": "sharkninjaoperatingllc",
+   "cls": "over",
+   "contentMB": 5.11
+  },
+  {
+   "token": "valtech",
+   "cls": "over",
+   "contentMB": 4.31
+  },
+  {
+   "token": "acornhealth",
+   "cls": "volume",
+   "contentMB": 3.54
+  },
+  {
+   "token": "fairsteadescllc",
+   "cls": "over",
+   "contentMB": 5.92
+  },
+  {
+   "token": "triumvirateenvironmental",
+   "cls": "volume",
+   "contentMB": 3.65
+  },
+  {
+   "token": "lpc",
+   "cls": "volume",
+   "contentMB": 3.38
+  },
+  {
+   "token": "westmonroe4",
+   "cls": "volume",
+   "contentMB": 3.47
+  },
+  {
+   "token": "allcareers",
+   "cls": "over",
+   "contentMB": 4.06
+  },
+  {
+   "token": "agibank",
+   "cls": "over",
+   "contentMB": 7.22
+  },
+  {
+   "token": "eu~fenniesdaynurseries",
+   "cls": "over",
+   "contentMB": 5.54
+  },
+  {
+   "token": "moneymart",
+   "cls": "volume",
+   "contentMB": 3.98
+  },
+  {
+   "token": "baringa",
+   "cls": "volume",
+   "contentMB": 3.51
+  },
+  {
+   "token": "tysonmendesllp",
+   "cls": "volume",
+   "contentMB": 3.58
+  }
+ ]
+}
