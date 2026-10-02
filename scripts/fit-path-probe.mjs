@@ -109,7 +109,7 @@ CPA licensed. BS Accounting, University of Illinois 2016`,
 async function post(url, body, ms = 60_000) {
   calls++;
   const res = await fetch(url, {
-    method: "POST", headers: { "Content-Type": "application/json", ...H },
+    method: "POST", headers: { "Content-Type": "application/json", ...H, "x-rb-budget": "probe" },
     body: JSON.stringify(body), signal: AbortSignal.timeout(ms),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

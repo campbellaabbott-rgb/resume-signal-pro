@@ -93,6 +93,7 @@ import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
+import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS } from "./anon-budget.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,7 +112,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.84"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.85"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -7305,6 +7306,22 @@ Deno.serve(async (req) => {
   const action = String(body.action ?? "list");
   const client = db();
 
+  // THE ANONYMOUS BUDGET, before any dispatch, so a refused read does no other
+  // database work. The service key and our own servers' reader proof make no
+  // counter call at all. anon-budget.ts holds the rules and fails open.
+  if (BUDGETED_ACTIONS.has(action)) {
+    const refused = await anonBudgetGate(req, action, {
+      rpc: (args, signal) => client.rpc("job_board_anon_check", args).abortSignal(signal),
+      serviceKey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      cors: corsHeaders,
+    });
+    if (refused) return refused;
+  }
+  if (action === "budget-echo") {
+    // Uncounted, zero database: what the gate sees of this caller's own request.
+    return json(await budgetEcho(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
+  }
+
   try {
     if (action === "searchQuality") {
       // Rationale: docs/job-board-index-notes.md#n199-days
@@ -7440,6 +7457,9 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
+      const anonBudgetRead = Promise.resolve(
+        client.from("job_board_meta").select("v").eq("k", "anon_board_budget").maybeSingle(),
+      ).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -7534,6 +7554,10 @@ Deno.serve(async (req) => {
         // only place they exist — get_freshness_stats keeps its signature.
         client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "freshness").maybeSingle(),
       ]);
+      // The anonymous budget's setting row (enforce, the country switch, cap
+      // overrides), reported as stored. Its own named read, started before the
+      // positional batch above so it runs beside it, and never a position in it.
+      const anonBudgetRow = await anonBudgetRead;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
@@ -7561,6 +7585,8 @@ Deno.serve(async (req) => {
         statusDegraded: false,
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
+        // The anonymous budget's setting row and the code's default caps.
+        anonBudget: anonBudgetStatus((anonBudgetRow as { data?: { v?: unknown } | null } | null)?.data?.v ?? null),
         // Rationale: docs/job-board-index-notes.md#n211-questionvendors-realquestionvendors
         questionVendors: realQuestionVendors(),
         // Rationale: docs/job-board-index-notes.md#n212-applyagent-aameta-data-v

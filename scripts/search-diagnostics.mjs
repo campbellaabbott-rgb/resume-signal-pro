@@ -32,7 +32,7 @@ const VERBOSE = process.argv.includes("--verbose");
 async function explain(body) {
   const res = await fetch(`${URL}/functions/v1/job-board`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}`, apikey: KEY },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}`, apikey: KEY, "x-rb-budget": "probe" },
     body: JSON.stringify({ action: "list", explain: true, ...body }),
   });
   return res.json();

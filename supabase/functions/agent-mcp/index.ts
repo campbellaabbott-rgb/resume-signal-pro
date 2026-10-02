@@ -54,6 +54,9 @@ import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 // An agent's search is not a candidate's search. Both land in the same demand
 // log; only this header tells them apart. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+// The board counts anonymous reads per address; this proves an agent's read
+// is ours, not a browser's, and grants nothing else. See the module.
+import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { computeFit, resumeRoleTerms } from "../_shared/fit-score.ts";
 import { applyServingFences, parseCountries } from "../_shared/mandate-reach.ts";
 import {
@@ -205,7 +208,7 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // statement the vendor argument already refused to make.
 const SERVER_INFO = {
   name: "resumebooster-job-board",
-  version: "2026-09-04.10",
+  version: "2026-09-04.11",
   // 2025-11-25 Implementation fields, additive: a display name, the human
   // page, and an icon a host may show beside the connector.
   title: "Resume Booster job board",
@@ -459,7 +462,10 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
   const anon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("mcp") },
+    headers: {
+      "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("mcp"),
+      ...(await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")),
+    },
     body: JSON.stringify(body),
   });
   const out = await res.json().catch(() => ({}));

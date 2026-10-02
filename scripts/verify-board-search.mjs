@@ -43,7 +43,7 @@ async function board(body, tries = 2) {
     try {
       const res = await fetch(BASE, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY}`, "x-rb-budget": "probe" },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(30_000),
       });

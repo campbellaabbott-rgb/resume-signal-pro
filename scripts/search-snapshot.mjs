@@ -59,7 +59,7 @@ async function callBoard(body) {
   const t0 = Date.now();
   const res = await fetch(URL_, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: KEY, Authorization: `Bearer ${KEY}` },
+    headers: { "Content-Type": "application/json", apikey: KEY, Authorization: `Bearer ${KEY}`, "x-rb-budget": "probe" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(40_000),
   });
