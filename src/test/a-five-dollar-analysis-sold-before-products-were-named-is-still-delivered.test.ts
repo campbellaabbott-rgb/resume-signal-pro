@@ -329,17 +329,69 @@ describe("nothing a checkout can mint passes for a legacy sale", () => {
   });
 });
 
-describe("the legacy shape cannot be minted any more", () => {
-  it("no function but create-checkout writes baseAmountUSD", () => {
-    const writers: string[] = [];
+/**
+ * Every .ts file under supabase/functions, read ONCE for the whole file.
+ *
+ * Two guards below each used to walk the tree themselves and strip the
+ * comments out of every file in it: 9.3 MB, two 1.9 MB catalogues among it,
+ * twice over, for two patterns. Alone that cost a quarter of a second to a
+ * second each; under a 41-file run it reached 4.2 s, and one 10-file run lost
+ * a case to vitest's 5 s default with no assertion behind it -- the same
+ * "timed out" that names nothing, which helpers/mount-budget.ts argues
+ * against. That file also says what to prefer: make the guard fast rather
+ * than give it longer.
+ *
+ * So the tree is read once, and a file is stripped only when its RAW text
+ * contains the name the guard is looking for. That skip cannot hide a match.
+ * codeOf only takes text away -- a block comment becomes one space, a line
+ * comment goes up to its newline, which stays -- so it can never put two
+ * pieces together into a name that was not already spelled out in the source.
+ * A file that never spells the name cannot spell it once stripped. The other
+ * direction is unchanged: a file that spells the name only in a comment gets
+ * past the skip, and the stripping then takes the name away, as before.
+ */
+let functionSources: Array<{ rel: string; raw: string }> | undefined;
+function allFunctionSources(): Array<{ rel: string; raw: string }> {
+  if (!functionSources) {
+    const all: Array<{ rel: string; raw: string }> = [];
     const walk = (dir: string) => {
       for (const d of readdirSync(dir, { withFileTypes: true })) {
         const abs = resolve(dir, d.name);
         if (d.isDirectory()) walk(abs);
-        else if (d.name.endsWith(".ts") && /\bbaseAmountUSD\s*:/.test(code(abs))) writers.push(abs.slice(FN.length + 1));
+        else if (d.name.endsWith(".ts")) all.push({ rel: abs.slice(FN.length + 1), raw: readFileSync(abs, "utf8") });
       }
     };
     walk(FN);
+    functionSources = all;
+  }
+  return functionSources;
+}
+const stripped = new Map<string, string>();
+function sourcesSpelling(name: string): Array<[string, string]> {
+  if (!name) throw new Error("sourcesSpelling needs a name -- an empty one would strip the whole tree");
+  const out: Array<[string, string]> = [];
+  for (const { rel, raw } of allFunctionSources()) {
+    if (!raw.includes(name)) continue;
+    let c = stripped.get(rel);
+    if (c === undefined) { c = codeOf(raw); stripped.set(rel, c); }
+    out.push([rel, c]);
+  }
+  return out;
+}
+
+describe("the legacy shape cannot be minted any more", () => {
+  it("the tree the guards below read is the whole tree", () => {
+    const all = allFunctionSources();
+    expect(all.length, "the walk found too few sources -- it is not reading supabase/functions").toBeGreaterThanOrEqual(100);
+    expect(all.map((f) => f.rel)).toEqual(expect.arrayContaining([
+      "create-checkout/index.ts", "analyze-resume/index.ts", "stripe-webhook/index.ts", "_shared/full-analysis.ts",
+    ]));
+  });
+
+  it("no function but create-checkout writes baseAmountUSD", () => {
+    const writers = sourcesSpelling("baseAmountUSD")
+      .filter(([, c]) => /\bbaseAmountUSD["'`]?\s*:/.test(c))
+      .map(([rel]) => rel);
     expect(writers).toEqual(["create-checkout/index.ts"]);
   });
 
@@ -378,20 +430,13 @@ describe("the address is a sound witness only while the writers keep their shape
   /** Every object inserted into used_stripe_sessions across the functions, by file. */
   function claimInserts(): Array<[string, string]> {
     const out: Array<[string, string]> = [];
-    const walk = (dir: string) => {
-      for (const d of readdirSync(dir, { withFileTypes: true })) {
-        const abs = resolve(dir, d.name);
-        if (d.isDirectory()) { walk(abs); continue; }
-        if (!d.name.endsWith(".ts")) continue;
-        const c = code(abs);
-        for (const m of c.matchAll(/from\(\s*["']used_stripe_sessions["']\s*\)/g)) {
-          const rest = c.slice(m.index!, m.index! + 400);
-          const ins = /^[^;]*?\.(?:insert|upsert)\(/.exec(rest);
-          if (ins) out.push([abs.slice(FN.length + 1), balanced(rest, ins[0].length)]);
-        }
+    for (const [rel, c] of sourcesSpelling("used_stripe_sessions")) {
+      for (const m of c.matchAll(/from\(\s*["']used_stripe_sessions["']\s*\)/g)) {
+        const rest = c.slice(m.index!, m.index! + 400);
+        const ins = /^[^;]*?\.(?:insert|upsert)\(/.exec(rest);
+        if (ins) out.push([rel, balanced(rest, ins[0].length)]);
       }
-    };
-    walk(FN);
+    }
     return out;
   }
 
