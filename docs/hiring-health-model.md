@@ -534,7 +534,15 @@ postings) to an estimated 11–14%, all 308 lap boards included in the loss. The
 two stored copies of the old pool are withheld at apply time: the layoff
 partition's event counts are nulled (the reader answers `uncontrolled` until the
 05:10 refresh) and the stats and explore caches lose their field-curve keys (the
-pages say "not yet computed" until the next hourly run). Residuals not closed: a
+pages say "not yet computed" until the next hourly run). On 2026-10-02 only the
+explore copy existed in production (the stats part, `20260928004823`, had not
+applied there), and a :07 refresh already scanning at the apply finishes on the
+old definition and writes the pre-fix pool back, stamped before the apply; so
+the post-deploy check (`scripts/verify-deploy.sh` section 7h) dates those rows
+against the apply time, supplied as `DAY30_APPLIED_AT`, and grades nothing it
+cannot date. The field curve's stored contract is restated by `121843` itself:
+`CREATE OR REPLACE` keeps a comment, and the one it would have kept said lap
+boards were admitted. Residuals not closed: a
 full_read board still certifies a takedown about one and a half revisit
 intervals late, and windowing before 2026-09-06 is invisible to the floor. The
 day-14 gate (`sufficient`) has no observability or watch term at all and is not

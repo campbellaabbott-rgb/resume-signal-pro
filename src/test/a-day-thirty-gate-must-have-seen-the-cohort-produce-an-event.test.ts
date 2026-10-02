@@ -691,10 +691,11 @@ describe("the positive control is spelled where the database can run it", () => 
   });
 
   it("names the control and its exclusions in the contract the function carries", () => {
-    // The field curve's COMMENT ON is still the one GATE_CATEGORY wrote: no
-    // later file restates it. The company curve's re-issue restates its
-    // contract with the control's paragraph intact.
-    for (const f of [GATE_COMPANY, GATE_CATEGORY, NEW_COMPANY]) {
+    // Both watch-floor re-issues restate their contracts, each with the
+    // control's paragraph intact: the field curve's stored comment had to
+    // move with its admission rule, because CREATE OR REPLACE would have
+    // kept GATE_CATEGORY's text describing the rule the body replaced.
+    for (const f of [GATE_COMPANY, GATE_CATEGORY, NEW_COMPANY, NEW_CATEGORY]) {
       const raw = mig(f);
       // Adjacent SQL literals joined first: the contract is the TEXT the
       // database stores, and a guard that reads the line wrapping instead

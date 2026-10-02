@@ -53,6 +53,14 @@
  * writes them: an aged_out exit when the role passed day 30 before the first
  * proven lap, a lap_backfill closure when it did not.
  *
+ * THE CONTRACT MOVES WITH THE RULE. A CREATE OR REPLACE keeps a function's
+ * stored comment, and the field curve's re-issue keeps its shape: without a
+ * comment of its own it would run the floor under 20260925163842's text,
+ * which says lap boards are admitted and names two admission tests. The
+ * database here is built through that file, so it stores that text exactly
+ * as production does, and the comment it holds after the re-issues is read
+ * back and judged.
+ *
  * TEETH. Every behavioural assertion runs over ONE database: the definitions
  * the database ran until this change first (they must return the defect),
  * then the three re-issues over the same rows. Six mutants of the re-issues
@@ -82,6 +90,8 @@ const WAS_COMPANY = "20260925163517_a_gate_made_of_width_alone_admits_a_board_th
 const WAS_CATEGORY = "20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql";
 const WAS_WRITER = "20260925164237_the_third_day_thirty_chain_on_one_page_gets_the_same_control.sql";
 const READER = "20260925164510_an_arm_written_before_the_control_existed_is_not_a_sufficient_arm.sql";
+/** The last file that wrote the field curve's stored comment before this change; WAS_CATEGORY raised a header and wrote none. */
+const WAS_CATEGORY_CONTRACT = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
 /** The re-issues this file guards. */
 const NEW_COMPANY = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
 const NEW_CATEGORY = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
@@ -311,6 +321,12 @@ let after: { co: Map<string, Row>; cat: Map<string, Row>; lp: Map<string, Row> }
 let migrated: Map<string, Row>;
 let meta: Record<string, Record<string, unknown>>;
 let partial: Row;
+/** The field curve's stored comment, as the database holds it before and after the re-issues. */
+let contract: { before: string | null; after: string | null };
+const storedContract = async (db: PGlite) =>
+  (await db.query<{ d: string | null }>(
+    `SELECT obj_description('public.get_category_fill_curve(int, int)'::regprocedure, 'pg_proc') AS d`,
+  )).rows[0].d;
 const mutant: Record<string, { co?: Map<string, Row>; cat?: Map<string, Row>; lp?: Map<string, Row> }> = {};
 const mutantError: Record<string, string> = {};
 /** A mutant's published rows, or a failure naming why it could not be built. */
@@ -332,8 +348,11 @@ beforeAll(async () => {
             (current_date - 13)::text AS d13, (current_date - 12)::text AS d12, (current_date - 3)::text AS d3`,
   )).rows[0];
 
-  // BEFORE: the definitions the database ran until this change.
-  for (const f of [WAS_COMPANY, WAS_CATEGORY, WAS_WRITER, READER]) await db.exec(mig(f));
+  // BEFORE: the definitions the database ran until this change, the field
+  // curve built through the file that wrote its stored comment, so the
+  // comment the re-issue inherits is the one production holds.
+  for (const f of [WAS_COMPANY, WAS_CATEGORY_CONTRACT, WAS_CATEGORY, WAS_WRITER, READER]) await db.exec(mig(f));
+  const contractBefore = await storedContract(db);
   const coBefore = await company(db);
   const catBefore = await category(db);
   await refresh(db);
@@ -341,6 +360,7 @@ beforeAll(async () => {
 
   // AFTER: the three re-issues over the same rows and the same stored partition.
   for (const f of [NEW_COMPANY, NEW_CATEGORY, NEW_WRITER]) await db.exec(mig(f));
+  contract = { before: contractBefore, after: await storedContract(db) };
   const coAfter = await company(db);
   const catAfter = await category(db);
   migrated = await arms(db);
@@ -524,6 +544,27 @@ describe("a role counts at day 30 only if its board was read in full from before
     expect(c.lp_sufficient_30).toBe(true);
     expect(c.lp_reason).toBeNull();
     expect(num(c.lp_gate_share_30)).toBeCloseTo(0.1109, 4);
+  });
+
+  it("the field curve's stored contract moves with its admission rule", () => {
+    // The fixture holds the text production holds: lap boards admitted, two
+    // tests. A re-issue that kept it would run the floor under that text.
+    expect(contract.before, "the inherited contract").toMatch(/full_read or lap_proven/);
+    expect(contract.before).toMatch(/cleared both tests/);
+    const now = contract.after ?? "";
+    expect(now, "the contract states the floor the body runs").toMatch(/WATCH FLOOR \(20261002121843\)/);
+    expect(now).toMatch(/lap_proven board has none either and is REFUSED/);
+    expect(now).toMatch(/ONE TRUNCATED DAY COSTS THIRTY-ONE DAYS/);
+    expect(now).toMatch(/passes THREE admission tests/);
+    expect(now).toMatch(/\[GREATEST\(cohort_from, watched_from \+ 1\), cohort_to\]/);
+    expect(now, "an emptied field is described by the old two tests").not.toMatch(/cleared both tests/);
+    expect(now, "the gate share is described as covering two gates").not.toMatch(/BOTH gates/);
+    // Narrowed, not deleted: the bucket is still a necessary test, and the
+    // sentences the estimator and the day-30 guards read are still there.
+    expect(now).toMatch(/necessary test and no longer a sufficient one/);
+    expect(now).toMatch(/NULL -- not 1\.0/);
+    expect(now).toMatch(/APPROXIMATION/);
+    expect(now).toMatch(/A closure never means hired/);
   });
 
   it("the two hourly caches lose the pre-fix pool and keep everything else", () => {
@@ -785,6 +826,17 @@ describe("the floor is spelled where the database can run it", () => {
     expect(co).toMatch(/lap_proven board has none either and is REFUSED/);
     expect(co).toMatch(/unobservable, lap, watch, n, events, fills, relists, width, precision, arithmetic/);
     expect(join(mig(NEW_WRITER), "refresh_layoff_partition")).toMatch(/WATCH FLOOR \(20261002122309\)/);
+    // The field curve keeps its shape, so nothing forces a comment; it states
+    // its own anyway, because the one it would keep describes the old rule.
+    const cat = join(mig(NEW_CATEGORY), "get_category_fill_curve");
+    expect(cat).toMatch(/WATCH FLOOR \(20261002121843\)/);
+    expect(cat).toMatch(/lap_proven board has none either and is REFUSED/);
+    expect(cat).not.toMatch(/cleared both tests/);
+    // And it proves that at apply time: the file refuses to report success
+    // if the comment stored beside the body does not state the floor.
+    expect(stripSql(mig(NEW_CATEGORY)).replace(/\s+/g, " ")).toMatch(
+      /obj_description\('public\.get_category_fill_curve\(int, int\)'::regprocedure, 'pg_proc'\), ''\) NOT LIKE '%WATCH FLOOR \(20261002121843\)%' THEN RAISE EXCEPTION/,
+    );
   });
 
   it("carries unique, non-round stamps after the previous day's last stamp, in apply order", () => {

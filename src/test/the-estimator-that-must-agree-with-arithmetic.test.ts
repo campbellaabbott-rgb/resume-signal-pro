@@ -688,9 +688,11 @@ const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
 // category pin had already been left on 20260925163842 when 20260928003117
 // raised only that curve's header. Both now name the definitions the
 // database runs. Every clause this file mirrors is byte-identical in them.
-// The field curve's re-issue keeps its shape and restates no COMMENT ON, so
-// the prose assertion reads the contract from the newest file that wrote one
-// (COMMENT_SQL below), not from the file that runs.
+// The prose assertion reads the contract from the newest file at or before
+// the one that runs that wrote one (COMMENT_SQL below): a header-only
+// re-issue writes none and the stored comment survives it. Both watch-floor
+// re-issues changed what is admitted, so each restates its own, and the
+// assertion checks that the contract it reads is the running file's.
 const COMPANY_SQL = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
 const CATEGORY_SQL = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
 const FN_OF: Record<string, string> = { [COMPANY_SQL]: "get_company_fill_curve", [CATEGORY_SQL]: "get_category_fill_curve" };
@@ -826,10 +828,10 @@ describe("the shipped SQL mirrors the reference estimator", () => {
         // bootstrap rollup and is exact only if the fill share is constant in
         // t; presenting it as an exact Aalen-Johansen interval is the lie this
         // sentence prevents.
-        // The contract the database carries: this file's own COMMENT ON, or
-        // the last one written before it when a re-issue kept the shape.
+        // The contract the database carries: the last one written at or
+        // before this file, which must be this file's own.
         expect(COMMENT_SQL(file), `no COMMENT ON for ${FN_OF[file]} at or before ${file}`).toBeTruthy();
-        if (COMMENT_SQL(file) !== file) expect(RAW).not.toMatch(/COMMENT ON FUNCTION/);
+        expect(COMMENT_SQL(file), `${FN_OF[file]} runs under a contract an earlier body wrote`).toBe(file);
         const source = readRaw(COMMENT_SQL(file));
         const comment = source.slice(source.indexOf(`COMMENT ON FUNCTION public.${FN_OF[file]}(`));
         expect(comment).toMatch(/APPROXIMATION|approximation/);

@@ -619,9 +619,11 @@ echo "== 7h. a day-30 share needs thirty days of reading in full (the watch floo
 # so every line below judges BEHAVIOUR: the two new columns on the company
 # curve are the proof it applied, and the named boards are the ones the defect
 # was reproduced on (careers.ulta.com published 0.9431 with sufficient_30 true
-# on 2026-10-01). Read-only: two RPC reads on board tokens, one facet list for
-# the largest boards (the same call section 3 makes), the cached field rows
-# section 4 already read, and the stored layoff arms.
+# on 2026-10-01). Read-only: one RPC read on five named boards, one facet list
+# for the largest boards (the same call section 3 makes) and three reads of
+# fifty of them, the explore cache, the stats-cache read section 4 already
+# made, and the stored layoff arms. A read that errs or times out is a FAIL
+# naming its code, never an INFO: a claim nothing evaluated has not passed.
 R get_company_fill_curve '{"p_tokens":["careers.ulta.com","dominos","catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers","AbbVie"]}' | node -e '
 let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_company_fill_curve non-JSON: "+s.slice(0,160))}
 if(!Array.isArray(j)||!j.length)return console.log("FAIL  get_company_fill_curve -> "+JSON.stringify(j).slice(0,160));
@@ -647,36 +649,128 @@ else if(a.watched_from===null&&a.insufficient_reason_30==="watch")console.log("F
 else{const ok=a.sufficient_30===true&&a.insufficient_reason_30===null&&typeof a.watched_from==="string"&&a.watched_from<="2026-08-06";
   console.log((ok?"PASS":"FAIL")+"  AbbVie (read in full since 2026-08-02) keeps its figure: "+line(a)+" (want sufficient, floor on or before 2026-08-06, S30 about 0.29)")}
 })'
+# THE LARGEST BOARDS, IN CHUNKS, AND A CHUNK THAT ERRS IS A FAIL. The company
+# curve carries a 25-second header; one call over the 150 facet tokens took
+# 17s before the floor added its joins, and a timeout (57014) comes back from
+# PostgREST as a JSON object, not an array. Until 2026-10-02 this section
+# printed that as INFO "returned no rows", so the three claims below could go
+# unevaluated with no FAIL anywhere. Fifty tokens a call took 2.7s to 8.3s
+# that morning (pre-fix, read-only). Every chunk that answers anything but an
+# array prints FAIL with its error code, and so does a facet list that names
+# no company: a check that could not run is not a check that passed.
+CHUNK7H=50
+export CHUNK7H
 J '{"action":"list","limit":1,"includeFacets":true}' > /tmp/vd_7h_facets.json
-TOKS=$(node -e 'try{const j=require("/tmp/vd_7h_facets.json");const t=(j.companies||[]).map(c=>c&&c.token).filter(x=>typeof x==="string").slice(0,200);process.stdout.write(JSON.stringify({p_tokens:t}))}catch{process.stdout.write("{\"p_tokens\":[]}")}')
-R get_company_fill_curve "$TOKS" | node -e '
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  largest-boards read non-JSON: "+s.slice(0,160))}
-if(!Array.isArray(j)||!j.length)return console.log("INFO  largest-boards read returned no rows ("+JSON.stringify(j).slice(0,120)+")");
-if(!j.every(r=>"insufficient_reason_30" in r))return console.log("FAIL  largest "+j.length+" boards: no watch-floor columns on the rows -- the old get_company_fill_curve is serving, so nothing below can be judged");
+node -e 'let t=[];try{const j=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_facets.json","utf8"));t=(j.companies||[]).map(c=>c&&c.token).filter(x=>typeof x==="string").slice(0,150)}catch{}
+require("fs").writeFileSync("/tmp/vd_7h_tokens.json",JSON.stringify(t))'
+NCH7H=$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_tokens.json","utf8"));process.stdout.write(String(Math.ceil(t.length/Number(process.env.CHUNK7H))))')
+i7h=0
+while [ "$i7h" -lt "$NCH7H" ]; do
+  R get_company_fill_curve "$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_tokens.json","utf8"));const k=Number(process.env.CHUNK7H),i=Number(process.argv[1]);process.stdout.write(JSON.stringify({p_tokens:t.slice(i*k,i*k+k)}))' "$i7h")" > "/tmp/vd_7h_chunk_$i7h.json"
+  i7h=$((i7h+1))
+done
+node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+let toks=[];try{toks=JSON.parse(rd("/tmp/vd_7h_tokens.json"))}catch{}
+if(!toks.length)return console.log("FAIL  largest-boards check not evaluated: the facet list named no company -- "+rd("/tmp/vd_7h_facets.json").slice(0,120));
+const k=Number(process.env.CHUNK7H),n=Math.ceil(toks.length/k),j=[];let failed=0;
+for(let i=0;i<n;i++){const s=rd("/tmp/vd_7h_chunk_"+i+".json");let b;
+  try{b=JSON.parse(s)}catch{failed++;console.log("FAIL  largest boards, chunk "+(i+1)+" of "+n+": no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));continue}
+  if(!Array.isArray(b)){failed++;console.log("FAIL  largest boards, chunk "+(i+1)+" of "+n+": error "+((b&&b.code)||"without a code")+" -- "+String((b&&b.message)||JSON.stringify(b)).slice(0,140)+((b&&b.code)==="57014"?" (the function hit its own 25s header)":""));continue}
+  j.push(...b)}
+if(!j.length)return console.log("FAIL  largest boards: no chunk answered with rows, so none of the three claims was evaluated");
+const over=" ("+j.length+" of "+toks.length+" boards"+(failed?"; "+failed+" chunk(s) failed above":"")+")";
+if(!j.every(r=>"insufficient_reason_30" in r))return console.log("FAIL  largest boards: no watch-floor columns on the rows -- the old get_company_fill_curve is serving, so nothing below can be judged"+over);
 const bad=j.filter(r=>r.sufficient_30===true&&(r.observability_bucket==="lap_proven"||r.watched_from===null||r.watched_from===undefined||String(r.watched_from)>=String(r.cohort_to)));
-console.log((bad.length===0?"PASS":"FAIL")+"  largest "+j.length+" boards: no sufficient_30 row is lap_proven or lacks a floor before cohort_to"+(bad.length?" -- "+bad.slice(0,8).map(r=>r.company_token+"("+r.observability_bucket+","+r.watched_from+")").join(", "):""));
+console.log((bad.length===0&&!failed?"PASS":"FAIL")+"  largest boards: no sufficient_30 row is lap_proven or lacks a floor before cohort_to"+over+(bad.length?" -- "+bad.slice(0,8).map(r=>r.company_token+"("+r.observability_bucket+","+r.watched_from+")").join(", "):""));
 const lapWrong=j.filter(r=>r.observability_bucket==="lap_proven"&&r.insufficient_reason_30!=="lap");
-console.log((lapWrong.length===0?"PASS":"FAIL")+"  every lap_proven board among them reads reason lap"+(lapWrong.length?" -- "+lapWrong.slice(0,8).map(r=>r.company_token+"="+r.insufficient_reason_30).join(", "):""));
+console.log((lapWrong.length===0&&!failed?"PASS":"FAIL")+"  every lap_proven board among them reads reason lap"+over+(lapWrong.length?" -- "+lapWrong.slice(0,8).map(r=>r.company_token+"="+r.insufficient_reason_30).join(", "):""));
 const mute=j.filter(r=>(r.sufficient_30===true)!==(r.insufficient_reason_30===null));
-console.log((mute.length===0?"PASS":"FAIL")+"  a refused row always names its reason and a sufficient row never does"+(mute.length?" -- "+mute.slice(0,8).map(r=>r.company_token).join(", "):""));
-const tally={};for(const r of j){const k=r.insufficient_reason_30===null?"sufficient":r.insufficient_reason_30;tally[k]=(tally[k]||0)+1}
+console.log((mute.length===0&&!failed?"PASS":"FAIL")+"  a refused row always names its reason and a sufficient row never does"+over+(mute.length?" -- "+mute.slice(0,8).map(r=>r.company_token).join(", "):""));
+const tally={};for(const r of j){const t=r.insufficient_reason_30===null?"sufficient":r.insufficient_reason_30;tally[t]=(tally[t]||0)+1}
 console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (before the fix 107 of the top 150 were sufficient, 100 of them lap_proven)");
-})'
-# The field rows are the hourly cache section 4 read. The re-issue removes the
-# cached part at apply time, so straight after a deploy this reads as absent
-# until the :27 run; after it, every field's gate_share_30 must sit below its
-# 2026-10-01T22:07Z reading (explore cache, the same call), because the floor
-# removes every lap board and every recently cut-short board from the pool.
-CAT 'const BASE={admin:0.4266,legal:0.4213,other:0.66,sales:0.6321,design:0.3867,data_ai:0.5074,finance:0.6104,product:0.4726,science:0.5127,customer:0.475,security:0.54,education:0.6513,marketing:0.421,people_hr:0.4206,healthcare:0.6069,operations:0.6433,engineering:0.6534,hospitality_retail:0.5703};
-if(!rows)return console.log("INFO  no cached field rows to judge: the watch-floor re-issue removes the pre-fix part at apply, so this is expected until the next :27 refresh writes rows under the floor (section 4e says what the cache holds and why)");
-let fell=0,held=[];for(const r of rows){const b=BASE[r.category],g=N(r.gate_share_30);if(b===undefined)continue;if(g===null||g<b)fell++;else held.push(r.category+" "+g+" >= "+b)}
-console.log((held.length===0?"PASS":"FAIL")+"  gate_share_30 fell below its pre-fix reading on "+fell+" field(s)"+(held.length?"; HELD on "+held.join(", ")+" -- these rows were computed without the floor":"")+" (rows computed_at "+m.computed_at+")");
-const emptied=rows.filter(r=>r.sufficient_30!==true).map(r=>r.category+"(gate="+r.gate_share_30+")");
-console.log("INFO  fields not sufficient after the floor: "+(emptied.length?emptied.join(", "):"none")+" -- each must render a reason on the page, never a number");'
+})()'
+# THE FIELD ROWS, FROM THE CACHE PRODUCTION ACTUALLY HAS. Read-only on
+# 2026-10-02 at 01:40Z and 03:48Z: get_stats_cache carries no fill_curve part
+# (20260928004823 and 20260928011742 have not applied there), so a check that
+# read only that part printed "no cached field rows" on every run and never
+# judged the field grain at all. The rows that exist are get_explore_cache's
+# field_curves -- get_category_fill_curve(90, 300) keyed by category,
+# rewritten whole at :07 -- and that is what is judged here; the stats part is
+# judged the same way whenever it exists.
+# DATED AGAINST THE APPLY, NOT TRUSTED FOR BEING PRESENT. The re-issue removes
+# both parts at apply, but a :07 run already scanning when it commits finishes
+# on the definition it began with and then replaces its whole row, putting the
+# pre-fix pool back, stamped with the run's start -- before the apply. Only
+# a stamp at or after the apply proves the rows came from the floor. The
+# apply time is not readable with the anon key, so it is an input: set
+# DAY30_APPLIED_AT (UTC, the moment 20261002121843 finished applying) in the
+# environment or on the line below once it is known. Until then the dating
+# line reads FAIL, which is the point.
+# THE PRE-FIX READINGS ARE A CEILING, NOT A POINT. gate_share_30 moved by up
+# to 0.15 between reads of the pre-fix rows (finance 0.6104 at 2026-10-01
+# 22:07Z, 0.5374 at 10-02 01:07Z, 0.6845 at 03:07Z), so each field is held to
+# the HIGHEST of the readings we have for it, and only rows dated after the
+# apply are graded against it at all.
+DAY30_APPLIED_AT="${DAY30_APPLIED_AT:-}"
+export DAY30_APPLIED_AT
+R get_explore_cache '{}' > /tmp/vd_7h_explore.json
+node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+const BASE_HI={admin:0.4266,legal:0.4442,other:0.6654,sales:0.6779,design:0.4127,data_ai:0.5283,finance:0.6845,product:0.4727,science:0.5467,customer:0.5722,security:0.5887,education:0.6513,marketing:0.421,people_hr:0.4206,healthcare:0.6985,operations:0.7098,engineering:0.6792,hospitality_retail:0.6161};
+const MAX_EXPLORE_AGE_MIN=75;
+const applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied);
+if(applied&&!Number.isFinite(at))console.log("FAIL  DAY30_APPLIED_AT="+applied+" is not a timestamp, so no field row below can be dated against the apply");
+const N=v=>v===null||v===undefined?null:Number(v);
+const judge=(label,rows,stamp,carried)=>{
+  if(carried)console.log("FAIL  "+label+": carried forward from an earlier run (stale_parts names it) -- the run stamped "+stamp+" could not compute the curve, and the carried rows carry no stamp of their own, so they cannot be shown to come from the floor");
+  const t=Date.parse(stamp);let dated=false;
+  if(!Number.isFinite(t))console.log("FAIL  "+label+": no usable stamp ("+stamp+")");
+  else if(!applied)console.log("FAIL  "+label+" computed_at="+stamp+" cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time 20261002121843 finished applying (a run already scanning at the apply writes the pre-fix pool back, stamped before it)");
+  else if(!Number.isFinite(at)){}
+  else if(t<at)console.log("FAIL  "+label+" computed_at="+stamp+" is BEFORE the apply ("+applied+"): a run that began before 20261002121843 committed, which may have written the pre-fix pool back over the withhold -- re-run after the next refresh");
+  else if(!carried){dated=true;console.log("PASS  "+label+" computed_at="+stamp+" is at or after the apply ("+applied+"): computed by the re-issued definition")}
+  const fell=[],held=[];
+  for(const r of rows){const b=BASE_HI[r.category],g=N(r.gate_share_30);if(b===undefined)continue;if(g===null||g<b)fell.push(r.category);else held.push(r.category+" "+g+" >= "+b)}
+  console.log((dated?(held.length===0?"PASS":"FAIL"):"INFO")+"  "+label+": gate_share_30 below its highest pre-fix reading on "+fell.length+" of "+rows.length+" field(s)"+(held.length?"; HELD on "+held.join(", "):"")+(dated?"":" -- not graded: these rows are not dated after the apply"));
+  const leak=rows.filter(r=>!(N(r.gate_share_30)>0)&&r.still_open_30!==null&&r.still_open_30!==undefined);
+  const hollow=rows.filter(r=>r.sufficient_30===true&&(r.still_open_30===null||r.still_open_30===undefined||!(N(r.gate_share_30)>0)));
+  console.log((leak.length||hollow.length?"FAIL":"PASS")+"  "+label+": no field the floor emptied carries a figure, and no sufficient field lacks one"+(leak.length?" -- a figure with nothing admitted: "+leak.map(r=>r.category).join(", "):"")+(hollow.length?" -- sufficient with no figure: "+hollow.map(r=>r.category).join(", "):""));
+  const refused=rows.filter(r=>r.sufficient_30!==true).map(r=>r.category+"(gate="+r.gate_share_30+")");
+  console.log("INFO  "+label+": fields not sufficient under the floor: "+(refused.length?refused.join(", "):"none")+" -- each must render a reason on the page, never a number");
+};
+const s=rd("/tmp/vd_7h_explore.json");let j;try{j=JSON.parse(s)}catch{}
+const g=Array.isArray(j)?j[0]:j;
+if(j===undefined)console.log("FAIL  get_explore_cache answered no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));
+else if(!g||typeof g!=="object"||("code" in g&&"message" in g))console.log("FAIL  get_explore_cache errored: "+JSON.stringify(g).slice(0,160));
+else{
+  const root=g.computed_at,ageMin=(Date.now()-Date.parse(root))/6e4;
+  const stale=Array.isArray(g.stale_parts)?g.stale_parts:[];
+  if(!Number.isFinite(ageMin))console.log("FAIL  explore cache carries no usable computed_at ("+root+")");
+  else if(ageMin>MAX_EXPLORE_AGE_MIN)console.log("FAIL  explore cache last ran "+Math.round(ageMin)+" min ago (computed_at "+root+"): the :07 refresh has stopped, so its rows reflect nothing recent");
+  if(!("field_curves" in g)){
+    if(Number.isFinite(at)&&Date.parse(root)>=at)console.log("FAIL  explore cache: a run that began after the apply wrote no field_curves key, which refresh_explore_cache always writes -- something else replaced the row");
+    else console.log("INFO  explore cache: field_curves withheld at apply (20261002121843) and no :07 run has completed since (root computed_at "+root+"); re-run after the next :07 -- the absence cannot outlive the "+MAX_EXPLORE_AGE_MIN+"-minute bar above without a FAIL");
+  }else{
+    const fc=g.field_curves;
+    const rows=fc&&typeof fc==="object"&&!Array.isArray(fc)?Object.entries(fc).map(([category,r])=>Object.assign({category},r)):[];
+    if(!rows.length)console.log("FAIL  explore cache: field_curves is empty"+(stale.includes("field_curves")?" and stale_parts names it":"")+" -- the :07 run could not compute the field curve and had nothing to carry, so the field rows are blank (the five-minute header is the suspect: the floor added a join per observability row)");
+    else judge("explore cache field_curves ("+rows.length+" fields)",rows,root,stale.includes("field_curves"));
+  }
+}
+let m=null;try{m=JSON.parse(rd("/tmp/vd_cat_meta.json"))}catch{}
+const keys=m&&Array.isArray(m.cache_keys)?m.cache_keys:[];
+if(!m)console.log("FAIL  section 4 left no stats-cache meta to read");
+else if(!keys.length||(keys.includes("code")&&keys.includes("message")))console.log("FAIL  get_stats_cache errored or answered nothing (keys: "+keys.join(",")+")");
+else if(!m.present)console.log("INFO  stats cache carries no fill_curve part (20260928004823 not live in production as of 2026-10-02, or withheld at apply and no :27 run since) -- the explore arm above is the field check");
+else{let r=null;try{r=JSON.parse(rd("/tmp/vd_cat.json"))}catch{}
+  if(!Array.isArray(r)||!r.length)console.log("FAIL  stats cache fill_curve is present but carries no rows (stale_parts "+JSON.stringify(m.stale_parts)+")");
+  else judge("stats cache fill_curve ("+r.length+" fields)",r,m.computed_at,m.carried);
+}
+})()'
 R get_layoff_partition '{}' | node -e '
-let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_layoff_partition non-JSON")}
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_layoff_partition answered no JSON -- "+s.slice(0,120))}
+if(j&&!Array.isArray(j)&&("code" in j||"message" in j))return console.log("FAIL  get_layoff_partition errored: "+((j.code)||"without a code")+" -- "+String(j.message||"").slice(0,140));
 const rows=Array.isArray(j)?j:[j];const c=rows.find(r=>r&&r.lp_arm==="control");
-if(!c)return console.log("FAIL  no control arm");
+if(!c)return console.log("FAIL  no control arm -- "+JSON.stringify(j).slice(0,120));
 if(rows.every(r=>r.lp_reason==="uncontrolled"))return console.log("PASS  both stored arms withheld (reason uncontrolled): 20261002122309 applied and the 05:10 refresh has not re-run since; control computed_at="+c.lp_computed_at);
 const ok=c.lp_reason!=="uncontrolled"&&Number(c.lp_gate_share_30)<0.7395;
 console.log((ok?"PASS":"FAIL")+"  control arm recomputed under the floor: gate_share_30="+c.lp_gate_share_30+" (pre-fix 0.7395) S30="+c.lp_still_open_30+" (pre-fix 0.4909) sufficient="+c.lp_sufficient_30+" reason="+c.lp_reason+" computed_at="+c.lp_computed_at);

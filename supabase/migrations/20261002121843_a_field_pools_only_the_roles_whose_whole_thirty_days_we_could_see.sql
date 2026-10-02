@@ -56,13 +56,39 @@
 -- computed"; Explore stopped rendering field_curves long ago and the /v1
 -- curve reads the same stats part.
 --
+-- WHICH OF THE TWO EXISTS. Read-only, 2026-10-02T03:48Z: production's stats
+-- cache carries no fill_curve part at all (20260928004823 has not applied
+-- there), so today only the explore cache holds these rows, rewritten at :07.
+-- That is the copy the post-deploy verifier judges (scripts/verify-deploy.sh,
+-- section 7h), and it has one hazard the withhold cannot close: a :07 run
+-- already scanning when this file commits finishes on the definition it began
+-- with, then replaces its whole row -- putting the pre-fix pool back over the
+-- withhold until the next run, stamped with the run's start, which is before
+-- the apply. The verifier therefore dates the part against the apply rather
+-- than trusting its presence.
+--
 -- WHAT DOES NOT CHANGE. The signature, the thirty columns, every other CTE,
 -- the five-minute header and the reachable set are the 20260928003117 text;
 -- the shape does not change, so nothing is dropped and CREATE OR REPLACE
--- keeps the oid, the grants and the 20260925163842 COMMENT ON, which this file
--- does not restate. MIGRATIONS ARE IMMUTABLE: the predecessor is untouched and
--- the guards that pin the live definition follow the function here. One
--- function per file. The 30-day freshness fence is not touched.
+-- keeps the oid and the grants. MIGRATIONS ARE IMMUTABLE: the predecessor is
+-- untouched and the guards that pin the live definition follow the function
+-- here. One function per file. The 30-day freshness fence is not touched.
+--
+-- THE CONTRACT IS RESTATED, BECAUSE THE ONE IT WOULD KEEP IS NOW FALSE. A
+-- CREATE OR REPLACE keeps the stored comment, and the one stored is
+-- 20260925163842's (20260928003117 raised a header and wrote none). That text
+-- says the day-30 risk set admits every board whose bucket can prove an
+-- absence -- lap boards included -- and that an emptied field had no role on a
+-- board that cleared the two tests it knew. After this file no lap board is
+-- admitted and admission has a third test. A contract that describes a rule
+-- the database has stopped running is a published claim that went false the
+-- day its subject moved (project_claim_drift); the company grain's file
+-- restates its own for the same reason. So the comment is written again below
+-- the body: 163842's text with the observability paragraph narrowed to a
+-- necessary test, the positive control counted over admitted rows, the gate
+-- share's coverage widened to all three tests, and one paragraph for the
+-- floor. The shape is unchanged, so the catalogue drop that 163842 carries is
+-- not repeated: the comment is replaced in place and the grants stay.
 
 -- ── the three tables the function reads, repeated because it reads them ──
 --
@@ -887,7 +913,7 @@ AS $$
     -- THE DENOMINATOR OF gate_share_30, PUBLISHED, so a NULL reading can say
     -- WHICH absence it is. Without it the two causes of a NULL -- no dated role
     -- of this field reached the cap at all, versus dated roles reached it and
-    -- none of them was on a board that cleared both tests -- are one value, and
+    -- none of them passed all three admission tests -- are one value, and
     -- the page printed the first sentence for both. A refusal printed under the
     -- wrong reason is a second false statement beside the one it replaced.
     g30.dated_n30            AS dated_cohort_n_30
@@ -899,6 +925,211 @@ AS $$
   ORDER BY b.r14 DESC, b.cat ASC;
 $$;
 
+-- THE CONTRACT, RESTATED (see the header): the text the function carries
+-- from 20260925163842 on, edited only where the admission rule moved.
+COMMENT ON FUNCTION public.get_category_fill_curve(int, int) IS
+  'Per-category Aalen-Johansen cumulative incidence of FILL, with RELIST as a '
+  'competing event and age-outs plus still-live roles as right-censored '
+  'observations. It replaces a median that could not exist: the function it '
+  'supersedes reported 14.9 to 16.3 days across all eighteen categories because '
+  'its observable support was one week to one month by construction, so it was '
+  'publishing the midpoint of our own retention cap. COHORT: all three arms are '
+  'restricted to postings whose stated posted_at falls inside the window, so the '
+  'answer does not move with p_days -- selecting events on their exit time while '
+  'taking live roles from one instant of the board returned 0.4390 / 0.4138 / '
+  '0.3529 at p_days 90 / 60 / 30 on data whose true rate was 0.5000. DATE BASIS: '
+  'every duration is measured from the employer''s stated posted_at ALONE, never '
+  'coalesced with our first_seen; undated postings contribute to counts only and '
+  'their share is published as dated_coverage, which is deliberately NOT part of '
+  '`sufficient` -- the caller renders plain at 0.60 and above, qualified between '
+  '0.30 and 0.60, and suppressed below. dated_coverage spans the WHOLE risk-set '
+  'population, exit-ledger rows included, so the age-out arm''s missing origins '
+  '(job_board_exits.posted_at is stamped only from 2026-09-06 and cannot be '
+  'backfilled) read as low coverage and the renderer suppresses, instead of '
+  'hiding behind a coverage of 1.0000 while the hazard runs high. WINDOW: '
+  'window_days is the shorter of p_days (capped at 90, the exit ledger''s '
+  'retention) and the age of the closure log itself. fill_rate_14 IS AN UPPER '
+  'BOUND, not a point estimate, wherever relisting happens: the collector logs '
+  'one superseded closure per title per 24h and DELETES the deduped postings, so '
+  'those competing events are absent from the risk set rather than counted in '
+  'it. relist_rate_14 is the matching FLOOR and renders with an "at least" '
+  'qualifier. fill_rate_14_lo/hi ARE AN APPROXIMATION, not an exact interval: '
+  'Greenwood complementary log-log bounds on S carried across to R by the '
+  'observed fill share, exact only if that share is constant over t. '
+  'median_days_to_fill is min{t <= 30 : R(t) >= 0.5} -- the median of the FILL '
+  'cumulative incidence, NOT of all-cause survival, a deliberate departure from '
+  'the frozen contract because S falls on relists as well as fills and the '
+  'survival form publishes a short fill median beside a low fill rate. It is '
+  'NULL with median_censored TRUE whenever the fill incidence has not reached '
+  'one half inside 30 days; render "more than 30 days", never a number, and '
+  'render the number itself as "half of these roles are FILLED by day N". '
+  'FEED-DARK GUARD: the PER-COMPANY form ran, not the authorised '
+  'absolute-threshold fallback. A batch is flagged when it removed more than '
+  'max(5, 0.30 x that company''s board size AT THE TIME, taken from the newest '
+  'company snapshot at or before the batch''s day), keyed on (company_token, '
+  'closed_at); where no snapshot survives the fallback is today''s served count '
+  'with the absolute floor RAISED TO 25. A flagged batch is CENSORED, not '
+  'deleted -- it is our collection failing, not the employer. If the guard ever '
+  'exceeds the timeout, the absolute fallback must be written and this sentence '
+  'changed in the same commit. `sufficient` is the model''s three thresholds (25 '
+  'at risk, 5 observed fills, interval half-width within 15 points) plus a '
+  'fourth, that observed relists at or before day 14 do not outnumber the fills '
+  'there. p_min_n gates which categories are RETURNED; `sufficient` gates '
+  'whether a returned row may be published.'
+  ' ADMITTED ABSENCE BASES: full_read, lap, and NULL -- NULL is a row '
+  'written before the column existed on 2026-09-08 and is a full_read '
+  'closure, not an unknown one. lap_backfill is EXCLUDED and must stay '
+  'excluded: it is a takedown from a big board''s FIRST observable laps, '
+  'so its closed_at is the day we could finally see it and is late by an '
+  'unknown amount up to the freshness window. It is a count of events, '
+  'never a dated one -- see COMMENT ON COLUMN '
+  'public.job_board_closures.absence_basis, and get_closure_population() '
+  'for how many such rows exist. '
+  'It is excluded from all three places this function reads the log: the '
+  'risk set, the feed-dark batch sizing (where a backlog''s several hundred '
+  'rows on one closed_at would otherwise flag their own arrival as a '
+  'collection failure and censor the real closures beside them), and the '
+  'window_days depth. '
+  'IN THE RISK SET THAT EXCLUSION IS A DELETION, NOT A CENSORING, and it is '
+  'the one place in this function where those differ. The subject leaves all '
+  'three arms at once (the event arm by predicate, the live arm because its '
+  'missing_since is set, the exit arm because ''removed'' is excluded to '
+  'avoid double-counting), so it contributes neither exposure nor an event. '
+  'The deletion is NOT independent of the outcome -- on a backfilled board it '
+  'removes exactly the postings that closed while the still-open ones keep '
+  'their exposure -- so fill_rate_14 and median_days_to_fill are biased '
+  'DOWNWARD for any category whose backfill concentrates in a few large '
+  'boards. Censoring instead would need a last-known-open instant, and this '
+  'table does not store one: censoring at closed_at would use the very date '
+  'ruled inadmissible, and any other stored column would be inventing the '
+  'observation. dated_coverage CANNOT surface this -- it is computed over the '
+  'population that survived the predicate, so it reads full while the '
+  'subjects are gone. A caveat for it must come from '
+  'get_closure_population().closures_lap_backfill, which is the only place '
+  'the size of the gap is visible.'
+  ' STILL ADVERTISED AT DAY 30 (still_open_30 and its siblings, added '
+  '20260909217500). S(30) from the same Aalen-Johansen estimator over a SECOND '
+  'cohort: postings with a stated posted_at in [cohort_from, cohort_to], where '
+  'cohort_to is thirty days ago (so every member had the full thirty days to '
+  'be watched) and cohort_from is GREATEST(the first whole day after now() - '
+  'window_days, 2026-08-07). The cohort lives inside the same event window '
+  'as the closure and exit arms, so no member can have a takedown the window '
+  'cannot see; at p_days 30 it is empty and every day-30 column is NULL. '
+  'The 2026-08-07 floor: '
+  'job_board_exits.posted_at is stamped only from 2026-09-06, so no age-out '
+  'logged earlier carries an origin and cohorts posted before 2026-08-07 are '
+  'missing exactly the roles that did not close. The floor retires itself. '
+  'still_open_30 is the share of that cohort still advertised when it reached '
+  'our 30-day cap; taken_down_30 is the share taken down for good (R(30), a '
+  'CEILING for the same relist-dedupe reason as fill_rate_14); '
+  'relist_rate_30 is the share re-listed (a FLOOR). sum_check_30 is R + X + S '
+  'and is published so the identity is checked rather than asserted; '
+  'sufficient_30 requires it within 1e-6, n_at_risk_30 >= 25 and a '
+  'complementary-log-log half-width on S within 0.15. ageouts_at_30 counts, '
+  'among the observations at risk at day 30, the ones OUR sweep took down at '
+  'the cap -- our action, never an employer event -- censored on the same '
+  'suspect-or-dark batch verdict the company curve uses, so one age-out gets '
+  'one verdict at both grains. '
+  'OBSERVABILITY GATE: the day-30 risk set admits only postings on boards '
+  'whose bucket in job_board_board_observability is full_read or lap_proven, '
+  'as refresh_closure_population() last wrote it. Since 20261002121843 that is '
+  'a necessary test and no longer a sufficient one: the WATCH FLOOR below '
+  'refuses every lap_proven board, so only full_read boards can admit. '
+  'gate_share_30 is the share of the field''s dated day-30 cohort that '
+  'admitted, and the day-30 columns are NULL -- not 1.0 -- when it admitted '
+  'nothing. A windowed board with no proven lap has S(30) = 1 by construction, '
+  'because its takedowns are invisible and every posting ages out. '
+  'POSITIVE CONTROL (20260925163842): the day-30 risk set ALSO admits a '
+  'posting only when its own board produced at least five events -- fills plus '
+  'relists, the two that move S -- inside the same day-30 cohort AND INSIDE THE '
+  'SAME FIELD. Since 20261002121843 those events are counted over ADMITTED '
+  'postings only, so events from roles the watch floor refuses cannot vouch '
+  'for the roles it admits. The count is taken per (board, field) and joined '
+  'on both keys, '
+  'because a control counted per board alone would admit a board into every '
+  'field it touches on events it produced in a different one: a board with five '
+  'engineering fills and twenty thousand eventless customer roles censored at '
+  'the cap would re-enter the customer pool on the engineering fills. That '
+  'count is over CATEGORISED rows only (every arm of the risk set requires a '
+  'non-empty category), so a board with uncategorised cohort events publishes at '
+  'company grain and can be excluded here -- this grain is the STRICTER of the '
+  'two and nothing is over-published as a result. sufficient_30 then requires '
+  'the pooled field to clear seven terms, the same seven the company grain '
+  'applies to a board (its eighth, the watch floor, is applied here per '
+  'posting, at admission): the risk-set floor, the events floor, a floor on '
+  'FILLS alone, '
+  'relists not outnumbering fills, the absolute half-width ceiling, a ceiling '
+  'on the half-width relative to the complement (1 - still_open_30) the '
+  'sentence asserts, and the identity. events_30, fills_30 and relists_30 '
+  'publish the counts so the gate is checked rather than trusted. Without the '
+  'events floor the gate was four terms that all pass VACUOUSLY on a cohort '
+  'with no events, and a board that has never shown us a takedown sat in the '
+  'pool holding S up in proportion to its size. Without the relative ceiling it '
+  'passed one batch above that: a 20,000-observation pool with five events '
+  'publishes 0.9998 with a half-width of 0.00025, which renders as a hundred '
+  'per cent with an interval of zero points. Without the fill terms a pool whose '
+  'only events are relists publishes taken_down_30 = 0.0000 as a measured '
+  'figure. MEASURED, one walk, one basis: 2026-09-25T21:40:43Z to 21:44:27Z, '
+  'all 44,379 catalogue tokens, zero failed chunks -- of the risk mass on boards '
+  'sufficient_30 admitted, 10.59% sat on boards whose cohort produced zero '
+  'events and a further 5.00% on boards estimated to have produced fewer than '
+  'five. The exclusion biases each field DOWN by at most the factor '
+  '1/(1 - the excluded share) on ln S, and it is disclosed in the same row: '
+  'gate_share_30 measures EVERY admission test -- the bucket, the events '
+  'floor and, since 20261002121843, the watch floor -- so it is the honest '
+  'coverage of the figure beside it, and it is the figure the post-deploy '
+  'verifier reads to prove each change to admission applied. TWO FURTHER '
+  'COLUMNS EXIST TO BE READ, NOT '
+  'GATED ON. dated_cohort_n_30 is gate_share_30''s denominator -- the field''s '
+  'whole dated day-30 cohort before any admission test -- so a caller handed NULL '
+  'columns can say WHICH absence it is: no dated role reached the cap at all, '
+  'or dated roles reached it and none was admitted under all three tests. '
+  'top_board_share_30 is the share of the ADMITTED dated cohort held by the '
+  'field''s single largest board, and it names the residual this change does '
+  'NOT close: the pooled S(30) is a mass-weighted average, so a large board '
+  'that cleared the events floor on a handful of events of its own still '
+  'carries its whole censored mass into the pool. A cap on it would need a '
+  'threshold calibrated against per-(board, field) risk mass, which cannot be '
+  'read from outside today -- the board''s companies facet is board-wide and '
+  'ignores the category filter, and the field totals beside it are capped -- so '
+  'the quantity is published and watched rather than guessed at. AGE-OUTS ARE NOT EVENTS HERE and must never be '
+  'counted as them -- they are our own sweep at the cap. NEITHER ARE the 90-day '
+  'event counts: those are a WINDOW OF EVENTS and the cohort is a different '
+  'population, and 42 of the 71 boards this closed had events in that window '
+  'and none inside the cohort. '
+  ' WATCH FLOOR (20261002121843): a posting is admitted to the day-30 risk '
+  'set only if it was posted on a later UTC day than watched_from, the last '
+  'day its board''s takedowns were not yet observable to us -- the floor '
+  'get_company_fill_curve applies (20261002121417), spelled identically. For '
+  'a full_read board watched_from is the later of '
+  'job_board_board_watch.first_observed_on and the last day '
+  'job_board_board_state recorded a truncated read, so ONE TRUNCATED DAY COSTS '
+  'THIRTY-ONE DAYS of admission; a full_read board with no watch row has none '
+  'and is refused. A lap_proven board has none either and is REFUSED until a '
+  'lap-latency term exists: a lap certifies a takedown one to three laps late '
+  'and the sweep logs a posting still stamped missing at the cap as an '
+  'age-out, so a lap board inflates S(30) however long it has been watched. '
+  'The floor is applied per POSTING on all three arms, so each board''s '
+  'effective cohort is [GREATEST(cohort_from, watched_from + 1), cohort_to] '
+  'while cohort_from stays the global date. A posting therefore enters the '
+  'pool only when it passes THREE admission tests: its board''s bucket can '
+  'prove an absence, it was posted after its board''s watch floor, and its '
+  'board produced five events of its own among its admitted postings in the '
+  'field. gate_share_30 '
+  'and dated_cohort_n_30 are computed exactly as before, so the share falls '
+  'by the mass the floor removed and discloses the cut. Before this term the '
+  'field pooled lap boards whose first provable lap postdated the whole '
+  'cohort, and boards onboarded or cut short while it was being posted: on '
+  'one pglite field of six boards, each with a true S(30) of 0.4000, the '
+  'previous definition published 0.5785 with sufficient_30 true, and this one '
+  'publishes 0.4000 with gate_share_30 0.1992. RESIDUALS this term does not '
+  'close: a full_read board still certifies a takedown about one and a half '
+  'revisit intervals late, and windowing before 2026-09-06, when the read '
+  'ledger began, is invisible to it. '
+  'A closure never means hired; a role still advertised at day 30 is not '
+  'proof of anything about the employer beyond the fact stated; nothing here '
+  'extrapolates past the cap (docs/hiring-health-model.md section 10).';
+
 -- THE REACHABLE SET, STATED NOT INHERITED. Unchanged from 20260925163842 and
 -- 20260928003117: the function is deliberately anon-callable; PUBLIC is still
 -- not the same set as anon, so all three are named.
@@ -906,10 +1137,11 @@ REVOKE ALL ON FUNCTION public.get_category_fill_curve(int, int) FROM PUBLIC, ano
 GRANT EXECUTE ON FUNCTION public.get_category_fill_curve(int, int) TO anon, authenticated, service_role;
 
 -- Self-verifying: exactly one definition must remain, it must carry the raised
--- header in its own proconfig, it must still publish the thirty columns, and
--- its stored body must carry the watch floor -- a re-issue whose purpose is
--- the floor must not be able to report success having lost it, changed the
--- shape, or dropped the header the cron pays for.
+-- header in its own proconfig, it must still publish the thirty columns, its
+-- stored body must carry the watch floor, and the comment stored beside it
+-- must state that floor -- a re-issue whose purpose is the floor must not be
+-- able to report success having lost it, changed the shape, dropped the header
+-- the cron pays for, or left the old contract describing the old rule.
 DO $$
 DECLARE n int; cfg text[]; cols text; body text;
 BEGIN
@@ -938,6 +1170,10 @@ BEGIN
      OR body NOT LIKE '%public.job_board_board_state%'
      OR body NOT LIKE '%public.job_board_board_watch%' THEN
     RAISE EXCEPTION 'get_category_fill_curve: re-issued without the watch floor on the day-30 pool';
+  END IF;
+  IF COALESCE(obj_description('public.get_category_fill_curve(int, int)'::regprocedure, 'pg_proc'), '')
+       NOT LIKE '%WATCH FLOOR (20261002121843)%' THEN
+    RAISE EXCEPTION 'get_category_fill_curve: the watch floor is running under a contract that does not state it';
   END IF;
 END $$;
 
