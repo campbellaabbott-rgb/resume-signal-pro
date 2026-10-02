@@ -92,6 +92,7 @@ import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
+import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,7 +111,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.83"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.84"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -619,7 +620,7 @@ class LightCapableOnly extends Set<string> {
 // Rationale: docs/job-board-index-notes.md#n019-dynamic-light
 const DYNAMIC_LIGHT: Set<string> = new LightCapableOnly();
 const AUTO_LIGHT_THRESHOLD_CHARS = 2_500_000; // ~2.5MB of raw content HTML
-const AUTO_LIGHT_CAP = 50; // bound the meta row; realistically a handful
+const AUTO_LIGHT_CAP = 500; // 107 greenhouse boards needed a slot on 2026-10-01, and 50 made every one of them miss; see n019
 const isLight = (token: string) => LIGHT_DESC_TOKENS.has(token) || DYNAMIC_LIGHT.has(token);
 
 /**
@@ -937,6 +938,13 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  * OVERSIZE_BOARDS exists to keep them nameable rather than silent.
  */
 const MAX_RESPONSE_BYTES = 4_000_000;
+// The second read of a lever/ashby board the bound refused, one posting at a time.
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+const STREAM_WIRE_BYTES = 64_000_000;
+const STREAM_READ_BUDGET_MS = 30_000;
+const SLIM_ELEMENT_BYTES = 1_000_000;
+const SLIM_RETAINED_BYTES = 3_000_000;
+const SLIM_DESC_CEILING = 2_500_000;
 // Our own function answering our own chain kick / maintenance probe. Status
 // and list payloads, not vendor feeds, so the ceiling is a tenth of a board's.
 const SELF_RESPONSE_BYTES = 400_000;
@@ -1629,6 +1637,36 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   const nextOffset = exhausted || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
   // Rationale: docs/job-board-index-notes.md#n034-return-items-all-raw-items-all-window
   return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
+}
+
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs: number): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
+  const spec = SLIM_SPECS[s.source];
+  if (!spec) return null;
+  try {
+    const res = await beforeDeadline(fetchWithTimeout(listUrl(s), undefined, STREAM_WIRE_BYTES), deadlineAt, discardBody);
+    if (!res.ok || !res.body || !/json/i.test(res.headers.get("content-type") ?? "")) {
+      discardBody(res);
+      throw new Error(`HTTP ${res.status} ${res.headers.get("content-type") ?? ""}`);
+    }
+    const { raw, stats } = await streamSlim(res.body, spec, {
+      freshCutoffMs,
+      maxBytes: SLIM_RETAINED_BYTES,
+      maxElementBytes: SLIM_ELEMENT_BYTES,
+      descKeepChars: 2 * STORED_DESC_CAP,
+      descCeiling: SLIM_DESC_CEILING,
+      deadlineAt,
+    });
+    const jobs = s.source === "lever" ? normalizeLever(raw as never, s.name, s.token)
+      : s.source === "ashby" ? normalizeAshby(raw as never, s.name, s.token)
+      : null;
+    if (!jobs) throw new Error(`no normaliser for ${s.source}`);
+    console.warn(`[JOB-BOARD] streamed ${s.source}:${s.token}: ${(stats.bytes / 1e6).toFixed(1)}MB read, ${(stats.slimBytes / 1e6).toFixed(1)}MB kept, ${stats.descDropped} description(s) dropped`);
+    return { jobs, raw };
+  } catch (e) {
+    console.warn(`[JOB-BOARD] streamed read of ${s.source}:${s.token} failed, stays deferred:`, String((e as Error)?.message ?? e).slice(0, 120));
+    return null;
+  }
 }
 
 // onFail receives a COMPACT reason. The reason was already known here and
@@ -2652,6 +2690,9 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, boardBudget: sliceBudgetNote.boardBudget, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
+        // Saturation of the persisted light set, whose own row anon cannot read (n019).
+        lightSet: DYNAMIC_LIGHT.size,
+        lightCap: AUTO_LIGHT_CAP,
         // The stale lane's slice outcome rides the same row: how many stale
         // boards this slice tried, and how many of those stamped.
         ...(sliceStaleNote ? { staleTries: sliceStaleNote.tries, staleResolved: sliceStaleNote.resolved } : {}),
@@ -3298,6 +3339,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
+        // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
+          inFlightReserve += reserve;
+          try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
+          finally { inFlightReserve -= reserve; }
+        }
         if (r) fetchedInSlice += r.jobs.length;
         // Rationale: docs/job-board-index-notes.md#n079-boardsdone
         ++boardsDone;
@@ -6033,7 +6080,9 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
     const memoKey = `${src.source}:${src.token}`;
     let memo = liveBoardMemo.get(memoKey);
     if (!memo) {
-      const r = await fetchBoard(src);
+      // The memo keeps only boards that answered; a board the byte bound
+      // refused is remembered across ids and requests by the reader instead.
+      const r = await readBoardForDetail(src);
       if (!r) return null;
       // FIFTEEN vendors reach here, not three. Only greenhouse / lever /
       // smartrecruiters / oracle / workday return above; everything else in
@@ -6152,6 +6201,26 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
     }
   }
   return out;
+}
+
+// A board the byte bound refuses answers neither a lever/ashby detail read nor
+// checkLive's membership check, and asking again per view or per verify id
+// repeats the refused download (up to 4 MB for ashby). Only the oversize
+// verdict is remembered, per board, per isolate, for a few hours.
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+const DETAIL_BOARD_REFUSED = new Map<string, number>();
+const DETAIL_BOARD_REFUSED_TTL_MS = 6 * 3_600_000;
+async function readBoardForDetail(src: JobSource): Promise<Awaited<ReturnType<typeof fetchBoard>>> {
+  const key = `${src.source}:${src.token}`;
+  const at = DETAIL_BOARD_REFUSED.get(key);
+  if (at !== undefined && Date.now() - at < DETAIL_BOARD_REFUSED_TTL_MS) return null;
+  let reason = "";
+  const r = await fetchBoard(src, (m) => { reason = m; });
+  if (!r && reason.startsWith("oversize")) {
+    if (DETAIL_BOARD_REFUSED.size > 500) DETAIL_BOARD_REFUSED.clear();
+    DETAIL_BOARD_REFUSED.set(key, Date.now());
+  }
+  return r;
 }
 
 /**
@@ -6401,8 +6470,9 @@ async function fetchVendorDetail(
     }
   } else if (src.source === "lever" || src.source === "ashby") {
     // Both ship descriptions in the board payload — fetch the board, extract
-    // the one posting, keep nothing else in memory.
-    const r = await fetchBoard(src);
+    // the one posting, keep nothing else in memory. A board the byte bound
+    // refuses answers null here without being asked again (see above).
+    const r = await readBoardForDetail(src);
     if (r) {
       if (src.source === "lever") {
         const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>;

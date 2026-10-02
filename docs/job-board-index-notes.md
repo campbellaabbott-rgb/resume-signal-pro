@@ -614,6 +614,36 @@ is measured instead of waiting for a human to notice missing stamps.
 Descriptions for light boards arrive via the daily backfill-desc sweep
 (Greenhouse per-job endpoint, its own compute budget).
 
+THE CAP WAS 50 AND 107 BOARDS NEEDED A SLOT (2026-10-01, .84). The dynamic
+set is persisted as its newest AUTO_LIGHT_CAP entries and reloaded at the
+start of every slice, so the row is the truth and it behaves as a FIFO. A
+FIFO smaller than the population a cyclic rotation feeds it misses on EVERY
+visit: by the time the cold cursor returns to a board, the other boards that
+enrolled since have pushed it out. Census of all 5,130 catalogue greenhouse
+boards that day: 81 whose ?content=true list is over MAX_RESPONSE_BYTES and
+26 more that enrol through the content-volume path — 107 competing for 50
+slots. Every one of them tripped the byte bound on every cold visit, was
+deferred with no rows and no verification stamp, and after 48 hours the
+nightly verification sweep stamped missing_since on everything it held. Only
+a revisit from outside the rotation (hot tier, demand, bootstrap) ever read
+one light, so serving counts were bimodal: Anthropic, Databricks, Cloudflare,
+MongoDB, Okta and SpaceX served 0 (Okta 103 at the 02:30 snapshot, 0 after
+the 03:41 sweep) while Stripe and Anduril served their full in-window counts.
+
+500, not 1,000: both cover 107 four times over, but the maintenance count
+sends every light token in one URL IN-list and backfill-desc's done-check
+runs one count query per light board, so the cap is also a cost. Four of the
+107 never take a slot at all — lush, samsara, pulse and helsing share their
+token with a vendor that has no light form, and the set refuses them (n018);
+lush, samsara and pulse are over the bound and stay deferred until a
+follow-up gives shared-token boards a light read of their own.
+
+SATURATION IS NOW VISIBLE. job_board_meta is not anon-readable, which is what
+hid this for weeks, so every terminal slice_stats write carries `lightSet`
+(DYNAMIC_LIGHT.size in this isolate) beside `lightCap`. The in-isolate size can
+read one or two past the cap when a slice enrols into a full row, and any
+reading at or past the cap means the FIFO is thrashing again.
+
 ## n020-oversize-boards
 
 Above: `const OVERSIZE_BOARDS = new Map<string, { source: string; mb: number; at: string }>();`
@@ -640,9 +670,21 @@ This registry is the durable record of that: it ACCUMULATES (unlike
 slice_stats, which is one row overwritten every ten minutes), it rides the
 status payload, and the freshness sweep reads it so a live board that we are
 simply too small to hold is never written into the lifecycle closure log as
-an employer's closure. It is not an ingest path — these boards need
-pagination or a streaming parse before they ingest again — it is the thing
-that stops them leaving silently.
+an employer's closure. It is not an ingest path; it is the thing that stops
+them leaving silently.
+
+SINCE .84, LEVER AND ASHBY ARE READ IN THE SAME VISIT (n411). A board of
+either vendor that the bound refuses is re-read a posting at a time, and a
+successful read deletes its entry here exactly as any successful read does.
+What remains in this registry for those two vendors is therefore the boards
+that read too slowly to finish inside STREAM_READ_BUDGET_MS (large lever feeds
+from a slow edge: cgsfederal was 36.5 MB in 32 s from a desktop), boards whose
+metadata alone is over SLIM_RETAINED_BYTES (ashby bjakcareer), and boards the
+slice clock or the heap gate kept from starting the retry this visit. For
+greenhouse, after the n019 cap raise, expect only the shared-token boards and
+the two whose light list is itself over the bound (liquidpersonnel, pulse).
+The other vendors without a light form (teamtailor, workable, recruitee,
+pinpoint and the rest) are unchanged and still defer here.
 
 ## n021-startoffset-is-honoured-only-by-the-paginatin
 
@@ -9059,3 +9101,160 @@ is true INSIDE each group and false across the seam, and nothing on the
 wire distinguished this page from a single ordering. One flag, so the page
 can disclose the grouping the same way it discloses the employer weave and
 the undated tail rather than making a claim it cannot support.
+
+## n411-streamed-oversize-read
+
+Above: `const STREAM_WIRE_BYTES = 64_000_000;`, `async function readOversizeBoard(`, the worker's retry after the pinned fetchBoard call, and `async function readBoardForDetail(`.
+
+A LEVER OR ASHBY BOARD TOO BIG TO HOLD IS READ A POSTING AT A TIME.
+
+Neither vendor has a lighter form or pagination: one request returns the
+whole board. Since the byte bound shipped (2026-09-06) a feed over
+MAX_RESPONSE_BYTES was deferred on every pass, forever — 13 ashby and 20
+lever boards measured 2026-10-01, holding 3,527 and 3,843 postings inside
+the 30-day window, OpenAI, Snowflake and Palantir among them. The bound is
+right (memory is the binding constraint of this function, n005 and the
+MAX_RESPONSE_BYTES arithmetic), so the fix is a second read that never
+holds the document, not a bigger first one.
+
+THE SHAPE. readOversizeBoard runs only after fetchBoard has already said
+"oversize". It re-requests the same listUrl through fetchWithTimeout with a
+64 MB wire bound, and hands the body to slim-stream.ts, which splits the
+array a posting at a time with a byte-level depth / in-string / escape
+scanner (the document never exists as one string), parses one element at a
+time, and keeps ONLY the fields normalizeLever / normalizeAshby read — the
+allowlist is a contract with normalize.ts, and the guard derives it from the
+normaliser source so a field added there later goes red here instead of
+going silently missing on streamed boards. Retained: at most
+SLIM_RETAINED_BYTES of metadata and held descriptions together, plus one
+element (SLIM_ELEMENT_BYTES), which sum to MAX_RESPONSE_BYTES, so the "five
+workers at the ceiling" arithmetic above the bound still holds unchanged. The
+element bound is checked as each chunk of a partial element arrives, not when
+the element closes: one 60 MB posting is refused at 1 MB, not buffered whole.
+
+THE RETAINED BOUND COVERS UNDATED TEXT TOO (review, 2026-10-01). The first cut
+compared only metadata with SLIM_RETAINED_BYTES and, when metadata pressed on
+the ceiling, gave up a held text only if it ranked strictly below Infinity. An
+undated posting (the ingest keeps it, so it holds its text) is ranked AT
+Infinity, so it could never be given up: 240 undated 10 KB texts
+followed by 2.4 MB of aged metadata finished at 4.8 MB retained against the
+3 MB budget, without a throw. Metadata now outranks EVERY held text, oldest
+first and undated last, so retained is at most max(SLIM_DESC_CEILING, metadata)
+and never passes SLIM_RETAINED_BYTES. Newest-first is unchanged for arrivals:
+an arrival gives up only texts strictly older than itself, so an older posting
+arriving after newer ones displaces nothing. Real lever and ashby feeds almost
+always date their postings, so this was a bound with a hole rather than a
+measured overrun, but the bound is the claim the memory arithmetic rests on.
+
+DESCRIPTIONS ARE WRITTEN ONCE. Only new rows are upserted with a description;
+existing rows get field patches that never carry the column, and neither
+vendor is in DETAIL_DESC_SOURCES or BOARD_DESC_SOURCES. So a description the
+budget drops stays NULL on that posting for good. Two consequences in the
+code: (1) the text is pre-built in the stream exactly as the worker builds it
+(lever: descriptionPlain + "\n" + descriptionBodyPlain; ashby:
+descriptionPlain, else htmlToText(descriptionHtml)), cut at twice
+STORED_DESC_CAP and stored as `descriptionPlain`, which both worker branches
+read first — so the stored text is identical, one string per posting, and a
+posting can never keep half its description. (2) Metadata and descriptions
+share SLIM_DESC_CEILING and, when it binds, the OLDEST held description is
+given up, never the newest arrival. First-come retention would null the same
+newest tail on every pass, new postings included; newest-first is also what
+lets bluelightconsulting (13.4 MB, 949 in-window) read at all, dropping its
+280 oldest descriptions. Only postings the ingest will store hold text: the
+in-window test is the ingest's own (sanePostedAt + isDatedBefore against the
+worker's freshCutoffMs, passed in rather than recomputed).
+
+EVERY FAILURE THROWS, AND THROWING IS SAFE. A document whose first byte is the
+wrong shape, a jobs key that is absent or only nested, EOF before the array
+or the document closes, one element over budget, metadata over budget, or a
+read that misses the deadline — all throw, and readOversizeBoard turns every
+throw into null. A partial board must never read as complete: with at least
+60% of a feed served, the id-diff prune would write the rest into the closure
+log as an employer's closures. The prototype this came from returned 2 of 4
+elements on a truncated document, 0 on a lever object and {jobs:[]} on a
+missing key; each of those is a red case in the guard.
+
+THE DEADLINE BOUNDS EVERY WAIT. fetchWithTimeout clears its abort timer when
+headers arrive and its 429 path can wait 20 + 4 + 20 s, so neither the
+headers nor the body are bounded by it. beforeDeadline races the fetch and
+then every reader.read() against deadlineAt (a response that lands late is
+still released), and the reader is cancelled in a finally. Measured against a
+local server: stalled body and stalled headers both returned at the deadline.
+
+EVERY ABANDONED BODY IS CANCELLED. Uncancelled, abandoned response bodies were
+the September slice deaths (n005: heap p50 176 MB, 36 once discardRest
+cancelled them), and
+every failed streamed read — slow, over a budget, wrong shape — abandons a body
+with bytes unread. The guard asserts the cancel on the SOURCE stream for each
+of those failures, directly and through boundBody's pipe, and for a late
+response, a non-2xx and a non-JSON answer. (A truncated body has already been
+read to its end; there is nothing left to release.) It also lifts
+readOversizeBoard, boundBody and fetchWithTimeout out of index.ts and runs them
+over stubbed feeds past MAX_RESPONSE_BYTES, and runs the worker's retry
+statement itself, because an earlier version of the guard pinned their
+spelling and stayed green with the retry dead or every streamed board empty.
+
+THE RETRY IS A SEPARATE STATEMENT AND NEVER WRITES THE VERDICT. Three guards
+pin the worker's fetchBoard call byte for byte, so the retry sits between that
+call's finally and the landed-postings count. It starts only on an oversize
+verdict, for a vendor with a spec, with STREAM_READ_BUDGET_MS still left on
+the slice clock (a 30 s read started near the wall overruns the window every
+surviving slice has finished in, and a slice that dies loses its bookkeeping
+and stops the chain), and under HEAP_SOFT_LIMIT_MB. It never assigns
+failReason: a failed retry leaves r null and the oversize branch runs exactly
+as before — registered, enrolled where light-capable, deferred, never failed.
+That matters because the classifier only maps text matching the oversize
+marker to the deferral; a socket error or a deadline message would otherwise
+read as a vendor failure, and six of those over 40 hours is the dormancy prune
+deleting a live employer's board. A success runs the ordinary ingest, which
+deletes the registry entry, stamps verification and un-stamps missing_since.
+
+NEITHER A DETAIL VIEW NOR A LIVENESS CHECK REPEATS A REFUSED BOARD READ.
+Neither vendor publishes one posting's text anywhere but in the board's list,
+so the detail read of a lever or ashby row with no stored description fetches
+the whole board through fetchBoard and picks one row out. On a streamed board
+those rows are exactly the ones the retention ceiling gave up (4 of 281 on
+openai, 280 of 949 on bluelightconsulting when measured), and fetchBoard
+refuses the same document again: nothing for lever, which declares its length,
+but up to 4 MB downloaded and thrown away for ashby, which compresses and
+declares none. getDescription caches only text, so every view paid it again;
+before .84 these boards served no rows and the path was unreachable.
+readBoardForDetail remembers the oversize verdict per board, per isolate, for
+DETAIL_BOARD_REFUSED_TTL_MS (6 h): the list is one document for every posting
+on it, and a board that shrinks back under the bound answers again once the
+entry lapses. A timeout or HTTP error may be transient and is asked again, as
+before. Those rows show no description; that they stay NULL for good is the
+write-once rule above, not this cache.
+
+The same refusal reached checkLive (re-review, 2026-10-02). Every ashby
+posting falls through to board membership, as do workable, teamtailor,
+recruitee and pinpoint, which have oversize boards of their own. The
+per-request memo keeps only boards that answered, and verify clears it and
+probes up to twelve ids one after another, so each id on a refused board
+repeated the refused read: LiveMatches awaits verify for its top five, the fit
+check awaits it, and opening a detail panel or clicking apply fires it. The
+answer was a correct null every time (nothing was falsely closed); the cost was
+the download, read to the 4 MB bound and thrown away, once per id. checkLive's
+membership fetch now goes through readBoardForDetail, so the oversize verdict
+is remembered there too: five verify ids on a refused board make one read, and
+the next request makes none until the entry lapses. A board that answers is
+still read once per request and never carried across requests, and a transient
+failure is still asked again. One residue: the audit probes in parallel
+batches of eight, so its first batch can pay the read once per concurrent
+probe before the first refusal lands, exactly as it already does for a board
+that answers; every later batch reads the cache. The windowed-absence guard
+(a-window-of-ours-is-not-a-closure-of-theirs) found its board fetchers by the
+literal fetchBoard call, so this move would have taken checkLive out of the
+class it polices; it now counts any function declared to return what
+fetchBoard returns as the fetch itself, compiles the real reader into its
+checkLive harness, and fails when checkLive reaches a dependency it does not
+stub instead of letting checkLive's catch answer null.
+
+COSTS. A board whose streamed read fails permanently now costs up to 30 s of
+one worker and up to 64 MB of transfer per cold visit where the first read
+alone was refused in milliseconds (~35 boards, once a rotation). Five
+concurrent streams at the worst measured ~20 MB each would approach the heap
+gate, which is why the retry checks it. Measured on five captured feeds:
+normaliser output identical to the whole-body parse, every kept description
+equal to the text the whole body would store, at most 160 ms of parse per
+board. Lever transfer speed from the edge is the one unmeasured input.
