@@ -632,6 +632,13 @@ WH=$(curl -s -m 30 -D - -o /dev/null "$B/functions/v1/stripe-webhook" | tr -d '\
 WS=$(printf '%s' "$WH" | head -1 | awk '{print $2}')
 WB=$(printf '%s' "$WH" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
 [ "$WS" = "405" ] && [ "$WB" = "stripe-webhook.2026-10-01.1" ] && echo "PASS  stripe-webhook GET -> 405 with x-fn-build = $WB" || echo "FAIL  stripe-webhook GET -> HTTP $WS x-fn-build='$WB' (want 405 and stripe-webhook.2026-10-01.1; baseline: 405 with none)"
+# ORDER. The webhook ships in the SAME deploy as analyze-resume. The new
+# analyze-resume accepts an old webhook's claim (no product, no address), so a
+# buyer is no longer refused if it lands first -- but the old webhook still
+# routes a full analysis to "No resume session ID" and the retry queue, and
+# nothing proves which webhook is live until this marker does.
+ARB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/analyze-resume" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+if [ "$ARB" = "analyze-resume.2026-10-01.1" ] && [ "$WB" != "stripe-webhook.2026-10-01.1" ]; then echo "FAIL  analyze-resume serves $ARB but stripe-webhook does not ('$WB'): the webhook is behind -- deploy it"; else echo "PASS  stripe-webhook is not behind analyze-resume (analyze-resume '$ARB', webhook '$WB')"; fi
 # The columns the new writes name. A select of a column the table lacks answers
 # 400 42703 before RLS runs; present, RLS answers an empty list.
 for Q in "used_stripe_sessions?select=session_id,product_type,ip_address" "purchased_content?select=stripe_session_id,product_type,generated_content,customer_email" "product_deliveries?select=stripe_session_id,product_type,status,max_retries,generation_success,content_generation_completed_at"; do

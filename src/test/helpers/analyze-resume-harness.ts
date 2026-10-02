@@ -35,6 +35,18 @@ export function fullAnalysisSession(id: string, over: Partial<FakeSession> = {})
   };
 }
 
+/**
+ * A paid session exactly as create-checkout minted one between the $5 price
+ * cut (2025-12-23) and the day it began naming the product (2026-06-30): the
+ * three metadata keys it wrote then, and nothing else.
+ */
+export function legacyFullAnalysisSession(id: string, over: Partial<FakeSession> = {}): FakeSession {
+  return fullAnalysisSession(id, {
+    metadata: { resumeData: '{"fileName":"cv.pdf"}', originalCurrency: "usd", baseAmountUSD: "5" },
+    ...over,
+  });
+}
+
 /** What the model returns: the four core fields analyze-resume validates, plus a per-call marker. */
 export function analysisFixture(marker: string) {
   return {

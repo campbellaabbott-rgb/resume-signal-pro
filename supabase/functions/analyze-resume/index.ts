@@ -816,7 +816,9 @@ serve(async (req) => {
     // every currency was refused -- and, the other way round, any paid session
     // worth more than $20 bought an analysis whatever product it was for. The
     // shared predicate asks the one question that cannot drift: is this a paid
-    // session that create-checkout minted for the full analysis?
+    // session that create-checkout minted for the full analysis? -- by the
+    // product it names, or, for the $5 sales of 2025-12-23 to 2026-06-30 that
+    // name none, by the exact metadata create-checkout wrote then.
     const refusal = fullAnalysisRefusal(session);
     if (refusal) {
       console.warn(`[ANALYZE-RESUME] Session ${sessionId} refused: ${refusal}`);
@@ -835,10 +837,13 @@ serve(async (req) => {
     // how the success page met a 409 on every purchase. The answer is the
     // purchased_content row this function writes once an analysis exists (see
     // priorRedemptionOf for every case, including claims the pre-fix code left).
-    // A lookup error refuses rather than risks a second analysis.
+    // The claim's address is read with it: a claim naming no product is a
+    // payment claim when nobody recorded an address, and the old
+    // analyze-resume's own mark when somebody did. A lookup error refuses
+    // rather than risks a second analysis.
     const [deliveredLookup, claimLookup] = await Promise.all([
       supabase.from('purchased_content').select('product_type, generated_content').eq('stripe_session_id', sessionId).maybeSingle(),
-      supabase.from('used_stripe_sessions').select('product_type').eq('session_id', sessionId).maybeSingle(),
+      supabase.from('used_stripe_sessions').select('product_type, ip_address').eq('session_id', sessionId).maybeSingle(),
     ]);
     if (deliveredLookup.error || claimLookup.error) {
       console.error("[ANALYZE-RESUME] Redemption lookup failed:", deliveredLookup.error ?? claimLookup.error);
@@ -1153,7 +1158,19 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
         const { error: claimError } = await supabase
           .from('used_stripe_sessions')
           .insert({ session_id: sessionId, ip_address: clientIp, product_type: FULL_ANALYSIS_PRODUCT_TYPE });
-        if (claimError && claimError.code !== '23505') {
+        if (claimError?.code === '23505') {
+          // Already claimed -- by the webhook or verify, on payment. If that
+          // claim names no product (a webhook from before claims did), it is
+          // still a key the purchase gate accepts for EVERY paid generator.
+          // This session is now known to be a full analysis, so say so: the
+          // receipt opens what it bought and nothing else.
+          const { error: stampError } = await supabase
+            .from('used_stripe_sessions')
+            .update({ product_type: FULL_ANALYSIS_PRODUCT_TYPE })
+            .eq('session_id', sessionId)
+            .is('product_type', null);
+          if (stampError) console.error("[ANALYZE-RESUME] Could not name the product on the existing claim:", stampError);
+        } else if (claimError) {
           console.error("[ANALYZE-RESUME] Could not record the claim (reconcile-stripe may report this session):", claimError);
         }
 

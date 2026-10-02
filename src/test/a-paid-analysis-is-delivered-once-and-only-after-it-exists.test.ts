@@ -51,6 +51,30 @@ describe("a paid full analysis is delivered", () => {
     expect(r.status, "the webhook's claim is proof of payment, not a redemption").toBe(200);
   });
 
+  it("when a webhook from before claims named their product claimed it (no product, no address)", async () => {
+    // The live webhook carries no build marker, so nothing proves it is newer
+    // than 20260827180000. If analyze-resume deploys first, this is the claim
+    // every buyer of that window meets; it is a payment claim, not a redemption.
+    const id = buy("cs_live_old_webhook_first");
+    h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: null, ip_address: null });
+    const r = await h.call({ resumeText: RESUME, sessionId: id });
+    expect(r.status, `an old webhook's claim was answered ${r.status}: ${JSON.stringify(r.json).slice(0, 120)}`).toBe(200);
+    await h.settle();
+    expect(h.db.rows("used_stripe_sessions").find((c) => c.session_id === id)?.product_type,
+      "the unnamed claim was left a key to every paid generator").toBe("full_analysis");
+  });
+
+  it("and, when no delivery row exists, opens exactly one -- delivered, for this product", async () => {
+    // product_deliveries read 0 for 365 days: the webhook is not reaching its
+    // insert. This row is then the only record that the purchase arrived.
+    const id = buy("cs_live_row_missing");
+    const r = await h.call({ resumeText: RESUME, sessionId: id });
+    expect(r.status).toBe(200);
+    await h.settle();
+    const rows = h.db.rows("product_deliveries").filter((d) => d.stripe_session_id === id);
+    expect(rows.map((d) => [d.status, d.product_type, d.generation_success]), "a delivered purchase left no delivery record").toEqual([["delivered", "full_analysis", true]]);
+  });
+
   it("and the webhook's open delivery row is closed as delivered", async () => {
     const id = buy("cs_live_row_open");
     h.db.rows("product_deliveries").push({ id: "pd-open", stripe_session_id: id, product_type: "full_analysis", status: "payment_received", retry_count: 0, max_retries: 3, next_retry_at: "infinity" });
@@ -134,7 +158,7 @@ describe("one session, one analysis", () => {
     expect(h.aiCalls()).toBe(0);
   });
 
-  it("a session the pre-fix code already redeemed (a claim with no product recorded) is not redeemed again", async () => {
+  it("a session the pre-fix code already redeemed (a claim with no product, beside the caller's address) is not redeemed again", async () => {
     const id = buy("cs_live_legacy_redeemed");
     h.db.rows("used_stripe_sessions").push({ session_id: id, product_type: null, ip_address: "198.51.100.1" });
     const r = await h.call({ resumeText: RESUME, sessionId: id });
@@ -197,18 +221,20 @@ describe("nothing the redemption records unlocks another product", () => {
 describe("the redemption verdict, case by case (the pure rule the handler applies)", () => {
   // Imported lazily so the handler tests above stay runnable on a tree where
   // this module does not exist yet -- which is how they were shown red.
-  it("reads a claim for this product as paid-not-delivered, and every other prior row as a refusal", async () => {
+  it("reads a claim for this product -- or an unnamed one with no address -- as paid-not-delivered, and every other prior row as a refusal", async () => {
     const { priorRedemptionOf, fullAnalysisRefusal } = await import("../../supabase/functions/_shared/full-analysis");
     expect(priorRedemptionOf(null, null)).toEqual({ state: "none" });
     expect(priorRedemptionOf(null, { product_type: "full_analysis" })).toEqual({ state: "none" });
     expect(priorRedemptionOf(null, { product_type: null }).state).toBe("refused");
+    expect(priorRedemptionOf(null, { product_type: null, ip_address: "198.51.100.1" }).state).toBe("refused");
+    expect(priorRedemptionOf(null, { product_type: null, ip_address: null })).toEqual({ state: "none" });
     expect(priorRedemptionOf(null, { product_type: "scan_pack" }).state).toBe("refused");
     expect(priorRedemptionOf({ product_type: "full_analysis", generated_content: { shareId: "abc" } }, { product_type: null }))
       .toEqual({ state: "delivered", shareId: "abc" });
     expect(priorRedemptionOf({ product_type: "full_analysis", generated_content: {} }, null)).toEqual({ state: "delivered", shareId: null });
     expect(priorRedemptionOf({ product_type: "premium_package", generated_content: {} }, null).state).toBe("refused");
     expect(fullAnalysisRefusal({ payment_status: "paid", metadata: { product_type: "full_analysis" } })).toBeNull();
-    expect(fullAnalysisRefusal({ payment_status: "paid", metadata: {} })).toMatch(/does not name/);
+    expect(fullAnalysisRefusal({ payment_status: "paid", metadata: {} })).toMatch(/names no product/);
     expect(fullAnalysisRefusal({ payment_status: "no_payment_required", metadata: { product_type: "full_analysis" } })).toMatch(/payment_status/);
     expect(fullAnalysisRefusal(null)).toBe("no session");
   });
