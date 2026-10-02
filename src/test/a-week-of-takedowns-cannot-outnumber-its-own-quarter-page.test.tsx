@@ -100,7 +100,7 @@ describe("1. the incident payload, old shape: held by the record's ceiling", () 
     await waitFor(() => expect(body()).toContain(READY));
     expect(body(), "the page printed the refuted weekly figure").not.toContain("806,570");
     expect(tileFigure()).toBe("—");
-    expect(body()).toContain("Withheld — the week reads at more than twice the daily average of our own 90-day closure record.");
+    expect(body()).toContain("Withheld — the week reads at more than twice the average week of our own 90-day closure record.");
   });
 });
 

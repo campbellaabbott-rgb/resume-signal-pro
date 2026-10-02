@@ -43,6 +43,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import {
+  CLOSURE_RECORD_WINDOW_DAYS,
   CLOSURE_WEEK_PLAUSIBILITY,
   closureCeiling,
   closureVerdict,
@@ -463,6 +464,19 @@ describe("closureVerdict holds the incident weeks and publishes a clean one", ()
     expect(closureCeiling({ closed_90d: 1_854_930, observed_days: 0 })).toBeNull();
   });
 
+  it("past 90 days deep the record is still averaged over the 90 days its count covers", () => {
+    // observed_days is the age of the whole ledger and closed_90d is a 90-day
+    // count. Uncapped, a 180-day ledger would put the ceiling at ONE average
+    // week, and a merely busy week would be withheld as "more than twice".
+    expect(CLOSURE_RECORD_WINDOW_DAYS).toBe(90);
+    for (const days of [90, 91, 120, 180, 400]) {
+      expect(closureCeiling({ closed_90d: 1_854_930, observed_days: days }), `${days} days deep`)
+        .toBeCloseTo((1_854_930 / 90) * 14, 6);
+    }
+    const busy = (1_854_930 / 90) * 7 * 1.5;
+    expect(closureVerdict({ closed: busy }, { closed_90d: 1_854_930, observed_days: 180 }).state).toBe("published");
+  });
+
   it("806,570 in an old five-column row is held: it exceeds the record", () => {
     const v = closureVerdict({ closed: 806_570 }, LIVE_RECORD);
     expect(v).toMatchObject({ state: "held", reason: "exceeds_record", closed: 806_570, flagged: null });
@@ -498,10 +512,13 @@ describe("closureVerdict holds the incident weeks and publishes a clean one", ()
 
 /** Every point of a grid on which the two runtimes disagree. */
 function disagreements(a: (w: unknown, g: unknown) => ClosureVerdict, b: (w: unknown, g: unknown) => ClosureVerdict): string[] {
-  const closed = [undefined, null, "5", Number.NaN, Infinity, -1, 0, 1, 100, 101, 172_263, 328_722, 328_723, 806_570];
+  const closed = [undefined, null, "5", Number.NaN, Infinity, -1, 0, 1, 100, 101, 172_263, 288_544, 288_545, 328_722, 328_723, 806_570];
   const flagged = [undefined, null, Number.NaN, -5, 0, 1, 99, 100, 101, 650_000];
   const records = [undefined, null, {}, LIVE_RECORD, { closed_90d: 1_543_884, observed_days: 71 },
-    { closed_90d: 1_854_930, observed_days: 0 }, { closed_90d: null, observed_days: 79 }, { closed_90d: "x", observed_days: 79 }];
+    { closed_90d: 1_854_930, observed_days: 0 }, { closed_90d: null, observed_days: 79 }, { closed_90d: "x", observed_days: 79 },
+    // Older than the 90-day count: the two runtimes must cap the divisor alike.
+    { closed_90d: 1_854_930, observed_days: 90 }, { closed_90d: 1_854_930, observed_days: 91 },
+    { closed_90d: 1_854_930, observed_days: 180 }, { closed_90d: 1_854_930, observed_days: 400 }];
   const out: string[] = [];
   for (const c of closed) for (const f of flagged) for (const r of records) {
     const week = { closed: c, closed_flagged: f };
@@ -572,7 +589,7 @@ describe("a crawler and a browser are told the same thing about the same week", 
     const t = text(build(payload(NEW_ROWS.slice(0, 4))).trends.html);
     expect(t).toContain("our collector flagged 700,536 of the week's takedown records as possible read failures of its own, more than the 170,000 it could vouch for");
     const old = text(build(payload(ROWS.slice(0, 4))).trends.html);
-    expect(old).toContain("it reads at more than twice the daily average of our own 90-day closure record");
+    expect(old).toContain("it reads at more than twice the average week of our own 90-day closure record");
   });
 
   it("a published week says how many flagged records it excludes", () => {

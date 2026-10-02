@@ -473,11 +473,18 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   // guard reads the LAST migration scheduling each job name, parses the cron
   // expression and checks the phrase against it, so re-timing a job fails the
   // build rather than quietly making four public sentences wrong.
-  // How far above the closure record's own daily average a single week may
+  // How far above the closure record's own average week a single week may
   // read before this build refuses to publish it. Two, because a genuine week
   // really can run hot against a 90-day average; anything past that is not a
-  // week of employer takedowns.
+  // week of employer takedowns. This comment used to say the record's average
+  // DAY, and so did the sentence a held week prints -- a rule seven times
+  // stricter than the arithmetic below, which every printed week broke.
   const CLOSURE_WEEK_PLAUSIBILITY = 2;
+  // The window closed_90d counts over. observed_days is the age of the whole
+  // closure ledger, which is no longer pruned, so past 90 days it outgrows the
+  // count it divides; uncapped, the ceiling sinks a little every day after
+  // the ledger's 90th (one average week, not two, at 180 days deep).
+  const CLOSURE_RECORD_WINDOW_DAYS = 90;
 
   // WHETHER A WEEK'S TAKEDOWN COUNT MAY BE PRINTED, mirrored rule for rule
   // from src/lib/hiring-trends-trust.ts, which the React page imports. This
@@ -486,9 +493,11 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   // runs both over one grid of inputs and fails on any disagreement. In order,
   // the first that fires decides: a count that is not a finite non-negative
   // number is unreadable; a count above CLOSURE_WEEK_PLAUSIBILITY times the
-  // 90-day record's weekly average exceeds the record; a row whose flagged
-  // count (the batches our collector doubted, which the SQL now excludes)
-  // outnumbers what it admitted is a week about our crawler, not employers.
+  // 90-day record's average week (closed_90d over observed_days capped at
+  // CLOSURE_RECORD_WINDOW_DAYS, times seven) exceeds the record; a row whose
+  // flagged count (the batches our collector doubted, which the SQL now
+  // excludes) outnumbers what it admitted is a week about our crawler, not
+  // employers.
   // An old row with no flagged count is judged by the ceiling alone.
   function closureWeekVerdict(week, ghost) {
     const count = (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
@@ -496,7 +505,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const flagged = count(week && week.closed_flagged);
     const total = count(ghost && ghost.closed_90d);
     const days = count(ghost && ghost.observed_days);
-    const ceiling = total !== null && days !== null && days > 0 ? (total / days) * 7 * CLOSURE_WEEK_PLAUSIBILITY : null;
+    const ceiling = total !== null && days !== null && days > 0 ? (total / Math.min(days, CLOSURE_RECORD_WINDOW_DAYS)) * 7 * CLOSURE_WEEK_PLAUSIBILITY : null;
     if (closed === null) return { state: "held", reason: "unreadable", closed, flagged, ceiling };
     if (ceiling !== null && closed > ceiling) return { state: "held", reason: "exceeds_record", closed, flagged, ceiling };
     if (flagged !== null && flagged > closed) return { state: "held", reason: "flagged_majority", closed, flagged, ceiling };
@@ -596,8 +605,10 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         // is not 400 employers taking a posting down) AND the takedowns a big
         // board's first lap backfilled — this label said that last group was
         // included, and the SQL has excluded it since 20260909201000. The
-        // weekly figure on /hiring-trends is now drawn on the same filter
-        // (20261002113617), so each of its weeks is a part of this total.
+        // weekly figure on /hiring-trends now applies all three exclusions
+        // (20261002113617) and one more -- it also drops the boards in
+        // showcase_excluded, which this total keeps -- so each of its weeks is
+        // a part of this total, drawn on a narrower filter, not the same one.
         { value: g ? fmt(g.closed_90d) : null, label: `closure events logged in the last 90 days${span !== null ? `, from a record ${span} days deep` : ""} — takedowns, with re-listings, batches later flagged as collection faults and the takedowns a big board's first lap backfilled all excluded. A posting coming down is never called a hire: a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed` },
       ], `${gAt ? `Measured ${gAt}` : "Measured when this page was last built"}, ${C["refresh-ghost-stats"]}.`);
       const fresh = group("How far behind the re-check rotation is", [
@@ -720,7 +731,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         ? (closure.reason === "flagged_majority"
             ? `withheld for that week: our collector flagged ${fmt(closure.flagged)} of the week's takedown records as possible read failures of its own, more than the ${fmt(closure.closed)} it could vouch for, so a figure here would describe our crawler rather than employers`
             : closure.reason === "exceeds_record"
-              ? "withheld for that week: it reads at more than twice the daily average of our own 90-day closure record"
+              ? "withheld for that week: it reads at more than twice the average week of our own 90-day closure record"
               : "withheld for that week: the count did not arrive as a number")
         : null;
       const basis = `Counted by the date the employer itself put on the posting, from its own applicant-tracking feed — never by when we first saw it. Postings from boards we catalogued mid-window are excluded, so growth in our coverage can never read as a hiring spike. ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["refresh-stats-cache"]}.${staleNote}`;
@@ -738,7 +749,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       const head = lastFull
         ? group(`The last complete week${wk ? ` (beginning ${wk})` : ""}`, [
             { value: fmt(lastFull.new_postings), label: "roles employers dated that week — counted only where we saw the posting within three days of that date, and including roles since taken down" },
-            { value: closurePublished ? fmt(closure.closed) : null, label: `closure events logged that week, dated by the day we confirmed the posting gone; a role that genuinely came down more than once counts each time. Re-listings, batches our collector flagged as possible read failures of its own, and the takedowns a big board's first lap backfilled are all excluded — the same filter as the 90-day closure total on the Ghost Job Index, so the week is a part of that total${closurePublished && closure.flagged > 0 ? `; ${fmt(closure.flagged)} flagged records were excluded from this week` : ""}` },
+            { value: closurePublished ? fmt(closure.closed) : null, label: `closure events logged that week, dated by the day we confirmed the posting gone; a role that genuinely came down more than once counts each time. Re-listings, batches our collector flagged as possible read failures of its own, and the takedowns a big board's first lap backfilled are all excluded — each is excluded from the 90-day closure total on the Ghost Job Index too, so the week is a part of that total${closurePublished && closure.flagged > 0 ? `; ${fmt(closure.flagged)} flagged records were excluded from this week` : ""}` },
             { value: closureHeld ? "Takedowns" : null, label: closureHeld },
             { value: fmt(lastFull.remote_new), label: "of that week's roles state a remote work mode — a FLOOR, not a share: it counts only the roles from that week we still hold, while the figure above also counts the ones already closed" },
             { value: fmt(lastFull.entry_new), label: "say early-career in their own title or stated requirements, on the same narrower population — also a floor" },

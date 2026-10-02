@@ -209,8 +209,8 @@ export default function HiringTrends() {
             <p className="text-[11px] text-muted-foreground mt-3">
               {current ? "The newest week is partial — it fills in as companies post." : ""} Counts include only postings
               whose companies date them themselves; boards we added mid-window are excluded from that window. A week with no
-              takedown bar is withheld: its flagged records outnumbered the ones we could vouch for, or it read far above our
-              own 90-day closure record.
+              takedown bar is withheld: its flagged records outnumbered the ones we could vouch for, or it read at more than
+              twice the average week of our own 90-day closure record.
             </p>
           </div>
         )}
@@ -263,7 +263,7 @@ export default function HiringTrends() {
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
             <li>· "New postings" are counted by the date the company itself put on the role, straight from its official applicant-tracking feed — never scraped, never estimated.</li>
             <li>· When we add new companies to our catalog, their existing postings are excluded from weekly counts — coverage growth is not a hiring trend.</li>
-            <li>· "Taken down" counts a posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded — the same filter as the Ghost Job Index's 90-day total. A posting coming down is never called a hire.</li>
+            <li>· "Taken down" counts a posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded — each is excluded from the Ghost Job Index's 90-day total too, so a week is a part of that total. A posting coming down is never called a hire.</li>
             <li>· Some feeds don't publish posting dates; those roles appear on the board but not in these weekly counts.</li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-4">
@@ -281,7 +281,7 @@ export default function HiringTrends() {
         <HowWeMeasure
           items={[
             { term: "New postings per week", method: "Counted by each posting's own stated post date — never by when we first saw it. A posting only counts if we observed it within 3 days of its stated date, so adding new companies to our catalog can never show up as a fake hiring spike. A posting counts once, however many times it came down and came back." },
-            { term: "Taken down", method: "A posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone — not by the company's post date. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded. A week is withheld when its flagged records outnumber the ones we can vouch for, or when it reads at more than twice the daily average of our 90-day closure record. A posting coming down is never called a hire." },
+            { term: "Taken down", method: "A posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone — not by the company's post date. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded. A week is withheld when its flagged records outnumber the ones we can vouch for, or when it reads at more than twice the average week of our 90-day closure record — that record's takedowns divided by the weeks it covers (90 days, or fewer while the record is younger). A posting coming down is never called a hire." },
             { term: "The current week", method: "Shown dimmed and marked '(so far)' — it fills in as companies post. We'd rather show a partial week honestly than extrapolate one." },
           ]}
         />

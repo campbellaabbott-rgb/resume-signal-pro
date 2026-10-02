@@ -308,7 +308,13 @@ admitted count, and every real takedown on a flagged board is excluded with the
 batch. A week whose flagged records outnumber its admitted ones is therefore
 withheld on the page rather than printed (`src/lib/hiring-trends-trust.ts`,
 mirrored in the prerender's figure builder and held to it by
-`a-week-of-takedowns-cannot-outnumber-its-own-quarter.test.ts`). Still carrying
+`a-week-of-takedowns-cannot-outnumber-its-own-quarter.test.ts`), and so is a
+week reading at more than twice the record's average week: `closed_90d` over
+`observed_days` capped at 90, times seven. The cap matters because the ledger
+is no longer pruned and outlives the 90-day count; without it the ceiling sinks
+every day past the ledger's 90th. The public sentences that state this rule are
+parsed and checked against the verdict by
+`a-withheld-week-states-the-rule-that-withheld-it.test.tsx`. Still carrying
 suspect rows, each by an open decision rather than by oversight:
 `get_board_flow` (an operator flow metric on `/status`) and `/v1/changes`
 (which emits every row as `outcome: "closed"` and does not expose the flag).

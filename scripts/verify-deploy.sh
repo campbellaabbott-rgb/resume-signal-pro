@@ -637,7 +637,9 @@ const info=(m)=>console.log("INFO  "+m);
 const fmt=(n)=>typeof n==="number"?n.toLocaleString("en-US"):String(n);
 // The verdict, mirrored from src/lib/hiring-trends-trust.ts (the page) and the
 // prerender builder: unreadable, then above the ceiling, then flagged majority.
-const verdictOf=(w,g)=>{const n=(v)=>typeof v==="number"&&Number.isFinite(v)&&v>=0?v:null;const c=n(w&&w.closed),f=n(w&&w.closed_flagged),t=n(g&&g.closed_90d),d=n(g&&g.observed_days);const ceil=t!==null&&d!==null&&d>0?t/d*14:null;
+// The ceiling divides closed_90d by observed_days CAPPED AT 90 -- the ledger
+// outlives the 90-day count, and uncapped the ceiling sinks after day 90.
+const verdictOf=(w,g)=>{const n=(v)=>typeof v==="number"&&Number.isFinite(v)&&v>=0?v:null;const c=n(w&&w.closed),f=n(w&&w.closed_flagged),t=n(g&&g.closed_90d),d=n(g&&g.observed_days);const ceil=t!==null&&d!==null&&d>0?t/Math.min(d,90)*14:null;
   if(c===null)return{state:"held",reason:"unreadable",ceil};if(ceil!==null&&c>ceil)return{state:"held",reason:"exceeds_record",ceil};if(f!==null&&f>c)return{state:"held",reason:"flagged_majority",ceil};return{state:"published",closed:c,ceil}};
 const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
 (async()=>{
@@ -677,6 +679,11 @@ const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
   const m=t.match(/([0-9][0-9,]*) — closure events logged that week/);const held=/Takedowns — withheld for that week/.test(t);
   const ceil=verdictOf({closed:0},g).ceil;
   ok(!/opposite pair/.test(t)&&(held||(!!m&&(ceil===null||Number(m[1].replace(/,/g,""))<=ceil))),"(h) crawler HTML: "+(/opposite pair/.test(t)?"still carries the opposite-pair label":held?"the week is withheld, with its reason":m?"prints "+m[1]+" (ceiling "+fmt(Math.round(ceil))+")":"neither a withheld reason nor a weekly takedown figure -- the prerender predates this build (rebuild AFTER the migration) or could not read the cache"));
+  // The ceiling reason has to name the rule the verdict applies: twice the
+  // average WEEK of the record. The first build of this change said its daily
+  // figure, seven times stricter than the arithmetic, so every week it printed
+  // broke the rule it stated.
+  if(held)ok(!/twice the daily average/.test(t),"(h2) crawler HTML: the withheld reason "+(/twice the daily average/.test(t)?"still states the daily-figure rule the verdict never applied -- the prerender predates the copy fix":"does not state the daily-figure rule"));
   const shell=await (await fetch(SITE+"/")).text();
   const entry=(shell.match(/src="(\/assets\/index-[^"]+\.js)"/)||[])[1];
   if(!entry){info("(i) could not locate the entry bundle in the homepage shell; open /hiring-trends in a browser instead: the takedown tile must read a dash with a Withheld sentence, never 806,570");return}
@@ -685,6 +692,7 @@ const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
   if(!chunk){info("(i) the entry bundle names no HiringTrends chunk; check /hiring-trends in a browser instead");return}
   const code=await (await fetch(SITE+"/assets/"+chunk)).text();
   ok(code.includes("takedowns logged last week")&&code.includes("takedowns withheld"),"(i) the deployed /hiring-trends chunk ("+chunk+") carries the verdict path -- absent means the hydrated page still prints the raw weekly count");
+  ok(/twice the average week of our (own )?90-day closure record/.test(code)&&!/twice the daily average/.test(code),"(j) the deployed chunk states the ceiling as twice the average week of the record, and nowhere as its daily figure -- failing means the copy that shipped with the first build of this change is still live");
 })().catch(e=>console.log("FAIL  7g probe threw: "+e.message));
 '
 echo "done."
