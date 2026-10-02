@@ -34,7 +34,8 @@
  *       verdict a failed retry falls back to;
  *   (f) readOversizeBoard and the retry, lifted out of index.ts and RUN: a
  *       spelling of them passed while the recovery was dead or empty;
- *   (g) a detail view does not repeat a board read the bound refused;
+ *   (g) neither a detail view nor a verify/audit liveness check repeats a
+ *       board read the bound refused;
  *   (h) the verifier judges the light set's size only when it can be judged.
  *
  * Every failure that leaves bytes unread must CANCEL the body. Uncancelled,
@@ -829,7 +830,7 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
   });
 });
 
-describe("(g) a detail view does not repeat a board read the bound refused", () => {
+describe("(g) neither a detail view nor a liveness check repeats a board read the bound refused", () => {
   // A streamed board serves rows whose text the retention ceiling gave up, and
   // a detail view of one fetches the whole board for one posting — refused
   // again, up to 4 MB downloaded for ashby, on every view.
@@ -873,6 +874,73 @@ describe("(g) a detail view does not repeat a board read the bound refused", () 
     clock.t += 2;
     await read({ source: "lever", token: "big" });
     expect(asked.filter((k) => k === "lever:big").length, "a board that shrinks back under the bound must be asked again once the entry lapses").toBe(2);
+  });
+
+  /** checkLive and the reader it calls, lifted together; only the vendor fetches are stubbed. */
+  const shippedLiveCheck = (fetchBoard: (s: Board, onFail?: (m: string) => void) => Promise<unknown>, clock: { t: number }) => {
+    const ts = [
+      "const liveBoardMemo = new Map();",
+      constDecl("DETAIL_BOARD_REFUSED"), constDecl("DETAIL_BOARD_REFUSED_TTL_MS"),
+      fnDecl("async function readBoardForDetail("), fnDecl("async function checkLive("),
+    ].join("\n");
+    const notHere = (name: string) => () => { throw new Error(`a membership vendor reached ${name}`); };
+    return new Function("fetchBoard", "Date", "fetchWithTimeout", "greenhouseApi", "leverApi", "workdayCxsUrl", `${toJs(ts)}\nreturn { checkLive, liveBoardMemo };`)(
+      fetchBoard, { now: () => clock.t }, notHere("fetchWithTimeout"), notHere("greenhouseApi"), notHere("leverApi"), notHere("workdayCxsUrl"),
+    ) as { checkLive: (s: Board & { name: string }, id: string, applyUrl: string | null) => Promise<boolean | null>; liveBoardMemo: Map<string, unknown> };
+  };
+
+  it("checkLive's membership check, which verify and the audit run per id, does not repeat it either", async () => {
+    // Every ashby posting falls through to board membership. verify clears the
+    // per-request memo and then probes up to twelve ids one after another, and
+    // the memo holds only boards that answered — so five ids on a refused board
+    // were five refused downloads, each read to the bound and each answering null.
+    const clock = { t: 1_000_000 };
+    const asked: string[] = [];
+    const answers: Record<string, string | { jobs: Array<{ id: string }>; raw: unknown }> = {
+      "ashby:big": "oversize 4.0MB",
+      "workable:big": "oversize 5.1MB",
+      "ashby:flaky": "HTTP 500",
+      "ashby:open": { jobs: [], raw: { jobs: [{ id: "a" }, { id: "b" }] } },
+      "workable:open": { jobs: [{ id: "workable:open:w1" }], raw: {} },
+    };
+    const { checkLive, liveBoardMemo } = shippedLiveCheck(async (s, onFail) => {
+      const key = `${s.source}:${s.token}`;
+      asked.push(key);
+      const a = answers[key];
+      if (typeof a !== "string") return a;
+      onFail?.(a);
+      return null;
+    }, clock);
+    const count = (k: string) => asked.filter((x) => x === k).length;
+    /** The verify action's loop, as index.ts runs it: memo cleared, then one probe per id in turn. */
+    const verify = async (b: Board, ids: string[]) => {
+      liveBoardMemo.clear();
+      const out: Array<boolean | null> = [];
+      for (const id of ids) out.push(await checkLive({ ...b, name: b.token }, id, null));
+      return out;
+    };
+    const big: Board = { source: "ashby", token: "big" };
+
+    expect(await verify(big, ["1", "2", "3", "4", "5"]), "a refused board is unknown, never closed").toEqual([null, null, null, null, null]);
+    expect(count("ashby:big"), "each verify id repeated the read the bound had just refused").toBe(1);
+    expect(await verify(big, ["6", "7"])).toEqual([null, null]);
+    expect(count("ashby:big"), "the next verify request repeated it").toBe(1);
+    expect(await verify({ source: "workable", token: "big" }, ["1", "2", "3"])).toEqual([null, null, null]);
+    expect(count("workable:big"), "every membership vendor, not only ashby").toBe(1);
+
+    expect(await verify({ source: "ashby", token: "open" }, ["a", "z", "b"]), "a board that answers still answers membership").toEqual([true, false, true]);
+    expect(await verify({ source: "workable", token: "open" }, ["w1", "w2"])).toEqual([true, false]);
+    expect(count("ashby:open"), "read once per request, from the memo after that").toBe(1);
+    expect(await verify({ source: "ashby", token: "open" }, ["a"])).toEqual([true]);
+    expect(count("ashby:open"), "and read again by the next request: a board that answers is never carried across requests").toBe(2);
+
+    expect(await verify({ source: "ashby", token: "flaky" }, ["1", "2"])).toEqual([null, null]);
+    expect(count("ashby:flaky"), "a transient failure is asked again, as before").toBe(2);
+
+    const ttl = new Function(`${toJs(constDecl("DETAIL_BOARD_REFUSED_TTL_MS"))}\nreturn DETAIL_BOARD_REFUSED_TTL_MS;`)() as number;
+    clock.t += ttl + 1;
+    expect(await verify(big, ["8"])).toEqual([null]);
+    expect(count("ashby:big"), "the refusal lapses with its TTL, as the detail read's does").toBe(2);
   });
 
   it("the lever/ashby branch of the detail read goes through it, and never fetches the board directly", () => {

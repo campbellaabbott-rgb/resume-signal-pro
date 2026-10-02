@@ -6080,7 +6080,9 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
     const memoKey = `${src.source}:${src.token}`;
     let memo = liveBoardMemo.get(memoKey);
     if (!memo) {
-      const r = await fetchBoard(src);
+      // The memo keeps only boards that answered; a board the byte bound
+      // refused is remembered across ids and requests by the reader instead.
+      const r = await readBoardForDetail(src);
       if (!r) return null;
       // FIFTEEN vendors reach here, not three. Only greenhouse / lever /
       // smartrecruiters / oracle / workday return above; everything else in
@@ -6201,10 +6203,10 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
   return out;
 }
 
-// A lever/ashby board the byte bound refuses cannot answer a detail read, and
-// asking again on every view repeats the refused download (up to 4 MB for
-// ashby). The refusal is remembered per board, per isolate, for a few hours —
-// the oversize verdict only, never a failure that may be transient.
+// A board the byte bound refuses answers neither a lever/ashby detail read nor
+// checkLive's membership check, and asking again per view or per verify id
+// repeats the refused download (up to 4 MB for ashby). Only the oversize
+// verdict is remembered, per board, per isolate, for a few hours.
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
 const DETAIL_BOARD_REFUSED = new Map<string, number>();
 const DETAIL_BOARD_REFUSED_TTL_MS = 6 * 3_600_000;

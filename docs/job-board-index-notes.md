@@ -9209,21 +9209,46 @@ read as a vendor failure, and six of those over 40 hours is the dormancy prune
 deleting a live employer's board. A success runs the ordinary ingest, which
 deletes the registry entry, stamps verification and un-stamps missing_since.
 
-A DETAIL VIEW DOES NOT REPEAT A REFUSED BOARD READ. Neither vendor publishes
-one posting's text anywhere but in the board's list, so the detail read of a
-lever or ashby row with no stored description fetches the whole board through
-fetchBoard and picks one row out. On a streamed board those rows are exactly
-the ones the retention ceiling gave up (4 of 281 on openai, 280 of 949 on
-bluelightconsulting when measured), and fetchBoard refuses the same document
-again: nothing for lever, which declares its length, but up to 4 MB downloaded
-and thrown away for ashby, which compresses and declares none. getDescription
-caches only text, so every view paid it again; before .84 these boards served
-no rows and the path was unreachable. readBoardForDetail remembers the oversize
-verdict per board, per isolate, for DETAIL_BOARD_REFUSED_TTL_MS (6 h): the list
-is one document for every posting on it, and a board that shrinks back under
-the bound answers again once the entry lapses. A timeout or HTTP error may be
-transient and is asked again, as before. Those rows show no description; that
-they stay NULL for good is the write-once rule above, not this cache.
+NEITHER A DETAIL VIEW NOR A LIVENESS CHECK REPEATS A REFUSED BOARD READ.
+Neither vendor publishes one posting's text anywhere but in the board's list,
+so the detail read of a lever or ashby row with no stored description fetches
+the whole board through fetchBoard and picks one row out. On a streamed board
+those rows are exactly the ones the retention ceiling gave up (4 of 281 on
+openai, 280 of 949 on bluelightconsulting when measured), and fetchBoard
+refuses the same document again: nothing for lever, which declares its length,
+but up to 4 MB downloaded and thrown away for ashby, which compresses and
+declares none. getDescription caches only text, so every view paid it again;
+before .84 these boards served no rows and the path was unreachable.
+readBoardForDetail remembers the oversize verdict per board, per isolate, for
+DETAIL_BOARD_REFUSED_TTL_MS (6 h): the list is one document for every posting
+on it, and a board that shrinks back under the bound answers again once the
+entry lapses. A timeout or HTTP error may be transient and is asked again, as
+before. Those rows show no description; that they stay NULL for good is the
+write-once rule above, not this cache.
+
+The same refusal reached checkLive (re-review, 2026-10-02). Every ashby
+posting falls through to board membership, as do workable, teamtailor,
+recruitee and pinpoint, which have oversize boards of their own. The
+per-request memo keeps only boards that answered, and verify clears it and
+probes up to twelve ids one after another, so each id on a refused board
+repeated the refused read: LiveMatches awaits verify for its top five, the fit
+check awaits it, and opening a detail panel or clicking apply fires it. The
+answer was a correct null every time (nothing was falsely closed); the cost was
+the download, read to the 4 MB bound and thrown away, once per id. checkLive's
+membership fetch now goes through readBoardForDetail, so the oversize verdict
+is remembered there too: five verify ids on a refused board make one read, and
+the next request makes none until the entry lapses. A board that answers is
+still read once per request and never carried across requests, and a transient
+failure is still asked again. One residue: the audit probes in parallel
+batches of eight, so its first batch can pay the read once per concurrent
+probe before the first refusal lands, exactly as it already does for a board
+that answers; every later batch reads the cache. The windowed-absence guard
+(a-window-of-ours-is-not-a-closure-of-theirs) found its board fetchers by the
+literal fetchBoard call, so this move would have taken checkLive out of the
+class it polices; it now counts any function declared to return what
+fetchBoard returns as the fetch itself, compiles the real reader into its
+checkLive harness, and fails when checkLive reaches a dependency it does not
+stub instead of letting checkLive's catch answer null.
 
 COSTS. A board whose streamed read fails permanently now costs up to 30 s of
 one worker and up to 64 MB of transfer per cold visit where the first read
