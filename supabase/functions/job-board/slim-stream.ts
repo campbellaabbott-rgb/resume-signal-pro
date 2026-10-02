@@ -188,7 +188,7 @@ export interface SlimOptions {
   maxElementBytes: number;
   /** Per posting. Twice the stored cap, so index.ts's trim-then-cap reads the same text. */
   descKeepChars: number;
-  /** Metadata plus held descriptions. The OLDEST description is given up first. */
+  /** Metadata plus held descriptions. The OLDEST description is given up first, undated last. */
   descCeiling: number;
   deadlineAt: number;
 }
@@ -206,21 +206,22 @@ export async function streamSlim(
   const dec = new TextDecoder();
   const out: J[] = [];
   const st: SlimStats = { elements: 0, bytes: 0, slimBytes: 0, descKept: 0, descDropped: 0 };
+  // An undated posting holds its text at ms Infinity: it outranks every dated
+  // arrival and is the last thing given up.
   const held: Array<{ ms: number; row: J; len: number }> = [];
   let meta = 0;
   let descChars = 0;
-  // Give up the oldest held description, but only one strictly older than `ms`.
-  const evictOlderThan = (ms: number): boolean => {
-    if (held.length === 0) return false;
+  const oldestHeld = (): number => {
     let k = 0;
     for (let x = 1; x < held.length; x++) if (held[x].ms < held[k].ms) k = x;
-    if (!(held[k].ms < ms)) return false;
+    return k;
+  };
+  const evict = (k: number): void => {
     const [ev] = held.splice(k, 1);
     delete ev.row.descriptionPlain;
     descChars -= ev.len;
     st.descKept--;
     st.descDropped++;
-    return true;
   };
   for await (const el of jsonArrayElements(body, spec.arrayKey, o.maxElementBytes, o.deadlineAt)) {
     st.elements++;
@@ -230,14 +231,21 @@ export async function streamSlim(
     spec.reduce?.(slim);
     meta += JSON.stringify(slim).length;
     if (meta > o.maxBytes) throw new Error(`${OVERSIZE_MARKER} slim ${meta} > ${o.maxBytes}`);
-    while (meta + descChars > o.descCeiling && evictOlderThan(Infinity)) { /* metadata takes precedence */ }
+    // Metadata outranks EVERY held description, undated ones included, so the
+    // ceiling bounds the two together and retained never passes maxBytes.
+    while (meta + descChars > o.descCeiling && held.length > 0) evict(oldestHeld());
     const posted = sanePostedAt(spec.postedAt(j));
     if (!isDatedBefore(posted, o.freshCutoffMs)) {
       const full = spec.text(j);
       if (full) {
         const kept = full.length > o.descKeepChars ? full.slice(0, o.descKeepChars) : full;
         const ms = posted === null ? Infinity : Date.parse(posted);
-        while (meta + descChars + kept.length > o.descCeiling && evictOlderThan(ms)) { /* newest first */ }
+        // Newest first: an arrival gives up only texts strictly older than itself.
+        while (meta + descChars + kept.length > o.descCeiling && held.length > 0) {
+          const k = oldestHeld();
+          if (!(held[k].ms < ms)) break;
+          evict(k);
+        }
         if (meta + descChars + kept.length <= o.descCeiling) {
           slim.descriptionPlain = kept;
           descChars += kept.length;

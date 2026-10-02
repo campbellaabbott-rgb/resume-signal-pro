@@ -9104,7 +9104,7 @@ the undated tail rather than making a claim it cannot support.
 
 ## n411-streamed-oversize-read
 
-Above: `const STREAM_WIRE_BYTES = 64_000_000;`, `async function readOversizeBoard(`, and the worker's retry after the pinned fetchBoard call.
+Above: `const STREAM_WIRE_BYTES = 64_000_000;`, `async function readOversizeBoard(`, the worker's retry after the pinned fetchBoard call, and `async function readBoardForDetail(`.
 
 A LEVER OR ASHBY BOARD TOO BIG TO HOLD IS READ A POSTING AT A TIME.
 
@@ -9126,9 +9126,25 @@ time, and keeps ONLY the fields normalizeLever / normalizeAshby read — the
 allowlist is a contract with normalize.ts, and the guard derives it from the
 normaliser source so a field added there later goes red here instead of
 going silently missing on streamed boards. Retained: at most
-SLIM_RETAINED_BYTES of metadata plus one element (SLIM_ELEMENT_BYTES), which
-together equal MAX_RESPONSE_BYTES, so the "five workers at the ceiling"
-arithmetic above the bound still holds unchanged.
+SLIM_RETAINED_BYTES of metadata and held descriptions together, plus one
+element (SLIM_ELEMENT_BYTES), which sum to MAX_RESPONSE_BYTES, so the "five
+workers at the ceiling" arithmetic above the bound still holds unchanged. The
+element bound is checked as each chunk of a partial element arrives, not when
+the element closes: one 60 MB posting is refused at 1 MB, not buffered whole.
+
+THE RETAINED BOUND COVERS UNDATED TEXT TOO (review, 2026-10-01). The first cut
+compared only metadata with SLIM_RETAINED_BYTES and, when metadata pressed on
+the ceiling, gave up a held text only if it ranked strictly below Infinity. An
+undated posting (the ingest keeps it, so it holds its text) is ranked AT
+Infinity, so it could never be given up: 240 undated 10 KB texts
+followed by 2.4 MB of aged metadata finished at 4.8 MB retained against the
+3 MB budget, without a throw. Metadata now outranks EVERY held text, oldest
+first and undated last, so retained is at most max(SLIM_DESC_CEILING, metadata)
+and never passes SLIM_RETAINED_BYTES. Newest-first is unchanged for arrivals:
+an arrival gives up only texts strictly older than itself, so an older posting
+arriving after newer ones displaces nothing. Real lever and ashby feeds almost
+always date their postings, so this was a bound with a hole rather than a
+measured overrun, but the bound is the claim the memory arithmetic rests on.
 
 DESCRIPTIONS ARE WRITTEN ONCE. Only new rows are upserted with a description;
 existing rows get field patches that never carry the column, and neither
@@ -9165,6 +9181,19 @@ then every reader.read() against deadlineAt (a response that lands late is
 still released), and the reader is cancelled in a finally. Measured against a
 local server: stalled body and stalled headers both returned at the deadline.
 
+EVERY ABANDONED BODY IS CANCELLED. Uncancelled, abandoned response bodies were
+the September slice deaths (n005: heap p50 176 MB, 36 once discardRest
+cancelled them), and
+every failed streamed read — slow, over a budget, wrong shape — abandons a body
+with bytes unread. The guard asserts the cancel on the SOURCE stream for each
+of those failures, directly and through boundBody's pipe, and for a late
+response, a non-2xx and a non-JSON answer. (A truncated body has already been
+read to its end; there is nothing left to release.) It also lifts
+readOversizeBoard, boundBody and fetchWithTimeout out of index.ts and runs them
+over stubbed feeds past MAX_RESPONSE_BYTES, and runs the worker's retry
+statement itself, because an earlier version of the guard pinned their
+spelling and stayed green with the retry dead or every streamed board empty.
+
 THE RETRY IS A SEPARATE STATEMENT AND NEVER WRITES THE VERDICT. Three guards
 pin the worker's fetchBoard call byte for byte, so the retry sits between that
 call's finally and the landed-postings count. It starts only on an oversize
@@ -9179,6 +9208,22 @@ marker to the deferral; a socket error or a deadline message would otherwise
 read as a vendor failure, and six of those over 40 hours is the dormancy prune
 deleting a live employer's board. A success runs the ordinary ingest, which
 deletes the registry entry, stamps verification and un-stamps missing_since.
+
+A DETAIL VIEW DOES NOT REPEAT A REFUSED BOARD READ. Neither vendor publishes
+one posting's text anywhere but in the board's list, so the detail read of a
+lever or ashby row with no stored description fetches the whole board through
+fetchBoard and picks one row out. On a streamed board those rows are exactly
+the ones the retention ceiling gave up (4 of 281 on openai, 280 of 949 on
+bluelightconsulting when measured), and fetchBoard refuses the same document
+again: nothing for lever, which declares its length, but up to 4 MB downloaded
+and thrown away for ashby, which compresses and declares none. getDescription
+caches only text, so every view paid it again; before .84 these boards served
+no rows and the path was unreachable. readBoardForDetail remembers the oversize
+verdict per board, per isolate, for DETAIL_BOARD_REFUSED_TTL_MS (6 h): the list
+is one document for every posting on it, and a board that shrinks back under
+the bound answers again once the entry lapses. A timeout or HTTP error may be
+transient and is asked again, as before. Those rows show no description; that
+they stay NULL for good is the write-once rule above, not this cache.
 
 COSTS. A board whose streamed read fails permanently now costs up to 30 s of
 one worker and up to 64 MB of transfer per cold visit where the first read

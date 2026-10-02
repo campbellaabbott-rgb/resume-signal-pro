@@ -6201,6 +6201,26 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
   return out;
 }
 
+// A lever/ashby board the byte bound refuses cannot answer a detail read, and
+// asking again on every view repeats the refused download (up to 4 MB for
+// ashby). The refusal is remembered per board, per isolate, for a few hours —
+// the oversize verdict only, never a failure that may be transient.
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+const DETAIL_BOARD_REFUSED = new Map<string, number>();
+const DETAIL_BOARD_REFUSED_TTL_MS = 6 * 3_600_000;
+async function readBoardForDetail(src: JobSource): Promise<Awaited<ReturnType<typeof fetchBoard>>> {
+  const key = `${src.source}:${src.token}`;
+  const at = DETAIL_BOARD_REFUSED.get(key);
+  if (at !== undefined && Date.now() - at < DETAIL_BOARD_REFUSED_TTL_MS) return null;
+  let reason = "";
+  const r = await fetchBoard(src, (m) => { reason = m; });
+  if (!r && reason.startsWith("oversize")) {
+    if (DETAIL_BOARD_REFUSED.size > 500) DETAIL_BOARD_REFUSED.clear();
+    DETAIL_BOARD_REFUSED.set(key, Date.now());
+  }
+  return r;
+}
+
 /**
  * One posting's description straight from the vendor. Shared by the on-demand
  * `detail` read and the backfill sweep so the two can never drift apart.
@@ -6448,8 +6468,9 @@ async function fetchVendorDetail(
     }
   } else if (src.source === "lever" || src.source === "ashby") {
     // Both ship descriptions in the board payload — fetch the board, extract
-    // the one posting, keep nothing else in memory.
-    const r = await fetchBoard(src);
+    // the one posting, keep nothing else in memory. A board the byte bound
+    // refuses answers null here without being asked again (see above).
+    const r = await readBoardForDetail(src);
     if (r) {
       if (src.source === "lever") {
         const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>;

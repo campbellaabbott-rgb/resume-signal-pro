@@ -619,16 +619,20 @@ echo "== 7i. .84: the marquee boards too big to hold serve again (light set 500;
 # 03:41 sweep then hides everything it holds. Greenhouse recovers when each
 # board trips once more and enrols in the (now 500-slot) light set, so give it
 # TWO cold rotations after the deploy; lever/ashby read in the same visit, so
-# ONE. lastRotationAgeMin below resets at each wrap. Every probe is a read: the
-# board's own list/status actions, and the vendors' public GET feeds. The
-# detail action is NOT used here — it writes a fetched description back.
+# ONE. The light set's SIZE is judged only after one full cold rotation too: at
+# publish it holds what .81 persisted (at most 50). lastRotationAgeMin below
+# resets at each wrap. Every probe is a read: the board's own list/status
+# actions, and the vendors' public GET feeds. The detail action is NOT used
+# here — it writes a fetched description back.
 J '{"action":"status"}' > /tmp/vd_7i_status.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
 ok(j.version==="2026-09-09.84","status.version = "+j.version+" (want 2026-09-09.84; .81 means the bundle did not deploy)");
 const ss=j.sliceStats||{};
-ok(typeof ss.lightSet==="number"&&typeof ss.lightCap==="number"&&ss.lightSet>=100&&ss.lightSet<ss.lightCap,"sliceStats.lightSet = "+ss.lightSet+" of lightCap "+ss.lightCap+" (want 100 <= set < cap: populated, not saturated)");
+const LS=ss.lightSet,LC=ss.lightCap;
+ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
+if(typeof LS==="number"&&typeof LC==="number"&&LS<LC)console.log((LS>=100?"PASS":"INFO")+"  sliceStats.lightSet = "+LS+" (want >= 100, but only once a full cold rotation has run since the publish: the row .81 persisted holds at most 50 and the set grows by one per over-bound visit, so ~50 at publish rising to ~103. Still under 100 after lastRotationAgeMin has reset TWICE since the publish is a FAIL)");
 console.log("INFO  lastRotationAgeMin = "+j.lastRotationAgeMin+" — greenhouse needs two cold rotations after the deploy, lever/ashby one");
 const ck=j.chainKick||{};ok(ck.status===200,"chainKick.status = "+ck.status+" ("+ck.outcome+", ageMin "+ck.ageMin+")");
 ok(ss.wallStopped===false,"sliceStats.wallStopped = "+ss.wallStopped+" (a streamed read must not push slices into the wall)");
