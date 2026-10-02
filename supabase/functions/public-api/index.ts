@@ -1364,9 +1364,18 @@ async function changes(
   // learns the posting closed at all: it would simply stop appearing in
   // /v1/jobs with no event to explain it. Named, the feed stays complete AND
   // reconcilable -- a consumer who drops the flagged rows gets exactly the
-  // figure get_takedowns_today() and get_board_flow() now report for that day,
-  // which is the disagreement between our own published surfaces that an
-  // unflagged feed would have made impossible to resolve.
+  // figure get_board_flow() reports for that day, which is the disagreement
+  // between our own published surfaces that an unflagged feed would have made
+  // impossible to resolve.
+  //
+  // get_takedowns_today() NO LONGER RECONCILES WITH THIS FEED, and this
+  // paragraph used to say it did. Since 20261002113617 the ticker also drops
+  // batches the collector flagged as possible read failures of its own
+  // (`suspect`, the filter the 90-day total applies), and this select does not
+  // carry that column -- so a consumer rebuilding the ticker from this feed
+  // counts higher, by exactly the flagged batches. Exposing the flag as an
+  // additive field is a change to a published contract and is the owner's
+  // call; until it is made, the gap is stated here rather than promised away.
   let closedQ = client.from("job_board_closures")
     .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis")
     // Same fence, same reason: a closure row carries the posting's title,

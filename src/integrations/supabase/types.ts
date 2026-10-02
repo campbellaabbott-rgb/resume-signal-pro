@@ -5372,6 +5372,7 @@ export type Database = {
         Args: never
         Returns: {
           closed: number
+          closed_flagged: number
           entry_new: number
           new_postings: number
           remote_new: number

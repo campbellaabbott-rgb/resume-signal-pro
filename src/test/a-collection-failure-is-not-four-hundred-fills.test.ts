@@ -183,22 +183,28 @@ const unguardedFillReaders = (defs: Map<string, string>) =>
     .map((r) => r.name);
 
 /**
- * KNOWN GAPS, PINNED EXACTLY — this is a ledger, not an excuse.
+ * KNOWN GAPS, PINNED EXACTLY — this is a ledger, not an excuse. IT IS EMPTY.
  *
- * Both of these count non-superseded closures and publish the result to anon
- * (`/jobs`'s takedown ticker; `/hiring-trends`' weekly line), and neither drops
- * a suspect batch, so a dark feed inflates both. They are outside the migration
- * set this change ships — docs/hiring-health-model.md scopes the feed-dark
- * exclusion to the fill/health/benchmark/ghost-stats family — and fixing them
- * needs a migration, which the phase that wrote this file does not own.
+ * It held two names from the day this file shipped: get_takedowns_today
+ * (`/jobs`'s takedown ticker) and get_hiring_trends (`/hiring-trends`' weekly
+ * line). Both counted non-superseded closures for anon and neither dropped a
+ * suspect batch, and the gap the entry predicted is the one that shipped: a
+ * Workday read that treats each 250-row window as the whole board wrote
+ * ~100k doubted takedowns a day, and the weekly line printed 806,570 for a
+ * week beside a 90-day total of 1,852,789, while the ticker read 130,373 for
+ * one day. 20261002113617 put both on the filter the 90-day total uses, and
+ * a-week-of-takedowns-cannot-outnumber-its-own-quarter.test.ts runs them.
  *
- * The ledger is asserted EXACT in both directions on purpose:
+ * The ledger is still asserted EXACT in both directions, and that is why it
+ * stays as a constant rather than being deleted:
  *   - a NEW unguarded fill reader is not in it, so it fails here;
- *   - and when someone finally adds `AND NOT COALESCE(suspect, false)` to one
- *     of these two, this test fails as well, which is the prompt to delete the
- *     name rather than leave a stale exemption sitting in the repo forever.
+ *   - and an entry whose function has since gained the filter fails as well,
+ *     which is the prompt to delete the name rather than leave a stale
+ *     exemption sitting in the repo forever.
+ * A name may be added only with the reason it is not a fill statistic, or the
+ * migration that will fix it, written above it.
  */
-const KNOWN_UNGUARDED = ["get_hiring_trends", "get_takedowns_today"] as const;
+const KNOWN_UNGUARDED: readonly string[] = [];
 
 // ── collector shape, read off comment-stripped TypeScript ───────────────────
 
@@ -388,7 +394,7 @@ describe("a collection failure is not four hundred fills", () => {
       ).toEqual([...KNOWN_UNGUARDED].sort());
     });
 
-    it("the ledger stays exactly two entries and shrinks when one is fixed", () => {
+    it("every ledger entry is still unguarded -- an entry whose function gained the filter is deleted, and the ledger is empty", () => {
       for (const name of KNOWN_UNGUARDED) {
         const r = readers.find((x) => x.name === name);
         expect(r, `${name} is no longer a closure reader — delete it from the ledger`).toBeTruthy();
@@ -397,6 +403,14 @@ describe("a collection failure is not four hundred fills", () => {
           `${name} now filters suspect — delete it from KNOWN_UNGUARDED, a stale ` +
             "exemption is how the next gap hides",
         ).toBe(false);
+      }
+      // The two readers this ledger existed for are fixed; it starts empty
+      // and an addition needs its own reason written above the constant.
+      expect(KNOWN_UNGUARDED).toEqual([]);
+      for (const name of ["get_hiring_trends", "get_takedowns_today"]) {
+        const r = readers.find((x) => x.name === name);
+        expect(r, `${name} is no longer found as a closure reader -- the classifier drifted`).toBeTruthy();
+        expect(r!.publishesFills && r!.excludesSuspect, `${name} must count fills AND drop suspect batches`).toBe(true);
       }
     });
 

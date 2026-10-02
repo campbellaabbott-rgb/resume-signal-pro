@@ -650,4 +650,95 @@ NCC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/used_stripe_sessi
 R queue_wrapper_exposure '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  queue_wrapper_exposure non-JSON: "+s.slice(0,160))}if(j&&j.code==="PGRST202")return console.log("FAIL  queue_wrapper_exposure does not exist (migration 20261002104317 not applied)");if(typeof j?.open_to_clients!=="number")return console.log("FAIL  queue_wrapper_exposure -> "+JSON.stringify(j).slice(0,160));console.log((j.definers>=5?"PASS":"FAIL")+"  "+j.definers+" definer function(s) in public touch pgmq (want >= 5: the five email wrappers)");console.log((j.open_to_clients===0?"PASS":"FAIL")+"  "+j.open_to_clients+" of them executable by anon or authenticated (want 0; baseline 2026-10-01: the delayed enqueue, 1)")})'
 echo "INFO  the purchase itself cannot be proved read-only: the first paid full_analysis and apply_assistant after deploy should leave product_deliveries status=delivered (owner: check Stripe and the Account page purchase list)"
 
+echo "== 7g. a week of takedowns cannot outnumber its own quarter (20261002113617, frontend before and after) =="
+# THE CLAIM: the weekly series and the /jobs ticker count takedowns on the filter
+# the 90-day total uses (flagged batches out), the weekly series reports what it
+# excluded as closed_flagged, and both pages withhold a week whose flagged records
+# outnumber the admitted ones or that reads above twice the record's weekly
+# average. DEPLOY ORDER: frontend first (its verdict judges an old five-column row
+# by the ceiling alone), then the migration, then a frontend REBUILD (the
+# prerender reads the cache at build time). Judge after the next :27 stats-cache
+# tick, and run this section again after the tick after that, so the cron -- not
+# a one-off call -- is what is proven to write the new shape.
+# The same change makes the two other pages that print closed_90d beside the
+# ledger depth (the Ghost Job Index opener, the /data-api hero tile) print the
+# days the count covers, capped at 90, and the depth beside it once the ledger
+# is deeper: (k) reads both deployed chunks for that clause.
+#
+# BASELINES, read with the anon key 2026-10-01/02 before the change: weekly closed
+# 845,110 / 870,536 / 806,570 for the weeks of 09-07, 09-14, 09-21 (byte-stable
+# from 09-23 to 10-01, so the ledger is append-only for past weeks); five weeks
+# summed to 3,194,350 against closed_90d 1,852,789-1,854,930 (observed_days 79);
+# get_hiring_trends answered in 7-13s against a 20s header; the ticker read
+# 130,373. Every check is a read: RPC reads with the anon key, two GETs.
+B="$B" K="$K" SITE="$SITE" UA="$UA" node -e '
+const B=process.env.B,K=process.env.K,SITE=process.env.SITE,UA=process.env.UA;
+const R=async(fn,args={})=>{const t0=Date.now();const r=await fetch(B+"/rest/v1/rpc/"+fn,{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(args)});const txt=await r.text();let j=null;try{j=JSON.parse(txt)}catch{}return {status:r.status,ms:Date.now()-t0,j,txt}};
+const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+const info=(m)=>console.log("INFO  "+m);
+const fmt=(n)=>typeof n==="number"?n.toLocaleString("en-US"):String(n);
+// The verdict, mirrored from src/lib/hiring-trends-trust.ts (the page) and the
+// prerender builder: unreadable, then above the ceiling, then flagged majority.
+// The ceiling divides closed_90d by observed_days CAPPED AT 90 -- the ledger
+// outlives the 90-day count, and uncapped the ceiling sinks after day 90.
+const verdictOf=(w,g)=>{const n=(v)=>typeof v==="number"&&Number.isFinite(v)&&v>=0?v:null;const c=n(w&&w.closed),f=n(w&&w.closed_flagged),t=n(g&&g.closed_90d),d=n(g&&g.observed_days);const ceil=t!==null&&d!==null&&d>0?t/Math.min(d,90)*14:null;
+  if(c===null)return{state:"held",reason:"unreadable",ceil};if(ceil!==null&&c>ceil)return{state:"held",reason:"exceeds_record",ceil};if(f!==null&&f>c)return{state:"held",reason:"flagged_majority",ceil};return{state:"published",closed:c,ceil}};
+const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
+(async()=>{
+  const sc=await R("get_stats_cache");
+  const c=(sc.j&&!Array.isArray(sc.j))?sc.j:(Array.isArray(sc.j)&&sc.j[0])?sc.j[0]:{};
+  const rows=Array.isArray(c.hiring_trends)?c.hiring_trends:[];
+  const g=(c.ghost_stats&&typeof c.ghost_stats==="object")?c.ghost_stats:{};
+  const stale=Array.isArray(c.stale_parts)?c.stale_parts:[];
+  info("stats_cache computed_at="+c.computed_at+", "+rows.length+" weekly rows, closed_90d="+fmt(g.closed_90d)+", observed_days="+g.observed_days);
+  const shaped=rows.filter(r=>typeof r.closed_flagged==="number").length;
+  ok(rows.length>0&&shaped===rows.length,"(a) every cached hiring_trends row carries a numeric closed_flagged ("+shaped+"/"+rows.length+"). Only the new body can write it: 0 means the migration has not landed or no hourly tick has run since -- never judge by the runner saying applied");
+  ok(!stale.includes("hiring_trends"),"(b) stale_parts does not name hiring_trends ("+JSON.stringify(stale)+"). Named, the refresh timed out or errored and carried the OLD inflated rows forward under a fresh stamp");
+  let seen=0;
+  for(const r of rows){const w=String(r.week_start).slice(0,10);if(PRE[w]===undefined)continue;seen++;const s=(Number(r.closed)||0)+(Number(r.closed_flagged)||0);const d=Math.abs(s-PRE[w])/PRE[w];
+    ok(typeof r.closed_flagged==="number"&&d<=0.005,"(c) week "+w+": closed "+fmt(r.closed)+" + closed_flagged "+fmt(r.closed_flagged)+" = "+fmt(s)+" against the pre-deploy "+fmt(PRE[w])+" ("+(100*d).toFixed(2)+"% apart, want <= 0.5%). The partition is the proof nothing was lost or invented")}
+  if(seen===0)info("(c) none of the three baseline weeks is still inside the 35-day window, so the partition check has nothing to compare -- (a), (b) and (d) carry the proof");
+  const sum=rows.reduce((a,r)=>a+(Number(r.closed)||0),0);
+  ok(typeof g.closed_90d==="number"&&sum<=g.closed_90d,"(d) the weeks sum to "+fmt(sum)+" against closed_90d "+fmt(g.closed_90d)+" -- a week cannot outnumber its own quarter (pre-deploy 3,194,350 against 1,852,789)");
+  for(const r of rows){const v=verdictOf(r,g);info("week "+String(r.week_start).slice(0,10)+": closed "+fmt(r.closed)+", closed_flagged "+fmt(r.closed_flagged)+" -> "+(v.state==="held"?"withheld ("+v.reason+")":"printed")+(v.ceil?" [ceiling "+fmt(Math.round(v.ceil))+"]":""))}
+  const last=rows.length>1?rows[rows.length-2]:null;const v=last?verdictOf(last,g):null;
+  // INFO, not PASS: this applies the verdict to the cache, so it cannot fail by
+  // construction. Whether the DEPLOYED page applies it is (i).
+  info("(e) what the new page renders for the last complete week ("+(last?String(last.week_start).slice(0,10):"none")+"): "+(!v?"no week to judge":v.state==="held"?"a dash, withheld for "+v.reason:fmt(v.closed))+". Expect the weeks of 09-07 to 09-28 withheld until the Workday collector is fixed; the tile returns with the first clean full week, and the threshold is not to be relaxed to bring it back sooner");
+  const live=await R("get_hiring_trends");
+  ok(live.status===200&&Array.isArray(live.j)&&live.ms<45000,"(f) get_hiring_trends live: HTTP "+live.status+" in "+(live.ms/1000).toFixed(1)+"s (want under 45s against the 60s header; pre-fix 7-13s against 20s). Over it, drop the anti-join in posted_closed first"+(live.status!==200?" -- "+live.txt.slice(0,160):""));
+  if(Array.isArray(live.j))ok(live.j.length>0&&live.j.every(r=>typeof r.closed_flagged==="number"),"(f) the live answer carries closed_flagged on every row");
+  const td=await R("get_takedowns_today");
+  const hrs=Math.max(1,Math.ceil((Date.now()-Date.parse(new Date().toISOString().slice(0,10)+"T00:00:00Z"))/3600000));
+  const bf=await R("get_board_flow",{p_hours:hrs});const f=Array.isArray(bf.j)?bf.j[0]:bf.j;
+  info("(g) get_takedowns_today = "+fmt(td.j)+" against get_board_flow("+hrs+") closed minus superseded = "+(f&&typeof f.closed==="number"?fmt(f.closed-f.superseded):"?")+". The ticker now drops flagged batches the flow still counts, so it reads lower by about the flagged share (pre-deploy 130,373 on 2026-10-01). INFO only: the gap collapses once the collector is fixed");
+  const html=await (await fetch(SITE+"/hiring-trends",{headers:{"user-agent":UA}})).text();
+  const t=html.replace(/<[^>]*>/g," ").replace(/\s+/g," ");
+  // ONE CHECK, because the old build ALSO printed no figure for a held week (its
+  // row went null and vanished), so "no opposite-pair label" alone passes before
+  // the rebuild. What only the new build prints is a withheld reason or a figure
+  // under the ceiling, and never the old label beside either.
+  const m=t.match(/([0-9][0-9,]*) — closure events logged that week/);const held=/Takedowns — withheld for that week/.test(t);
+  const ceil=verdictOf({closed:0},g).ceil;
+  ok(!/opposite pair/.test(t)&&(held||(!!m&&(ceil===null||Number(m[1].replace(/,/g,""))<=ceil))),"(h) crawler HTML: "+(/opposite pair/.test(t)?"still carries the opposite-pair label":held?"the week is withheld, with its reason":m?"prints "+m[1]+" (ceiling "+fmt(Math.round(ceil))+")":"neither a withheld reason nor a weekly takedown figure -- the prerender predates this build (rebuild AFTER the migration) or could not read the cache"));
+  // The ceiling reason has to name the rule the verdict applies: twice the
+  // average WEEK of the record. The first build of this change said its daily
+  // figure, seven times stricter than the arithmetic, so every week it printed
+  // broke the rule it stated.
+  if(held)ok(!/twice the daily average/.test(t),"(h2) crawler HTML: the withheld reason "+(/twice the daily average/.test(t)?"still states the daily-figure rule the verdict never applied -- the prerender predates the copy fix":"does not state the daily-figure rule"));
+  const shell=await (await fetch(SITE+"/")).text();
+  const entry=(shell.match(/src="(\/assets\/index-[^"]+\.js)"/)||[])[1];
+  if(!entry){info("(i) could not locate the entry bundle in the homepage shell; open /hiring-trends in a browser instead: the takedown tile must read a dash with a Withheld sentence, never 806,570");return}
+  const js=await (await fetch(SITE+entry)).text();
+  // The 90-day count beside the ledger depth: from about 2026-10-12 the ledger
+  // is deeper than the count, and the old copy printed the depth as the window.
+  for(const [name,needle] of [["GhostJobIndex","(our record runs "],["DataApi",", from a record "]]){const ch=(js.match(new RegExp(name+"-[\\w-]+\\.js"))||[])[0];if(!ch){info("(k) the entry bundle names no "+name+" chunk; open the page in a browser instead");continue}
+    const src=await (await fetch(SITE+"/assets/"+ch)).text();ok(src.includes(needle),"(k) the deployed "+name+" chunk ("+ch+") names the record depth beside the 90-day count once the ledger outlives it -- absent means the page still prints observed_days as the window of a 90-day count")}
+  const chunk=(js.match(/HiringTrends-[\w-]+\.js/)||[])[0];
+  if(!chunk){info("(i) the entry bundle names no HiringTrends chunk; check /hiring-trends in a browser instead");return}
+  const code=await (await fetch(SITE+"/assets/"+chunk)).text();
+  ok(code.includes("takedowns logged last week")&&code.includes("takedowns withheld"),"(i) the deployed /hiring-trends chunk ("+chunk+") carries the verdict path -- absent means the hydrated page still prints the raw weekly count");
+  ok(/twice the average week of our (own )?90-day closure record/.test(code)&&!/twice the daily average/.test(code),"(j) the deployed chunk states the ceiling as twice the average week of the record, and nowhere as its daily figure -- failing means the copy that shipped with the first build of this change is still live");
+})().catch(e=>console.log("FAIL  7g probe threw: "+e.message));
+'
 echo "done."

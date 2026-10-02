@@ -21,6 +21,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
+import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -165,6 +166,24 @@ export default function DataApi() {
     })();
   }, []);
 
+  // THE TILE PRINTED THE LEDGER'S AGE AS THE COUNT'S WINDOW. closed_90d counts
+  // the last 90 days; observed_days is the age of the whole closure ledger,
+  // which is no longer pruned. The label below was written to stop printing a
+  // window we never watched (the log was 12 days deep and the tile said 90),
+  // and it fixed that by printing the depth -- which is exact only while the
+  // depth is the smaller of the two. From about 2026-10-12 it is not, and the
+  // tile would have read as every closure in a record longer than the count.
+  // It prints the span the count covers, and the depth beside it once they
+  // differ. With no depth it prints the count's own window, as the crawler's
+  // label does, rather than a dash where the number of days should be.
+  const closureDays = stats?.observed_days ?? stats?.tracking_days;
+  const closureSpan = closureCountSpanDays(closureDays);
+  const closureLabel = closureSpan === null
+    ? `closures logged in the last ${CLOSURE_RECORD_WINDOW_DAYS} days`
+    : closureDays !== undefined && closureDays > closureSpan
+      ? `closures logged in the last ${closureSpan} days, from a record ${fmt(closureDays)} days deep`
+      : `closures logged in ${fmt(closureSpan)} days`;
+
   const inDataset = [
     // DERIVED, never typed. The hand-written run this replaced named five
     // systems and ended in "and more" — a tail written when the board read
@@ -251,10 +270,10 @@ export default function DataApi() {
                   <span className="font-bold text-foreground">{fmt(stats?.closed_90d)}</span>
                   {/* 90 was the REQUESTED window; the log began 2026-07-14. The
                       same payload carries the real depth, so use it and never
-                      print a window we did not watch. */}
-                  <span className="text-muted-foreground">
-                    closures logged in {fmt(stats?.observed_days ?? stats?.tracking_days)} days
-                  </span>
+                      print a window we did not watch -- nor, once the ledger
+                      outlives the count, a depth the count does not cover.
+                      closureLabel above says which. */}
+                  <span className="text-muted-foreground">{closureLabel}</span>
                 </div>
               </div>
             </div>
