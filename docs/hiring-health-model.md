@@ -314,7 +314,12 @@ week reading at more than twice the record's average week: `closed_90d` over
 is no longer pruned and outlives the 90-day count; without it the ceiling sinks
 every day past the ledger's 90th. The public sentences that state this rule are
 parsed and checked against the verdict by
-`a-withheld-week-states-the-rule-that-withheld-it.test.tsx`. Still carrying
+`a-withheld-week-states-the-rule-that-withheld-it.test.tsx`. That capped span
+is one function, `closureCountSpanDays`, and it is also what the Ghost Job
+Index's closure opener and the `/data-api` hero tile print beside
+`closed_90d`, with the record's depth stated beside it once the ledger is
+deeper than 90 days; both used to print `observed_days` as the count's window
+(`a-ninety-day-count-names-the-days-it-covers.test.tsx`). Still carrying
 suspect rows, each by an open decision rather than by oversight:
 `get_board_flow` (an operator flow metric on `/status`) and `/v1/changes`
 (which emits every row as `outcome: "closed"` and does not expose the flag).

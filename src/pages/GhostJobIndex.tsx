@@ -25,6 +25,10 @@ import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
 // that serves nineteen. Both now read the one array, which also drops the
 // source that serves no rows. See src/config/ats-vendors.ts.
 import { SERVING_SOURCE_LIST, servingSourceSummary } from "@/config/ats-vendors";
+// closed_90d counts 90 days; observed_days is the age of a ledger that is no
+// longer pruned. The days the count covers are defined once, beside the
+// ceiling /hiring-trends divides by the same span.
+import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 
 interface Stats {
   total_open: number;
@@ -933,6 +937,23 @@ export default function GhostJobIndex() {
   // retired one, so everything gated on it went quietly dark. Reading both
   // keeps a stats_cache row written before the rename working too.
   const trackedDays = stats?.observed_days ?? stats?.tracking_days;
+  // THE OPENER PRINTED THE LEDGER'S AGE AS THE COUNT'S WINDOW. closed_90d is
+  // every takedown in the last 90 days; trackedDays is how long ago the first
+  // one was logged, and nothing prunes the ledger any more. While the second
+  // was the smaller number the sentence was exact. From about 2026-10-12 it
+  // would have told a reader that the 90-day figure was everything we watched
+  // over a longer record. The span printed now is the one the count covers,
+  // and once the record outruns it the record's depth is said beside it,
+  // separately, as the crawler's label already does. With no depth at all the
+  // only span this page knows is the count's own filter, so it says that: the
+  // old fallback ("since we started") claimed the whole record, the very
+  // thing it could not know.
+  const closureSpan = closureCountSpanDays(trackedDays);
+  const closureOpener = closureSpan === null
+    ? `In the last ${CLOSURE_RECORD_WINDOW_DAYS} days`
+    : trackedDays !== undefined && trackedDays > closureSpan
+      ? `In the last ${closureSpan} days (our record runs ${fmt(trackedDays)} days deep)`
+      : `In the ${closureSpan} days we've kept this record`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -1176,7 +1197,7 @@ export default function GhostJobIndex() {
           </h2>
           {hasClosureData ? (
             <p className="text-sm text-muted-foreground">
-              {trackedDays ? `In the ${trackedDays} days we've kept this record` : "Since we started keeping this record"} we've
+              {closureOpener} we've
               watched <b className="text-foreground">{fmt(stats?.closed_90d)}</b> roles
               come down across the board. Postings that never close are exactly the ghost jobs we drop.{" "}
               {/* WHAT THIS NUMBER COUNTS, SAID ON THE PAGE.

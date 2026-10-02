@@ -622,6 +622,10 @@ echo "== 7g. a week of takedowns cannot outnumber its own quarter (2026100211361
 # prerender reads the cache at build time). Judge after the next :27 stats-cache
 # tick, and run this section again after the tick after that, so the cron -- not
 # a one-off call -- is what is proven to write the new shape.
+# The same change makes the two other pages that print closed_90d beside the
+# ledger depth (the Ghost Job Index opener, the /data-api hero tile) print the
+# days the count covers, capped at 90, and the depth beside it once the ledger
+# is deeper: (k) reads both deployed chunks for that clause.
 #
 # BASELINES, read with the anon key 2026-10-01/02 before the change: weekly closed
 # 845,110 / 870,536 / 806,570 for the weeks of 09-07, 09-14, 09-21 (byte-stable
@@ -688,6 +692,10 @@ const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
   const entry=(shell.match(/src="(\/assets\/index-[^"]+\.js)"/)||[])[1];
   if(!entry){info("(i) could not locate the entry bundle in the homepage shell; open /hiring-trends in a browser instead: the takedown tile must read a dash with a Withheld sentence, never 806,570");return}
   const js=await (await fetch(SITE+entry)).text();
+  // The 90-day count beside the ledger depth: from about 2026-10-12 the ledger
+  // is deeper than the count, and the old copy printed the depth as the window.
+  for(const [name,needle] of [["GhostJobIndex","(our record runs "],["DataApi",", from a record "]]){const ch=(js.match(new RegExp(name+"-[\\w-]+\\.js"))||[])[0];if(!ch){info("(k) the entry bundle names no "+name+" chunk; open the page in a browser instead");continue}
+    const src=await (await fetch(SITE+"/assets/"+ch)).text();ok(src.includes(needle),"(k) the deployed "+name+" chunk ("+ch+") names the record depth beside the 90-day count once the ledger outlives it -- absent means the page still prints observed_days as the window of a 90-day count")}
   const chunk=(js.match(/HiringTrends-[\w-]+\.js/)||[])[0];
   if(!chunk){info("(i) the entry bundle names no HiringTrends chunk; check /hiring-trends in a browser instead");return}
   const code=await (await fetch(SITE+"/assets/"+chunk)).text();

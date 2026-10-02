@@ -96,12 +96,37 @@ export type ClosureVerdict =
 const count = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
 
+/** The days closed_90d actually covers: the whole record while the ledger is
+ *  younger than CLOSURE_RECORD_WINDOW_DAYS, and that window once it is older.
+ *  Null when observed_days is not a positive number.
+ *
+ *  THE CEILING WAS NOT THE ONLY PLACE THAT TOOK THE LEDGER'S AGE FOR THE
+ *  COUNT'S SPAN. Two public sentences print closed_90d beside observed_days
+ *  as if both measured the same stretch -- the Ghost Job Index's closure
+ *  opener ("in the N days we've kept this record we've watched ...") and the
+ *  /data-api hero tile ("... closures logged in N days"). Both were exact
+ *  while the ledger was younger than the count's window, and both go false
+ *  the day it is not (about 2026-10-12, at 79 days deep on 2026-10-01): a
+ *  90-day count printed over a record of 180 days reads as everything we saw
+ *  in 180, which understates the record by however much fell outside the
+ *  window. Review of the ceiling fix found them. The span is one fact, so it
+ *  has one definition: the ceiling divides by this, and both sentences print
+ *  it, naming the record's depth beside it once the two differ. The
+ *  prerender's Ghost Job Index label says the same thing in its own words
+ *  ("in the last 90 days, from a record N days deep") and always has.
+ *  a-ninety-day-count-names-the-days-it-covers.test.tsx reads the span out of
+ *  all three, on records younger and older than the window. */
+export function closureCountSpanDays(observedDays: unknown): number | null {
+  const days = count(observedDays);
+  return days !== null && days > 0 ? Math.min(days, CLOSURE_RECORD_WINDOW_DAYS) : null;
+}
+
 /** The most a week may read before it is refused, or null when the record cannot say. */
 export function closureCeiling(record: ClosureRecord | null | undefined): number | null {
   const total = count(record?.closed_90d);
-  const days = count(record?.observed_days);
-  return total !== null && days !== null && days > 0
-    ? (total / Math.min(days, CLOSURE_RECORD_WINDOW_DAYS)) * 7 * CLOSURE_WEEK_PLAUSIBILITY
+  const span = closureCountSpanDays(record?.observed_days);
+  return total !== null && span !== null
+    ? (total / span) * 7 * CLOSURE_WEEK_PLAUSIBILITY
     : null;
 }
 
