@@ -82,6 +82,10 @@ describe("the pattern, so the next one is not written the same way", () => {
     "record_tenant_wall", "reconcile_stripe_tick", "category_knn", "load_category_anchors", "promote_category", "revert_category",
     "layoff_board_names_mirror", "layoff_filings_upsert", "layoff_matches_rebuild", "refresh_layoff_partition",
     "roll_up_and_prune_layoff_filings", "layoff_cron_key_matches",
+    // The delayed email enqueue (2026-10-01): a definer over pgmq that takes
+    // any queue name and payload and creates the queue it is handed. It was
+    // left out of the 07-30 exact-name lockdown and stayed anon-callable.
+    "enqueue_email_delayed",
   ];
 
   // PER STATEMENT: the phrase must sit on the function's own REVOKE, not

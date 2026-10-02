@@ -1,9 +1,19 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import {
+  FULL_ANALYSIS_PRODUCT_NAME,
+  FULL_ANALYSIS_PRODUCT_TYPE,
+  fullAnalysisRefusal,
+  priorRedemptionOf,
+} from "../_shared/full-analysis.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "analyze-resume.2026-10-01.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -152,6 +162,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
 const MAX_RESUME_LENGTH = 50000;
@@ -183,6 +194,27 @@ const escapeXml = (str: string): string => {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 };
+
+// The analysis this session already received, handed back unchanged -- or a
+// 409 when the stored copy is gone (deleted by its owner, or past its 90 days).
+// Never a second analysis: a session that has been redeemed is answered from
+// what it was given, whatever résumé the second request carries.
+async function analysisAlreadyDelivered(supabase: any, shareId: string | null): Promise<Response> {
+  if (shareId) {
+    const { data } = await supabase.rpc('get_analysis_by_share_id', { share_id_param: shareId });
+    const row = Array.isArray(data) ? data[0] : null;
+    if (row?.analysis_result) {
+      return new Response(
+        JSON.stringify({ ...row.analysis_result, shareId, emailSent: false, alreadyDelivered: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+  return new Response(
+    JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+    { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
 // Retry helper for API calls with exponential backoff
 const MAX_AI_RETRIES = 3;
@@ -748,21 +780,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if session was already used (persistent database check)
-    const { data: existingSession } = await supabase
-      .from('used_stripe_sessions')
-      .select('session_id')
-      .eq('session_id', sessionId)
-      .maybeSingle();
-
-    if (existingSession) {
-      console.log(`[ANALYZE-RESUME] Session already used: ${sessionId}`);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Verify Stripe payment
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
@@ -791,67 +808,62 @@ serve(async (req) => {
       );
     }
 
-    if (session.payment_status !== 'paid') {
-      console.warn(`[ANALYZE-RESUME] Unpaid session attempted: ${sessionId}, status: ${session.payment_status}`);
+    // WHAT THE SESSION BOUGHT, NOT WHAT IT COST.
+    //
+    // This used to compare the paid total against a $20 floor through a second,
+    // hand-kept table of exchange rates. The floor dated from the week the
+    // analysis cost $25 and outlived the cut to $5, so every full-price buyer in
+    // every currency was refused -- and, the other way round, any paid session
+    // worth more than $20 bought an analysis whatever product it was for. The
+    // shared predicate asks the one question that cannot drift: is this a paid
+    // session that create-checkout minted for the full analysis?
+    const refusal = fullAnalysisRefusal(session);
+    if (refusal) {
+      console.warn(`[ANALYZE-RESUME] Session ${sessionId} refused: ${refusal}`);
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const paidTotal: number | null = session.amount_total ?? null;
+    console.log(`[ANALYZE-RESUME] Payment verified: ${paidTotal} ${session.currency} for session: ${sessionId}`);
 
-    // Verify minimum payment amount ($20 USD equivalent to account for currency fluctuations)
-    // OR verify a valid discount/promotion code was applied (for 100% off coupons)
-    const MIN_AMOUNT_CENTS = 2000; // $20 USD minimum
-    const amountPaid = session.amount_total || 0;
-    const currency = session.currency?.toLowerCase() || 'usd';
-    
-    // Check if a discount was applied (handles 100% off coupons)
-    const hasValidDiscount = session.total_details?.amount_discount && session.total_details.amount_discount > 0;
-    
-    // Approximate exchange rates to USD for validation (conservative minimums)
-    const currencyToUsdMinRates: Record<string, number> = {
-      usd: 1, cad: 0.65, gbp: 1.15, eur: 1.0, inr: 0.011, aud: 0.60,
-      jpy: 0.006, mxn: 0.045, brl: 0.15, php: 0.016, sgd: 0.70,
-      nzd: 0.55, chf: 1.05, sek: 0.085, nok: 0.085, dkk: 0.13,
-      pln: 0.23, zar: 0.05, hkd: 0.12, krw: 0.0007, thb: 0.027,
-      myr: 0.21, idr: 0.00006, ils: 0.26, aed: 0.27, twd: 0.03,
-      czk: 0.04, huf: 0.0024, ron: 0.20
-    };
-    
-    const rateToUsd = currencyToUsdMinRates[currency] || 0.01;
-    const amountInUsdCents = amountPaid * rateToUsd;
-    
-    // Allow if either: sufficient payment OR valid discount applied
-    if (amountInUsdCents < MIN_AMOUNT_CENTS && !hasValidDiscount) {
-      console.warn(`[ANALYZE-RESUME] Insufficient payment: ${amountPaid} ${currency} (≈$${(amountInUsdCents/100).toFixed(2)} USD), no discount applied`);
+    // HAS THIS SESSION ALREADY HAD ITS ANALYSIS? Asked before any AI spend.
+    //
+    // The webhook's claim on used_stripe_sessions is NOT the answer: it is
+    // written on payment, before anything exists, and treating it as "used" is
+    // how the success page met a 409 on every purchase. The answer is the
+    // purchased_content row this function writes once an analysis exists (see
+    // priorRedemptionOf for every case, including claims the pre-fix code left).
+    // A lookup error refuses rather than risks a second analysis.
+    const [deliveredLookup, claimLookup] = await Promise.all([
+      supabase.from('purchased_content').select('product_type, generated_content').eq('stripe_session_id', sessionId).maybeSingle(),
+      supabase.from('used_stripe_sessions').select('product_type').eq('session_id', sessionId).maybeSingle(),
+    ]);
+    if (deliveredLookup.error || claimLookup.error) {
+      console.error("[ANALYZE-RESUME] Redemption lookup failed:", deliveredLookup.error ?? claimLookup.error);
       return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    if (hasValidDiscount) {
-      console.log(`[ANALYZE-RESUME] Discount applied: ${session.total_details?.amount_discount} off`);
+    const prior = priorRedemptionOf(deliveredLookup.data, claimLookup.data);
+    if (prior.state === 'delivered') {
+      console.log(`[ANALYZE-RESUME] Session ${sessionId} already has its analysis; returning it`);
+      return await analysisAlreadyDelivered(supabase, prior.shareId);
+    }
+    if (prior.state === 'refused') {
+      console.log(`[ANALYZE-RESUME] Session ${sessionId} not redeemable: ${prior.reason}`);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log(`[ANALYZE-RESUME] Payment verified: ${amountPaid} ${currency} for session: ${sessionId}`);
-
-    // Mark session as used in database (persistent)
-    const { error: insertError } = await supabase
-      .from('used_stripe_sessions')
-      .insert({ session_id: sessionId, ip_address: clientIp });
-
-    if (insertError) {
-      // If insert fails due to duplicate, session was used concurrently
-      if (insertError.code === '23505') {
-        console.log(`[ANALYZE-RESUME] Session used concurrently: ${sessionId}`);
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      console.error("[ANALYZE-RESUME] Failed to mark session as used:", insertError);
-    }
+    // NOTHING IS CLAIMED HERE. The claim used to be written at this point,
+    // before the analysis existed, so a single AI failure below turned every
+    // retry with the same session into a 409. The session is redeemed in
+    // deliver(), once there is something to deliver.
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -1067,33 +1079,120 @@ ACHIEVEMENT QUANTIFICATION (always include):
 
 Use their actual resume content in examples. Prioritize highest-impact fixes first.`;
 
-    // Check cache before calling AI (paid analysis can also benefit from caching)
+    // Computed before deliver() is defined, so nothing it reads is ever
+    // declared below it (the ranked-search TDZ lesson).
     const cacheKey = await generateCacheKey(resumeText, linkedInText, jobDescriptionText);
-    const cachedAnalysis = await getCachedResponse(supabase, cacheKey);
-    
-    if (cachedAnalysis) {
-      console.log("[ANALYZE-RESUME] Cache HIT - returning cached analysis");
-      
-      // Still save to database with new share_id for this user
+
+    // ONE WAY OUT FOR A FINISHED ANALYSIS, cached or fresh, and the only
+    // place a session is redeemed. The order is the whole design:
+    //
+    //   1. Store the analysis for its share link (resume_analyses).
+    //   2. REDEEM: a plain INSERT into purchased_content, whose
+    //      stripe_session_id is UNIQUE. Exactly one request per session can
+    //      win it. It holds a pointer to the stored analysis, not a copy, so
+    //      the success page's delete button still removes the only copy.
+    //      Not save_purchased_content: that RPC upserts, and an upsert would
+    //      let a second analysis overwrite the first.
+    //        - lost to a concurrent request: drop our copy, hand back theirs;
+    //        - any other failure: drop our copy and refuse. Nothing was
+    //          redeemed, so the buyer's retry still works.
+    //   3. Bookkeeping that follows a redemption and never decides one: the
+    //      used_stripe_sessions claim (with its product, so the row can never
+    //      be presented as a purchase of anything else -- the purchase gate
+    //      accepts a claim with no product as a purchase of everything), the
+    //      delivery record, the email, the cache.
+    //
+    // A failure anywhere BEFORE step 2 -- the AI call, its parse, its
+    // validation -- returns without having written a redemption, which is
+    // what makes a retry with the same session work.
+    const deliver = async (analysis: Record<string, unknown>, cached: boolean): Promise<Response> => {
       const { data: savedAnalysis, error: dbError } = await supabase
         .from("resume_analyses")
         .insert({
-          resume_text: '[REDACTED - Cached analysis]',
-          analysis_result: cachedAnalysis,
+          // Privacy: Store placeholder instead of actual PII (GDPR/CCPA compliance)
+          resume_text: cached ? '[REDACTED - Cached analysis]' : '[REDACTED - Analysis completed]',
+          analysis_result: analysis,
         })
         .select("share_id")
         .single();
-      
-      if (dbError) {
-        console.error("[ANALYZE-RESUME] Database error for cached result:", dbError);
+      if (dbError) console.error("[ANALYZE-RESUME] Database error storing the analysis:", dbError);
+      const shareId: string | null = savedAnalysis?.share_id ?? null;
+
+      const { error: redeemError } = await supabase
+        .from('purchased_content')
+        .insert({
+          stripe_session_id: sessionId,
+          customer_email: customerEmail ?? '',
+          product_type: FULL_ANALYSIS_PRODUCT_TYPE,
+          product_name: FULL_ANALYSIS_PRODUCT_NAME,
+          generated_content: { shareId },
+        });
+      if (redeemError) {
+        if (shareId) {
+          const { error: dropError } = await supabase.from('resume_analyses').delete().eq('share_id', shareId);
+          if (dropError) console.error("[ANALYZE-RESUME] Could not drop the unredeemed copy:", dropError);
+        }
+        if (redeemError.code === '23505') {
+          console.log(`[ANALYZE-RESUME] Session ${sessionId} was redeemed by a concurrent request; returning that analysis`);
+          const { data: winner } = await supabase
+            .from('purchased_content')
+            .select('product_type, generated_content')
+            .eq('stripe_session_id', sessionId)
+            .maybeSingle();
+          const won = priorRedemptionOf(winner, null);
+          return await analysisAlreadyDelivered(supabase, won.state === 'delivered' ? won.shareId : null);
+        }
+        console.error("[ANALYZE-RESUME] Redemption write failed; nothing delivered, the session stays redeemable:", redeemError);
         return new Response(
-          JSON.stringify({ ...cachedAnalysis, shareId: null, cached: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      // Send email for cached result too
-      if (customerEmail) {
+
+      try {
+        const { error: claimError } = await supabase
+          .from('used_stripe_sessions')
+          .insert({ session_id: sessionId, ip_address: clientIp, product_type: FULL_ANALYSIS_PRODUCT_TYPE });
+        if (claimError && claimError.code !== '23505') {
+          console.error("[ANALYZE-RESUME] Could not record the claim (reconcile-stripe may report this session):", claimError);
+        }
+
+        // Close the webhook's delivery row if it opened one; open a delivered
+        // one if it has not run (or never will). Either way the purchase reads
+        // as delivered rather than as nothing at all.
+        const deliveredAt = new Date().toISOString();
+        const { data: closed, error: closeError } = await supabase
+          .from('product_deliveries')
+          .update({ status: 'delivered', generation_success: true, content_generation_completed_at: deliveredAt })
+          .eq('stripe_session_id', sessionId)
+          .eq('product_type', FULL_ANALYSIS_PRODUCT_TYPE)
+          .select('id');
+        if (closeError) {
+          console.error("[ANALYZE-RESUME] Could not close the delivery record:", closeError);
+        } else if (!closed || closed.length === 0) {
+          const { error: openError } = await supabase.from('product_deliveries').insert({
+            stripe_session_id: sessionId,
+            product_type: FULL_ANALYSIS_PRODUCT_TYPE,
+            product_name: FULL_ANALYSIS_PRODUCT_NAME,
+            customer_email: customerEmail,
+            status: 'delivered',
+            amount_cents: paidTotal,
+            payment_completed_at: deliveredAt,
+            generation_success: true,
+            content_generation_completed_at: deliveredAt,
+            metadata: { share_id: shareId },
+          });
+          if (openError) console.error("[ANALYZE-RESUME] Could not record the delivery:", openError);
+        }
+      } catch (bookkeepingError) {
+        // The analysis is redeemed and in hand; a bookkeeping failure must not
+        // turn a delivered purchase into an error page.
+        console.error("[ANALYZE-RESUME] Post-redemption bookkeeping failed:", bookkeepingError);
+      }
+
+      // Send analysis results via email (non-blocking)
+      if (customerEmail && shareId) {
+        console.log(`[ANALYZE-RESUME] Sending analysis email to: ${customerEmail}`);
         EdgeRuntime.waitUntil(
           fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
             method: "POST",
@@ -1103,19 +1202,39 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
             },
             body: JSON.stringify({
               email: customerEmail,
-              analysisData: cachedAnalysis,
-              shareId: savedAnalysis.share_id,
+              analysisData: analysis,
+              shareId,
             }),
-          }).catch((err) => console.error("[ANALYZE-RESUME] Cached email error:", err))
+          }).then(async (res) => {
+            if (res.ok) {
+              console.log("[ANALYZE-RESUME] Email sent successfully");
+            } else {
+              console.error("[ANALYZE-RESUME] Email send failed:", await res.text());
+            }
+          }).catch((err) => {
+            console.error("[ANALYZE-RESUME] Email send error:", err);
+          })
         );
+      } else {
+        console.log("[ANALYZE-RESUME] No customer email (or no stored copy), skipping email send");
       }
-      
-      trackPerformance(requestStartTime, 'analyze-resume-cached', true, { cached: true }, clientIp);
-      
+
+      // Cache the successful analysis (non-blocking) - cache the full analysis object
+      if (!cached) storeCachedResponse(supabase, cacheKey, analysis);
+
+      trackPerformance(requestStartTime, cached ? 'analyze-resume-cached' : 'analyze-resume', true, { cached, hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!(customerEmail && shareId) }, clientIp);
       return new Response(
-        JSON.stringify({ ...cachedAnalysis, shareId: savedAnalysis.share_id, emailSent: !!customerEmail, cached: true }),
+        JSON.stringify({ ...analysis, shareId, emailSent: !!(customerEmail && shareId), ...(cached ? { cached: true } : {}) }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    };
+
+    // Check cache before calling AI (paid analysis can also benefit from caching)
+    const cachedAnalysis = await getCachedResponse(supabase, cacheKey);
+    
+    if (cachedAnalysis) {
+      console.log("[ANALYZE-RESUME] Cache HIT - delivering the cached analysis through the same redemption");
+      return await deliver(cachedAnalysis, true);
     }
 
     console.log(`[ANALYZE-RESUME] Calling AI with enhanced model for analysis... (hasLinkedIn: ${hasLinkedIn}, hasJobDescription: ${hasJobDescription})`);
@@ -1235,65 +1354,8 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     analysis.hasLinkedIn = hasLinkedIn;
     analysis.hasJobDescription = hasJobDescription;
 
-    console.log("[ANALYZE-RESUME] Analysis complete, saving to database...");
-
-    const { data: savedAnalysis, error: dbError } = await supabase
-      .from("resume_analyses")
-      .insert({
-        // Privacy: Store placeholder instead of actual PII (GDPR/CCPA compliance)
-        resume_text: '[REDACTED - Analysis completed]',
-        analysis_result: analysis,
-      })
-      .select("share_id")
-      .single();
-
-    if (dbError) {
-      console.error("[ANALYZE-RESUME] Database error:", dbError);
-      return new Response(
-        JSON.stringify({ ...analysis, shareId: null }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Send analysis results via email (non-blocking)
-    if (customerEmail) {
-      console.log(`[ANALYZE-RESUME] Sending analysis email to: ${customerEmail}`);
-      EdgeRuntime.waitUntil(
-        fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: customerEmail,
-            analysisData: analysis,
-            shareId: savedAnalysis.share_id,
-          }),
-        }).then(async (res) => {
-          if (res.ok) {
-            console.log("[ANALYZE-RESUME] Email sent successfully");
-          } else {
-            console.error("[ANALYZE-RESUME] Email send failed:", await res.text());
-          }
-        }).catch((err) => {
-          console.error("[ANALYZE-RESUME] Email send error:", err);
-        })
-      );
-    } else {
-      console.log("[ANALYZE-RESUME] No customer email available, skipping email send");
-    }
-
-    // Cache the successful analysis (non-blocking) - cache the full analysis object
-    storeCachedResponse(supabase, cacheKey, analysis);
-
-    trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!customerEmail }, clientIp);
-    console.log("[ANALYZE-RESUME] Analysis saved successfully with enhanced metrics");
-
-    return new Response(
-      JSON.stringify({ ...analysis, shareId: savedAnalysis.share_id, emailSent: !!customerEmail }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.log("[ANALYZE-RESUME] Analysis complete; redeeming the session...");
+    return await deliver(analysis, false);
 
   } catch (error) {
     trackPerformance(requestStartTime, 'analyze-resume', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
