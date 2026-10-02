@@ -77,7 +77,10 @@ const PROBED_PROTECTED = new Set([
  * PRE-EXISTING, FROZEN — a ratchet, not an amnesty.
  *
  * Eighteen functions already carried the PUBLIC-only revoke when this guard was
- * written. They are NOT all wrong: probing on 2026-08-21 found the population
+ * written. Seventeen remain: the delayed email enqueue left on 2026-10-01, the
+ * day it was found anon-executable (it was never in the 07-30 exact-name
+ * lockdown) and closed by name and by a pgmq property loop -- see
+ * a-queue-wrapper-is-closed-by-what-it-touches-not-by-its-name.test.ts. They are NOT all wrong: probing on 2026-08-21 found the population
  * genuinely mixed, which is why none of them can be revoked as a batch —
  *
  *   get_scan_health_status      OPEN and intentional (the heartbeat reads it)
@@ -101,7 +104,6 @@ const UNTRIAGED_PRE_EXISTING = new Set([
   "public.agent_reach(integer)",
   "public.agent_sender_public_status()",
   "public.email_delivery_health(integer)",
-  "public.enqueue_email_delayed(text,jsonb,int)",
   "public.get_db_size_stats()",
   "public.get_industry_correction_stats(integer)",
   "public.get_public_scan_insights()",
@@ -182,9 +184,9 @@ describe("revoking from PUBLIC does not revoke from anon", () => {
     // this test pass, which is the opposite of what it is for.
     expect(
       UNTRIAGED_PRE_EXISTING.size,
-      "this list is frozen at the 18 that pre-dated the guard. If a new function needs to be " +
+      "this list is frozen at the 17 that pre-dated the guard and are still untriaged. If a new function needs to be " +
         "here, it does not — probe it with the anon key and either revoke it or document it as " +
         "intentionally public.",
-    ).toBe(18);
+    ).toBe(17);
   });
 });

@@ -1,10 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
+
+// Provable from outside without running a sweep: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "retry-failed-deliveries.2026-10-01.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -121,6 +127,26 @@ serve(async (req) => {
             }
           }
 
+          // THE FULL ANALYSIS IS NOT THIS SWEEPER'S TO DELIVER. Its résumé is in
+          // the buyer's temp store with no link from the Stripe session, and
+          // the analysis is produced on the success page by analyze-resume,
+          // which closes this row itself. The webhook now writes the row with
+          // no retry scheduled, so it is never selected; this catches rows
+          // written before that, which would otherwise be stamped with the
+          // misleading missing-resume-session error below -- and, oldest
+          // first, would crowd every other product out of this five-row batch
+          // on every run. Unscheduled rather than exhausted, so the health
+          // count of spent retries stays honest; left open, the row still
+          // counts as stuck in product_delivery_health -- the right signal.
+          if (delivery.product_type === FULL_ANALYSIS_PRODUCT_TYPE) {
+            await supabase
+              .from('product_deliveries')
+              .update({ next_retry_at: 'infinity', generation_error: 'Full Resume Analysis is delivered on the buyer\'s success page by analyze-resume; there is nothing to regenerate server-side' })
+              .eq('id', delivery.id);
+            results.push({ id: delivery.id, status: delivery.status, success: false, error: 'full_analysis: delivered on the success page, not by this sweep' });
+            continue;
+          }
+
           // For content products, check if we have resume data
           if (!resumeSessionId) {
             // No resume data available - mark as permanently failed
@@ -171,10 +197,12 @@ serve(async (req) => {
               throw new Error('Apply Assistant requires a job posting; none found in session');
             }
             const [packageResponse, coverLetterResponse] = await Promise.all([
+              // The delivery's own session proves the purchase to the generator;
+              // without it this retry could only ever 402.
               fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-                body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language })
+                body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId: delivery.stripe_session_id })
               }),
               fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
                 method: 'POST',

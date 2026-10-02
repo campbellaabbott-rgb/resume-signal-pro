@@ -612,4 +612,42 @@ grep -qiE '<urlset|<sitemapindex|<loc>' /tmp/vd_sm.txt \
   && echo "FAIL  the response still carries sitemap XML" \
   || echo "PASS  no sitemap XML in the response body"
 
+# ── 7f. THE MONEY PATHS OF 2026-10-01: the $5 analysis was refused by a stale
+# amount floor and by the webhook's claim; the $7 apply kit accepted only
+# product types no checkout mints and its server callers sent no session; ATS
+# Defense re-claimed sessions its callers had claimed; three writers recorded
+# claims with no product; and the delayed email enqueue was anon-executable.
+# READ-ONLY: OPTIONS preflights and a GET to the webhook run no function logic
+# and spend no budget; the column probes are selects that RLS answers empty;
+# queue_wrapper_exposure is an invoker-rights catalog read returning two
+# numbers. No queue wrapper is CALLED here -- if the revoke had not landed,
+# such a call would run, and could create a queue or send mail -- and nothing
+# mints, claims or redeems a session.
+echo "== 7f. the paid products are deliverable, and the queue wrappers are closed to anon =="
+for FN in analyze-resume generate-apply-package generate-ats-defense verify-product-purchase verify-scan-pack-purchase retry-failed-deliveries; do
+  H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+  case "$H" in "$FN.2026-10-01.1") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving; baseline 2026-10-01: none)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-01.1)";; esac
+done
+WH=$(curl -s -m 30 -D - -o /dev/null "$B/functions/v1/stripe-webhook" | tr -d '\r')
+WS=$(printf '%s' "$WH" | head -1 | awk '{print $2}')
+WB=$(printf '%s' "$WH" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+[ "$WS" = "405" ] && [ "$WB" = "stripe-webhook.2026-10-01.1" ] && echo "PASS  stripe-webhook GET -> 405 with x-fn-build = $WB" || echo "FAIL  stripe-webhook GET -> HTTP $WS x-fn-build='$WB' (want 405 and stripe-webhook.2026-10-01.1; baseline: 405 with none)"
+# ORDER. The webhook ships in the SAME deploy as analyze-resume. The new
+# analyze-resume accepts an old webhook's claim (no product, no address), so a
+# buyer is no longer refused if it lands first -- but the old webhook still
+# routes a full analysis to "No resume session ID" and the retry queue, and
+# nothing proves which webhook is live until this marker does.
+ARB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/analyze-resume" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+if [ "$ARB" = "analyze-resume.2026-10-01.1" ] && [ "$WB" != "stripe-webhook.2026-10-01.1" ]; then echo "FAIL  analyze-resume serves $ARB but stripe-webhook does not ('$WB'): the webhook is behind -- deploy it"; else echo "PASS  stripe-webhook is not behind analyze-resume (analyze-resume '$ARB', webhook '$WB')"; fi
+# The columns the new writes name. A select of a column the table lacks answers
+# 400 42703 before RLS runs; present, RLS answers an empty list.
+for Q in "used_stripe_sessions?select=session_id,product_type,ip_address" "purchased_content?select=stripe_session_id,product_type,generated_content,customer_email" "product_deliveries?select=stripe_session_id,product_type,status,max_retries,generation_success,content_generation_completed_at"; do
+  C=$(curl -s -m 30 -o /tmp/vd_7f.json -w '%{http_code}' "$B/rest/v1/$Q&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+  [ "$C" = "200" ] && echo "PASS  ${Q%%\?*} carries every column the money paths write (HTTP 200)" || echo "FAIL  ${Q%%\?*} -> HTTP $C $(head -c 160 /tmp/vd_7f.json)"
+done
+NCC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/used_stripe_sessions?select=no_such_column_probe&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+[ "$NCC" = "400" ] && echo "PASS  negative control: a column the table lacks -> 400 (so the 200s above mean present)" || echo "FAIL  negative control -> HTTP $NCC (the 200s above cannot be read as presence)"
+R queue_wrapper_exposure '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  queue_wrapper_exposure non-JSON: "+s.slice(0,160))}if(j&&j.code==="PGRST202")return console.log("FAIL  queue_wrapper_exposure does not exist (migration 20261002104317 not applied)");if(typeof j?.open_to_clients!=="number")return console.log("FAIL  queue_wrapper_exposure -> "+JSON.stringify(j).slice(0,160));console.log((j.definers>=5?"PASS":"FAIL")+"  "+j.definers+" definer function(s) in public touch pgmq (want >= 5: the five email wrappers)");console.log((j.open_to_clients===0?"PASS":"FAIL")+"  "+j.open_to_clients+" of them executable by anon or authenticated (want 0; baseline 2026-10-01: the delayed enqueue, 1)")})'
+echo "INFO  the purchase itself cannot be proved read-only: the first paid full_analysis and apply_assistant after deploy should leave product_deliveries status=delivered (owner: check Stripe and the Account page purchase list)"
+
 echo "done."

@@ -1,11 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "verify-product-purchase.2026-10-01.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -27,8 +32,11 @@ function buildGenerationRequest(
   sessionId: string
 ): { endpoint: string; body: Record<string, unknown> } | null {
   switch (productType) {
+    // generate-keyword-fix gates on assertPaidSession too, and this is the path
+    // the success page asks to generate the keyword fix on -- without the
+    // session it was a 402 every time, rescued only by the browser's own retry.
     case 'basic_keyword_fix':
-      return { endpoint: 'generate-keyword-fix', body: { resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
+      return { endpoint: 'generate-keyword-fix', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
     case 'cover_letter':
       return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
     // These three now gate on assertPaidSession (they are paid-only endpoints —
@@ -315,10 +323,12 @@ serve(async (req) => {
         if (productType === 'apply_assistant' && resume_text && job_description_text) {
           logStep("Calling generate-apply-package + generate-cover-letter");
           const [packageResponse, coverLetterResponse] = await Promise.all([
+            // The session is the generator's proof of purchase (a cs_ id is
+            // re-read from Stripe; a pro_ grant by the claim made above).
             fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-              body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language })
+              body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId })
             }),
             fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
               method: 'POST',

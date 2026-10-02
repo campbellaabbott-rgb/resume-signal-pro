@@ -15,7 +15,8 @@ import {
   Trash2,
   Mail,
   Monitor,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -554,12 +555,25 @@ const Success = () => {
                     {t('success.error.title')}
                   </h1>
                   <p className="text-muted-foreground text-lg max-w-md mx-auto">{error}</p>
-                  <Link to="/">
-                    <Button variant="outline" size="lg" className="gap-2">
-                      <Home className="w-4 h-4" />
-                      {t('success.error.backHome')}
-                    </Button>
-                  </Link>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    {/* A failed analysis leaves the purchase redeemable --
+                        analyze-resume redeems a session only once its analysis
+                        exists -- so the buyer can simply ask again. This page
+                        used to offer only the way home, after a server that
+                        answered every retry with "already used". */}
+                    {sessionId && !shareIdParam && (
+                      <Button size="lg" className="gap-2" onClick={() => window.location.reload()}>
+                        <RefreshCw className="w-4 h-4" />
+                        {t('productSuccess.tryAgain')}
+                      </Button>
+                    )}
+                    <Link to="/">
+                      <Button variant="outline" size="lg" className="gap-2">
+                        <Home className="w-4 h-4" />
+                        {t('success.error.backHome')}
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               ) : (sessionId || shareIdParam) && analysisData ? (
                 <div className="space-y-8 mb-12 animate-fade-in">
