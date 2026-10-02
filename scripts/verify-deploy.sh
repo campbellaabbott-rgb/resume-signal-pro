@@ -700,22 +700,49 @@ console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (be
 # DATED AGAINST THE APPLY, NOT TRUSTED FOR BEING PRESENT. The re-issue removes
 # both parts at apply, but a :07 run already scanning when it commits finishes
 # on the definition it began with and then replaces its whole row, putting the
-# pre-fix pool back, stamped with the run's start -- before the apply. Only
-# a stamp at or after the apply proves the rows came from the floor. The
-# apply time is not readable with the anon key, so it is an input: set
-# DAY30_APPLIED_AT (UTC, the moment 20261002121843 finished applying) in the
-# environment or on the line below once it is known. Until then the dating
-# line reads FAIL, which is the point.
-# THE PRE-FIX READINGS ARE A CEILING, NOT A POINT. gate_share_30 moved by up
-# to 0.15 between reads of the pre-fix rows (finance 0.6104 at 2026-10-01
-# 22:07Z, 0.5374 at 10-02 01:07Z, 0.6845 at 03:07Z), so each field is held to
-# the HIGHEST of the readings we have for it, and only rows dated after the
-# apply are graded against it at all.
+# pre-fix pool back, stamped with the run's start -- before the apply. So a
+# stamp before the apply is a FAIL, and only rows stamped at or after it can
+# have come from the floor: necessary, not sufficient (the next paragraph).
+# The apply time is not readable with the anon key, so it is an input: set
+# DAY30_APPLIED_AT (UTC, the moment the LAST of the three files finished
+# applying, which dates both chains safely) in the environment or on the line
+# below once it is known. Until then the dating lines -- the field rows' and
+# the layoff arm's -- read FAIL, which is the point.
+# WHAT A STAMP PROVES, AND WHAT THE GATE SHARE CANNOT. A stamp at or after
+# the apply says WHEN the rows were computed, never WHICH definition computed
+# them: 121843 is a file of its own, and the staged runner can fail it, or
+# edit it and stage it under another name, while 121417 and 122309 land. Its
+# shape is unchanged, so nothing the anon key can read names the definition;
+# the body can, with service role, and a line below prints the query. What is
+# left is gate_share_30, and it is DRIFT-LIMITED. Per field it moved by up to
+# 0.16 between one hourly run of the old pool and the next (finance 0.6927 at
+# 2026-10-02 00:07Z, 0.5374 at 01:07Z; healthcare 0.8226 at 04:07Z, 0.6808
+# at 05:07Z, on the same cohort), and at 04:07Z the old definition already
+# sat below the highest of its three earlier readings on 7 of 18 fields -- so
+# the per-field line is corroboration, printed as INFO and never as a
+# verdict; BASE_HI is each field's highest over the readings beside
+# POOLED_HI. Pooled over the fields by their dated cohorts the old pool is
+# steadier (POOLED_HI is the highest of the hourly readings recorded beside
+# it), but the floor's own size is not known well enough to put a pass bar
+# under the old pool: on the read-only walk of every catalogue board at
+# 2026-10-01T22:51Z, lap_proven boards carried 11.9% to 19.1% of the day-30
+# cohort on boards with five events of their own, depending on the weight,
+# and the watch clip on full_read boards cannot be measured from outside
+# before the apply. Lap refusal alone takes POOLED_HI only to 0.56-0.61,
+# inside the old pool's own spread. So the pooled line FAILs only in the
+# direction that is sound -- at or above POOLED_HI, where the floor could
+# leave it only if the old pool had drifted about 0.09 past every reading on
+# record -- and is INFO otherwise: below POOLED_HI is consistent with the
+# floor, and is not proof of it.
 DAY30_APPLIED_AT="${DAY30_APPLIED_AT:-}"
 export DAY30_APPLIED_AT
 R get_explore_cache '{}' > /tmp/vd_7h_explore.json
 node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
-const BASE_HI={admin:0.4266,legal:0.4442,other:0.6654,sales:0.6779,design:0.4127,data_ai:0.5283,finance:0.6845,product:0.4727,science:0.5467,customer:0.5722,security:0.5887,education:0.6513,marketing:0.421,people_hr:0.4206,healthcare:0.6985,operations:0.7098,engineering:0.6792,hospitality_retail:0.6161};
+// The highest gate_share_30 of each field over the same readings: corroboration only.
+const BASE_HI={admin:0.4773,legal:0.4709,other:0.7029,sales:0.6867,design:0.4618,data_ai:0.5689,finance:0.6972,product:0.5235,science:0.6174,customer:0.5722,security:0.6022,education:0.6572,marketing:0.4389,people_hr:0.4626,healthcare:0.8226,operations:0.7141,engineering:0.6918,hospitality_retail:0.6367};
+// The old pool, gate_share_30 pooled over the eighteen fields by dated_cohort_n_30:
+// 2026-10-01 21:07Z 0.6453, 22:07Z 0.6133, 23:07Z 0.6518; 2026-10-02 00:07Z 0.6738, 01:07Z 0.6603, 03:07Z 0.6574, 04:07Z 0.6889, 05:07Z 0.6440
+const POOLED_HI=0.6889;
 const MAX_EXPLORE_AGE_MIN=75;
 const applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied);
 if(applied&&!Number.isFinite(at))console.log("FAIL  DAY30_APPLIED_AT="+applied+" is not a timestamp, so no field row below can be dated against the apply");
@@ -724,16 +751,22 @@ const judge=(label,rows,stamp,carried)=>{
   if(carried)console.log("FAIL  "+label+": carried forward from an earlier run (stale_parts names it) -- the run stamped "+stamp+" could not compute the curve, and the carried rows carry no stamp of their own, so they cannot be shown to come from the floor");
   const t=Date.parse(stamp);let dated=false;
   if(!Number.isFinite(t))console.log("FAIL  "+label+": no usable stamp ("+stamp+")");
-  else if(!applied)console.log("FAIL  "+label+" computed_at="+stamp+" cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time 20261002121843 finished applying (a run already scanning at the apply writes the pre-fix pool back, stamped before it)");
+  else if(!applied)console.log("FAIL  "+label+" computed_at="+stamp+" cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time the last of 20261002121417 / 121843 / 122309 finished applying (a run already scanning at the apply writes the pre-fix pool back, stamped before it)");
   else if(!Number.isFinite(at)){}
   else if(t<at)console.log("FAIL  "+label+" computed_at="+stamp+" is BEFORE the apply ("+applied+"): a run that began before 20261002121843 committed, which may have written the pre-fix pool back over the withhold -- re-run after the next refresh");
-  else if(!carried){dated=true;console.log("PASS  "+label+" computed_at="+stamp+" is at or after the apply ("+applied+"): computed by the re-issued definition")}
+  else if(!carried){dated=true;console.log("PASS  "+label+" computed_at="+stamp+" is dated at or after the apply ("+applied+"): the run that wrote these rows began after 20261002121843 committed -- a stamp says when, not which definition")}
+  const ng=dated?"":" -- not graded: these rows are not dated after the apply";
+  let num=0,den=0;
+  for(const r of rows){const d=N(r.dated_cohort_n_30);if(!(d>0))continue;num+=(N(r.gate_share_30)||0)*d;den+=d}
+  if(!den)console.log((dated?"FAIL":"INFO")+"  "+label+": no field publishes dated_cohort_n_30, so gate_share_30 cannot be pooled"+ng);
+  else{const p=num/den;
+    console.log((dated&&p>=POOLED_HI?"FAIL":"INFO")+"  "+label+": gate_share_30 pooled over "+den+" dated roles = "+p.toFixed(4)+" (the highest reading of the old pool "+POOLED_HI+")"+(!dated?ng:p>=POOLED_HI?" -- at or above every reading of the old pool: 20261002121843 did not take, or the old pool drifted past every reading on record; read the body with service role":" -- below it: consistent with the floor, NOT proof of it, because the old pool has read lower too"))}
   const fell=[],held=[];
   for(const r of rows){const b=BASE_HI[r.category],g=N(r.gate_share_30);if(b===undefined)continue;if(g===null||g<b)fell.push(r.category);else held.push(r.category+" "+g+" >= "+b)}
-  console.log((dated?(held.length===0?"PASS":"FAIL"):"INFO")+"  "+label+": gate_share_30 below its highest pre-fix reading on "+fell.length+" of "+rows.length+" field(s)"+(held.length?"; HELD on "+held.join(", "):"")+(dated?"":" -- not graded: these rows are not dated after the apply"));
+  console.log("INFO  "+label+": corroboration only, drift-limited -- gate_share_30 below its highest pre-fix reading on "+fell.length+" of "+rows.length+" field(s)"+(held.length?"; HELD on "+held.join(", "):"")+ng);
   const leak=rows.filter(r=>!(N(r.gate_share_30)>0)&&r.still_open_30!==null&&r.still_open_30!==undefined);
   const hollow=rows.filter(r=>r.sufficient_30===true&&(r.still_open_30===null||r.still_open_30===undefined||!(N(r.gate_share_30)>0)));
-  console.log((leak.length||hollow.length?"FAIL":"PASS")+"  "+label+": no field the floor emptied carries a figure, and no sufficient field lacks one"+(leak.length?" -- a figure with nothing admitted: "+leak.map(r=>r.category).join(", "):"")+(hollow.length?" -- sufficient with no figure: "+hollow.map(r=>r.category).join(", "):""));
+  console.log((!dated?"INFO":leak.length||hollow.length?"FAIL":"PASS")+"  "+label+": no field with nothing admitted carries a figure, and no sufficient field lacks one"+(leak.length?" -- a figure with nothing admitted: "+leak.map(r=>r.category).join(", "):"")+(hollow.length?" -- sufficient with no figure: "+hollow.map(r=>r.category).join(", "):"")+ng);
   const refused=rows.filter(r=>r.sufficient_30!==true).map(r=>r.category+"(gate="+r.gate_share_30+")");
   console.log("INFO  "+label+": fields not sufficient under the floor: "+(refused.length?refused.join(", "):"none")+" -- each must render a reason on the page, never a number");
 };
@@ -756,6 +789,7 @@ else{
     else judge("explore cache field_curves ("+rows.length+" fields)",rows,root,stale.includes("field_curves"));
   }
 }
+console.log("INFO  20261002121843 has no anon-readable proof of its own (its result shape is unchanged); with service role: SELECT pg_get_functiondef(\x27public.get_category_fill_curve(int, int)\x27::regprocedure) LIKE \x27%watched_from%\x27 -- true once it applied (its own self-verify raises otherwise)");
 let m=null;try{m=JSON.parse(rd("/tmp/vd_cat_meta.json"))}catch{}
 const keys=m&&Array.isArray(m.cache_keys)?m.cache_keys:[];
 if(!m)console.log("FAIL  section 4 left no stats-cache meta to read");
@@ -766,14 +800,34 @@ else{let r=null;try{r=JSON.parse(rd("/tmp/vd_cat.json"))}catch{}
   else judge("stats cache fill_curve ("+r.length+" fields)",r,m.computed_at,m.carried);
 }
 })()'
+# THE LAYOFF ARMS ARE DATED THE SAME WAY, AND FOR THE SAME REASON. Until
+# 2026-10-02 the recomputed control arm passed on gate_share_30 under one
+# pre-fix reading, 0.7395 (stored 2026-10-01T05:10Z). The next day the OLD
+# writer, 20261002122309 not applied, stored 0.717 at 05:10Z, and this line
+# printed "PASS ... recomputed under the floor" on production with no floor
+# in it -- the field grain's drift, on the third chain. 122309 nulls the
+# stored counts at apply, so a recomputed arm stamped before the apply means
+# it did not take, and one stamped after it is dated, not proven; the gate
+# share then FAILs only at or above the highest reading of the old arm.
+# The old control arm, gate_share_30 as stored by the 05:10 refresh:
+# 2026-10-01T05:10Z 0.7395, 2026-10-02T05:10Z 0.7170
+LAYOFF_HI=0.7395
+export LAYOFF_HI
 R get_layoff_partition '{}' | node -e '
 let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_layoff_partition answered no JSON -- "+s.slice(0,120))}
 if(j&&!Array.isArray(j)&&("code" in j||"message" in j))return console.log("FAIL  get_layoff_partition errored: "+((j.code)||"without a code")+" -- "+String(j.message||"").slice(0,140));
 const rows=Array.isArray(j)?j:[j];const c=rows.find(r=>r&&r.lp_arm==="control");
 if(!c)return console.log("FAIL  no control arm -- "+JSON.stringify(j).slice(0,120));
 if(rows.every(r=>r.lp_reason==="uncontrolled"))return console.log("PASS  both stored arms withheld (reason uncontrolled): 20261002122309 applied and the 05:10 refresh has not re-run since; control computed_at="+c.lp_computed_at);
-const ok=c.lp_reason!=="uncontrolled"&&Number(c.lp_gate_share_30)<0.7395;
-console.log((ok?"PASS":"FAIL")+"  control arm recomputed under the floor: gate_share_30="+c.lp_gate_share_30+" (pre-fix 0.7395) S30="+c.lp_still_open_30+" (pre-fix 0.4909) sufficient="+c.lp_sufficient_30+" reason="+c.lp_reason+" computed_at="+c.lp_computed_at);
+const HI=Number(process.env.LAYOFF_HI),applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied),t=Date.parse(c.lp_computed_at);
+const line="gate_share_30="+c.lp_gate_share_30+" S30="+c.lp_still_open_30+" sufficient="+c.lp_sufficient_30+" reason="+c.lp_reason+" computed_at="+c.lp_computed_at;
+if(!applied)return console.log("FAIL  layoff control arm recomputed but cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time the last of 20261002121417 / 121843 / 122309 finished applying -- "+line);
+if(!Number.isFinite(at))return console.log("FAIL  layoff control arm: DAY30_APPLIED_AT="+applied+" is not a timestamp -- "+line);
+if(!Number.isFinite(t))return console.log("FAIL  layoff control arm carries no usable stamp -- "+line);
+if(t<at)return console.log("FAIL  layoff control arm stored BEFORE the apply ("+applied+") and not withheld: 20261002122309 nulls the stored counts at apply, so this is the old writer still serving -- "+line);
+console.log((c.lp_reason==="uncontrolled"?"FAIL":"PASS")+"  layoff control arm is dated at or after the apply ("+applied+")"+(c.lp_reason==="uncontrolled"?" but still reads uncontrolled: the refresh after the apply wrote no counts":": stored by a refresh that began after the apply -- a stamp says when, not which writer")+" -- "+line);
+const g=c.lp_gate_share_30===null||c.lp_gate_share_30===undefined?NaN:Number(c.lp_gate_share_30);
+console.log((!(g<HI)?"FAIL":"INFO")+"  layoff control arm: gate_share_30="+c.lp_gate_share_30+" (the highest reading of the old arm "+HI+")"+(!(g<HI)?" -- at or above it, or no number: 20261002122309 did not take, or the old arm drifted past every reading on record":" -- below it: consistent with the floor, NOT proof of it, because the old arm has read lower too"));
 })'
 
 echo "done."

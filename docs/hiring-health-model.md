@@ -540,7 +540,17 @@ applied there), and a :07 refresh already scanning at the apply finishes on the
 old definition and writes the pre-fix pool back, stamped before the apply; so
 the post-deploy check (`scripts/verify-deploy.sh` section 7h) dates those rows
 against the apply time, supplied as `DAY30_APPLIED_AT`, and grades nothing it
-cannot date. The field curve's stored contract is restated by `121843` itself:
+cannot date. A date says when the rows were computed, not which definition
+computed them, and the field gate share drifts too far between hourly runs of
+the old pool (up to 0.16 on one field) to tell the floor from it with a pass
+bar: that check prints the share as corroboration and fails only at or above the
+old pool's highest pooled reading, and whether `121843` applied is read from the
+function body with service role. The layoff control arm is dated the same way:
+the old writer stored 0.717 on 2026-10-02 under the single pre-fix 0.7395 the
+check had compared against, and it printed a pass. The page's two refusals
+that describe admission (`ungated`, `fewRoles`) name the three tests under
+renamed keys in all nine locales. The field curve's stored contract is restated
+by `121843` itself:
 `CREATE OR REPLACE` keeps a comment, and the one it would have kept said lap
 boards were admitted. Residuals not closed: a
 full_read board still certifies a takedown about one and a half revisit

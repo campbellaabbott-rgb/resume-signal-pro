@@ -37,6 +37,29 @@
  * explore-cache and dating scenarios fail; each mutant of the current section
  * named in the commit (one call of 150, a non-array read as INFO, the dating
  * branch deleted, a carried part not refused) fails its own scenario.
+ *
+ * AND EVERY CLAIM HAS A ROW THAT BREAKS IT. A re-review on 2026-10-02 deleted
+ * each of 7h's substantive checks in turn -- the largest-boards filter, the
+ * lap-reason and reason/verdict checks, the named-board checks, the layoff
+ * threshold, the stats part's carried flag, the half of the field check that
+ * catches a sufficient field with no figure, and the gate that keeps a failed
+ * chunk from letting the other chunks PASS -- and this file stayed green
+ * every time: it fed only errors and stamps, never a row that a claim is
+ * about. The last describe block below feeds one such row per claim, and the
+ * commit names the mutant each one was shown red against.
+ *
+ * WHAT THE FIELD LINES MAY CLAIM. A stamp after the apply proves when the
+ * rows were computed, not which definition computed them, and gate_share_30
+ * drifts too far between hourly reads of the old pool to tell the floor from
+ * it with a pass bar (the section's own comment carries the readings). So the
+ * dating line passes as "dated", the per-field line is INFO only, the pooled
+ * line can FAIL only at or above the old pool's highest reading, and the
+ * figure/verdict line is graded only on dated rows. Each is pinned below.
+ * The layoff control arm gets the same treatment because it drifted the same
+ * way: read-only at 2026-10-02T05:20Z, nothing applied, the old writer had
+ * stored 0.717 under the one pre-fix 0.7395 the section compared against,
+ * and the section printed a PASS saying the arm was recomputed under the
+ * floor. It is now dated against the apply first.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -89,12 +112,17 @@ const NAMED_ROWS: Row[] = [
 
 /** Field rows as get_category_fill_curve publishes them, keyed by category the way the explore cache stores them. */
 const fieldCurves = (over: Record<string, Row> = {}) =>
-  Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: 0.2, still_open_30: 0.34, sufficient_30: true, ...over[f] }]));
+  Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: 0.2, still_open_30: 0.34, sufficient_30: true, dated_cohort_n_30: 10_000, ...over[f] }]));
 
+type ChunkMode = "rows" | "timeout" | "html";
 interface Fixture {
   facets: unknown;
-  /** How the largest-boards chunks answer. */
-  largest: "rows" | "timeout" | "html";
+  /** How the largest-boards chunks answer: one mode for every chunk, or one per chunk of fifty in token order. */
+  largest: ChunkMode | ChunkMode[];
+  /** Per-token overrides on the largest boards' rows, for a row that breaks one claim. */
+  boardOver?: Record<string, Row>;
+  /** The five named boards' rows, when a scenario needs one of them wrong. */
+  named?: Row[];
   explore: unknown;
   statsMeta: unknown;
   statsRows?: unknown;
@@ -132,19 +160,20 @@ function run(fx: Fixture): { lines: string[]; calls: Array<{ fn: string; arg: st
   put("layoff.json", fx.layoff);
   put("vd_cat_meta.json", fx.statsMeta);
   put("vd_cat.json", fx.statsRows ?? null);
-  put("company.json", { named: NAMED_ROWS, largest: fx.largest, row: BOARD });
+  put("company.json", { named: fx.named ?? NAMED_ROWS, largest: fx.largest, row: BOARD, over: fx.boardOver ?? {}, tokens: TOKENS });
   put("company.cjs", `
 const fs = require("fs");
 const cfg = JSON.parse(fs.readFileSync(__dirname + "/company.json", "utf8"));
 let toks = [];
 try { toks = JSON.parse(process.argv[2] || "{}").p_tokens || []; } catch {}
 if (toks[0] === ${JSON.stringify(NAMED[0])}) { process.stdout.write(JSON.stringify(cfg.named)); return; }
-if (cfg.largest === "timeout") {
+const mode = Array.isArray(cfg.largest) ? (cfg.largest[Math.floor(cfg.tokens.indexOf(toks[0]) / 50)] || "rows") : cfg.largest;
+if (mode === "timeout") {
   process.stdout.write(JSON.stringify({ code: "57014", details: null, hint: null, message: "canceling statement due to statement timeout" }));
-} else if (cfg.largest === "html") {
+} else if (mode === "html") {
   process.stdout.write("<html>upstream request timeout</html>");
 } else {
-  process.stdout.write(JSON.stringify(toks.map((t) => Object.assign({ company_token: t }, cfg.row))));
+  process.stdout.write(JSON.stringify(toks.map((t) => Object.assign({ company_token: t }, cfg.row, cfg.over[t] || {}))));
 }
 `);
   const prelude = `set -u
@@ -214,19 +243,33 @@ describe("the field rows: read from the explore cache, and dated against the app
     expect(calls.some((c) => c.fn === "get_explore_cache")).toBe(true);
   });
 
-  it("rows stamped after the apply, every field below its pre-fix ceiling, pass", () => {
+  it("rows stamped after the apply pass as DATED, and nothing about the gate share passes", () => {
     const { lines } = run(base());
-    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\) computed_at=\S+ is at or after the apply/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\): gate_share_30 below its highest pre-fix reading on 18 of 18/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\): no field the floor emptied carries a figure/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\) computed_at=\S+ is dated at or after the apply .*a stamp says when, not which definition/), show(lines)).toBe(true);
+    expect(lines.some((l) => /computed by the re-issued definition/.test(l)), "a timestamp is not a definition").toBe(false);
+    expect(has(lines, "INFO", /explore cache field_curves \(18 fields\): gate_share_30 pooled over 180000 dated roles = 0\.2000 .* consistent with the floor, NOT proof of it/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /explore cache field_curves \(18 fields\): corroboration only, drift-limited -- gate_share_30 below its highest pre-fix reading on 18 of 18/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\): no field with nothing admitted carries a figure/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /gate_share_30/.test(l)), "the gate share is drift-limited: it may corroborate, never pass").toBe(false);
+    expect(has(lines, "INFO", /20261002121843 has no anon-readable proof of its own.*pg_get_functiondef/), show(lines)).toBe(true);
     expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
   });
 
-  it("rows stamped before the apply are a FAIL, and their gate shares are not graded", () => {
+  it("rows stamped before the apply are a FAIL, and nothing about them is graded", () => {
     const { lines } = run({ ...base(), applied: iso(5) });
     expect(has(lines, "FAIL", /computed_at=\S+ is BEFORE the apply/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /at or after the apply/.test(l)), show(lines)).toBe(false);
     expect(has(lines, "INFO", /gate_share_30 below its highest pre-fix reading .* not graded/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /gate_share_30 pooled over .* not graded/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /no field with nothing admitted carries a figure.* not graded/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /explore cache/.test(l)), "rows the floor may not have computed pass nothing").toBe(false);
+  });
+
+  it("undated rows that break the figure/verdict pairing are reported as INFO, not graded either way", () => {
+    const fx = base();
+    const { lines } = run({ ...fx, applied: iso(5), explore: { ...(fx.explore as Row), field_curves: fieldCurves({ legal: { gate_share_30: 0, still_open_30: 0.96, sufficient_30: false } }) } });
+    expect(has(lines, "INFO", /a figure with nothing admitted: legal.* not graded/), show(lines)).toBe(true);
+    expect(lines.some((l) => /no field with nothing admitted/.test(l) && !l.startsWith("INFO")), show(lines)).toBe(false);
   });
 
   it("without the apply time the rows cannot be dated, and that is a FAIL, not a pass on presence", () => {
@@ -235,9 +278,30 @@ describe("the field rows: read from the explore cache, and dated against the app
     expect(lines.some((l) => l.startsWith("PASS") && /explore cache field_curves .*(after the apply|below its highest)/.test(l)), show(lines)).toBe(false);
   });
 
-  it("a field that kept its pre-fix gate share after the apply is a FAIL naming it", () => {
-    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ finance: { gate_share_30: 0.69 } }) } });
-    expect(has(lines, "FAIL", /HELD on finance 0\.69 >= 0\.6845/), show(lines)).toBe(true);
+  it("a field that kept its pre-fix gate share is named as corroboration, never failed on one field's drift", () => {
+    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ finance: { gate_share_30: 0.71 } }) } });
+    expect(has(lines, "INFO", /corroboration only, drift-limited .*HELD on finance 0\.71 >= 0\.\d+/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("FAIL") && /HELD on/.test(l)), show(lines)).toBe(false);
+  });
+
+  it("a pooled gate share at or above the old pool's highest reading is a FAIL on dated rows", () => {
+    const m = /const POOLED_HI=([0-9.]+);/.exec(SECTION);
+    expect(m, "no POOLED_HI in section 7h").toBeTruthy();
+    const hi = Number(m![1]);
+    const at = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves(Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]))) } });
+    expect(has(at.lines, "FAIL", /gate_share_30 pooled over 180000 dated roles = .* at or above every reading of the old pool/), show(at.lines)).toBe(true);
+    // Weighted by each field's own cohort, not by field count: one huge field
+    // at the old level outweighs seventeen small ones that fell.
+    const heavy = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ healthcare: { gate_share_30: 0.9, dated_cohort_n_30: 2_000_000 } }) } });
+    expect(has(heavy.lines, "FAIL", /gate_share_30 pooled over 2170000 dated roles = 0\.8452/), show(heavy.lines)).toBe(true);
+    const undated = run({ ...base(), applied: undefined, explore: { ...(base().explore as Row), field_curves: fieldCurves(Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]))) } });
+    expect(has(undated.lines, "INFO", /gate_share_30 pooled over .* not graded/), show(undated.lines)).toBe(true);
+  });
+
+  it("rows with no dated_cohort_n_30 cannot be pooled, and on dated rows that is a FAIL", () => {
+    const noDen = Object.fromEntries(FIELDS.map((f) => [f, { dated_cohort_n_30: null }]));
+    const { lines } = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves(noDen) } });
+    expect(has(lines, "FAIL", /no field publishes dated_cohort_n_30, so gate_share_30 cannot be pooled/), show(lines)).toBe(true);
   });
 
   it("a field the floor emptied that still carries a figure is a FAIL", () => {
@@ -297,6 +361,17 @@ describe("the field rows: read from the explore cache, and dated against the app
     expect(CAT_HELPER).toMatch(/vd_cat_meta\.json/);
   });
 
+  it("states the old pool's pooled readings and holds POOLED_HI at the highest of them", () => {
+    const hi = Number(/const POOLED_HI=([0-9.]+);/.exec(SECTION)?.[1]);
+    const line = /^\/\/ The old pool, gate_share_30 pooled[^\n]*\n\/\/ ([^\n]+)$/m.exec(SECTION)?.[1] ?? "";
+    const readings = [...line.matchAll(/(\d{2}:\d{2}Z) (0\.\d{4})/g)].map((x) => Number(x[2]));
+    expect(readings.length, `the readings line: ${line}`).toBeGreaterThanOrEqual(7);
+    expect(hi).toBe(Math.max(...readings));
+    // At least the readings the re-review and the first pass recorded: the
+    // ceiling may only rise as readings are added.
+    expect(hi).toBeGreaterThanOrEqual(0.6889);
+  });
+
   it("holds each field to a ceiling the script states for all eighteen", () => {
     const m = /const BASE_HI=\{([^}]*)\}/.exec(SECTION);
     expect(m, "no BASE_HI in section 7h").toBeTruthy();
@@ -322,5 +397,126 @@ describe("the stored layoff arms", () => {
   it("two withheld arms read as the apply having landed", () => {
     const { lines } = run(base());
     expect(has(lines, "PASS", /both stored arms withheld/), show(lines)).toBe(true);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// ONE ROW PER CLAIM. Every check 7h makes is fed a row that breaks it, and
+// the line that check prints must read FAIL and name what broke it. Errors
+// and stamps alone (everything above) left nine of the checks deletable.
+// ════════════════════════════════════════════════════════════════════════════
+
+const lineFor = (lines: string[], re: RegExp) => lines.find((l) => re.test(l)) ?? "(no such line)";
+const SUFF_LINE = /no sufficient_30 row is lap_proven or lacks a floor before cohort_to/;
+const LAP_LINE = /every lap_proven board among them reads reason lap/;
+const MUTE_LINE = /a refused row always names its reason and a sufficient row never does/;
+
+describe("every claim 7h makes is fed a row that breaks it", () => {
+  it("one chunk of three timing out leaves no invariant PASS, though the other two answered clean rows", () => {
+    const { lines } = run({ ...base(), largest: ["rows", "timeout", "rows"] });
+    expect(has(lines, "FAIL", /largest boards, chunk 2 of 3: error 57014/), show(lines)).toBe(true);
+    for (const re of [SUFF_LINE, LAP_LINE, MUTE_LINE]) {
+      const l = lineFor(lines, re);
+      expect(l.startsWith("FAIL  "), `${re}: ${show(lines)}`).toBe(true);
+      expect(l, "the line says how much it covered and that a chunk failed").toMatch(/\(100 of 150 boards; 1 chunk\(s\) failed above\)/);
+    }
+  });
+
+  const boardCases: Array<[string, Row, RegExp, RegExp]> = [
+    ["a sufficient lap_proven board", { observability_bucket: "lap_proven" }, SUFF_LINE, /tok3\(lap_proven,2026-08-02\)/],
+    ["a sufficient board with no floor", { watched_from: null }, SUFF_LINE, /tok3\(full_read,null\)/],
+    ["a sufficient board floored on its cohort's last day", { watched_from: "2026-09-02" }, SUFF_LINE, /tok3\(full_read,2026-09-02\)/],
+    ["a lap_proven board refused for a reason other than lap", { observability_bucket: "lap_proven", sufficient_30: false, still_open_30: null, watched_from: null, insufficient_reason_30: "watch" }, LAP_LINE, /tok3=watch/],
+    ["a refused board that names no reason", { sufficient_30: false, still_open_30: null, insufficient_reason_30: null }, MUTE_LINE, /tok3/],
+    ["a sufficient board that names a reason", { insufficient_reason_30: "n" }, MUTE_LINE, /tok3/],
+  ];
+  for (const [what, over, re, names] of boardCases) {
+    it(`${what} among the largest is a FAIL naming it`, () => {
+      const { lines } = run({ ...base(), boardOver: { tok3: over } });
+      const l = lineFor(lines, re);
+      expect(l.startsWith("FAIL  "), show(lines)).toBe(true);
+      expect(l).toMatch(names);
+    });
+  }
+
+  it("a sufficient field with no figure, or with nothing admitted, is a FAIL on dated rows", () => {
+    const fx = base();
+    const noFigure = run({ ...fx, explore: { ...(fx.explore as Row), field_curves: fieldCurves({ legal: { still_open_30: null } }) } });
+    expect(has(noFigure.lines, "FAIL", /sufficient with no figure: legal/), show(noFigure.lines)).toBe(true);
+    const nothingAdmitted = run({ ...fx, explore: { ...(fx.explore as Row), field_curves: fieldCurves({ design: { gate_share_30: 0 } }) } });
+    expect(has(nothingAdmitted.lines, "FAIL", /sufficient with no figure: design/), show(nothingAdmitted.lines)).toBe(true);
+  });
+
+  const named = (token: string, over: Row) => NAMED_ROWS.map((r) => (r.company_token === token ? { ...r, ...over } : r));
+  it("careers.ulta.com still sufficient as a lap board is a FAIL -- the board the defect was reproduced on", () => {
+    const { lines } = run({ ...base(), named: named("careers.ulta.com", { sufficient_30: true, still_open_30: 0.9431, insufficient_reason_30: null }) });
+    const l = lineFor(lines, /careers\.ulta\.com refused as a lap board/);
+    expect(l.startsWith("FAIL  "), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /dominos refused as a lap board/), "the other lap board still passes").toBe(true);
+  });
+
+  it("a cut-short board floored before its last cut-short read is a FAIL", () => {
+    const { lines } = run({ ...base(), named: named("catalent~wd1~External", { watched_from: "2026-09-01" }) });
+    expect(lineFor(lines, /catalent~wd1~External floored at its last cut-short read/).startsWith("FAIL  "), show(lines)).toBe(true);
+  });
+
+  it("AbbVie reading watch with no floor is a FAIL naming the unseeded tenure table", () => {
+    const { lines } = run({ ...base(), named: named("AbbVie", { sufficient_30: false, still_open_30: null, watched_from: null, insufficient_reason_30: "watch" }) });
+    expect(has(lines, "FAIL", /AbbVie reads watch with no floor: job_board_board_watch holds no row for it/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /AbbVie/), show(lines)).toBe(false);
+  });
+
+  it("AbbVie floored after its long tenure began is a FAIL", () => {
+    const { lines } = run({ ...base(), named: named("AbbVie", { watched_from: "2026-09-20" }) });
+    expect(lineFor(lines, /AbbVie \(read in full since 2026-08-02\) keeps its figure/).startsWith("FAIL  "), show(lines)).toBe(true);
+  });
+
+  // THE LAYOFF ARM DRIFTS TOO. Read-only on 2026-10-02 at 05:20Z, before any
+  // of the three files applied, the old writer had stored the control arm at
+  // 0.717 (05:10Z), under the single 0.7395 the section compared against, and
+  // the section printed a PASS saying the arm was recomputed under the floor.
+  const arms = (g: number | null, minutesAgo: number, reason: string | null = null) => [
+    { lp_arm: "filed", lp_reason: reason, lp_gate_share_30: 0.5, lp_computed_at: iso(minutesAgo) },
+    { lp_arm: "control", lp_reason: reason, lp_gate_share_30: g, lp_still_open_30: 0.41, lp_sufficient_30: true, lp_computed_at: iso(minutesAgo) },
+  ];
+  it("a layoff control arm the old writer stored before the apply is a FAIL, however far its share drifted", () => {
+    const { lines } = run({ ...base(), layoff: arms(0.717, 40) });
+    expect(has(lines, "FAIL", /layoff control arm stored BEFORE the apply .* and not withheld/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /control arm/.test(l)), show(lines)).toBe(false);
+    const undated = run({ ...base(), applied: undefined, layoff: arms(0.717, 40) });
+    expect(has(undated.lines, "FAIL", /layoff control arm recomputed but cannot be dated against the apply/), show(undated.lines)).toBe(true);
+    expect(undated.lines.some((l) => l.startsWith("PASS") && /control arm/.test(l)), show(undated.lines)).toBe(false);
+  });
+
+  it("a dated layoff control arm passes as DATED; its share FAILs at or above the old arm's highest reading and is INFO below it", () => {
+    const hi = Number(/^LAYOFF_HI=([0-9.]+)$/m.exec(SECTION)?.[1]);
+    // The bar is the highest of the old arm's readings the section records
+    // beside it, never a number picked to pass: raise one, raise the other.
+    const recorded = /^# The old control arm[^\n]*\n# ([^\n]+)$/m.exec(SECTION)?.[1] ?? "";
+    const readings = [...recorded.matchAll(/T\d{2}:\d{2}Z (0\.\d{4})/g)].map((x) => Number(x[1]));
+    expect(readings.length, `the readings line: ${recorded}`).toBeGreaterThanOrEqual(2);
+    expect(hi).toBe(Math.max(...readings));
+    expect(readings, "the reading the first version compared against stays on record").toContain(0.7395);
+    const held = run({ ...base(), layoff: arms(hi, 5) });
+    expect(has(held.lines, "PASS", /layoff control arm is dated at or after the apply .*a stamp says when, not which writer/), show(held.lines)).toBe(true);
+    expect(has(held.lines, "FAIL", new RegExp(`layoff control arm: gate_share_30=${String(hi).replace(".", "\\.")} .* at or above it`)), show(held.lines)).toBe(true);
+    const fell = run({ ...base(), layoff: arms(0.52, 5) });
+    expect(has(fell.lines, "INFO", /layoff control arm: gate_share_30=0\.52 .* consistent with the floor, NOT proof of it/), show(fell.lines)).toBe(true);
+    expect(fell.lines.some((l) => l.startsWith("PASS") && /gate_share_30=0\.52 \(/.test(l)), "the share may corroborate, never pass").toBe(false);
+    const noNumber = run({ ...base(), layoff: arms(null, 5) });
+    expect(has(noNumber.lines, "FAIL", /layoff control arm: gate_share_30=null .* or no number/), show(noNumber.lines)).toBe(true);
+    const stillUncontrolled = run({ ...base(), layoff: [{ lp_arm: "filed", lp_reason: null, lp_computed_at: iso(5) }, ...arms(0.5, 5, "uncontrolled").slice(1)] });
+    expect(has(stillUncontrolled.lines, "FAIL", /dated at or after the apply .* but still reads uncontrolled/), show(stillUncontrolled.lines)).toBe(true);
+  });
+
+  it("a stats part carried forward from an earlier run is a FAIL, not dated by the run that failed to compute it", () => {
+    const rows = FIELDS.map((category) => ({ category, gate_share_30: 0.2, still_open_30: 0.34, sufficient_30: true, dated_cohort_n_30: 10_000 }));
+    const { lines } = run({
+      ...base(),
+      statsMeta: { ...(base().statsMeta as Row), cache_keys: ["computed_at", "fill_curve", "stale_parts"], present: true, rows: 18, own_stamp: null, computed_at: iso(10), carried: true, stale_parts: ["fill_curve"] },
+      statsRows: rows,
+    });
+    expect(has(lines, "FAIL", /stats cache fill_curve \(18 fields\): carried forward from an earlier run/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /stats cache fill_curve .*dated at or after the apply/.test(l)), show(lines)).toBe(false);
   });
 });

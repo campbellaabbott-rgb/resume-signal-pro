@@ -249,9 +249,9 @@ interface FillCurveRow {
    *  is one board's answer wearing a field's name. */
   top_board_share_30?: number | string | null;
   /** gate_share_30's own denominator — the field's whole dated day-30 cohort
-   *  before either gate. It is what lets a NULL reading say WHICH absence it
-   *  is: nothing reached the cap, or things reached it and none of them was on
-   *  a board that cleared both tests. */
+   *  before any admission test. It is what lets a NULL reading say WHICH
+   *  absence it is: nothing reached the cap, or things reached it and none of
+   *  them was admitted (three tests since the watch floor, 20261002121843). */
   dated_cohort_n_30?: number | string | null;
 }
 /** THE DAY-30 GATE, RE-APPLIED HERE RATHER THAN TRUSTED. Every one of these is
@@ -433,11 +433,26 @@ export const day30Verdict = (row: Day30Row): Day30Verdict => {
     // WHICH ABSENCE IT IS, from the row's own denominator. NULL day-30 columns
     // have two causes and they are different sentences: nothing of this field
     // reached the cap in this cohort at all, or things did reach it and none of
-    // them sat on a board that cleared both tests. The gate share's denominator
-    // is published precisely so the page does not have to guess, and the older
+    // them passed every admission test. The gate share's denominator is
+    // published precisely so the page does not have to guess, and the older
     // copy asserted the first for both — which was false about a field where a
     // board we read to the end had dated roles reach the cap and simply showed
     // us no events of its own.
+    //
+    // THE SENTENCE NAMES THREE TESTS, NOT TWO. Since the watch floor
+    // (20261002121843) a role is admitted only if it was also posted after we
+    // began reading its board, with every read of it from then on a full one,
+    // and the field's stored contract says so. The copy named the two tests it
+    // was written beside until 2026-10-02, so a field the floor emptied --
+    // dated roles on a board read to the end that showed us events, refused
+    // because we had not been watching it the whole time -- was told none of
+    // its roles sat on such a board, which was false about exactly those
+    // boards. The three-test sentence is true on either definition: a role
+    // refused under two of the tests is refused under all three, so it stays
+    // true for however long the page ships ahead of the migration. Same for
+    // fewRoles below: fewer than the floor passing two means fewer passing three.
+    // The keys were renamed with the meaning, so a locale left on the old
+    // sentence falls back to this English rather than serving the old claim.
     const dn = numOr(row.dated_cohort_n_30);
     return withheld(dn !== null && dn > 0 ? "ungated" : "unread");
   }
@@ -480,12 +495,12 @@ export const day30Verdict = (row: Day30Row): Day30Verdict => {
 export const DAY30_REASON_KEY: Record<Day30WithheldReason, string> = {
   uncontrolled: "ghostIndex.stillUp30ReasonUncontrolled",
   unread: "ghostIndex.stillUp30ReasonUnread2",
-  ungated: "ghostIndex.stillUp30ReasonUngated",
+  ungated: "ghostIndex.stillUp30ReasonUngated2",
   noEvents: "ghostIndex.stillUp30ReasonNoEvents",
   fewEvents: "ghostIndex.stillUp30ReasonFewEvents",
   noFills: "ghostIndex.stillUp30ReasonNoFills",
   relists: "ghostIndex.stillUp30ReasonRelists",
-  fewRoles: "ghostIndex.stillUp30ReasonFewRoles2",
+  fewRoles: "ghostIndex.stillUp30ReasonFewRoles3",
   width: "ghostIndex.stillUp30ReasonWidth",
   precision: "ghostIndex.stillUp30ReasonPrecision",
   arithmetic: "ghostIndex.stillUp30ReasonArithmetic",
@@ -498,7 +513,7 @@ export const DAY30_REASON_EN: Record<Day30WithheldReason, string> = {
   unread:
     "no dated role of this field reached our 30-day cap in this cohort at all, on any board — there is no sample here to measure, not a sample that came out badly",
   ungated:
-    "dated roles of this field did reach the cap in this cohort, but none of them sat on a board we could both read to the end and see produce takedowns or re-listings of its own; where a board can only be read in part a role coming down is invisible to us, and where a board's own cohort showed us nothing we cannot tell that from a board we are failing to read",
+    "dated roles of this field did reach the cap in this cohort, but none of them passed all three of our tests: sitting on a board we can read to the end, being posted after we began reading that board with every read of it from the day of posting a full one, and that board having shown us takedowns or re-listings of its own; where a board can only be read in part a role coming down is invisible to us, a role posted before we were reading its board in full could have come down without our seeing it, and where a board's own cohort showed us nothing we cannot tell that from a board we are failing to read",
   noEvents:
     "not one dated role in this cohort was seen taken down or re-listed, so there is nothing for a share to be measured against — that is what our record holds, not what the field did",
   fewEvents:
@@ -508,7 +523,7 @@ export const DAY30_REASON_EN: Record<Day30WithheldReason, string> = {
   relists:
     "more of this cohort's roles were seen re-listed than taken down for good, and our collector records only the first re-listing of a title per day, so the taken-down share would be a ceiling resting on the smaller half of what we saw",
   fewRoles:
-    "fewer than {{minN}} of its dated roles reached the cap on boards that cleared both tests — read to the end, and seen to produce events of their own",
+    "fewer than {{minN}} of its dated roles reached the cap having passed all three of our tests — on a board read to the end, posted after we began reading that board with every read of it since a full one, and on a board seen to produce events of its own",
   width:
     "the interval around the share is wider than ±{{maxHw}} points, which is too wide to print as a figure",
   precision:
