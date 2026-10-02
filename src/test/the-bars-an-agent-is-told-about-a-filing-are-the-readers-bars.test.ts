@@ -278,7 +278,12 @@ describe("the bars an agent is told about a filing are the reader's bars", () =>
     // same day; this assertion exists so that move is a visible diff rather than
     // a silent follow of newestDefining. The bars this file mirrors -- the worker
     // bar and the lookback -- are unchanged in it.
-    expect(WRITER_MIG).toBe("supabase/migrations/20260925164237_the_third_day_thirty_chain_on_one_page_gets_the_same_control.sql");
+    // RE-ANCHORED AGAIN 2026-10-02. The writer was re-issued so that a role
+    // counts in either arm only if its board was read in full from before it
+    // was posted -- the watch floor the two curves beside it on the same page
+    // got the same day. Its k CTE, and so the worker bar and the lookback this
+    // file mirrors, is the 2026-09-25 text unchanged.
+    expect(WRITER_MIG).toBe("supabase/migrations/20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql");
     expect(CRON_MIG).toBe("supabase/migrations/20260918101000_the_cadence_the_copy_names_is_the_schedule_in_this_file.sql");
   });
 

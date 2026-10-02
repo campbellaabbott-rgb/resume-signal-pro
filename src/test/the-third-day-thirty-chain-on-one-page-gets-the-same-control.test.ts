@@ -85,6 +85,14 @@ const FILES = readdirSync(DIR).filter((f) => f.endsWith(".sql")).sort();
 const LANE_A = FILES.filter((f) => /^202609181\d{5}_/.test(f));
 const NEW_WRITER = "20260925164237_the_third_day_thirty_chain_on_one_page_gets_the_same_control.sql";
 const NEW_READER = "20260925164510_an_arm_written_before_the_control_existed_is_not_a_sufficient_arm.sql";
+// THE WRITER THE DATABASE RUNS, re-pointed 2026-10-02. refresh_layoff_partition
+// was re-issued with the per-board watch floor the two curves on the same page
+// got the same day (a role counts in either arm only if its board was read in
+// full from before it was posted), carrying this control unchanged. The
+// executed lane and the code checker follow it, so they keep guarding the
+// body that runs; NEW_WRITER stays named as the file that introduced the
+// control, which is what the ordering and immutability checks are about.
+const LIVE_WRITER = "20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql";
 const mig = (f: string) => readFileSync(resolve(DIR, f), "utf8");
 /** Executable text only: `--` to end of line, and block comments. */
 const stripSql = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/--[^\n]*/g, "");
@@ -127,7 +135,14 @@ const BOARD_STAND_INS = `
     company_token text PRIMARY KEY,
     bucket text NOT NULL CHECK (bucket IN ('full_read','lap_proven','lap_pending','unprovable','unobserved')),
     lap_w0 timestamptz, as_of timestamptz NOT NULL DEFAULT now());
+  CREATE TABLE public.job_board_board_watch (
+    company_token text PRIMARY KEY, first_observed_on date NOT NULL, first_observed_basis text NOT NULL,
+    is_censored boolean NOT NULL DEFAULT false, updated_at timestamptz NOT NULL DEFAULT now());
 `;
+/** Both boards read in full since well before their cohort, so the watch floor admits every member. */
+const watched = (...toks: string[]) => `
+  INSERT INTO public.job_board_board_watch (company_token, first_observed_on, first_observed_basis, is_censored)
+  SELECT t, current_date - 80, 'company_snapshot', true FROM unnest(ARRAY[${toks.map((t) => `'${t}'`).join(", ")}]) t;`;
 
 const ageouts = (t: string, n: number) => `
   INSERT INTO public.job_board_exits (posting_id, source, company_token, category, exit_reason, exited_at, posted_at)
@@ -156,6 +171,7 @@ async function boot(): Promise<PGlite> {
     ageouts("HEALTHYL", 600), liveRoles("HEALTHYL", 4000),
     `INSERT INTO public.job_board_company_snapshots VALUES ('GIANTL', current_date - 40, 20000), ('HEALTHYL', current_date - 40, 4000);`,
     `INSERT INTO public.job_board_board_observability (company_token, bucket) VALUES ('GIANTL','full_read'), ('HEALTHYL','full_read');`,
+    watched("GIANTL", "HEALTHYL"),
   ].join("\n"));
   return db;
 }
@@ -177,6 +193,7 @@ beforeAll(async () => {
   // stored partition, so every difference below is a difference in definition.
   await db.exec(mig(NEW_WRITER));
   await db.exec(mig(NEW_READER));
+  await db.exec(mig(LIVE_WRITER));
   migrated = await arms(db);
   await db.query(`SELECT * FROM public.refresh_layoff_partition()`);
   after = await arms(db);
@@ -195,6 +212,10 @@ describe("the third day-30 chain carries the same positive control as the other 
     // rebuilt in filename order would run the old bodies last.
     expect(NEW_WRITER > LANE_A[LANE_A.length - 1]).toBe(true);
     expect(NEW_READER > NEW_WRITER).toBe(true);
+    // ...and the writer the database runs is the newest definition of it.
+    expect(LIVE_WRITER > NEW_READER).toBe(true);
+    const definers = FILES.filter((f) => /FUNCTION public\.refresh_layoff_partition\s*\(/.test(stripSql(mig(f))));
+    expect(definers.at(-1)).toBe(LIVE_WRITER);
   });
 
   it("reproduced the defect before the change: an arm dominated by a board that never showed us a takedown, called sufficient", () => {
@@ -267,11 +288,12 @@ describe("the third day-30 chain carries the same positive control as the other 
     const db = new PGlite();
     dbs.push(db);
     await db.exec(BOARD_STAND_INS);
-    for (const f of [...LANE_A, NEW_WRITER, NEW_READER]) await db.exec(mig(f));
+    for (const f of [...LANE_A, NEW_WRITER, NEW_READER, LIVE_WRITER]) await db.exec(mig(f));
     await db.exec([
       ageouts("GIANTL", 400), liveRoles("GIANTL", 400),
       `INSERT INTO public.job_board_company_snapshots VALUES ('GIANTL', current_date - 40, 400);`,
       `INSERT INTO public.job_board_board_observability (company_token, bucket) VALUES ('GIANTL','full_read');`,
+      watched("GIANTL"),
     ].join("\n"));
     await db.query(`SELECT * FROM public.refresh_layoff_partition()`);
     const only = await arms(db);
@@ -291,7 +313,7 @@ describe("the third day-30 chain carries the same positive control as the other 
    Executed behaviour proves the gate works on the rows it was handed; these pin
    the SHAPE, so a later re-issue cannot quietly rebuild the tautology. All
    against comment-stripped code. */
-const WRITER_CODE = stripSql(mig(NEW_WRITER));
+const WRITER_CODE = stripSql(mig(LIVE_WRITER));
 const READER_CODE = stripSql(mig(NEW_READER));
 
 export function writerViolations(code: string): string[] {
@@ -376,7 +398,7 @@ describe("the control is spelled where the database can run it", () => {
     // stores, and a guard that reads the line wrapping fails on a reflow while
     // the sentence is intact.
     const join = (raw: string) => raw.slice(raw.indexOf("COMMENT ON FUNCTION")).replace(/'\s*\n\s*'/g, "");
-    const w = join(mig(NEW_WRITER));
+    const w = join(mig(LIVE_WRITER));
     expect(w).toMatch(/POSITIVE CONTROL/);
     expect(w, "the claim the previous comment got wrong").toMatch(/NOT INHERITED, IT IS DUPLICATED/);
     expect(w).toMatch(/per \(board, arm\)/);
@@ -415,7 +437,7 @@ describe("the code checkers can actually fail", () => {
        on the second line breaks the anchor; that is luck, not a design, and it
        is why the checkers are only ever run against the stripped view.) Against
        the STRIPPED view every property fires. */
-    const commented = mig(NEW_WRITER).split("\n").map((l) => `-- ${l}`).join("\n");
+    const commented = mig(LIVE_WRITER).split("\n").map((l) => `-- ${l}`).join("\n");
     const fixture = mig(LANE_A.find((f) => f.includes("two_arms_side_by_side"))!) + "\n" + commented;
     const SINGLE_LINE = ["events-constant", "fills-constant", "relative-constant", "control-join",
       "equality-gate", "events-term", "fills-term", "relist-balance", "relative-term",

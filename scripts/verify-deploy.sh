@@ -741,4 +741,223 @@ const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
   ok(/twice the average week of our (own )?90-day closure record/.test(code)&&!/twice the daily average/.test(code),"(j) the deployed chunk states the ceiling as twice the average week of the record, and nowhere as its daily figure -- failing means the copy that shipped with the first build of this change is still live");
 })().catch(e=>console.log("FAIL  7g probe threw: "+e.message));
 '
+
+echo "== 7h. a day-30 share needs thirty days of reading in full (the watch floor: 20261002121417 / 121843 / 122309) =="
+# The three re-issues admit a role to any day-30 chain only if its board was
+# read in full from before the role was posted; lap boards are refused for a
+# reason of their own. The staged runner has renamed and edited files before,
+# so every line below judges BEHAVIOUR: the two new columns on the company
+# curve are the proof it applied, and the named boards are the ones the defect
+# was reproduced on (careers.ulta.com published 0.9431 with sufficient_30 true
+# on 2026-10-01). Read-only: one RPC read on five named boards, one facet list
+# for the largest boards (the same call section 3 makes) and three reads of
+# fifty of them, the explore cache, the stats-cache read section 4 already
+# made, and the stored layoff arms. A read that errs or times out is a FAIL
+# naming its code, never an INFO: a claim nothing evaluated has not passed.
+R get_company_fill_curve '{"p_tokens":["careers.ulta.com","dominos","catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers","AbbVie"]}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_company_fill_curve non-JSON: "+s.slice(0,160))}
+if(!Array.isArray(j)||!j.length)return console.log("FAIL  get_company_fill_curve -> "+JSON.stringify(j).slice(0,160));
+const keyed=j.every(r=>("watched_from" in r)&&("insufficient_reason_30" in r));
+console.log((keyed?"PASS":"FAIL")+"  every row carries watched_from and insufficient_reason_30"+(keyed?" (20261002121417 applied)":" -- the old shape is serving: 20261002121417 did not apply"));
+if(!keyed)return;
+const by=Object.fromEntries(j.map(r=>[r.company_token,r]));
+const line=r=>"bucket="+r.observability_bucket+" sufficient_30="+r.sufficient_30+" S30="+r.still_open_30+" watched_from="+r.watched_from+" reason="+r.insufficient_reason_30+" cohort_to="+r.cohort_to;
+for(const t of ["careers.ulta.com","dominos"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
+  if(r.observability_bucket!=="lap_proven"){console.log("INFO  "+t+" is no longer lap_proven: "+line(r));continue}
+  const ok=r.insufficient_reason_30==="lap"&&r.sufficient_30===false&&r.still_open_30===null;
+  console.log((ok?"PASS":"FAIL")+"  "+t+" refused as a lap board: "+line(r)+" (baseline: Ulta 0.9431, sufficient_30 TRUE)")}
+for(const t of ["catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
+  if(r.observability_bucket==="lap_proven"){console.log((r.insufficient_reason_30==="lap"?"PASS":"FAIL")+"  "+t+" is lap_proven now and must read lap: "+line(r));continue}
+  // A truncated read inside 2026-09-23..10-01 (measured the night of the fix)
+  // must hold the floor at or after its day; the ledger is never pruned, so
+  // this stays true until the board stops being full_read.
+  const ok=typeof r.watched_from==="string"&&r.watched_from>="2026-09-23";
+  console.log((ok?"PASS":"FAIL")+"  "+t+" floored at its last cut-short read: "+line(r)+" (want watched_from >= 2026-09-23; baseline S30 0.87-0.93 with sufficient_30 TRUE)")}
+const a=by["AbbVie"];
+if(!a)console.log("INFO  AbbVie returned no row");
+else if(a.watched_from===null&&a.insufficient_reason_30==="watch")console.log("FAIL  AbbVie reads watch with no floor: job_board_board_watch holds no row for it -- the tenure table is not seeded, and every full_read board is being refused ("+line(a)+")");
+else{const ok=a.sufficient_30===true&&a.insufficient_reason_30===null&&typeof a.watched_from==="string"&&a.watched_from<="2026-08-06";
+  console.log((ok?"PASS":"FAIL")+"  AbbVie (read in full since 2026-08-02) keeps its figure: "+line(a)+" (want sufficient, floor on or before 2026-08-06, S30 about 0.29)")}
+})'
+# THE LARGEST BOARDS, IN CHUNKS, AND A CHUNK THAT ERRS IS A FAIL. The company
+# curve carries a 25-second header; one call over the 150 facet tokens took
+# 17s before the floor added its joins, and a timeout (57014) comes back from
+# PostgREST as a JSON object, not an array. Until 2026-10-02 this section
+# printed that as INFO "returned no rows", so the three claims below could go
+# unevaluated with no FAIL anywhere. Fifty tokens a call took 2.7s to 8.3s
+# that morning (pre-fix, read-only). Every chunk that answers anything but an
+# array prints FAIL with its error code, and so does a facet list that names
+# no company: a check that could not run is not a check that passed.
+CHUNK7H=50
+export CHUNK7H
+J '{"action":"list","limit":1,"includeFacets":true}' > /tmp/vd_7h_facets.json
+node -e 'let t=[];try{const j=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_facets.json","utf8"));t=(j.companies||[]).map(c=>c&&c.token).filter(x=>typeof x==="string").slice(0,150)}catch{}
+require("fs").writeFileSync("/tmp/vd_7h_tokens.json",JSON.stringify(t))'
+NCH7H=$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_tokens.json","utf8"));process.stdout.write(String(Math.ceil(t.length/Number(process.env.CHUNK7H))))')
+i7h=0
+while [ "$i7h" -lt "$NCH7H" ]; do
+  R get_company_fill_curve "$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_tokens.json","utf8"));const k=Number(process.env.CHUNK7H),i=Number(process.argv[1]);process.stdout.write(JSON.stringify({p_tokens:t.slice(i*k,i*k+k)}))' "$i7h")" > "/tmp/vd_7h_chunk_$i7h.json"
+  i7h=$((i7h+1))
+done
+node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+let toks=[];try{toks=JSON.parse(rd("/tmp/vd_7h_tokens.json"))}catch{}
+if(!toks.length)return console.log("FAIL  largest-boards check not evaluated: the facet list named no company -- "+rd("/tmp/vd_7h_facets.json").slice(0,120));
+const k=Number(process.env.CHUNK7H),n=Math.ceil(toks.length/k),j=[];let failed=0;
+for(let i=0;i<n;i++){const s=rd("/tmp/vd_7h_chunk_"+i+".json");let b;
+  try{b=JSON.parse(s)}catch{failed++;console.log("FAIL  largest boards, chunk "+(i+1)+" of "+n+": no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));continue}
+  if(!Array.isArray(b)){failed++;console.log("FAIL  largest boards, chunk "+(i+1)+" of "+n+": error "+((b&&b.code)||"without a code")+" -- "+String((b&&b.message)||JSON.stringify(b)).slice(0,140)+((b&&b.code)==="57014"?" (the function hit its own 25s header)":""));continue}
+  j.push(...b)}
+if(!j.length)return console.log("FAIL  largest boards: no chunk answered with rows, so none of the three claims was evaluated");
+const over=" ("+j.length+" of "+toks.length+" boards"+(failed?"; "+failed+" chunk(s) failed above":"")+")";
+if(!j.every(r=>"insufficient_reason_30" in r))return console.log("FAIL  largest boards: no watch-floor columns on the rows -- the old get_company_fill_curve is serving, so nothing below can be judged"+over);
+const bad=j.filter(r=>r.sufficient_30===true&&(r.observability_bucket==="lap_proven"||r.watched_from===null||r.watched_from===undefined||String(r.watched_from)>=String(r.cohort_to)));
+console.log((bad.length===0&&!failed?"PASS":"FAIL")+"  largest boards: no sufficient_30 row is lap_proven or lacks a floor before cohort_to"+over+(bad.length?" -- "+bad.slice(0,8).map(r=>r.company_token+"("+r.observability_bucket+","+r.watched_from+")").join(", "):""));
+const lapWrong=j.filter(r=>r.observability_bucket==="lap_proven"&&r.insufficient_reason_30!=="lap");
+console.log((lapWrong.length===0&&!failed?"PASS":"FAIL")+"  every lap_proven board among them reads reason lap"+over+(lapWrong.length?" -- "+lapWrong.slice(0,8).map(r=>r.company_token+"="+r.insufficient_reason_30).join(", "):""));
+const mute=j.filter(r=>(r.sufficient_30===true)!==(r.insufficient_reason_30===null));
+console.log((mute.length===0&&!failed?"PASS":"FAIL")+"  a refused row always names its reason and a sufficient row never does"+over+(mute.length?" -- "+mute.slice(0,8).map(r=>r.company_token).join(", "):""));
+const tally={};for(const r of j){const t=r.insufficient_reason_30===null?"sufficient":r.insufficient_reason_30;tally[t]=(tally[t]||0)+1}
+console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (before the fix 107 of the top 150 were sufficient, 100 of them lap_proven)");
+})()'
+# THE FIELD ROWS, FROM THE CACHE PRODUCTION ACTUALLY HAS. Read-only on
+# 2026-10-02 at 01:40Z and 03:48Z: get_stats_cache carries no fill_curve part
+# (20260928004823 and 20260928011742 have not applied there), so a check that
+# read only that part printed "no cached field rows" on every run and never
+# judged the field grain at all. The rows that exist are get_explore_cache's
+# field_curves -- get_category_fill_curve(90, 300) keyed by category,
+# rewritten whole at :07 -- and that is what is judged here; the stats part is
+# judged the same way whenever it exists.
+# DATED AGAINST THE APPLY, NOT TRUSTED FOR BEING PRESENT. The re-issue removes
+# both parts at apply, but a :07 run already scanning when it commits finishes
+# on the definition it began with and then replaces its whole row, putting the
+# pre-fix pool back, stamped with the run's start -- before the apply. So a
+# stamp before the apply is a FAIL, and only rows stamped at or after it can
+# have come from the floor: necessary, not sufficient (the next paragraph).
+# The apply time is not readable with the anon key, so it is an input: set
+# DAY30_APPLIED_AT (UTC, the moment the LAST of the three files finished
+# applying, which dates both chains safely) in the environment or on the line
+# below once it is known. Until then the dating lines -- the field rows' and
+# the layoff arm's -- read FAIL, which is the point.
+# WHAT A STAMP PROVES, AND WHAT THE GATE SHARE CANNOT. A stamp at or after
+# the apply says WHEN the rows were computed, never WHICH definition computed
+# them: 121843 is a file of its own, and the staged runner can fail it, or
+# edit it and stage it under another name, while 121417 and 122309 land. Its
+# shape is unchanged, so nothing the anon key can read names the definition;
+# the body can, with service role, and a line below prints the query. What is
+# left is gate_share_30, and it is DRIFT-LIMITED. Per field it moved by up to
+# 0.16 between one hourly run of the old pool and the next (finance 0.6927 at
+# 2026-10-02 00:07Z, 0.5374 at 01:07Z; healthcare 0.8226 at 04:07Z, 0.6808
+# at 05:07Z, on the same cohort), and at 04:07Z the old definition already
+# sat below the highest of its three earlier readings on 7 of 18 fields -- so
+# the per-field line is corroboration, printed as INFO and never as a
+# verdict; BASE_HI is each field's highest over the readings beside
+# POOLED_HI. Pooled over the fields by their dated cohorts the old pool is
+# steadier (POOLED_HI is the highest of the hourly readings recorded beside
+# it), but the floor's own size is not known well enough to put a pass bar
+# under the old pool: on the read-only walk of every catalogue board at
+# 2026-10-01T22:51Z, lap_proven boards carried 11.9% to 19.1% of the day-30
+# cohort on boards with five events of their own, depending on the weight,
+# and the watch clip on full_read boards cannot be measured from outside
+# before the apply. Lap refusal alone takes POOLED_HI only to 0.56-0.61,
+# inside the old pool's own spread. So the pooled line FAILs only in the
+# direction that is sound -- at or above POOLED_HI, where the floor could
+# leave it only if the old pool had drifted about 0.09 past every reading on
+# record -- and is INFO otherwise: below POOLED_HI is consistent with the
+# floor, and is not proof of it.
+DAY30_APPLIED_AT="${DAY30_APPLIED_AT:-}"
+export DAY30_APPLIED_AT
+R get_explore_cache '{}' > /tmp/vd_7h_explore.json
+node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+// The highest gate_share_30 of each field over the same readings: corroboration only.
+const BASE_HI={admin:0.4773,legal:0.4709,other:0.7029,sales:0.6867,design:0.4618,data_ai:0.5689,finance:0.6972,product:0.5235,science:0.6174,customer:0.5722,security:0.6022,education:0.6572,marketing:0.4389,people_hr:0.4626,healthcare:0.8226,operations:0.7141,engineering:0.6918,hospitality_retail:0.6367};
+// The old pool, gate_share_30 pooled over the eighteen fields by dated_cohort_n_30:
+// 2026-10-01 21:07Z 0.6453, 22:07Z 0.6133, 23:07Z 0.6518; 2026-10-02 00:07Z 0.6738, 01:07Z 0.6603, 03:07Z 0.6574, 04:07Z 0.6889, 05:07Z 0.6440
+const POOLED_HI=0.6889;
+const MAX_EXPLORE_AGE_MIN=75;
+const applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied);
+if(applied&&!Number.isFinite(at))console.log("FAIL  DAY30_APPLIED_AT="+applied+" is not a timestamp, so no field row below can be dated against the apply");
+const N=v=>v===null||v===undefined?null:Number(v);
+const judge=(label,rows,stamp,carried)=>{
+  if(carried)console.log("FAIL  "+label+": carried forward from an earlier run (stale_parts names it) -- the run stamped "+stamp+" could not compute the curve, and the carried rows carry no stamp of their own, so they cannot be shown to come from the floor");
+  const t=Date.parse(stamp);let dated=false;
+  if(!Number.isFinite(t))console.log("FAIL  "+label+": no usable stamp ("+stamp+")");
+  else if(!applied)console.log("FAIL  "+label+" computed_at="+stamp+" cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time the last of 20261002121417 / 121843 / 122309 finished applying (a run already scanning at the apply writes the pre-fix pool back, stamped before it)");
+  else if(!Number.isFinite(at)){}
+  else if(t<at)console.log("FAIL  "+label+" computed_at="+stamp+" is BEFORE the apply ("+applied+"): a run that began before 20261002121843 committed, which may have written the pre-fix pool back over the withhold -- re-run after the next refresh");
+  else if(!carried){dated=true;console.log("PASS  "+label+" computed_at="+stamp+" is dated at or after the apply ("+applied+"): the run that wrote these rows began after 20261002121843 committed -- a stamp says when, not which definition")}
+  const ng=dated?"":" -- not graded: these rows are not dated after the apply";
+  let num=0,den=0;
+  for(const r of rows){const d=N(r.dated_cohort_n_30);if(!(d>0))continue;num+=(N(r.gate_share_30)||0)*d;den+=d}
+  if(!den)console.log((dated?"FAIL":"INFO")+"  "+label+": no field publishes dated_cohort_n_30, so gate_share_30 cannot be pooled"+ng);
+  else{const p=num/den;
+    console.log((dated&&p>=POOLED_HI?"FAIL":"INFO")+"  "+label+": gate_share_30 pooled over "+den+" dated roles = "+p.toFixed(4)+" (the highest reading of the old pool "+POOLED_HI+")"+(!dated?ng:p>=POOLED_HI?" -- at or above every reading of the old pool: 20261002121843 did not take, or the old pool drifted past every reading on record; read the body with service role":" -- below it: consistent with the floor, NOT proof of it, because the old pool has read lower too"))}
+  const fell=[],held=[];
+  for(const r of rows){const b=BASE_HI[r.category],g=N(r.gate_share_30);if(b===undefined)continue;if(g===null||g<b)fell.push(r.category);else held.push(r.category+" "+g+" >= "+b)}
+  console.log("INFO  "+label+": corroboration only, drift-limited -- gate_share_30 below its highest pre-fix reading on "+fell.length+" of "+rows.length+" field(s)"+(held.length?"; HELD on "+held.join(", "):"")+ng);
+  const leak=rows.filter(r=>!(N(r.gate_share_30)>0)&&r.still_open_30!==null&&r.still_open_30!==undefined);
+  const hollow=rows.filter(r=>r.sufficient_30===true&&(r.still_open_30===null||r.still_open_30===undefined||!(N(r.gate_share_30)>0)));
+  console.log((!dated?"INFO":leak.length||hollow.length?"FAIL":"PASS")+"  "+label+": no field with nothing admitted carries a figure, and no sufficient field lacks one"+(leak.length?" -- a figure with nothing admitted: "+leak.map(r=>r.category).join(", "):"")+(hollow.length?" -- sufficient with no figure: "+hollow.map(r=>r.category).join(", "):"")+ng);
+  const refused=rows.filter(r=>r.sufficient_30!==true).map(r=>r.category+"(gate="+r.gate_share_30+")");
+  console.log("INFO  "+label+": fields not sufficient under the floor: "+(refused.length?refused.join(", "):"none")+" -- each must render a reason on the page, never a number");
+};
+const s=rd("/tmp/vd_7h_explore.json");let j;try{j=JSON.parse(s)}catch{}
+const g=Array.isArray(j)?j[0]:j;
+if(j===undefined)console.log("FAIL  get_explore_cache answered no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));
+else if(!g||typeof g!=="object"||("code" in g&&"message" in g))console.log("FAIL  get_explore_cache errored: "+JSON.stringify(g).slice(0,160));
+else{
+  const root=g.computed_at,ageMin=(Date.now()-Date.parse(root))/6e4;
+  const stale=Array.isArray(g.stale_parts)?g.stale_parts:[];
+  if(!Number.isFinite(ageMin))console.log("FAIL  explore cache carries no usable computed_at ("+root+")");
+  else if(ageMin>MAX_EXPLORE_AGE_MIN)console.log("FAIL  explore cache last ran "+Math.round(ageMin)+" min ago (computed_at "+root+"): the :07 refresh has stopped, so its rows reflect nothing recent");
+  if(!("field_curves" in g)){
+    if(Number.isFinite(at)&&Date.parse(root)>=at)console.log("FAIL  explore cache: a run that began after the apply wrote no field_curves key, which refresh_explore_cache always writes -- something else replaced the row");
+    else console.log("INFO  explore cache: field_curves withheld at apply (20261002121843) and no :07 run has completed since (root computed_at "+root+"); re-run after the next :07 -- the absence cannot outlive the "+MAX_EXPLORE_AGE_MIN+"-minute bar above without a FAIL");
+  }else{
+    const fc=g.field_curves;
+    const rows=fc&&typeof fc==="object"&&!Array.isArray(fc)?Object.entries(fc).map(([category,r])=>Object.assign({category},r)):[];
+    if(!rows.length)console.log("FAIL  explore cache: field_curves is empty"+(stale.includes("field_curves")?" and stale_parts names it":"")+" -- the :07 run could not compute the field curve and had nothing to carry, so the field rows are blank (the five-minute header is the suspect: the floor added a join per observability row)");
+    else judge("explore cache field_curves ("+rows.length+" fields)",rows,root,stale.includes("field_curves"));
+  }
+}
+console.log("INFO  20261002121843 has no anon-readable proof of its own (its result shape is unchanged); with service role: SELECT pg_get_functiondef(\x27public.get_category_fill_curve(int, int)\x27::regprocedure) LIKE \x27%watched_from%\x27 -- true once it applied (its own self-verify raises otherwise)");
+let m=null;try{m=JSON.parse(rd("/tmp/vd_cat_meta.json"))}catch{}
+const keys=m&&Array.isArray(m.cache_keys)?m.cache_keys:[];
+if(!m)console.log("FAIL  section 4 left no stats-cache meta to read");
+else if(!keys.length||(keys.includes("code")&&keys.includes("message")))console.log("FAIL  get_stats_cache errored or answered nothing (keys: "+keys.join(",")+")");
+else if(!m.present)console.log("INFO  stats cache carries no fill_curve part (20260928004823 not live in production as of 2026-10-02, or withheld at apply and no :27 run since) -- the explore arm above is the field check");
+else{let r=null;try{r=JSON.parse(rd("/tmp/vd_cat.json"))}catch{}
+  if(!Array.isArray(r)||!r.length)console.log("FAIL  stats cache fill_curve is present but carries no rows (stale_parts "+JSON.stringify(m.stale_parts)+")");
+  else judge("stats cache fill_curve ("+r.length+" fields)",r,m.computed_at,m.carried);
+}
+})()'
+# THE LAYOFF ARMS ARE DATED THE SAME WAY, AND FOR THE SAME REASON. Until
+# 2026-10-02 the recomputed control arm passed on gate_share_30 under one
+# pre-fix reading, 0.7395 (stored 2026-10-01T05:10Z). The next day the OLD
+# writer, 20261002122309 not applied, stored 0.717 at 05:10Z, and this line
+# printed "PASS ... recomputed under the floor" on production with no floor
+# in it -- the field grain's drift, on the third chain. 122309 nulls the
+# stored counts at apply, so a recomputed arm stamped before the apply means
+# it did not take, and one stamped after it is dated, not proven; the gate
+# share then FAILs only at or above the highest reading of the old arm.
+# The old control arm, gate_share_30 as stored by the 05:10 refresh:
+# 2026-10-01T05:10Z 0.7395, 2026-10-02T05:10Z 0.7170
+LAYOFF_HI=0.7395
+export LAYOFF_HI
+R get_layoff_partition '{}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_layoff_partition answered no JSON -- "+s.slice(0,120))}
+if(j&&!Array.isArray(j)&&("code" in j||"message" in j))return console.log("FAIL  get_layoff_partition errored: "+((j.code)||"without a code")+" -- "+String(j.message||"").slice(0,140));
+const rows=Array.isArray(j)?j:[j];const c=rows.find(r=>r&&r.lp_arm==="control");
+if(!c)return console.log("FAIL  no control arm -- "+JSON.stringify(j).slice(0,120));
+if(rows.every(r=>r.lp_reason==="uncontrolled"))return console.log("PASS  both stored arms withheld (reason uncontrolled): 20261002122309 applied and the 05:10 refresh has not re-run since; control computed_at="+c.lp_computed_at);
+const HI=Number(process.env.LAYOFF_HI),applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied),t=Date.parse(c.lp_computed_at);
+const line="gate_share_30="+c.lp_gate_share_30+" S30="+c.lp_still_open_30+" sufficient="+c.lp_sufficient_30+" reason="+c.lp_reason+" computed_at="+c.lp_computed_at;
+if(!applied)return console.log("FAIL  layoff control arm recomputed but cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time the last of 20261002121417 / 121843 / 122309 finished applying -- "+line);
+if(!Number.isFinite(at))return console.log("FAIL  layoff control arm: DAY30_APPLIED_AT="+applied+" is not a timestamp -- "+line);
+if(!Number.isFinite(t))return console.log("FAIL  layoff control arm carries no usable stamp -- "+line);
+if(t<at)return console.log("FAIL  layoff control arm stored BEFORE the apply ("+applied+") and not withheld: 20261002122309 nulls the stored counts at apply, so this is the old writer still serving -- "+line);
+console.log((c.lp_reason==="uncontrolled"?"FAIL":"PASS")+"  layoff control arm is dated at or after the apply ("+applied+")"+(c.lp_reason==="uncontrolled"?" but still reads uncontrolled: the refresh after the apply wrote no counts":": stored by a refresh that began after the apply -- a stamp says when, not which writer")+" -- "+line);
+const g=c.lp_gate_share_30===null||c.lp_gate_share_30===undefined?NaN:Number(c.lp_gate_share_30);
+console.log((!(g<HI)?"FAIL":"INFO")+"  layoff control arm: gate_share_30="+c.lp_gate_share_30+" (the highest reading of the old arm "+HI+")"+(!(g<HI)?" -- at or above it, or no number: 20261002122309 did not take, or the old arm drifted past every reading on record":" -- below it: consistent with the floor, NOT proof of it, because the old arm has read lower too"));
+})'
+
 echo "done."

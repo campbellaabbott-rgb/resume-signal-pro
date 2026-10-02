@@ -90,12 +90,26 @@ const PREV_DEF = definitionOf(read(PREV_FILE), FN);
 const PREV_PREV_DEF = definitionOf(read(PREV_PREV_FILE), FN);
 
 describe("the migration: one header line, nothing else", () => {
-  it("is the newest migration defining the curve, so the pins follow it", () => {
+  it("was the newest definition of the curve when it landed, and every later re-issue keeps its header", () => {
     // The selector published-claims uses: mentions the function with a body.
-    const newest = FILES
-      .filter((f) => { const s = read(f); return new RegExp(`FUNCTION\\s+public\\.${FN}\\s*\\(`).test(s) && s.includes("$$"); })
-      .pop();
-    expect(newest).toBe(NEW_FILE);
+    // RE-ANCHORED 2026-10-02. This file was the newest definition until the
+    // curve was re-issued with a per-board watch floor on its day-30 pool
+    // (20261002121843). The pins above still compare THIS file to its
+    // predecessor, because the claim under test is this file's own -- one
+    // header line, nothing else -- and the property that must outlive it is
+    // the raised header: a later re-issue that put the sixty seconds back
+    // would blank the section on the cron path this file paid for.
+    const defining = FILES.filter((f) => { const s = read(f); return new RegExp(`FUNCTION\\s+public\\.${FN}\\s*\\(`).test(s) && s.includes("$$"); });
+    expect(defining, "this file is still a definition of the curve").toContain(NEW_FILE);
+    expect(defining[defining.indexOf(NEW_FILE) - 1], "and it replaced the file its pins compare against").toBe(PREV_FILE);
+    const later = defining.slice(defining.indexOf(NEW_FILE) + 1);
+    expect(later, "the 2026-10-02 watch-floor re-issue").toContain("20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql");
+    for (const f of later) {
+      const head = headOf(definitionOf(read(f), FN));
+      const m = TIMEOUT_RE.exec(sqlCodeOf(head));
+      expect(m, `${f} re-issued the curve with no header timeout`).toBeTruthy();
+      expect(secs(m![1]), `${f} moved the header the cron pays for`).toBe(300);
+    }
   });
 
   it("defines exactly one function, drops none, creates none bare", () => {
