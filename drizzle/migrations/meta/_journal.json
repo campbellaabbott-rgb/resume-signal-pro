@@ -596,6 +596,13 @@
       "when": 1791037407202,
       "tag": "0084_a_week_of_takedowns_is_counted_on_the_filter_its_quarter_uses",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1791037421058,
+      "tag": "0085_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full",
+      "breakpoints": true
     }
   ]
 }
