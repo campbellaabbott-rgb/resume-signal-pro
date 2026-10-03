@@ -1383,7 +1383,11 @@ const PINNED = {
   // bound as one canonical instant; status, company-suggest and host_sweep
   // cannot be looped into database or outbound work.
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.88",
+  // 2026-09-09.89: an aged-out id the feed has re-dated (Ashby re-publishes
+  // under the same id) walks back in instead of being refused for 180 days
+  // (tombstone.ts; open PR #5's .87, renumbered).
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.89",
 };
 
 /**

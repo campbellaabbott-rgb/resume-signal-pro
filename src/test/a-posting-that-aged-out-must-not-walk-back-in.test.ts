@@ -33,6 +33,12 @@ import { resolve } from "node:path";
  * ledger — so the guard follows the indirection instead of pinning the old
  * call-chain spelling, and checks that the helper really does write the table
  * it is named for.
+ *
+ * 2026-10-03: "an ATS posting id and its posting date are both stable" is false
+ * for Ashby, which re-dates a posting under the same id. A tombstoned id the
+ * feed has re-dated now walks back in; that rule and its loop guards are held
+ * by a-re-dated-posting-walks-back-in.test.ts. Everything here still holds for
+ * every row that rule does not admit.
  */
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
@@ -51,8 +57,12 @@ const CODE = stripTs(FN);
 
 describe("a posting that aged out must not walk back in", () => {
   it("ingest consults the tombstone before inserting new rows", () => {
-    expect(CODE).toMatch(/from\("job_board_aged_out"\)\s*\n?\s*\.select\("id"\)/);
-    expect(CODE).toMatch(/newRows = newRows\.filter\(\(r\) => !blocked\.has\(String\(r\.id\)\)\)/);
+    // Scoped to the ingest block: the sweep reads the same table by id too, and
+    // a whole-file match was satisfied by the sweep alone. Since .87 ingest
+    // also reads the tombstone's date (a-re-dated-posting-walks-back-in).
+    const block = CODE.slice(CODE.indexOf("if (newRows.length > 0)"), CODE.indexOf("const vanishedAll"));
+    expect(block).toMatch(/from\("job_board_aged_out"\)\s*\n?\s*\.select\("id, posted_at"\)/);
+    expect(block).toMatch(/newRows = newRows\.filter\(\(r\) => !blocked\.has\(String\(r\.id\)\)\)/);
   });
 
   it("a missing tombstone table degrades to the old behaviour, never to an empty board", () => {
