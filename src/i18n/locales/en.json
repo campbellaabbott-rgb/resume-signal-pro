@@ -3997,6 +3997,8 @@
     "budgetTitle": "The job board is paused for this connection",
     "budgetAddress": "This connection has used today's allowance of {{limit}} job board reads. It resets at {{time}} your time.",
     "budgetCountry": "Job board reads from your region are paused right now.",
+    "budgetNetwork": "Job board reads from this network are paused right now.",
+    "budgetPass": "Your browser needs to finish a quick check before the job board can load. Reload the page to try again.",
     "budgetContact": "If you are looking for work and this is in your way, write to {{email}} and we will sort it out.",
     "clearSearch": "Clear the search",
     "zeroTitle": "No verified openings match all of that",

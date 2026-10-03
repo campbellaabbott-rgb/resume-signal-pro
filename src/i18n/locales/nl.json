@@ -3997,6 +3997,8 @@
     "budgetTitle": "De vacaturebank is gepauzeerd voor deze verbinding",
     "budgetAddress": "Deze verbinding heeft het dagelijkse tegoed van {{limit}} opvragingen van de vacaturebank opgebruikt. Het wordt om {{time}} (jouw tijd) opnieuw ingesteld.",
     "budgetCountry": "Opvragingen van de vacaturebank vanuit jouw regio zijn op dit moment gepauzeerd.",
+    "budgetNetwork": "Opvragingen van de vacaturebank vanuit dit netwerk zijn op dit moment gepauzeerd.",
+    "budgetPass": "Je browser moet eerst een korte controle afronden voordat de vacaturebank kan laden. Laad de pagina opnieuw om het nog eens te proberen.",
     "budgetContact": "Ben je op zoek naar werk en zit dit je in de weg? Schrijf naar {{email}}, dan lossen we het op.",
     "clearSearch": "Zoekopdracht wissen",
     "zeroTitle": "Geen geverifieerde vacatures die aan dit alles voldoen",

@@ -93,11 +93,14 @@ import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
-import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS } from "./anon-budget.ts";
+import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress } from "./anon-budget.ts";
+import { boardPassAction } from "./board-pass.ts";
 
+// x-rb-pass is the browser's board pass (board-pass.ts). Our tooling's budget
+// and reader headers stay off this list, so a page cannot send them.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rb-pass",
 };
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -112,7 +115,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.86"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.87"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -7314,12 +7317,22 @@ Deno.serve(async (req) => {
       rpc: (args, signal) => client.rpc("job_board_anon_check", args).abortSignal(signal),
       serviceKey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       cors: corsHeaders,
+      passSecret: Deno.env.get("TURNSTILE_SECRET_KEY") ?? "",
     });
     if (refused) return refused;
   }
   if (action === "budget-echo") {
     // Uncounted, zero database: what the gate sees of this caller's own request.
-    return json(await budgetEcho(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
+    return json(await budgetEcho(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", Deno.env.get("TURNSTILE_SECRET_KEY") ?? ""));
+  }
+  if (action === "board-pass") {
+    // Uncounted, zero database: a Turnstile token in, a half-hour pass out (board-pass.ts).
+    const r = await boardPassAction(body, {
+      secret: Deno.env.get("TURNSTILE_SECRET_KEY") ?? "",
+      serviceKey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      remoteip: callerAddress(req.headers).address,
+    });
+    return new Response(JSON.stringify(r.body), { status: r.status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
   }
 
   try {
@@ -7586,7 +7599,7 @@ Deno.serve(async (req) => {
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
         // The anonymous budget's setting row and the code's default caps.
-        anonBudget: anonBudgetStatus((anonBudgetRow as { data?: { v?: unknown } | null } | null)?.data?.v ?? null),
+        anonBudget: anonBudgetStatus((anonBudgetRow as { data?: { v?: unknown } | null } | null)?.data?.v ?? null, { passConfigured: !!Deno.env.get("TURNSTILE_SECRET_KEY") }),
         // Rationale: docs/job-board-index-notes.md#n211-questionvendors-realquestionvendors
         questionVendors: realQuestionVendors(),
         // Rationale: docs/job-board-index-notes.md#n212-applyagent-aameta-data-v

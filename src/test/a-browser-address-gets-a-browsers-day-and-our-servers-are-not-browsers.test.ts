@@ -32,10 +32,17 @@
  *       no-store, and NOTHING else touched the database (the gate ran before
  *       dispatch); a country refusal says code 'country';
  *     - the counter is called with an abort signal, and an error, an unapplied
- *       migration (PGRST202) or a hang past the deadline serves the request.
- *   THE CODEBASE. The gate, the module and the migration never touch the
+ *       migration (PGRST202) or a hang past the deadline serves the request;
+ *     - .87: the counter also gets the caller's /24 (p_net), board-pass
+ *       state (p_pass) and a valid pass's id (p_pass_id, which the counter
+ *       meters); before migration 20261003180000 (PGRST202 for those ten
+ *       arguments) the call is repeated with the seven, so the rules already
+ *       live keep refusing across the skew; a network or pass refusal says
+ *       its own code.
+ *   THE CODEBASE. The gate, the module and the migrations never touch the
  *     request budget shared with upload and checkout, and the browser cannot
- *     send either new header (job-board's CORS allow-list names neither).
+ *     send our tooling's headers (job-board's CORS allow-list names neither,
+ *     and names the browser's own pass header).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -132,7 +139,9 @@ describe("the address is the platform's word, not the caller's", () => {
     expect(r.status).toBe(429);
     expect(r.headers.get("Retry-After")).toBe("30");
     expect((await r.json()).resetAt).toBe("2026-10-03T00:00:00.000Z");
-    expect(anonBudgetStatus(null)).toMatchObject({ settingPresent: false, enforce: true, countriesListed: 0, defaults: { address: 10000, build: 15000, probe: 10000 } });
+    expect(anonBudgetStatus(null)).toMatchObject({ settingPresent: false, enforce: true, countriesListed: 0, networksListed: 0, pass: { configured: false, required: false, cap: null }, defaults: { address: 10000, build: 15000, probe: 10000 } });
+    expect(anonBudgetStatus({ blockedNetworks: ["43.128.0.0/10", "47.74.0.0/16"], requirePass: true, passCap: 300 }, { passConfigured: true })).toMatchObject({ networksListed: 2, pass: { configured: true, required: true, cap: 300 } });
+    expect(anonBudgetStatus({ blockedNetworks: "43.128.0.0/10", requirePass: "yes" })).toMatchObject({ networksListed: "invalid", pass: { configured: false, required: false } });
     expect(anonBudgetStatus({ enforce: false })).toMatchObject({ settingPresent: true, enforce: false, countriesListed: 0 });
     expect(anonBudgetStatus({ countries: "CN" }).countriesListed, "a non-array list is reported as invalid, not as zero").toBe("invalid");
     expect(anonBudgetStatus({ countries: ["CN"], countryCap: 0, addressCap: 3000 })).toMatchObject({ countriesListed: 1, countryCap: 0, overrides: { addressCap: 3000 } });
@@ -195,7 +204,7 @@ describe("the handler: who is counted, and what a refusal is", () => {
     const res = await post({ action: "facets" }, { origin: "https://resumebooster.work" });
     expect(res.status).toBe(200);
     expect(db.checks).toHaveLength(1);
-    expect(db.checks[0].args).toMatchObject({ p_kind: "address", p_country: "CN", p_address_cap: 10000, p_build_cap: 15000, p_probe_cap: 10000, p_bare: false });
+    expect(db.checks[0].args).toMatchObject({ p_kind: "address", p_country: "CN", p_address_cap: 10000, p_build_cap: 15000, p_probe_cap: 10000, p_bare: false, p_net: "203.0.113.0/24", p_pass: "unconfigured", p_pass_id: null });
     expect(String(db.checks[0].args.p_bucket)).toMatch(/^ip:[0-9a-f]{16}$/);
     expect(db.checks[0].signal, "the counter is cancelled at the deadline, not abandoned").toBeInstanceOf(AbortSignal);
     await post({});
@@ -251,7 +260,7 @@ describe("the handler: who is counted, and what a refusal is", () => {
       expect(res.status, JSON.stringify(body)).toBeLessThan(500);
     }
     const echo = await post({ action: "budget-echo" }, { "x-rb-budget": "probe", "cf-ipcountry": "us" });
-    expect(await echo.json()).toEqual({ address: "203.0.113.9", addressKey: "203.0.113.9", source: "cf", country: "US", countrySource: "cf", kind: "probe", exempt: false });
+    expect(await echo.json()).toEqual({ address: "203.0.113.9", addressKey: "203.0.113.9", net: "203.0.113.0/24", source: "cf", country: "US", countrySource: "cf", kind: "probe", exempt: false, passState: "unconfigured" });
     expect(db.checks).toEqual([]);
   });
 
@@ -272,6 +281,46 @@ describe("the handler: who is counted, and what a refusal is", () => {
     expect(db.writes, "and no search log").toEqual([]);
     db.verdict = async () => ({ data: [{ is_allowed: false, used_today: 0, over_today: 1, cap_today: 0, country_rule: true, enforcing: true }], error: null });
     expect((await (await post({ action: "detail", id: "greenhouse:acme:1" })).json()).code).toBe("country");
+  });
+
+  it(".87: a network refusal and a pass refusal say their own code; a listed network outranks the rest", async () => {
+    const refuse = (o: Record<string, boolean>) => async () => ({ data: [{ is_allowed: false, used_today: 0, over_today: 1, cap_today: 0, country_rule: false, enforcing: true, network_rule: false, pass_rule: false, ...o }], error: null });
+    db.verdict = refuse({ network_rule: true, country_rule: true });
+    const net = await post({ action: "list" });
+    expect(net.status).toBe(429);
+    const nb = await net.json();
+    expect(nb).toMatchObject({ error: "board_budget", code: "network" });
+    expect(nb.message).toMatch(/^This network is paused/);
+    expect(nb.message).toMatch(/resumeboostersupp@gmail\.com/);
+    db.verdict = refuse({ pass_rule: true });
+    const pass = await post({ action: "facets" });
+    expect(pass.status).toBe(429);
+    expect(pass.headers.get("Retry-After"), "a fresh pass lifts it at once: nothing to wait for").toBe("1");
+    const pb = await pass.json();
+    expect(pb).toMatchObject({ error: "board_budget", code: "pass", resetAt: null });
+    expect(pb.message).toMatch(/quick check before the job board can load\. Reload the page/);
+    db.verdict = refuse({ pass_rule: true, country_rule: true });
+    expect((await (await post({ action: "list" })).json()).code, "the counter sets pass_rule only when the pass is what refuses").toBe("pass");
+  });
+
+  it(".87: before the migration (PGRST202 for ten arguments) the call is repeated with the seven, and its verdict stands", async () => {
+    db.verdict = async () => {
+      const last = db.checks[db.checks.length - 1].args;
+      if ("p_net" in last || "p_pass" in last || "p_pass_id" in last) return { data: null, error: { code: "PGRST202", message: "Could not find the function public.job_board_anon_check(p_bare, p_build_cap, p_bucket, p_country, p_kind, p_net, p_pass, p_pass_id, ...)" } };
+      return { data: [{ is_allowed: false, used_today: 0, over_today: 1, cap_today: 0, country_rule: true, enforcing: true }], error: null };
+    };
+    const res = await post({ action: "list" }, { "cf-connecting-ip": "114.114.114.114", "cf-ipcountry": "" });
+    expect(db.checks.map((c) => Object.keys(c.args).sort().join(",")), "ten named arguments, then the seven the old counter has").toEqual([
+      "p_address_cap,p_bare,p_bucket,p_build_cap,p_country,p_kind,p_net,p_pass,p_pass_id,p_probe_cap",
+      "p_address_cap,p_bare,p_bucket,p_build_cap,p_country,p_kind,p_probe_cap",
+    ]);
+    expect(db.checks[1].signal, "inside the same deadline").toBe(db.checks[0].signal);
+    expect(res.status, "the China block keeps refusing across the skew").toBe(429);
+    expect((await res.json()).code).toBe("country");
+    db.checks = [];
+    db.verdict = async () => ({ data: null, error: { code: "42501", message: "permission denied" } });
+    expect((await post({ action: "facets" })).status, "any other error is not repeated, and serves").toBe(200);
+    expect(db.checks).toHaveLength(1);
   });
 
   it("fails open: an error, an unapplied migration, a rejection, an unreadable row, or a hang past the deadline", async () => {
@@ -301,6 +350,8 @@ describe("the meter shares nothing with the request budget, and a browser cannot
   const GATE = INDEX.slice(gateAt, INDEX.indexOf("if (action ===", gateAt));
   const MODULE = codeOf(read("supabase/functions/job-board/anon-budget.ts"));
   const MIGRATION = sqlCodeOf(read("supabase/migrations/20261002140000_a_browser_address_gets_a_browsers_day_and_the_count_is_readable.sql"));
+  const NETWORKS = sqlCodeOf(read("supabase/migrations/20261003180000_a_rotating_pool_is_seen_by_its_network_and_a_browser_can_be_asked_for_a_turnstile_check.sql"));
+  const PASS = codeOf(read("supabase/functions/job-board/board-pass.ts"));
 
   it("the gate sits after the body parse and before the first action is dispatched", () => {
     expect(gateAt, "the gate is not in job-board").toBeGreaterThan(0);
@@ -311,15 +362,15 @@ describe("the meter shares nothing with the request budget, and a browser cannot
   });
 
   it("neither the gate, the module nor the migration touches the shared request budget", () => {
-    for (const [name, src] of [["gate", GATE], ["anon-budget.ts", MODULE], ["migration", MIGRATION]] as const) {
+    for (const [name, src] of [["gate", GATE], ["anon-budget.ts", MODULE], ["migration", MIGRATION], [".87 migration", NETWORKS], ["board-pass.ts", PASS]] as const) {
       expect(src.length, `${name} not read`).toBeGreaterThan(200);
       expect(src, name).not.toMatch(/check_rate_limit|check_global_rate_limit|\brate_limits\b/);
     }
   });
 
-  it("job-board's CORS allow-list names neither new header, so a page cannot send them", () => {
+  it("job-board's CORS allow-list names the browser's pass and neither of our tooling's headers, so a page cannot send them", () => {
     const allow = /"Access-Control-Allow-Headers":\s*"([^"]*)"/.exec(INDEX)?.[1] ?? "";
-    expect(allow).toBe("authorization, x-client-info, apikey, content-type");
+    expect(allow).toBe("authorization, x-client-info, apikey, content-type, x-rb-pass");
     expect(allow).not.toMatch(/x-rb-budget|x-rb-reader/);
   });
 });

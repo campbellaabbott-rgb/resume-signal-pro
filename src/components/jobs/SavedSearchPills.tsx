@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
 
@@ -45,7 +46,7 @@ export function SavedSearchPills() {
         const counts: Record<string, number> = {};
         await Promise.all((data as SavedSearch[]).filter((s) => s.last_seen_at).map(async (s) => {
           try {
-            const { data: res } = await supabase.functions.invoke("job-board", {
+            const { data: res } = await invokeJobBoard({
               body: {
                 action: "list", countOnly: true, includeFacets: false,
                 // THE SAVED FILTER SET, WHOLE — via the one mapper, never a

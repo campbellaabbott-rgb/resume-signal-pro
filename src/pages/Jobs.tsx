@@ -65,6 +65,7 @@ import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { readBoardFacets } from "@/lib/board-facets";
 import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
@@ -3683,20 +3684,21 @@ export default function Jobs() {
   // board's per-connection allowance resets at 00:00 UTC; a retry 1.2s later is
   // a second refused request and nothing else. Once one lands, every counted
   // call short-circuits here (no request at all) until the reset, and the page
-  // says why instead of looking broken.
+  // says why instead of looking broken. (A missing board pass is the one
+  // refusal a retry can lift; invokeJobBoard does that once, before this sees it.)
   const invokeBoard = async <T,>(
     body: Record<string, unknown>,
     { retry = true }: { retry?: boolean } = {},
   ): Promise<{ data: T | null; error: { message?: string } | null }> => {
     if (boardBudgetRefusal()) return { data: null, error: { message: BOARD_BUDGET_ERROR } };
-    const first = await supabase.functions.invoke("job-board", { body });
+    const first = await invokeJobBoard({ body });
     if (!first.error && first.data != null) return first as { data: T; error: null };
     const refusedFirst = await readBoardBudgetRefusal(first.error);
     if (refusedFirst) { markBoardBudgetRefused(refusedFirst); return first as { data: T | null; error: { message?: string } | null }; }
     if (!retry) return first as { data: T | null; error: { message?: string } | null };
     await new Promise((r) => setTimeout(r, 1200));
     if (boardBudgetRefusal()) return { data: null, error: { message: BOARD_BUDGET_ERROR } };
-    const second = await supabase.functions.invoke("job-board", { body }) as { data: T | null; error: { message?: string } | null };
+    const second = await invokeJobBoard({ body }) as { data: T | null; error: { message?: string } | null };
     const refusedSecond = await readBoardBudgetRefusal(second.error);
     if (refusedSecond) markBoardBudgetRefused(refusedSecond);
     return second;
@@ -3858,7 +3860,7 @@ export default function Jobs() {
         const sig = JSON.stringify({ ...body, offset: 0, cursor: undefined, includeFacets: undefined });
         // A standing budget refusal: no request at all until the reset.
         if (boardBudgetRefusal()) throw new Error(BOARD_BUDGET_ERROR);
-        let { data: res, error: err } = await supabase.functions.invoke("job-board", { body });
+        let { data: res, error: err } = await invokeJobBoard({ body });
         if (err || !res?.jobs) {
           // A budget refusal is never retried: it cannot clear before 00:00 UTC.
           const refused = await readBoardBudgetRefusal(err);
@@ -3867,7 +3869,7 @@ export default function Jobs() {
           // ceiling can bounce a single request; the next instance serves fine.
           await new Promise((r) => setTimeout(r, 1200));
           if (seq !== reqSeq.current) return;
-          ({ data: res, error: err } = await supabase.functions.invoke("job-board", { body }));
+          ({ data: res, error: err } = await invokeJobBoard({ body }));
           const refusedAgain = await readBoardBudgetRefusal(err);
           if (refusedAgain) { markBoardBudgetRefused(refusedAgain); throw new Error(BOARD_BUDGET_ERROR); }
         }
@@ -4668,7 +4670,7 @@ export default function Jobs() {
     setReportingId(null);
     setReportedIds((prev) => new Set(prev).add(job.id));
     try {
-      await supabase.functions.invoke("job-board", { body: { action: "report", id: job.id, reason } });
+      await invokeJobBoard({ body: { action: "report", id: job.id, reason } });
     } catch { /* the report is best-effort — never block the user on telemetry */ }
     if (reason === "gone") {
       const stillLive = await verifyJob(job); // prunes + toasts if confirmed gone
@@ -4978,8 +4980,7 @@ export default function Jobs() {
    * failure is logged rather than silently dropped.
    */
   const trackClick = (job: BoardJob, kind: "open" | "apply") => {
-    void supabase.functions
-      .invoke("job-board", {
+    void invokeJobBoard({
         body: {
           action: "click",
           postingId: job.id,

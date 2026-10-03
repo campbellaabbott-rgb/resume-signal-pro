@@ -151,6 +151,7 @@ import { Footer } from "@/components/Footer";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { readBoardFacets } from "@/lib/board-facets";
 // THE SKIP-LINK RECOVERY, FROM src/lib RATHER THAN FROM Jobs.tsx. It was
 // declared in Jobs.tsx and importing it from there would pull that 10.6k-line
@@ -1252,7 +1253,7 @@ const FAILED: Priced = { total: null, capped: false, atLeast: null, ignored: [],
  *  for the count only. */
 async function priceSlice(params: JobSearchParams): Promise<Priced> {
   try {
-    const { data, error } = await supabase.functions.invoke("job-board", {
+    const { data, error } = await invokeJobBoard({
       // `limit: 1`, NOT `countOnly: true`, AND THE REASON IS MEASURED.
       //
       // Probed live against production while this was written, same filters,
@@ -2017,7 +2018,7 @@ export default function Explore() {
       };
       let page: BoardCountReply | null = null;
       try {
-        const { data, error } = await supabase.functions.invoke("job-board", {
+        const { data, error } = await invokeJobBoard({
           // includeFacets FALSE, deliberately: the facet this call would return
           // is the board-wide employer list, and asking for it would put a
           // number on the page that answers a different question.

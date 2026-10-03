@@ -11,6 +11,12 @@
  *   1. A refusal must never be RETRIED. The board's callers retry every failure
  *      once after 1.2s; against a cap that resets at midnight UTC a retry is a
  *      second refused request and nothing else.
+ *      THE SINGLE EXCEPTION (.87): code "pass" -- the browser's board pass was
+ *      missing or stale -- is lifted at once by a fresh pass, so
+ *      src/lib/invoke-job-board.ts gets one and retries exactly ONCE before the
+ *      caller ever sees the refusal. Nothing else retries a refusal, and a
+ *      second "pass" refusal is final like any other (resetAt null: it stands
+ *      until the page is reloaded).
  *   2. A refusal is not an answer about a posting. A deep link whose detail was
  *      refused used to render "Posting no longer available" and mark a LIVE
  *      posting noindex; a hover prefetch used to cache "" (the employer wrote
@@ -20,7 +26,10 @@
  */
 import { useSyncExternalStore } from "react";
 
-export type BoardBudgetRefusal = { code: "address" | "country"; limit: number | null; resetAt: string | null };
+export type BoardBudgetRefusalCode = "address" | "country" | "network" | "pass";
+export type BoardBudgetRefusal = { code: BoardBudgetRefusalCode; limit: number | null; resetAt: string | null };
+
+const REFUSAL_CODES: ReadonlySet<string> = new Set<BoardBudgetRefusalCode>(["address", "country", "network", "pass"]);
 
 /** The error code the board's 429 carries. The page matches nothing else as a refusal. */
 export const BOARD_BUDGET_ERROR = "board_budget";
@@ -45,7 +54,7 @@ export async function readBoardBudgetRefusal(error: unknown): Promise<BoardBudge
     const body = (await res.clone().json()) as { error?: unknown; code?: unknown; limit?: unknown; resetAt?: unknown } | null;
     if (!body || body.error !== BOARD_BUDGET_ERROR) return null;
     return {
-      code: body.code === "country" ? "country" : "address",
+      code: typeof body.code === "string" && REFUSAL_CODES.has(body.code) ? (body.code as BoardBudgetRefusalCode) : "address",
       limit: typeof body.limit === "number" ? body.limit : null,
       resetAt: typeof body.resetAt === "string" ? body.resetAt : null,
     };

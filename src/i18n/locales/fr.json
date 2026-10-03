@@ -3997,6 +3997,8 @@
     "budgetTitle": "Le tableau des offres est en pause pour cette connexion",
     "budgetAddress": "Cette connexion a utilisé le quota quotidien de {{limit}} consultations du tableau. Il est réinitialisé à {{time}}, heure locale.",
     "budgetCountry": "Les consultations du tableau depuis votre région sont suspendues pour le moment.",
+    "budgetNetwork": "Les consultations du tableau depuis ce réseau sont suspendues pour le moment.",
+    "budgetPass": "Votre navigateur doit terminer une vérification rapide avant que le tableau puisse se charger. Rechargez la page pour réessayer.",
     "budgetContact": "Si vous cherchez un emploi et que cela vous bloque, écrivez à {{email}} et nous réglerons le problème.",
     "clearSearch": "Effacer la recherche",
     "zeroTitle": "Aucune offre vérifiée ne correspond à tous ces critères",

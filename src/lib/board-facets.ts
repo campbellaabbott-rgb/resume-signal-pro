@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 
 /**
  * THE ONE READ OF THE BOARD'S STORED FACET ROW, shared by every page that
@@ -80,7 +80,7 @@ function countMap(raw: unknown): Record<string, number> | null {
 export async function readBoardFacets(deadlineMs: number = FACET_DEADLINE_MS): Promise<BoardFacetsReply | null> {
   try {
     const { data, error } = await Promise.race([
-      supabase.functions.invoke("job-board", { body: { action: "facets" } }),
+      invokeJobBoard({ body: { action: "facets" } }),
       new Promise<{ data: null; error: true }>((res) =>
         setTimeout(() => res({ data: null, error: true }), deadlineMs)),
     ]);

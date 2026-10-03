@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { COMPANY_SCOPE_MAX } from "@/lib/company-scope";
 
 // `open` — the SERVABLE per-employer count, under BOTH serving predicates
@@ -59,8 +59,7 @@ export default function Companies() {
 
   useEffect(() => {
     let cancelled = false;
-    supabase.functions
-      .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: true } })
+    invokeJobBoard({ body: { action: "list", limit: 1, includeFacets: true } })
       .then(({ data }) => {
         if (cancelled) return;
         // NEVER companiesCount. That is the length of the UNFILTERED

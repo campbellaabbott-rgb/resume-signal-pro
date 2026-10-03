@@ -6,8 +6,10 @@
  * now" with a Try again button would send a person to retry a request that
  * cannot succeed until the reset, and an empty board would read as "no jobs".
  * So it says what happened, when it lifts, and who to write to -- and offers
- * no retry. The country variant carries no number: there is no allowance to
- * quote.
+ * no retry. The country and network variants carry no number: there is no
+ * allowance to quote. The pass variant (.87: the browser check did not finish,
+ * even after the one fresh pass src/lib/invoke-job-board.ts asks for) says the
+ * one thing that can help, a reload.
  */
 import { useTranslation } from "react-i18next";
 import { PauseCircle } from "lucide-react";
@@ -23,10 +25,14 @@ export function BoardBudgetNotice({ refusal, variant = "panel" }: { refusal: Boa
     : "00:00 UTC";
   const body = refusal.code === "country"
     ? t("jobsPage.budgetCountry", "Job board reads from your region are paused right now.")
-    : t("jobsPage.budgetAddress", "This connection has used today's allowance of {{limit}} job board reads. It resets at {{time}} your time.", {
-        limit: (refusal.limit ?? 0).toLocaleString(),
-        time,
-      });
+    : refusal.code === "network"
+      ? t("jobsPage.budgetNetwork", "Job board reads from this network are paused right now.")
+      : refusal.code === "pass"
+        ? t("jobsPage.budgetPass", "Your browser needs to finish a quick check before the job board can load. Reload the page to try again.")
+        : t("jobsPage.budgetAddress", "This connection has used today's allowance of {{limit}} job board reads. It resets at {{time}} your time.", {
+            limit: (refusal.limit ?? 0).toLocaleString(),
+            time,
+          });
   return (
     <div
       role="status"

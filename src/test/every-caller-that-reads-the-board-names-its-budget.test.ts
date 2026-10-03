@@ -326,3 +326,99 @@ describe("verify-deploy 7j judges a .86 country, read from the address because n
     expect(fails(run7j({ status: status86, plain: v86("XX", "cf") })).some((l) => /the country the function reads/.test(l))).toBe(true);
   });
 });
+
+// ── verify-deploy 7l, judged against fixtures ───────────────────────────────
+
+describe("verify-deploy 7j and 7k accept .87, which carries .85 and .86", () => {
+  it("a .87 status passes the version lines of 7j and 7k", () => {
+    const v87 = { address: "203.0.113.9", source: "cf", country: "XX", countrySource: "none", kind: "address", exempt: false };
+    const out = run7j({ status: { ...GOOD.status, version: "2026-09-09.87" }, plain: v87, forged: v87, forgedXff: v87 });
+    expect(fails(out), out.join("\n")).toEqual([]);
+    const s7k = SCRIPT.slice(SCRIPT.indexOf('echo "== 7k.'), SCRIPT.indexOf('echo "== 7l.'));
+    expect(s7k).toMatch(/2026-09-09\\\.8\[67\]/);
+  });
+});
+
+const s7l = SCRIPT.slice(SCRIPT.indexOf('echo "== 7l.'), SCRIPT.indexOf('echo "done."'));
+const body7l = /node -e '([^']*)'/.exec(s7l)?.[1] ?? "";
+type Bn = { bn_hour: string; bn_net: string; bn_kind: string; bn_pass: string; bn_requests: number; bn_over_cap: number };
+const bn = (net: string, kind: string, pass: string, n: number, over = 0): Bn => ({ bn_hour: "2026-10-03T18:00:00Z", bn_net: net, bn_kind: kind, bn_pass: pass, bn_requests: n, bn_over_cap: over });
+const GOOD7L = {
+  status: { version: "2026-09-09.87", anonBudget: { ...GOOD.status.anonBudget, networksListed: 0, pass: { configured: false, required: false, cap: null } } } as Record<string, unknown>,
+  echo: { address: "203.0.113.9", addressKey: "203.0.113.9", net: "203.0.113.0/24", source: "cf", country: "XX", countrySource: "none", kind: "probe", exempt: false, passState: "unconfigured" } as Record<string, unknown>,
+  pass: { error: "board_pass_unconfigured" } as Record<string, unknown> | string,
+  passCode: "503",
+  networks: [bn("43.130.0.0/16", "address", "unconfigured", 900, 0), bn("47.74.0.0/16", "address", "unconfigured", 400), bn("203.0.0.0/16", "probe", "unconfigured", 3), bn("none", "unknown_address", "unconfigured", 2)] as unknown,
+};
+function run7l(patch: Partial<typeof GOOD7L> = {}): string[] {
+  const f = { ...GOOD7L, ...patch };
+  const dir = mkdtempSync(join(tmpdir(), "vd7l-"));
+  const files: Record<string, string> = {
+    "/tmp/vd_7j_status.json": JSON.stringify(f.status), "/tmp/vd_7l_echo.json": JSON.stringify(f.echo),
+    "/tmp/vd_7l_pass.json": typeof f.pass === "string" ? f.pass : JSON.stringify(f.pass), "/tmp/vd_7l_pass_code.txt": f.passCode,
+    "/tmp/vd_7l_networks.json": JSON.stringify(f.networks),
+  };
+  let js = body7l;
+  for (const [tmp, content] of Object.entries(files)) {
+    const local = join(dir, tmp.slice("/tmp/".length));
+    writeFileSync(local, content);
+    js = js.split(tmp).join(local);
+  }
+  return execFileSync(process.execPath, ["-e", js], { encoding: "utf8" }).split("\n").filter(Boolean);
+}
+
+describe("verify-deploy 7l judges the network and the pass", () => {
+  it("the section exists after 7k, reads its own files, and its node body is intact", () => {
+    expect(SCRIPT.indexOf('echo "== 7l.'), "no section 7l").toBeGreaterThan(SCRIPT.indexOf('echo "== 7k.'));
+    for (const f of ["/tmp/vd_7l_echo.json", "/tmp/vd_7l_networks.json", "/tmp/vd_7l_pass_code.txt"]) expect(body7l).toContain(f);
+    expect(body7l, "the node body ran to its end (a single quote inside it would cut it short)").toContain("require the pass only once real browsers arrive valid");
+  });
+
+  it("a good .87 with no secret is all PASS, and prints the top networks and the pass split as INFO", () => {
+    const out = run7l();
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(out.some((l) => /^INFO {2}top network 43\.130\.0\.0\/16: 900 requests/.test(l)), out.join("\n")).toBe(true);
+    expect(out.some((l) => /^INFO {2}browser pass states .*unconfigured 1302/.test(l)), out.join("\n")).toBe(true);
+    expect(out.some((l) => /^PASS {2}requests that reached the counter with a network: 1303 of 1305/.test(l))).toBe(true);
+  });
+
+  it("with the secret set, this machine reads none and a junk token is a 403 from Cloudflare", () => {
+    const status = { ...GOOD7L.status, anonBudget: { ...(GOOD7L.status.anonBudget as object), pass: { configured: true, required: false, cap: 300 } } };
+    const out = run7l({ status, echo: { ...GOOD7L.echo, passState: "none" }, pass: { error: "board_pass_failed", codes: ["invalid-input-response"] }, passCode: "403" });
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(fails(run7l({ status, passCode: "503" })).length, "a 503 when the secret is set is wrong, and so is unconfigured").toBeGreaterThan(0);
+    expect(out.some((l) => /^INFO {2}bot check: secret SET, requirePass false, passCap 300/.test(l)), out.join("\n")).toBe(true);
+    const noCap = { ...GOOD7L.status, anonBudget: { ...(GOOD7L.status.anonBudget as object), pass: { configured: false, required: false } } };
+    expect(fails(run7l({ status: noCap })).some((l) => /anonBudget\.pass/.test(l)), "a .87 that reports no pass cap is not this release").toBe(true);
+  });
+
+  it("names spent passes, borrowed tooling headers and unproven declarations as INFO", () => {
+    const out = run7l({ networks: [
+      bn("43.130.0.0/16", "address", "spent", 700), bn("43.130.0.0/16", "address", "valid", 600),
+      bn("47.74.0.0/16", "build", "none", 40), bn("47.75.0.0/16", "build", "none", 40), bn("none", "unproven_api", "none", 3),
+    ] });
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(out.some((l) => /^INFO {2}spent: 700 requests carried a pass already used past passCap/.test(l)), out.join("\n")).toBe(true);
+    expect(out.some((l) => /^INFO {2}tooling declarations \(build\/probe\) in the last 3h: 80 requests from 2 networks/.test(l)), out.join("\n")).toBe(true);
+    expect(out.some((l) => /^INFO {2}unproven api\/mcp\/digest declarations in the last 3h: 3 \(must be 0 before REQUIRE THE PASS/.test(l)), out.join("\n")).toBe(true);
+  });
+
+  it("a stale bundle -- no net, no pass state, no pass switch, board-pass unknown -- is a FAIL on each", () => {
+    const stale = run7l({
+      status: { version: "2026-09-09.86", anonBudget: GOOD.status.anonBudget },
+      echo: { address: "203.0.113.9", addressKey: "203.0.113.9", source: "cf", country: "XX", countrySource: "none", kind: "probe", exempt: false },
+      pass: { error: "Unknown action" }, passCode: "400",
+    });
+    for (const re of [/status\.version/, /net = undefined/, /passState = undefined/, /anonBudget\.pass/, /networksListed/, /board-pass without the secret -> HTTP 400/]) {
+      expect(fails(stale).some((l) => re.test(l)), `${re} in:\n${stale.join("\n")}`).toBe(true);
+    }
+  });
+
+  it("the reader unapplied, leaking a key, publishing a narrower network, or a .87 whose calls carry no network, is a FAIL", () => {
+    expect(fails(run7l({ networks: { code: "PGRST202", message: "Could not find the function" } })).some((l) => /20261003180000 not applied/.test(l))).toBe(true);
+    expect(fails(run7l({ networks: [{ ...bn("43.130.0.0/16", "address", "none", 5), bucket: "ip:abc" }] })).some((l) => /aggregate keys only/.test(l))).toBe(true);
+    expect(fails(run7l({ networks: [bn("43.130.5.0/24", "address", "none", 5)] })).some((l) => /a \/16 or a \/32/.test(l))).toBe(true);
+    expect(fails(run7l({ networks: [bn("none", "address", "unconfigured", 50)] })).some((l) => /p_net is not reaching SQL/.test(l))).toBe(true);
+    expect(fails(run7l({ echo: { ...GOOD7L.echo, net: "203.0.0.0/16" } })).some((l) => /net = 203\.0\.0\.0\/16/.test(l)), "the echo's network must be its own address's /24").toBe(true);
+  });
+});

@@ -1363,7 +1363,15 @@ const PINNED = {
   // over APNIC's China delegations in cn-ranges.ts), because cf-ipcountry never
   // reaches the function on this platform and the .85 country switch was inert.
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.86",
+  // 2026-09-09.87: the meter sees the caller's network (a /24 or /48, p_net) and
+  // a browser's Turnstile board pass (board-pass.ts, the board-pass action,
+  // p_pass, and the pass id that meters each pass against passCap), with
+  // migration 20261003180000 adding blockedNetworks, requirePass (which also
+  // asks unproven declarations, and puts passless tooling headers on one shared
+  // row per kind) and the network telemetry; all inert until the owner sets a
+  // key, because the harvest is a rotating pool no per-address cap can see.
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.87",
 };
 
 /**

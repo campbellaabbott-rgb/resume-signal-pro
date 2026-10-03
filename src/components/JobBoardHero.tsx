@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Briefcase, Target, ShieldCheck, ArrowRight, Sparkles, CalendarClock, Bot } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { AtsCoverage } from "@/components/AtsCoverage";
 
 // Page-leading hero for the live job board. The board is the destination; the
@@ -13,15 +13,14 @@ function useBoardTotals() {
   const [totals, setTotals] = useState<{ jobs: number; feeds: number | null } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    supabase.functions
-      // includeFacets FALSE (2026-08-10): this call renders exactly two
-      // numbers, and the light response carries both — verified live at 1,751
-      // bytes against 100,935 with facets on, a 58x cut on every homepage
-      // view. The facets fallback below existed for deployments that predate
-      // `companiesCount` riding the light response; none remain (the deployed
-      // function is months past it), and the fallback now simply yields 0
-      // companies, which renders as the jobs count alone — degraded, honest.
-      .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: false } })
+    // includeFacets FALSE (2026-08-10): this call renders exactly two
+    // numbers, and the light response carries both — verified live at 1,751
+    // bytes against 100,935 with facets on, a 58x cut on every homepage
+    // view. The facets fallback below existed for deployments that predate
+    // `companiesCount` riding the light response; none remain (the deployed
+    // function is months past it), and the fallback now simply yields 0
+    // companies, which renders as the jobs count alone — degraded, honest.
+    invokeJobBoard({ body: { action: "list", limit: 1, includeFacets: false } })
       .then(({ data }) => {
         if (cancelled) return;
         // Use `total` — the read-filtered (≤30-day) count the /jobs board

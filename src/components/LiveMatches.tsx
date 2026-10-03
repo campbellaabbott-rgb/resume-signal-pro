@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Briefcase, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { rolesForIndustry } from "@/data/roles";
 import { roundedFloor } from "@/hooks/use-board-totals";
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
@@ -139,7 +140,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         const body = q
           ? { action: "list", q, limit: 30 }
           : { action: "list", category, limit: 30 };
-        let { data: res } = await supabase.functions.invoke("job-board", { body });
+        let { data: res } = await invokeJobBoard({ body });
         // Zero is a failed read, not a total: leaving it null keeps the CTAs on
         // their count-free copy rather than publishing "0 verified openings".
         const t0 = (res as { total?: number } | null)?.total;
@@ -153,7 +154,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         // five we show" threshold stands.
         const thin = by === "resume" ? jobs.length === 0 : jobs.length < 5;
         if (thin && q && category) {
-          ({ data: res } = await supabase.functions.invoke("job-board", { body: { action: "list", category, limit: 30 } }));
+          ({ data: res } = await invokeJobBoard({ body: { action: "list", category, limit: 30 } }));
           jobs = (res as { jobs?: [] })?.jobs ?? [];
           by = "industry";
         }
@@ -213,7 +214,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         let shown = ranked;
         if (ranked.length > 0) {
           try {
-            const { data: vr } = await supabase.functions.invoke("job-board", {
+            const { data: vr } = await invokeJobBoard({
               body: { action: "verify", ids: ranked.map((r) => r.id) },
             });
             // Nullable since .64: `null` is "we could not decide" (the board

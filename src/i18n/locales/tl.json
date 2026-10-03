@@ -3997,6 +3997,8 @@
     "budgetTitle": "Naka-pause ang job board para sa koneksyong ito",
     "budgetAddress": "Naubos na ng koneksyong ito ang allowance ngayong araw na {{limit}} na pagbasa ng job board. Magre-reset ito sa {{time}} sa oras mo.",
     "budgetCountry": "Naka-pause muna ang pagbasa ng job board mula sa iyong rehiyon.",
+    "budgetNetwork": "Naka-pause muna ang pagbasa ng job board mula sa network na ito.",
+    "budgetPass": "Kailangang tapusin muna ng iyong browser ang isang mabilis na pagsusuri bago mag-load ang job board. I-reload ang page para subukan muli.",
     "budgetContact": "Kung naghahanap ka ng trabaho at nakaharang ito sa iyo, sumulat sa {{email}} at aayusin namin.",
     "clearSearch": "I-clear ang search",
     "zeroTitle": "Walang verified na opening na tumutugma sa lahat ng iyan",

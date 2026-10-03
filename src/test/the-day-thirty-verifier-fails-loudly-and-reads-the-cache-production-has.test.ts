@@ -326,7 +326,10 @@ describe("the field rows: read from the explore cache, and dated against the app
     expect(pending.lines.some((l) => l.startsWith("FAIL") && /explore cache/.test(l)), show(pending.lines)).toBe(false);
 
     const stopped = run({ ...base(), applied: iso(200), explore: { computed_at: iso(240), stale_parts: [], field_grid: {} } });
-    expect(has(stopped.lines, "FAIL", /explore cache last ran 240 min ago/), show(stopped.lines)).toBe(true);
+    // NOW is taken when this file loads and the script reads its own clock when
+    // it runs, so on a loaded machine (load average 45-100 during a 2026-10-03
+    // gate) the stamp is a minute or more older by then: 241, not 240.
+    expect(has(stopped.lines, "FAIL", /explore cache last ran 24\d min ago/), show(stopped.lines)).toBe(true);
 
     const rewritten = run({ ...base(), applied: iso(50), explore: { computed_at: iso(10), stale_parts: [], field_grid: {} } });
     expect(has(rewritten.lines, "FAIL", /a run that began after the apply wrote no field_curves key/), show(rewritten.lines)).toBe(true);
