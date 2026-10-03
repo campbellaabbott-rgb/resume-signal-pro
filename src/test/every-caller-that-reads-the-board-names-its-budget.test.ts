@@ -15,12 +15,16 @@
  *     has spaces; a shell walk once answered "found nothing" about code it
  *     never read), throws on a missing directory, and carries a positive
  *     control of at least twelve files;
- *   - the build allowance holds 50 full bakes, each term read from the bake's
- *     own constants, so the bake cannot be capped by the bucket it lives in;
+ *   - the build cap holds twice the busiest day of bakes, each bake's calls
+ *     read from its own constants, and the largest cap -- all a header anyone
+ *     can read can claim, since one address is one day row -- stays below the
+ *     harvest it exists to stop;
  *   - agent-mcp, public-api and send-search-digest send the reader proof
  *     derived from the service key, and keep the ANON bearer: the proof
  *     skips the browser meter and grants no search power;
- *   - verify-deploy's section 7j judges correctly, run against fixtures.
+ *   - verify-deploy's section 7j judges correctly, run against fixtures --
+ *     including the FORGERY lines: a caller that writes cf-connecting-ip,
+ *     x-forwarded-for or cf-ipcountry through to the function fails them.
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -28,7 +32,7 @@ import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { BUDGETED_ACTIONS, BUILD_DAILY_CAP, PROBE_DAILY_CAP } from "../../supabase/functions/job-board/anon-budget";
+import { ADDRESS_DAILY_CAP, BUDGETED_ACTIONS, BUILD_DAILY_CAP, PROBE_DAILY_CAP } from "../../supabase/functions/job-board/anon-budget";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
@@ -101,7 +105,7 @@ describe("every caller that reads the board names its budget", () => {
     }
   });
 
-  it("the build allowance holds fifty full bakes, read from the bake's own constants", () => {
+  it("the build cap holds twice the busiest day of bakes, and stays below the harvest it exists to stop", () => {
     const bake = codeOf(read("scripts/prerender-seo.mjs"));
     const num = (name: string) => {
       const all = [...bake.matchAll(new RegExp(`const ${name} = (\\d+);`, "g"))].map((m) => Number(m[1]));
@@ -110,9 +114,20 @@ describe("every caller that reads the board names its budget", () => {
     };
     const perBake = 1 + num("POSTING_LIST_PAGES") + num("POSTING_PAGE_CARRY_MAX") + num("POSTING_PAGE_CAP");
     expect(perBake, "the bake's own call ceiling (facets head + list pages + carried + fresh details)").toBe(709);
-    expect(BUILD_DAILY_CAP).toBeGreaterThanOrEqual(50 * perBake);
-    // verify-deploy's own J() calls (~200 a run) fit many runs in a day.
-    expect(PROBE_DAILY_CAP).toBeGreaterThanOrEqual(5_000);
+    // Pushes to main per UTC day since the frontend began publishing from
+    // main (2026-09-16): the busiest was 10, on 2026-09-27. The command is in
+    // the .85 deploy note; the live answer is kind build in the telemetry.
+    const BUSIEST_BAKE_DAY = 10;
+    // The harvest this release meters: ~5,800 deep-link loads a day at 5
+    // counted calls each (the page-load ceiling the paused-board guard pins).
+    const HARVEST_DAILY_CALLS = 29_000;
+    expect(BUILD_DAILY_CAP).toBeGreaterThanOrEqual(2 * BUSIEST_BAKE_DAY * perBake);
+    // One day row per address: a declared kind claims the LARGEST cap at
+    // most, so that is the ceiling anyone reading this public repo can claim.
+    expect(Math.max(ADDRESS_DAILY_CAP, BUILD_DAILY_CAP, PROBE_DAILY_CAP), "the public header must not buy a harvester's day").toBeLessThan(HARVEST_DAILY_CALLS);
+    // verify-deploy's own J() calls (~200 a run) share the owner's row with
+    // the owner's browser; a probe cap under the browser's would refuse them first.
+    expect(PROBE_DAILY_CAP).toBeGreaterThanOrEqual(ADDRESS_DAILY_CAP);
   });
 
   it("our three edge callers send the reader proof and keep the anon bearer", () => {
@@ -149,11 +164,17 @@ type Row = { bh_hour: string; bh_kind: string; bh_country: string; bh_requests: 
 const r = (kind: string, country: string, n: number, hour = "2026-10-02T14:00:00Z"): Row =>
   ({ bh_hour: hour, bh_kind: kind, bh_country: country, bh_requests: n, bh_over_cap: 0, bh_addresses: 1, bh_addresses_over_cap: 0, bh_top_address_requests: n, bh_bare_requests: 0 });
 const GOOD = {
-  status: { version: "2026-09-09.85", anonBudget: { settingPresent: true, enforce: false, countriesListed: 0, countryCap: null, overrides: {}, defaults: { address: 10000, build: 40000, probe: 5000 } } },
+  status: { version: "2026-09-09.85", anonBudget: { settingPresent: true, enforce: false, countriesListed: 0, countryCap: null, overrides: {}, defaults: { address: 10000, build: 15000, probe: 10000 } } },
   trace: "fl=1\nip=203.0.113.9\nloc=US\n",
   plain: { address: "203.0.113.9", source: "cf", country: "US", kind: "address", exempt: false },
   probe: { address: "203.0.113.9", source: "cf", country: "US", kind: "probe", exempt: false },
   mcp: { address: "203.0.113.9", source: "cf", country: "US", kind: "unproven_mcp", exempt: false },
+  // The forged requests, answered as a platform that overwrites what the caller wrote.
+  forged: { address: "203.0.113.9", source: "cf", country: "US", kind: "address", exempt: false } as Record<string, unknown> | string,
+  forgedCode: "200",
+  forgedXff: { address: "203.0.113.9", source: "cf", country: "US", kind: "address", exempt: false } as Record<string, unknown> | string,
+  forgedXffCode: "200",
+  forgedCc: "AQ",
   init: { result: { serverInfo: { version: "2026-09-04.11" } } },
   mcpCall: { result: { content: [] } },
   v1: "200",
@@ -174,6 +195,12 @@ function run7j(patch: Partial<Fixture> = {}): string[] {
     "/tmp/vd_7j_echo_mcp.json": JSON.stringify(f.mcp), "/tmp/vd_7j_mcp_init.json": JSON.stringify(f.init),
     "/tmp/vd_7j_mcp_call.json": JSON.stringify(f.mcpCall), "/tmp/vd_7j_v1.txt": f.v1,
     "/tmp/vd_7j_before.json": JSON.stringify(f.before), "/tmp/vd_7j_after.json": JSON.stringify(f.after),
+    // A raw string is a body that is not the function's JSON (a platform refusal page).
+    "/tmp/vd_7j_echo_forged.json": typeof f.forged === "string" ? f.forged : JSON.stringify(f.forged),
+    "/tmp/vd_7j_echo_forged_code.txt": f.forgedCode,
+    "/tmp/vd_7j_echo_forged_xff.json": typeof f.forgedXff === "string" ? f.forgedXff : JSON.stringify(f.forgedXff),
+    "/tmp/vd_7j_echo_forged_xff_code.txt": f.forgedXffCode,
+    "/tmp/vd_7j_forged_cc.txt": f.forgedCc,
   };
   let js = body7j;
   for (const [tmp, content] of Object.entries(files)) {
@@ -209,6 +236,45 @@ describe("verify-deploy 7j judges the budget correctly", () => {
     expect(fails(run7j({ init: { result: { serverInfo: { version: "2026-09-04.10" } } } })).some((l) => /serverInfo/.test(l))).toBe(true);
     expect(fails(run7j({ trace: "ip=198.51.100.1\nloc=US\n" })).some((l) => /trace ip/.test(l))).toBe(true);
     expect(fails(run7j({ plain: { ...GOOD.plain, source: "none" } })).some((l) => /source/.test(l))).toBe(true);
+  });
+
+  it("FORGERY: a caller that writes the platform's address or country headers through is a FAIL", () => {
+    const echo = GOOD.forged as Record<string, unknown>;
+    const all = /^FAIL {2}FORGERY: a request writing cf-connecting-ip/;
+    const xff = /^FAIL {2}FORGERY: a request writing x-forwarded-for/;
+    expect(fails(run7j({ forged: { ...echo, address: "192.0.2.77" } })).some((l) => all.test(l)), "its own cf-connecting-ip picked its bucket").toBe(true);
+    expect(fails(run7j({ forged: { ...echo, address: "192.0.2.78", source: "xff" } })).some((l) => all.test(l)), "its own first x-forwarded-for hop").toBe(true);
+    expect(fails(run7j({ forged: { ...echo, address: "", source: "none", kind: "unknown_address" } })).some((l) => all.test(l)), "the never-refused unknown bucket").toBe(true);
+    expect(fails(run7j({ forged: { ...echo, country: "AQ" } })).some((l) => all.test(l)), "its own country").toBe(true);
+    expect(fails(run7j({ forgedXff: { ...echo, address: "192.0.2.78", source: "xff" } })).some((l) => xff.test(l))).toBe(true);
+    expect(fails(run7j({ forgedXff: { ...echo, country: "AQ" } })).some((l) => xff.test(l))).toBe(true);
+    // The platform refusing any request that carries cf-connecting-ip is a
+    // safe answer -- it never reaches the gate -- and the second line still
+    // measures the other two forgeries.
+    const refused = run7j({ forged: "<html>403 Forbidden</html>", forgedCode: "403" });
+    expect(fails(refused), refused.join("\n")).toEqual([]);
+    expect(refused.some((l) => /^PASS {2}FORGERY: .*refused by the platform before the function \(HTTP 403\)/.test(l))).toBe(true);
+    // ...but only while the function demonstrably answers the echo: a bundle
+    // without budget-echo answers 4xx too, and that is no proof of anything.
+    expect(fails(run7j({ forged: "{\"error\":\"Unknown action\"}", forgedCode: "400", plain: { ...GOOD.plain, source: undefined as unknown as string } })).some((l) => all.test(l))).toBe(true);
+    // The request without cf-connecting-ip has no refusal escape at all.
+    expect(fails(run7j({ forgedXff: "<html>403 Forbidden</html>", forgedXffCode: "403" })).some((l) => xff.test(l))).toBe(true);
+  });
+
+  it("FORGERY: the two requests the lines judge really carry the forged headers, to the uncounted echo", () => {
+    const bash = s7j.split("\n").filter((l) => !/^\s*#/.test(l));
+    const sent = (out: string) => bash.find((l) => l.includes(`-o /tmp/${out} `)) ?? "";
+    const all = sent("vd_7j_echo_forged.json"), xff = sent("vd_7j_echo_forged_xff.json");
+    for (const [name, line] of [["all", all], ["xff", xff]] as const) {
+      expect(line, `the ${name} forgery request is missing`).toMatch(/functions\/v1\/job-board/);
+      expect(line, "to budget-echo, which counts nothing and reads no database").toMatch(/-d '\{"action":"budget-echo"\}'/);
+      expect(line).toMatch(/-H "x-forwarded-for: 192\.0\.2\.78"/);
+      expect(line, "a country the trace did not report").toMatch(/-H "cf-ipcountry: \$FCC7J"/);
+      expect(line, "the status code is what lets a platform refusal be read as one").toMatch(/-w '%\{http_code\}'/);
+    }
+    expect(all).toMatch(/-H "cf-connecting-ip: 192\.0\.2\.77"/);
+    expect(xff, "the second request exists to be measured if the platform refuses cf-connecting-ip").not.toMatch(/cf-connecting-ip/);
+    expect(bash.join("\n"), "the forged country is never the machine's own").toMatch(/FCC7J=AQ; \[ "\$LOC7J" = "AQ" \] && FCC7J=TV/);
   });
 
   it("an internal caller arriving without its proof is a FAIL; without the control call it is only INFO", () => {

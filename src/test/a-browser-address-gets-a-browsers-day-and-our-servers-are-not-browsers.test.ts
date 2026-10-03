@@ -17,13 +17,16 @@
  *     x-forwarded-for hop -- never the first, which the client writes. IPv6 is
  *     one bucket per /64 and an IPv4-mapped address is its IPv4 self; an
  *     address that is not public (a gateway or internal hop) is 'unknown', the
- *     observe-only bucket, never a shared wall. Our tooling's header buys a
- *     per-ADDRESS allowance, so nobody reading this public repo can spend ours.
+ *     observe-only bucket, never a shared wall. ONE ADDRESS IS ONE BUCKET
+ *     whatever it declares: our tooling's header (public, like this repo) only
+ *     picks the cap, so it lifts an address to the largest cap at most and
+ *     never adds a second day row beside the first.
  *   THE HANDLER, bundled and run with only its network faked:
  *     - the service key (bearer or apikey) and our servers' reader proof make
  *       ZERO counter calls; an empty service key never matches an empty bearer;
  *     - a declared mcp caller WITHOUT the proof is counted, as unproven_mcp;
- *     - x-rb-budget: build counts under a 'build:' bucket, kind build;
+ *     - x-rb-budget: build/probe count as their kind in the SAME bucket as
+ *       that address's undeclared reads;
  *     - status, refresh, click, report and budget-echo never call the counter;
  *     - a refusal is a 429 with the JSON error body, a numeric Retry-After and
  *       no-store, and NOTHING else touched the database (the gate ran before
@@ -42,7 +45,7 @@ import { codeOf } from "./helpers/strip-comments";
 import { sqlCodeOf } from "./helpers/live-sql";
 import {
   addressKey, anonBudgetStatus, BUDGETED_ACTIONS, bucketFor, budgetRefusal, callerAddress, classifyCaller, countryOf,
-  ANON_BUDGET_DEADLINE_MS, type CountedCaller,
+  ANON_BUDGET_DEADLINE_MS, ADDRESS_DAILY_CAP, BUILD_DAILY_CAP, PROBE_DAILY_CAP, type CountedCaller,
 } from "../../supabase/functions/job-board/anon-budget";
 import { boardReaderHeader, boardReaderKey } from "../../supabase/functions/_shared/board-reader-key";
 
@@ -97,16 +100,19 @@ describe("the address is the platform's word, not the caller's", () => {
     expect(countryOf(H({}))).toBe("XX");
   });
 
-  it("our tooling's allowance is per ADDRESS: a header anyone can read buys nothing of ours", async () => {
-    const at = async (ip: string, budget?: string, svc = "svc") =>
-      bucketFor(await classifyCaller(H({ "cf-connecting-ip": ip, ...(budget ? { "x-rb-budget": budget } : {}) }), svc) as CountedCaller, svc);
-    const ours = await at("203.0.113.9", "build"), theirs = await at("198.51.100.7", "build");
-    expect(ours).toMatch(/^build:[0-9a-f]{16}$/);
-    expect(theirs, "a spoofed build header from another address is another bucket").not.toBe(ours);
-    expect(await at("203.0.113.9", "PROBE")).toMatch(/^probe:[0-9a-f]{16}$/);
-    expect(await at("203.0.113.9", "admin"), "any other value is ignored").toMatch(/^ip:[0-9a-f]{16}$/);
-    expect(await at("203.0.113.9"), "keyed: the same address under another service key is another bucket").not.toBe(await at("203.0.113.9", undefined, "other"));
-    expect(ours).not.toContain("203.0.113.9");
+  it("one address is one bucket whatever it declares: the public header picks a cap, never a second row", async () => {
+    const at = async (ip: string, h: Record<string, string> = {}, svc = "svc") =>
+      bucketFor(await classifyCaller(H({ "cf-connecting-ip": ip, ...h }), svc) as CountedCaller, svc);
+    const plain = await at("203.0.113.9");
+    expect(plain).toMatch(/^ip:[0-9a-f]{16}$/);
+    for (const h of [{ "x-rb-budget": "build" }, { "x-rb-budget": "PROBE" }, { "x-rb-budget": "admin" }, { "x-rsp-caller": "mcp" }, { "x-rsp-caller": "api" }, { "x-rsp-caller": "digest" }]) {
+      expect(await at("203.0.113.9", h), `${JSON.stringify(h)} must not open a second day row for the same address`).toBe(plain);
+    }
+    expect((await classifyCaller(H({ "cf-connecting-ip": "203.0.113.9", "x-rb-budget": "build" }), "svc")).kind, "the kind still names the cap").toBe("build");
+    expect(await at("198.51.100.7", { "x-rb-budget": "build" }), "another address is another bucket").not.toBe(plain);
+    expect(plain, "keyed: the same address under another service key is another bucket").not.toBe(await at("203.0.113.9", {}, "other"));
+    expect(plain).not.toContain("203.0.113.9");
+    expect(Math.max(ADDRESS_DAILY_CAP, BUILD_DAILY_CAP, PROBE_DAILY_CAP), "so the most the header can claim is the largest single cap").toBe(BUILD_DAILY_CAP);
   });
 
   it("the service key and the reader proof are exempt; an empty key matches nothing", async () => {
@@ -126,7 +132,7 @@ describe("the address is the platform's word, not the caller's", () => {
     expect(r.status).toBe(429);
     expect(r.headers.get("Retry-After")).toBe("30");
     expect((await r.json()).resetAt).toBe("2026-10-03T00:00:00.000Z");
-    expect(anonBudgetStatus(null)).toMatchObject({ settingPresent: false, enforce: true, countriesListed: 0, defaults: { address: 10000, build: 40000, probe: 5000 } });
+    expect(anonBudgetStatus(null)).toMatchObject({ settingPresent: false, enforce: true, countriesListed: 0, defaults: { address: 10000, build: 15000, probe: 10000 } });
     expect(anonBudgetStatus({ enforce: false })).toMatchObject({ settingPresent: true, enforce: false, countriesListed: 0 });
     expect(anonBudgetStatus({ countries: "CN" }).countriesListed, "a non-array list is reported as invalid, not as zero").toBe("invalid");
     expect(anonBudgetStatus({ countries: ["CN"], countryCap: 0, addressCap: 3000 })).toMatchObject({ countriesListed: 1, countryCap: 0, overrides: { addressCap: 3000 } });
@@ -189,7 +195,7 @@ describe("the handler: who is counted, and what a refusal is", () => {
     const res = await post({ action: "facets" }, { origin: "https://resumebooster.work" });
     expect(res.status).toBe(200);
     expect(db.checks).toHaveLength(1);
-    expect(db.checks[0].args).toMatchObject({ p_kind: "address", p_country: "CN", p_address_cap: 10000, p_build_cap: 40000, p_probe_cap: 5000, p_bare: false });
+    expect(db.checks[0].args).toMatchObject({ p_kind: "address", p_country: "CN", p_address_cap: 10000, p_build_cap: 15000, p_probe_cap: 10000, p_bare: false });
     expect(String(db.checks[0].args.p_bucket)).toMatch(/^ip:[0-9a-f]{16}$/);
     expect(db.checks[0].signal, "the counter is cancelled at the deadline, not abandoned").toBeInstanceOf(AbortSignal);
     await post({});
@@ -220,10 +226,13 @@ describe("the handler: who is counted, and what a refusal is", () => {
     expect(db.checks).toHaveLength(1);
   });
 
-  it("x-rb-budget: build counts under the build bucket of its own address", async () => {
+  it("x-rb-budget: build and probe are their kind in the SAME bucket as the address's undeclared reads", async () => {
+    await post({ action: "facets" });
     await post({ action: "facets" }, { "x-rb-budget": "build" });
-    expect(db.checks[0].args.p_kind).toBe("build");
-    expect(String(db.checks[0].args.p_bucket)).toMatch(/^build:[0-9a-f]{16}$/);
+    await post({ action: "facets" }, { "x-rb-budget": "probe" });
+    expect(db.checks.map((c) => c.args.p_kind)).toEqual(["address", "build", "probe"]);
+    expect(new Set(db.checks.map((c) => c.args.p_bucket)).size, "one address, one day row: the kind only picks the cap").toBe(1);
+    expect(String(db.checks[1].args.p_bucket)).toMatch(/^ip:[0-9a-f]{16}$/);
   });
 
   it("status, refresh, click, report and budget-echo never call the counter", async () => {

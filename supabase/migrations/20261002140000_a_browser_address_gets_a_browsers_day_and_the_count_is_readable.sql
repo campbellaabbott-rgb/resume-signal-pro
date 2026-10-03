@@ -10,12 +10,23 @@
 --
 -- THE BUCKETS. job-board/anon-budget.ts decides who is counted. The service
 -- key and our own servers' reader proof are never counted and never reach
--- this function. Everyone else is a bucket named after a KEYED SHA-256 prefix
--- of their address (IPv6 cut to its /64), never the address itself; our own
--- build and probe tooling gets a larger per-address allowance under its own
--- bucket prefix; an address that is missing or not public is the single
--- bucket 'unknown', counted and NEVER refused (kind unknown_address), so a
+-- this function. Everyone else is ONE bucket per address, named after a
+-- KEYED SHA-256 prefix of it (IPv6 cut to its /64), never the address itself,
+-- whatever the caller declares: the declared kind (our build and probe
+-- tooling say so in a header anyone can read) only picks the cap that one
+-- day row is judged against, so a declaration lifts an address to the
+-- largest cap at most and never adds caps together. An address that is
+-- missing or not public is the single bucket 'unknown' (kind
+-- unknown_address), counted and never refused by any address cap, so a
 -- platform header change cannot turn the address cap into a global wall.
+--
+-- THE COUNTRY RULE OUTRANKS EVERY KIND. Build and probe are public headers,
+-- so they cannot buy their way past it, and neither can a request with no
+-- usable address: from a listed country, kind unknown_address is counted in
+-- a bucket of its own for that country ('unknown:' plus the code), so the
+-- rest of the world never spends that country's allowance and that
+-- country's no-address callers share countryCap between them. countryCap 0
+-- refuses all of them while enforcing.
 --
 -- THE CAPS are the caller's parameters (code constants in anon-budget.ts),
 -- overridable per field from the job_board_meta row 'anon_board_budget',
@@ -29,7 +40,8 @@
 --                derivation (docs/job-board-deploy-notes.md, .85).
 --   countries    an array of ISO alpha-2 codes; absent = the switch is OFF.
 --                A request whose sanitised country is listed gets countryCap
---                (default 0 = refuse) per address per day. Not enabled here.
+--                (default 0 = refuse) per address per day, and its callers
+--                with no usable address share one countryCap. Not enabled.
 --   addressCap / buildCap / probeCap   integer overrides of the parameters.
 -- Every number is computed as numeric and clamped to [0, 100000000] before it
 -- becomes an integer, so a typo like 1e20 cannot raise out-of-range (the gate
@@ -72,7 +84,7 @@ ALTER TABLE public.job_board_anon_meter ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.job_board_anon_meter FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE public.job_board_anon_meter TO service_role;
 COMMENT ON TABLE public.job_board_anon_meter IS
-  'Daily meter of anonymous job-board reads: one row per UTC day per bucket (''ip:'', ''build:'' or ''probe:'' plus a keyed 16-hex SHA-256 prefix of the address, or ''unknown''; never an address). within_cap counts served calls, over_cap calls past the cap; last_call_over is the verdict of the newest call. Service-role only; written by job_board_anon_check, which removes rows older than eight days.';
+  'Daily meter of anonymous job-board reads: one row per UTC day per bucket (''ip:'' plus a keyed 16-hex SHA-256 prefix of the address whatever kind the caller declared, ''unknown'', or ''unknown:'' plus a listed country code; never an address). within_cap counts served calls, over_cap calls past the cap; last_call_over is the verdict of the newest call. Service-role only; written by job_board_anon_check, which removes rows older than eight days.';
 
 CREATE TABLE IF NOT EXISTS public.job_board_anon_hourly (
   hour_utc timestamptz NOT NULL,
@@ -145,6 +157,10 @@ BEGIN
        WHERE upper(btrim(c.code)) = v_cc
     ) INTO v_listed;
   END IF;
+  -- No address, listed country: that country's own shared row, never the world's.
+  IF v_listed AND v_kind = 'unknown_address' THEN
+    v_bucket := 'unknown:' || v_cc;
+  END IF;
 
   v_capn := CASE
     WHEN v_listed THEN
@@ -213,7 +229,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean) IS
-  'Counts one anonymous job-board read against today''s bucket in one statement and says whether it is allowed. Caps come from the parameters unless the anon_board_budget row in job_board_meta overrides them; a listed country gets countryCap (default 0); kind unknown_address is never refused; enforce false counts without refusing. Service-role only.';
+  'Counts one anonymous job-board read against today''s bucket in one statement and says whether it is allowed. Caps come from the parameters unless the anon_board_budget row in job_board_meta overrides them. One bucket per address; the kind only picks the cap. A listed country gets countryCap (default 0) whatever the kind, and its callers with no usable address share the bucket unknown:<code>; otherwise kind unknown_address is never refused. enforce false counts without refusing. Service-role only.';
 
 REVOKE ALL ON FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean) TO service_role;

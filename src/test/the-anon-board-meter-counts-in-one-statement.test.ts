@@ -18,19 +18,26 @@
  *     the rest as over, in both tables; another bucket is untouched; cap 0
  *     refuses the first call; a mid-day raise re-admits up to the new cap;
  *     yesterday's row does not count today;
+ *   - ONE ROW PER ADDRESS: the declared kind picks the cap and nothing else,
+ *     so one address rotating every kind it can declare (with the real
+ *     anon-budget.ts bucketing) is served at most the LARGEST cap, never the
+ *     caps added together -- the header is public;
  *   - kind unknown_address (an address the platform did not hand us, or a
- *     non-public one) is NEVER refused, whatever the address cap -- so a
- *     platform header change cannot become a global wall;
+ *     non-public one) is never refused by an address cap -- so a platform
+ *     header change cannot become a global wall;
  *   - an absurd override (1e20) is clamped, not raised: the gate fails open
  *     on any error, so a raise would switch the meter off silently;
  *   - the hourly rows keep the caller kind, so an internal caller missing its
  *     reader proof is visible by name;
  *   - the country switch is OFF unless the setting lists a country, and then
- *     refuses only that country's calls; a non-array list is ignored;
- *     observe-only counts without refusing; the migration seeds observe-only
- *     and never overwrites an existing setting row;
+ *     refuses only that country's calls, whatever the kind; a non-array list
+ *     is ignored; a listed country's callers with no usable address get a
+ *     bucket of their own for that country, so the world's no-address calls
+ *     never spend its allowance; observe-only counts and flags a listed
+ *     country without refusing; the migration seeds observe-only and never
+ *     overwrites an existing setting row;
  *   - retention: rows past eight days are removed by a bounded delete that
- *     never waits on a lock;
+ *     never waits on a lock, on a bucket's FIRST call of the day only;
  *   - grants: anon and authenticated can touch neither table nor the counter;
  *     anon CAN call the reader, whose columns are aggregates only, and its ALL
  *     rows equal the sum of its country rows;
@@ -45,6 +52,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { sqlCodeOf } from "./helpers/live-sql";
+import { bucketFor, classifyCaller, type CountedCaller } from "../../supabase/functions/job-board/anon-budget";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -152,6 +160,22 @@ describe("the anonymous board meter, executed", () => {
     expect(await call(db, "ip:y", "address", "US")).toMatchObject({ is_allowed: true, used_today: 1, over_today: 0 });
   });
 
+  it("one address rotating every kind it can declare is served at most the LARGEST cap, never the caps added", async () => {
+    // The real bucketing from anon-budget.ts, so this holds the pair, not the SQL alone.
+    const declare: Record<string, string>[] = [{}, { "x-rb-budget": "build" }, { "x-rb-budget": "probe" }, { "x-rsp-caller": "mcp" }];
+    let served = 0;
+    const buckets = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const c = await classifyCaller(new Headers({ "cf-connecting-ip": "203.0.113.9", "cf-ipcountry": "US", ...declare[i % 4] }), "svc") as CountedCaller;
+      const bucket = await bucketFor(c, "svc");
+      buckets.add(bucket);
+      if ((await call(db, bucket, c.kind, c.country)).is_allowed) served++;
+    }
+    expect(served, `caps ${CAPS.join("/")}: the most is the largest, ${Math.max(...CAPS)}, not their sum ${CAPS[0] + CAPS[1] + CAPS[2]}`).toBe(Math.max(...CAPS));
+    expect(buckets.size, "one address, one day row").toBe(1);
+    expect((await hourly(db, [...buckets][0])).map((r) => r.kind), "the hourly rows still name every kind").toEqual(["address", "build", "probe", "unproven_mcp"]);
+  });
+
   it("kind unknown_address is never refused, whatever the address cap", async () => {
     const got: Verdict[] = [];
     for (let i = 0; i < 3; i++) got.push(await call(db, "unknown", "unknown_address", "US", [1, 1, 1]));
@@ -160,13 +184,13 @@ describe("the anonymous board meter, executed", () => {
     expect((await hourly(db, "unknown")).map((r) => r.kind)).toEqual(["unknown_address"]);
   });
 
-  it("build and probe use their own caps and overrides", async () => {
-    expect((await call(db, "build:x", "build", "US")).cap_today).toBe(10);
-    expect((await call(db, "probe:x", "probe", "US")).cap_today).toBe(5);
-    await setting(db, { enforce: true, buildCap: 2, probeCap: 0 });
-    expect((await call(db, "build:x", "build", "US")).is_allowed).toBe(true);
-    expect((await call(db, "build:x", "build", "US")).is_allowed).toBe(false);
-    expect((await call(db, "probe:y", "probe", "US")).is_allowed).toBe(false);
+  it("the kind picks the cap and its override, judged against the address's one row", async () => {
+    expect((await call(db, "ip:x", "build", "US")).cap_today).toBe(10);
+    expect((await call(db, "ip:x", "probe", "US")).cap_today).toBe(5);
+    await setting(db, { enforce: true, buildCap: 3, probeCap: 0 });
+    expect((await call(db, "ip:x", "build", "US")).is_allowed, "two already served on this row, a third under buildCap 3").toBe(true);
+    expect((await call(db, "ip:x", "build", "US")).is_allowed).toBe(false);
+    expect((await call(db, "ip:y", "probe", "US")).is_allowed, "probeCap 0: the deploy note's one-off 429 proof").toBe(false);
   });
 
   it("an absurd override is clamped, not raised, and a junk kind counts as an address", async () => {
@@ -203,8 +227,31 @@ describe("the anonymous board meter, executed", () => {
     await setting(db, { enforce: true, countries: "CN", countryCap: 0 });
     expect(await call(db, "ip:cn4", "address", "CN"), "a non-array list is ignored, not half-applied").toMatchObject({ is_allowed: true, country_rule: false });
     await setting(db, { enforce: true, countries: ["CN"], countryCap: 0 });
+    expect(await call(db, "ip:cnb", "build", "CN"), "a public header cannot buy its way past the country rule").toMatchObject({ is_allowed: false, country_rule: true });
     await db.exec("UPDATE public.job_board_meta SET v = v - 'countries' - 'countryCap' WHERE k = 'anon_board_budget'");
     expect(await call(db, "ip:cn5", "address", "CN"), "the deploy note's DISABLE statement turns it off").toMatchObject({ is_allowed: true, country_rule: false });
+  });
+
+  it("a listed country's callers with no usable address get a bucket of their own for that country, never the world's", async () => {
+    await setting(db, { enforce: true, countries: ["CN"], countryCap: 0 });
+    expect(await call(db, "unknown", "unknown_address", "CN"), "countryCap 0 refuses that country, address or not").toMatchObject({ is_allowed: false, country_rule: true, cap_today: 0 });
+    expect(await call(db, "unknown", "unknown_address", "US"), "and nobody else").toMatchObject({ is_allowed: true, country_rule: false, cap_today: 100_000_000 });
+    await setting(db, { enforce: true, countries: ["CN"], countryCap: 2 });
+    for (let i = 0; i < 5; i++) expect((await call(db, "unknown", "unknown_address", "US")).is_allowed).toBe(true);
+    const cn: boolean[] = [];
+    for (let i = 0; i < 3; i++) cn.push((await call(db, "unknown", "unknown_address", "CN")).is_allowed);
+    expect(cn, "five US no-address calls do not spend the listed country's 2").toEqual([true, true, false]);
+    expect((await call(db, "unknown", "unknown_address", "US")).is_allowed, "and the listed country's calls do not wall off the world").toBe(true);
+    expect(await meter(db, "unknown"), "the world's 'unknown' row never saw a CN call").toEqual({ within_cap: 7, over_cap: 0 });
+    expect(await meter(db, "unknown:CN")).toEqual({ within_cap: 2, over_cap: 2 });
+    expect((await hourly(db, "unknown:CN")).map((r) => [r.kind, r.country])).toEqual([["unknown_address", "CN"]]);
+  });
+
+  it("a listed country while observing is counted, flagged and served", async () => {
+    await setting(db, { enforce: false, countries: ["CN"], countryCap: 0 });
+    expect(await call(db, "ip:cnobs", "address", "CN")).toMatchObject({ is_allowed: true, country_rule: true, enforcing: false, cap_today: 0, over_today: 1 });
+    expect(await call(db, "unknown", "unknown_address", "CN")).toMatchObject({ is_allowed: true, country_rule: true, enforcing: false });
+    expect(await call(db, "ip:usobs", "address", "US")).toMatchObject({ is_allowed: true, country_rule: false });
   });
 
   it("observe-only counts without refusing, and says so", async () => {
@@ -234,6 +281,22 @@ describe("the anonymous board meter, executed", () => {
     const deletes = [...body.matchAll(/DELETE FROM public\.job_board_anon_(?:meter|hourly)\b[\s\S]*?;/g)].map((m) => m[0]);
     expect(deletes).toHaveLength(2);
     for (const d of deletes) expect(d, "bounded, and never waits on a row another call holds").toMatch(/LIMIT \d+ FOR UPDATE SKIP LOCKED/);
+  });
+
+  it("the sweep runs on a bucket's FIRST call of the day only, not on every call", async () => {
+    await call(db, "ip:busy", "address", "US");
+    const seedOld = () => db.exec(`
+      INSERT INTO public.job_board_anon_meter VALUES ((now() AT TIME ZONE 'UTC')::date - 9, 'ip:old', 5, 0, false) ON CONFLICT DO NOTHING;
+      INSERT INTO public.job_board_anon_hourly VALUES (now() - interval '9 days', 'ip:old', 'address', 'US', 5, 0, 0) ON CONFLICT DO NOTHING;`);
+    const old = async () => (await db.query<{ m: number; h: number }>(`SELECT
+      (SELECT count(*)::int FROM public.job_board_anon_meter WHERE bucket = 'ip:old') AS m,
+      (SELECT count(*)::int FROM public.job_board_anon_hourly WHERE bucket = 'ip:old') AS h`)).rows[0];
+    await seedOld();
+    await call(db, "ip:busy", "address", "US");
+    await call(db, "ip:busy", "address", "US");
+    expect(await old(), "a bucket's second and third calls of the day sweep nothing").toEqual({ m: 1, h: 1 });
+    await call(db, "ip:fresh", "address", "US");
+    expect(await old(), "another bucket's first call does").toEqual({ m: 0, h: 0 });
   });
 
   it("anon and authenticated reach neither table nor the counter; anon reads the reader, aggregates only", async () => {

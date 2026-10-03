@@ -19,6 +19,15 @@
  *   - after a refusal, hovering cards sends ZERO detail calls, and opening a
  *     posting never claims its employer wrote nothing;
  *   - the country variant carries no number;
+ *   - a 429 that does NOT say board_budget is an ordinary failure: the
+ *     generic error, its one quiet retry, and no notice -- only the board's
+ *     own word pauses the board;
+ *   - THE POSTING PAGE (/jobs/posting/...), the prerendered SEO surface: a
+ *     refusal shows the notice, never "no longer live", never noindex, and
+ *     asks for the detail ONCE. Its positive controls: the server's own "no
+ *     such row" still reaches gone + noindex, and an ordinary failure IS
+ *     retried (two detail calls) and offers Try again -- so "once" is the
+ *     refusal's doing. A standing refusal makes no request at all;
  *   - THE EVIDENCE BEHIND THE CAP: a desktop deep-link load -- the scraper's
  *     exact URL shape -- makes exactly five counted calls (actions read from
  *     anon-budget.ts's own set), and the address cap is at least 1,500 such
@@ -26,10 +35,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { ADDRESS_DAILY_CAP, BUDGETED_ACTIONS } from "../../supabase/functions/job-board/anon-budget";
-import { clearBoardBudgetRefusal } from "@/lib/board-budget";
+import { clearBoardBudgetRefusal, markBoardBudgetRefused } from "@/lib/board-budget";
 
 const invoke = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -53,6 +62,7 @@ function stubTable() {
 }
 
 import Jobs from "@/pages/Jobs";
+import JobPosting from "@/pages/JobPosting";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -170,6 +180,15 @@ describe("a paused board says so, and never calls a live posting closed", () => 
     expect(screen.queryByText(/doesn't publish the full description/), "a refusal is not the employer's silence").toBeNull();
   });
 
+  it("a 429 that does not name the board budget is an ordinary failure: the generic error, one retry, no notice", async () => {
+    refuse = (c) => (isPageList(c) ? httpError(429, { error: "rate_limited", message: "slow down" }) : null);
+    mount("/jobs");
+    await waitFor(() => expect(screen.getByText(/The board couldn't load right now/)).toBeInTheDocument(), SLOW);
+    expect(screen.queryByText(PAUSED)).toBeNull();
+    expect(document.querySelector("[data-board-budget-notice]")).toBeNull();
+    expect(calls.filter(isPageList), "an ordinary failure keeps its one quiet retry").toHaveLength(2);
+  });
+
   it("the country variant carries no number", async () => {
     refuse = (c) => (isPageList(c) ? refusal("country") : null);
     mount("/jobs");
@@ -188,5 +207,78 @@ describe("a paused board says so, and never calls a live posting closed", () => 
     expect(counted.map((c) => c.action).sort(), JSON.stringify(calls.map((c) => c.action))).toHaveLength(5);
     expect(calls.some((c) => c.action === "status"), "status is made, and is not counted").toBe(true);
     expect(ADDRESS_DAILY_CAP, "a person loading 1,500 postings in a day never meets the cap").toBeGreaterThanOrEqual(1500 * counted.length);
+  });
+});
+
+// ── the posting page: the prerendered SEO surface ───────────────────────────
+
+const POSTING_PATH = "/jobs/posting/greenhouse/acme/5555";
+const mountPosting = () => render(
+  <MemoryRouter initialEntries={[POSTING_PATH]}>
+    <Routes><Route path="/jobs/posting/:source/:token/:key" element={<JobPosting />} /></Routes>
+  </MemoryRouter>,
+);
+/** The crawl directive every prerendered posting file ships, so the page has one to rewrite. */
+function seedRobots(): HTMLMetaElement {
+  const m = document.createElement("meta");
+  m.name = "robots";
+  m.content = "index, follow";
+  document.head.appendChild(m);
+  return m;
+}
+const details = () => calls.filter((c) => c.action === "detail");
+
+describe("the posting page never calls a refused posting gone, and never retries a refusal", () => {
+  beforeEach(() => { invoke.mockReset(); calls = []; refuse = () => null; mock(); clearBoardBudgetRefusal(); });
+  afterEach(() => { clearBoardBudgetRefusal(); document.head.querySelectorAll('meta[name="robots"]').forEach((m) => m.remove()); });
+
+  it("a 429 board_budget shows the notice, adds no noindex, and asks for the detail once", async () => {
+    const robots = seedRobots();
+    refuse = (c) => (c.action === "detail" ? refusal() : null);
+    mountPosting();
+    await waitFor(() => expect(screen.getByText(PAUSED)).toBeInTheDocument(), SLOW);
+    await settle(1800); // past the 1.2s quiet retry, had there been one
+    expect(details(), "a refusal is never retried").toHaveLength(1);
+    expect(robots.getAttribute("content"), "a live posting page must not be told to crawlers as gone").toBe("index, follow");
+    expect(noindex()).toBeNull();
+    expect(screen.queryByText(/no longer live/i)).toBeNull();
+    expect(screen.queryByText(/couldn't load this posting/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Try again$/ })).toBeNull();
+    expect(document.querySelector("[data-board-budget-notice]")?.textContent ?? "").toMatch(/resumeboostersupp@gmail\.com/);
+  });
+
+  it("positive controls: the server's own 'no such row' still reaches gone and noindex; an ordinary failure is retried once", async () => {
+    const robots = seedRobots();
+    refuse = (c) => (c.action === "detail" ? { data: { job: null, description: null }, error: null } : null);
+    const gone = mountPosting();
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: /no longer live/i })).toBeInTheDocument(), SLOW);
+    await waitFor(() => expect(robots.getAttribute("content")).toBe("noindex"));
+    expect(screen.queryByText(PAUSED)).toBeNull();
+    gone.unmount();
+
+    calls = [];
+    refuse = (c) => (c.action === "detail" ? httpError(503, { error: "busy" }) : null);
+    mountPosting();
+    await waitFor(() => expect(screen.getByText(/couldn't load this posting just now/)).toBeInTheDocument(), SLOW);
+    expect(details(), "a failure that is not a refusal IS retried, so 'once' above is the refusal's doing").toHaveLength(2);
+    expect(screen.getByRole("button", { name: /^Try again$/ })).toBeInTheDocument();
+    expect(screen.queryByText(PAUSED)).toBeNull();
+  });
+
+  it("a 429 without the board's word is an ordinary failure here too, and a standing refusal asks nothing", async () => {
+    refuse = (c) => (c.action === "detail" ? httpError(429, { error: "rate_limited" }) : null);
+    const v = mountPosting();
+    await waitFor(() => expect(screen.getByText(/couldn't load this posting just now/)).toBeInTheDocument(), SLOW);
+    expect(details()).toHaveLength(2);
+    expect(screen.queryByText(PAUSED)).toBeNull();
+    v.unmount();
+
+    calls = [];
+    refuse = () => null;
+    markBoardBudgetRefused({ code: "address", limit: 10000, resetAt: RESET_AT });
+    mountPosting();
+    await waitFor(() => expect(screen.getByText(PAUSED)).toBeInTheDocument(), SLOW);
+    await settle(300);
+    expect(details(), "the page already knows; it does not ask again").toHaveLength(0);
   });
 });

@@ -283,8 +283,8 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       const fr = await fetch(`${supaUrl2}/functions/v1/job-board`, {
         method: "POST",
         // The bake is one build-server address making ~709 board calls: it
-        // declares itself so the board counts it under that address's build
-        // allowance, never a browser's (job-board/anon-budget.ts).
+        // declares itself so the board judges that address's one day row
+        // against the build cap, not a browser's (job-board/anon-budget.ts).
         headers: { apikey: supaKey2, Authorization: `Bearer ${supaKey2}`, "Content-Type": "application/json", "x-rb-budget": "build" },
         body: JSON.stringify({ action: "list", limit: 1, includeFacets: true }),
         signal: AbortSignal.timeout(15000),
@@ -1731,7 +1731,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       try {
         const r = await fetch(`${supaUrl5}/functions/v1/job-board`, {
           method: "POST",
-          // Counted under this build server's own build allowance (see above).
+          // This build server's day row, judged against the build cap (see above).
           headers: { apikey: supaKey5, Authorization: `Bearer ${supaKey5}`, "Content-Type": "application/json", "x-rb-budget": "build" },
           body: JSON.stringify(body),
           signal: AbortSignal.timeout(20000),

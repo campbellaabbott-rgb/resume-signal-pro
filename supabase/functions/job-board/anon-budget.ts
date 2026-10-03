@@ -13,15 +13,25 @@ export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
   "list", "detail", "facets", "company-suggest", "exists", "semantic-search", "application-questions", "verify",
 ]);
 
-/** Per address per UTC day. Jobs.tsx mounted under vitest: an extreme human day is ~6,400 counted calls. */
+/**
+ * ONE ROW PER ADDRESS PER UTC DAY, whatever the caller declares: the kind only
+ * picks which of these caps that row is judged against, so a declared kind
+ * lifts an address to the LARGEST cap at most and never adds caps together.
+ */
+/** Jobs.tsx mounted under vitest: an extreme human day is ~6,400 counted calls. */
 export const ADDRESS_DAILY_CAP = 10_000;
-/** x-rb-budget: build, per address: 50 prerender bakes of at most 709 calls. */
-export const BUILD_DAILY_CAP = 40_000;
-/** x-rb-budget: probe, per address: verify-deploy (~200 a run), board-health (48 a day), the probe scripts. */
-export const PROBE_DAILY_CAP = 5_000;
+/**
+ * x-rb-budget: build. 21 bakes of at most 709 calls from one address: twice
+ * the busiest UTC day of pushes to main since the frontend began publishing
+ * from main (10), and about half the measured harvest (~29,000 a day), so the
+ * public header cannot buy a harvester's day.
+ */
+export const BUILD_DAILY_CAP = 15_000;
+/** x-rb-budget: probe. A label at the browser's cap: lower would refuse our own verify run on the owner's address after a heavy browsing day. */
+export const PROBE_DAILY_CAP = ADDRESS_DAILY_CAP;
 /** The counter is cancelled at this deadline and the request is served. */
 export const ANON_BUDGET_DEADLINE_MS = 800;
-/** Names our own tooling's per-address allowance. Not a secret: it buys a larger allowance for the sender's own address, nothing else. */
+/** Names our own tooling's cap. Not a secret: it can lift the sender's own address to BUILD_DAILY_CAP, nothing else. */
 export const BOARD_BUDGET_HEADER = "x-rb-budget";
 export const BOARD_BUDGET_CONTACT = "resumeboostersupp@gmail.com";
 
@@ -158,11 +168,13 @@ export async function classifyCaller(h: Headers, serviceKey: string): Promise<Ca
   return { ...base, kind: DECLARED.get(declared) ?? "address" };
 }
 
-/** A keyed hash of the address, never the address: all of IPv4 can be hashed in an afternoon. */
+/**
+ * A keyed hash of the address, never the address (all of IPv4 hashes in an
+ * afternoon). The same bucket for every kind: one address, one day row.
+ */
 export async function bucketFor(c: CountedCaller, serviceKey: string): Promise<string> {
   if (c.kind === "unknown_address" || !c.key) return "unknown";
-  const h = (await sha256Hex(`${serviceKey}:board-anon:${c.key}`)).slice(0, 16);
-  return `${c.kind === "build" ? "build" : c.kind === "probe" ? "probe" : "ip"}:${h}`;
+  return `ip:${(await sha256Hex(`${serviceKey}:board-anon:${c.key}`)).slice(0, 16)}`;
 }
 
 const nextUtcMidnight = (now: number): number => {

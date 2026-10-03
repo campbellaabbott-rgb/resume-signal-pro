@@ -1039,11 +1039,25 @@ echo "== 7j. .85: the anonymous board budget -- counted per address, observed fi
 # migration seeds {"enforce": false}. Enforcement is the owner's one statement
 # in docs/job-board-deploy-notes.md, and only once every line here is PASS --
 # above all the address the function derives (budget-echo) matching the one
-# Cloudflare reports for this machine (/cdn-cgi/trace), and no internal caller
-# arriving without its reader proof (unproven_*). Every probe is a read; the
-# only rows written are this script's own counted calls.
+# Cloudflare reports for this machine (/cdn-cgi/trace), the same answer when
+# the request WRITES those headers itself, and no internal caller arriving
+# without its reader proof (unproven_*). Every probe is a read; the only rows
+# written are this script's own counted calls.
 J '{"action":"status"}' > /tmp/vd_7j_status.json
 curl -s -m 30 "$B/cdn-cgi/trace" > /tmp/vd_7j_trace.txt
+# FORGERY. The gate trusts cf-connecting-ip, the last x-forwarded-for hop and
+# cf-ipcountry. If a caller could write them through, it could pick a fresh
+# bucket per request, land in the never-refused 'unknown' bucket with a
+# private address, or claim another country. budget-echo is uncounted and
+# reads no database. The first request forges all three (TEST-NET addresses
+# and a country that is not this machine's); the second leaves out
+# cf-connecting-ip, so if the platform refuses any request carrying it, the
+# other two forgeries are still measured.
+LOC7J=$(sed -n 's/^loc=//p' /tmp/vd_7j_trace.txt | tr -d '\r')
+FCC7J=AQ; [ "$LOC7J" = "AQ" ] && FCC7J=TV
+printf '%s' "$FCC7J" > /tmp/vd_7j_forged_cc.txt
+curl -s -m 30 -o /tmp/vd_7j_echo_forged.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "cf-connecting-ip: 192.0.2.77" -H "x-forwarded-for: 192.0.2.78" -H "cf-ipcountry: $FCC7J" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_forged_code.txt
+curl -s -m 30 -o /tmp/vd_7j_echo_forged_xff.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "x-forwarded-for: 192.0.2.78" -H "cf-ipcountry: $FCC7J" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_forged_xff_code.txt
 J '{"action":"budget-echo"}' > /tmp/vd_7j_echo_probe.json
 curl -s -m 30 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_plain.json
 curl -s -m 30 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "x-rsp-caller: mcp" -H "x-rb-reader: 00000000000000000000000000000000" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_mcp.json
@@ -1070,7 +1084,7 @@ if(ab){
   if(ab.countriesListed===0)console.log("PASS  country switch OFF (countriesListed 0)");
   else ok(false,"country switch is ON or malformed: countriesListed = "+JSON.stringify(ab.countriesListed)+" -- only the owner turns it on; if they did, this line is expected");
   info("anonBudget.enforce = "+ab.enforce+(ab.enforce===false?" (observe-first: counting, never refusing; enable with the one statement in the deploy note once this section is all PASS)":" (ENFORCING)"));
-  const d=ab.defaults||{};ok(d.address===10000&&d.build===40000&&d.probe===5000,"default caps address/build/probe = "+d.address+"/"+d.build+"/"+d.probe+" (want 10000/40000/5000)");
+  const d=ab.defaults||{};ok(d.address===10000&&d.build===15000&&d.probe===10000,"default caps address/build/probe = "+d.address+"/"+d.build+"/"+d.probe+" (want 10000/15000/10000, one day row per address)");
   if(ab.overrides&&Object.keys(ab.overrides).length)info("cap overrides in the setting row: "+JSON.stringify(ab.overrides));
 }
 const init=js("/tmp/vd_7j_mcp_init.json")||{};const mv=((init.result||{}).serverInfo||{}).version;
@@ -1082,6 +1096,13 @@ ok(!!kv.ip&&plain.address===kv.ip,"the address the function derives = "+plain.ad
 const loc=/^[A-Z]{2}$/.test(kv.loc||"")&&kv.loc!=="XX"?kv.loc:"XX";
 ok(plain.country===loc,"the country the function reads = "+plain.country+" vs trace loc = "+kv.loc+" (XX here makes the country switch inert)");
 ok(plain.kind==="address"&&plain.exempt===false,"an undeclared anon read classifies as kind address, counted ("+plain.kind+", exempt "+plain.exempt+")");
+const fcc=rd("/tmp/vd_7j_forged_cc.txt").trim()||"AQ";const echoes=plain.source==="cf"||plain.source==="xff";
+const forged=(f,code,what,refusable)=>{const e=js(f);const c=rd(code).trim();
+  if(e&&typeof e.source==="string")return ok(!!kv.ip&&e.address===kv.ip&&e.country===loc,what+" is read as "+e.address+" / "+e.country+" vs trace "+kv.ip+" / "+loc+" (must match before enforcing: a header the caller writes must not pick its bucket, the unknown_address escape or its country)");
+  if(refusable&&echoes&&/^4[0-9][0-9]$/.test(c))return ok(true,what+" was refused by the platform before the function (HTTP "+c+"), so it never reaches the gate");
+  ok(false,what+" -> HTTP "+c+" with no echo ("+rd(f).slice(0,80)+")");};
+forged("/tmp/vd_7j_echo_forged.json","/tmp/vd_7j_echo_forged_code.txt","FORGERY: a request writing cf-connecting-ip 192.0.2.77, x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,true);
+forged("/tmp/vd_7j_echo_forged_xff.json","/tmp/vd_7j_echo_forged_xff_code.txt","FORGERY: a request writing x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,false);
 ok(probe.kind==="probe"&&probe.exempt===false,"x-rb-budget: probe classifies as kind probe ("+probe.kind+")");
 ok(mcp.kind==="unproven_mcp"&&mcp.exempt===false,"a declared mcp caller with a wrong reader proof classifies as unproven_mcp, counted ("+mcp.kind+")");
 const before=js("/tmp/vd_7j_before.json"),after=js("/tmp/vd_7j_after.json");
