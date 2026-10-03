@@ -631,6 +631,13 @@
       "when": 1791047090979,
       "tag": "0089_20260928004823_the_field_curve_the_page_waited_a_minute_for_joins_the_hourly_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1791047118112,
+      "tag": "0090_20260928011742_two_five_minute_scans_of_one_curve_must_not_share_a_minute",
+      "breakpoints": true
     }
   ]
 }
