@@ -3997,6 +3997,8 @@
     "budgetTitle": "O mural de vagas está pausado para esta conexão",
     "budgetAddress": "Esta conexão usou a cota diária de {{limit}} consultas ao mural. Ela é renovada às {{time}}, no seu horário.",
     "budgetCountry": "As consultas ao mural a partir da sua região estão pausadas no momento.",
+    "budgetNetwork": "As consultas ao mural a partir desta rede estão pausadas no momento.",
+    "budgetPass": "Seu navegador precisa concluir uma verificação rápida antes que o mural possa carregar. Recarregue a página para tentar de novo.",
     "budgetContact": "Se você está procurando trabalho e isso está atrapalhando, escreva para {{email}} e nós resolvemos.",
     "clearSearch": "Limpar a pesquisa",
     "zeroTitle": "Nenhuma oferta verificada corresponde a todos esses critérios",

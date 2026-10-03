@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck, ClipboardList } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { toast } from "sonner";
 
 export interface DraftedAnswer { question: string; answer: string; supported: boolean; note: string; anticipated?: boolean; }
@@ -104,7 +105,7 @@ export function ApplicationAnswers({
       let questions: Array<{ label: string; required?: boolean; type?: string }> | undefined;
       if (jobId && REAL_QUESTION_PREFIXES.some((p) => jobId.startsWith(p))) {
         try {
-          const { data: q } = await supabase.functions.invoke("job-board", {
+          const { data: q } = await invokeJobBoard({
             body: { action: "application-questions", id: jobId },
           });
           const qd = q as { supported?: boolean; questions?: Array<{ label?: string; required?: boolean; type?: string }>; requirements?: string[] } | null;

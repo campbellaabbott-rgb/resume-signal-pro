@@ -9,11 +9,13 @@
  * loaded /jobs?job=<id> ~5,800 times a day -- about 29,000 counted board calls
  * -- harvesting the corpus through the site's publishable key, around the
  * metered /v1 API. Migration 20261002140000 is the meter; anon-budget.ts
- * decides who reaches it.
+ * decides who reaches it. Migration 20261003180000 (.87) restates the counter
+ * with the caller's network and board-pass state; its own rules are held in
+ * the last describe block below.
  *
  * WHAT THIS HOLDS, executed against the LAST migration that defines the
- * counter (what the database runs), in pglite under Supabase's default
- * privileges:
+ * counter (what the database runs) applied over the meter's own migration, in
+ * pglite under Supabase's default privileges:
  *   - the caps: a cap of N admits exactly N calls a day per bucket and counts
  *     the rest as over, in both tables; another bucket is untouched; cap 0
  *     refuses the first call; a mid-day raise re-admits up to the new cap;
@@ -99,27 +101,35 @@ const hourly = async (db: PGlite, bucket: string) =>
     "SELECT kind, country, sum(within_cap)::int AS within_cap, sum(over_cap)::int AS over_cap, sum(bare_calls)::int AS bare_calls FROM public.job_board_anon_hourly WHERE bucket = $1 GROUP BY kind, country ORDER BY kind, country", [bucket])).rows;
 
 const MIGRATION = lastDefining("job_board_anon_check");
+/** The meter's tables, the hourly reader and the seed: what the newest counter is applied over. */
+const BASE = { file: "20261002140000_a_browser_address_gets_a_browsers_day_and_the_count_is_readable.sql", sql: "" };
+BASE.sql = readFileSync(resolve(DIR, BASE.file), "utf8");
+/** Every migration the meter's state comes from, in order (the base alone when it is still the newest). */
+const CHAIN = MIGRATION.file === BASE.file ? BASE.sql : `${BASE.sql}\n${MIGRATION.sql}`;
+const chainWith = (counterSql: string) => (MIGRATION.file === BASE.file ? counterSql : `${BASE.sql}\n${counterSql}`);
 
 describe("the anonymous board meter, executed", () => {
   let db: PGlite;
-  beforeAll(async () => { db = await boot(MIGRATION.sql); });
+  beforeAll(async () => { db = await boot(CHAIN); });
   afterAll(async () => { await db?.close(); });
   beforeEach(async () => {
     await db.exec("DELETE FROM public.job_board_anon_meter WHERE true; DELETE FROM public.job_board_anon_hourly WHERE true;");
     await setting(db, { enforce: true });
   });
 
-  it("the reader and the counter are defined in the same, newest, migration", () => {
-    expect(lastDefining("get_board_anon_hourly").file).toBe(MIGRATION.file);
+  it("the hourly reader lives in the meter's migration; the counter and the network reader in the newest", () => {
+    expect(lastDefining("get_board_anon_hourly").file).toBe(BASE.file);
+    expect(lastDefining("get_board_anon_networks").file).toBe(MIGRATION.file);
+    expect(MIGRATION.file >= BASE.file).toBe(true);
   });
 
-  it("the migration seeds observe-only, and never overwrites a setting row that exists", async () => {
-    const fresh = await boot(MIGRATION.sql);
+  it("the migrations seed observe-only, and never overwrite a setting row that exists", async () => {
+    const fresh = await boot(CHAIN);
     try {
       const seeded = (await fresh.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'anon_board_budget'")).rows[0];
       expect(seeded?.v, "ships counting, not refusing").toEqual({ enforce: false });
       await fresh.exec(`UPDATE public.job_board_meta SET v = '{"enforce": true, "addressCap": 7}'::jsonb WHERE k = 'anon_board_budget'`);
-      await fresh.exec(MIGRATION.sql); // idempotent, and the owner's row survives a re-run
+      await fresh.exec(CHAIN); // idempotent, and the owner's row survives a re-run
       expect((await fresh.query<{ v: unknown }>("SELECT v FROM public.job_board_meta WHERE k = 'anon_board_budget'")).rows[0].v).toEqual({ enforce: true, addressCap: 7 });
     } finally { await fresh.close(); }
   });
@@ -278,8 +288,8 @@ describe("the anonymous board meter, executed", () => {
       (SELECT count(*)::int FROM public.job_board_anon_hourly WHERE bucket = 'ip:recent') AS hr`)).rows[0];
     expect(left).toEqual({ m: 0, h: 0, mr: 1, hr: 1 });
     const body = sqlCodeOf(MIGRATION.sql);
-    const deletes = [...body.matchAll(/DELETE FROM public\.job_board_anon_(?:meter|hourly)\b[\s\S]*?;/g)].map((m) => m[0]);
-    expect(deletes).toHaveLength(2);
+    const deletes = [...body.matchAll(/DELETE FROM public\.job_board_anon_(?:meter|hourly|net_hourly)\b[\s\S]*?;/g)].map((m) => m[0]);
+    expect(deletes, "the meter, the hourly table and the network table").toHaveLength(3);
     for (const d of deletes) expect(d, "bounded, and never waits on a row another call holds").toMatch(/LIMIT \d+ FOR UPDATE SKIP LOCKED/);
   });
 
@@ -423,7 +433,7 @@ describe("the shape: one statement counts, decides and returns", () => {
   it("teeth: an off-by-one cap test lets a fourth call through a cap of 3", async () => {
     const loose = MIGRATION.sql.split("m.within_cap < v_cap").join("m.within_cap <= v_cap");
     expect(loose).not.toBe(MIGRATION.sql);
-    const db = await boot(loose);
+    const db = await boot(chainWith(loose));
     try {
       await setting(db, { enforce: true });
       const got: boolean[] = [];
@@ -431,5 +441,236 @@ describe("the shape: one statement counts, decides and returns", () => {
       expect(got, "the mutant must break the cap the executed test pins").not.toEqual([true, true, true, false, false]);
       expect(got.filter(Boolean).length).toBe(4);
     } finally { await db.close(); }
+  });
+});
+
+// ── .87: the network and the pass, executed ─────────────────────────────────
+//
+// 20261003180000. A pool rotating its addresses (~180-340 an hour, none over
+// 80 calls) is invisible to a per-address cap; the owner blocks where it lives
+// (blockedNetworks) or asks browsers for a Turnstile pass (requirePass). Held
+// here: both refuse only while enforcing; an entry or a p_net that is not an
+// address is ignored, never an error (an error fails the gate open and turns
+// the whole meter off); 'unconfigured' and an older job-board's NULL are never
+// refused; only kinds address and unknown_address are asked for a pass; a
+// listed network or a zero-cap country refuses whatever the pass, and then
+// says so instead of pass_rule; every call lands in the network table; the
+// reader clamps and publishes aggregates only; the migration's own check has
+// teeth.
+
+type Verdict9 = Verdict & { network_rule: boolean; pass_rule: boolean };
+const call9 = async (db: PGlite, bucket: string, kind: string, cc: string | null, net: string | null, pass: string | null, caps = CAPS): Promise<Verdict9> =>
+  (await db.query<Verdict9>("SELECT * FROM public.job_board_anon_check($1, $2, $3, $4, $5, $6, $7, $8, $9)", [bucket, kind, cc, ...caps, false, net, pass])).rows[0];
+type NetRow = { net: string; kind: string; pass: string; within_cap: number; over_cap: number };
+const netRows = async (db: PGlite) =>
+  (await db.query<NetRow>("SELECT net, kind, pass, within_cap, over_cap FROM public.job_board_anon_net_hourly ORDER BY net, kind, pass")).rows;
+
+describe(".87: the network and the pass, executed", () => {
+  let db: PGlite;
+  beforeAll(async () => { db = await boot(CHAIN); });
+  afterAll(async () => { await db?.close(); });
+  beforeEach(async () => {
+    await db.exec("DELETE FROM public.job_board_anon_meter WHERE true; DELETE FROM public.job_board_anon_hourly WHERE true; DELETE FROM public.job_board_anon_net_hourly WHERE true;");
+    await setting(db, { enforce: true });
+  });
+
+  it("a network inside a listed one is refused whatever its kind; entries that are not a /24-or-wider address are ignored", async () => {
+    await setting(db, {
+      enforce: true,
+      blockedNetworks: ["43.128.0.0/10", "nonsense", 7, null, "1.2.3.4", "10.9.8.0/25", "2001:db8::/32", " 47.74.0.0/16 ", "203.0.113.77/16"],
+    });
+    expect(await call9(db, "ip:a", "address", "SG", "43.130.5.0/24", "valid")).toMatchObject({ is_allowed: false, network_rule: true, pass_rule: false, cap_today: 0 });
+    expect(await call9(db, "ip:b", "build", "SG", "43.131.0.0/24", "none"), "a public header buys nothing past a listed network").toMatchObject({ is_allowed: false, network_rule: true });
+    expect(await call9(db, "ip:c", "probe", "XX", "47.74.200.0/24", "none"), "whitespace around an entry is not a typo").toMatchObject({ is_allowed: false, network_rule: true });
+    expect(await call9(db, "ip:d", "address", "XX", "203.0.5.0/24", "none"), "host bits in an entry are read as its network").toMatchObject({ is_allowed: false, network_rule: true });
+    expect(await call9(db, "ip:e", "address", "US", "8.8.8.0/24", "none")).toMatchObject({ is_allowed: true, network_rule: false, cap_today: 3 });
+    expect(await call9(db, "ip:f", "address", "US", "1.2.3.0/24", "none"), "a /32 entry is narrower than a network and is ignored").toMatchObject({ is_allowed: true, network_rule: false });
+    expect(await call9(db, "ip:g", "address", "US", "10.9.8.0/24", "none"), "so is a /25").toMatchObject({ is_allowed: true, network_rule: false });
+    expect(await call9(db, "ip:h", "address", "XX", "2001:db8:5::/48", "none")).toMatchObject({ is_allowed: false, network_rule: true });
+    expect(await call9(db, "ip:i", "address", "XX", "2001:db9:5::/48", "none")).toMatchObject({ is_allowed: true, network_rule: false });
+    await setting(db, { enforce: true, blockedNetworks: "43.128.0.0/10" });
+    expect(await call9(db, "ip:j", "address", "SG", "43.130.5.0/24", "none"), "a non-array list is ignored, not half-applied").toMatchObject({ is_allowed: true, network_rule: false });
+    await db.exec("UPDATE public.job_board_meta SET v = v - 'blockedNetworks' WHERE k = 'anon_board_budget'");
+    expect(await call9(db, "ip:k", "address", "SG", "43.130.5.0/24", "none"), "the UNBLOCK statement").toMatchObject({ is_allowed: true, network_rule: false });
+  });
+
+  it("a p_net that is not exactly a /24 or a /48 is no network: never an error, never blocked, telemetry 'none'", async () => {
+    await setting(db, { enforce: true, blockedNetworks: ["0.0.0.0/0", "::/0"] });
+    for (const junk of ["garbage", "1.2.3.4/24", "1.2.3.0/25", "1.2.0.0/16", "2001:db8:1::/64", "", "256.1.1.0/24"]) {
+      expect(await call9(db, `ip:${junk}`, "address", "US", junk, "none"), JSON.stringify(junk)).toMatchObject({ is_allowed: true, network_rule: false });
+    }
+    expect(await call9(db, "ip:real", "address", "US", "9.9.9.0/24", "none"), "the positive control: a real /24 under 0.0.0.0/0").toMatchObject({ is_allowed: false, network_rule: true });
+    expect((await netRows(db)).filter((r) => r.net === "none").reduce((n, r) => n + r.within_cap, 0)).toBe(7);
+  });
+
+  it("requirePass refuses a browser without a valid pass, and nothing else", async () => {
+    await setting(db, { enforce: true, requirePass: true });
+    expect(await call9(db, "ip:v", "address", "US", "8.8.8.0/24", "valid")).toMatchObject({ is_allowed: true, pass_rule: false, cap_today: 3 });
+    expect(await call9(db, "ip:n", "address", "US", "8.8.8.0/24", "none")).toMatchObject({ is_allowed: false, pass_rule: true, network_rule: false, cap_today: 0 });
+    expect(await call9(db, "ip:i", "address", "US", "8.8.8.0/24", "invalid")).toMatchObject({ is_allowed: false, pass_rule: true });
+    expect(await call9(db, "unknown", "unknown_address", "XX", null, "none"), "a browser with no usable address is asked too").toMatchObject({ is_allowed: false, pass_rule: true });
+    expect(await call9(db, "ip:u", "address", "US", "8.8.8.0/24", "unconfigured"), "a missing secret never takes the board down").toMatchObject({ is_allowed: true, pass_rule: false });
+    expect(await call9(db, "ip:j", "address", "US", "8.8.8.0/24", "VALID"), "any other text is unconfigured").toMatchObject({ is_allowed: true, pass_rule: false });
+    expect(await call(db, "ip:old", "address", "US"), "an older job-board's seven arguments: NULL is unconfigured").toMatchObject({ is_allowed: true });
+    for (const kind of ["build", "probe", "unproven_api", "unproven_mcp", "unproven_digest"]) {
+      expect(await call9(db, `ip:${kind}`, kind, "US", "8.8.8.0/24", "none"), `${kind} is never asked for a pass`).toMatchObject({ is_allowed: true, pass_rule: false });
+    }
+    await setting(db, { enforce: true, requirePass: "true" });
+    expect(await call9(db, "ip:s", "address", "US", "8.8.8.0/24", "none"), "a string is not the switch").toMatchObject({ is_allowed: true, pass_rule: false });
+    await db.exec("UPDATE public.job_board_meta SET v = v - 'requirePass' WHERE k = 'anon_board_budget'");
+    expect(await call9(db, "ip:s2", "address", "US", "8.8.8.0/24", "none"), "the UNREQUIRE statement").toMatchObject({ is_allowed: true, pass_rule: false });
+  });
+
+  it("a listed network or a zero-cap country refuses whatever the pass and says so; a country with a cap leaves the pass to decide", async () => {
+    await setting(db, { enforce: true, requirePass: true, blockedNetworks: ["43.128.0.0/10"] });
+    expect(await call9(db, "ip:n1", "address", "SG", "43.130.1.0/24", "none")).toMatchObject({ is_allowed: false, network_rule: true, pass_rule: false });
+    await setting(db, { enforce: true, requirePass: true, countries: ["CN"], countryCap: 0 });
+    expect(await call9(db, "ip:c1", "address", "CN", "1.80.0.0/24", "none"), "a fresh pass cannot lift a zero-cap country").toMatchObject({ is_allowed: false, country_rule: true, pass_rule: false });
+    await setting(db, { enforce: true, requirePass: true, countries: ["CN"], countryCap: 5 });
+    expect(await call9(db, "ip:c2", "address", "CN", "1.80.0.0/24", "none"), "here a pass would admit it").toMatchObject({ is_allowed: false, country_rule: true, pass_rule: true, cap_today: 0 });
+    expect(await call9(db, "ip:c2", "address", "CN", "1.80.0.0/24", "valid")).toMatchObject({ is_allowed: true, country_rule: true, pass_rule: false, cap_today: 5 });
+  });
+
+  it("enforce false refuses nothing new, and still names the rule that would have", async () => {
+    await setting(db, { enforce: false, requirePass: true, blockedNetworks: ["43.128.0.0/10"] });
+    expect(await call9(db, "ip:o1", "address", "SG", "43.130.1.0/24", "valid")).toMatchObject({ is_allowed: true, network_rule: true, enforcing: false, over_today: 1 });
+    expect(await call9(db, "ip:o2", "address", "US", "8.8.8.0/24", "none")).toMatchObject({ is_allowed: true, pass_rule: true, enforcing: false, over_today: 1 });
+    expect(await call9(db, "ip:o3", "address", "US", "8.8.8.0/24", "valid")).toMatchObject({ is_allowed: true, network_rule: false, pass_rule: false, over_today: 0 });
+  });
+
+  it("with today's production row (CN at 0, the caps out of reach) nothing the .87 job-board sends is refused unless it reads CN", async () => {
+    await setting(db, { enforce: true, countries: ["CN"], countryCap: 0, addressCap: 100000000, buildCap: 100000000, probeCap: 100000000 });
+    for (const [net, pass] of [["8.8.8.0/24", "none"], ["43.130.1.0/24", "invalid"], ["2001:db8:1::/48", "valid"], [null, "unconfigured"]] as const) {
+      expect(await call9(db, `ip:${net}`, "address", "XX", net, pass), `${net} ${pass}`).toMatchObject({ is_allowed: true, network_rule: false, pass_rule: false });
+    }
+    expect(await call9(db, "ip:cn", "address", "CN", "1.80.0.0/24", "valid"), "the China block still refuses").toMatchObject({ is_allowed: false, country_rule: true });
+  });
+
+  it("every call lands in the network table by /16 (IPv4) or /32 (IPv6), kind and pass state; 'none' without a network", async () => {
+    await call9(db, "ip:t1", "address", "US", "43.130.5.0/24", "valid");
+    await call9(db, "ip:t2", "address", "US", "43.130.200.0/24", "valid");
+    await call9(db, "ip:t3", "address", "US", "43.130.9.0/24", "none");
+    await call9(db, "ip:t4", "build", "US", "2001:db8:abcd::/48", "none");
+    await call9(db, "unknown", "unknown_address", "XX", null, "unconfigured");
+    await setting(db, { enforce: true, addressCap: 0 });
+    await call9(db, "ip:t5", "address", "US", "43.130.5.0/24", "valid");
+    expect(await netRows(db)).toEqual([
+      { net: "2001:db8::/32", kind: "build", pass: "none", within_cap: 1, over_cap: 0 },
+      { net: "43.130.0.0/16", kind: "address", pass: "none", within_cap: 1, over_cap: 0 },
+      { net: "43.130.0.0/16", kind: "address", pass: "valid", within_cap: 2, over_cap: 1 },
+      { net: "none", kind: "unknown_address", pass: "unconfigured", within_cap: 1, over_cap: 0 },
+    ]);
+    expect(await meter(db, "ip:t1"), "the day row is counted as before").toEqual({ within_cap: 1, over_cap: 0 });
+    expect((await hourly(db, "ip:t4")).map((r) => r.kind)).toEqual(["build"]);
+  });
+
+  it("network rows past eight days are removed on a bucket's first call of the day, bounded", async () => {
+    await db.exec(`
+      INSERT INTO public.job_board_anon_net_hourly VALUES (now() - interval '9 days', '43.130.0.0/16', 'address', 'none', 5, 0);
+      INSERT INTO public.job_board_anon_net_hourly VALUES (now() - interval '6 days', '43.131.0.0/16', 'address', 'none', 5, 0);`);
+    await call9(db, "ip:sweep", "address", "US", "8.8.8.0/24", "none");
+    expect((await netRows(db)).map((r) => r.net)).toEqual(["43.131.0.0/16", "8.8.0.0/16"]);
+  });
+
+  it("the network reader: aggregates only, the busiest rows first, hours and limit clamped, open to anon", async () => {
+    await db.exec(`
+      INSERT INTO public.job_board_anon_net_hourly
+      SELECT date_trunc('hour', now()), '10.' || g || '.0.0/16', 'address', 'none', g, 0 FROM generate_series(1, 205) g;
+      INSERT INTO public.job_board_anon_net_hourly VALUES (date_trunc('hour', now()) - interval '5 hours', '99.99.0.0/16', 'address', 'valid', 9999, 7);
+      INSERT INTO public.job_board_anon_net_hourly VALUES (date_trunc('hour', now()) - interval '200 hours', '98.98.0.0/16', 'address', 'valid', 99999, 0);`);
+    type Bn = { bn_hour: Date; bn_net: string; bn_kind: string; bn_pass: string; bn_requests: number; bn_over_cap: number };
+    const read = async (h: number | null, l: number | null) => (await db.query<Bn>("SELECT * FROM public.get_board_anon_networks($1, $2)", [h, l])).rows;
+    const r = await db.query<Bn>("SELECT * FROM public.get_board_anon_networks()");
+    expect(r.fields.map((f) => f.name)).toEqual(["bn_hour", "bn_net", "bn_kind", "bn_pass", "bn_requests", "bn_over_cap"]);
+    expect(r.rows.length, "the default limit").toBe(40);
+    expect(r.rows[0].bn_net, "the default window is 3 hours: the 5-hour-old row is out").toBe("10.205.0.0/16");
+    expect(r.rows.map((x) => Number(x.bn_requests))).toEqual([...r.rows.map((x) => Number(x.bn_requests))].sort((a, b) => b - a));
+    expect((await read(6, 1))[0]).toMatchObject({ bn_net: "99.99.0.0/16", bn_pass: "valid" });
+    expect(Number((await read(6, 1))[0].bn_over_cap)).toBe(7);
+    expect((await read(0, 1))[0].bn_net, "hours clamp up to 1").toBe("10.205.0.0/16");
+    expect((await read(100000, 1))[0].bn_net, "hours clamp down to 168, so a row 200 hours old is out").toBe("99.99.0.0/16");
+    expect(await read(3, 0), "limit clamps up to 1").toHaveLength(1);
+    expect(await read(3, 100000), "limit clamps down to 200").toHaveLength(200);
+    expect((await read(null, null)).length, "nulls take the defaults").toBe(40);
+    await db.exec("SET ROLE anon");
+    try {
+      expect((await db.query("SELECT * FROM public.get_board_anon_networks(3, 5)")).rows).toHaveLength(5);
+      await expect(db.query("SELECT * FROM public.job_board_anon_net_hourly")).rejects.toThrow(/permission denied/);
+      await expect(db.query("INSERT INTO public.job_board_anon_net_hourly (hour_utc, net, kind, pass) VALUES (now(), 'x', 'address', 'valid')")).rejects.toThrow(/permission denied/);
+      await expect(db.query("SELECT * FROM public.job_board_anon_check('x', 'address', 'US', 1, 1, 1, false, '8.8.8.0/24', 'valid')")).rejects.toThrow(/permission denied/);
+    } finally { await db.exec("RESET ROLE"); }
+  });
+
+  it("the migration's own check has teeth: a client grant or a surviving seven-argument counter makes it raise", async () => {
+    const code = sqlCodeOf(MIGRATION.sql);
+    const check = code.slice(code.lastIndexOf("DO $$"));
+    expect(check).toMatch(/RAISE EXCEPTION/);
+    await db.exec(check); // passes on the state the migration left
+    const nine = "public.job_board_anon_check(text, text, text, integer, integer, integer, boolean, text, text)";
+    await db.exec(`GRANT EXECUTE ON FUNCTION ${nine} TO anon`);
+    await expect(db.exec(check)).rejects.toThrow(/executable by anon/);
+    await db.exec(`REVOKE EXECUTE ON FUNCTION ${nine} FROM anon`);
+    await db.exec("GRANT SELECT ON public.job_board_anon_net_hourly TO authenticated");
+    await expect(db.exec(check)).rejects.toThrow(/readable or writable/);
+    await db.exec("REVOKE SELECT ON public.job_board_anon_net_hourly FROM authenticated");
+    await db.exec("CREATE FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean) RETURNS integer LANGUAGE sql AS 'SELECT 1'");
+    await expect(db.exec(check)).rejects.toThrow(/want exactly one/);
+    await db.exec("DROP FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean)");
+    await db.exec(check);
+  });
+});
+
+// ── .87: the owner's levers, run VERBATIM from the deploy note ──────────────
+//
+// The deploy note tells the owner to hand these statements to Lovable's agent
+// word for word, so a statement that does not parse, or drops the rest of the
+// setting row, ships as an instruction. Each one is lifted out of the note and
+// executed here against the real counter.
+
+const NOTES = readFileSync(resolve(__dirname, "../../docs/job-board-deploy-notes.md"), "utf8");
+const NOTE87 = NOTES.slice(NOTES.indexOf("## 2026-09-09.87"), NOTES.indexOf("\n## ", NOTES.indexOf("## 2026-09-09.87") + 5));
+const lever = (name: string): string => {
+  const m = new RegExp(`^- ${name}\\b[^\`\\n]*\`([^\`]+)\``, "m").exec(NOTE87);
+  if (!m) throw new Error(`the .87 note has no lever "${name}"`);
+  return m[1];
+};
+
+describe(".87: the owner's levers, run verbatim from the deploy note", () => {
+  let db: PGlite;
+  beforeAll(async () => { db = await boot(CHAIN); });
+  afterAll(async () => { await db?.close(); });
+  const row = async () => (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'anon_board_budget'")).rows[0]?.v;
+
+  it("the note carries every lever, and READ THE NETWORKS names the reader's own arguments", async () => {
+    expect(NOTE87.length).toBeGreaterThan(2000);
+    for (const n of ["READ THE NETWORKS", "BLOCK NETWORKS", "UNBLOCK ONE NETWORK", "UNBLOCK NETWORKS", "REQUIRE THE PASS", "UNREQUIRE"]) expect(lever(n).length, n).toBeGreaterThan(20);
+    const read = lever("READ THE NETWORKS");
+    expect(read).toMatch(/rest\/v1\/rpc\/get_board_anon_networks/);
+    const args = JSON.parse(/-d '([^']+)'/.exec(read)![1]) as Record<string, number>;
+    const names = (await db.query<{ n: string[] }>("SELECT proargnames AS n FROM pg_proc WHERE proname = 'get_board_anon_networks'")).rows[0].n;
+    for (const k of Object.keys(args)) expect(names, k).toContain(k);
+  });
+
+  it("block, block again, unblock one, unblock all, require, unrequire: each does what the note says and keeps the rest of the row", async () => {
+    const prod = { enforce: true, countries: ["CN"], countryCap: 0, addressCap: 100000000, buildCap: 100000000, probeCap: 100000000 };
+    await setting(db, prod);
+    await db.exec(lever("BLOCK NETWORKS"));
+    expect((await row())?.blockedNetworks).toEqual(["198.51.100.0/24", "203.0.113.0/24"]);
+    expect(await call9(db, "ip:l1", "address", "XX", "203.0.113.0/24", "none")).toMatchObject({ is_allowed: false, network_rule: true });
+    await db.exec(lever("BLOCK NETWORKS"));
+    expect((await row())?.blockedNetworks, "adding again lists each network once").toEqual(["198.51.100.0/24", "203.0.113.0/24"]);
+    await db.exec(lever("UNBLOCK ONE NETWORK"));
+    expect((await row())?.blockedNetworks).toEqual(["198.51.100.0/24"]);
+    expect(await call9(db, "ip:l2", "address", "XX", "203.0.113.0/24", "none")).toMatchObject({ is_allowed: true, network_rule: false });
+    expect(await call9(db, "ip:l3", "address", "XX", "198.51.100.0/24", "none")).toMatchObject({ is_allowed: false, network_rule: true });
+    await db.exec(lever("UNBLOCK NETWORKS"));
+    expect(await row()).toEqual(prod);
+    await db.exec(lever("REQUIRE THE PASS"));
+    expect((await row())?.requirePass).toBe(true);
+    expect(await call9(db, "ip:l4", "address", "XX", "8.8.8.0/24", "none")).toMatchObject({ is_allowed: false, pass_rule: true });
+    expect(await call9(db, "ip:l5", "address", "XX", "8.8.8.0/24", "unconfigured")).toMatchObject({ is_allowed: true });
+    await db.exec(lever("UNREQUIRE"));
+    expect(await row(), "every lever leaves the owner's row exactly as it found it").toEqual(prod);
+    expect(await call9(db, "ip:l6", "address", "XX", "8.8.8.0/24", "none")).toMatchObject({ is_allowed: true });
   });
 });

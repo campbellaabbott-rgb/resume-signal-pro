@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Bot, ShieldCheck, MessageSquareText, FileText, BellRing, ArrowRight, Upload } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 
 interface AgentInventory {
   sendable: number | null;
@@ -40,7 +40,7 @@ export function AgentHero() {
     // surface that knows the sendable inventory; if it is slow or down the
     // hero simply renders without the inventory line — never a made-up number,
     // never a zero.
-    void supabase.functions.invoke("job-board", { body: { action: "status" } }).then(({ data }) => {
+    void invokeJobBoard({ body: { action: "status" } }).then(({ data }) => {
       if (dead || !data || typeof data !== "object") return;
       const d = data as { sendable?: { postings?: number }; totalPostings?: number; questionVendors?: string[] };
       setInv({

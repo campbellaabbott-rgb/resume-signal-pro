@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Bot, Zap, ArrowRight, MapPin } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 
 interface MatchJob {
   id: string;
@@ -50,7 +50,7 @@ export function AgentMatchesPanel({ currentRole, keywords }: Props) {
     if (query.length < 3) return; // nothing credible to search with — no panel
     setQ(query);
     let dead = false;
-    void supabase.functions.invoke("job-board", {
+    void invokeJobBoard({
       body: { q: query, sendableOnly: true, limit: 5, page: 1 },
     }).then(({ data }) => {
       if (dead || !data || typeof data !== "object") return;

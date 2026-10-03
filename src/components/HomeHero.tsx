@@ -33,7 +33,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Upload, Briefcase, ArrowRight, ShieldCheck, Bot, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { AtsCoverage } from "@/components/AtsCoverage";
 import { useBoardTotals } from "@/hooks/use-board-totals";
 
@@ -71,7 +71,7 @@ export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
 
   useEffect(() => {
     let dead = false;
-    void supabase.functions.invoke("job-board", { body: { action: "status" } }).then(({ data }) => {
+    void invokeJobBoard({ body: { action: "status" } }).then(({ data }) => {
       if (dead || !data || typeof data !== "object") return;
       const n = (data as { sendable?: { postings?: number } }).sendable?.postings;
       if (typeof n === "number" && n > 0) setSendable(n);

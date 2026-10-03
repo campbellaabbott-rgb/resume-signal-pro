@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { BellRing, ExternalLink, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
 
 interface SavedSearch {
@@ -40,7 +41,7 @@ export function SavedSearchesCard() {
       const counts = await Promise.all(
         rows.map(async (s) => {
           try {
-            const { data: res } = await supabase.functions.invoke("job-board", {
+            const { data: res } = await invokeJobBoard({
               // MAPPED, not spread. `...s.params` sent `company` — a key the
               // board does not read — so the employer scope vanished and this
               // badge counted the whole corpus. Watching one employer showed

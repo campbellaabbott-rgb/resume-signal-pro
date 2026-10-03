@@ -14,7 +14,7 @@
 // needs no number in that case. A made-up figure is not a safer default than
 // no figure.
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 
 /** The shape job-board's `status` action returns under `sendable`. */
 export interface Sendable {
@@ -32,7 +32,7 @@ export function useAgentReach(): Sendable | null {
     let live = true;
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("job-board", {
+        const { data, error } = await invokeJobBoard({
           body: { action: "status" },
         });
         if (error) return;

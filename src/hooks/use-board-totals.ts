@@ -12,7 +12,7 @@
 // rather than a placeholder: a surface that cannot get the count must say
 // something that needs no count, never a stale one.
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 
 export interface BoardTotals {
   /** Served openings — the same read-filtered count /jobs shows. */
@@ -71,8 +71,7 @@ export function useBoardTotals(): BoardTotals | null {
   const [totals, setTotals] = useState<BoardTotals | null>(null);
   useEffect(() => {
     let cancelled = false;
-    supabase.functions
-      .invoke("job-board", { body: { action: "list", limit: 1, includeFacets: false } })
+    invokeJobBoard({ body: { action: "list", limit: 1, includeFacets: false } })
       .then(({ data }) => {
         if (cancelled) return;
         const d = data as { total?: number; companiesOpenCount?: number; trackedTotal?: number } | null;

@@ -3997,6 +3997,8 @@
     "budgetTitle": "Die Jobbörse ist für diese Verbindung pausiert",
     "budgetAddress": "Diese Verbindung hat das heutige Kontingent von {{limit}} Abrufen der Jobbörse aufgebraucht. Es wird um {{time}} (deine Ortszeit) zurückgesetzt.",
     "budgetCountry": "Abrufe der Jobbörse aus deiner Region sind gerade pausiert.",
+    "budgetNetwork": "Abrufe der Jobbörse aus diesem Netzwerk sind gerade pausiert.",
+    "budgetPass": "Dein Browser muss kurz eine Prüfung abschließen, bevor die Jobbörse laden kann. Lade die Seite neu, um es noch einmal zu versuchen.",
     "budgetContact": "Wenn du auf Jobsuche bist und dich das behindert, schreib an {{email}} – wir kümmern uns darum.",
     "clearSearch": "Suche zurücksetzen",
     "zeroTitle": "Keine verifizierten Stellen passen zu all dem",

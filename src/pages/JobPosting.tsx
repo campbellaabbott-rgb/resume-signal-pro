@@ -34,7 +34,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal, type BoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import {
@@ -116,12 +116,12 @@ export default function JobPosting() {
       if (standing) { refusedWith(standing); return; }
       // One quiet retry: a refresh slice hitting the function's resource
       // ceiling can bounce a single request off the worker pool.
-      let res = await supabase.functions.invoke("job-board", { body: { action: "detail", id } });
+      let res = await invokeJobBoard({ body: { action: "detail", id } });
       if (res.error || res.data == null) {
         const refused = await readBoardBudgetRefusal(res.error);
         if (refused) { refusedWith(refused); return; }
         await new Promise((r) => setTimeout(r, 1200));
-        res = await supabase.functions.invoke("job-board", { body: { action: "detail", id } });
+        res = await invokeJobBoard({ body: { action: "detail", id } });
       }
       if (seq.current !== mine) return;
       const data = res.data as { job?: PostingRow | null; description?: string | null } | null;

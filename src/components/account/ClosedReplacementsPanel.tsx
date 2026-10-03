@@ -8,7 +8,7 @@
 // closed roles does.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { ExternalLink, RefreshCw } from "lucide-react";
 
 interface Replacement {
@@ -37,7 +37,7 @@ export function ClosedReplacementsPanel({ closedCount, rolesKey, excludeKey = ""
       const perRole = await Promise.all(
         roles.map(async (role) => {
           try {
-            const { data } = await supabase.functions.invoke("job-board", {
+            const { data } = await invokeJobBoard({
               body: { action: "list", q: role, limit: 3 },
             });
             return ((data as { jobs?: Replacement[] })?.jobs ?? []).slice(0, 3);

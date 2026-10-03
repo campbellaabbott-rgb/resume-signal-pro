@@ -1076,7 +1076,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};
-ok(/^2026-09-09\.8[56]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.85, or .86 which carries it)");
+ok(/^2026-09-09\.8[5-7]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.85, or .86/.87 which carry it)");
 const ab=st.anonBudget;
 ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
 if(ab){
@@ -1165,11 +1165,61 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const js=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7j_echo_plain.json")||{};const rows=js("/tmp/vd_7j_after.json");
-ok(st.version==="2026-09-09.86","status.version = "+st.version+" (want 2026-09-09.86)");
+ok(/^2026-09-09\.8[67]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.86, or .87 which carries it)");
 ok(["cf","registry","none"].includes(e.countrySource),"budget-echo names where its country came from: countrySource = "+e.countrySource+" (absent = the .86 bundle is not serving)");
 if(Array.isArray(rows)){const cn=rows.filter((r)=>r.bh_kind==="address"&&r.bh_country==="CN");
   if(cn.length)for(const r of cn)info(String(r.bh_hour).slice(0,13)+"h CN: "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_over_cap+" over the cap");
   else info("no address rows read CN in the last 3h: either no mainland browser traffic since the publish, or the scraper is not on mainland blocks -- read the next 04-18 UTC plateau before deciding the country switch")}
 const ab=st.anonBudget||{};info("country switch: countriesListed "+ab.countriesListed+", countryCap "+ab.countryCap+", enforce "+ab.enforce+" (a listed country is refused only while enforce is true)");'
+
+echo "== 7l. .87: the network and the board pass -- a rotating pool is seen by its /24, a browser can be asked for a pass =="
+# .87 claim. The harvest rotates ~180-340 addresses an hour and reads no CN, so
+# .87 hands the counter each caller's /24 (/48 for IPv6) and its Turnstile
+# board-pass state, and migration 20261003180000 adds blockedNetworks,
+# requirePass and the network telemetry (get_board_anon_networks, aggregates
+# by /16 or /32 only). Both rules are inert until the owner sets a key. Every
+# probe here is a read: budget-echo and board-pass make no database call, and
+# board-pass with a junk token asks Cloudflare at most (503 while no secret).
+J '{"action":"budget-echo"}' > /tmp/vd_7l_echo.json
+curl -s -m 30 -o /tmp/vd_7l_pass.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"action":"board-pass","token":"verify-deploy-not-a-token"}' > /tmp/vd_7l_pass_code.txt
+R get_board_anon_networks '{"p_hours":3,"p_limit":200}' > /tmp/vd_7l_networks.json
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
+const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7l_echo.json")||{};const ab=st.anonBudget||{};
+ok(st.version==="2026-09-09.87","status.version = "+st.version+" (want 2026-09-09.87)");
+const k=String(e.addressKey||"");const v4=/^(\d+)\.(\d+)\.(\d+)\.\d+$/.exec(k);const v6=/^([0-9a-f]+):([0-9a-f]+):([0-9a-f]+):[0-9a-f]+::\/64$/.exec(k);
+const wantNet=v4?v4[1]+"."+v4[2]+"."+v4[3]+".0/24":v6?v6[1]+":"+v6[2]+":"+v6[3]+"::/48":null;
+ok("net" in e&&e.net===wantNet,"budget-echo carries the network of its address: net = "+e.net+" for addressKey "+(e.addressKey||"none")+" (want "+wantNet+"; absent = the .87 bundle is not serving)");
+const states=["valid","invalid","none","unconfigured"];
+ok(states.includes(e.passState),"budget-echo carries a pass state: passState = "+e.passState+" (want one of "+states.join("/")+")");
+const p=ab.pass;
+ok(!!p&&typeof p.configured==="boolean"&&typeof p.required==="boolean","status.anonBudget.pass = "+JSON.stringify(p)+" (want {configured, required})");
+if(p){
+  ok(e.passState===(p.configured?"none":"unconfigured"),"this machine sends no pass, so it reads as "+(p.configured?"none":"unconfigured")+" (got "+e.passState+")");
+  info("bot check: secret "+(p.configured?"SET":"not set")+", requirePass "+p.required+(p.required&&!p.configured?" (no effect: unconfigured is never refused)":"")+(p.required&&p.configured?" (REQUIRED: browsers without a valid pass are refused while enforce is true)":""));
+}
+ok(typeof ab.networksListed==="number","status.anonBudget.networksListed = "+JSON.stringify(ab.networksListed)+" (a number; invalid = blockedNetworks is not an array and blocks nothing)");
+if(ab.networksListed>0)info("blockedNetworks lists "+ab.networksListed+" entries (refused only while enforce is true; enforce = "+ab.enforce+")");
+const pc=rd("/tmp/vd_7l_pass_code.txt").trim();const pb=js("/tmp/vd_7l_pass.json")||{};
+if(!p||!p.configured)ok(pc==="503"&&pb.error==="board_pass_unconfigured","board-pass without the secret -> HTTP "+pc+" "+JSON.stringify(pb).slice(0,80)+" (want 503 board_pass_unconfigured; 400 Unknown action = the .87 bundle is not serving)");
+else ok(pc==="403"&&pb.error==="board_pass_failed","board-pass with a junk token -> HTTP "+pc+" "+JSON.stringify(pb).slice(0,120)+" (want 403 board_pass_failed with Cloudflare codes)");
+const rows=js("/tmp/vd_7l_networks.json");
+if(!Array.isArray(rows))ok(false,"get_board_anon_networks as anon -> "+JSON.stringify(rows).slice(0,160)+" (PGRST202 = 20261003180000 not applied)");
+else{
+  const want=["bn_hour","bn_net","bn_kind","bn_pass","bn_requests","bn_over_cap"];const keys=[...new Set(rows.flatMap((r)=>Object.keys(r)))];
+  ok(keys.every((x)=>want.includes(x)),"get_board_anon_networks answers anon with aggregate keys only: "+rows.length+" rows, keys "+(keys.join(",")||"none"));
+  ok(rows.every((r)=>r.bn_net==="none"||/^[0-9.]+\/16$|^[0-9a-f:]+\/32$/.test(String(r.bn_net))),"every network it publishes is a /16 or a /32, or none: no address leaves");
+  const total=rows.reduce((n,r)=>n+Number(r.bn_requests||0),0);const real=rows.filter((r)=>r.bn_net!=="none").reduce((n,r)=>n+Number(r.bn_requests||0),0);
+  if(st.version==="2026-09-09.87"&&total>=20)ok(real>0,"requests that reached the counter with a network: "+real+" of "+total+" in the top rows of the last 3h (0 = p_net is not reaching SQL)");
+  else info("requests with a network: "+real+" of "+total+" (too few to judge, or not .87: calls before the .87 publish read none)");
+  const by=new Map();for(const r of rows){const m=by.get(r.bn_net)||{req:0,over:0,kinds:new Set()};m.req+=Number(r.bn_requests||0);m.over+=Number(r.bn_over_cap||0);m.kinds.add(r.bn_kind);by.set(r.bn_net,m)}
+  for(const [net,m] of [...by.entries()].sort((a,b)=>b[1].req-a[1].req).slice(0,15))info("top network "+net+": "+m.req+" requests, "+m.over+" over the cap, kinds "+[...m.kinds].join("/"));
+  const split={};for(const r of rows.filter((x)=>x.bn_kind==="address"||x.bn_kind==="unknown_address"))split[r.bn_pass]=(split[r.bn_pass]||0)+Number(r.bn_requests||0);
+  info("browser pass states in the last 3h (kinds address and unknown_address): "+(Object.entries(split).map(([s,n])=>s+" "+n).join(", ")||"none")+" -- require the pass only once real browsers arrive valid");
+}'
+code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/job_board_anon_net_hourly?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  job_board_anon_net_hourly SELECT as anon -> $code" || echo "FAIL  job_board_anon_net_hourly SELECT as anon -> $code"
+# The nine-argument counter, called as anon with its real argument names: 42501.
+probe job_board_anon_check '{"p_bucket":"verify:anon-probe","p_kind":"probe","p_country":"US","p_address_cap":0,"p_build_cap":0,"p_probe_cap":0,"p_bare":true,"p_net":"192.0.2.0/24","p_pass":"none"}'
 
 echo "done."

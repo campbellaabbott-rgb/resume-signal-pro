@@ -2,12 +2,14 @@
  * THE ANONYMOUS BOARD BUDGET: how many data-bearing reads one address may make
  * in a UTC day. Pure apart from the rpc it is handed, so vitest imports it.
  * Why, the numbers and the owner's one-statement levers:
- * docs/job-board-deploy-notes.md (2026-09-09.85). The counter is
- * job_board_anon_check (migration 20261002140000), its own table, never the
- * request budget shared with upload and checkout.
+ * docs/job-board-deploy-notes.md (2026-09-09.85, .87 for the network and the
+ * pass). The counter is job_board_anon_check (migrations 20261002140000 and
+ * 20261003180000), its own tables, never the request budget shared with upload
+ * and checkout.
  */
 import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key.ts";
 import { inChina } from "./geo-cn.ts";
+import { type PassState, passStateOf } from "./board-pass.ts";
 
 /** Actions that hand out postings. A body with no action is a list. */
 export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
@@ -46,7 +48,10 @@ export type CountedCaller = {
   source: AddressSource;
   /** The normalised public address (IPv6 cut to its /64), or null when it is not a public address. */
   key: string | null;
+  /** Its /24 (IPv4) or /48 (IPv6): what a rotating pool shares when its addresses do not. */
+  net: string | null;
   country: string;
+  passState: PassState;
   /** Neither Origin nor Referer: not the site's own page. */
   bare: boolean;
 };
@@ -133,6 +138,19 @@ export function addressKey(raw: string): string | null {
   return `${w.slice(0, 4).map((x) => x.toString(16)).join(":")}::/64`;
 }
 
+/**
+ * The network a normalised address key sits in: IPv4 "a.b.c.d" is
+ * "a.b.c.0/24", an IPv6 key "h0:h1:h2:h3::/64" is "h0:h1:h2::/48". null for
+ * anything else, so a non-public address is never a network.
+ */
+export function networkOf(key: string | null): string | null {
+  if (!key) return null;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(key);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  const v6 = /^([0-9a-f]{1,4}):([0-9a-f]{1,4}):([0-9a-f]{1,4}):[0-9a-f]{1,4}::\/64$/.exec(key);
+  return v6 ? `${v6[1]}:${v6[2]}:${v6[3]}::/48` : null;
+}
+
 export type CountrySource = "cf" | "registry" | "none";
 
 /**
@@ -161,8 +179,10 @@ const DECLARED = new Map<string, BudgetKind>([["api", "unproven_api"], ["mcp", "
  * In order: the service key (exempt), our servers' reader proof (exempt), then
  * a counted address. A declared api/mcp/digest caller WITHOUT the proof is
  * still counted at the address cap; its kind only makes a deploy skew visible.
+ * passSecret is TURNSTILE_SECRET_KEY: without it every pass state is
+ * 'unconfigured', which nothing refuses.
  */
-export async function classifyCaller(h: Headers, serviceKey: string): Promise<Caller> {
+export async function classifyCaller(h: Headers, serviceKey: string, passSecret = ""): Promise<Caller> {
   if (serviceKey && (h.get("authorization") === `Bearer ${serviceKey}` || h.get("apikey") === serviceKey)) {
     return { exempt: true, kind: "service" };
   }
@@ -170,7 +190,10 @@ export async function classifyCaller(h: Headers, serviceKey: string): Promise<Ca
   if (offered && sameSecret(offered, await boardReaderKey(serviceKey))) return { exempt: true, kind: "reader" };
   const { address, source } = callerAddress(h);
   const key = address ? addressKey(address) : null;
-  const base = { exempt: false as const, address, source, key, country: countryOf(h, key).country, bare: !h.get("origin") && !h.get("referer") };
+  const base = {
+    exempt: false as const, address, source, key, net: networkOf(key), country: countryOf(h, key).country,
+    passState: await passStateOf(h, serviceKey, passSecret), bare: !h.get("origin") && !h.get("referer"),
+  };
   if (!key) return { ...base, kind: "unknown_address" };
   const tool = (h.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase();
   if (tool === "build" || tool === "probe") return { ...base, kind: tool };
@@ -192,24 +215,37 @@ const nextUtcMidnight = (now: number): number => {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
 };
 
-/** The refusal: 429, never cached, with the reset time and a person to write to. */
+export type RefusalCode = "address" | "country" | "network" | "pass";
+
+const REFUSAL_MESSAGE: Record<Exclude<RefusalCode, "address">, string> = {
+  country: `Anonymous job board reads from this region are paused. If you are looking for work and this is in your way, write to ${BOARD_BUDGET_CONTACT}.`,
+  network: `This network is paused from reading the job board. If you are looking for work and this is in your way, write to ${BOARD_BUDGET_CONTACT}.`,
+  pass: `Your browser needs to finish a quick check before the job board can load. Reload the page; if this keeps happening, write to ${BOARD_BUDGET_CONTACT}.`,
+};
+
+/**
+ * The refusal: 429, never cached, with the reset time and a person to write to.
+ * A pass refusal has no reset to wait for -- a fresh pass lifts it at once -- so
+ * it carries resetAt null and Retry-After 1.
+ */
 export function budgetRefusal(
-  r: { code: "address" | "country"; limit: number; used: number },
+  r: { code: RefusalCode; limit: number; used: number },
   cors: Record<string, string>,
   now = Date.now(),
 ): Response {
   const reset = nextUtcMidnight(now);
-  const message = r.code === "country"
-    ? `Anonymous job board reads from this region are paused. If you are looking for work and this is in your way, write to ${BOARD_BUDGET_CONTACT}.`
-    : `This address has used today's allowance of ${r.limit.toLocaleString("en-US")} job board reads. It resets at 00:00 UTC. If you are a person and this is wrong, write to ${BOARD_BUDGET_CONTACT}.`;
+  const message = r.code === "address"
+    ? `This address has used today's allowance of ${r.limit.toLocaleString("en-US")} job board reads. It resets at 00:00 UTC. If you are a person and this is wrong, write to ${BOARD_BUDGET_CONTACT}.`
+    : REFUSAL_MESSAGE[r.code];
+  const pass = r.code === "pass";
   return new Response(
-    JSON.stringify({ error: "board_budget", code: r.code, message, limit: r.limit, used: r.used, resetAt: new Date(reset).toISOString() }),
+    JSON.stringify({ error: "board_budget", code: r.code, message, limit: r.limit, used: r.used, resetAt: pass ? null : new Date(reset).toISOString() }),
     {
       status: 429,
       headers: {
         ...cors,
         "Content-Type": "application/json",
-        "Retry-After": String(Math.max(1, Math.ceil((reset - now) / 1000))),
+        "Retry-After": pass ? "1" : String(Math.max(1, Math.ceil((reset - now) / 1000))),
         "Cache-Control": "no-store",
         "Access-Control-Expose-Headers": "Retry-After",
       },
@@ -227,18 +263,21 @@ export type AnonCheckRpc = (
  * a refused call does no other database work. FAILS OPEN on everything -- an
  * error, an unapplied migration, the deadline, an unreadable row: the meter
  * must never take the board down. Only an explicit is_allowed false refuses.
+ * Before migration 20261003180000 the counter has no p_net/p_pass (PGRST202):
+ * the call is repeated with the seven arguments it does have, inside the same
+ * deadline, so the rules already live keep refusing across a deploy skew.
  */
 export async function anonBudgetGate(
   req: Request,
   action: string,
-  opts: { rpc: AnonCheckRpc; serviceKey: string; cors: Record<string, string> },
+  opts: { rpc: AnonCheckRpc; serviceKey: string; cors: Record<string, string>; passSecret?: string },
 ): Promise<Response | null> {
   if (!BUDGETED_ACTIONS.has(action)) return null;
   try {
-    const classified = await classifyCaller(req.headers, opts.serviceKey);
+    const classified = await classifyCaller(req.headers, opts.serviceKey, opts.passSecret ?? "");
     if (classified.exempt) return null;
     const caller = classified as CountedCaller;
-    const { data, error } = await opts.rpc({
+    const args = {
       p_bucket: await bucketFor(caller, opts.serviceKey),
       p_kind: caller.kind,
       p_country: caller.country,
@@ -246,15 +285,20 @@ export async function anonBudgetGate(
       p_build_cap: BUILD_DAILY_CAP,
       p_probe_cap: PROBE_DAILY_CAP,
       p_bare: caller.bare,
-    }, AbortSignal.timeout(ANON_BUDGET_DEADLINE_MS));
+    };
+    const signal = AbortSignal.timeout(ANON_BUDGET_DEADLINE_MS);
+    let { data, error } = await opts.rpc({ ...args, p_net: caller.net, p_pass: caller.passState }, signal);
+    if (error?.code === "PGRST202") ({ data, error } = await opts.rpc(args, signal));
     if (error) {
       console.warn("[JOB-BOARD] anon budget unavailable, serving:", error.code ?? "", String(error.message ?? "").slice(0, 120));
       return null;
     }
     const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
     if (!row || row.is_allowed !== false) return null;
+    // A listed network or country refuses whatever pass the call carries; the
+    // counter sets pass_rule only when the pass is what refuses it.
     return budgetRefusal({
-      code: row.country_rule === true ? "country" : "address",
+      code: row.network_rule === true ? "network" : row.pass_rule === true ? "pass" : row.country_rule === true ? "country" : "address",
       limit: Number(row.cap_today) || 0,
       used: Number(row.used_today) || 0,
     }, opts.cors);
@@ -265,23 +309,31 @@ export async function anonBudgetGate(
 }
 
 /** The uncounted, zero-database echo: what the gate sees of the caller's own request, never a bucket id. */
-export async function budgetEcho(h: Headers, serviceKey: string): Promise<Record<string, unknown>> {
-  const c = await classifyCaller(h, serviceKey);
+export async function budgetEcho(h: Headers, serviceKey: string, passSecret = ""): Promise<Record<string, unknown>> {
+  const c = await classifyCaller(h, serviceKey, passSecret);
   const { address, source } = callerAddress(h);
   const key = address ? addressKey(address) : null;
   const { country, source: countrySource } = countryOf(h, key);
-  return { address: address || null, addressKey: key, source, country, countrySource, kind: c.kind, exempt: c.exempt };
+  return {
+    address: address || null, addressKey: key, net: networkOf(key), source, country, countrySource, kind: c.kind, exempt: c.exempt,
+    passState: await passStateOf(h, serviceKey, passSecret),
+  };
 }
 
+const listed = (x: unknown): number | "invalid" => (x === undefined ? 0 : Array.isArray(x) ? x.length : "invalid");
+
 /** The status block: the setting ROW as stored, plus the code defaults. The effective cap is the 429's limit, from SQL. */
-export function anonBudgetStatus(v: unknown): Record<string, unknown> {
+export function anonBudgetStatus(v: unknown, opts: { passConfigured?: boolean } = {}): Record<string, unknown> {
   const present = !!v && typeof v === "object" && !Array.isArray(v);
   const o = (present ? v : {}) as Record<string, unknown>;
   return {
     settingPresent: present,
     enforce: o.enforce !== false,
-    countriesListed: o.countries === undefined ? 0 : Array.isArray(o.countries) ? o.countries.length : "invalid",
+    countriesListed: listed(o.countries),
     countryCap: typeof o.countryCap === "number" ? o.countryCap : null,
+    networksListed: listed(o.blockedNetworks),
+    // configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass.
+    pass: { configured: opts.passConfigured === true, required: o.requirePass === true },
     overrides: Object.fromEntries(["addressCap", "buildCap", "probeCap"].filter((k) => typeof o[k] === "number").map((k) => [k, o[k]])),
     defaults: { address: ADDRESS_DAILY_CAP, build: BUILD_DAILY_CAP, probe: PROBE_DAILY_CAP },
   };
