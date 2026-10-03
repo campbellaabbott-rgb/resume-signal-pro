@@ -48,6 +48,16 @@ import { fillCurveFromCache } from "./fill-curve-cache.ts";
 // stops being type-only.
 import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
 
+// 2026-09-30.1 — BUMPED FOR A NARROWING, the second of that kind. The FREE
+// closure window falls from thirty days to seventy-two hours
+// (CLOSURES_MAX_DAYS_FREE). opened[] is unchanged on every tier and paid keys
+// are unchanged at 180 days. A free caller asking since=30d is not refused: it
+// receives thirty days of opened[] and three days of closed[], and the
+// response now carries closureHistoryDays, openedHistoryDays, closureSince and
+// closureWindowNarrowed so the two bounds can be told apart and reconciled
+// against. Anyone diffing this version will see closureHistoryDays fall on a
+// free key; that is the change, and it is deliberate.
+//
 // BUMPED FOR A NARROWING, which is the kind a consumer most needs to be able
 // to diff. The federal feed is now structurally absent from every row this API
 // returns, and asking for it by name is refused rather than answered with an
@@ -65,13 +75,38 @@ import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../
 // additive carriedForward flag that is true when the last hourly refresh kept
 // the previous rows. medianDaysToCloseBasis switches to its "use fillCurve"
 // wording on the same request. Nothing a caller had is renamed or removed.
-const API_VERSION = "2026-09-27.1";
+const API_VERSION = "2026-09-30.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
  *  serving window; depth is the thing this dataset actually has that others do
  *  not, and it is what the tiers sell. */
 const CHANGES_MAX_DAYS_PAID = 180;
+/**
+ * How far back a FREE key may ask for CLOSURE history. Deliberately its own
+ * constant rather than FRESH_WINDOW_DAYS, because the two windows answer
+ * different questions and were only ever equal by accident.
+ *
+ * THE LEAK THIS CLOSES. `maxDays` gated opened[] and closed[] together, so a
+ * free key could pull THIRTY DAYS of full closure rows — event_id, posting_id,
+ * employer, title, dates, the superseded and absence_basis flags — keyset-paged
+ * at 100 rows a page against a 1,000-call daily quota, from a signup that
+ * verifies no email and caps nothing per person. That is 100,000 closure events
+ * a day, for nothing. The closure ledger is the one thing here that cannot be
+ * re-fetched from any public page: a posting that closed is on no page, so the
+ * record exists only because this system was watching that day. Handing thirty
+ * days of it to an unverified caller lets anyone bootstrap a forward ledger of
+ * their own and keep it current, permanently, at zero cost — and the depth that
+ * is supposed to separate a paid key from a free one is exactly what was being
+ * given away. Three days answers the honest free-tier question ("what came down
+ * since my last sync") and bootstraps nothing.
+ *
+ * OPENED IS NOT NARROWED. A posting older than the serving window cannot be
+ * reported as newly opened anyway, and opened[] rows are re-fetchable from the
+ * employer's own board — there is nothing to protect. So opened[] keeps its
+ * thirty days on every tier and the response states both bounds separately.
+ */
+const CLOSURES_MAX_DAYS_FREE = 3;
 const DEFAULT_LIMIT = 25;
 // OFFSET IS CAPPED BECAUSE POSTGRES IMPLEMENTS IT BY WALKING AND DISCARDING.
 //
@@ -1323,6 +1358,15 @@ async function changes(
     );
   }
   const sinceIso = new Date(since).toISOString();
+  // Closures get their own floor. A free key asking since=30d is NOT refused —
+  // it gets thirty days of opened[] and three days of closed[], and the
+  // response says so in both closureHistoryDays and closureSince. A narrowing
+  // this API applies and does not name is the defect this file spends most of
+  // its comments preventing.
+  const closureMaxDays = paid ? CHANGES_MAX_DAYS_PAID : CLOSURES_MAX_DAYS_FREE;
+  const closureOldest = Date.now() - closureMaxDays * 86_400_000;
+  const closureSinceIso = new Date(Math.max(since, closureOldest)).toISOString();
+  const closureNarrowed = closureSinceIso !== sinceIso;
   const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
 
   const openedAfter = decodeCursor(p.get("opened_cursor") ?? "");
@@ -1388,7 +1432,7 @@ async function changes(
     // employer and dates. The closure LOG is ours, but the posting it
     // describes is still the vendor's data.
     .not("source", "in", NO_REDISTRIBUTION_IN)
-    .gte("closed_at", sinceIso);
+    .gte("closed_at", closureSinceIso);
   if (closedAfter) {
     closedQ = closedQ.or(`closed_at.gt.${closedAfter.ep},and(closed_at.eq.${closedAfter.ep},event_id.gt.${closedAfter.id})`);
   }
@@ -1448,7 +1492,17 @@ async function changes(
           : null,
       },
     },
-    closureHistoryDays: maxDays,
+    // BOTH BOUNDS, ALWAYS, because they are no longer the same number.
+    // closureHistoryDays was `maxDays` when one window served both arms; a
+    // reader who kept trusting it would now be told the closure feed reaches
+    // thirty days when it reaches three.
+    closureHistoryDays: closureMaxDays,
+    openedHistoryDays: maxDays,
+    // The effective lower bound the closure query actually ran with, and
+    // whether it is narrower than what was asked. A consumer walking this feed
+    // for completeness reconciles against THIS, not against `since`.
+    closureSince: closureSinceIso,
+    closureWindowNarrowed: closureNarrowed,
     // A CHANGE FEED IS WALKED FOR COMPLETENESS, so the one population it does
     // not cover has to be stated inside it -- a consumer reconciling this feed
     // against the site would otherwise find federal roles opening and closing

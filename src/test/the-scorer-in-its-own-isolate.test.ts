@@ -103,8 +103,15 @@ describe("the scorer in its own isolate", () => {
     // /v1/stats data.lifecycle.fillCurve for the first time, dated by the
     // cache part's own stamp and carrying an additive carriedForward flag — a
     // field that was null on every request is now a value.
-    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-27\.1"/);
-    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1"]) {
+    // 2026-09-30.1 NARROWS the free closure window from thirty days to
+    // seventy-two hours. opened[] and paid keys are untouched; what changes is
+    // that closed[] no longer shares opened[]'s bound on a free key, so
+    // closureHistoryDays falls from 30 to 3 there and the response gains
+    // openedHistoryDays, closureSince and closureWindowNarrowed to keep the two
+    // bounds tellable apart. A consumer diffing versions must be able to see a
+    // window close, which is exactly the kind of change this pin exists for.
+    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-30\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1"]) {
       expect(API, `the API still reports the superseded version ${old}`)
         .not.toMatch(new RegExp(`"${old}"`));
     }
