@@ -1660,6 +1660,60 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_anon_hourly: {
+        Row: {
+          bare_calls: number
+          bucket: string
+          country: string
+          hour_utc: string
+          kind: string
+          over_cap: number
+          within_cap: number
+        }
+        Insert: {
+          bare_calls?: number
+          bucket: string
+          country: string
+          hour_utc: string
+          kind: string
+          over_cap?: number
+          within_cap?: number
+        }
+        Update: {
+          bare_calls?: number
+          bucket?: string
+          country?: string
+          hour_utc?: string
+          kind?: string
+          over_cap?: number
+          within_cap?: number
+        }
+        Relationships: []
+      }
+      job_board_anon_meter: {
+        Row: {
+          bucket: string
+          day_utc: string
+          last_call_over: boolean
+          over_cap: number
+          within_cap: number
+        }
+        Insert: {
+          bucket: string
+          day_utc: string
+          last_call_over?: boolean
+          over_cap?: number
+          within_cap?: number
+        }
+        Update: {
+          bucket?: string
+          day_utc?: string
+          last_call_over?: boolean
+          over_cap?: number
+          within_cap?: number
+        }
+        Relationships: []
+      }
       job_board_board_observability: {
         Row: {
           as_of: string
@@ -4897,6 +4951,20 @@ export type Database = {
         }[]
       }
       get_audit_result: { Args: never; Returns: Json }
+      get_board_anon_hourly: {
+        Args: { p_hours?: number }
+        Returns: {
+          bh_addresses: number
+          bh_addresses_over_cap: number
+          bh_bare_requests: number
+          bh_country: string
+          bh_hour: string
+          bh_kind: string
+          bh_over_cap: number
+          bh_requests: number
+          bh_top_address_requests: number
+        }[]
+      }
       get_board_flow: {
         Args: { p_hours?: number }
         Returns: {
@@ -5800,6 +5868,25 @@ export type Database = {
         }[]
       }
       increment_free_scan_count: { Args: never; Returns: undefined }
+      job_board_anon_check: {
+        Args: {
+          p_address_cap: number
+          p_bare?: boolean
+          p_bucket: string
+          p_build_cap: number
+          p_country: string
+          p_kind: string
+          p_probe_cap: number
+        }
+        Returns: {
+          cap_today: number
+          country_rule: boolean
+          enforcing: boolean
+          is_allowed: boolean
+          over_today: number
+          used_today: number
+        }[]
+      }
       layoff_board_names_mirror: {
         Args: { p_prune?: boolean; p_rows: Json; p_run_started_at?: string }
         Returns: {
@@ -6053,6 +6140,7 @@ export type Database = {
         }
         Returns: number
       }
+      queue_wrapper_exposure: { Args: never; Returns: Json }
       rate_budget_state: {
         Args: { p_function?: string; p_ip: string; p_window_minutes?: number }
         Returns: {

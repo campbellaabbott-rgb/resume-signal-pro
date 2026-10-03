@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql';
