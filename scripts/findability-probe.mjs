@@ -33,7 +33,7 @@ const SAMPLE = Number(process.argv[2] ?? 40);
 const board = async (body) => {
   const r = await fetch(`${URL_}/functions/v1/job-board`, {
     method: "POST",
-    headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json", "x-rb-budget": "probe" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),
   });

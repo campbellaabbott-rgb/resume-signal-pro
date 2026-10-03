@@ -9,6 +9,9 @@ import { computeFit } from "../_shared/fit-score.ts";
 // neither candidate demand nor monitoring, so it gets its own caller value
 // rather than being flattened into either. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+// The board counts anonymous reads per address; this proves the digest's
+// read is ours, not a browser's, and grants nothing else.
+import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -110,6 +113,7 @@ Deno.serve(async (req) => {
     const resend = new Resend(RESEND_API_KEY);
     const boardBase = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const readerProof = await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
     // Fetch with the LOOSEST gate (the daily floor), then enforce each
     // search's own cadence in code — one query, per-search rhythm.
@@ -147,7 +151,7 @@ Deno.serve(async (req) => {
       const callBoard = (extra: Record<string, unknown>) =>
         fetch(boardBase, {
           method: "POST",
-          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json", ...searchCallerHeader("digest") },
+          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json", ...searchCallerHeader("digest"), ...readerProof },
           // EVERY field the board can filter on, or the digest mails a wider
           // search than the one saved. The seven that were hand-list-dropped
           // (ceiling, basis, stated-pay, unstated widening, years, department,

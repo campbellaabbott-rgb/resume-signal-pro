@@ -125,6 +125,13 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   job_board_board_state: [
     "company_token", "observed_on", "source", "observed_at", "live_count", "stored_count", "feed_total", "state",
   ],
+  // The anonymous board meter (20261002140000): job_board_anon_check upserts
+  // both tables through ON CONFLICT and reads its setting row from
+  // job_board_meta; get_board_anon_hourly reads the hourly table. Both are
+  // held to the zero-collision rule below.
+  job_board_anon_meter: ["day_utc", "bucket", "within_cap", "over_cap", "last_call_over"],
+  job_board_anon_hourly: ["hour_utc", "bucket", "kind", "country", "within_cap", "over_cap", "bare_calls"],
+  job_board_meta: ["k", "v", "updated_at"],
 };
 
 /**
@@ -344,6 +351,8 @@ const STRICT_FUNCTIONS = [
   // plpgsql, RETURNS TABLE, over the two locked layoff tables and the
   // closure ledgers. Both ship fully prefixed.
   "layoff_matches_rebuild", "refresh_layoff_partition",
+  // The anonymous board meter and its reader (20261002140000).
+  "job_board_anon_check", "get_board_anon_hourly",
 ];
 
 describe("the API key functions do not name a column in their return shape", () => {

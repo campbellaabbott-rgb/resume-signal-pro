@@ -33,7 +33,7 @@ const intervalS = Number(process.argv.find((a, i) => i > 1 && /^\d+$/.test(a)) ?
 const status = async () => {
   const r = await fetch(`${URL_}/functions/v1/job-board`, {
     method: "POST",
-    headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json", "x-rb-budget": "probe" },
     body: JSON.stringify({ action: "status" }),
     signal: AbortSignal.timeout(90_000),
   });

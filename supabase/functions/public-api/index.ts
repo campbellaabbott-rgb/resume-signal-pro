@@ -22,6 +22,9 @@ import { resumeRoleTerms } from "../_shared/fit-score.ts";
 // API traffic has always been recorded as if a candidate typed it into the
 // site. The header says which it was. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+// The board counts anonymous reads per address; this proves a customer's read
+// is ours, not a browser's, and grants nothing else. See the module.
+import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 // "Is this key paid" comes from ONE shared module, so this API and the MCP
 // server cannot answer it differently. The six-hour pass answers key_tier =
 // 'pass' on /mcp/ endpoints and must read as UNPAID to every gate here —
@@ -517,7 +520,10 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
     // caller=api on BOTH proxied routes — /v1/jobs?engine=ranked and POST
     // /v1/fit both come through here — so a customer's query is countable as
     // API demand and subtractable from the site's.
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("api") },
+    headers: {
+      "Content-Type": "application/json", Authorization: `Bearer ${anon}`, apikey: anon, ...searchCallerHeader("api"),
+      ...(await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")),
+    },
     body: JSON.stringify(body),
   });
   const out = await res.json().catch(() => ({}));

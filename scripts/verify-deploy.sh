@@ -14,7 +14,9 @@ RB=$(grep -h '^RB_API_KEY' .env.local 2>/dev/null | sed -E 's/^[^=]+=//; s/"//g'
 B=https://bwhdazbotpblihdxcmho.supabase.co
 SITE=https://resumebooster.work
 UA="Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-J() { curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$1"; }
+# x-rb-budget: probe -- since .85 the board counts anonymous reads per address,
+# and this script is our own tooling, not a browser (job-board/anon-budget.ts).
+J() { curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$1"; }
 R() { curl -s -m 60 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-{\}}"; }
 MC() { curl -s -m 60 -X POST "$B/functions/v1/agent-mcp" -H "Content-Type: application/json" -H "apikey: $K" -H "mcp-protocol-version: 2025-06-18" "$@"; }
 # Table probes select `*`: a named column that the table lacks answers 400 before
@@ -454,7 +456,7 @@ echo "== 5y. .77: a posted wage counts as stated pay, and the count agrees with 
 # 2026-09-27T02:01:53Z). B and K are shell locals here, so they are exported.
 B="$B" K="$K" node -e '
 const B=process.env.B, K=process.env.K;
-const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
+const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
 const timed=async(b)=>{const t=Date.now();const j=await J(b);return [Date.now()-t, j]};
 const gap=(rows)=>rows.filter(r=>typeof r.salary==="string"&&r.salary.trim()!==""&&r.salaryMinAnnual==null);
 const med=(a)=>a.slice().sort((x,y)=>x-y)[Math.floor(a.length/2)];
@@ -523,7 +525,7 @@ echo "== 5z. .78: the employer's own dropdown, and a building is not a policy ==
 #       census in the build report.
 B="$B" K="$K" node -e '
 const B=process.env.B, K=process.env.K;
-const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
+const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
 const HO=/\bhome\s+office\b/i, HOG=/\bhome\s+office\b/gi;
 // The site-label residue rule, mirrored from normalize.ts: nothing left, a bare
 // cost-centre number, or a residue naming an organisation or a department.
@@ -976,7 +978,7 @@ J '{"action":"status"}' > /tmp/vd_7i_status.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
-ok(j.version==="2026-09-09.84","status.version = "+j.version+" (want 2026-09-09.84; .81 means the bundle did not deploy)");
+ok(/^2026-09-09\.8[45]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84 or .85, which carries .84; .81 means the bundle did not deploy)");
 const ss=j.sliceStats||{};
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
@@ -1029,5 +1031,115 @@ done
 OA=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"limit":1}')
 OD=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"hasDescription":true,"limit":1}')
 node -e 'const a=JSON.parse(process.argv[1]||"{}"),d=JSON.parse(process.argv[2]||"{}");const n=Number(a.total),k=Number(d.total);console.log((n>0&&k>=0.9*n?"PASS":"FAIL")+"  ashby:openai rows with a stored description: "+k+" of "+n+" (want >= 90%; 4 of 281 were the oldest, dropped by the retention ceiling, on 2026-10-01)")' "$OA" "$OD"
+
+echo "== 7j. .85: the anonymous board budget -- counted per address, observed first, our servers exempt =="
+# .85's claim. The board counts list/detail/facets/company-suggest/exists/
+# semantic-search/application-questions/verify per address per UTC day
+# (anon-budget.ts, migration 20261002140000) and ships OBSERVING: the
+# migration seeds {"enforce": false}. Enforcement is the owner's one statement
+# in docs/job-board-deploy-notes.md, and only once every line here is PASS --
+# above all the address the function derives (budget-echo) matching the one
+# Cloudflare reports for this machine (/cdn-cgi/trace), the same answer when
+# the request WRITES those headers itself, and no internal caller arriving
+# without its reader proof (unproven_*). Every probe is a read; the only rows
+# written are this script's own counted calls.
+J '{"action":"status"}' > /tmp/vd_7j_status.json
+curl -s -m 30 "$B/cdn-cgi/trace" > /tmp/vd_7j_trace.txt
+# FORGERY. The gate trusts cf-connecting-ip, the last x-forwarded-for hop and
+# cf-ipcountry. If a caller could write them through, it could pick a fresh
+# bucket per request, land in the never-refused 'unknown' bucket with a
+# private address, or claim another country. budget-echo is uncounted and
+# reads no database. The first request forges all three (TEST-NET addresses
+# and a country that is not this machine's); the second leaves out
+# cf-connecting-ip, so if the platform refuses any request carrying it, the
+# other two forgeries are still measured.
+LOC7J=$(sed -n 's/^loc=//p' /tmp/vd_7j_trace.txt | tr -d '\r')
+FCC7J=AQ; [ "$LOC7J" = "AQ" ] && FCC7J=TV
+printf '%s' "$FCC7J" > /tmp/vd_7j_forged_cc.txt
+curl -s -m 30 -o /tmp/vd_7j_echo_forged.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "cf-connecting-ip: 192.0.2.77" -H "x-forwarded-for: 192.0.2.78" -H "cf-ipcountry: $FCC7J" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_forged_code.txt
+curl -s -m 30 -o /tmp/vd_7j_echo_forged_xff.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "x-forwarded-for: 192.0.2.78" -H "cf-ipcountry: $FCC7J" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_forged_xff_code.txt
+J '{"action":"budget-echo"}' > /tmp/vd_7j_echo_probe.json
+curl -s -m 30 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_plain.json
+curl -s -m 30 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "x-rsp-caller: mcp" -H "x-rb-reader: 00000000000000000000000000000000" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_mcp.json
+MC -d '{"jsonrpc":"2.0","id":71,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy-7j","version":"0"}}}' > /tmp/vd_7j_mcp_init.json
+R get_board_anon_hourly '{"p_hours":3}' > /tmp/vd_7j_before.json
+# The traffic the deltas below must see: one probe-declared list, one
+# undeclared facets read (kind address), one keyless MCP board_stats (reaches
+# the board through agent-mcp's board(): must NOT land as unproven_mcp), and,
+# with the owner's key, one /v1 ranked read (must NOT land as unproven_api).
+J '{"action":"list","limit":1}' > /dev/null
+curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"action":"facets"}' > /dev/null
+MC -d '{"jsonrpc":"2.0","id":72,"method":"tools/call","params":{"name":"board_stats","arguments":{}}}' > /tmp/vd_7j_mcp_call.json
+if [ -n "$RB" ]; then curl -s -m 60 -o /dev/null -w '%{http_code}' "$B/functions/v1/public-api/v1/jobs?engine=ranked&limit=1&q=nurse" -H "Authorization: Bearer $RB" -H "apikey: $K" > /tmp/vd_7j_v1.txt; else printf 'none' > /tmp/vd_7j_v1.txt; fi
+R get_board_anon_hourly '{"p_hours":3}' > /tmp/vd_7j_after.json
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
+const st=js("/tmp/vd_7j_status.json")||{};
+ok(st.version==="2026-09-09.85","status.version = "+st.version+" (want 2026-09-09.85)");
+const ab=st.anonBudget;
+ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
+if(ab){
+  ok(ab.settingPresent===true,"anonBudget.settingPresent = "+ab.settingPresent+" (the migration seeds the row; false = 20261002140000 not applied)");
+  if(ab.countriesListed===0)console.log("PASS  country switch OFF (countriesListed 0)");
+  else ok(false,"country switch is ON or malformed: countriesListed = "+JSON.stringify(ab.countriesListed)+" -- only the owner turns it on; if they did, this line is expected");
+  info("anonBudget.enforce = "+ab.enforce+(ab.enforce===false?" (observe-first: counting, never refusing; enable with the one statement in the deploy note once this section is all PASS)":" (ENFORCING)"));
+  const d=ab.defaults||{};ok(d.address===10000&&d.build===15000&&d.probe===10000,"default caps address/build/probe = "+d.address+"/"+d.build+"/"+d.probe+" (want 10000/15000/10000, one day row per address)");
+  if(ab.overrides&&Object.keys(ab.overrides).length)info("cap overrides in the setting row: "+JSON.stringify(ab.overrides));
+}
+const init=js("/tmp/vd_7j_mcp_init.json")||{};const mv=((init.result||{}).serverInfo||{}).version;
+ok(mv==="2026-09-04.11","agent-mcp serverInfo.version = "+mv+" (want exactly 2026-09-04.11: the build that sends the reader proof)");
+const kv={};for(const l of rd("/tmp/vd_7j_trace.txt").split("\n")){const i=l.indexOf("=");if(i>0)kv[l.slice(0,i)]=l.slice(i+1).trim()}
+const plain=js("/tmp/vd_7j_echo_plain.json")||{},probe=js("/tmp/vd_7j_echo_probe.json")||{},mcp=js("/tmp/vd_7j_echo_mcp.json")||{};
+ok(plain.source==="cf"||plain.source==="xff","budget-echo source = "+plain.source+" (want cf or xff; none = the platform hands the function no client address, so everyone is unknown_address)");
+ok(!!kv.ip&&plain.address===kv.ip,"the address the function derives = "+plain.address+" vs Cloudflare trace ip = "+kv.ip+" (must match before enforcing)");
+const loc=/^[A-Z]{2}$/.test(kv.loc||"")&&kv.loc!=="XX"?kv.loc:"XX";
+ok(plain.country===loc,"the country the function reads = "+plain.country+" vs trace loc = "+kv.loc+" (XX here makes the country switch inert)");
+ok(plain.kind==="address"&&plain.exempt===false,"an undeclared anon read classifies as kind address, counted ("+plain.kind+", exempt "+plain.exempt+")");
+const fcc=rd("/tmp/vd_7j_forged_cc.txt").trim()||"AQ";const echoes=plain.source==="cf"||plain.source==="xff";
+const forged=(f,code,what,refusable)=>{const e=js(f);const c=rd(code).trim();
+  if(e&&typeof e.source==="string")return ok(!!kv.ip&&e.address===kv.ip&&e.country===loc,what+" is read as "+e.address+" / "+e.country+" vs trace "+kv.ip+" / "+loc+" (must match before enforcing: a header the caller writes must not pick its bucket, the unknown_address escape or its country)");
+  if(refusable&&echoes&&/^4[0-9][0-9]$/.test(c))return ok(true,what+" was refused by the platform before the function (HTTP "+c+"), so it never reaches the gate");
+  ok(false,what+" -> HTTP "+c+" with no echo ("+rd(f).slice(0,80)+")");};
+forged("/tmp/vd_7j_echo_forged.json","/tmp/vd_7j_echo_forged_code.txt","FORGERY: a request writing cf-connecting-ip 192.0.2.77, x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,true);
+forged("/tmp/vd_7j_echo_forged_xff.json","/tmp/vd_7j_echo_forged_xff_code.txt","FORGERY: a request writing x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,false);
+ok(probe.kind==="probe"&&probe.exempt===false,"x-rb-budget: probe classifies as kind probe ("+probe.kind+")");
+ok(mcp.kind==="unproven_mcp"&&mcp.exempt===false,"a declared mcp caller with a wrong reader proof classifies as unproven_mcp, counted ("+mcp.kind+")");
+const before=js("/tmp/vd_7j_before.json"),after=js("/tmp/vd_7j_after.json");
+if(!Array.isArray(after)){ok(false,"get_board_anon_hourly as anon -> "+JSON.stringify(after).slice(0,160)+" (PGRST202 = 20261002140000 not applied)");}
+else{
+  const want=["bh_hour","bh_kind","bh_country","bh_requests","bh_over_cap","bh_addresses","bh_addresses_over_cap","bh_top_address_requests","bh_bare_requests"];
+  const keys=[...new Set(after.flatMap((r)=>Object.keys(r)))];
+  ok(after.length>0&&keys.every((k)=>want.includes(k)),"the reader answers anon with aggregates only: "+after.length+" rows, keys "+keys.join(","));
+  const tot=(rows,kind)=>(Array.isArray(rows)?rows:[]).filter((r)=>r.bh_kind===kind&&r.bh_country==="ALL").reduce((n,r)=>n+Number(r.bh_requests||0),0);
+  const delta=(kind)=>tot(after,kind)-tot(before,kind);
+  ok(delta("probe")>=1,"kind probe grew by "+delta("probe")+" across this section (want >= 1: the gate is wired and counting)");
+  ok(delta("address")>=1,"kind address grew by "+delta("address")+" (want >= 1; other browsers share this kind, so more is normal)");
+  const call=js("/tmp/vd_7j_mcp_call.json")||{};const mcpOk=!!call.result&&!call.result.isError;
+  if(mcpOk)ok(delta("unproven_mcp")===0,"a keyless MCP board_stats reached the board and did not land as unproven_mcp (delta "+delta("unproven_mcp")+")");
+  else info("MCP control call did not answer cleanly ("+JSON.stringify(call).slice(0,100)+") -- unproven_mcp delta "+delta("unproven_mcp")+" is unproven");
+  const v1=rd("/tmp/vd_7j_v1.txt").trim();
+  if(v1==="200")ok(delta("unproven_api")===0,"a /v1 ranked read reached the board and did not land as unproven_api (delta "+delta("unproven_api")+")");
+  else info("/v1 ranked control: "+(v1==="none"?"no RB_API_KEY in .env.local":"HTTP "+v1)+" -- unproven_api delta "+delta("unproven_api")+" cannot be read as proof");
+  for(const k of ["unproven_api","unproven_mcp","unproven_digest"])if(tot(after,k)>0)info(k+" in the last 3h: "+tot(after,k)+" (an internal caller without its reader proof: deploy skew, or a missing service key)");
+  const unk=tot(after,"unknown_address");ok(unk===0,"unknown_address in the last 3h = "+unk+" (want 0: the platform names every caller)");
+  const addrAll=tot(after,"address");const real=after.filter((r)=>r.bh_kind==="address"&&r.bh_country!=="ALL"&&r.bh_country!=="XX").reduce((n,r)=>n+Number(r.bh_requests||0),0);
+  if(addrAll>=50)ok(real>0,"address requests with a real country: "+real+" of "+addrAll+(real>0?"":" -- country switch inert: cf-ipcountry is not reaching the function"));
+  else info("address requests with a real country: "+real+" of "+addrAll+" (too few to judge; want >= 50)");
+  for(const r of after.filter((x)=>x.bh_kind==="address"&&x.bh_country!=="ALL").slice(0,40))info(String(r.bh_hour).slice(0,13)+"h "+r.bh_country+": "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_addresses_over_cap+" over the cap, busiest "+r.bh_top_address_requests+", bare "+r.bh_bare_requests);
+}'
+for T in job_board_anon_meter job_board_anon_hourly; do code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/$T?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  $T SELECT as anon -> $code" || echo "FAIL  $T SELECT as anon -> $code"; done
+# The counter, called as anon with its real argument names. A 200 here is a
+# FAIL, and the row it wrote (bucket verify:anon-probe) says so in the meter.
+probe job_board_anon_check '{"p_bucket":"verify:anon-probe","p_kind":"probe","p_country":"US","p_address_cap":0,"p_build_cap":0,"p_probe_cap":0,"p_bare":true}'
+# The frontend that renders the refusal shipped: the served /jobs chunk (or a
+# chunk it imports) carries the error word the page matches on.
+SITE="$SITE" node -e '
+(async()=>{const S=process.env.SITE;const html=await (await fetch(S+"/jobs")).text();
+const m=html.match(/assets\/Jobs-[A-Za-z0-9_-]+\.js/);if(!m)return console.log("INFO  /jobs served no Jobs-*.js chunk reference (prerendered shell?) -- check the bundle by hand");
+const seen=new Set();const grab=async(p)=>{if(seen.has(p)||seen.size>40)return "";seen.add(p);try{return await (await fetch(S+"/"+p)).text()}catch{return ""}};
+const main=await grab(m[0]);let hit=main.includes("board_budget");
+if(!hit)for(const d of [...new Set([...main.matchAll(/["(]\.\/([A-Za-z0-9_.-]+\.js)[")]/g)].map((x)=>"assets/"+x[1]))]){if((await grab(d)).includes("board_budget")){hit=true;break}}
+console.log((hit?"PASS":"FAIL")+"  the served frontend knows the board budget refusal ("+m[0]+(hit?"":", "+seen.size+" chunks read")+")")})().catch((e)=>console.log("INFO  frontend check could not run: "+e))'
 
 echo "done."

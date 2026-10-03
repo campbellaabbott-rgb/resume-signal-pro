@@ -282,7 +282,10 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     if (!boardFacets && supaUrl2 && supaKey2) {
       const fr = await fetch(`${supaUrl2}/functions/v1/job-board`, {
         method: "POST",
-        headers: { apikey: supaKey2, Authorization: `Bearer ${supaKey2}`, "Content-Type": "application/json" },
+        // The bake is one build-server address making ~709 board calls: it
+        // declares itself so the board judges that address's one day row
+        // against the build cap, not a browser's (job-board/anon-budget.ts).
+        headers: { apikey: supaKey2, Authorization: `Bearer ${supaKey2}`, "Content-Type": "application/json", "x-rb-budget": "build" },
         body: JSON.stringify({ action: "list", limit: 1, includeFacets: true }),
         signal: AbortSignal.timeout(15000),
       });
@@ -1728,10 +1731,14 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       try {
         const r = await fetch(`${supaUrl5}/functions/v1/job-board`, {
           method: "POST",
-          headers: { apikey: supaKey5, Authorization: `Bearer ${supaKey5}`, "Content-Type": "application/json" },
+          // This build server's day row, judged against the build cap (see above).
+          headers: { apikey: supaKey5, Authorization: `Bearer ${supaKey5}`, "Content-Type": "application/json", "x-rb-budget": "build" },
           body: JSON.stringify(body),
           signal: AbortSignal.timeout(20000),
         });
+        // A refused read drops a posting page and its sitemap URL with no
+        // error of its own, so the refusal is said out loud in the bake log.
+        if (r.status === 429) console.warn(`[prerender-seo] job-board refused a ${body.action ?? "list"} read with 429 (board budget) — posting pages from this bake will be short`);
         return r.ok ? await r.json() : null;
       } catch { return null; }
     };
