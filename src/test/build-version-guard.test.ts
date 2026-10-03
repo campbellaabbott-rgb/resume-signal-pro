@@ -1359,7 +1359,11 @@ const PINNED = {
   // 20261002140000) gates the data-bearing actions per address, plus the
   // uncounted budget-echo action and status.anonBudget. Carries the undeployed
   // .84 (and through it .82/.83). sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.85",
+  // 2026-09-09.86: the meter's country is looked up from the address (geo-cn.ts
+  // over APNIC's China delegations in cn-ranges.ts), because cf-ipcountry never
+  // reaches the function on this platform and the .85 country switch was inert.
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.86",
 };
 
 /**

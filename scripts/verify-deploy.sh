@@ -978,7 +978,7 @@ J '{"action":"status"}' > /tmp/vd_7i_status.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
-ok(/^2026-09-09\.8[45]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84 or .85, which carries .84; .81 means the bundle did not deploy)");
+ok(/^2026-09-09\.8[4-6]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84, .85 or .86, which carry .84; .81 means the bundle did not deploy)");
 const ss=j.sliceStats||{};
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
@@ -1076,7 +1076,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};
-ok(st.version==="2026-09-09.85","status.version = "+st.version+" (want 2026-09-09.85)");
+ok(/^2026-09-09\.8[56]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.85, or .86 which carries it)");
 const ab=st.anonBudget;
 ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
 if(ab){
@@ -1094,11 +1094,21 @@ const plain=js("/tmp/vd_7j_echo_plain.json")||{},probe=js("/tmp/vd_7j_echo_probe
 ok(plain.source==="cf"||plain.source==="xff","budget-echo source = "+plain.source+" (want cf or xff; none = the platform hands the function no client address, so everyone is unknown_address)");
 ok(!!kv.ip&&plain.address===kv.ip,"the address the function derives = "+plain.address+" vs Cloudflare trace ip = "+kv.ip+" (must match before enforcing)");
 const loc=/^[A-Z]{2}$/.test(kv.loc||"")&&kv.loc!=="XX"?kv.loc:"XX";
-ok(plain.country===loc,"the country the function reads = "+plain.country+" vs trace loc = "+kv.loc+" (XX here makes the country switch inert)");
+// .86: no cf-ipcountry reaches the function on this platform, so the country
+// is CN when the address is in a block APNIC delegated to China and XX for
+// everything else (countrySource registry / none). Only a cf source can name
+// the country of this machine; without one the right answer here is XX unless
+// this machine is in mainland China. .85 has no countrySource and is judged
+// the old way, which is how the inert switch was found.
+const ccWant=plain.countrySource==="cf"||!plain.countrySource?loc:(loc==="CN"?"CN":"XX");
+ok(plain.country===ccWant,"the country the function reads = "+plain.country+" (source "+(plain.countrySource||"unnamed: .85")+") vs trace loc = "+kv.loc+", want "+ccWant+(plain.countrySource&&plain.countrySource!=="cf"?" (no cf-ipcountry arrives; .86 reads mainland China from the address and calls the rest XX)":" (XX here makes the country switch inert)"));
 ok(plain.kind==="address"&&plain.exempt===false,"an undeclared anon read classifies as kind address, counted ("+plain.kind+", exempt "+plain.exempt+")");
 const fcc=rd("/tmp/vd_7j_forged_cc.txt").trim()||"AQ";const echoes=plain.source==="cf"||plain.source==="xff";
 const forged=(f,code,what,refusable)=>{const e=js(f);const c=rd(code).trim();
-  if(e&&typeof e.source==="string")return ok(!!kv.ip&&e.address===kv.ip&&e.country===loc,what+" is read as "+e.address+" / "+e.country+" vs trace "+kv.ip+" / "+loc+" (must match before enforcing: a header the caller writes must not pick its bucket, the unknown_address escape or its country)");
+  // Judged against the UNFORGED echo, not the trace country: on .86 the
+  // registry and Cloudflare can disagree about this machine without any header
+  // getting through, and that disagreement is the country line above to report.
+  if(e&&typeof e.source==="string")return ok(!!kv.ip&&e.address===kv.ip&&e.address===plain.address&&e.country===plain.country&&(e.countrySource??null)===(plain.countrySource??null),what+" is read as "+e.address+" / "+e.country+" vs the unforged "+plain.address+" / "+plain.country+" and trace ip "+kv.ip+" (must match before enforcing: a header the caller writes must not pick its bucket, the unknown_address escape or its country)");
   if(refusable&&echoes&&/^4[0-9][0-9]$/.test(c))return ok(true,what+" was refused by the platform before the function (HTTP "+c+"), so it never reaches the gate");
   ok(false,what+" -> HTTP "+c+" with no echo ("+rd(f).slice(0,80)+")");};
 forged("/tmp/vd_7j_echo_forged.json","/tmp/vd_7j_echo_forged_code.txt","FORGERY: a request writing cf-connecting-ip 192.0.2.77, x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,true);
@@ -1124,7 +1134,8 @@ else{
   for(const k of ["unproven_api","unproven_mcp","unproven_digest"])if(tot(after,k)>0)info(k+" in the last 3h: "+tot(after,k)+" (an internal caller without its reader proof: deploy skew, or a missing service key)");
   const unk=tot(after,"unknown_address");ok(unk===0,"unknown_address in the last 3h = "+unk+" (want 0: the platform names every caller)");
   const addrAll=tot(after,"address");const real=after.filter((r)=>r.bh_kind==="address"&&r.bh_country!=="ALL"&&r.bh_country!=="XX").reduce((n,r)=>n+Number(r.bh_requests||0),0);
-  if(addrAll>=50)ok(real>0,"address requests with a real country: "+real+" of "+addrAll+(real>0?"":" -- country switch inert: cf-ipcountry is not reaching the function"));
+  if(plain.countrySource)info("address requests read as a real country: "+real+" of "+addrAll+" in the last 3h (.86: CN from the registry, as no cf-ipcountry arrives -- the mainland share of the browser traffic; hours before the .86 publish read XX whatever their origin)");
+  else if(addrAll>=50)ok(real>0,"address requests with a real country: "+real+" of "+addrAll+(real>0?"":" -- country switch inert: cf-ipcountry is not reaching the function"));
   else info("address requests with a real country: "+real+" of "+addrAll+" (too few to judge; want >= 50)");
   for(const r of after.filter((x)=>x.bh_kind==="address"&&x.bh_country!=="ALL").slice(0,40))info(String(r.bh_hour).slice(0,13)+"h "+r.bh_country+": "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_addresses_over_cap+" over the cap, busiest "+r.bh_top_address_requests+", bare "+r.bh_bare_requests);
 }'
@@ -1141,5 +1152,24 @@ const seen=new Set();const grab=async(p)=>{if(seen.has(p)||seen.size>40)return "
 const main=await grab(m[0]);let hit=main.includes("board_budget");
 if(!hit)for(const d of [...new Set([...main.matchAll(/["(]\.\/([A-Za-z0-9_.-]+\.js)[")]/g)].map((x)=>"assets/"+x[1]))]){if((await grab(d)).includes("board_budget")){hit=true;break}}
 console.log((hit?"PASS":"FAIL")+"  the served frontend knows the board budget refusal ("+m[0]+(hit?"":", "+seen.size+" chunks read")+")")})().catch((e)=>console.log("INFO  frontend check could not run: "+e))'
+
+echo "== 7k. .86: the country is read from the address, because the platform sends none =="
+# 7j found cf-ipcountry never reaches the function (every row XX, 2026-10-03),
+# so the country switch was inert. .86 looks the address up against APNIC's
+# China delegations (job-board/geo-cn.ts, cn-ranges.ts). From outside, this
+# machine's own echo proves the new path runs (it names its source) and the
+# telemetry shows whether any browser traffic reads CN; that a mainland
+# address reads CN is held by the unit tests, since no request from here can
+# carry one (Cloudflare refuses a written cf-connecting-ip).
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+const js=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
+const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7j_echo_plain.json")||{};const rows=js("/tmp/vd_7j_after.json");
+ok(st.version==="2026-09-09.86","status.version = "+st.version+" (want 2026-09-09.86)");
+ok(["cf","registry","none"].includes(e.countrySource),"budget-echo names where its country came from: countrySource = "+e.countrySource+" (absent = the .86 bundle is not serving)");
+if(Array.isArray(rows)){const cn=rows.filter((r)=>r.bh_kind==="address"&&r.bh_country==="CN");
+  if(cn.length)for(const r of cn)info(String(r.bh_hour).slice(0,13)+"h CN: "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_over_cap+" over the cap");
+  else info("no address rows read CN in the last 3h: either no mainland browser traffic since the publish, or the scraper is not on mainland blocks -- read the next 04-18 UTC plateau before deciding the country switch")}
+const ab=st.anonBudget||{};info("country switch: countriesListed "+ab.countriesListed+", countryCap "+ab.countryCap+", enforce "+ab.enforce+" (a listed country is refused only while enforce is true)");'
 
 echo "done."
