@@ -638,6 +638,13 @@
       "when": 1791047118112,
       "tag": "0090_20260928011742_two_five_minute_scans_of_one_curve_must_not_share_a_minute",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1791059559579,
+      "tag": "0091_a_rotating_pool_is_seen_by_its_network_and_a_browser_can_be_asked_for_a_turnstile_check",
+      "breakpoints": true
     }
   ]
 }
