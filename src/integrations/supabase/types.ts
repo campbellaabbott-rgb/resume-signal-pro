@@ -1714,6 +1714,33 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_anon_net_hourly: {
+        Row: {
+          hour_utc: string
+          kind: string
+          net: string
+          over_cap: number
+          pass: string
+          within_cap: number
+        }
+        Insert: {
+          hour_utc: string
+          kind: string
+          net: string
+          over_cap?: number
+          pass: string
+          within_cap?: number
+        }
+        Update: {
+          hour_utc?: string
+          kind?: string
+          net?: string
+          over_cap?: number
+          pass?: string
+          within_cap?: number
+        }
+        Relationships: []
+      }
       job_board_board_observability: {
         Row: {
           as_of: string
@@ -4965,6 +4992,17 @@ export type Database = {
           bh_top_address_requests: number
         }[]
       }
+      get_board_anon_networks: {
+        Args: { p_hours?: number; p_limit?: number }
+        Returns: {
+          bn_hour: string
+          bn_kind: string
+          bn_net: string
+          bn_over_cap: number
+          bn_pass: string
+          bn_requests: number
+        }[]
+      }
       get_board_flow: {
         Args: { p_hours?: number }
         Returns: {
@@ -5876,6 +5914,9 @@ export type Database = {
           p_build_cap: number
           p_country: string
           p_kind: string
+          p_net?: string
+          p_pass?: string
+          p_pass_id?: string
           p_probe_cap: number
         }
         Returns: {
@@ -5883,7 +5924,9 @@ export type Database = {
           country_rule: boolean
           enforcing: boolean
           is_allowed: boolean
+          network_rule: boolean
           over_today: number
+          pass_rule: boolean
           used_today: number
         }[]
       }
