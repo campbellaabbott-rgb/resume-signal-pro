@@ -65,6 +65,7 @@
 // Guards read COMMENT-STRIPPED source and COMMENT-STRIPPED SQL. Nothing any
 // assertion below requires is spelled inside a comment in the file it reads.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -102,7 +103,13 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 const stripTs = (s: string) => s.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 const PAGE = stripTs(read("src/pages/GhostJobIndex.tsx"));
-const SLOW = { timeout: 8000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW here was 8000 -- ABOVE vitest's default 5000 ms per-test
+// budget, so it was dead on arrival and every stuck wait was reported as a
+// bare test timeout instead of as the assertion that never came true. This
+// file has room on the clock (slowest case 252 ms on the 2026-09-30 loaded
+// run); what it lacked was the ability to say what failed.
+vi.setConfig(MOUNT_TEST_BUDGET);
 const body = () => document.body.textContent ?? "";
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -355,7 +362,7 @@ describe("a refused share must not reach the page — the page re-applies the se
   it("the page carries no spelled threshold: the copy interpolates the constants it gates on", () => {
     const en = JSON.parse(read("src/i18n/locales/en.json")) as { ghostIndex: Record<string, string> };
     expect(en.ghostIndex.stillUp30ReasonFewEvents).toContain("{{minEvents}}");
-    expect(en.ghostIndex.stillUp30ReasonFewRoles2).toContain("{{minN}}");
+    expect(en.ghostIndex.stillUp30ReasonFewRoles3).toContain("{{minN}}");
     expect(en.ghostIndex.stillUp30ReasonWidth).toContain("{{maxHw}}");
     expect(en.ghostIndex.stillUp30ReasonNoFills).toContain("{{minFills}}");
     expect(en.ghostIndex.stillUp30ReasonPrecision).toContain("{{maxRel}}");
@@ -531,6 +538,52 @@ describe("a refused share must not reach the page — what a reader actually see
         }
       }
       expect(d.ghostIndex, `${f} still carries the single-reason sentence this replaced`).not.toHaveProperty("stillUp30Unread");
+    }
+  });
+
+  // THE COPY MOVES WITH THE RULE IT DESCRIBES. The ungated and few-roles
+  // sentences describe the field curve's admission, and on 2026-10-02 the
+  // watch floor (20261002121843) gave admission a third test while both
+  // sentences still described the earlier pair: a field the floor emptied
+  // or thinned -- its roles on boards read to the end that showed us events,
+  // refused because we had not watched those boards the whole time -- was
+  // told none of its roles sat on such a board. The field's stored contract
+  // is the mirror: whatever number of admission tests the newest COMMENT ON
+  // states, the two sentences state, in every locale, under keys renamed with
+  // the meaning so no locale can keep the earlier sentence under the new key.
+  it("the ungated and few-roles sentences state the admission tests the field's newest contract states, in every locale", () => {
+    const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()
+      .filter((f) => /COMMENT ON FUNCTION public\.get_category_fill_curve\b/.test(readFileSync(resolve(MIGRATIONS, f), "utf8")));
+    const newest = readFileSync(resolve(MIGRATIONS, files[files.length - 1]), "utf8");
+    const contract = /COMMENT ON FUNCTION public\.get_category_fill_curve\([^)]*\) IS([\s\S]*?)';\s*$/m.exec(newest)?.[1] ?? "";
+    expect(contract, `no contract text in ${files[files.length - 1]}`).toMatch(/THREE admission tests/);
+    expect(contract, "the test the contract added").toMatch(/posted after its board''?s watch floor/);
+    for (const r of ["ungated", "fewRoles"] as const) {
+      const s = DAY30_REASON_EN[r];
+      expect(s, `${r} must count the tests the contract counts`).toMatch(/all three of our tests/);
+      expect(s, `${r} must name the watch floor, the test the contract added`).toMatch(/posted after we began reading that board/);
+      expect(s, `${r} must not describe the earlier pair`).not.toMatch(/both tests|both read to the end and see/);
+    }
+    expect(DAY30_REASON_KEY.ungated).toBe("ghostIndex.stillUp30ReasonUngated2");
+    expect(DAY30_REASON_KEY.fewRoles).toBe("ghostIndex.stillUp30ReasonFewRoles3");
+    const THREE: Record<string, RegExp> = {
+      "en.json": /three/, "en-GB.json": /three/, "de.json": /drei/, "es.json": /tres/, "fr.json": /trois/,
+      "pt.json": /três/, "nl.json": /drie/, "hi.json": /तीनों/, "tl.json": /tatlo/,
+    };
+    const LOCALES = resolve(ROOT, "src/i18n/locales");
+    const locales = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
+    expect(locales.sort()).toEqual(Object.keys(THREE).sort());
+    const en = JSON.parse(read("src/i18n/locales/en.json")) as { ghostIndex: Record<string, string> };
+    expect(en.ghostIndex.stillUp30ReasonUngated2, "en.json and the inline default are one sentence").toBe(DAY30_REASON_EN.ungated);
+    expect(en.ghostIndex.stillUp30ReasonFewRoles3, "en.json and the inline default are one sentence").toBe(DAY30_REASON_EN.fewRoles);
+    for (const f of locales) {
+      const d = JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")) as { ghostIndex: Record<string, string> };
+      for (const retired of ["stillUp30ReasonUngated", "stillUp30ReasonFewRoles2"]) {
+        expect(d.ghostIndex, `${f} still carries ${retired}, the two-test sentence`).not.toHaveProperty(retired);
+      }
+      for (const k of ["stillUp30ReasonUngated2", "stillUp30ReasonFewRoles3"]) {
+        expect(d.ghostIndex[k], `${f}: ${k} must count three tests`).toMatch(THREE[f]);
+      }
     }
   });
 });

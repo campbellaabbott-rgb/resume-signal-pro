@@ -68,6 +68,34 @@ const fnSource = (() => {
   return RAW.slice(start, end + 2);
 })();
 
+/**
+ * Functions that ARE a board fetch: declared to return exactly what fetchBoard
+ * returns. A caller that reaches the board through one fetches the board all
+ * the same. The enumeration below matched only the literal call, so sending
+ * checkLive's membership check through the refused-board reader took the one
+ * path that turns absence into a user-visible verdict out of the class this
+ * file polices — caught only because one assertion happens to name it.
+ */
+const FETCH_ALIASES = [
+  ...CODE.matchAll(/^async function (\w+)\([^)]*\): Promise<Awaited<ReturnType<typeof fetchBoard>>>/gm),
+].map((m) => m[1]);
+const BOARD_FETCH = new RegExp(`\\b(?:${["fetchBoard", ...FETCH_ALIASES].join("|")})\\(`, "g");
+
+/**
+ * The aliases checkLive calls, compiled WITH it — the real ones, so a wrapper
+ * that dropped `windowed` on the way through fails the 2x2 below — together
+ * with the single-line top-level constants they read.
+ */
+const aliasSource = FETCH_ALIASES.filter((n) => new RegExp(`\\b${n}\\(`).test(fnSource)).map((n) => {
+  const start = RAW.indexOf(`\nasync function ${n}(`) + 1;
+  expect(start, `${n} not found at the top level of job-board/index.ts`).toBeGreaterThan(0);
+  const body = RAW.slice(start, RAW.indexOf("\n}", start) + 2);
+  const consts = [...new Set(body.match(/\b[A-Z][A-Z0-9_]+\b/g) ?? [])]
+    .map((c) => RAW.match(new RegExp(`^const ${c}\\b[^;\\n]*;`, "m"))?.[0])
+    .filter((d): d is string => typeof d === "string");
+  return [...consts, body].join("\n");
+}).join("\n");
+
 type Board = { jobs: Array<{ id: string }>; raw: unknown; windowed?: boolean } | null;
 type Stubs = Record<string, unknown>;
 
@@ -80,7 +108,7 @@ type Stubs = Record<string, unknown>;
  * new helper inside checkLive gets told what to stub.
  */
 function buildCheckLive(deps: Stubs) {
-  const js = transformSync(fnSource, { loader: "ts" }).code;
+  const js = transformSync(`${aliasSource}\n${fnSource}`, { loader: "ts" }).code;
   const reached: string[] = [];
   const env = new Proxy(deps, {
     has: () => true,
@@ -105,7 +133,7 @@ async function probe(
 ): Promise<boolean | null> {
   const src = { name: "Acme", source: opts.source, token: opts.token ?? "acme" };
   let fetches = 0;
-  const { fn } = buildCheckLive({
+  const { fn, reached } = buildCheckLive({
     liveBoardMemo: new Map(),
     fetchBoard: async () => { fetches++; return opts.board; },
     fetchWithTimeout: async () => { throw new Error("a membership vendor must not hit a per-job endpoint"); },
@@ -114,11 +142,15 @@ async function probe(
     workdayCxsUrl: () => null,
   });
   const first = await fn(src, opts.ask, null);
+  // checkLive's own catch turns the stub's throw into null, which is the very
+  // answer the windowed cases expect — so an unstubbed reach must fail HERE.
+  expect(reached, "checkLive reached a dependency this harness does not stub, and its catch answered null").toEqual([]);
   if (!opts.askTwice) return first;
   // Second probe on the same board: answered from the memo. If the memo kept
   // only the id set, this is where a windowed board turns back into a closure.
   const second = await fn(src, opts.ask, null);
   expect(fetches, "the board should have been fetched once and memoized").toBe(1);
+  expect(reached).toEqual([]);
   return second;
 }
 
@@ -215,9 +247,9 @@ describe("a window of ours is not a closure of theirs", () => {
    */
   const boardFetchers = (() => {
     const out = new Map<string, { name: string; body: string }>();
-    for (const m of CODE.matchAll(/\bfetchBoard\(/g)) {
+    for (const m of CODE.matchAll(BOARD_FETCH)) {
       const o = owner(m.index!);
-      if (!o || o.name === "fetchBoard") continue; // the definition itself
+      if (!o || o.name === "fetchBoard" || FETCH_ALIASES.includes(o.name)) continue; // the fetch itself
       out.set(o.name, { name: o.name, body: CODE.slice(o.start, o.end) });
     }
     return [...out.values()];

@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,6 +21,14 @@ import {
   PASS_SHELF_LIFE_DAYS,
 } from "../_shared/pass.ts";
 import { passSessionSettled } from "../_shared/pass-settlement.ts";
+// The full analysis is delivered by analyze-resume on the success page; the
+// webhook only has to recognise it, by the same constant analyze-resume gates on.
+import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
+
+// Provable from outside without a purchase or a signature: every response,
+// the 405 a GET receives included, carries this in x-fn-build.
+const FN_BUILD = "stripe-webhook.2026-10-01.1";
+const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -260,6 +268,14 @@ async function triggerProductDelivery(
     status: 'payment_received',
     amount_cents: session.amount_total,
     payment_completed_at: new Date().toISOString(),
+    // Nothing the retry sweeper can do helps a full analysis (its résumé never
+    // reaches this webhook), so its row is never scheduled for a retry: the
+    // sweeper selects only rows whose next_retry_at has passed. Not by
+    // max_retries 0, which product_delivery_health would count as an exhausted
+    // failure even after analyze-resume closes the row as delivered. Left open
+    // past two hours it is a stuck delivery there -- the signal a human should
+    // see for a buyer who paid and never got the analysis.
+    ...(productType === FULL_ANALYSIS_PRODUCT_TYPE ? { next_retry_at: 'infinity' } : {}),
     metadata: {
       resume_session_id: resumeSessionId,
       job_title: session.metadata?.job_title,
@@ -320,6 +336,22 @@ async function triggerProductDelivery(
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
     return { success: true, productType, deferred: 'freelance_intake' };
+  }
+
+  // THE FULL RESUME ANALYSIS IS DELIVERED ON THE SUCCESS PAGE, NOT HERE.
+  //
+  // create-checkout puts no résumé session in its metadata -- the résumé
+  // lives in the buyer's temp store and the analysis is rendered from
+  // analyze-resume's own response -- so this function has nothing to
+  // generate. It used to fall through to the "No resume session ID" failure
+  // below, leaving the claim it had just written as the only trace, and that
+  // claim was what analyze-resume then read as "already used": every buyer got
+  // 409. The claim stays (it is proof of payment, and reconcile-stripe reads
+  // it); analyze-resume now treats a claim recorded for this product as paid-
+  // not-yet-delivered and redeems the session itself, once.
+  if (productType === FULL_ANALYSIS_PRODUCT_TYPE) {
+    logStep("Full analysis — delivered by analyze-resume on the success page; nothing to generate here", { sessionId });
+    return { success: true, productType, deferred: 'success_page' };
   }
 
   // The six-hour pass has no résumé session and nothing to generate: its
@@ -397,10 +429,13 @@ async function triggerProductDelivery(
       }
 
       const [packageResponse, coverLetterResponse] = await Promise.all([
+        // The session is generate-apply-package's proof of purchase: it
+        // re-reads it from Stripe and checks the product. Without it every
+        // Apply Assistant delivery from here was a 402.
         fetch(`${supabaseUrl}/functions/v1/generate-apply-package`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-          body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language })
+          body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId })
         }),
         fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
           method: 'POST',
@@ -554,7 +589,7 @@ async function triggerProductDelivery(
 
 serve(async (req) => {
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", { status: 405, headers: BUILD_HEADER });
   }
 
   const processingStart = Date.now();
@@ -562,7 +597,7 @@ serve(async (req) => {
   try {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     if (!webhookSecret) {
-      return new Response("Configuration error", { status: 500 });
+      return new Response("Configuration error", { status: 500, headers: BUILD_HEADER });
     }
 
     const stripe = getStripe();
@@ -570,7 +605,7 @@ serve(async (req) => {
     const signature = req.headers.get("stripe-signature");
     
     if (!signature) {
-      return new Response("Missing signature", { status: 400 });
+      return new Response("Missing signature", { status: 400, headers: BUILD_HEADER });
     }
 
     let event: Stripe.Event;
@@ -578,7 +613,7 @@ serve(async (req) => {
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     } catch (err) {
       logStep("Signature verification failed");
-      return new Response("Webhook signature verification failed", { status: 400 });
+      return new Response("Webhook signature verification failed", { status: 400, headers: BUILD_HEADER });
     }
 
     logStep("Event verified", { type: event.type, id: event.id });
@@ -919,13 +954,13 @@ serve(async (req) => {
     );
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...BUILD_HEADER },
       status: 200
     });
   } catch (error) {
     console.error("[STRIPE-WEBHOOK] Error:", error);
     return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...BUILD_HEADER },
       status: 500
     });
   }

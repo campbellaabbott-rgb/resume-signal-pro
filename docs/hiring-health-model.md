@@ -277,6 +277,33 @@ Undated postings still contribute to *counts* (openings, closings, live), never
 to *durations*. Coverage is disclosed on the surface, per the stat-provenance
 rule.
 
+**`sufficient_30` — the day-30 gate, and the term about time it was missing.**
+`still_open_30` (S(30)) is read over a cohort posted 30 to 55 days ago, so a
+board's figure is only as good as our sight of that board *during those
+weeks*. Since `20261002121417` / `121843` / `122309` every day-30 chain applies
+a per-board **watch floor** before anything else: a role counts only if it was
+posted on a later UTC day than `watched_from`, the last day the board's
+takedowns were not yet observable to us.
+
+* A `full_read` board's `watched_from` is the later of
+  `job_board_board_watch.first_observed_on` and the last day
+  `job_board_board_state` recorded a `truncated` read. One cut-short read costs
+  thirty-one days of eligibility, deliberately: the read ledger starts on
+  2026-09-06 and cannot see an earlier windowing.
+* A `lap_proven` board has no floor and is refused (reason `lap`) until a
+  lap-latency term exists: a lap certifies a takedown one to three laps late,
+  and a posting still stamped missing at the cap is swept as an age-out, so the
+  share runs high however long the board has been watched.
+* No watch row, or any bucket that cannot prove an absence: refused.
+
+The clip is per board: the effective cohort is
+`[GREATEST(cohort_from, watched_from + 1), cohort_to]`. `cohort_from` on the row
+stays the global date and `watched_from` is published beside it, so any surface
+that prints a per-board cohort must print the later of the two. The company
+RPC names the first failing term in `insufficient_reason_30` (`unobservable`,
+`lap`, `watch`, `n`, `events`, `fills`, `relists`, `width`, `precision`,
+`arithmetic`). See §11 entry 8.
+
 ## 6. Feed-dark guard
 
 A closure batch is marked `suspect` when
@@ -289,6 +316,40 @@ The batch is still **written** — the closure log is the one asset here that
 cannot be re-derived later — and carries `suspect`, `batch_removed` and
 `batch_live_before` so the call is auditable and can be overturned. Exclusion
 happens at READ time, in the estimator.
+
+**The read-time exclusion covers every published takedown count, not only the
+estimator.** This section used to be read as scoping it to the fill, health,
+benchmark and ghost-stats family, and two anon readers sat outside it: the
+weekly series behind `/hiring-trends` (`get_hiring_trends`) and the `/jobs`
+ticker (`get_takedowns_today`). Both counted suspect batches while
+`ghost_stats.closed_90d` did not, so on 2026-10-01 the page printed 806,570
+takedowns for one week beside a 90-day total of 1,852,789, and the ticker read
+130,373 for one day. `20261002113617` applies `NOT COALESCE(suspect, false)` to
+both. The weekly series also returns `closed_flagged`, the count the filter
+removed, so `closed + closed_flagged` is exactly the figure it used to publish
+and the exclusion can be sized from outside.
+
+Consistent is not the same as correct. The guard fires only when a pass loses
+more than 30% of what the board held, so small phantom batches stay in the
+admitted count, and every real takedown on a flagged board is excluded with the
+batch. A week whose flagged records outnumber its admitted ones is therefore
+withheld on the page rather than printed (`src/lib/hiring-trends-trust.ts`,
+mirrored in the prerender's figure builder and held to it by
+`a-week-of-takedowns-cannot-outnumber-its-own-quarter.test.ts`), and so is a
+week reading at more than twice the record's average week: `closed_90d` over
+`observed_days` capped at 90, times seven. The cap matters because the ledger
+is no longer pruned and outlives the 90-day count; without it the ceiling sinks
+every day past the ledger's 90th. The public sentences that state this rule are
+parsed and checked against the verdict by
+`a-withheld-week-states-the-rule-that-withheld-it.test.tsx`. That capped span
+is one function, `closureCountSpanDays`, and it is also what the Ghost Job
+Index's closure opener and the `/data-api` hero tile print beside
+`closed_90d`, with the record's depth stated beside it once the ledger is
+deeper than 90 days; both used to print `observed_days` as the count's window
+(`a-ninety-day-count-names-the-days-it-covers.test.tsx`). Still carrying
+suspect rows, each by an open decision rather than by oversight:
+`get_board_flow` (an operator flow metric on `/status`) and `/v1/changes`
+(which emits every row as `outcome: "closed"` and does not expose the flag).
 
 **There is no promotion path, and this section used to promise one.** It said a
 suspect batch is promoted back to counted after a later successful fetch
@@ -487,3 +548,46 @@ per-employer open-roles denominator that a single board-wide count does not
 have, so it stays larger than the curve figures by exactly the unstamped dark
 batches. Both surfaces state that difference rather than leaving it to be found
 by subtraction.
+
+**8. A day-30 share was applied to boards we could not see during the cohort —
+CLOSED by `20261002121417`, `20261002121843` and `20261002122309`.** The
+day-30 gate admitted a board on its observability bucket *this week* and
+applied it to roles posted up to eight weeks earlier. Before a windowed board's
+first proven lap a takedown is unprovable, so it surfaced as an age-out at the
+cap (counted as still advertised) or as a `lap_backfill` closure (excluded); a
+board onboarded mid-cohort held only the roles alive the day we found it. Live
+on 2026-10-01 `careers.ulta.com` (lap_proven, first read 2026-09-07) published
+0.9431 with `sufficient_30` true on a cohort posted wholly before its first
+read, and the earliest first provable lap of any lap board was 2026-09-22 against
+a cohort ending 2026-09-01. In pglite, on boards whose true S(30) is exactly
+0.4000, the old gate published 0.9150 (lap board, first lap 12 days ago), 0.7843
+(onboarded 12 days ago), 0.7242 (windowed until 12 days ago) and 0.4800 (lap
+board watched 80 days, certifying 4 days late). The fix is the watch floor in
+§5. Reach falls from 2,002 boards carrying `sufficient_30` (38.0% of live
+postings) to an estimated 11–14%, all 308 lap boards included in the loss. The
+two stored copies of the old pool are withheld at apply time: the layoff
+partition's event counts are nulled (the reader answers `uncontrolled` until the
+05:10 refresh) and the stats and explore caches lose their field-curve keys (the
+pages say "not yet computed" until the next hourly run). On 2026-10-02 only the
+explore copy existed in production (the stats part, `20260928004823`, had not
+applied there), and a :07 refresh already scanning at the apply finishes on the
+old definition and writes the pre-fix pool back, stamped before the apply; so
+the post-deploy check (`scripts/verify-deploy.sh` section 7h) dates those rows
+against the apply time, supplied as `DAY30_APPLIED_AT`, and grades nothing it
+cannot date. A date says when the rows were computed, not which definition
+computed them, and the field gate share drifts too far between hourly runs of
+the old pool (up to 0.16 on one field) to tell the floor from it with a pass
+bar: that check prints the share as corroboration and fails only at or above the
+old pool's highest pooled reading, and whether `121843` applied is read from the
+function body with service role. The layoff control arm is dated the same way:
+the old writer stored 0.717 on 2026-10-02 under the single pre-fix 0.7395 the
+check had compared against, and it printed a pass. The page's two refusals
+that describe admission (`ungated`, `fewRoles`) name the three tests under
+renamed keys in all nine locales. The field curve's stored contract is restated
+by `121843` itself:
+`CREATE OR REPLACE` keeps a comment, and the one it would have kept said lap
+boards were admitted. Residuals not closed: a
+full_read board still certifies a takedown about one and a half revisit
+intervals late, and windowing before 2026-09-06 is invisible to the floor. The
+day-14 gate (`sufficient`) has no observability or watch term at all and is not
+changed by this entry.

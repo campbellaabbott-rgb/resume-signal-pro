@@ -20,6 +20,7 @@
 // no score". It is true, it is one line under a control row, and it does not
 // tell you WHICH of the twenty cards in front of you it is about.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -51,7 +52,12 @@ const ROOT = resolve(__dirname, "../..");
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 // Code literals against comment-stripped source; a comment's prose against RAW.
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// and cases here chain three waits. The slowest measured 3222 ms on the
+// 2026-09-30 loaded run -- 1.6x under the ceiling -- and a stuck wait could
+// only have been reported as "Test timed out in 5000ms", naming nothing.
+vi.setConfig(MOUNT_TEST_BUDGET);
 const RESUME = "registered nurse ".repeat(20);
 
 // j0 has no stored description on the server: the scorer answers null for it.

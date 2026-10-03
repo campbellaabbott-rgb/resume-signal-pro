@@ -54,6 +54,7 @@
  * prints a server total, and proves each one fails there.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -431,7 +432,12 @@ const mount = (url: string) => {
   window.history.replaceState({}, "", url);
   return render(<MemoryRouter initialEntries={[url]}><Jobs /></MemoryRouter>);
 };
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 with no per-test budget, so the case budget was
+// vitest's 5 s default and a stuck wait could only ever be reported as a
+// bare test timeout naming nothing. The slowest case measured 4920 ms on the
+// 2026-09-30 loaded run -- 80 ms inside the ceiling.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 describe("a list that ended in nothing — the three endings on screen", () => {
   beforeEach(() => { invoke.mockReset(); });

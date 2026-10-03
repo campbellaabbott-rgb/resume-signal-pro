@@ -608,3 +608,95 @@ describe("the job CATEGORY is read, and a category naming a building is not a po
     expect(job.workMode, "the head-office category refused the employer's own On-site").toBe("onsite");
   });
 });
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A REFUSAL THE WRITER CANNOT WRITE IS NOT A REFUSAL.
+ *
+ * Everything above proves the NORMALIZER refuses a contradiction —
+ * AUG_HYBRID_VS_ONSITE answers null, and the exhaustive pass covers every
+ * dropdown against every title. All of it was true and deployed in .78, and on
+ * 2026-10-01, with .81 live, that same posting still served "hybrid":
+ *
+ *   ukg:…:692bd5bf-2be4-4ddd-9e24-e32c507bb43f
+ *   title "Pre-Visit Specialist I - Call Center *Hybrid*", dropdown On-site
+ *   normalizeUkg -> null          served workMode -> "hybrid"
+ *
+ * The refusal was computed on every visit and discarded on every visit. Two
+ * writers handle this column in the refresh diff loop and neither could carry
+ * it: put("work_mode", …) is stated-only and returns on a null, and the escape
+ * hatch that exists precisely to let a null through sat INSIDE
+ * `row.remote !== prev.remote`. remote is false for hybrid, false for onsite
+ * and false for null, so every transition inside that set leaves the boolean
+ * still and was unwritable. Only a correction that happened to flip the
+ * boolean — remote→null, the iCIMS case n115 was written for — could land.
+ *
+ * So the guard below is not about the normalizer, which was never wrong. It is
+ * about the arithmetic that made a whole class of its answers undeliverable,
+ * and it is stated as that arithmetic rather than as the shape of today's
+ * code: FROM the modes and their booleans, derive which transitions leave
+ * `remote` unchanged; that set is non-empty; therefore a writer that requires
+ * the boolean to move cannot deliver them.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+describe("a work-mode correction that does not move the boolean is still written", () => {
+  const INDEX = codeOf(
+    readFileSync(resolve(HERE, "../../supabase/functions/job-board/index.ts"), "utf8"),
+  );
+  // `remote: workMode === "remote"` — the derivation every normalizer uses.
+  const MODES = [null, "remote", "hybrid", "onsite"] as const;
+  const remoteOf = (m: string | null) => m === "remote";
+
+  it("the hazard is real: most mode changes leave the boolean untouched", () => {
+    const still = MODES.flatMap((a) =>
+      MODES.filter((b) => b !== a && remoteOf(a) === remoteOf(b)).map((b) => `${a}->${b}`),
+    );
+    // hybrid<->onsite, hybrid<->null, onsite<->null — six of the twelve.
+    expect(still).toContain("hybrid->null");
+    expect(still).toContain("onsite->null");
+    expect(
+      still.length,
+      "if no transition left the boolean still, gating the trinary on the boolean would be harmless",
+    ).toBe(6);
+  });
+
+  /** The diff loop's pair block, sliced by code and not by prose. */
+  const pairBlock = (): string => {
+    const i = INDEX.indexOf('typeof row.remote === "boolean"');
+    expect(i, "the pair block is gone — re-point this guard").toBeGreaterThan(0);
+    // To the end of the statement that follows the work_mode write.
+    return INDEX.slice(i, i + 1200);
+  };
+
+  it("reads the real block, not an empty slice", () => {
+    expect(INDEX.length, "index.ts read as empty — every check here would pass vacuously")
+      .toBeGreaterThan(100_000);
+    expect(pairBlock()).toContain("patch.work_mode");
+  });
+
+  it("does not gate the trinary on the boolean having changed", () => {
+    const head = pairBlock().slice(0, pairBlock().indexOf("{") + 1);
+    expect(
+      /row\.remote\s*!==\s*prev\.remote/.test(head),
+      "the pair block is entered only when the boolean changed, so hybrid->null, " +
+        "onsite->null and hybrid<->onsite can never be written — which is how a refusal " +
+        "computed on every visit was discarded on every visit",
+    ).toBe(false);
+  });
+
+  it("writes the trinary whenever it differs, and the boolean on its own test", () => {
+    const b = pairBlock();
+    // The trinary's own condition compares modes, not booleans.
+    expect(b).toMatch(/nextMode\s*!==\s*prev\.work_mode/);
+    expect(b).toMatch(/patch\.work_mode\s*=\s*nextMode/);
+    // The boolean keeps its own guard inside the block rather than gating it.
+    expect(b).toMatch(/if\s*\(\s*row\.remote\s*!==\s*prev\.remote\s*\)/);
+  });
+
+  it("does not log the same edit twice when the stated-only writer already wrote it", () => {
+    // put() handles a non-null change earlier in the same loop. Without this
+    // test the block would note() it a second time and job_board_field_changes
+    // would report two employer edits where there was one.
+    expect(pairBlock()).toMatch(/patch\.work_mode\s*===\s*undefined/);
+  });
+});

@@ -14,7 +14,9 @@ RB=$(grep -h '^RB_API_KEY' .env.local 2>/dev/null | sed -E 's/^[^=]+=//; s/"//g'
 B=https://bwhdazbotpblihdxcmho.supabase.co
 SITE=https://resumebooster.work
 UA="Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-J() { curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$1"; }
+# x-rb-budget: probe -- since .85 the board counts anonymous reads per address,
+# and this script is our own tooling, not a browser (job-board/anon-budget.ts).
+J() { curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$1"; }
 R() { curl -s -m 60 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-{\}}"; }
 MC() { curl -s -m 60 -X POST "$B/functions/v1/agent-mcp" -H "Content-Type: application/json" -H "apikey: $K" -H "mcp-protocol-version: 2025-06-18" "$@"; }
 # Table probes select `*`: a named column that the table lacks answers 400 before
@@ -454,7 +456,7 @@ echo "== 5y. .77: a posted wage counts as stated pay, and the count agrees with 
 # 2026-09-27T02:01:53Z). B and K are shell locals here, so they are exported.
 B="$B" K="$K" node -e '
 const B=process.env.B, K=process.env.K;
-const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
+const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
 const timed=async(b)=>{const t=Date.now();const j=await J(b);return [Date.now()-t, j]};
 const gap=(rows)=>rows.filter(r=>typeof r.salary==="string"&&r.salary.trim()!==""&&r.salaryMinAnnual==null);
 const med=(a)=>a.slice().sort((x,y)=>x-y)[Math.floor(a.length/2)];
@@ -523,7 +525,7 @@ echo "== 5z. .78: the employer's own dropdown, and a building is not a policy ==
 #       census in the build report.
 B="$B" K="$K" node -e '
 const B=process.env.B, K=process.env.K;
-const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
+const J=async(b)=>{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(b)});return r.json()};
 const HO=/\bhome\s+office\b/i, HOG=/\bhome\s+office\b/gi;
 // The site-label residue rule, mirrored from normalize.ts: nothing left, a bare
 // cost-centre number, or a residue naming an organisation or a department.
@@ -591,4 +593,553 @@ DESC=$(printf '%s' "$PR" | grep -o '<meta name="description" content="[^"]*"' | 
 case "$DESC" in *"pass for your own agent."\") echo "PASS  /pricing description ends with the pass sentence";; *) echo "FAIL  /pricing description: ${DESC:0:200} (baseline: cut at 'purchases (\"')";; esac
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
 for T in 99 29; do N=$(printf '%s' "$AG" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /agents carries \$$T x$N (want >= 5; baseline 0)" || echo "FAIL  /agents carries \$$T x$N (want >= 5)"; done
+
+echo "== 7e. the retired job sitemap is GONE, terminally (the ~733k-URL crawl trap) =="
+# .82's claim. Removing the robots.txt line on 2026-09-23 removed the sign; the
+# route kept serving, and eight days later the index still answered with 30
+# pages and page 0 still listed 24,449 URLs in 3.3 MB, uncached, to any crawler
+# that asked. 410 and not 404 is the whole point: a 404 is retried for months.
+for Q in "action=sitemap" "action=sitemap&page=0"; do
+  C=$(curl -s -m 60 -o /tmp/vd_sm.txt -w '%{http_code}' "$B/functions/v1/job-board?$Q")
+  SZ=$(wc -c < /tmp/vd_sm.txt | tr -d ' ')
+  case "$C" in
+    410) echo "PASS  ?$Q -> 410 Gone (${SZ}b)";;
+    200) echo "FAIL  ?$Q -> 200 (${SZ}b) — the old bundle is still serving the sitemap; the deploy did not land";;
+    404) echo "FAIL  ?$Q -> 404 — crawlers retry a 404 for months; this must be 410";;
+    *)   echo "FAIL  ?$Q -> HTTP $C (${SZ}b)";;
+  esac
+done
+# And it really is gone, not merely refusing one spelling: no sitemap XML in the body.
+grep -qiE '<urlset|<sitemapindex|<loc>' /tmp/vd_sm.txt \
+  && echo "FAIL  the response still carries sitemap XML" \
+  || echo "PASS  no sitemap XML in the response body"
+
+# ── 7f. THE MONEY PATHS OF 2026-10-01: the $5 analysis was refused by a stale
+# amount floor and by the webhook's claim; the $7 apply kit accepted only
+# product types no checkout mints and its server callers sent no session; ATS
+# Defense re-claimed sessions its callers had claimed; three writers recorded
+# claims with no product; and the delayed email enqueue was anon-executable.
+# READ-ONLY: OPTIONS preflights and a GET to the webhook run no function logic
+# and spend no budget; the column probes are selects that RLS answers empty;
+# queue_wrapper_exposure is an invoker-rights catalog read returning two
+# numbers. No queue wrapper is CALLED here -- if the revoke had not landed,
+# such a call would run, and could create a queue or send mail -- and nothing
+# mints, claims or redeems a session.
+echo "== 7f. the paid products are deliverable, and the queue wrappers are closed to anon =="
+for FN in analyze-resume generate-apply-package generate-ats-defense verify-product-purchase verify-scan-pack-purchase retry-failed-deliveries; do
+  H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+  case "$H" in "$FN.2026-10-01.1") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving; baseline 2026-10-01: none)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-01.1)";; esac
+done
+WH=$(curl -s -m 30 -D - -o /dev/null "$B/functions/v1/stripe-webhook" | tr -d '\r')
+WS=$(printf '%s' "$WH" | head -1 | awk '{print $2}')
+WB=$(printf '%s' "$WH" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+[ "$WS" = "405" ] && [ "$WB" = "stripe-webhook.2026-10-01.1" ] && echo "PASS  stripe-webhook GET -> 405 with x-fn-build = $WB" || echo "FAIL  stripe-webhook GET -> HTTP $WS x-fn-build='$WB' (want 405 and stripe-webhook.2026-10-01.1; baseline: 405 with none)"
+# ORDER. The webhook ships in the SAME deploy as analyze-resume. The new
+# analyze-resume accepts an old webhook's claim (no product, no address), so a
+# buyer is no longer refused if it lands first -- but the old webhook still
+# routes a full analysis to "No resume session ID" and the retry queue, and
+# nothing proves which webhook is live until this marker does.
+ARB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/analyze-resume" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+if [ "$ARB" = "analyze-resume.2026-10-01.1" ] && [ "$WB" != "stripe-webhook.2026-10-01.1" ]; then echo "FAIL  analyze-resume serves $ARB but stripe-webhook does not ('$WB'): the webhook is behind -- deploy it"; else echo "PASS  stripe-webhook is not behind analyze-resume (analyze-resume '$ARB', webhook '$WB')"; fi
+# The columns the new writes name. A select of a column the table lacks answers
+# 400 42703 before RLS runs; present, RLS answers an empty list.
+for Q in "used_stripe_sessions?select=session_id,product_type,ip_address" "purchased_content?select=stripe_session_id,product_type,generated_content,customer_email" "product_deliveries?select=stripe_session_id,product_type,status,max_retries,generation_success,content_generation_completed_at"; do
+  C=$(curl -s -m 30 -o /tmp/vd_7f.json -w '%{http_code}' "$B/rest/v1/$Q&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+  [ "$C" = "200" ] && echo "PASS  ${Q%%\?*} carries every column the money paths write (HTTP 200)" || echo "FAIL  ${Q%%\?*} -> HTTP $C $(head -c 160 /tmp/vd_7f.json)"
+done
+NCC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/used_stripe_sessions?select=no_such_column_probe&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+[ "$NCC" = "400" ] && echo "PASS  negative control: a column the table lacks -> 400 (so the 200s above mean present)" || echo "FAIL  negative control -> HTTP $NCC (the 200s above cannot be read as presence)"
+R queue_wrapper_exposure '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  queue_wrapper_exposure non-JSON: "+s.slice(0,160))}if(j&&j.code==="PGRST202")return console.log("FAIL  queue_wrapper_exposure does not exist (migration 20261002104317 not applied)");if(typeof j?.open_to_clients!=="number")return console.log("FAIL  queue_wrapper_exposure -> "+JSON.stringify(j).slice(0,160));console.log((j.definers>=5?"PASS":"FAIL")+"  "+j.definers+" definer function(s) in public touch pgmq (want >= 5: the five email wrappers)");console.log((j.open_to_clients===0?"PASS":"FAIL")+"  "+j.open_to_clients+" of them executable by anon or authenticated (want 0; baseline 2026-10-01: the delayed enqueue, 1)")})'
+echo "INFO  the purchase itself cannot be proved read-only: the first paid full_analysis and apply_assistant after deploy should leave product_deliveries status=delivered (owner: check Stripe and the Account page purchase list)"
+
+echo "== 7g. a week of takedowns cannot outnumber its own quarter (20261002113617, frontend before and after) =="
+# THE CLAIM: the weekly series and the /jobs ticker count takedowns on the filter
+# the 90-day total uses (flagged batches out), the weekly series reports what it
+# excluded as closed_flagged, and both pages withhold a week whose flagged records
+# outnumber the admitted ones or that reads above twice the record's weekly
+# average. DEPLOY ORDER: frontend first (its verdict judges an old five-column row
+# by the ceiling alone), then the migration, then a frontend REBUILD (the
+# prerender reads the cache at build time). Judge after the next :27 stats-cache
+# tick, and run this section again after the tick after that, so the cron -- not
+# a one-off call -- is what is proven to write the new shape.
+# The same change makes the two other pages that print closed_90d beside the
+# ledger depth (the Ghost Job Index opener, the /data-api hero tile) print the
+# days the count covers, capped at 90, and the depth beside it once the ledger
+# is deeper: (k) reads both deployed chunks for that clause.
+#
+# BASELINES, read with the anon key 2026-10-01/02 before the change: weekly closed
+# 845,110 / 870,536 / 806,570 for the weeks of 09-07, 09-14, 09-21 (byte-stable
+# from 09-23 to 10-01, so the ledger is append-only for past weeks); five weeks
+# summed to 3,194,350 against closed_90d 1,852,789-1,854,930 (observed_days 79);
+# get_hiring_trends answered in 7-13s against a 20s header; the ticker read
+# 130,373. Every check is a read: RPC reads with the anon key, two GETs.
+B="$B" K="$K" SITE="$SITE" UA="$UA" node -e '
+const B=process.env.B,K=process.env.K,SITE=process.env.SITE,UA=process.env.UA;
+const R=async(fn,args={})=>{const t0=Date.now();const r=await fetch(B+"/rest/v1/rpc/"+fn,{method:"POST",headers:{"content-type":"application/json",apikey:K,authorization:"Bearer "+K},body:JSON.stringify(args)});const txt=await r.text();let j=null;try{j=JSON.parse(txt)}catch{}return {status:r.status,ms:Date.now()-t0,j,txt}};
+const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+const info=(m)=>console.log("INFO  "+m);
+const fmt=(n)=>typeof n==="number"?n.toLocaleString("en-US"):String(n);
+// The verdict, mirrored from src/lib/hiring-trends-trust.ts (the page) and the
+// prerender builder: unreadable, then above the ceiling, then flagged majority.
+// The ceiling divides closed_90d by observed_days CAPPED AT 90 -- the ledger
+// outlives the 90-day count, and uncapped the ceiling sinks after day 90.
+const verdictOf=(w,g)=>{const n=(v)=>typeof v==="number"&&Number.isFinite(v)&&v>=0?v:null;const c=n(w&&w.closed),f=n(w&&w.closed_flagged),t=n(g&&g.closed_90d),d=n(g&&g.observed_days);const ceil=t!==null&&d!==null&&d>0?t/Math.min(d,90)*14:null;
+  if(c===null)return{state:"held",reason:"unreadable",ceil};if(ceil!==null&&c>ceil)return{state:"held",reason:"exceeds_record",ceil};if(f!==null&&f>c)return{state:"held",reason:"flagged_majority",ceil};return{state:"published",closed:c,ceil}};
+const PRE={"2026-09-07":845110,"2026-09-14":870536,"2026-09-21":806570};
+(async()=>{
+  const sc=await R("get_stats_cache");
+  const c=(sc.j&&!Array.isArray(sc.j))?sc.j:(Array.isArray(sc.j)&&sc.j[0])?sc.j[0]:{};
+  const rows=Array.isArray(c.hiring_trends)?c.hiring_trends:[];
+  const g=(c.ghost_stats&&typeof c.ghost_stats==="object")?c.ghost_stats:{};
+  const stale=Array.isArray(c.stale_parts)?c.stale_parts:[];
+  info("stats_cache computed_at="+c.computed_at+", "+rows.length+" weekly rows, closed_90d="+fmt(g.closed_90d)+", observed_days="+g.observed_days);
+  const shaped=rows.filter(r=>typeof r.closed_flagged==="number").length;
+  ok(rows.length>0&&shaped===rows.length,"(a) every cached hiring_trends row carries a numeric closed_flagged ("+shaped+"/"+rows.length+"). Only the new body can write it: 0 means the migration has not landed or no hourly tick has run since -- never judge by the runner saying applied");
+  ok(!stale.includes("hiring_trends"),"(b) stale_parts does not name hiring_trends ("+JSON.stringify(stale)+"). Named, the refresh timed out or errored and carried the OLD inflated rows forward under a fresh stamp");
+  let seen=0;
+  for(const r of rows){const w=String(r.week_start).slice(0,10);if(PRE[w]===undefined)continue;seen++;const s=(Number(r.closed)||0)+(Number(r.closed_flagged)||0);const d=Math.abs(s-PRE[w])/PRE[w];
+    ok(typeof r.closed_flagged==="number"&&d<=0.005,"(c) week "+w+": closed "+fmt(r.closed)+" + closed_flagged "+fmt(r.closed_flagged)+" = "+fmt(s)+" against the pre-deploy "+fmt(PRE[w])+" ("+(100*d).toFixed(2)+"% apart, want <= 0.5%). The partition is the proof nothing was lost or invented")}
+  if(seen===0)info("(c) none of the three baseline weeks is still inside the 35-day window, so the partition check has nothing to compare -- (a), (b) and (d) carry the proof");
+  const sum=rows.reduce((a,r)=>a+(Number(r.closed)||0),0);
+  ok(typeof g.closed_90d==="number"&&sum<=g.closed_90d,"(d) the weeks sum to "+fmt(sum)+" against closed_90d "+fmt(g.closed_90d)+" -- a week cannot outnumber its own quarter (pre-deploy 3,194,350 against 1,852,789)");
+  for(const r of rows){const v=verdictOf(r,g);info("week "+String(r.week_start).slice(0,10)+": closed "+fmt(r.closed)+", closed_flagged "+fmt(r.closed_flagged)+" -> "+(v.state==="held"?"withheld ("+v.reason+")":"printed")+(v.ceil?" [ceiling "+fmt(Math.round(v.ceil))+"]":""))}
+  const last=rows.length>1?rows[rows.length-2]:null;const v=last?verdictOf(last,g):null;
+  // INFO, not PASS: this applies the verdict to the cache, so it cannot fail by
+  // construction. Whether the DEPLOYED page applies it is (i).
+  info("(e) what the new page renders for the last complete week ("+(last?String(last.week_start).slice(0,10):"none")+"): "+(!v?"no week to judge":v.state==="held"?"a dash, withheld for "+v.reason:fmt(v.closed))+". Expect the weeks of 09-07 to 09-28 withheld until the Workday collector is fixed; the tile returns with the first clean full week, and the threshold is not to be relaxed to bring it back sooner");
+  const live=await R("get_hiring_trends");
+  ok(live.status===200&&Array.isArray(live.j)&&live.ms<45000,"(f) get_hiring_trends live: HTTP "+live.status+" in "+(live.ms/1000).toFixed(1)+"s (want under 45s against the 60s header; pre-fix 7-13s against 20s). Over it, drop the anti-join in posted_closed first"+(live.status!==200?" -- "+live.txt.slice(0,160):""));
+  if(Array.isArray(live.j))ok(live.j.length>0&&live.j.every(r=>typeof r.closed_flagged==="number"),"(f) the live answer carries closed_flagged on every row");
+  const td=await R("get_takedowns_today");
+  const hrs=Math.max(1,Math.ceil((Date.now()-Date.parse(new Date().toISOString().slice(0,10)+"T00:00:00Z"))/3600000));
+  const bf=await R("get_board_flow",{p_hours:hrs});const f=Array.isArray(bf.j)?bf.j[0]:bf.j;
+  info("(g) get_takedowns_today = "+fmt(td.j)+" against get_board_flow("+hrs+") closed minus superseded = "+(f&&typeof f.closed==="number"?fmt(f.closed-f.superseded):"?")+". The ticker now drops flagged batches the flow still counts, so it reads lower by about the flagged share (pre-deploy 130,373 on 2026-10-01). INFO only: the gap collapses once the collector is fixed");
+  const html=await (await fetch(SITE+"/hiring-trends",{headers:{"user-agent":UA}})).text();
+  const t=html.replace(/<[^>]*>/g," ").replace(/\s+/g," ");
+  // ONE CHECK, because the old build ALSO printed no figure for a held week (its
+  // row went null and vanished), so "no opposite-pair label" alone passes before
+  // the rebuild. What only the new build prints is a withheld reason or a figure
+  // under the ceiling, and never the old label beside either.
+  const m=t.match(/([0-9][0-9,]*) — closure events logged that week/);const held=/Takedowns — withheld for that week/.test(t);
+  const ceil=verdictOf({closed:0},g).ceil;
+  ok(!/opposite pair/.test(t)&&(held||(!!m&&(ceil===null||Number(m[1].replace(/,/g,""))<=ceil))),"(h) crawler HTML: "+(/opposite pair/.test(t)?"still carries the opposite-pair label":held?"the week is withheld, with its reason":m?"prints "+m[1]+" (ceiling "+fmt(Math.round(ceil))+")":"neither a withheld reason nor a weekly takedown figure -- the prerender predates this build (rebuild AFTER the migration) or could not read the cache"));
+  // The ceiling reason has to name the rule the verdict applies: twice the
+  // average WEEK of the record. The first build of this change said its daily
+  // figure, seven times stricter than the arithmetic, so every week it printed
+  // broke the rule it stated.
+  if(held)ok(!/twice the daily average/.test(t),"(h2) crawler HTML: the withheld reason "+(/twice the daily average/.test(t)?"still states the daily-figure rule the verdict never applied -- the prerender predates the copy fix":"does not state the daily-figure rule"));
+  const shell=await (await fetch(SITE+"/")).text();
+  const entry=(shell.match(/src="(\/assets\/index-[^"]+\.js)"/)||[])[1];
+  if(!entry){info("(i) could not locate the entry bundle in the homepage shell; open /hiring-trends in a browser instead: the takedown tile must read a dash with a Withheld sentence, never 806,570");return}
+  const js=await (await fetch(SITE+entry)).text();
+  // The 90-day count beside the ledger depth: from about 2026-10-12 the ledger
+  // is deeper than the count, and the old copy printed the depth as the window.
+  for(const [name,needle] of [["GhostJobIndex","(our record runs "],["DataApi",", from a record "]]){const ch=(js.match(new RegExp(name+"-[\\w-]+\\.js"))||[])[0];if(!ch){info("(k) the entry bundle names no "+name+" chunk; open the page in a browser instead");continue}
+    const src=await (await fetch(SITE+"/assets/"+ch)).text();ok(src.includes(needle),"(k) the deployed "+name+" chunk ("+ch+") names the record depth beside the 90-day count once the ledger outlives it -- absent means the page still prints observed_days as the window of a 90-day count")}
+  const chunk=(js.match(/HiringTrends-[\w-]+\.js/)||[])[0];
+  if(!chunk){info("(i) the entry bundle names no HiringTrends chunk; check /hiring-trends in a browser instead");return}
+  const code=await (await fetch(SITE+"/assets/"+chunk)).text();
+  ok(code.includes("takedowns logged last week")&&code.includes("takedowns withheld"),"(i) the deployed /hiring-trends chunk ("+chunk+") carries the verdict path -- absent means the hydrated page still prints the raw weekly count");
+  ok(/twice the average week of our (own )?90-day closure record/.test(code)&&!/twice the daily average/.test(code),"(j) the deployed chunk states the ceiling as twice the average week of the record, and nowhere as its daily figure -- failing means the copy that shipped with the first build of this change is still live");
+})().catch(e=>console.log("FAIL  7g probe threw: "+e.message));
+'
+
+echo "== 7h. a day-30 share needs thirty days of reading in full (the watch floor: 20261002121417 / 121843 / 122309) =="
+# The three re-issues admit a role to any day-30 chain only if its board was
+# read in full from before the role was posted; lap boards are refused for a
+# reason of their own. The staged runner has renamed and edited files before,
+# so every line below judges BEHAVIOUR: the two new columns on the company
+# curve are the proof it applied, and the named boards are the ones the defect
+# was reproduced on (careers.ulta.com published 0.9431 with sufficient_30 true
+# on 2026-10-01). Read-only: one RPC read on five named boards, one facet list
+# for the largest boards (the same call section 3 makes) and three reads of
+# fifty of them, the explore cache, the stats-cache read section 4 already
+# made, and the stored layoff arms. A read that errs or times out is a FAIL
+# naming its code, never an INFO: a claim nothing evaluated has not passed.
+R get_company_fill_curve '{"p_tokens":["careers.ulta.com","dominos","catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers","AbbVie"]}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_company_fill_curve non-JSON: "+s.slice(0,160))}
+if(!Array.isArray(j)||!j.length)return console.log("FAIL  get_company_fill_curve -> "+JSON.stringify(j).slice(0,160));
+const keyed=j.every(r=>("watched_from" in r)&&("insufficient_reason_30" in r));
+console.log((keyed?"PASS":"FAIL")+"  every row carries watched_from and insufficient_reason_30"+(keyed?" (20261002121417 applied)":" -- the old shape is serving: 20261002121417 did not apply"));
+if(!keyed)return;
+const by=Object.fromEntries(j.map(r=>[r.company_token,r]));
+const line=r=>"bucket="+r.observability_bucket+" sufficient_30="+r.sufficient_30+" S30="+r.still_open_30+" watched_from="+r.watched_from+" reason="+r.insufficient_reason_30+" cohort_to="+r.cohort_to;
+for(const t of ["careers.ulta.com","dominos"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
+  if(r.observability_bucket!=="lap_proven"){console.log("INFO  "+t+" is no longer lap_proven: "+line(r));continue}
+  const ok=r.insufficient_reason_30==="lap"&&r.sufficient_30===false&&r.still_open_30===null;
+  console.log((ok?"PASS":"FAIL")+"  "+t+" refused as a lap board: "+line(r)+" (baseline: Ulta 0.9431, sufficient_30 TRUE)")}
+for(const t of ["catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
+  if(r.observability_bucket==="lap_proven"){console.log((r.insufficient_reason_30==="lap"?"PASS":"FAIL")+"  "+t+" is lap_proven now and must read lap: "+line(r));continue}
+  // A truncated read inside 2026-09-23..10-01 (measured the night of the fix)
+  // must hold the floor at or after its day; the ledger is never pruned, so
+  // this stays true until the board stops being full_read.
+  const ok=typeof r.watched_from==="string"&&r.watched_from>="2026-09-23";
+  console.log((ok?"PASS":"FAIL")+"  "+t+" floored at its last cut-short read: "+line(r)+" (want watched_from >= 2026-09-23; baseline S30 0.87-0.93 with sufficient_30 TRUE)")}
+const a=by["AbbVie"];
+if(!a)console.log("INFO  AbbVie returned no row");
+else if(a.watched_from===null&&a.insufficient_reason_30==="watch")console.log("FAIL  AbbVie reads watch with no floor: job_board_board_watch holds no row for it -- the tenure table is not seeded, and every full_read board is being refused ("+line(a)+")");
+else{const ok=a.sufficient_30===true&&a.insufficient_reason_30===null&&typeof a.watched_from==="string"&&a.watched_from<="2026-08-06";
+  console.log((ok?"PASS":"FAIL")+"  AbbVie (read in full since 2026-08-02) keeps its figure: "+line(a)+" (want sufficient, floor on or before 2026-08-06, S30 about 0.29)")}
+})'
+# THE LARGEST BOARDS, IN CHUNKS, AND A CHUNK THAT ERRS IS A FAIL. The company
+# curve carries a 25-second header; one call over the 150 facet tokens took
+# 17s before the floor added its joins, and a timeout (57014) comes back from
+# PostgREST as a JSON object, not an array. Until 2026-10-02 this section
+# printed that as INFO "returned no rows", so the three claims below could go
+# unevaluated with no FAIL anywhere. Fifty tokens a call took 2.7s to 8.3s
+# that morning (pre-fix, read-only). Every chunk that answers anything but an
+# array prints FAIL with its error code, and so does a facet list that names
+# no company: a check that could not run is not a check that passed.
+CHUNK7H=50
+export CHUNK7H
+J '{"action":"list","limit":1,"includeFacets":true}' > /tmp/vd_7h_facets.json
+node -e 'let t=[];try{const j=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_facets.json","utf8"));t=(j.companies||[]).map(c=>c&&c.token).filter(x=>typeof x==="string").slice(0,150)}catch{}
+require("fs").writeFileSync("/tmp/vd_7h_tokens.json",JSON.stringify(t))'
+NCH7H=$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_tokens.json","utf8"));process.stdout.write(String(Math.ceil(t.length/Number(process.env.CHUNK7H))))')
+i7h=0
+while [ "$i7h" -lt "$NCH7H" ]; do
+  R get_company_fill_curve "$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_tokens.json","utf8"));const k=Number(process.env.CHUNK7H),i=Number(process.argv[1]);process.stdout.write(JSON.stringify({p_tokens:t.slice(i*k,i*k+k)}))' "$i7h")" > "/tmp/vd_7h_chunk_$i7h.json"
+  i7h=$((i7h+1))
+done
+node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+let toks=[];try{toks=JSON.parse(rd("/tmp/vd_7h_tokens.json"))}catch{}
+if(!toks.length)return console.log("FAIL  largest-boards check not evaluated: the facet list named no company -- "+rd("/tmp/vd_7h_facets.json").slice(0,120));
+const k=Number(process.env.CHUNK7H),n=Math.ceil(toks.length/k),j=[];let failed=0;
+for(let i=0;i<n;i++){const s=rd("/tmp/vd_7h_chunk_"+i+".json");let b;
+  try{b=JSON.parse(s)}catch{failed++;console.log("FAIL  largest boards, chunk "+(i+1)+" of "+n+": no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));continue}
+  if(!Array.isArray(b)){failed++;console.log("FAIL  largest boards, chunk "+(i+1)+" of "+n+": error "+((b&&b.code)||"without a code")+" -- "+String((b&&b.message)||JSON.stringify(b)).slice(0,140)+((b&&b.code)==="57014"?" (the function hit its own 25s header)":""));continue}
+  j.push(...b)}
+if(!j.length)return console.log("FAIL  largest boards: no chunk answered with rows, so none of the three claims was evaluated");
+const over=" ("+j.length+" of "+toks.length+" boards"+(failed?"; "+failed+" chunk(s) failed above":"")+")";
+if(!j.every(r=>"insufficient_reason_30" in r))return console.log("FAIL  largest boards: no watch-floor columns on the rows -- the old get_company_fill_curve is serving, so nothing below can be judged"+over);
+const bad=j.filter(r=>r.sufficient_30===true&&(r.observability_bucket==="lap_proven"||r.watched_from===null||r.watched_from===undefined||String(r.watched_from)>=String(r.cohort_to)));
+console.log((bad.length===0&&!failed?"PASS":"FAIL")+"  largest boards: no sufficient_30 row is lap_proven or lacks a floor before cohort_to"+over+(bad.length?" -- "+bad.slice(0,8).map(r=>r.company_token+"("+r.observability_bucket+","+r.watched_from+")").join(", "):""));
+const lapWrong=j.filter(r=>r.observability_bucket==="lap_proven"&&r.insufficient_reason_30!=="lap");
+console.log((lapWrong.length===0&&!failed?"PASS":"FAIL")+"  every lap_proven board among them reads reason lap"+over+(lapWrong.length?" -- "+lapWrong.slice(0,8).map(r=>r.company_token+"="+r.insufficient_reason_30).join(", "):""));
+const mute=j.filter(r=>(r.sufficient_30===true)!==(r.insufficient_reason_30===null));
+console.log((mute.length===0&&!failed?"PASS":"FAIL")+"  a refused row always names its reason and a sufficient row never does"+over+(mute.length?" -- "+mute.slice(0,8).map(r=>r.company_token).join(", "):""));
+const tally={};for(const r of j){const t=r.insufficient_reason_30===null?"sufficient":r.insufficient_reason_30;tally[t]=(tally[t]||0)+1}
+console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (before the fix 107 of the top 150 were sufficient, 100 of them lap_proven)");
+})()'
+# THE FIELD ROWS, FROM THE CACHE PRODUCTION ACTUALLY HAS. Read-only on
+# 2026-10-02 at 01:40Z and 03:48Z: get_stats_cache carries no fill_curve part
+# (20260928004823 and 20260928011742 have not applied there), so a check that
+# read only that part printed "no cached field rows" on every run and never
+# judged the field grain at all. The rows that exist are get_explore_cache's
+# field_curves -- get_category_fill_curve(90, 300) keyed by category,
+# rewritten whole at :07 -- and that is what is judged here; the stats part is
+# judged the same way whenever it exists.
+# DATED AGAINST THE APPLY, NOT TRUSTED FOR BEING PRESENT. The re-issue removes
+# both parts at apply, but a :07 run already scanning when it commits finishes
+# on the definition it began with and then replaces its whole row, putting the
+# pre-fix pool back, stamped with the run's start -- before the apply. So a
+# stamp before the apply is a FAIL, and only rows stamped at or after it can
+# have come from the floor: necessary, not sufficient (the next paragraph).
+# The apply time is not readable with the anon key, so it is an input: set
+# DAY30_APPLIED_AT (UTC, the moment the LAST of the three files finished
+# applying, which dates both chains safely) in the environment or on the line
+# below once it is known. Until then the dating lines -- the field rows' and
+# the layoff arm's -- read FAIL, which is the point.
+# WHAT A STAMP PROVES, AND WHAT THE GATE SHARE CANNOT. A stamp at or after
+# the apply says WHEN the rows were computed, never WHICH definition computed
+# them: 121843 is a file of its own, and the staged runner can fail it, or
+# edit it and stage it under another name, while 121417 and 122309 land. Its
+# shape is unchanged, so nothing the anon key can read names the definition;
+# the body can, with service role, and a line below prints the query. What is
+# left is gate_share_30, and it is DRIFT-LIMITED. Per field it moved by up to
+# 0.16 between one hourly run of the old pool and the next (finance 0.6927 at
+# 2026-10-02 00:07Z, 0.5374 at 01:07Z; healthcare 0.8226 at 04:07Z, 0.6808
+# at 05:07Z, on the same cohort), and at 04:07Z the old definition already
+# sat below the highest of its three earlier readings on 7 of 18 fields -- so
+# the per-field line is corroboration, printed as INFO and never as a
+# verdict; BASE_HI is each field's highest over the readings beside
+# POOLED_HI. Pooled over the fields by their dated cohorts the old pool is
+# steadier (POOLED_HI is the highest of the hourly readings recorded beside
+# it), but the floor's own size is not known well enough to put a pass bar
+# under the old pool: on the read-only walk of every catalogue board at
+# 2026-10-01T22:51Z, lap_proven boards carried 11.9% to 19.1% of the day-30
+# cohort on boards with five events of their own, depending on the weight,
+# and the watch clip on full_read boards cannot be measured from outside
+# before the apply. Lap refusal alone takes POOLED_HI only to 0.56-0.61,
+# inside the old pool's own spread. So the pooled line FAILs only in the
+# direction that is sound -- at or above POOLED_HI, where the floor could
+# leave it only if the old pool had drifted about 0.09 past every reading on
+# record -- and is INFO otherwise: below POOLED_HI is consistent with the
+# floor, and is not proof of it.
+DAY30_APPLIED_AT="${DAY30_APPLIED_AT:-}"
+export DAY30_APPLIED_AT
+R get_explore_cache '{}' > /tmp/vd_7h_explore.json
+node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
+// The highest gate_share_30 of each field over the same readings: corroboration only.
+const BASE_HI={admin:0.4773,legal:0.4709,other:0.7029,sales:0.6867,design:0.4618,data_ai:0.5689,finance:0.6972,product:0.5235,science:0.6174,customer:0.5722,security:0.6022,education:0.6572,marketing:0.4389,people_hr:0.4626,healthcare:0.8226,operations:0.7141,engineering:0.6918,hospitality_retail:0.6367};
+// The old pool, gate_share_30 pooled over the eighteen fields by dated_cohort_n_30:
+// 2026-10-01 21:07Z 0.6453, 22:07Z 0.6133, 23:07Z 0.6518; 2026-10-02 00:07Z 0.6738, 01:07Z 0.6603, 03:07Z 0.6574, 04:07Z 0.6889, 05:07Z 0.6440
+const POOLED_HI=0.6889;
+const MAX_EXPLORE_AGE_MIN=75;
+const applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied);
+if(applied&&!Number.isFinite(at))console.log("FAIL  DAY30_APPLIED_AT="+applied+" is not a timestamp, so no field row below can be dated against the apply");
+const N=v=>v===null||v===undefined?null:Number(v);
+const judge=(label,rows,stamp,carried)=>{
+  if(carried)console.log("FAIL  "+label+": carried forward from an earlier run (stale_parts names it) -- the run stamped "+stamp+" could not compute the curve, and the carried rows carry no stamp of their own, so they cannot be shown to come from the floor");
+  const t=Date.parse(stamp);let dated=false;
+  if(!Number.isFinite(t))console.log("FAIL  "+label+": no usable stamp ("+stamp+")");
+  else if(!applied)console.log("FAIL  "+label+" computed_at="+stamp+" cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time the last of 20261002121417 / 121843 / 122309 finished applying (a run already scanning at the apply writes the pre-fix pool back, stamped before it)");
+  else if(!Number.isFinite(at)){}
+  else if(t<at)console.log("FAIL  "+label+" computed_at="+stamp+" is BEFORE the apply ("+applied+"): a run that began before 20261002121843 committed, which may have written the pre-fix pool back over the withhold -- re-run after the next refresh");
+  else if(!carried){dated=true;console.log("PASS  "+label+" computed_at="+stamp+" is dated at or after the apply ("+applied+"): the run that wrote these rows began after 20261002121843 committed -- a stamp says when, not which definition")}
+  const ng=dated?"":" -- not graded: these rows are not dated after the apply";
+  let num=0,den=0;
+  for(const r of rows){const d=N(r.dated_cohort_n_30);if(!(d>0))continue;num+=(N(r.gate_share_30)||0)*d;den+=d}
+  if(!den)console.log((dated?"FAIL":"INFO")+"  "+label+": no field publishes dated_cohort_n_30, so gate_share_30 cannot be pooled"+ng);
+  else{const p=num/den;
+    console.log((dated&&p>=POOLED_HI?"FAIL":"INFO")+"  "+label+": gate_share_30 pooled over "+den+" dated roles = "+p.toFixed(4)+" (the highest reading of the old pool "+POOLED_HI+")"+(!dated?ng:p>=POOLED_HI?" -- at or above every reading of the old pool: 20261002121843 did not take, or the old pool drifted past every reading on record; read the body with service role":" -- below it: consistent with the floor, NOT proof of it, because the old pool has read lower too"))}
+  const fell=[],held=[];
+  for(const r of rows){const b=BASE_HI[r.category],g=N(r.gate_share_30);if(b===undefined)continue;if(g===null||g<b)fell.push(r.category);else held.push(r.category+" "+g+" >= "+b)}
+  console.log("INFO  "+label+": corroboration only, drift-limited -- gate_share_30 below its highest pre-fix reading on "+fell.length+" of "+rows.length+" field(s)"+(held.length?"; HELD on "+held.join(", "):"")+ng);
+  const leak=rows.filter(r=>!(N(r.gate_share_30)>0)&&r.still_open_30!==null&&r.still_open_30!==undefined);
+  const hollow=rows.filter(r=>r.sufficient_30===true&&(r.still_open_30===null||r.still_open_30===undefined||!(N(r.gate_share_30)>0)));
+  console.log((!dated?"INFO":leak.length||hollow.length?"FAIL":"PASS")+"  "+label+": no field with nothing admitted carries a figure, and no sufficient field lacks one"+(leak.length?" -- a figure with nothing admitted: "+leak.map(r=>r.category).join(", "):"")+(hollow.length?" -- sufficient with no figure: "+hollow.map(r=>r.category).join(", "):"")+ng);
+  const refused=rows.filter(r=>r.sufficient_30!==true).map(r=>r.category+"(gate="+r.gate_share_30+")");
+  console.log("INFO  "+label+": fields not sufficient under the floor: "+(refused.length?refused.join(", "):"none")+" -- each must render a reason on the page, never a number");
+};
+const s=rd("/tmp/vd_7h_explore.json");let j;try{j=JSON.parse(s)}catch{}
+const g=Array.isArray(j)?j[0]:j;
+if(j===undefined)console.log("FAIL  get_explore_cache answered no JSON (a 60s client timeout, or an HTML error page) -- "+s.slice(0,120));
+else if(!g||typeof g!=="object"||("code" in g&&"message" in g))console.log("FAIL  get_explore_cache errored: "+JSON.stringify(g).slice(0,160));
+else{
+  const root=g.computed_at,ageMin=(Date.now()-Date.parse(root))/6e4;
+  const stale=Array.isArray(g.stale_parts)?g.stale_parts:[];
+  if(!Number.isFinite(ageMin))console.log("FAIL  explore cache carries no usable computed_at ("+root+")");
+  else if(ageMin>MAX_EXPLORE_AGE_MIN)console.log("FAIL  explore cache last ran "+Math.round(ageMin)+" min ago (computed_at "+root+"): the :07 refresh has stopped, so its rows reflect nothing recent");
+  if(!("field_curves" in g)){
+    if(Number.isFinite(at)&&Date.parse(root)>=at)console.log("FAIL  explore cache: a run that began after the apply wrote no field_curves key, which refresh_explore_cache always writes -- something else replaced the row");
+    else console.log("INFO  explore cache: field_curves withheld at apply (20261002121843) and no :07 run has completed since (root computed_at "+root+"); re-run after the next :07 -- the absence cannot outlive the "+MAX_EXPLORE_AGE_MIN+"-minute bar above without a FAIL");
+  }else{
+    const fc=g.field_curves;
+    const rows=fc&&typeof fc==="object"&&!Array.isArray(fc)?Object.entries(fc).map(([category,r])=>Object.assign({category},r)):[];
+    if(!rows.length)console.log("FAIL  explore cache: field_curves is empty"+(stale.includes("field_curves")?" and stale_parts names it":"")+" -- the :07 run could not compute the field curve and had nothing to carry, so the field rows are blank (the five-minute header is the suspect: the floor added a join per observability row)");
+    else judge("explore cache field_curves ("+rows.length+" fields)",rows,root,stale.includes("field_curves"));
+  }
+}
+console.log("INFO  20261002121843 has no anon-readable proof of its own (its result shape is unchanged); with service role: SELECT pg_get_functiondef(\x27public.get_category_fill_curve(int, int)\x27::regprocedure) LIKE \x27%watched_from%\x27 -- true once it applied (its own self-verify raises otherwise)");
+let m=null;try{m=JSON.parse(rd("/tmp/vd_cat_meta.json"))}catch{}
+const keys=m&&Array.isArray(m.cache_keys)?m.cache_keys:[];
+if(!m)console.log("FAIL  section 4 left no stats-cache meta to read");
+else if(!keys.length||(keys.includes("code")&&keys.includes("message")))console.log("FAIL  get_stats_cache errored or answered nothing (keys: "+keys.join(",")+")");
+else if(!m.present)console.log("INFO  stats cache carries no fill_curve part (20260928004823 not live in production as of 2026-10-02, or withheld at apply and no :27 run since) -- the explore arm above is the field check");
+else{let r=null;try{r=JSON.parse(rd("/tmp/vd_cat.json"))}catch{}
+  if(!Array.isArray(r)||!r.length)console.log("FAIL  stats cache fill_curve is present but carries no rows (stale_parts "+JSON.stringify(m.stale_parts)+")");
+  else judge("stats cache fill_curve ("+r.length+" fields)",r,m.computed_at,m.carried);
+}
+})()'
+# THE LAYOFF ARMS ARE DATED THE SAME WAY, AND FOR THE SAME REASON. Until
+# 2026-10-02 the recomputed control arm passed on gate_share_30 under one
+# pre-fix reading, 0.7395 (stored 2026-10-01T05:10Z). The next day the OLD
+# writer, 20261002122309 not applied, stored 0.717 at 05:10Z, and this line
+# printed "PASS ... recomputed under the floor" on production with no floor
+# in it -- the field grain's drift, on the third chain. 122309 nulls the
+# stored counts at apply, so a recomputed arm stamped before the apply means
+# it did not take, and one stamped after it is dated, not proven; the gate
+# share then FAILs only at or above the highest reading of the old arm.
+# The old control arm, gate_share_30 as stored by the 05:10 refresh:
+# 2026-10-01T05:10Z 0.7395, 2026-10-02T05:10Z 0.7170
+LAYOFF_HI=0.7395
+export LAYOFF_HI
+R get_layoff_partition '{}' | node -e '
+let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_layoff_partition answered no JSON -- "+s.slice(0,120))}
+if(j&&!Array.isArray(j)&&("code" in j||"message" in j))return console.log("FAIL  get_layoff_partition errored: "+((j.code)||"without a code")+" -- "+String(j.message||"").slice(0,140));
+const rows=Array.isArray(j)?j:[j];const c=rows.find(r=>r&&r.lp_arm==="control");
+if(!c)return console.log("FAIL  no control arm -- "+JSON.stringify(j).slice(0,120));
+if(rows.every(r=>r.lp_reason==="uncontrolled"))return console.log("PASS  both stored arms withheld (reason uncontrolled): 20261002122309 applied and the 05:10 refresh has not re-run since; control computed_at="+c.lp_computed_at);
+const HI=Number(process.env.LAYOFF_HI),applied=process.env.DAY30_APPLIED_AT||"",at=Date.parse(applied),t=Date.parse(c.lp_computed_at);
+const line="gate_share_30="+c.lp_gate_share_30+" S30="+c.lp_still_open_30+" sufficient="+c.lp_sufficient_30+" reason="+c.lp_reason+" computed_at="+c.lp_computed_at;
+if(!applied)return console.log("FAIL  layoff control arm recomputed but cannot be dated against the apply: set DAY30_APPLIED_AT to the UTC time the last of 20261002121417 / 121843 / 122309 finished applying -- "+line);
+if(!Number.isFinite(at))return console.log("FAIL  layoff control arm: DAY30_APPLIED_AT="+applied+" is not a timestamp -- "+line);
+if(!Number.isFinite(t))return console.log("FAIL  layoff control arm carries no usable stamp -- "+line);
+if(t<at)return console.log("FAIL  layoff control arm stored BEFORE the apply ("+applied+") and not withheld: 20261002122309 nulls the stored counts at apply, so this is the old writer still serving -- "+line);
+console.log((c.lp_reason==="uncontrolled"?"FAIL":"PASS")+"  layoff control arm is dated at or after the apply ("+applied+")"+(c.lp_reason==="uncontrolled"?" but still reads uncontrolled: the refresh after the apply wrote no counts":": stored by a refresh that began after the apply -- a stamp says when, not which writer")+" -- "+line);
+const g=c.lp_gate_share_30===null||c.lp_gate_share_30===undefined?NaN:Number(c.lp_gate_share_30);
+console.log((!(g<HI)?"FAIL":"INFO")+"  layoff control arm: gate_share_30="+c.lp_gate_share_30+" (the highest reading of the old arm "+HI+")"+(!(g<HI)?" -- at or above it, or no number: 20261002122309 did not take, or the old arm drifted past every reading on record":" -- below it: consistent with the floor, NOT proof of it, because the old arm has read lower too"));
+})'
+
+echo "== 7i. .84: the marquee boards too big to hold serve again (light set 500; lever/ashby read a posting at a time) =="
+# .84's claim. On 2026-10-01 these nine served ZERO while their own feeds held
+# 12-602 postings inside the 30-day window: the 4 MB byte bound refused their
+# list bodies, a refused board is deferred with no verification stamp, and the
+# 03:41 sweep then hides everything it holds. Greenhouse recovers when each
+# board trips once more and enrols in the (now 500-slot) light set, so give it
+# TWO cold rotations after the deploy; lever/ashby read in the same visit, so
+# ONE. The light set's SIZE is judged only after one full cold rotation too: at
+# publish it holds what .81 persisted (at most 50). lastRotationAgeMin below
+# resets at each wrap. Every probe is a read: the board's own list/status
+# actions, and the vendors' public GET feeds. The detail action is NOT used
+# here — it writes a fetched description back.
+J '{"action":"status"}' > /tmp/vd_7i_status.json
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
+ok(/^2026-09-09\.8[45]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84 or .85, which carries .84; .81 means the bundle did not deploy)");
+const ss=j.sliceStats||{};
+const LS=ss.lightSet,LC=ss.lightCap;
+ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
+if(typeof LS==="number"&&typeof LC==="number"&&LS<LC)console.log((LS>=100?"PASS":"INFO")+"  sliceStats.lightSet = "+LS+" (want >= 100, but only once a full cold rotation has run since the publish: the row .81 persisted holds at most 50 and the set grows by one per over-bound visit, so ~50 at publish rising to ~103. Still under 100 after lastRotationAgeMin has reset TWICE since the publish is a FAIL)");
+console.log("INFO  lastRotationAgeMin = "+j.lastRotationAgeMin+" — greenhouse needs two cold rotations after the deploy, lever/ashby one");
+const ck=j.chainKick||{};ok(ck.status===200,"chainKick.status = "+ck.status+" ("+ck.outcome+", ageMin "+ck.ageMin+")");
+ok(ss.wallStopped===false,"sliceStats.wallStopped = "+ss.wallStopped+" (a streamed read must not push slices into the wall)");
+ok(typeof ss.heapMb==="number"&&ss.heapMb<100,"sliceStats.heapMb = "+ss.heapMb+" (want < 100; baseline 37-45)");
+let prev=null;try{prev=JSON.parse(fs.readFileSync("/tmp/vd_status.json","utf8"))}catch{}
+if(prev&&prev.cursor&&j.cursor){const a=prev.cursor,b=j.cursor;const moved=b.cold!==a.cold||b.coldDone!==a.coldDone||b.hot!==a.hot;console.log((moved?"PASS":"INFO")+"  cursor "+JSON.stringify(a)+" -> "+JSON.stringify(b)+(moved?" (ingest is moving)":" (no motion since section 1: a hot phase parks the cold cursor; re-run before calling the chain dead)"))}
+const nine=["anthropic","databricks","cloudflare","mongodb","okta","spacex","openai","snowflake","palantir"];
+const ob=Array.isArray(j.oversizeBoards)?j.oversizeBoards:[];
+const named=ob.filter(e=>nine.includes(e.token));
+ok(named.length===0,"oversizeBoards names none of the nine"+(named.length?": "+named.map(e=>e.source+":"+e.token+" "+e.mb+"MB").join(", "):""));
+const followUp=["lush","samsara","pulse","liquidpersonnel"];
+const gh=ob.filter(e=>e.source==="greenhouse");const ghOther=gh.filter(e=>!followUp.includes(e.token));
+ok(ghOther.length===0,"greenhouse registry entries are only the shared-token / oversize-light-list follow-up ("+gh.map(e=>e.token).join(", ")+")"+(ghOther.length?" — unexpected: "+ghOther.map(e=>e.token).join(", "):""));
+const lv=ob.filter(e=>e.source==="lever"),ab=ob.filter(e=>e.source==="ashby");
+console.log("INFO  lever entries still deferred (slow or over budget): "+(lv.map(e=>e.token+" "+e.mb+"MB").join(", ")||"none"));
+console.log("INFO  ashby entries still deferred (bjakcareer expected: over the retained budget): "+(ab.map(e=>e.token+" "+e.mb+"MB").join(", ")||"none"));
+console.log("INFO  oversizeBoardCount = "+j.oversizeBoardCount+" (140 on 2026-10-01; status shows only the newest 50, so judge the drop, not zero)");'
+# Served vs the vendor's own in-window count, per board. In-window is the field
+# each normaliser stores: greenhouse first_published, ashby publishedAt, lever createdAt.
+for VT in greenhouse:anthropic greenhouse:databricks greenhouse:cloudflare greenhouse:mongodb greenhouse:okta greenhouse:spacex ashby:openai ashby:snowflake lever:palantir; do
+  V=${VT%%:*}; T=${VT#*:}
+  case "$V" in
+    greenhouse) U="https://boards-api.greenhouse.io/v1/boards/$T/jobs";;
+    ashby) U="https://api.ashbyhq.com/posting-api/job-board/$T";;
+    lever) U="https://api.lever.co/v0/postings/$T?mode=json";;
+  esac
+  curl -s --compressed -m 120 "$U" -o /tmp/vd_7i_feed.json
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"$V\"],\"groupSimilar\":false,\"limit\":1}" > /tmp/vd_7i_list.json
+  node -e '(()=>{
+const fs=require("fs");const [V,T]=process.argv.slice(1);const cut=Date.now()-30*86400000;
+let feed;try{feed=JSON.parse(fs.readFileSync("/tmp/vd_7i_feed.json","utf8"))}catch{return console.log("INFO  "+V+":"+T+" vendor feed unreadable — cannot judge")}
+const t=(x)=>{const n=typeof x==="number"?x:Date.parse(String(x??""));return Number.isFinite(n)&&n>=cut};
+const want=V==="greenhouse"?(feed.jobs||[]).filter(x=>t(x.first_published)).length:V==="ashby"?(feed.jobs||[]).filter(x=>x.isListed!==false&&t(x.publishedAt)).length:(Array.isArray(feed)?feed:[]).filter(x=>t(x.createdAt)).length;
+let l;try{l=JSON.parse(fs.readFileSync("/tmp/vd_7i_list.json","utf8"))}catch{return console.log("FAIL  "+V+":"+T+" list non-JSON")}
+const got=Number(l.total);const tol=Math.max(2,Math.round(want*0.1));
+const pass=got>0&&Math.abs(got-want)<=tol;
+console.log((pass?"PASS":"FAIL")+"  "+V+":"+T+" serves "+got+" vs "+want+" in-window on its own feed (want within +/-"+tol+")"+(got===0?" — still dark; judge only after "+(V==="greenhouse"?"two cold rotations":"one cold rotation")+" since the deploy":""));})();' "$V" "$T"
+done
+# The flapping. The 03:41 UTC sweep zeroed boards that went 48 h unread; re-run
+# this line on each of the next two mornings AFTER 03:41 UTC.
+for T in okta anthropic axon; do
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"greenhouse\"],\"groupSimilar\":false,\"limit\":1}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  list non-JSON")}const n=Number(j.total);console.log((n>0?"PASS":"FAIL")+"  greenhouse:'"$T"' total = "+n+" (must not return to 0 after a 03:41 UTC sweep; repeat on the next two mornings)")})'
+done
+# Streamed descriptions arrive with the read (lever/ashby have no filler): the
+# share of openai rows holding stored text, read through the list filter.
+OA=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"limit":1}')
+OD=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"hasDescription":true,"limit":1}')
+node -e 'const a=JSON.parse(process.argv[1]||"{}"),d=JSON.parse(process.argv[2]||"{}");const n=Number(a.total),k=Number(d.total);console.log((n>0&&k>=0.9*n?"PASS":"FAIL")+"  ashby:openai rows with a stored description: "+k+" of "+n+" (want >= 90%; 4 of 281 were the oldest, dropped by the retention ceiling, on 2026-10-01)")' "$OA" "$OD"
+
+echo "== 7j. .85: the anonymous board budget -- counted per address, observed first, our servers exempt =="
+# .85's claim. The board counts list/detail/facets/company-suggest/exists/
+# semantic-search/application-questions/verify per address per UTC day
+# (anon-budget.ts, migration 20261002140000) and ships OBSERVING: the
+# migration seeds {"enforce": false}. Enforcement is the owner's one statement
+# in docs/job-board-deploy-notes.md, and only once every line here is PASS --
+# above all the address the function derives (budget-echo) matching the one
+# Cloudflare reports for this machine (/cdn-cgi/trace), the same answer when
+# the request WRITES those headers itself, and no internal caller arriving
+# without its reader proof (unproven_*). Every probe is a read; the only rows
+# written are this script's own counted calls.
+J '{"action":"status"}' > /tmp/vd_7j_status.json
+curl -s -m 30 "$B/cdn-cgi/trace" > /tmp/vd_7j_trace.txt
+# FORGERY. The gate trusts cf-connecting-ip, the last x-forwarded-for hop and
+# cf-ipcountry. If a caller could write them through, it could pick a fresh
+# bucket per request, land in the never-refused 'unknown' bucket with a
+# private address, or claim another country. budget-echo is uncounted and
+# reads no database. The first request forges all three (TEST-NET addresses
+# and a country that is not this machine's); the second leaves out
+# cf-connecting-ip, so if the platform refuses any request carrying it, the
+# other two forgeries are still measured.
+LOC7J=$(sed -n 's/^loc=//p' /tmp/vd_7j_trace.txt | tr -d '\r')
+FCC7J=AQ; [ "$LOC7J" = "AQ" ] && FCC7J=TV
+printf '%s' "$FCC7J" > /tmp/vd_7j_forged_cc.txt
+curl -s -m 30 -o /tmp/vd_7j_echo_forged.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "cf-connecting-ip: 192.0.2.77" -H "x-forwarded-for: 192.0.2.78" -H "cf-ipcountry: $FCC7J" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_forged_code.txt
+curl -s -m 30 -o /tmp/vd_7j_echo_forged_xff.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "x-forwarded-for: 192.0.2.78" -H "cf-ipcountry: $FCC7J" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_forged_xff_code.txt
+J '{"action":"budget-echo"}' > /tmp/vd_7j_echo_probe.json
+curl -s -m 30 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_plain.json
+curl -s -m 30 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -H "x-rsp-caller: mcp" -H "x-rb-reader: 00000000000000000000000000000000" -d '{"action":"budget-echo"}' > /tmp/vd_7j_echo_mcp.json
+MC -d '{"jsonrpc":"2.0","id":71,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy-7j","version":"0"}}}' > /tmp/vd_7j_mcp_init.json
+R get_board_anon_hourly '{"p_hours":3}' > /tmp/vd_7j_before.json
+# The traffic the deltas below must see: one probe-declared list, one
+# undeclared facets read (kind address), one keyless MCP board_stats (reaches
+# the board through agent-mcp's board(): must NOT land as unproven_mcp), and,
+# with the owner's key, one /v1 ranked read (must NOT land as unproven_api).
+J '{"action":"list","limit":1}' > /dev/null
+curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"action":"facets"}' > /dev/null
+MC -d '{"jsonrpc":"2.0","id":72,"method":"tools/call","params":{"name":"board_stats","arguments":{}}}' > /tmp/vd_7j_mcp_call.json
+if [ -n "$RB" ]; then curl -s -m 60 -o /dev/null -w '%{http_code}' "$B/functions/v1/public-api/v1/jobs?engine=ranked&limit=1&q=nurse" -H "Authorization: Bearer $RB" -H "apikey: $K" > /tmp/vd_7j_v1.txt; else printf 'none' > /tmp/vd_7j_v1.txt; fi
+R get_board_anon_hourly '{"p_hours":3}' > /tmp/vd_7j_after.json
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
+const st=js("/tmp/vd_7j_status.json")||{};
+ok(st.version==="2026-09-09.85","status.version = "+st.version+" (want 2026-09-09.85)");
+const ab=st.anonBudget;
+ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
+if(ab){
+  ok(ab.settingPresent===true,"anonBudget.settingPresent = "+ab.settingPresent+" (the migration seeds the row; false = 20261002140000 not applied)");
+  if(ab.countriesListed===0)console.log("PASS  country switch OFF (countriesListed 0)");
+  else ok(false,"country switch is ON or malformed: countriesListed = "+JSON.stringify(ab.countriesListed)+" -- only the owner turns it on; if they did, this line is expected");
+  info("anonBudget.enforce = "+ab.enforce+(ab.enforce===false?" (observe-first: counting, never refusing; enable with the one statement in the deploy note once this section is all PASS)":" (ENFORCING)"));
+  const d=ab.defaults||{};ok(d.address===10000&&d.build===15000&&d.probe===10000,"default caps address/build/probe = "+d.address+"/"+d.build+"/"+d.probe+" (want 10000/15000/10000, one day row per address)");
+  if(ab.overrides&&Object.keys(ab.overrides).length)info("cap overrides in the setting row: "+JSON.stringify(ab.overrides));
+}
+const init=js("/tmp/vd_7j_mcp_init.json")||{};const mv=((init.result||{}).serverInfo||{}).version;
+ok(mv==="2026-09-04.11","agent-mcp serverInfo.version = "+mv+" (want exactly 2026-09-04.11: the build that sends the reader proof)");
+const kv={};for(const l of rd("/tmp/vd_7j_trace.txt").split("\n")){const i=l.indexOf("=");if(i>0)kv[l.slice(0,i)]=l.slice(i+1).trim()}
+const plain=js("/tmp/vd_7j_echo_plain.json")||{},probe=js("/tmp/vd_7j_echo_probe.json")||{},mcp=js("/tmp/vd_7j_echo_mcp.json")||{};
+ok(plain.source==="cf"||plain.source==="xff","budget-echo source = "+plain.source+" (want cf or xff; none = the platform hands the function no client address, so everyone is unknown_address)");
+ok(!!kv.ip&&plain.address===kv.ip,"the address the function derives = "+plain.address+" vs Cloudflare trace ip = "+kv.ip+" (must match before enforcing)");
+const loc=/^[A-Z]{2}$/.test(kv.loc||"")&&kv.loc!=="XX"?kv.loc:"XX";
+ok(plain.country===loc,"the country the function reads = "+plain.country+" vs trace loc = "+kv.loc+" (XX here makes the country switch inert)");
+ok(plain.kind==="address"&&plain.exempt===false,"an undeclared anon read classifies as kind address, counted ("+plain.kind+", exempt "+plain.exempt+")");
+const fcc=rd("/tmp/vd_7j_forged_cc.txt").trim()||"AQ";const echoes=plain.source==="cf"||plain.source==="xff";
+const forged=(f,code,what,refusable)=>{const e=js(f);const c=rd(code).trim();
+  if(e&&typeof e.source==="string")return ok(!!kv.ip&&e.address===kv.ip&&e.country===loc,what+" is read as "+e.address+" / "+e.country+" vs trace "+kv.ip+" / "+loc+" (must match before enforcing: a header the caller writes must not pick its bucket, the unknown_address escape or its country)");
+  if(refusable&&echoes&&/^4[0-9][0-9]$/.test(c))return ok(true,what+" was refused by the platform before the function (HTTP "+c+"), so it never reaches the gate");
+  ok(false,what+" -> HTTP "+c+" with no echo ("+rd(f).slice(0,80)+")");};
+forged("/tmp/vd_7j_echo_forged.json","/tmp/vd_7j_echo_forged_code.txt","FORGERY: a request writing cf-connecting-ip 192.0.2.77, x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,true);
+forged("/tmp/vd_7j_echo_forged_xff.json","/tmp/vd_7j_echo_forged_xff_code.txt","FORGERY: a request writing x-forwarded-for 192.0.2.78 and cf-ipcountry "+fcc,false);
+ok(probe.kind==="probe"&&probe.exempt===false,"x-rb-budget: probe classifies as kind probe ("+probe.kind+")");
+ok(mcp.kind==="unproven_mcp"&&mcp.exempt===false,"a declared mcp caller with a wrong reader proof classifies as unproven_mcp, counted ("+mcp.kind+")");
+const before=js("/tmp/vd_7j_before.json"),after=js("/tmp/vd_7j_after.json");
+if(!Array.isArray(after)){ok(false,"get_board_anon_hourly as anon -> "+JSON.stringify(after).slice(0,160)+" (PGRST202 = 20261002140000 not applied)");}
+else{
+  const want=["bh_hour","bh_kind","bh_country","bh_requests","bh_over_cap","bh_addresses","bh_addresses_over_cap","bh_top_address_requests","bh_bare_requests"];
+  const keys=[...new Set(after.flatMap((r)=>Object.keys(r)))];
+  ok(after.length>0&&keys.every((k)=>want.includes(k)),"the reader answers anon with aggregates only: "+after.length+" rows, keys "+keys.join(","));
+  const tot=(rows,kind)=>(Array.isArray(rows)?rows:[]).filter((r)=>r.bh_kind===kind&&r.bh_country==="ALL").reduce((n,r)=>n+Number(r.bh_requests||0),0);
+  const delta=(kind)=>tot(after,kind)-tot(before,kind);
+  ok(delta("probe")>=1,"kind probe grew by "+delta("probe")+" across this section (want >= 1: the gate is wired and counting)");
+  ok(delta("address")>=1,"kind address grew by "+delta("address")+" (want >= 1; other browsers share this kind, so more is normal)");
+  const call=js("/tmp/vd_7j_mcp_call.json")||{};const mcpOk=!!call.result&&!call.result.isError;
+  if(mcpOk)ok(delta("unproven_mcp")===0,"a keyless MCP board_stats reached the board and did not land as unproven_mcp (delta "+delta("unproven_mcp")+")");
+  else info("MCP control call did not answer cleanly ("+JSON.stringify(call).slice(0,100)+") -- unproven_mcp delta "+delta("unproven_mcp")+" is unproven");
+  const v1=rd("/tmp/vd_7j_v1.txt").trim();
+  if(v1==="200")ok(delta("unproven_api")===0,"a /v1 ranked read reached the board and did not land as unproven_api (delta "+delta("unproven_api")+")");
+  else info("/v1 ranked control: "+(v1==="none"?"no RB_API_KEY in .env.local":"HTTP "+v1)+" -- unproven_api delta "+delta("unproven_api")+" cannot be read as proof");
+  for(const k of ["unproven_api","unproven_mcp","unproven_digest"])if(tot(after,k)>0)info(k+" in the last 3h: "+tot(after,k)+" (an internal caller without its reader proof: deploy skew, or a missing service key)");
+  const unk=tot(after,"unknown_address");ok(unk===0,"unknown_address in the last 3h = "+unk+" (want 0: the platform names every caller)");
+  const addrAll=tot(after,"address");const real=after.filter((r)=>r.bh_kind==="address"&&r.bh_country!=="ALL"&&r.bh_country!=="XX").reduce((n,r)=>n+Number(r.bh_requests||0),0);
+  if(addrAll>=50)ok(real>0,"address requests with a real country: "+real+" of "+addrAll+(real>0?"":" -- country switch inert: cf-ipcountry is not reaching the function"));
+  else info("address requests with a real country: "+real+" of "+addrAll+" (too few to judge; want >= 50)");
+  for(const r of after.filter((x)=>x.bh_kind==="address"&&x.bh_country!=="ALL").slice(0,40))info(String(r.bh_hour).slice(0,13)+"h "+r.bh_country+": "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_addresses_over_cap+" over the cap, busiest "+r.bh_top_address_requests+", bare "+r.bh_bare_requests);
+}'
+for T in job_board_anon_meter job_board_anon_hourly; do code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/$T?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  $T SELECT as anon -> $code" || echo "FAIL  $T SELECT as anon -> $code"; done
+# The counter, called as anon with its real argument names. A 200 here is a
+# FAIL, and the row it wrote (bucket verify:anon-probe) says so in the meter.
+probe job_board_anon_check '{"p_bucket":"verify:anon-probe","p_kind":"probe","p_country":"US","p_address_cap":0,"p_build_cap":0,"p_probe_cap":0,"p_bare":true}'
+# The frontend that renders the refusal shipped: the served /jobs chunk (or a
+# chunk it imports) carries the error word the page matches on.
+SITE="$SITE" node -e '
+(async()=>{const S=process.env.SITE;const html=await (await fetch(S+"/jobs")).text();
+const m=html.match(/assets\/Jobs-[A-Za-z0-9_-]+\.js/);if(!m)return console.log("INFO  /jobs served no Jobs-*.js chunk reference (prerendered shell?) -- check the bundle by hand");
+const seen=new Set();const grab=async(p)=>{if(seen.has(p)||seen.size>40)return "";seen.add(p);try{return await (await fetch(S+"/"+p)).text()}catch{return ""}};
+const main=await grab(m[0]);let hit=main.includes("board_budget");
+if(!hit)for(const d of [...new Set([...main.matchAll(/["(]\.\/([A-Za-z0-9_.-]+\.js)[")]/g)].map((x)=>"assets/"+x[1]))]){if((await grab(d)).includes("board_budget")){hit=true;break}}
+console.log((hit?"PASS":"FAIL")+"  the served frontend knows the board budget refusal ("+m[0]+(hit?"":", "+seen.size+" chunks read")+")")})().catch((e)=>console.log("INFO  frontend check could not run: "+e))'
+
 echo "done."

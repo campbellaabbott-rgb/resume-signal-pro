@@ -34,6 +34,7 @@
 // applied and the number's disappearance asserted. One mount, one popover, one
 // variable changed.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -64,7 +65,13 @@ import Jobs from "../pages/Jobs";
 const ROOT = resolve(__dirname, "../..");
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// so a stuck wait here could only ever be reported as "Test timed out in
+// 5000ms", naming nothing. The slowest case measured 3636 ms on the
+// 2026-09-30 loaded run -- 1.4x under the ceiling, which is the same margin
+// a-sort-claim went over on in that run.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 // The live shape, with the live numbers, so the assertions are about a figure
 // that genuinely appeared on the board rather than a token.

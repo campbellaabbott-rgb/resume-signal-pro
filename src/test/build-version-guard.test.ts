@@ -1351,7 +1351,15 @@ const PINNED = {
   // lines moved to docs/job-board-index-notes.md (483KB of a 1.2MB file; the
   // 4.5MB upload cap counts raw source). Code proven identical line-for-line
   // after comment stripping. sources.ts UNCHANGED (hash below still pins .80).
-  buildVersion: "2026-09-09.81",
+  // 2026-09-09.84: the light set holds 500 (107 greenhouse boards needed a slot
+  // and 50 thrashed), and a lever/ashby board the byte bound refused is re-read
+  // a posting at a time through slim-stream.ts. One stamp for the bundle, which
+  // also carries the undeployed .82 and .83. sources.ts UNCHANGED.
+  // 2026-09-09.85: the anonymous board budget (anon-budget.ts, migration
+  // 20261002140000) gates the data-bearing actions per address, plus the
+  // uncounted budget-echo action and status.anonBudget. Carries the undeployed
+  // .84 (and through it .82/.83). sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.85",
 };
 
 /**

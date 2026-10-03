@@ -1,14 +1,21 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { validateTailoredResume, type TailoredResumeShape } from "../_shared/resume-grounding.ts";
 import { roleGuidance } from "../_shared/application-questions.ts";
+import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
+import { assertPaidSession } from "../_shared/paid-session.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-apply-package.2026-10-01.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
 const RATE_LIMIT = 40; // per IP per day — raised from 15 so the account batch-prep co-pilot has real room (entitlement-gated, so only paying users reach this counter)
@@ -134,9 +141,23 @@ serve(async (req) => {
     }
 
     // ── Entitlement gate (this is a PAID deliverable) ──────────────────────
-    // Accepted credentials: a paid Stripe checkout session for a product that
-    // includes the apply package, OR an active Pro subscription (JWT). The
-    // generator was previously reachable with just the anon key.
+    // Accepted credentials, in order:
+    //   1. a paid Stripe checkout session (cs_...) whose product_type includes
+    //      the kit -- read from Stripe itself, so it holds even after the
+    //      thirty-day claim row is gone;
+    //   2. a Pro grant session (pro_...) that verify-product-purchase consumed
+    //      and claimed for a product that includes the kit -- the same claim
+    //      row every other paid generator gates on (assertPaidSession);
+    //   3. an active Pro subscription, proven by the caller's JWT.
+    //
+    // THE ALLOW-LIST USED TO BE WRITTEN IN THE FRONTEND'S SPELLING. It named
+    // the camelCase product keys; Stripe metadata carries create-product-
+    // checkout's snake_case product_type, so no session ever matched and every
+    // Apply Assistant purchase was refused here -- from the success page, the
+    // recovery form, the webhook, the verify fallback and the retry sweep
+    // alike (the three server callers also sent no session at all). The list
+    // now lives in _shared/apply-kit.ts, in the spelling Stripe carries, and a
+    // guard checks it against what every checkout mints.
     let entitled = false;
     if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
       try {
@@ -145,11 +166,22 @@ serve(async (req) => {
           const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
           const session = await stripe.checkout.sessions.retrieve(sessionId);
           const productType = String(session.metadata?.product_type ?? "");
-          entitled = session.payment_status === "paid" && ["applyAssistant", "premiumPackage", "transitionPro"].includes(productType);
+          entitled = session.payment_status === "paid" && APPLY_KIT_PRODUCT_TYPES.includes(productType);
+          if (!entitled) {
+            console.warn(`[GENERATE-APPLY-PACKAGE] session ${sessionId} does not include the kit: ${session.payment_status} / ${productType || "no product"}`);
+          }
         }
       } catch (e) {
         console.warn("[GENERATE-APPLY-PACKAGE] session check failed:", String(e).slice(0, 120));
       }
+    } else if (typeof sessionId === "string" && sessionId.startsWith("pro_") && supabase) {
+      // A Pro grant has no Stripe session to read. verify-product-purchase
+      // consumes it and writes its claim with the grant's product before any
+      // generation, so the claim row is the proof here, checked for a product
+      // that includes the kit.
+      const refusal = await assertPaidSession(supabase, sessionId, APPLY_KIT_PRODUCT_TYPES);
+      entitled = refusal === null;
+      if (!entitled) console.warn(`[GENERATE-APPLY-PACKAGE] grant ${sessionId} refused: ${refusal}`);
     }
     if (!entitled) {
       const authHeader = req.headers.get("Authorization") ?? "";

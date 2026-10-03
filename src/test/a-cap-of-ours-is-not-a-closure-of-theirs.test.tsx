@@ -25,6 +25,7 @@
 // and the age is the COMPANY'S stated date — absent, with the window's real
 // basis named instead, when the company stated none.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -57,7 +58,12 @@ const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// so a stuck wait could only be reported as "Test timed out in 5000ms",
+// naming nothing. The slowest case measured 1559 ms on the 2026-09-30 loaded
+// run.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 // The board holds one live row; the deep link points at a DIFFERENT id, which
 // is what sends the resolver to the detail action.

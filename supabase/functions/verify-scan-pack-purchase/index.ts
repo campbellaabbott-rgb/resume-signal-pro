@@ -1,11 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "verify-scan-pack-purchase.2026-10-01.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -116,11 +121,18 @@ serve(async (req) => {
     // both credit the customer twice. The other two were already fixed this
     // way; this one was missed. Doing the INSERT first and checking its result
     // makes the claim atomic: only one caller can win it.
+    //
+    // AND THE CLAIM NAMES THE PRODUCT. This writer recorded none, and the
+    // purchase gate (_shared/paid-session.ts) accepts a claim with no product
+    // as grandfathered -- so whenever this function won the race against the
+    // webhook, a $2 scan-pack receipt became proof of purchase for every paid
+    // generator: the exact hole 20260827180000 closed for the other writers.
     const { error: claimError } = await supabase
       .from('used_stripe_sessions')
       .insert({
         session_id: sessionId,
-        ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown'
+        ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown',
+        product_type: productType,
       });
 
     if (claimError) {

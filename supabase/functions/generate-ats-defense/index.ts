@@ -1,12 +1,21 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-01T21:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-ats-defense.2026-10-01.1";
+
+// The product_type create-product-checkout writes for this product; the
+// session's metadata must carry it, and the claim records it.
+const ATS_DEFENSE_PRODUCT_TYPE = 'ats_defense';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
 const MAX_RESUME_LENGTH = 50000;
@@ -275,7 +284,10 @@ serve(async (req) => {
       );
     }
 
-    const { sessionId, resumeText, targetRoles, allowRegeneration, jobDescription, language } = requestBody;
+    // allowRegeneration is still sent by the success page's recovery path and
+    // is no longer read: a paid ATS Defense session may always regenerate (see
+    // the claim below).
+    const { sessionId, resumeText, targetRoles, jobDescription, language } = requestBody;
 
     // Validate session ID
     if (!sessionId || typeof sessionId !== 'string' || sessionId.length < 10) {
@@ -369,7 +381,7 @@ serve(async (req) => {
 
     // Verify it's an ATS Defense purchase
     const metadata = session.metadata || {};
-    if (metadata.product_type !== 'ats_defense') {
+    if (metadata.product_type !== ATS_DEFENSE_PRODUCT_TYPE) {
       console.log("[ATS-DEFENSE] Wrong product type:", metadata.product_type);
       return new Response(
         JSON.stringify({ error: "This session is not for ATS Defense" }),
@@ -377,39 +389,37 @@ serve(async (req) => {
       );
     }
 
-    // Atomically claim the session by INSERTing first (PRIMARY KEY on session_id),
-    // rather than SELECT-then-INSERT. The old check-then-insert had a race window
-    // where two concurrent calls both saw "not used" and both proceeded to the
-    // (expensive, AI-billed) generation — double spend — and the INSERT error was
-    // never even checked. This mirrors the atomic claim already used by
-    // stripe-webhook, verify-product-purchase and verify-scan-pack-purchase.
-    // allowRegeneration (recovery) semantics are preserved: an already-claimed
-    // session is rejected 409 normally, but allowed through when regeneration is
-    // explicitly requested.
+    // THE SESSION IS ALREADY CLAIMED BY THE TIME THIS RUNS, AND THAT IS PROOF,
+    // NOT A REASON TO REFUSE.
+    //
+    // This used to INSERT the claim and answer 409 when the row already
+    // existed. But both of its callers claim the session FIRST: the webhook at
+    // the top of triggerProductDelivery, and the success page only after
+    // verify-product-purchase has claimed it. So the webhook's generation
+    // always met 409 (and so did every retry of it), the success page's first
+    // call always met 409, and a $15 buyer got the report only if they then
+    // found the recovery form, whose allowRegeneration flag skipped the check.
+    // A flag any caller may send was the only thing standing between the 409
+    // and a regeneration, so the 409 protected nothing and cost every buyer.
+    //
+    // Stripe has just confirmed above that this session is paid and is for
+    // ATS Defense. The claim is written here only if no one has written it yet
+    // (a direct call), and it records the product -- a claim without one is
+    // accepted by every paid generator as a purchase of anything. An existing
+    // claim is the expected case and the request proceeds; any other database
+    // error still fails closed.
     const { error: claimError } = await supabase
       .from('used_stripe_sessions')
-      .insert({ session_id: sessionId, ip_address: clientIp });
+      .insert({ session_id: sessionId, ip_address: clientIp, product_type: ATS_DEFENSE_PRODUCT_TYPE });
 
-    if (claimError) {
-      if (claimError.code === '23505') {
-        // Session already claimed by a prior/concurrent call.
-        if (!allowRegeneration) {
-          console.log("[ATS-DEFENSE] Session already used and regeneration not allowed");
-          return new Response(
-            JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
-            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        console.log("[ATS-DEFENSE] Session already claimed, proceeding with regeneration");
-      } else {
-        // Unexpected DB error — fail closed rather than risk double-generating.
-        console.error("[ATS-DEFENSE] Error claiming session:", claimError.message);
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (claimError && claimError.code !== '23505') {
+      console.error("[ATS-DEFENSE] Error claiming session:", claimError.message);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+    if (claimError) console.log("[ATS-DEFENSE] Session already claimed by its caller; generating");
 
     // Call AI for analysis
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

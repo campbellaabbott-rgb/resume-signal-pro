@@ -38,6 +38,8 @@ import { ALL_BOARD_SOURCES, SERVING_SOURCES } from "@/config/ats-vendors";
 import { SERVING_SOURCE_LIST } from "@/config/ats-vendors";
 import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
+import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
+import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
@@ -3044,8 +3046,15 @@ export default function Jobs() {
   const prefetchDesc = useCallback((job: BoardJob) => {
     if (descCache.current.has(job.id)) return;
     descCache.current.set(job.id, null);
+    // ONLY A REPLY IS CACHED. "" in this cache means "fetched, and the
+    // employer wrote none", so a failed or refused prefetch must leave no entry
+    // -- after a budget refusal every card under the pointer would otherwise
+    // claim its employer wrote nothing.
     invokeBoard<{ description?: string }>({ action: "detail", id: job.id })
-      .then(({ data: res }) => descCache.current.set(job.id, res?.description ?? ""))
+      .then(({ data: res, error: preErr }) => {
+        if (preErr || !res) descCache.current.delete(job.id);
+        else descCache.current.set(job.id, res.description ?? "");
+      })
       .catch(() => descCache.current.delete(job.id));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -3160,8 +3169,13 @@ export default function Jobs() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [fitFetching, setFitFetching] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  // "query" = the CDN WAF rejected the search string; "load" = anything else.
-  const [errorKind, setErrorKind] = useState<"load" | "query">("load");
+  // "query" = the CDN WAF rejected the search string; "budget" = the board's
+  // daily allowance for this connection is spent (a 429 board_budget, which no
+  // retry can fix before the reset); "load" = anything else.
+  const [errorKind, setErrorKind] = useState<"load" | "query" | "budget">("load");
+  // The standing budget refusal, if any: rendered as a notice, and every
+  // counted board call below short-circuits on it rather than asking again.
+  const budgetRefusal = useBoardBudgetRefusal();
   // Separate from `error`: a failed "Load more" leaves the list rendered and
   // shows an inline retry under it, rather than replacing a full page of
   // results with an error card.
@@ -3651,7 +3665,7 @@ export default function Jobs() {
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
-        const { data } = await supabase.functions.invoke("job-board", { body: { action: "company-suggest", q: term } });
+        const { data } = await invokeBoard<unknown>({ action: "company-suggest", q: term }, { retry: false });
         const rows = ((data as { companies?: Array<{ token: string; name: string; open?: number }> } | null)?.companies) ?? [];
         if (cancelled) return;
         for (const c of rows) if (c.token && c.name) companyNames.current[c.token] = c.name;
@@ -3664,11 +3678,28 @@ export default function Jobs() {
 
   // One quiet retry for board calls: a refresh slice hitting the function's
   // resource ceiling can bounce a single request off the worker pool.
-  const invokeBoard = async <T,>(body: Record<string, unknown>): Promise<{ data: T | null; error: { message?: string } | null }> => {
+  //
+  // EXCEPT A BUDGET REFUSAL, which is never retried and never repeated. The
+  // board's per-connection allowance resets at 00:00 UTC; a retry 1.2s later is
+  // a second refused request and nothing else. Once one lands, every counted
+  // call short-circuits here (no request at all) until the reset, and the page
+  // says why instead of looking broken.
+  const invokeBoard = async <T,>(
+    body: Record<string, unknown>,
+    { retry = true }: { retry?: boolean } = {},
+  ): Promise<{ data: T | null; error: { message?: string } | null }> => {
+    if (boardBudgetRefusal()) return { data: null, error: { message: BOARD_BUDGET_ERROR } };
     const first = await supabase.functions.invoke("job-board", { body });
     if (!first.error && first.data != null) return first as { data: T; error: null };
+    const refusedFirst = await readBoardBudgetRefusal(first.error);
+    if (refusedFirst) { markBoardBudgetRefused(refusedFirst); return first as { data: T | null; error: { message?: string } | null }; }
+    if (!retry) return first as { data: T | null; error: { message?: string } | null };
     await new Promise((r) => setTimeout(r, 1200));
-    return await supabase.functions.invoke("job-board", { body }) as { data: T | null; error: { message?: string } | null };
+    if (boardBudgetRefusal()) return { data: null, error: { message: BOARD_BUDGET_ERROR } };
+    const second = await supabase.functions.invoke("job-board", { body }) as { data: T | null; error: { message?: string } | null };
+    const refusedSecond = await readBoardBudgetRefusal(second.error);
+    if (refusedSecond) markBoardBudgetRefused(refusedSecond);
+    return second;
   };
 
   // The keyset successor from the last page served. Offset paging over a board
@@ -3698,15 +3729,13 @@ export default function Jobs() {
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
       try {
-        const { data: res } = await supabase.functions.invoke("job-board", {
-          body: {
-            action: "list", facetCounts: true,
-            ...boardFilterBody(filterState),
-            // The facet answers "how many in each field", so it must not be
-            // pre-narrowed to one field.
-            category: undefined, includeUncategorised: undefined,
-          },
-        });
+        const { data: res } = await invokeBoard<unknown>({
+          action: "list", facetCounts: true,
+          ...boardFilterBody(filterState),
+          // The facet answers "how many in each field", so it must not be
+          // pre-narrowed to one field.
+          category: undefined, includeUncategorised: undefined,
+        }, { retry: false });
         if (seq !== catFacetSeq.current) return; // a newer filter set superseded this
         const c = (res as { categories?: Record<string, number> } | null)?.categories;
         setFilteredCats(c && Object.keys(c).length ? c : null);
@@ -3827,13 +3856,20 @@ export default function Jobs() {
         // the same signature describe the same result set, so their rows may be
         // concatenated; two with different signatures may not, at any offset.
         const sig = JSON.stringify({ ...body, offset: 0, cursor: undefined, includeFacets: undefined });
+        // A standing budget refusal: no request at all until the reset.
+        if (boardBudgetRefusal()) throw new Error(BOARD_BUDGET_ERROR);
         let { data: res, error: err } = await supabase.functions.invoke("job-board", { body });
         if (err || !res?.jobs) {
+          // A budget refusal is never retried: it cannot clear before 00:00 UTC.
+          const refused = await readBoardBudgetRefusal(err);
+          if (refused) { markBoardBudgetRefused(refused); throw new Error(BOARD_BUDGET_ERROR); }
           // One quiet retry: a refresh slice hitting the function's resource
           // ceiling can bounce a single request; the next instance serves fine.
           await new Promise((r) => setTimeout(r, 1200));
           if (seq !== reqSeq.current) return;
           ({ data: res, error: err } = await supabase.functions.invoke("job-board", { body }));
+          const refusedAgain = await readBoardBudgetRefusal(err);
+          if (refusedAgain) { markBoardBudgetRefused(refusedAgain); throw new Error(BOARD_BUDGET_ERROR); }
         }
         if (seq !== reqSeq.current) return; // a newer filter superseded this request — abandon quietly
         if (err || !res?.jobs) throw new Error(err?.message ?? "no jobs field");
@@ -3898,6 +3934,13 @@ export default function Jobs() {
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
         if (seq !== reqSeq.current) return; // superseded request failed — not user-visible, don't log or flag
+        // THE ALLOWANCE IS SPENT: say so, offer no retry. A first page shows
+        // the notice in place of the list; a later page leaves the rows on
+        // screen under the banner rather than an inline retry that cannot work.
+        if (boardBudgetRefusal()) {
+          if (offset === 0) { setErrorKind("budget"); setError(true); }
+          return;
+        }
         console.error("[Jobs] list failed:", e);
         // A query carrying SQL-ish metacharacters is bounced by the CDN WAF
         // BEFORE it reaches the function, and the reply is an HTML challenge
@@ -4196,7 +4239,7 @@ export default function Jobs() {
   // about a named employer built on a read that never reached the posting.
   const verifyJob = async (job: BoardJob): Promise<boolean | null> => {
     try {
-      const { data } = await supabase.functions.invoke("job-board", { body: { action: "verify", ids: [job.id] } });
+      const { data } = await invokeBoard<unknown>({ action: "verify", ids: [job.id] }, { retry: false });
       const live = (data as { live?: Record<string, boolean | null> })?.live;
       if (!live || !(job.id in live)) return null; // no answer is not a confirmation
       if (live[job.id] === null) return null;      // the board answered; our read could not reach the posting
@@ -4560,13 +4603,25 @@ export default function Jobs() {
         // openDetail can paint its description under this posting.
         const seq = ++detailSeq.current;
         try {
-          const { data: res } = await invokeBoard<{
+          const { data: res, error: linkErr } = await invokeBoard<{
             job?: BoardJob | null;
             description?: string;
             closed?: { title: string; company: string | null; closedAt: string };
             agedOut?: { title: string | null; company: string | null; postedAt: string | null; capDays: number };
           }>({ action: "detail", id });
           if (seq !== detailSeq.current) return;
+          // ONLY THE SERVER'S ANSWER CAN SAY A POSTING IS GONE. A refusal (the
+          // daily allowance), a timeout or a 5xx says nothing about the posting,
+          // and "no longer available" plus noindex on a LIVE posting is a false
+          // claim to the reader and to every crawler that renders the URL. A
+          // 404 is the answer "no such posting"; anything else leaves the board
+          // as it is (the budget notice speaks for a refusal).
+          if (linkErr || !res) {
+            if (!(await readBoardBudgetRefusal(linkErr)) && httpStatusOf(linkErr) === 404) {
+              setDeadLink({ kind: "closed", title: null, company: null });
+            }
+            return;
+          }
           if (res?.job) {
             setDetailJob(normalizeRow(res.job));
             setDetailDesc(res.description ?? null);
@@ -4598,10 +4653,8 @@ export default function Jobs() {
             setDeadLink({ kind: "closed", title: null, company: null });
           }
         } catch {
-          // Dead link with no closure record: still tell the user their link
-          // went somewhere real that is gone now, not just render the board
-          // as if they never clicked anything.
-          setDeadLink({ kind: "closed", title: null, company: null });
+          // A thrown failure is not the server's answer about the posting:
+          // no dead link, and no noindex on what may be a live posting.
         }
       })();
     }
@@ -10463,6 +10516,13 @@ export default function Jobs() {
             )}
           </div>
           {/* Results */}
+          {/* A refusal that lands while rows are on screen (a later page, a
+              panel, a probe): the rows stay, and this says why nothing new
+              will load until the reset. The error branch below carries its
+              own notice when the first page itself was refused. */}
+          {budgetRefusal && !(error && errorKind === "budget") && (
+            <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />
+          )}
           {loading ? (
             // Skeleton cards: the page keeps its shape while the first load
             // lands — no spinner void, no layout jump when cards arrive.
@@ -10484,6 +10544,10 @@ export default function Jobs() {
                 </li>
               ))}
             </ul>
+          ) : error && errorKind === "budget" && budgetRefusal ? (
+            // NO RETRY: the allowance resets at 00:00 UTC and a retry before
+            // then is a second refused request.
+            <BoardBudgetNotice refusal={budgetRefusal} />
           ) : error ? (
             <div className="py-16 text-center">
               <p className="text-sm text-muted-foreground mb-3">

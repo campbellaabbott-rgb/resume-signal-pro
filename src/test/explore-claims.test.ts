@@ -26,9 +26,18 @@
  * bands from the payload, and no surface may promise headcount sourcing that
  * the SQL does not perform.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+
+// The same per-test budget as the eleven mount guards (helpers/mount-budget.ts),
+// though this file earns it differently: it mounts nothing and waits for
+// nothing, and its slowest case measured 248 ms under the loaded run -- 20x
+// clear of the 5 s default. It is here because the reason it was ever near a
+// budget was the re-reading fixed just below, not because 5 s was measured to
+// be too tight for it.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const EXPLORE = readFileSync(resolve(__dirname, "../pages/Explore.tsx"), "utf8");
 /** Explore.tsx with comments stripped — assertions about what the code DOES
@@ -87,10 +96,21 @@ const localeFiles = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
  *  the "latest" hit, bodyOf then sliced for a $$ terminator that was not
  *  there, and four unrelated guards failed on a file containing no function
  *  body at all. A definition lookup has to ask for a definition. */
+/** Every migration's text, oldest first, read ONCE per process.
+ *
+ *  This used to re-read the whole directory inside latestWith: 707 files and
+ *  5.5 MB, on each of the 25 calls below, for a set of files that cannot
+ *  change while the process is alive -- roughly 137 MB of disk and string work
+ *  to answer 25 questions. The order and the contents are identical; only the
+ *  re-reading is gone. Lazy, so the cases that never ask a migration anything
+ *  still pay nothing. */
+let MIG_TEXTS: string[] | null = null;
+const migTexts = (): string[] => (MIG_TEXTS ??= readdirSync(MIG)
+  .filter((f) => f.endsWith(".sql")).sort()
+  .map((f) => readFileSync(resolve(MIG, f), "utf8")));
+
 const latestWith = (fragment: string) => {
-  const hit = readdirSync(MIG).filter((f) => f.endsWith(".sql")).sort()
-    .map((f) => readFileSync(resolve(MIG, f), "utf8"))
-    .filter((t) => t.includes(fragment)).pop();
+  const hit = migTexts().filter((t) => t.includes(fragment)).pop();
   if (!hit) throw new Error(`no migration contains: ${fragment}`);
   return hit;
 };

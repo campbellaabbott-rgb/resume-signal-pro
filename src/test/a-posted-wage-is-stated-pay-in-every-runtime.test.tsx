@@ -112,6 +112,7 @@
  *     that has lost its qualifier", in the sibling file.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, waitFor } from "@testing-library/react";
@@ -205,6 +206,16 @@ function mountWith(reply: Record<string, unknown>, url: string) {
   });
   render(<MemoryRouter><Jobs /></MemoryRouter>);
 }
+
+// THE WAITING BUDGET, and why it is not a number chosen here:
+// helpers/mount-budget.ts. This file had no shared constant at all -- seven
+// inline five-second wait literals, each level with vitest's default per-test
+// budget of the same five seconds and therefore unreachable, so a stuck wait
+// was always reported as a bare test timeout naming nothing rather than as
+// the assertion that never came true. They are now the one SLOW. The slowest
+// case measured 2309 ms on the 2026-09-30 loaded run.
+vi.setConfig(MOUNT_TEST_BUDGET);
+
 const text = () => document.body.textContent ?? "";
 
 describe("the row audit judges a stated-pay page by what the employer published", () => {
@@ -573,8 +584,8 @@ describe("the widening is disclosed on the page it happened on", () => {
       },
       "/jobs?statedPay=1",
     );
-    await waitFor(() => expect(text()).toContain("Painter and Decorator"), { timeout: 5000 });
-    await waitFor(() => expect(document.querySelector('[data-pay-gap="page"]')).not.toBeNull(), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Painter and Decorator"), SLOW);
+    await waitFor(() => expect(document.querySelector('[data-pay-gap="page"]')).not.toBeNull(), SLOW);
     const line = document.querySelector('[data-pay-gap="page"]')?.textContent ?? "";
     expect(line, "the sentence must carry the count it is about").toMatch(/\b1\b/);
     expect(line, "and the page size it is counted against").toMatch(/\b2\b/);
@@ -595,8 +606,8 @@ describe("the widening is disclosed on the page it happened on", () => {
       },
       "/jobs?statedPay=1&country=GB",
     );
-    await waitFor(() => expect(text()).toContain("Painter and Decorator"), { timeout: 5000 });
-    await waitFor(() => expect(document.querySelector('[data-pay-gap="page"]')).not.toBeNull(), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Painter and Decorator"), SLOW);
+    await waitFor(() => expect(document.querySelector('[data-pay-gap="page"]')).not.toBeNull(), SLOW);
     expect(
       document.querySelector('[data-coverage-scope="board"]'),
       "a country narrows outside the pay family, so no board-wide percentage may print — if one does, this case is no longer testing the gate",
@@ -609,7 +620,7 @@ describe("the widening is disclosed on the page it happened on", () => {
     // page teaches readers to skip the line that matters. The server omits the
     // field; the page must not invent a sentence from its absence.
     mountWith({ jobs: [ANNUALISED], total: 1 }, "/jobs");
-    await waitFor(() => expect(text()).toContain("Staff Engineer"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     expect(document.querySelector('[data-pay-gap="page"]')).toBeNull();
   });
 
@@ -631,7 +642,7 @@ describe("the widening is disclosed on the page it happened on", () => {
       { payTextWithoutAnnual: { rows: 19, of: 60 } },
       "/jobs",
     );
-    await waitFor(() => expect(text()).toContain("Painter and Decorator"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Painter and Decorator"), SLOW);
     expect(
       document.querySelector('[data-pay-gap="page"]'),
       "the gap sentence printed on a page where no pay control is in use — it describes the pay floor, the pay ceiling and the pay order to a reader who touched none of them",
@@ -648,7 +659,7 @@ describe("the widening is disclosed on the page it happened on", () => {
      * in the reply. What must be true is both halves — nothing printed, and the
      * control's own sentence carrying the condition. */
     mountWith({ jobs: [ANNUALISED], total: 1 }, "/jobs?statedPay=1&salaryFloor=80000");
-    await waitFor(() => expect(text()).toContain("Staff Engineer"), { timeout: 5000 });
+    await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     expect(document.querySelector('[data-pay-gap="page"]')).toBeNull();
     const tip = [...document.querySelectorAll("[title]")].map((e) => e.getAttribute("title") ?? "").join(" | ");
     expect(tip, "the states-pay tooltip promises a number the page cannot print once a pay floor is narrowing it")

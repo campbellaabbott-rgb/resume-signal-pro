@@ -15,6 +15,7 @@
 // same localStorage key the page writes), the toggle is clicked, the sentence
 // is read, the toggle is clicked again and the sentence is gone.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -44,7 +45,13 @@ import Jobs from "../pages/Jobs";
 const ROOT = resolve(__dirname, "../..");
 const LOCALES = resolve(ROOT, "src/i18n/locales");
 const jp = (f: string) => JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, unknown>;
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// and the first case below chains THREE waits -- a budget of 12 s of waiting
+// inside a 5 s case. It measured 3474 ms on the 2026-09-30 loaded run, 1.4x
+// under the ceiling, and a stuck wait could only have been reported as "Test
+// timed out in 5000ms", naming nothing.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const row = (id: string, title: string) => ({
   id, source: "greenhouse", token: "acme", company: "Acme", title, location: "Cambridge", country: "GB",

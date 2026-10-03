@@ -117,6 +117,21 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   ],
   job_board_board_observability: ["company_token", "bucket", "lap_w0", "as_of"],
   job_board_company_snapshots: ["company_token", "snapshot_date", "open_roles"],
+  // The two tables the day-30 watch floor reads (20261002122309 in the
+  // partition writer): the tenure table (20260909212000) and the daily read
+  // ledger (20260906215000). The writer's OUT names are lw_-prefixed, so none
+  // of these can collide; they are mapped so the strict loop can see them.
+  job_board_board_watch: ["company_token", "first_observed_on", "first_observed_basis", "is_censored", "updated_at"],
+  job_board_board_state: [
+    "company_token", "observed_on", "source", "observed_at", "live_count", "stored_count", "feed_total", "state",
+  ],
+  // The anonymous board meter (20261002140000): job_board_anon_check upserts
+  // both tables through ON CONFLICT and reads its setting row from
+  // job_board_meta; get_board_anon_hourly reads the hourly table. Both are
+  // held to the zero-collision rule below.
+  job_board_anon_meter: ["day_utc", "bucket", "within_cap", "over_cap", "last_call_over"],
+  job_board_anon_hourly: ["hour_utc", "bucket", "kind", "country", "within_cap", "over_cap", "bare_calls"],
+  job_board_meta: ["k", "v", "updated_at"],
 };
 
 /**
@@ -336,6 +351,8 @@ const STRICT_FUNCTIONS = [
   // plpgsql, RETURNS TABLE, over the two locked layoff tables and the
   // closure ledgers. Both ship fully prefixed.
   "layoff_matches_rebuild", "refresh_layoff_partition",
+  // The anonymous board meter and its reader (20261002140000).
+  "job_board_anon_check", "get_board_anon_hourly",
 ];
 
 describe("the API key functions do not name a column in their return shape", () => {

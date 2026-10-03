@@ -35,6 +35,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal, type BoardBudgetRefusal } from "@/lib/board-budget";
+import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import {
   BOARD_FRESH_WINDOW_DAYS,
   isPostingLive,
@@ -58,7 +60,8 @@ const SITE = "https://resumebooster.work";
  */
 const LD_TAG_ID = POSTING_LD_TAG_ID;
 
-type LoadState = "loading" | "ready" | "gone" | "failed";
+/** "budget": the board's daily allowance for this connection is spent -- never "gone", never retried. */
+type LoadState = "loading" | "ready" | "gone" | "failed" | "budget";
 
 /**
  * Take every JobPosting entity out of the head — the one this page wrote under
@@ -92,23 +95,39 @@ export default function JobPosting() {
   const [description, setDescription] = useState<string | null>(null);
   const [state, setState] = useState<LoadState>("loading");
   const [attempt, setAttempt] = useState(0);
+  const [budget, setBudget] = useState<BoardBudgetRefusal | null>(null);
   const seq = useRef(0);
 
   useEffect(() => {
     if (!id) return;
     const mine = ++seq.current;
     setState("loading");
+    // A REFUSAL IS NOT A FAILURE AND NOT A CLOSURE. The board's per-connection
+    // allowance resets at 00:00 UTC: no retry can succeed before then, and the
+    // posting is not gone -- so neither "Try again" nor noindex applies.
+    const refusedWith = (r: BoardBudgetRefusal) => {
+      markBoardBudgetRefused(r);
+      if (seq.current !== mine) return;
+      setBudget(r);
+      setState("budget");
+    };
     (async () => {
+      const standing = boardBudgetRefusal();
+      if (standing) { refusedWith(standing); return; }
       // One quiet retry: a refresh slice hitting the function's resource
       // ceiling can bounce a single request off the worker pool.
       let res = await supabase.functions.invoke("job-board", { body: { action: "detail", id } });
       if (res.error || res.data == null) {
+        const refused = await readBoardBudgetRefusal(res.error);
+        if (refused) { refusedWith(refused); return; }
         await new Promise((r) => setTimeout(r, 1200));
         res = await supabase.functions.invoke("job-board", { body: { action: "detail", id } });
       }
       if (seq.current !== mine) return;
       const data = res.data as { job?: PostingRow | null; description?: string | null } | null;
       if (res.error || !data) {
+        const refused = await readBoardBudgetRefusal(res.error);
+        if (refused) { refusedWith(refused); return; }
         setState("failed");
         return;
       }
@@ -216,6 +235,8 @@ export default function JobPosting() {
               {t("jobPostingPage.loading", "Loading this posting…")}
             </p>
           )}
+
+          {state === "budget" && budget && <BoardBudgetNotice refusal={budget} />}
 
           {state === "failed" && (
             <div className="rounded-xl border border-border bg-card p-6">

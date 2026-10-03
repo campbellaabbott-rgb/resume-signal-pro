@@ -39,6 +39,7 @@
 // The JSON-LD is deliberately untouched: structured data is read by machines
 // that want the employer's own string, and this is a DISPLAY fix.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -74,7 +75,13 @@ const ROOT = resolve(__dirname, "../..");
 // guard bug, and the comments this fix added are full of its own identifiers.
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
+// so a stuck wait could only be reported as "Test timed out in 5000ms",
+// naming nothing. The slowest case measured 1081 ms on the 2026-09-30 loaded
+// run -- the most headroom of the mount guards, and it takes the shared
+// policy so there is one number to change, not eleven.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const LEIDOS_RAW = "0250 36th CS Andersen Air Force Base Guam - Expat";
 

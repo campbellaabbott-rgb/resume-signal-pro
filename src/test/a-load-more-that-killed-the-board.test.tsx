@@ -23,6 +23,7 @@
 //   2. The signature refusal replaces what it discards instead of returning
 //      into silence — it re-requests page 0 for the filters on screen.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -95,7 +96,14 @@ const loadMore = () => screen.getByRole("button", { name: /Load more|Try again/i
 const searchBox = () => screen.getByPlaceholderText(/Title or keyword/i);
 // Every wait here sits behind a 400ms debounce; the default 1s leaves no room
 // on a loaded machine.
-const SLOW = { timeout: 4000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 4000 with no per-test budget at all, so the case
+// budget was vitest's 5 s default. Under the 2026-09-30 loaded run this
+// file's slowest case measured 10351 ms -- it passed, and I could not
+// reconcile that with a 5 s budget, so take the number as evidence of no
+// margin rather than as a mechanism. The same case runs 1389 ms on a quiet
+// machine: a 7.5x spread with nothing in the suite controlling the load.
+vi.setConfig(MOUNT_TEST_BUDGET);
 // AND THE TEST'S OWN WALL CLOCK HAS TO BE BIGGER THAN THE WAITS INSIDE IT.
 // The three behavioural cases below chain up to four SLOW waits each, so their
 // declared per-step allowance is 16s — under vitest's 5s default test budget,

@@ -76,6 +76,7 @@
 // shows during the window where a filter change keeps the old list on screen,
 // which this harness cannot stage — so that one is a comment, not a claim.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -135,7 +136,13 @@ const FN = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index
 const LOCALES = resolve(ROOT, "src/i18n/locales");
 const LOCALE_FILES = readdirSync(LOCALES).filter((f) => f.endsWith(".json")).sort();
 const jp = (f: string) => JSON.parse(readFileSync(resolve(LOCALES, f), "utf8")).jobsPage as Record<string, string>;
-const SLOW = { timeout: 5000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. SLOW was 5000, level with vitest's default per-test budget, so
+// it could never be reached: a stuck wait was reported as a bare test
+// timeout, naming neither the control nor what it awaited. The slowest case
+// measured 2941 ms on the 2026-09-30 loaded run -- 1.7x under the ceiling,
+// the same margin the files that went red that day were at.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 // ── THE FIXTURE IS THE LIVE MEASUREMENT ─────────────────────────────────────
 // The cached block as the board served it on 2026-09-26 (pay 0.235, work mode

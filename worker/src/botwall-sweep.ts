@@ -206,6 +206,9 @@ async function boardList(body: Record<string, unknown>): Promise<Record<string, 
       // runner's vendor paging is stored as candidate demand.
       "x-rsp-caller": SWEEP_CALLER,
       "x-rb-caller": SWEEP_CALLER,
+      // A runner paging up to eight vendor pages: counted under this
+      // address's probe allowance, never a browser's (job-board/anon-budget.ts).
+      "x-rb-budget": "probe",
     },
     body: JSON.stringify({ action: "list", ...body, caller: SWEEP_CALLER }),
   });

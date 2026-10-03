@@ -92,6 +92,8 @@ import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
+import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
+import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS } from "./anon-budget.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,9 +103,16 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 // Rationale: docs/job-board-index-notes.md#n001-sitemap-days
+// RETAINED WITH NO READER, ON PURPOSE. Its one consumer — the live sitemap
+// index — was retired on 2026-10-01 (see the 410 in the GET handler). Four
+// guards read this declaration as a comment-stripper canary, asserting it
+// survives codeOf: a stripper that eats a region of this file is invisible
+// unless something named is known to live there. Deleting it would blind
+// them rather than tidy the file. See
+// a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.81"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.85"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -612,7 +621,7 @@ class LightCapableOnly extends Set<string> {
 // Rationale: docs/job-board-index-notes.md#n019-dynamic-light
 const DYNAMIC_LIGHT: Set<string> = new LightCapableOnly();
 const AUTO_LIGHT_THRESHOLD_CHARS = 2_500_000; // ~2.5MB of raw content HTML
-const AUTO_LIGHT_CAP = 50; // bound the meta row; realistically a handful
+const AUTO_LIGHT_CAP = 500; // 107 greenhouse boards needed a slot on 2026-10-01, and 50 made every one of them miss; see n019
 const isLight = (token: string) => LIGHT_DESC_TOKENS.has(token) || DYNAMIC_LIGHT.has(token);
 
 /**
@@ -930,6 +939,13 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  * OVERSIZE_BOARDS exists to keep them nameable rather than silent.
  */
 const MAX_RESPONSE_BYTES = 4_000_000;
+// The second read of a lever/ashby board the bound refused, one posting at a time.
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+const STREAM_WIRE_BYTES = 64_000_000;
+const STREAM_READ_BUDGET_MS = 30_000;
+const SLIM_ELEMENT_BYTES = 1_000_000;
+const SLIM_RETAINED_BYTES = 3_000_000;
+const SLIM_DESC_CEILING = 2_500_000;
 // Our own function answering our own chain kick / maintenance probe. Status
 // and list payloads, not vendor feeds, so the ceiling is a tenth of a board's.
 const SELF_RESPONSE_BYTES = 400_000;
@@ -1622,6 +1638,36 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   const nextOffset = exhausted || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
   // Rationale: docs/job-board-index-notes.md#n034-return-items-all-raw-items-all-window
   return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
+}
+
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs: number): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
+  const spec = SLIM_SPECS[s.source];
+  if (!spec) return null;
+  try {
+    const res = await beforeDeadline(fetchWithTimeout(listUrl(s), undefined, STREAM_WIRE_BYTES), deadlineAt, discardBody);
+    if (!res.ok || !res.body || !/json/i.test(res.headers.get("content-type") ?? "")) {
+      discardBody(res);
+      throw new Error(`HTTP ${res.status} ${res.headers.get("content-type") ?? ""}`);
+    }
+    const { raw, stats } = await streamSlim(res.body, spec, {
+      freshCutoffMs,
+      maxBytes: SLIM_RETAINED_BYTES,
+      maxElementBytes: SLIM_ELEMENT_BYTES,
+      descKeepChars: 2 * STORED_DESC_CAP,
+      descCeiling: SLIM_DESC_CEILING,
+      deadlineAt,
+    });
+    const jobs = s.source === "lever" ? normalizeLever(raw as never, s.name, s.token)
+      : s.source === "ashby" ? normalizeAshby(raw as never, s.name, s.token)
+      : null;
+    if (!jobs) throw new Error(`no normaliser for ${s.source}`);
+    console.warn(`[JOB-BOARD] streamed ${s.source}:${s.token}: ${(stats.bytes / 1e6).toFixed(1)}MB read, ${(stats.slimBytes / 1e6).toFixed(1)}MB kept, ${stats.descDropped} description(s) dropped`);
+    return { jobs, raw };
+  } catch (e) {
+    console.warn(`[JOB-BOARD] streamed read of ${s.source}:${s.token} failed, stays deferred:`, String((e as Error)?.message ?? e).slice(0, 120));
+    return null;
+  }
 }
 
 // onFail receives a COMPACT reason. The reason was already known here and
@@ -2645,6 +2691,9 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, boardBudget: sliceBudgetNote.boardBudget, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
+        // Saturation of the persisted light set, whose own row anon cannot read (n019).
+        lightSet: DYNAMIC_LIGHT.size,
+        lightCap: AUTO_LIGHT_CAP,
         // The stale lane's slice outcome rides the same row: how many stale
         // boards this slice tried, and how many of those stamped.
         ...(sliceStaleNote ? { staleTries: sliceStaleNote.tries, staleResolved: sliceStaleNote.resolved } : {}),
@@ -3291,6 +3340,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
+        // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
+          inFlightReserve += reserve;
+          try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
+          finally { inFlightReserve -= reserve; }
+        }
         if (r) fetchedInSlice += r.jobs.length;
         // Rationale: docs/job-board-index-notes.md#n079-boardsdone
         ++boardsDone;
@@ -4119,12 +4174,40 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             patch.salary_period = rp?.period ?? null;
             patch.salary_currency = rp?.currency ?? null;
           }
-          if (typeof row.remote === "boolean" && row.remote !== prev.remote) {
-            patch.remote = row.remote;
-            note("remote", prev.remote, row.remote);
-            // Rationale: docs/job-board-index-notes.md#n115-nextmode
-            const nextMode = (row as Record<string, unknown>).work_mode ?? null;
-            if (nextMode !== prev.work_mode) {
+          // Rationale: docs/job-board-index-notes.md#n115-nextmode
+          if (typeof row.remote === "boolean") {
+            if (row.remote !== prev.remote) {
+              patch.remote = row.remote;
+              note("remote", prev.remote, row.remote);
+            }
+            // A REFUSAL THAT CANNOT BE WRITTEN IS NOT A REFUSAL. This used to
+            // sit INSIDE the `row.remote !== prev.remote` test above, so the
+            // trinary could only move when the boolean moved with it — and
+            // remote is false for hybrid, for onsite AND for null, so every
+            // transition inside that set was unwritable. put() above cannot
+            // carry them either: it is stated-only and returns on a null.
+            //
+            // Net effect, measured live 2026-10-01 on
+            // ukg:…:692bd5bf-2be4-4ddd-9e24-e32c507bb43f: a UKG dropdown
+            // reading On-site under the title "Pre-Visit Specialist I - Call
+            // Center *Hybrid*". normalizeUkg refuses that contradiction and
+            // answers null, as .78 intended — and the row still served
+            // "hybrid", because hybrid→null leaves remote false→false and
+            // nothing wrote it. The fabrication .78 was shipped to remove
+            // outlived the bundle that removed it, on every row where the
+            // correction did not happen to flip the boolean.
+            //
+            // The pair is ONE fact (every normalizer derives
+            // `remote: workMode === "remote"` from the one trinary), so the
+            // gate is "did the normalizer compute the pair at all", not "did
+            // the boolean change". A null under that gate is this visit's
+            // computed answer, not vendor silence — which is the distinction
+            // the stated-only put() cannot make.
+            const nextMode = ((row as Record<string, unknown>).work_mode ?? null) as string | null;
+            // `patch.work_mode === undefined` keeps this from re-noting a
+            // non-null change put() already wrote: two change-log rows for one
+            // edit would overstate the employer's own edits.
+            if (nextMode !== prev.work_mode && patch.work_mode === undefined) {
               patch.work_mode = nextMode;
               note("work_mode", prev.work_mode, nextMode);
             }
@@ -5998,7 +6081,9 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
     const memoKey = `${src.source}:${src.token}`;
     let memo = liveBoardMemo.get(memoKey);
     if (!memo) {
-      const r = await fetchBoard(src);
+      // The memo keeps only boards that answered; a board the byte bound
+      // refused is remembered across ids and requests by the reader instead.
+      const r = await readBoardForDetail(src);
       if (!r) return null;
       // FIFTEEN vendors reach here, not three. Only greenhouse / lever /
       // smartrecruiters / oracle / workday return above; everything else in
@@ -6117,6 +6202,26 @@ function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string
     }
   }
   return out;
+}
+
+// A board the byte bound refuses answers neither a lever/ashby detail read nor
+// checkLive's membership check, and asking again per view or per verify id
+// repeats the refused download (up to 4 MB for ashby). Only the oversize
+// verdict is remembered, per board, per isolate, for a few hours.
+// Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
+const DETAIL_BOARD_REFUSED = new Map<string, number>();
+const DETAIL_BOARD_REFUSED_TTL_MS = 6 * 3_600_000;
+async function readBoardForDetail(src: JobSource): Promise<Awaited<ReturnType<typeof fetchBoard>>> {
+  const key = `${src.source}:${src.token}`;
+  const at = DETAIL_BOARD_REFUSED.get(key);
+  if (at !== undefined && Date.now() - at < DETAIL_BOARD_REFUSED_TTL_MS) return null;
+  let reason = "";
+  const r = await fetchBoard(src, (m) => { reason = m; });
+  if (!r && reason.startsWith("oversize")) {
+    if (DETAIL_BOARD_REFUSED.size > 500) DETAIL_BOARD_REFUSED.clear();
+    DETAIL_BOARD_REFUSED.set(key, Date.now());
+  }
+  return r;
 }
 
 /**
@@ -6366,8 +6471,9 @@ async function fetchVendorDetail(
     }
   } else if (src.source === "lever" || src.source === "ashby") {
     // Both ship descriptions in the board payload — fetch the board, extract
-    // the one posting, keep nothing else in memory.
-    const r = await fetchBoard(src);
+    // the one posting, keep nothing else in memory. A board the byte bound
+    // refuses answers null here without being asked again (see above).
+    const r = await readBoardForDetail(src);
     if (r) {
       if (src.source === "lever") {
         const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>;
@@ -7139,76 +7245,44 @@ Deno.serve(async (req) => {
   // Rationale: docs/job-board-index-notes.md#n198-req-method-get
   if (req.method === "GET") {
     const u = new URL(req.url);
-    // No page param → a sitemapindex with one entry per day of the freshness
-    // window. Coverage still tracks the dated corpus (every dated posting
-    // falls in exactly one day), but the page count no longer depends on a
-    // live COUNT and no page depends on a deep OFFSET.
-    if (u.searchParams.get("action") === "sitemap" && !u.searchParams.has("page")) {
-      // One page per DAY of the freshness window, not count/10k. Offset-based
-      // paging made page N cost a scan of N*10,000 rows, and the deep pages
-      // timed out — silently, see the page handler below. A day is a bounded,
-      // indexed slice that never gets more expensive as the corpus grows.
-      const pages = SITEMAP_DAYS;
-      const self = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      const entries = Array.from({ length: pages }, (_, i) =>
-        `<sitemap><loc>${self}?action=sitemap&amp;page=${i}</loc></sitemap>`).join("");
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entries}</sitemapindex>`;
-      return new Response(xml, {
-        headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=21600" },
-      });
-    }
+    // THE SITEMAP THIS SERVED IS GONE, AND 410 IS HOW A CRAWLER LEARNS THAT.
+    //
+    // On 2026-09-23 the second sitemap line was taken out of robots.txt because
+    // the index behind it asked crawlers to index 767,391 board URLs that every
+    // one of them served the same bytes for. Only the ADVERTISEMENT was removed.
+    // This endpoint kept serving, and a crawler does not need robots.txt to
+    // reach a URL it already has.
+    //
+    // Measured 2026-10-01, a week after that change: the index still answered
+    // with its 30 pages, page 0 still listed 24,449 URLs in 3.3 MB, uncached at
+    // the edge, 7.4 s a page, and 200 to Bytespider, Baiduspider, PetalBot and
+    // curl alike. A full walk is ~733,000 URLs at ~81 KB each: about 59 GB of
+    // uncached egress, per crawler, as often as each one cares to repeat it.
+    // That is what the owner saw as a flood of foreign traffic, and none of it
+    // was anybody attacking us — we were handing it out.
+    //
+    // The guard written at the time pins robots.txt, reasoning that the lever
+    // behind the 767,391 was one line in a text file and not code. The lever
+    // was the road, not the sign. the-sitemap-never-advertises-a-posting-url-
+    // with-no-page.test.ts now holds both.
+    //
+    // 410 and not 404, deliberately: a 404 says "not here, maybe later" and
+    // crawlers retry it for months, while 410 is the terminal one that drops
+    // the URL from the queue. Nothing in this repo calls this action — no code,
+    // no robots line, no test asserting it exists — so there is no caller to
+    // break. Cached for a week so the refusal does not become its own traffic.
     if (u.searchParams.get("action") === "sitemap") {
-      const page = Math.max(0, Math.min(SITEMAP_DAYS - 1, Number(u.searchParams.get("page")) || 0));
-      const client = db();
-      // Page N = postings whose COMPANY-STATED date falls in day N of the
-      // window. Bounded by an indexed range instead of a growing OFFSET, so
-      // every page costs the same and the last page is as cheap as the first.
-      const dayEnd = new Date(Date.now() - page * 86_400_000).toISOString();
-      const dayStart = new Date(Date.now() - (page + 1) * 86_400_000).toISOString();
-      // PostgREST caps any single select at 1,000 rows regardless of range()
-      // — measured live: the first ship of this route silently served 1,000
-      // URLs per "10k" page. Page through with a KEYSET cursor on id: no
-      // offset ever, so a deep chunk is no more expensive than the first.
-      const rows: Array<{ id: string; posted_at: string }> = [];
-      let lastId = "";
-      for (let c = 0; c < 50; c++) { // 50k = the sitemap-protocol ceiling per file
-        let q = client
-          .from("job_board_postings")
-          .select("id, posted_at")
-          // Never submit a dropped posting to a search engine — the sitemap is
-          // the other surface 20260728120000 missed.
-          .is("missing_since", null)
-          .gte("posted_at", dayStart)
-          .lt("posted_at", dayEnd)
-          .order("id", { ascending: true })
-          .limit(1_000);
-        if (lastId) q = q.gt("id", lastId);
-        const { data: chunk, error: chunkErr } = await q;
-        // NEVER swallow this. The old code destructured the error away, so a
-        // failed read was indistinguishable from "no more rows" — it broke the
-        // loop and served a PARTIAL or EMPTY urlset as a confident 200 with an
-        // hour of caching. Measured 2026-07-27: the same page returned 10,000,
-        // 8,000 and 0 URLs on consecutive requests. Telling a crawler "this
-        // site has no jobs" is the same class of lie as a wrong count.
-        if (chunkErr) {
-          console.error("[JOB-BOARD] sitemap page", page, "read failed:", chunkErr.message);
-          return new Response("sitemap temporarily unavailable", {
-            status: 503,
-            headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-          });
-        }
-        if (!chunk?.length) break;
-        rows.push(...(chunk as Array<{ id: string; posted_at: string }>));
-        lastId = String(chunk[chunk.length - 1].id);
-        if (chunk.length < 1_000) break;
-      }
-      const urls = rows.map((r) =>
-        `<url><loc>https://resumebooster.work/jobs?job=${encodeURIComponent(String(r.id))}</loc><lastmod>${String(r.posted_at).slice(0, 10)}</lastmod></url>`
-      ).join("");
-      const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
-      return new Response(xml, {
-        headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600" },
-      });
+      return new Response(
+        "Gone. Individual openings have their own pages; the sitemap that lists "
+          + "them is https://resumebooster.work/sitemap.xml",
+        {
+          status: 410,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "public, max-age=604800",
+          },
+        },
+      );
     }
     return json({ error: "POST only" }, 405);
   }
@@ -7231,6 +7305,22 @@ Deno.serve(async (req) => {
   }
   const action = String(body.action ?? "list");
   const client = db();
+
+  // THE ANONYMOUS BUDGET, before any dispatch, so a refused read does no other
+  // database work. The service key and our own servers' reader proof make no
+  // counter call at all. anon-budget.ts holds the rules and fails open.
+  if (BUDGETED_ACTIONS.has(action)) {
+    const refused = await anonBudgetGate(req, action, {
+      rpc: (args, signal) => client.rpc("job_board_anon_check", args).abortSignal(signal),
+      serviceKey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      cors: corsHeaders,
+    });
+    if (refused) return refused;
+  }
+  if (action === "budget-echo") {
+    // Uncounted, zero database: what the gate sees of this caller's own request.
+    return json(await budgetEcho(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
+  }
 
   try {
     if (action === "searchQuality") {
@@ -7367,6 +7457,9 @@ Deno.serve(async (req) => {
       // bundle, so a stale/failed publish is visible in ONE call instead of being
       // inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
       // Also the source of truth for the heartbeat's job_board_deploy check.
+      const anonBudgetRead = Promise.resolve(
+        client.from("job_board_meta").select("v").eq("k", "anon_board_budget").maybeSingle(),
+      ).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -7461,6 +7554,10 @@ Deno.serve(async (req) => {
         // only place they exist — get_freshness_stats keeps its signature.
         client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "freshness").maybeSingle(),
       ]);
+      // The anonymous budget's setting row (enforce, the country switch, cap
+      // overrides), reported as stored. Its own named read, started before the
+      // positional batch above so it runs beside it, and never a position in it.
+      const anonBudgetRow = await anonBudgetRead;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
@@ -7488,6 +7585,8 @@ Deno.serve(async (req) => {
         statusDegraded: false,
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
+        // The anonymous budget's setting row and the code's default caps.
+        anonBudget: anonBudgetStatus((anonBudgetRow as { data?: { v?: unknown } | null } | null)?.data?.v ?? null),
         // Rationale: docs/job-board-index-notes.md#n211-questionvendors-realquestionvendors
         questionVendors: realQuestionVendors(),
         // Rationale: docs/job-board-index-notes.md#n212-applyagent-aameta-data-v

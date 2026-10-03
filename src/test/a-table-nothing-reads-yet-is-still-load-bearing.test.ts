@@ -994,9 +994,31 @@ function guardsPruneWithRollup(body: string, table: string, rollup: string): boo
 }
 
 /** Every GRANT in `sql` whose object is exactly `public.<table>`. */
+/** The GRANTs on one table, read out of the joined migrations.
+ *
+ *  THE PRIVILEGE LIST IS BOUNDED TO ITS OWN STATEMENT. This used to open with
+ *  `[\s\S]*?` -- match anything, lazily, with no bound -- so at every one of
+ *  the hundreds of GRANTs in 2.6 MB of migrations that is NOT on this table,
+ *  the engine expanded the wildcard a character at a time across the rest of
+ *  the corpus before failing. Six tables x that scan was 1112 ms, which was
+ *  the whole of this file's 4168 ms slowest case and the reason it began
+ *  timing out at the 5 s default under a loaded gate.
+ *
+ *  It also made the `priv` it returned meaningless: the capture ran from some
+ *  earlier statement's GRANT to this one, so every privilege list read
+ *  "USAGE ON SCHEMA cron TO postgres;\nGRANT " instead of "ALL". Nothing
+ *  asserts on priv today, which is the only reason that was invisible.
+ *
+ *  A GRANT is semicolon-terminated and a privilege list cannot contain a
+ *  semicolon, so `[^;]*?` is the same match bounded to one statement -- still
+ *  crossing newlines for multi-line GRANTs. 1112 ms -> 6 ms, the same six
+ *  grants found, and priv now reads "ALL". Checked against a planted
+ *  `GRANT SELECT ON public.job_board_field_changes TO anon;`: both the old
+ *  form and this one flag it, so this is a speed and a correctness fix to the
+ *  capture, not a repair to a guard that was letting leaks through. */
 function grantsOn(sql: string, table: string): Array<{ priv: string; to: string }> {
   const out: Array<{ priv: string; to: string }> = [];
-  const re = new RegExp(`GRANT\\s+([\\s\\S]*?)\\s+ON\\s+(?:TABLE\\s+)?public\\.${table}\\s+TO\\s+([^;]+);`, "gi");
+  const re = new RegExp(`GRANT\\s+([^;]*?)\\s+ON\\s+(?:TABLE\\s+)?public\\.${table}\\s+TO\\s+([^;]+);`, "gi");
   for (let m = re.exec(sql); m; m = re.exec(sql)) out.push({ priv: m[1].trim(), to: m[2].trim() });
   return out;
 }

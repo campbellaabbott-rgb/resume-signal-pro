@@ -53,6 +53,7 @@
 // comments: every docblock in this area necessarily quotes the identifiers and
 // literals below, and a guard satisfied by an explanation is not a guard.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -88,7 +89,16 @@ const FN = codeOf(FN_RAW);
 const JOBS_RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const JOBS = codeOf(JOBS_RAW);
 const LOCALES = ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"];
-const SLOW = { timeout: 5000 } as const;
+// THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
+// budget.ts. This is the file that actually went red on the 2026-09-30
+// loaded gate run. "behaviour: an order the database applied to the whole
+// set may say so" took 6020 ms against vitest's default 5000 ms per-test
+// budget and died as "Test timed out in 5000ms" -- a sentence naming neither
+// the control nor what it was waiting for, which is exactly why a flake and
+// a regression could not be told apart at the gate. Its own SLOW was 5000,
+// level with the test budget, so the per-assertion message could never have
+// been the one printed.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 /** One row per card, in the shape rowToJob emits. */
 const row = (i: number, company: string, title: string, posted: string) => ({
