@@ -610,6 +610,13 @@
       "when": 1791037435081,
       "tag": "0086_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1791037443085,
+      "tag": "0087_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them",
+      "breakpoints": true
     }
   ]
 }

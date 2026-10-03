@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql';
