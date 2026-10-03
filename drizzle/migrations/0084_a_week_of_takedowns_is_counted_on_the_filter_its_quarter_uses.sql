@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261002113617_a_week_of_takedowns_is_counted_on_the_filter_its_quarter_uses.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20261002113617_a_week_of_takedowns_is_counted_on_the_filter_its_quarter_uses.sql';
