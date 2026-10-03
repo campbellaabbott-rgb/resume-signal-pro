@@ -2414,7 +2414,9 @@ date it KNOWS. Measured 2026-08-24: ~20,600 rows in that loop, a
 exit ledgered on every lap.
 
 An ATS posting id and its posting date are both stable, so the
-tombstone answers this without re-deriving anything. Best-effort by
+tombstone answers this without re-deriving anything. (2026-10-03: the
+date is NOT stable on Ashby, which re-dates under the same id; see
+n412-redated-past-tombstone for the re-entry rule.) Best-effort by
 design: if the table is missing (function deployed ahead of its
 migration) or the read fails, ingest proceeds exactly as before
 rather than dropping a board's whole intake.
@@ -9258,3 +9260,55 @@ gate, which is why the retry checks it. Measured on five captured feeds:
 normaliser output identical to the whole-body parse, every kept description
 equal to the text the whole body would store, at most 160 ms of parse per
 board. Lever transfer speed from the edge is the one unmeasured input.
+
+## n412-redated-past-tombstone
+
+Above: `let readmitted: Array<Record<string, unknown>> = [];` (ingest), the
+re-admitted tombstone upsert after the insert loop, and the sweep's
+`untombstoned` filter. Logic: `tombstone.ts`.
+
+AN ID IS STABLE; ITS DATE IS NOT. n099 assumed both were, and that a genuine
+re-post gets a new id. Ashby re-publishes under the SAME id and moves
+publishedAt: of 424 ids in both the 2026-08-07 Wayback snapshot of the openai
+feed and the 2026-10-03 live feed, 49 carried a later publishedAt, none an
+earlier one. A posting we had stored past day 30 was tombstoned on the old
+date, and when the employer re-dated it into the window the tombstone refused
+it for 180 days. Measured 2026-10-03 after .85: 13 of snowflake's 118
+in-window postings and 7 of openai's 266 had no row at all, every one
+published before the board's last read; two of the openai seven are in the
+08-07 snapshot on their old dates (1dade0fb 07-29 -> 09-24, 08e8d03a
+07-30 -> 09-15). Greenhouse first_published did not move on any of
+databricks' 808 ids over 11 days (09-22 snapshot), so this is the vendor, but
+the rule is not vendor-specific.
+
+THE RULE. A tombstoned id walks back in when the feed's own sanitised date is
+later than the tombstone's posted_at by more than REDATE_MARGIN_MS (3 days).
+Anything that reaches the check is already inside the window, and the
+tombstone's date was outside it when written, so for a vendor whose stored
+date IS its feed date, reaching the check already means a re-date: the
+margin is for Workday,
+dated from the fetch clock ("Posted N Days Ago"), where one unchanged posting
+reads up to a day apart between visits. An undated feed row never qualifies
+(the bamboohr/rippling loop n099 closed), nor does a tombstone with no date.
+
+THE LOOP IT MUST NOT REOPEN. A Workday row can be stored on its list date
+and then re-dated OLDER by the description filler (betterDate: the detail's
+startDate replaces the list date). Its tombstone then records the old date,
+the list date beats it, and without more it would come back every rotation.
+So: after the insert lands, the re-admitted rows' tombstones move to the date
+they came back on (AFTER, or a failed insert would lock the row out on a
+date it never held), and the sweep no longer re-upserts a tombstone that
+already exists, so nothing moves it back. Net cost for that case: one
+re-entry per distinct list date. Failure of the move is logged and costs at
+most one more re-entry; a failed alreadyTombstoned read degrades to the old
+upsert-everything.
+
+LEDGER. Unchanged. A re-admitted row that ages out again is already
+tombstoned, so the sweep writes no second aged_out exit for it; a re-admitted
+row the employer takes down is a real closure and is logged as one.
+
+NOT DONE. An existing row whose feed date moves later keeps its first
+posted_at (rows are never re-dated in place), so it still ages out on the old
+date and comes back on the next visit with a new first_seen. Correcting
+posted_at in place would avoid that gap but moves the row between dated
+cohorts in the S(30) estimator, and that is its own decision.

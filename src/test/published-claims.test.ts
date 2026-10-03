@@ -1351,8 +1351,18 @@ describe("dropped postings are unreachable by EVERY route", () => {
     // apart: it did indexOf on the query's select, and when that query went
     // away slice(-1) handed it the file's last newline, which is the shape of
     // a check reading nothing rather than a check with an answer.
-    const at = fn.indexOf('.select("id, posted_at")');
-    if (at === -1) {
+    //
+    // A sitemap query reads POSTINGS. Since .87 the ingest also selects
+    // "id, posted_at" — from the aged-out tombstone — and a bare indexOf on
+    // the select took that for a sitemap and demanded a missing_since filter
+    // a tombstone has no column for. So only a select on job_board_postings
+    // counts, and every one of them is checked, not just the first.
+    const SEL = '.select("id, posted_at")';
+    const ats: number[] = [];
+    for (let i = fn.indexOf(SEL); i !== -1; i = fn.indexOf(SEL, i + 1)) {
+      if (/from\("job_board_postings"\)\s*$/.test(fn.slice(Math.max(0, i - 120), i))) ats.push(i);
+    }
+    if (ats.length === 0) {
       expect(
         /<urlset|<sitemapindex/.test(fn),
         "no sitemap query, yet the function still emits sitemap XML — it is building one " +
@@ -1360,7 +1370,7 @@ describe("dropped postings are unreachable by EVERY route", () => {
       ).toBe(false);
       return;
     }
-    expect(fn.slice(at, at + 300)).toMatch(/\.is\("missing_since", null\)/);
+    for (const at of ats) expect(fn.slice(at, at + 300)).toMatch(/\.is\("missing_since", null\)/);
   });
 });
 

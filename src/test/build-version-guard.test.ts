@@ -1363,7 +1363,10 @@ const PINNED = {
   // over APNIC's China delegations in cn-ranges.ts), because cf-ipcountry never
   // reaches the function on this platform and the .85 country switch was inert.
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.86",
+  // 2026-09-09.87: an aged-out id the feed has re-dated (Ashby re-publishes
+  // under the same id) walks back in instead of being refused for 180 days
+  // (tombstone.ts). Carries the undeployed .86. sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.87",
 };
 
 /**

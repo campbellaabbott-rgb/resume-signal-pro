@@ -962,7 +962,7 @@ const g=c.lp_gate_share_30===null||c.lp_gate_share_30===undefined?NaN:Number(c.l
 console.log((!(g<HI)?"FAIL":"INFO")+"  layoff control arm: gate_share_30="+c.lp_gate_share_30+" (the highest reading of the old arm "+HI+")"+(!(g<HI)?" -- at or above it, or no number: 20261002122309 did not take, or the old arm drifted past every reading on record":" -- below it: consistent with the floor, NOT proof of it, because the old arm has read lower too"));
 })'
 
-echo "== 7i. .84: the marquee boards too big to hold serve again (light set 500; lever/ashby read a posting at a time) =="
+echo "== 7i. .84: the marquee boards too big to hold serve again (light set 500; lever/ashby read a posting at a time); .87: no in-window id missing after a read =="
 # .84's claim. On 2026-10-01 these nine served ZERO while their own feeds held
 # 12-602 postings inside the 30-day window: the 4 MB byte bound refused their
 # list bodies, a refused board is deferred with no verification stamp, and the
@@ -978,7 +978,7 @@ J '{"action":"status"}' > /tmp/vd_7i_status.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
-ok(/^2026-09-09\.8[4-6]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84, .85 or .86, which carry .84; .81 means the bundle did not deploy)");
+ok(/^2026-09-09\.8[4-7]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84 through .87, which carry .84; .81 means the bundle did not deploy)");
 const ss=j.sliceStats||{};
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
@@ -1002,6 +1002,12 @@ console.log("INFO  ashby entries still deferred (bjakcareer expected: over the r
 console.log("INFO  oversizeBoardCount = "+j.oversizeBoardCount+" (140 on 2026-10-01; status shows only the newest 50, so judge the drop, not zero)");'
 # Served vs the vendor's own in-window count, per board. In-window is the field
 # each normaliser stores: greenhouse first_published, ashby publishedAt, lever createdAt.
+# THE BAND ALONE HID A REFUSAL. On 2026-10-03 openai served 259 of 266 and passed
+# +/-27 while 7 in-window ids had no row at all (the aged-out tombstone refusing
+# postings Ashby had re-dated; .87). So each board's in-window ids are also asked
+# one by one (`exists`, read-only) and every missing id is counted: published
+# BEFORE the board's last read (recheckedAt on its served rows) means the read
+# saw it and stored nothing -- FAIL; published after it is not yet read -- INFO.
 for VT in greenhouse:anthropic greenhouse:databricks greenhouse:cloudflare greenhouse:mongodb greenhouse:okta greenhouse:spacex ashby:openai ashby:snowflake lever:palantir; do
   V=${VT%%:*}; T=${VT#*:}
   case "$V" in
@@ -1011,15 +1017,33 @@ for VT in greenhouse:anthropic greenhouse:databricks greenhouse:cloudflare green
   esac
   curl -s --compressed -m 120 "$U" -o /tmp/vd_7i_feed.json
   J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"$V\"],\"groupSimilar\":false,\"limit\":1}" > /tmp/vd_7i_list.json
-  node -e '(()=>{
-const fs=require("fs");const [V,T]=process.argv.slice(1);const cut=Date.now()-30*86400000;
+  node -e '(async()=>{
+const fs=require("fs");const [V,T,B,K]=process.argv.slice(1);const cut=Date.now()-30*86400000;
 let feed;try{feed=JSON.parse(fs.readFileSync("/tmp/vd_7i_feed.json","utf8"))}catch{return console.log("INFO  "+V+":"+T+" vendor feed unreadable — cannot judge")}
-const t=(x)=>{const n=typeof x==="number"?x:Date.parse(String(x??""));return Number.isFinite(n)&&n>=cut};
-const want=V==="greenhouse"?(feed.jobs||[]).filter(x=>t(x.first_published)).length:V==="ashby"?(feed.jobs||[]).filter(x=>x.isListed!==false&&t(x.publishedAt)).length:(Array.isArray(feed)?feed:[]).filter(x=>t(x.createdAt)).length;
+const ms=(x)=>typeof x==="number"?x:Date.parse(String(x??""));
+const t=(x)=>{const n=ms(x);return Number.isFinite(n)&&n>=cut};
+// The rows each normaliser keeps (a posting with no URL is dropped at the door), keyed as ingest keys them.
+const inWin=V==="greenhouse"?(feed.jobs||[]).filter(x=>t(x.first_published)&&x.absolute_url).map(x=>({id:"greenhouse:"+T+":"+x.id,at:ms(x.first_published)}))
+  :V==="ashby"?(feed.jobs||[]).filter(x=>x.isListed!==false&&t(x.publishedAt)&&(x.jobUrl||x.applyUrl)).map(x=>({id:"ashby:"+T+":"+x.id,at:ms(x.publishedAt)}))
+  :(Array.isArray(feed)?feed:[]).filter(x=>t(x.createdAt)&&(x.hostedUrl||x.applyUrl)).map(x=>({id:"lever:"+T+":"+x.id,at:ms(x.createdAt)}));
+const want=inWin.length;
 let l;try{l=JSON.parse(fs.readFileSync("/tmp/vd_7i_list.json","utf8"))}catch{return console.log("FAIL  "+V+":"+T+" list non-JSON")}
 const got=Number(l.total);const tol=Math.max(2,Math.round(want*0.1));
 const pass=got>0&&Math.abs(got-want)<=tol;
-console.log((pass?"PASS":"FAIL")+"  "+V+":"+T+" serves "+got+" vs "+want+" in-window on its own feed (want within +/-"+tol+")"+(got===0?" — still dark; judge only after "+(V==="greenhouse"?"two cold rotations":"one cold rotation")+" since the deploy":""));})();' "$V" "$T"
+console.log((pass?"PASS":"FAIL")+"  "+V+":"+T+" serves "+got+" vs "+want+" in-window on its own feed (want within +/-"+tol+")"+(got===0?" — still dark; judge only after "+(V==="greenhouse"?"two cold rotations":"one cold rotation")+" since the deploy":""));
+const open={};
+for(let i=0;i<inWin.length;i+=200){
+  let r;try{r=await (await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"Content-Type":"application/json","x-rb-budget":"probe",apikey:K,Authorization:"Bearer "+K},body:JSON.stringify({action:"exists",ids:inWin.slice(i,i+200).map(x=>x.id)})})).json()}catch{r=null}
+  if(!r||!r.open)return console.log("INFO  "+V+":"+T+" exists unreadable — missing ids not counted");
+  Object.assign(open,r.open);
+}
+const missing=inWin.filter(x=>open[x.id]!==true);
+const readAt=ms(((l.jobs||[])[0]||{}).recheckedAt);
+if(!Number.isFinite(readAt)){console.log((missing.length?"INFO":"PASS")+"  "+V+":"+T+" missing in-window ids: "+missing.length+" of "+want+(missing.length?" (no recheckedAt on a served row: cannot tell refused from not yet read)":""));return}
+const refused=missing.filter(x=>x.at<readAt-3600000),unread=missing.length-refused.length;
+const ex=refused.sort((a,b)=>b.at-a.at).slice(0,5).map(x=>x.id.slice(x.id.lastIndexOf(":")+1,x.id.lastIndexOf(":")+9)+" "+new Date(x.at).toISOString().slice(0,10)).join(", ");
+console.log((refused.length===0?"PASS":"FAIL")+"  "+V+":"+T+" in-window ids with no row: "+refused.length+" published over an hour before the last read ("+new Date(readAt).toISOString().slice(0,16)+"Z), "+unread+" since (not yet read)"+(refused.length?" — e.g. "+ex+". After .87, a re-dated Ashby posting the tombstone refused re-enters on the next read; one that stays here past a read is refused for another reason":""));
+})();' "$V" "$T" "$B" "$K"
 done
 # The flapping. The 03:41 UTC sweep zeroed boards that went 48 h unread; re-run
 # this line on each of the next two mornings AFTER 03:41 UTC.
@@ -1076,7 +1100,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};
-ok(/^2026-09-09\.8[56]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.85, or .86 which carries it)");
+ok(/^2026-09-09\.8[5-7]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.85, or .86/.87 which carry it)");
 const ab=st.anonBudget;
 ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
 if(ab){
@@ -1165,7 +1189,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const js=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7j_echo_plain.json")||{};const rows=js("/tmp/vd_7j_after.json");
-ok(st.version==="2026-09-09.86","status.version = "+st.version+" (want 2026-09-09.86)");
+ok(/^2026-09-09\.8[67]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.86, or .87 which carries it)");
 ok(["cf","registry","none"].includes(e.countrySource),"budget-echo names where its country came from: countrySource = "+e.countrySource+" (absent = the .86 bundle is not serving)");
 if(Array.isArray(rows)){const cn=rows.filter((r)=>r.bh_kind==="address"&&r.bh_country==="CN");
   if(cn.length)for(const r of cn)info(String(r.bh_hour).slice(0,13)+"h CN: "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_over_cap+" over the cap");
