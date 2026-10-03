@@ -603,6 +603,13 @@
       "when": 1791037421058,
       "tag": "0085_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1791037435081,
+      "tag": "0086_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see",
+      "breakpoints": true
     }
   ]
 }
