@@ -94,10 +94,10 @@ describe("the address is the platform's word, not the caller's", () => {
   });
 
   it("the country is a real two-letter code or XX", () => {
-    expect(countryOf(H({ "cf-ipcountry": "cn" }))).toBe("CN");
-    expect(countryOf(H({ "cf-ipcountry": "T1" }))).toBe("XX");
-    expect(countryOf(H({ "cf-ipcountry": "XX" }))).toBe("XX");
-    expect(countryOf(H({}))).toBe("XX");
+    expect(countryOf(H({ "cf-ipcountry": "cn" }))).toEqual({ country: "CN", source: "cf" });
+    expect(countryOf(H({ "cf-ipcountry": "T1" }))).toEqual({ country: "XX", source: "none" });
+    expect(countryOf(H({ "cf-ipcountry": "XX" }))).toEqual({ country: "XX", source: "none" });
+    expect(countryOf(H({}))).toEqual({ country: "XX", source: "none" });
   });
 
   it("one address is one bucket whatever it declares: the public header picks a cap, never a second row", async () => {
@@ -204,6 +204,16 @@ describe("the handler: who is counted, and what a refusal is", () => {
     expect([...BUDGETED_ACTIONS].sort()).toEqual(["application-questions", "company-suggest", "detail", "exists", "facets", "list", "semantic-search", "verify"]);
   });
 
+  it("with no country header, as on Supabase's edge, a mainland-China address is counted as CN and any other as XX", async () => {
+    await post({ action: "facets" }, { "cf-connecting-ip": "114.114.114.114", "cf-ipcountry": "" });
+    await post({ action: "facets" }, { "cf-connecting-ip": "240e:3b0:1:2::5", "cf-ipcountry": "" });
+    await post({ action: "facets" }, { "cf-connecting-ip": "8.8.8.8", "cf-ipcountry": "" });
+    await post({ action: "facets" }, { "cf-connecting-ip": "1.36.0.1", "cf-ipcountry": "" });
+    expect(db.checks.map((c) => c.args.p_country), "Hong Kong is delegated apart from the mainland").toEqual(["CN", "CN", "XX", "XX"]);
+    const echo = await post({ action: "budget-echo" }, { "cf-connecting-ip": "223.5.5.5", "cf-ipcountry": "" });
+    expect(await echo.json()).toMatchObject({ address: "223.5.5.5", country: "CN", countrySource: "registry" });
+  });
+
   it("the service key makes no counter call, as a bearer or as an apikey", async () => {
     await post({ action: "facets" }, { authorization: `Bearer ${SVC}`, apikey: SVC });
     await post({ action: "detail", id: "greenhouse:acme:1" }, { apikey: SVC });
@@ -241,7 +251,7 @@ describe("the handler: who is counted, and what a refusal is", () => {
       expect(res.status, JSON.stringify(body)).toBeLessThan(500);
     }
     const echo = await post({ action: "budget-echo" }, { "x-rb-budget": "probe", "cf-ipcountry": "us" });
-    expect(await echo.json()).toEqual({ address: "203.0.113.9", addressKey: "203.0.113.9", source: "cf", country: "US", kind: "probe", exempt: false });
+    expect(await echo.json()).toEqual({ address: "203.0.113.9", addressKey: "203.0.113.9", source: "cf", country: "US", countrySource: "cf", kind: "probe", exempt: false });
     expect(db.checks).toEqual([]);
   });
 

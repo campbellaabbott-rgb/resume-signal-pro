@@ -1,0 +1,13 @@
+# Mainland China blocks that APNIC's delegated file records under another
+# country, so scripts/build-cn-ranges.mjs adds them by hand. Each line: a
+# CIDR, then the evidence. IPv6 entries must be /48 or shorter.
+#
+# Checked 2026-10-03 against APNIC RDAP (rdap.apnic.net/ip/<address>) and the
+# apnic.db.inetnum whois dump: the most specific object for every address in
+# each block names a mainland Aliyun or Ant Group entity with country CN,
+# inside a delegation APNIC files as SG (Alibaba Cloud (Singapore) Private
+# Limited). Together they were 8.36M of the 8.44M addresses whois puts in CN
+# that the delegated file does not; the rest is scattered and partly labelled
+# Hong Kong, and is left out.
+8.128.0.0/10    Aliyun Computing Co. (ALICLOUD 8.128.0.0/11 and 8.160.0.0/11, Ant Group 8.150.0.0/17); delegated SG 8.128.0.0/10
+43.0.0.0/10     Aliyun Computing Co. (ALIBABA_CLOUD 43.0.0.0-43.63.255.255); delegated SG 43.0.0.0/9, whose upper half stays Singapore

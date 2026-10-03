@@ -293,3 +293,36 @@ describe("verify-deploy 7j judges the budget correctly", () => {
     expect(fails(run7j({ after: { code: "PGRST202" } as unknown as Row[] })).some((l) => /PGRST202/.test(l))).toBe(true);
   });
 });
+
+describe("verify-deploy 7j judges a .86 country, read from the address because no header arrives", () => {
+  // .86: on this platform cf-ipcountry never reaches the function, so a
+  // machine outside mainland China reads XX with source none, and the right
+  // answer for this machine is XX -- not the trace's loc, which only a cf
+  // source could ever have matched.
+  const v86 = (country: string, countrySource: string) => ({ address: "203.0.113.9", source: "cf", country, countrySource, kind: "address", exempt: false });
+  const status86 = { ...GOOD.status, version: "2026-09-09.86" };
+  const xx = [r("probe", "ALL", 11), r("address", "ALL", 120), r("address", "XX", 100), r("address", "CN", 20)];
+
+  it("a US machine reading XX from the registry path is all PASS, and the CN share is printed, not judged", () => {
+    const out = run7j({ status: status86, plain: v86("XX", "none"), forged: v86("XX", "none"), forgedXff: v86("XX", "none"), after: xx, before: GOOD.before.slice(0, 2) });
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(out.some((l) => /^INFO {2}address requests read as a real country: 20 of 120/.test(l))).toBe(true);
+  });
+
+  it("a US machine read as CN, or a forged country written through, is still a FAIL", () => {
+    expect(fails(run7j({ status: status86, plain: v86("CN", "registry") })).some((l) => /the country the function reads = CN/.test(l))).toBe(true);
+    const xffLine = /^FAIL {2}FORGERY: a request writing x-forwarded-for/;
+    expect(fails(run7j({ status: status86, plain: v86("XX", "none"), forgedXff: v86("AQ", "cf") })).some((l) => xffLine.test(l))).toBe(true);
+  });
+
+  it("where the registry and Cloudflare disagree about this machine, the country line says so and the FORGERY lines do not", () => {
+    const sg = run7j({ status: status86, trace: "ip=203.0.113.9\nloc=SG\n", plain: v86("CN", "registry"), forged: v86("CN", "registry"), forgedXff: v86("CN", "registry") });
+    expect(fails(sg).some((l) => /the country the function reads = CN/.test(l)), sg.join("\n")).toBe(true);
+    expect(fails(sg).some((l) => /FORGERY/.test(l)), "no header got through: the forged echo equals the unforged one").toBe(false);
+  });
+
+  it("a cf source, where a platform does send one, is judged against the trace as before", () => {
+    expect(fails(run7j({ status: status86, plain: v86("US", "cf"), forged: v86("US", "cf"), forgedXff: v86("US", "cf") }))).toEqual([]);
+    expect(fails(run7j({ status: status86, plain: v86("XX", "cf") })).some((l) => /the country the function reads/.test(l))).toBe(true);
+  });
+});

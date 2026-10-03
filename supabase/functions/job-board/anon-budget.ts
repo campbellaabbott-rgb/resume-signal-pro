@@ -7,6 +7,7 @@
  * request budget shared with upload and checkout.
  */
 import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key.ts";
+import { inChina } from "./geo-cn.ts";
 
 /** Actions that hand out postings. A body with no action is a list. */
 export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
@@ -132,10 +133,19 @@ export function addressKey(raw: string): string | null {
   return `${w.slice(0, 4).map((x) => x.toString(16)).join(":")}::/64`;
 }
 
-/** cf-ipcountry when it is a real two-letter code; XX otherwise (Tor's T1 included). */
-export function countryOf(h: Headers): string {
+export type CountrySource = "cf" | "registry" | "none";
+
+/**
+ * cf-ipcountry when it is a real two-letter code (Tor's T1 and XX are not).
+ * Without one -- and on Supabase's edge it never arrives -- CN when the
+ * address key sits in a mainland block (geo-cn.ts), else XX. So without the
+ * header, XX means "not in a block we hold as mainland China, or no public
+ * address" -- never proof that a caller is outside China.
+ */
+export function countryOf(h: Headers, key: string | null = null): { country: string; source: CountrySource } {
   const c = (h.get("cf-ipcountry") ?? "").trim().toUpperCase();
-  return /^[A-Z]{2}$/.test(c) && c !== "XX" ? c : "XX";
+  if (/^[A-Z]{2}$/.test(c) && c !== "XX") return { country: c, source: "cf" };
+  return inChina(key) ? { country: "CN", source: "registry" } : { country: "XX", source: "none" };
 }
 
 function sameSecret(a: string, b: string): boolean {
@@ -160,7 +170,7 @@ export async function classifyCaller(h: Headers, serviceKey: string): Promise<Ca
   if (offered && sameSecret(offered, await boardReaderKey(serviceKey))) return { exempt: true, kind: "reader" };
   const { address, source } = callerAddress(h);
   const key = address ? addressKey(address) : null;
-  const base = { exempt: false as const, address, source, key, country: countryOf(h), bare: !h.get("origin") && !h.get("referer") };
+  const base = { exempt: false as const, address, source, key, country: countryOf(h, key).country, bare: !h.get("origin") && !h.get("referer") };
   if (!key) return { ...base, kind: "unknown_address" };
   const tool = (h.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase();
   if (tool === "build" || tool === "probe") return { ...base, kind: tool };
@@ -258,7 +268,9 @@ export async function anonBudgetGate(
 export async function budgetEcho(h: Headers, serviceKey: string): Promise<Record<string, unknown>> {
   const c = await classifyCaller(h, serviceKey);
   const { address, source } = callerAddress(h);
-  return { address: address || null, addressKey: address ? addressKey(address) : null, source, country: countryOf(h), kind: c.kind, exempt: c.exempt };
+  const key = address ? addressKey(address) : null;
+  const { country, source: countrySource } = countryOf(h, key);
+  return { address: address || null, addressKey: key, source, country, countrySource, kind: c.kind, exempt: c.exempt };
 }
 
 /** The status block: the setting ROW as stored, plus the code defaults. The effective cap is the 429's limit, from SQL. */
