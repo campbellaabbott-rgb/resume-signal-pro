@@ -570,9 +570,11 @@ echo "INFO  GET /companies -> HTTP $(curl -s -m 30 -o /dev/null -w '%{http_code}
 # through a staged runner that has edited files and staged them under other
 # names, so "applied" is judged by behaviour (7b, 7c, 7d), never by its report.
 echo "== 7a. every rebuilt function answers its build on the preflight (deploy proof without a write) =="
+# create-checkout moved on to 2026-10-03.1 (its country block, 7l).
 for FN in create-checkout create-product-checkout create-subscription-checkout create-agent-checkout create-pass-checkout create-scan-pack-checkout track-ab-event; do
+  WANT="$FN.2026-09-27.2"; [ "$FN" = "create-checkout" ] && WANT="$FN.2026-10-03.1"
   H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-  case "$H" in "$FN.2026-09-27.2") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-09-27.2)";; esac
+  case "$H" in "$WANT") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $WANT)";; esac
 done
 
 echo "== 7b. checkout_starts exists and is closed to anon by name (a refusal, not an empty answer and not a 404) =="
@@ -1171,5 +1173,21 @@ if(Array.isArray(rows)){const cn=rows.filter((r)=>r.bh_kind==="address"&&r.bh_co
   if(cn.length)for(const r of cn)info(String(r.bh_hour).slice(0,13)+"h CN: "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_over_cap+" over the cap");
   else info("no address rows read CN in the last 3h: either no mainland browser traffic since the publish, or the scraper is not on mainland blocks -- read the next 04-18 UTC plateau before deciding the country switch")}
 const ab=st.anonBudget||{};info("country switch: countriesListed "+ab.countriesListed+", countryCap "+ab.countryCap+", enforce "+ab.enforce+" (a listed country is refused only while enforce is true)");'
+
+echo "== 7l. create-checkout.2026-10-03.1: the country block reads the address, because no country header arrives =="
+# The block on RU, NG and PK (the owner's, 2025-12-17) read cf-ipcountry, which
+# never reaches a function here (7j/7k), and x-vercel-ip-country, which this
+# platform never sets -- so it refused nobody. It now reads the address against
+# the registries' delegations (_shared/blocked-countries.ts). That an RU, NG or
+# PK address is refused is held by the unit tests: no request from here can
+# carry one (Cloudflare refuses a written cf-connecting-ip). From here: the
+# build, and that this machine is still served. Every POST is a _warmup -- the
+# body the scheduled warm-up function already sends -- which returns before the
+# rate limiter, the database and Stripe: no session, no row, no budget spent.
+CW() { curl -s -m 30 -o /tmp/vd_7l.json -w '%{http_code}' -X POST "$B/functions/v1/create-checkout" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" "$@" -d '{"_warmup":true}'; }
+WARMED() { node -e 'try{process.exit(require("/tmp/vd_7l.json").warmed===true?0:1)}catch{process.exit(1)}'; }
+C=$(CW); WARMED && [ "$C" = "200" ] && echo "PASS  a warm-up from this machine -> 200 warmed (not refused as RU/NG/PK)" || echo "FAIL  a warm-up from this machine -> HTTP $C $(head -c 160 /tmp/vd_7l.json) (a 403 'region' here: this machine's address reads as a blocked country, or the block refuses everyone)"
+C=$(CW -H "x-vercel-ip-country: RU"); WARMED && [ "$C" = "200" ] && echo "PASS  the same with a written x-vercel-ip-country: RU -> 200 (a header this platform never sets is not read)" || echo "FAIL  a written x-vercel-ip-country: RU -> HTTP $C $(head -c 160 /tmp/vd_7l.json) (403 = a bundle that reads it -- the one before 2026-10-03.1 -- is still serving)"
+C=$(CW -H "cf-ipcountry: RU"); WARMED && [ "$C" = "200" ] && echo "PASS  the same with a written cf-ipcountry: RU -> 200 (the platform still strips it)" || echo "FAIL  a written cf-ipcountry: RU -> HTTP $C $(head -c 160 /tmp/vd_7l.json) (403 = the platform now passes a client's cf-ipcountry through: harmless to this block, which a header can only add to, but 7j's meter trusts it -- read its FORGERY lines)"
 
 echo "done."

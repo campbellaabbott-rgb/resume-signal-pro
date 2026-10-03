@@ -7,7 +7,12 @@
  * request budget shared with upload and checkout.
  */
 import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key.ts";
+import { addressKey, type AddressSource, callerAddress } from "../_shared/address-key.ts";
 import { inChina } from "./geo-cn.ts";
+
+/** Which address is believed and its normalised key: _shared/address-key.ts, shared with create-checkout's country block. */
+export { addressKey, callerAddress };
+export type { AddressSource };
 
 /** Actions that hand out postings. A body with no action is a list. */
 export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
@@ -38,7 +43,6 @@ export const BOARD_BUDGET_CONTACT = "resumeboostersupp@gmail.com";
 
 export type BudgetKind =
   | "address" | "build" | "probe" | "unproven_api" | "unproven_mcp" | "unproven_digest" | "unknown_address";
-export type AddressSource = "cf" | "xff" | "none";
 export type CountedCaller = {
   exempt: false;
   kind: BudgetKind;
@@ -56,82 +60,6 @@ const hex = (buf: ArrayBuffer): string =>
   Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
 const sha256Hex = async (s: string): Promise<string> =>
   hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
-
-/** cf-connecting-ip, else the LAST x-forwarded-for hop (the one the nearest proxy appended). The first hop is whatever the client wrote. */
-export function callerAddress(h: Headers): { address: string; source: AddressSource } {
-  const cf = h.get("cf-connecting-ip")?.trim();
-  if (cf) return { address: cf, source: "cf" };
-  const hops = (h.get("x-forwarded-for") ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-  const last = hops.at(-1);
-  return last ? { address: last, source: "xff" } : { address: "", source: "none" };
-}
-
-function v4Parts(s: string): number[] | null {
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s);
-  if (!m) return null;
-  const p = m.slice(1).map(Number);
-  return p.every((n) => n <= 255) ? p : null;
-}
-
-function v6Words(s: string): number[] | null {
-  if (!s.includes(":") || !/^[0-9a-f:.]+$/.test(s)) return null;
-  const halves = s.split("::");
-  if (halves.length > 2) return null;
-  const words = (part: string, dottedTail: boolean): number[] | null => {
-    if (part === "") return [];
-    const out: number[] = [];
-    const bits = part.split(":");
-    for (let i = 0; i < bits.length; i++) {
-      const b = bits[i];
-      if (dottedTail && i === bits.length - 1 && b.includes(".")) {
-        const q = v4Parts(b);
-        if (!q) return null;
-        out.push((q[0] << 8) | q[1], (q[2] << 8) | q[3]);
-      } else if (/^[0-9a-f]{1,4}$/.test(b)) out.push(parseInt(b, 16));
-      else return null;
-    }
-    return out;
-  };
-  if (halves.length === 1) {
-    const all = words(halves[0], true);
-    return all && all.length === 8 ? all : null;
-  }
-  const head = words(halves[0], false);
-  const tail = words(halves[1], true);
-  if (!head || !tail) return null;
-  const fill = 8 - head.length - tail.length;
-  return fill < 1 ? null : [...head, ...new Array<number>(fill).fill(0), ...tail];
-}
-
-const publicV4 = ([a, b]: number[]): boolean =>
-  !(a === 0 || a === 10 || a === 127 || a >= 224
-    || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
-    || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168));
-
-/**
- * The address as one bucket: IPv4 as itself (an IPv4-mapped IPv6 address
- * included), IPv6 cut to its /64 because one host rotates freely inside it.
- * null for anything that is not a public address -- a gateway or internal hop
- * must never become a shared bucket that gets enforced.
- */
-export function addressKey(raw: string): string | null {
-  let s = raw.trim().toLowerCase();
-  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(s);
-  if (bracketed) s = bracketed[1];
-  s = s.replace(/%.*$/, "");
-  const withPort = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/.exec(s);
-  if (withPort) s = withPort[1];
-  const q = v4Parts(s);
-  if (q) return publicV4(q) ? q.join(".") : null;
-  const w = v6Words(s);
-  if (!w) return null;
-  if (w.slice(0, 5).every((x) => x === 0) && (w[5] === 0xffff || w[5] === 0)) {
-    const m = [w[6] >> 8, w[6] & 255, w[7] >> 8, w[7] & 255];
-    return publicV4(m) ? m.join(".") : null;
-  }
-  if ((w[0] & 0xfe00) === 0xfc00 || (w[0] & 0xffc0) === 0xfe80 || (w[0] & 0xff00) === 0xff00) return null;
-  return `${w.slice(0, 4).map((x) => x.toString(16)).join(":")}::/64`;
-}
 
 export type CountrySource = "cf" | "registry" | "none";
 
