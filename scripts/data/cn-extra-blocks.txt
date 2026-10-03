@@ -1,5 +1,5 @@
 # Mainland China blocks that APNIC's delegated file records under another
-# country, so scripts/build-cn-ranges.mjs adds them by hand. Each line: a
+# country, so scripts/build-country-ranges.mjs adds them by hand. Each line: a
 # CIDR, then the evidence. IPv6 entries must be /48 or shorter.
 #
 # Checked 2026-10-03 against APNIC RDAP (rdap.apnic.net/ip/<address>) and the

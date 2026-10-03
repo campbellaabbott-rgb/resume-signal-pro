@@ -9,7 +9,7 @@
  * have refused nobody. The address does arrive -- cf-connecting-ip, which
  * Cloudflare refuses from a client with a 403 -- so the country is now looked
  * up from it, against APNIC's record of the blocks delegated to China
- * (scripts/build-cn-ranges.mjs packs them into job-board/cn-ranges.ts;
+ * (scripts/build-country-ranges.mjs packs them into job-board/cn-ranges.ts;
  * job-board/geo-cn.ts searches them). Review the same day found the registry
  * file alone files Alibaba Cloud's mainland pools (8.4M addresses) under
  * Singapore and AWS Beijing partly under ARIN, so a scraper on either cloud
@@ -38,7 +38,7 @@ import { resolve } from "node:path";
 import { decodeBlocks, inChina } from "../../supabase/functions/job-board/geo-cn";
 import { CN_RANGES_SOURCE, CN_V4, CN_V6 } from "../../supabase/functions/job-board/cn-ranges";
 import { addressKey, classifyCaller, countryOf } from "../../supabase/functions/job-board/anon-budget";
-import { combine, encodeRanges, merge, parseAws, parseCidr, parseDelegated, parseInclude, v6Top48 } from "../../scripts/build-cn-ranges.mjs";
+import { combine, encodeRanges, merge, parseAws, parseCidr, parseDelegated, parseInclude, v6Top48 } from "../../scripts/build-country-ranges.mjs";
 
 const ROOT = resolve(__dirname, "../..");
 const key = (ip: string) => addressKey(ip);
@@ -197,7 +197,8 @@ describe("the generator", () => {
   });
 
   it("refuses what it cannot represent", () => {
-    expect(() => parseDelegated("2|arin|20261003|1|1|1|-0500\n", "CN")).toThrow(/not an APNIC/);
+    expect(() => parseDelegated("2|example|20261003|1|1|1|-0500\n", "CN")).toThrow(/not a registry delegated file/);
+    expect(() => parseDelegated("3|apnic|20261003|1|1|1|+1000\n", "CN")).toThrow(/not a registry delegated file/);
     expect(() => parseDelegated("2|apnic|20261003|1|1|1|+1000\napnic|CN|ipv6|2400::|64|20100101|allocated", "CN")).toThrow(/longer than \/48/);
     expect(() => encodeRanges([[5, 10], [8, 12]])).toThrow(/sorted, disjoint/);
     expect(() => parseInclude("2400::/64 too long")).toThrow(/longer than \/48/);

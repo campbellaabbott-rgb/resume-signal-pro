@@ -1,12 +1,13 @@
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-03T16:30Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { blockedCountryOf } from "../_shared/blocked-countries.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-09-27.2";
+const FN_BUILD = "create-checkout.2026-10-03.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -143,21 +144,6 @@ const CURRENCY_RATES: Record<string, { rate: number; minUnit: number }> = {
   uyu: { rate: 44.50, minUnit: 100 },
 };
 
-// Blocked country codes (ISO 3166-1 alpha-2)
-const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
-
-const getCountryCode = (req: Request): string | null => {
-  return req.headers.get('cf-ipcountry') || 
-         req.headers.get('x-vercel-ip-country') || 
-         null;
-};
-
-const isBlockedCountry = (req: Request): boolean => {
-  const country = getCountryCode(req);
-  if (!country) return false;
-  return BLOCKED_COUNTRIES.has(country.toUpperCase());
-};
-
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
@@ -267,10 +253,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Geo-blocking check
-  if (isBlockedCountry(req)) {
-    const country = getCountryCode(req);
-    console.log(`[CREATE-CHECKOUT] Blocked request from country: ${country}`);
+  // The country block (RU, NG, PK), read from the caller's address: no
+  // country header reaches a function on this platform, so until
+  // create-checkout.2026-10-03.1 this refused nobody. _shared/blocked-countries.ts.
+  const geo = blockedCountryOf(req.headers);
+  if (geo.blocked) {
+    console.log(`[CREATE-CHECKOUT] Blocked request from country: ${geo.country} (${geo.source})`);
     return new Response(
       JSON.stringify({ error: "Service not available in your region." }),
       { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
