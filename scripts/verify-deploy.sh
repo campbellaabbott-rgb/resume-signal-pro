@@ -978,7 +978,7 @@ J '{"action":"status"}' > /tmp/vd_7i_status.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
-ok(/^2026-09-09\.8[4-6]$/.test(String(j.version)),"status.version = "+j.version+" (want 2026-09-09.84, .85 or .86, which carry .84; .81 means the bundle did not deploy)");
+ok(/^2026-09-09\.(\d+)$/.test(String(j.version))&&Number(String(j.version).split(".").pop())>=84,"status.version = "+j.version+" (want 2026-09-09.84 or later, which carry .84; .81 means the bundle did not deploy)");
 const ss=j.sliceStats||{};
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
@@ -1076,7 +1076,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};
-ok(/^2026-09-09\.8[5-7]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.85, or .86/.87 which carry it)");
+ok(/^2026-09-09\.(\d+)$/.test(String(st.version))&&Number(String(st.version).split(".").pop())>=85,"status.version = "+st.version+" (want 2026-09-09.85 or later, which carry it)");
 const ab=st.anonBudget;
 ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
 if(ab){
@@ -1165,7 +1165,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const js=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7j_echo_plain.json")||{};const rows=js("/tmp/vd_7j_after.json");
-ok(/^2026-09-09\.8[67]$/.test(String(st.version)),"status.version = "+st.version+" (want 2026-09-09.86, or .87 which carries it)");
+ok(/^2026-09-09\.(\d+)$/.test(String(st.version))&&Number(String(st.version).split(".").pop())>=86,"status.version = "+st.version+" (want 2026-09-09.86 or later, which carry it)");
 ok(["cf","registry","none"].includes(e.countrySource),"budget-echo names where its country came from: countrySource = "+e.countrySource+" (absent = the .86 bundle is not serving)");
 if(Array.isArray(rows)){const cn=rows.filter((r)=>r.bh_kind==="address"&&r.bh_country==="CN");
   if(cn.length)for(const r of cn)info(String(r.bh_hour).slice(0,13)+"h CN: "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_over_cap+" over the cap");
@@ -1190,7 +1190,8 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7l_echo.json")||{};const ab=st.anonBudget||{};
-ok(st.version==="2026-09-09.87","status.version = "+st.version+" (want 2026-09-09.87)");
+const v87=/^2026-09-09\.(\d+)$/.test(String(st.version))&&Number(String(st.version).split(".").pop())>=87;
+ok(v87,"status.version = "+st.version+" (want 2026-09-09.87 or later)");
 const k=String(e.addressKey||"");const v4=/^(\d+)\.(\d+)\.(\d+)\.\d+$/.exec(k);const v6=/^([0-9a-f]+):([0-9a-f]+):([0-9a-f]+):[0-9a-f]+::\/64$/.exec(k);
 const wantNet=v4?v4[1]+"."+v4[2]+"."+v4[3]+".0/24":v6?v6[1]+":"+v6[2]+":"+v6[3]+"::/48":null;
 ok("net" in e&&e.net===wantNet,"budget-echo carries the network of its address: net = "+e.net+" for addressKey "+(e.addressKey||"none")+" (want "+wantNet+"; absent = the .87 bundle is not serving)");
@@ -1214,7 +1215,7 @@ else{
   ok(keys.every((x)=>want.includes(x)),"get_board_anon_networks answers anon with aggregate keys only: "+rows.length+" rows, keys "+(keys.join(",")||"none"));
   ok(rows.every((r)=>r.bn_net==="none"||/^[0-9.]+\/16$|^[0-9a-f:]+\/32$/.test(String(r.bn_net))),"every network it publishes is a /16 or a /32, or none: no address leaves");
   const total=rows.reduce((n,r)=>n+Number(r.bn_requests||0),0);const real=rows.filter((r)=>r.bn_net!=="none").reduce((n,r)=>n+Number(r.bn_requests||0),0);
-  if(st.version==="2026-09-09.87"&&total>=20)ok(real>0,"requests that reached the counter with a network: "+real+" of "+total+" in the top rows of the last 3h (0 = p_net is not reaching SQL)");
+  if(v87&&total>=20)ok(real>0,"requests that reached the counter with a network: "+real+" of "+total+" in the top rows of the last 3h (0 = p_net is not reaching SQL)");
   else info("requests with a network: "+real+" of "+total+" (too few to judge, or not .87: calls before the .87 publish read none)");
   const by=new Map();for(const r of rows){const m=by.get(r.bn_net)||{req:0,over:0,kinds:new Set()};m.req+=Number(r.bn_requests||0);m.over+=Number(r.bn_over_cap||0);m.kinds.add(r.bn_kind);by.set(r.bn_net,m)}
   for(const [net,m] of [...by.entries()].sort((a,b)=>b[1].req-a[1].req).slice(0,15))info("top network "+net+": "+m.req+" requests, "+m.over+" over the cap, kinds "+[...m.kinds].join("/"));

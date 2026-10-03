@@ -329,13 +329,40 @@ describe("verify-deploy 7j judges a .86 country, read from the address because n
 
 // ── verify-deploy 7l, judged against fixtures ───────────────────────────────
 
-describe("verify-deploy 7j and 7k accept .87, which carries .85 and .86", () => {
-  it("a .87 status passes the version lines of 7j and 7k", () => {
-    const v87 = { address: "203.0.113.9", source: "cf", country: "XX", countrySource: "none", kind: "address", exempt: false };
-    const out = run7j({ status: { ...GOOD.status, version: "2026-09-09.87" }, plain: v87, forged: v87, forgedXff: v87 });
-    expect(fails(out), out.join("\n")).toEqual([]);
-    const s7k = SCRIPT.slice(SCRIPT.indexOf('echo "== 7k.'), SCRIPT.indexOf('echo "== 7l.'));
-    expect(s7k).toMatch(/2026-09-09\\\.8\[67\]/);
+describe("verify-deploy 7j and 7k accept any later build, which carries .85 and .86", () => {
+  const echo = { address: "203.0.113.9", source: "cf", country: "XX", countrySource: "none", kind: "address", exempt: false };
+  // 7k's own version line, run on its own: the section judges by behaviour, so
+  // the test does too (it pinned the regex spelling until .88 was in sight).
+  const s7k = SCRIPT.slice(SCRIPT.indexOf('echo "== 7k.'), SCRIPT.indexOf('echo "== 7l.'));
+  const body7k = /node -e '([^']*)'/.exec(s7k)?.[1] ?? "";
+  const run7kVersion = (version: string): string[] => {
+    const dir = mkdtempSync(join(tmpdir(), "vd7k-"));
+    const files: Record<string, string> = {
+      "/tmp/vd_7j_status.json": JSON.stringify({ ...GOOD.status, version }),
+      "/tmp/vd_7j_echo_plain.json": JSON.stringify(echo),
+      "/tmp/vd_7j_after.json": JSON.stringify([]),
+    };
+    let js = body7k;
+    for (const [tmp, content] of Object.entries(files)) {
+      const local = join(dir, tmp.slice("/tmp/".length));
+      writeFileSync(local, content);
+      js = js.split(tmp).join(local);
+    }
+    return execFileSync(process.execPath, ["-e", js], { encoding: "utf8" }).split("\n").filter((l) => l.startsWith("PASS") || l.startsWith("FAIL"));
+  };
+
+  for (const version of ["2026-09-09.87", "2026-09-09.88", "2026-09-09.100"]) {
+    it(`a ${version} status passes the version lines of 7j and 7k`, () => {
+      const out = run7j({ status: { ...GOOD.status, version }, plain: echo, forged: echo, forgedXff: echo });
+      expect(fails(out), out.join("\n")).toEqual([]);
+      const k = run7kVersion(version);
+      expect(k.some((l) => /^PASS {2}status\.version/.test(l)), k.join("\n")).toBe(true);
+    });
+  }
+
+  it("a build older than the section names still FAILs both", () => {
+    expect(fails(run7j({ status: { ...GOOD.status, version: "2026-09-09.84" }, plain: echo, forged: echo, forgedXff: echo })).some((l) => /status\.version/.test(l))).toBe(true);
+    expect(run7kVersion("2026-09-09.85").some((l) => /^FAIL {2}status\.version/.test(l))).toBe(true);
   });
 });
 
