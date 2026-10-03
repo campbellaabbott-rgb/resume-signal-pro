@@ -9,7 +9,7 @@
  */
 import { BOARD_READER_HEADER, boardReaderKey } from "../_shared/board-reader-key.ts";
 import { inChina } from "./geo-cn.ts";
-import { type PassState, passStateOf } from "./board-pass.ts";
+import { type PassState, passStateOf, readBoardPass } from "./board-pass.ts";
 
 /** Actions that hand out postings. A body with no action is a list. */
 export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
@@ -52,6 +52,8 @@ export type CountedCaller = {
   net: string | null;
   country: string;
   passState: PassState;
+  /** A valid pass's id (the first 16 hex of its nonce), which the counter meters; else null. */
+  passId: string | null;
   /** Neither Origin nor Referer: not the site's own page. */
   bare: boolean;
 };
@@ -180,7 +182,9 @@ const DECLARED = new Map<string, BudgetKind>([["api", "unproven_api"], ["mcp", "
  * a counted address. A declared api/mcp/digest caller WITHOUT the proof is
  * still counted at the address cap; its kind only makes a deploy skew visible.
  * passSecret is TURNSTILE_SECRET_KEY: without it every pass state is
- * 'unconfigured', which nothing refuses.
+ * 'unconfigured', which nothing refuses. Under requirePass the counter asks
+ * unproven_* for a pass too (a declaration is not a proof) and puts passless
+ * build/probe in one shared row per kind (migration 20261003180000).
  */
 export async function classifyCaller(h: Headers, serviceKey: string, passSecret = ""): Promise<Caller> {
   if (serviceKey && (h.get("authorization") === `Bearer ${serviceKey}` || h.get("apikey") === serviceKey)) {
@@ -190,9 +194,10 @@ export async function classifyCaller(h: Headers, serviceKey: string, passSecret 
   if (offered && sameSecret(offered, await boardReaderKey(serviceKey))) return { exempt: true, kind: "reader" };
   const { address, source } = callerAddress(h);
   const key = address ? addressKey(address) : null;
+  const pass = await readBoardPass(h, serviceKey, passSecret);
   const base = {
     exempt: false as const, address, source, key, net: networkOf(key), country: countryOf(h, key).country,
-    passState: await passStateOf(h, serviceKey, passSecret), bare: !h.get("origin") && !h.get("referer"),
+    passState: pass.state, passId: pass.id, bare: !h.get("origin") && !h.get("referer"),
   };
   if (!key) return { ...base, kind: "unknown_address" };
   const tool = (h.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase();
@@ -263,9 +268,10 @@ export type AnonCheckRpc = (
  * a refused call does no other database work. FAILS OPEN on everything -- an
  * error, an unapplied migration, the deadline, an unreadable row: the meter
  * must never take the board down. Only an explicit is_allowed false refuses.
- * Before migration 20261003180000 the counter has no p_net/p_pass (PGRST202):
- * the call is repeated with the seven arguments it does have, inside the same
- * deadline, so the rules already live keep refusing across a deploy skew.
+ * Before migration 20261003180000 the counter has no p_net/p_pass/p_pass_id
+ * (PGRST202): the call is repeated with the seven arguments it does have,
+ * inside the same deadline, so the rules already live keep refusing across a
+ * deploy skew.
  */
 export async function anonBudgetGate(
   req: Request,
@@ -287,7 +293,7 @@ export async function anonBudgetGate(
       p_bare: caller.bare,
     };
     const signal = AbortSignal.timeout(ANON_BUDGET_DEADLINE_MS);
-    let { data, error } = await opts.rpc({ ...args, p_net: caller.net, p_pass: caller.passState }, signal);
+    let { data, error } = await opts.rpc({ ...args, p_net: caller.net, p_pass: caller.passState, p_pass_id: caller.passId }, signal);
     if (error?.code === "PGRST202") ({ data, error } = await opts.rpc(args, signal));
     if (error) {
       console.warn("[JOB-BOARD] anon budget unavailable, serving:", error.code ?? "", String(error.message ?? "").slice(0, 120));
@@ -332,8 +338,9 @@ export function anonBudgetStatus(v: unknown, opts: { passConfigured?: boolean } 
     countriesListed: listed(o.countries),
     countryCap: typeof o.countryCap === "number" ? o.countryCap : null,
     networksListed: listed(o.blockedNetworks),
-    // configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass.
-    pass: { configured: opts.passConfigured === true, required: o.requirePass === true },
+    // configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass;
+    // cap: the row's passCap (reads per pass per UTC day), null = the counter's default of 600.
+    pass: { configured: opts.passConfigured === true, required: o.requirePass === true, cap: typeof o.passCap === "number" ? o.passCap : null },
     overrides: Object.fromEntries(["addressCap", "buildCap", "probeCap"].filter((k) => typeof o[k] === "number").map((k) => [k, o[k]])),
     defaults: { address: ADDRESS_DAILY_CAP, build: BUILD_DAILY_CAP, probe: PROBE_DAILY_CAP },
   };

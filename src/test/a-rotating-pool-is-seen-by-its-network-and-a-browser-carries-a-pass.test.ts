@@ -24,8 +24,11 @@
  *     under a key DERIVED from the service key (an HMAC under the raw key is
  *     refused), and refused when expired, dated past anything we sign,
  *     tampered in any part, signed under another key, malformed or missing;
+ *     a pass comes with ttlSeconds, so the page can keep it by its own clock;
  *     classifyCaller's passState, 'unconfigured' for everyone without the
- *     secret.
+ *     secret, and the pass id (the first 16 hex of the nonce) only for a
+ *     valid pass -- the id the counter meters, so one solve cannot read for a
+ *     whole pool.
  *   THE board-pass ACTION, fetch faked: success only with success===true AND
  *     an allowed hostname; Cloudflare's codes on failure; 503 unconfigured
  *     without calling Cloudflare; a siteverify that does not answer inside its
@@ -33,14 +36,14 @@
  *   THE HANDLER, bundled: board-pass answers with no-store and no database
  *     call, sends Cloudflare the caller's derived address; a counted read
  *     carries p_pass valid/invalid/none/unconfigured as the request earns it,
- *     and p_net for IPv6 callers.
+ *     p_pass_id only beside a valid pass, and p_net for IPv6 callers.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash, createHmac } from "node:crypto";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { addressKey, classifyCaller, networkOf, type CountedCaller } from "../../supabase/functions/job-board/anon-budget";
 import {
-  BOARD_PASS_HEADER, BOARD_PASS_HOSTS, BOARD_PASS_TTL_S, boardPassAction, passStateOf, signBoardPass, SITEVERIFY_URL, verifyBoardPass,
+  BOARD_PASS_HEADER, BOARD_PASS_HOSTS, BOARD_PASS_TTL_S, boardPassAction, passStateOf, readBoardPass, signBoardPass, SITEVERIFY_URL, verifyBoardPass,
 } from "../../supabase/functions/job-board/board-pass";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -73,10 +76,12 @@ describe("the network is the /24 or the /48 of the normalised address", () => {
 describe("the pass: signed under a derived key, half an hour, refused in every other shape", () => {
   const NOW = Date.UTC(2026, 9, 3, 18, 0, 0);
 
-  it("a pass we signed verifies, and says when it expires", async () => {
-    const { pass, expiresAt } = await signBoardPass(SVC, NOW);
+  it("a pass we signed verifies, and says when it expires, in our time and as a lifetime", async () => {
+    const { pass, expiresAt, ttlSeconds } = await signBoardPass(SVC, NOW);
     expect(pass).toMatch(/^v1\.\d{10}\.[0-9a-f]{32}\.[0-9a-f]{64}$/);
     expect(Date.parse(expiresAt) - NOW).toBe(BOARD_PASS_TTL_S * 1000);
+    expect(ttlSeconds, "a visitor's clock can be anywhere: the page keeps the pass by this").toBe(BOARD_PASS_TTL_S);
+    expect((await signBoardPass(SVC, NOW + 999)).ttlSeconds, "never longer than the pass really lives").toBe(BOARD_PASS_TTL_S - 1);
     expect(BOARD_PASS_TTL_S).toBe(1800);
     expect(await verifyBoardPass(pass, SVC, NOW)).toBe(true);
     expect(await verifyBoardPass(pass, SVC, NOW + 29 * 60_000)).toBe(true);
@@ -120,6 +125,18 @@ describe("the pass: signed under a derived key, half an hour, refused in every o
     expect(await passStateOf(H({ [BOARD_PASS_HEADER]: "forged" }), SVC, SECRET)).toBe("invalid");
   });
 
+  it("readBoardPass: the id the counter meters is the nonce's first 16 hex, and only for a valid pass", async () => {
+    const { pass } = await signBoardPass(SVC);
+    const nonce = pass.split(".")[2];
+    expect(await readBoardPass(H({ [BOARD_PASS_HEADER]: pass }), SVC, SECRET)).toEqual({ state: "valid", id: nonce.slice(0, 16) });
+    expect(await readBoardPass(H({ [BOARD_PASS_HEADER]: pass }), SVC, "")).toEqual({ state: "unconfigured", id: null });
+    expect(await readBoardPass(H({}), SVC, SECRET)).toEqual({ state: "none", id: null });
+    const forged = `v1.${pass.split(".")[1]}.${nonce}.${"0".repeat(64)}`;
+    expect(await readBoardPass(H({ [BOARD_PASS_HEADER]: forged }), SVC, SECRET), "a forged pass names no id to meter").toEqual({ state: "invalid", id: null });
+    const other = await signBoardPass(SVC);
+    expect((await readBoardPass(H({ [BOARD_PASS_HEADER]: other.pass }), SVC, SECRET)).id, "each solve its own meter").not.toBe(nonce.slice(0, 16));
+  });
+
   it("classifyCaller gives every counted caller a passState; 'unconfigured' for everyone without the secret", async () => {
     const { pass } = await signBoardPass(SVC);
     const at = async (h: Record<string, string>, secret: string) =>
@@ -130,6 +147,9 @@ describe("the pass: signed under a derived key, half an hour, refused in every o
     expect(await at({ [BOARD_PASS_HEADER]: "v1.x" }, SECRET)).toBe("invalid");
     expect(await at({}, SECRET)).toBe("none");
     expect(await at({ "x-rb-budget": "build" }, SECRET), "a build declaration still reports its state; the counter decides who is asked").toBe("none");
+    const c = await classifyCaller(H({ "cf-connecting-ip": "203.0.113.9", [BOARD_PASS_HEADER]: pass }), SVC, SECRET) as CountedCaller;
+    expect(c.passId).toBe(pass.split(".")[2].slice(0, 16));
+    expect((await classifyCaller(H({ "cf-connecting-ip": "203.0.113.9", [BOARD_PASS_HEADER]: pass }), SVC, "") as CountedCaller).passId).toBeNull();
     expect(await classifyCaller(H({ authorization: `Bearer ${SVC}` }), SVC, SECRET), "the service key is exempt before any pass is read").toEqual({ exempt: true, kind: "service" });
   });
 });
@@ -154,6 +174,7 @@ describe("the board-pass action, with Cloudflare faked", () => {
     expect(r.status).toBe(200);
     expect(await verifyBoardPass(String(r.body.pass), SVC)).toBe(true);
     expect(Date.parse(String(r.body.expiresAt)) - Date.now()).toBeGreaterThan(29 * 60_000);
+    expect(r.body.ttlSeconds).toBeGreaterThanOrEqual(BOARD_PASS_TTL_S - 1);
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(SITEVERIFY_URL);
     expect(calls[0].init.method).toBe("POST");
@@ -212,6 +233,7 @@ class MeterDb extends FakeDb {
   tablesRead: string[] = [];
   from(table: string) { this.tablesRead.push(table); return super.from(table); }
   // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rpc(name: string, args: Record<string, unknown> = {}): any {
     if (name !== "job_board_anon_check") return super.rpc(name, args);
     this.checks.push({ args });
@@ -280,6 +302,7 @@ describe("the handler: board-pass, and the pass state every counted read carries
     env.TURNSTILE_SECRET_KEY = "";
     await post({ action: "facets" }, { [BOARD_PASS_HEADER]: pass });
     expect(db.checks.map((c) => c.args.p_pass)).toEqual(["valid", "invalid", "none", "none", "unconfigured"]);
+    expect(db.checks.map((c) => c.args.p_pass_id), "the meter's id rides only beside a valid pass").toEqual([pass.split(".")[2].slice(0, 16), null, null, null, null]);
     expect(db.checks.map((c) => c.args.p_net)).toEqual(["203.0.113.0/24", "203.0.113.0/24", "203.0.113.0/24", "2001:db8:1::/48", "203.0.113.0/24"]);
   });
 

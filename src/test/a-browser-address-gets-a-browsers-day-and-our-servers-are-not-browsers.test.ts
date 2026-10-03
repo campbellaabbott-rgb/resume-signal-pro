@@ -33,11 +33,12 @@
  *       dispatch); a country refusal says code 'country';
  *     - the counter is called with an abort signal, and an error, an unapplied
  *       migration (PGRST202) or a hang past the deadline serves the request;
- *     - .87: the counter also gets the caller's /24 (p_net) and board-pass
- *       state (p_pass); before migration 20261003180000 (PGRST202 for those
- *       nine arguments) the call is repeated with the seven, so the rules
- *       already live keep refusing across the skew; a network or pass refusal
- *       says its own code.
+ *     - .87: the counter also gets the caller's /24 (p_net), board-pass
+ *       state (p_pass) and a valid pass's id (p_pass_id, which the counter
+ *       meters); before migration 20261003180000 (PGRST202 for those ten
+ *       arguments) the call is repeated with the seven, so the rules already
+ *       live keep refusing across the skew; a network or pass refusal says
+ *       its own code.
  *   THE CODEBASE. The gate, the module and the migrations never touch the
  *     request budget shared with upload and checkout, and the browser cannot
  *     send our tooling's headers (job-board's CORS allow-list names neither,
@@ -138,8 +139,8 @@ describe("the address is the platform's word, not the caller's", () => {
     expect(r.status).toBe(429);
     expect(r.headers.get("Retry-After")).toBe("30");
     expect((await r.json()).resetAt).toBe("2026-10-03T00:00:00.000Z");
-    expect(anonBudgetStatus(null)).toMatchObject({ settingPresent: false, enforce: true, countriesListed: 0, networksListed: 0, pass: { configured: false, required: false }, defaults: { address: 10000, build: 15000, probe: 10000 } });
-    expect(anonBudgetStatus({ blockedNetworks: ["43.128.0.0/10", "47.74.0.0/16"], requirePass: true }, { passConfigured: true })).toMatchObject({ networksListed: 2, pass: { configured: true, required: true } });
+    expect(anonBudgetStatus(null)).toMatchObject({ settingPresent: false, enforce: true, countriesListed: 0, networksListed: 0, pass: { configured: false, required: false, cap: null }, defaults: { address: 10000, build: 15000, probe: 10000 } });
+    expect(anonBudgetStatus({ blockedNetworks: ["43.128.0.0/10", "47.74.0.0/16"], requirePass: true, passCap: 300 }, { passConfigured: true })).toMatchObject({ networksListed: 2, pass: { configured: true, required: true, cap: 300 } });
     expect(anonBudgetStatus({ blockedNetworks: "43.128.0.0/10", requirePass: "yes" })).toMatchObject({ networksListed: "invalid", pass: { configured: false, required: false } });
     expect(anonBudgetStatus({ enforce: false })).toMatchObject({ settingPresent: true, enforce: false, countriesListed: 0 });
     expect(anonBudgetStatus({ countries: "CN" }).countriesListed, "a non-array list is reported as invalid, not as zero").toBe("invalid");
@@ -203,7 +204,7 @@ describe("the handler: who is counted, and what a refusal is", () => {
     const res = await post({ action: "facets" }, { origin: "https://resumebooster.work" });
     expect(res.status).toBe(200);
     expect(db.checks).toHaveLength(1);
-    expect(db.checks[0].args).toMatchObject({ p_kind: "address", p_country: "CN", p_address_cap: 10000, p_build_cap: 15000, p_probe_cap: 10000, p_bare: false, p_net: "203.0.113.0/24", p_pass: "unconfigured" });
+    expect(db.checks[0].args).toMatchObject({ p_kind: "address", p_country: "CN", p_address_cap: 10000, p_build_cap: 15000, p_probe_cap: 10000, p_bare: false, p_net: "203.0.113.0/24", p_pass: "unconfigured", p_pass_id: null });
     expect(String(db.checks[0].args.p_bucket)).toMatch(/^ip:[0-9a-f]{16}$/);
     expect(db.checks[0].signal, "the counter is cancelled at the deadline, not abandoned").toBeInstanceOf(AbortSignal);
     await post({});
@@ -302,15 +303,15 @@ describe("the handler: who is counted, and what a refusal is", () => {
     expect((await (await post({ action: "list" })).json()).code, "the counter sets pass_rule only when the pass is what refuses").toBe("pass");
   });
 
-  it(".87: before the migration (PGRST202 for nine arguments) the call is repeated with the seven, and its verdict stands", async () => {
+  it(".87: before the migration (PGRST202 for ten arguments) the call is repeated with the seven, and its verdict stands", async () => {
     db.verdict = async () => {
       const last = db.checks[db.checks.length - 1].args;
-      if ("p_net" in last || "p_pass" in last) return { data: null, error: { code: "PGRST202", message: "Could not find the function public.job_board_anon_check(p_bare, p_build_cap, p_bucket, p_country, p_kind, p_net, p_pass, ...)" } };
+      if ("p_net" in last || "p_pass" in last || "p_pass_id" in last) return { data: null, error: { code: "PGRST202", message: "Could not find the function public.job_board_anon_check(p_bare, p_build_cap, p_bucket, p_country, p_kind, p_net, p_pass, p_pass_id, ...)" } };
       return { data: [{ is_allowed: false, used_today: 0, over_today: 1, cap_today: 0, country_rule: true, enforcing: true }], error: null };
     };
     const res = await post({ action: "list" }, { "cf-connecting-ip": "114.114.114.114", "cf-ipcountry": "" });
-    expect(db.checks.map((c) => Object.keys(c.args).sort().join(",")), "nine named arguments, then the seven the old counter has").toEqual([
-      "p_address_cap,p_bare,p_bucket,p_build_cap,p_country,p_kind,p_net,p_pass,p_probe_cap",
+    expect(db.checks.map((c) => Object.keys(c.args).sort().join(",")), "ten named arguments, then the seven the old counter has").toEqual([
+      "p_address_cap,p_bare,p_bucket,p_build_cap,p_country,p_kind,p_net,p_pass,p_pass_id,p_probe_cap",
       "p_address_cap,p_bare,p_bucket,p_build_cap,p_country,p_kind,p_probe_cap",
     ]);
     expect(db.checks[1].signal, "inside the same deadline").toBe(db.checks[0].signal);

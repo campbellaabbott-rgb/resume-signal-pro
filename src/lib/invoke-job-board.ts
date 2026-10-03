@@ -9,20 +9,22 @@
  * options): same arguments, no header, no wait, nothing loaded.
  *
  * With it set:
- *   - a counted read waits for a pass first (about a second, once a half hour);
+ *   - a counted read waits for a pass first (about a second, once a half hour;
+ *     never longer than board-pass.ts's one deadline, script load included);
  *     an uncounted call (status, click, report) never waits, but starts the
  *     check so the pass is ready for the counted read behind it;
- *   - the pass, when one is held, goes on every call as x-rb-pass;
+ *   - the pass a call is given is the pass it sends as x-rb-pass;
  *   - a refusal with code "pass" gets a fresh pass and ONE retry -- the single
  *     exception to "a budget refusal is never retried" (src/lib/board-budget.ts),
- *     because a fresh pass lifts it at once;
- *   - a call that carried a pass and got no answer at all forgets the pass, so
+ *     because a fresh pass lifts it at once. The refusal names the pass it
+ *     refused, so refusals that land one after another share one new pass;
+ *   - a call that carried a pass and got no answer at all forgets that pass, so
  *     a job-board that does not allow the header (a rollback) is read without it.
  */
 import type { FunctionInvokeOptions } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { readBoardBudgetRefusal } from "@/lib/board-budget";
-import { boardPassEnabled, boardPassHeader, ensureBoardPass, forgetBoardPass } from "@/lib/board-pass";
+import { BOARD_PASS_HEADER, boardPassEnabled, ensureBoardPass, forgetBoardPass, heldBoardPass } from "@/lib/board-pass";
 
 /**
  * MIRRORS BUDGETED_ACTIONS in supabase/functions/job-board/anon-budget.ts (a
@@ -36,12 +38,11 @@ export const BOARD_COUNTED_ACTIONS: ReadonlySet<string> = new Set([
 const actionOf = (options?: FunctionInvokeOptions): string =>
   String((options?.body as { action?: unknown } | null | undefined)?.action ?? "list");
 
-function send<T>(options?: FunctionInvokeOptions) {
-  const pass = boardPassHeader();
-  const carried = Object.keys(pass).length > 0;
-  const sent = supabase.functions.invoke<T>("job-board", carried ? { ...options, headers: { ...(options?.headers ?? {}), ...pass } } : options);
+/** The call, carrying exactly the pass it was handed (null: the caller's own options, untouched). */
+function send<T>(options: FunctionInvokeOptions | undefined, pass: string | null) {
+  const sent = supabase.functions.invoke<T>("job-board", pass ? { ...options, headers: { ...(options?.headers ?? {}), [BOARD_PASS_HEADER]: pass } } : options);
   return sent.then((res) => {
-    if (carried && (res.error as { name?: unknown } | null)?.name === "FunctionsFetchError") forgetBoardPass();
+    if (pass && (res.error as { name?: unknown } | null)?.name === "FunctionsFetchError") forgetBoardPass(pass);
     return res;
   });
 }
@@ -49,16 +50,17 @@ function send<T>(options?: FunctionInvokeOptions) {
 async function withPass<T>(options?: FunctionInvokeOptions) {
   if (!BOARD_COUNTED_ACTIONS.has(actionOf(options))) {
     void ensureBoardPass();
-    return send<T>(options);
+    return send<T>(options, heldBoardPass());
   }
-  await ensureBoardPass();
-  const first = await send<T>(options);
+  const pass = await ensureBoardPass();
+  const first = await send<T>(options, pass);
   if (!first.error) return first;
   const refused = await readBoardBudgetRefusal(first.error);
   if (refused?.code !== "pass") return first;
   // THE ONE RETRY of a budget refusal: a fresh pass, then the same call again.
-  if (!(await ensureBoardPass({ fresh: true }))) return first;
-  return send<T>(options);
+  const fresh = await ensureBoardPass({ fresh: true, refused: pass });
+  if (!fresh) return first;
+  return send<T>(options, fresh);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

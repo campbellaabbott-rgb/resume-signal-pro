@@ -344,7 +344,7 @@ const body7l = /node -e '([^']*)'/.exec(s7l)?.[1] ?? "";
 type Bn = { bn_hour: string; bn_net: string; bn_kind: string; bn_pass: string; bn_requests: number; bn_over_cap: number };
 const bn = (net: string, kind: string, pass: string, n: number, over = 0): Bn => ({ bn_hour: "2026-10-03T18:00:00Z", bn_net: net, bn_kind: kind, bn_pass: pass, bn_requests: n, bn_over_cap: over });
 const GOOD7L = {
-  status: { version: "2026-09-09.87", anonBudget: { ...GOOD.status.anonBudget, networksListed: 0, pass: { configured: false, required: false } } } as Record<string, unknown>,
+  status: { version: "2026-09-09.87", anonBudget: { ...GOOD.status.anonBudget, networksListed: 0, pass: { configured: false, required: false, cap: null } } } as Record<string, unknown>,
   echo: { address: "203.0.113.9", addressKey: "203.0.113.9", net: "203.0.113.0/24", source: "cf", country: "XX", countrySource: "none", kind: "probe", exempt: false, passState: "unconfigured" } as Record<string, unknown>,
   pass: { error: "board_pass_unconfigured" } as Record<string, unknown> | string,
   passCode: "503",
@@ -383,10 +383,24 @@ describe("verify-deploy 7l judges the network and the pass", () => {
   });
 
   it("with the secret set, this machine reads none and a junk token is a 403 from Cloudflare", () => {
-    const status = { ...GOOD7L.status, anonBudget: { ...(GOOD7L.status.anonBudget as object), pass: { configured: true, required: false } } };
+    const status = { ...GOOD7L.status, anonBudget: { ...(GOOD7L.status.anonBudget as object), pass: { configured: true, required: false, cap: 300 } } };
     const out = run7l({ status, echo: { ...GOOD7L.echo, passState: "none" }, pass: { error: "board_pass_failed", codes: ["invalid-input-response"] }, passCode: "403" });
     expect(fails(out), out.join("\n")).toEqual([]);
     expect(fails(run7l({ status, passCode: "503" })).length, "a 503 when the secret is set is wrong, and so is unconfigured").toBeGreaterThan(0);
+    expect(out.some((l) => /^INFO {2}bot check: secret SET, requirePass false, passCap 300/.test(l)), out.join("\n")).toBe(true);
+    const noCap = { ...GOOD7L.status, anonBudget: { ...(GOOD7L.status.anonBudget as object), pass: { configured: false, required: false } } };
+    expect(fails(run7l({ status: noCap })).some((l) => /anonBudget\.pass/.test(l)), "a .87 that reports no pass cap is not this release").toBe(true);
+  });
+
+  it("names spent passes, borrowed tooling headers and unproven declarations as INFO", () => {
+    const out = run7l({ networks: [
+      bn("43.130.0.0/16", "address", "spent", 700), bn("43.130.0.0/16", "address", "valid", 600),
+      bn("47.74.0.0/16", "build", "none", 40), bn("47.75.0.0/16", "build", "none", 40), bn("none", "unproven_api", "none", 3),
+    ] });
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(out.some((l) => /^INFO {2}spent: 700 requests carried a pass already used past passCap/.test(l)), out.join("\n")).toBe(true);
+    expect(out.some((l) => /^INFO {2}tooling declarations \(build\/probe\) in the last 3h: 80 requests from 2 networks/.test(l)), out.join("\n")).toBe(true);
+    expect(out.some((l) => /^INFO {2}unproven api\/mcp\/digest declarations in the last 3h: 3 \(must be 0 before REQUIRE THE PASS/.test(l)), out.join("\n")).toBe(true);
   });
 
   it("a stale bundle -- no net, no pass state, no pass switch, board-pass unknown -- is a FAIL on each", () => {

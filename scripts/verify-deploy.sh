@@ -1175,9 +1175,12 @@ const ab=st.anonBudget||{};info("country switch: countriesListed "+ab.countriesL
 echo "== 7l. .87: the network and the board pass -- a rotating pool is seen by its /24, a browser can be asked for a pass =="
 # .87 claim. The harvest rotates ~180-340 addresses an hour and reads no CN, so
 # .87 hands the counter each caller's /24 (/48 for IPv6) and its Turnstile
-# board-pass state, and migration 20261003180000 adds blockedNetworks,
-# requirePass and the network telemetry (get_board_anon_networks, aggregates
-# by /16 or /32 only). Both rules are inert until the owner sets a key. Every
+# board-pass state (plus a valid pass's id, which the counter meters against
+# passCap -- past it the pass reads "spent"), and migration 20261003180000 adds
+# blockedNetworks, requirePass and the network telemetry
+# (get_board_anon_networks, aggregates by /16 or /32 only). Under requirePass
+# unproven_* is asked for a pass and passless build/probe share one row per
+# kind. Every rule is inert until the owner sets a key. Every
 # probe here is a read: budget-echo and board-pass make no database call, and
 # board-pass with a junk token asks Cloudflare at most (503 while no secret).
 J '{"action":"budget-echo"}' > /tmp/vd_7l_echo.json
@@ -1194,10 +1197,10 @@ ok("net" in e&&e.net===wantNet,"budget-echo carries the network of its address: 
 const states=["valid","invalid","none","unconfigured"];
 ok(states.includes(e.passState),"budget-echo carries a pass state: passState = "+e.passState+" (want one of "+states.join("/")+")");
 const p=ab.pass;
-ok(!!p&&typeof p.configured==="boolean"&&typeof p.required==="boolean","status.anonBudget.pass = "+JSON.stringify(p)+" (want {configured, required})");
+ok(!!p&&typeof p.configured==="boolean"&&typeof p.required==="boolean"&&(p.cap===null||typeof p.cap==="number"),"status.anonBudget.pass = "+JSON.stringify(p)+" (want {configured, required, cap}; cap null = the default 600 reads per pass)");
 if(p){
   ok(e.passState===(p.configured?"none":"unconfigured"),"this machine sends no pass, so it reads as "+(p.configured?"none":"unconfigured")+" (got "+e.passState+")");
-  info("bot check: secret "+(p.configured?"SET":"not set")+", requirePass "+p.required+(p.required&&!p.configured?" (no effect: unconfigured is never refused)":"")+(p.required&&p.configured?" (REQUIRED: browsers without a valid pass are refused while enforce is true)":""));
+  info("bot check: secret "+(p.configured?"SET":"not set")+", requirePass "+p.required+", passCap "+(p.cap===null||p.cap===undefined?"600 (default)":p.cap)+(p.required&&!p.configured?" (no effect: unconfigured is never refused)":"")+(p.required&&p.configured?" (REQUIRED: browsers and unproven declarations without a valid pass are refused while enforce is true; passless build/probe share one row per kind)":""));
 }
 ok(typeof ab.networksListed==="number","status.anonBudget.networksListed = "+JSON.stringify(ab.networksListed)+" (a number; invalid = blockedNetworks is not an array and blocks nothing)");
 if(ab.networksListed>0)info("blockedNetworks lists "+ab.networksListed+" entries (refused only while enforce is true; enforce = "+ab.enforce+")");
@@ -1217,9 +1220,14 @@ else{
   for(const [net,m] of [...by.entries()].sort((a,b)=>b[1].req-a[1].req).slice(0,15))info("top network "+net+": "+m.req+" requests, "+m.over+" over the cap, kinds "+[...m.kinds].join("/"));
   const split={};for(const r of rows.filter((x)=>x.bn_kind==="address"||x.bn_kind==="unknown_address"))split[r.bn_pass]=(split[r.bn_pass]||0)+Number(r.bn_requests||0);
   info("browser pass states in the last 3h (kinds address and unknown_address): "+(Object.entries(split).map(([s,n])=>s+" "+n).join(", ")||"none")+" -- require the pass only once real browsers arrive valid");
+  if(split.spent)info("spent: "+split.spent+" requests carried a pass already used past passCap -- one solve shared across many callers, or a very heavy reader");
+  const tools=rows.filter((r)=>r.bn_kind==="build"||r.bn_kind==="probe");const toolNets=new Set(tools.map((r)=>r.bn_net)).size;
+  info("tooling declarations (build/probe) in the last 3h: "+tools.reduce((n,r)=>n+Number(r.bn_requests||0),0)+" requests from "+toolNets+" networks (our bake and probes come from a handful; many networks = the public header is being borrowed)");
+  const unproven=rows.filter((r)=>/^unproven_/.test(String(r.bn_kind))).reduce((n,r)=>n+Number(r.bn_requests||0),0);
+  info("unproven api/mcp/digest declarations in the last 3h: "+unproven+" (must be 0 before REQUIRE THE PASS: requirePass refuses them without a pass)");
 }'
 code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/job_board_anon_net_hourly?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  job_board_anon_net_hourly SELECT as anon -> $code" || echo "FAIL  job_board_anon_net_hourly SELECT as anon -> $code"
-# The nine-argument counter, called as anon with its real argument names: 42501.
-probe job_board_anon_check '{"p_bucket":"verify:anon-probe","p_kind":"probe","p_country":"US","p_address_cap":0,"p_build_cap":0,"p_probe_cap":0,"p_bare":true,"p_net":"192.0.2.0/24","p_pass":"none"}'
+# The ten-argument counter, called as anon with its real argument names: 42501.
+probe job_board_anon_check '{"p_bucket":"verify:anon-probe","p_kind":"probe","p_country":"US","p_address_cap":0,"p_build_cap":0,"p_probe_cap":0,"p_bare":true,"p_net":"192.0.2.0/24","p_pass":"none","p_pass_id":"00000000000000ab"}'
 
 echo "done."

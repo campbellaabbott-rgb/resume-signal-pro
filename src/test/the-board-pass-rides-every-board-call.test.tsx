@@ -19,6 +19,15 @@
  *     header and is not repeated for five minutes; a call that carried a pass
  *     and got no answer forgets it; the script is the explicit-render API,
  *     added once;
+ *   - the review of 2026-10-03, each with the scenario that broke it: a pass
+ *     is kept by this browser's clock (a clock 40 minutes fast once sent no
+ *     pass and solved again before every read); one deadline covers the
+ *     script load (a stalled challenges.cloudflare.com once held every read
+ *     with no limit); a challenge that asks for interaction keeps its widget
+ *     and gets two minutes; board_pass_unconfigured turns the check off for
+ *     the tab until a pass refusal proves it is on; refusals that land one
+ *     after another share one new pass; a refusal's failed attempt is not
+ *     re-run for every refused call;
  *   - every browser call to job-board in src/ goes through the door (the walk
  *     carries a positive control), and the door's counted set mirrors the
  *     edge's BUDGETED_ACTIONS;
@@ -37,7 +46,10 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { BOARD_COUNTED_ACTIONS, invokeJobBoard } from "@/lib/invoke-job-board";
-import { BOARD_PASS_HEADER, boardPassHeader, ensureBoardPass, resetBoardPassForTests } from "@/lib/board-pass";
+import {
+  BOARD_PASS_DEADLINE_MS, BOARD_PASS_FAIL_COOLDOWN_MS, BOARD_PASS_HEADER, BOARD_PASS_INTERACTIVE_DEADLINE_MS,
+  boardPassHeader, ensureBoardPass, resetBoardPassForTests,
+} from "@/lib/board-pass";
 import { readBoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 
@@ -85,7 +97,7 @@ beforeEach(() => {
   delete w.turnstile;
   document.head.querySelectorAll(`script[src="${SCRIPT}"]`).forEach((s) => s.remove());
 });
-afterEach(() => { vi.unstubAllEnvs(); resetBoardPassForTests(); delete w.turnstile; });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); resetBoardPassForTests(); delete w.turnstile; });
 
 describe("with VITE_TURNSTILE_SITE_KEY unset, the door is supabase.functions.invoke and nothing else", () => {
   it("the same arguments object, no header, no script, no widget, no exchange, nothing stored", async () => {
@@ -227,6 +239,153 @@ describe("with the key set", () => {
     scripts[0].dispatchEvent(new Event("load"));
     expect(await first).toBe("v1.pass-1");
     expect(await second).toBe("v1.pass-1");
+  });
+});
+
+// ── the review of 2026-10-03 ────────────────────────────────────────────────
+
+describe("with the key set: the scenarios the review found", () => {
+  beforeEach(() => { vi.stubEnv("VITE_TURNSTILE_SITE_KEY", SITE_KEY); installTurnstile(); });
+  const MIN = 60_000;
+
+  it("a visitor whose clock runs 40 minutes fast keeps and sends the pass: it is kept by ttlSeconds, not our absolute time", async () => {
+    // The server's clock is 40 minutes behind this browser's: its expiresAt reads as already past here.
+    invoke.mockImplementation(async (fn: string, o?: Opts) => {
+      if (o?.body?.action === "board-pass") {
+        passes++;
+        return ok({ pass: `v1.pass-${passes}`, expiresAt: new Date(Date.now() - 40 * MIN + 30 * MIN).toISOString(), ttlSeconds: 1800 });
+      }
+      return ok({ jobs: [] });
+    });
+    for (const action of ["list", "detail", "facets"]) await invokeJobBoard({ body: { action } });
+    expect(boardCalls().map((c) => c.pass)).toEqual(["v1.pass-1", "v1.pass-1", "v1.pass-1"]);
+    expect(rendered, "one check, not one per read").toHaveLength(1);
+    expect(exchanges()).toHaveLength(1);
+    const kept = JSON.parse(sessionStorage.getItem("rb_board_pass") ?? "{}").expiresAt;
+    expect(kept - Date.now(), "kept on this browser's clock").toBeGreaterThan(29 * MIN);
+  });
+
+  it("an answer without ttlSeconds whose expiry this clock reads as past is one failed attempt, never a solve per read", async () => {
+    invoke.mockImplementation(async (fn: string, o?: Opts) => {
+      if (o?.body?.action === "board-pass") { passes++; return ok({ pass: `v1.pass-${passes}`, expiresAt: new Date(Date.now() - 10 * MIN).toISOString() }); }
+      return ok({ jobs: [] });
+    });
+    for (const action of ["list", "detail", "facets"]) await invokeJobBoard({ body: { action } });
+    expect(boardCalls().map((c) => c.pass)).toEqual([null, null, null]);
+    expect(rendered, "the cooldown holds").toHaveLength(1);
+    expect(exchanges()).toHaveLength(1);
+  });
+
+  it("a script that never loads holds a counted read for one deadline, then the board is read without a pass, and the next read does not wait", async () => {
+    vi.useFakeTimers();
+    delete w.turnstile; // challenges.cloudflare.com accepts the connection and never answers
+    let settled = false;
+    const first = invokeJobBoard({ body: { action: "list" } }).then((r) => { settled = true; return r; });
+    await vi.advanceTimersByTimeAsync(BOARD_PASS_DEADLINE_MS - 100);
+    expect(settled, "still inside the deadline").toBe(false);
+    expect(boardCalls()).toEqual([]);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(settled, "past the deadline the read goes out").toBe(true);
+    expect((await first).error).toBeNull();
+    expect(boardCalls()).toEqual([{ action: "list", pass: null }]);
+    let second = false;
+    void invokeJobBoard({ body: { action: "facets" } }).then(() => { second = true; });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(second, "the next counted read does not wait again").toBe(true);
+    expect(document.head.querySelectorAll(`script[src="${SCRIPT}"]`), "the script was added once").toHaveLength(1);
+  });
+
+  it("a check that never answers is abandoned at the deadline and its widget removed", async () => {
+    vi.useFakeTimers();
+    const removed: string[] = [];
+    w.turnstile = {
+      render: (el, opts) => { rendered.push({ el, opts }); return `w${rendered.length}`; },
+      remove: (id) => { removed.push(id); },
+    };
+    const read = invokeJobBoard({ body: { action: "list" } });
+    await vi.advanceTimersByTimeAsync(BOARD_PASS_DEADLINE_MS + 10);
+    await read;
+    expect(boardCalls()).toEqual([{ action: "list", pass: null }]);
+    expect(removed).toEqual(["w1"]);
+  });
+
+  it("when Cloudflare asks a person to interact, the widget stays up and the deadline becomes two minutes", async () => {
+    vi.useFakeTimers();
+    const removed: string[] = [];
+    let opts: Record<string, unknown> = {};
+    w.turnstile = {
+      render: (el, o) => { rendered.push({ el, opts: o }); opts = o; return "w1"; },
+      remove: (id) => { removed.push(id); },
+    };
+    let settled = false;
+    const read = invokeJobBoard({ body: { action: "detail", id: "x" } }).then((r) => { settled = true; return r; });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(typeof opts["before-interactive-callback"]).toBe("function");
+    (opts["before-interactive-callback"] as () => void)();
+    await vi.advanceTimersByTimeAsync(BOARD_PASS_DEADLINE_MS + 30_000); // the person takes 40 seconds to notice and click
+    expect(settled).toBe(false);
+    expect(removed, "the widget is still there to be clicked").toEqual([]);
+    (opts.callback as (t: string) => void)("tok-clicked");
+    await vi.advanceTimersByTimeAsync(10);
+    await read;
+    expect(exchanges().map(([, o]) => (o as Opts).body?.token)).toEqual(["tok-clicked"]);
+    expect(boardCalls()).toEqual([{ action: "detail", pass: "v1.pass-1" }]);
+    expect(removed).toEqual(["w1"]);
+    expect(BOARD_PASS_INTERACTIVE_DEADLINE_MS).toBe(120_000);
+  });
+
+  it("board_pass_unconfigured turns the check off for the tab -- past the cooldown and across a reload -- until a pass refusal proves it is on", async () => {
+    vi.useFakeTimers();
+    let configured = false;
+    invoke.mockImplementation(async (fn: string, o?: Opts) => {
+      if (o?.body?.action === "board-pass") {
+        if (!configured) return httpError(503, { error: "board_pass_unconfigured" });
+        passes++;
+        return ok({ pass: `v1.pass-${passes}`, expiresAt: future(), ttlSeconds: 1800 });
+      }
+      return board(o ?? {});
+    });
+    const run = async (o: Opts) => { const p = invokeJobBoard(o); await vi.advanceTimersByTimeAsync(50); return p; };
+    await run({ body: { action: "list" } });
+    expect(rendered).toHaveLength(1);
+    expect(exchanges()).toHaveLength(1);
+    vi.setSystemTime(Date.now() + BOARD_PASS_FAIL_COOLDOWN_MS + MIN);
+    await run({ body: { action: "facets" } });
+    resetBoardPassForTests(); // a reload: memory gone, the tab's sessionStorage kept
+    await run({ body: { action: "detail", id: "x" } });
+    expect(rendered, "no check runs while the secret is missing").toHaveLength(1);
+    expect(exchanges()).toHaveLength(1);
+    expect(boardCalls().map((c) => c.pass)).toEqual([null, null, null]);
+    configured = true;
+    board = (o) => (o.headers?.[BOARD_PASS_HEADER] ? ok({ jobs: [1] }) : passRefusal());
+    const res = await run({ body: { action: "list" } });
+    expect(res).toEqual(ok({ jobs: [1] }));
+    expect(boardCalls().slice(-2)).toEqual([{ action: "list", pass: null }, { action: "list", pass: "v1.pass-1" }]);
+    expect(sessionStorage.getItem("rb_board_pass_off")).toBeNull();
+  });
+
+  it("refusals of an old pass that land one after another share ONE new pass", async () => {
+    let order = 0;
+    board = (o) => new Promise((resolve) => {
+      const wait = 40 * ++order;
+      setTimeout(() => resolve(o.headers?.[BOARD_PASS_HEADER] === "v1.pass-1" ? passRefusal() : ok({ jobs: [1] })), wait);
+    });
+    const res = await Promise.all([invokeJobBoard({ body: { action: "list" } }), invokeJobBoard({ body: { action: "facets" } }), invokeJobBoard({})]);
+    expect(res.every((r) => !r.error)).toBe(true);
+    expect(exchanges(), "pass-1, then one replacement for all three").toHaveLength(2);
+    expect(rendered).toHaveLength(2);
+    expect(boardCalls().filter((c) => c.pass === "v1.pass-2")).toHaveLength(3);
+  });
+
+  it("once a refusal's own attempt has failed, further pass refusals do not re-run the check until the cooldown passes", async () => {
+    solve = (r) => setTimeout(() => (r.opts["error-callback"] as (c: string) => void)("600010"), 5);
+    board = (o) => (o.headers?.[BOARD_PASS_HEADER] ? ok({ jobs: [] }) : passRefusal());
+    const a = await invokeJobBoard({ body: { action: "list" } });
+    expect((await readBoardBudgetRefusal(a.error))?.code).toBe("pass");
+    expect(rendered, "the read's attempt and the refusal's one fresh attempt").toHaveLength(2);
+    for (const action of ["facets", "detail", "list"]) await invokeJobBoard({ body: { action } });
+    expect(rendered, "a broken check is not re-run for every refused call").toHaveLength(2);
+    expect(boardCalls(), "one call each: no retry without a new pass").toHaveLength(4);
   });
 });
 

@@ -12,7 +12,11 @@
  * A pass is "v1.<exp>.<nonce>.<sig>": exp in unix seconds, a random nonce, and
  * sig the hex HMAC-SHA256 of "v1.<exp>.<nonce>" under a key DERIVED from the
  * service-role key (never the raw key; the style of _shared/board-reader-key.ts).
- * It is not bound to the address: a pool rotates, and so does a phone.
+ * It is not bound to the address: a pool rotates, and so does a phone. What
+ * stops one solve from reading for a whole pool is the METER: every counted
+ * call sends the pass id (the first 16 hex of the nonce) and the counter gives
+ * each pass its own day row against passCap, past which the pass is 'spent'
+ * (migration 20261003180000).
  */
 
 /** The request header a browser carries its pass in. Listed in job-board's CORS allow-list. */
@@ -46,10 +50,19 @@ function sameHex(a: string, b: string): boolean {
   return d === 0;
 }
 
-export async function signBoardPass(serviceKey: string, now = Date.now()): Promise<{ pass: string; expiresAt: string }> {
+/**
+ * ttlSeconds is what the page keeps the pass by: the visitor's clock can be
+ * any distance from ours, so an absolute expiresAt read against it can make a
+ * fresh pass look lapsed (and the page solve again before every read).
+ */
+export async function signBoardPass(serviceKey: string, now = Date.now()): Promise<{ pass: string; expiresAt: string; ttlSeconds: number }> {
   const exp = Math.floor(now / 1000) + BOARD_PASS_TTL_S;
   const body = `v1.${exp}.${hexOf(crypto.getRandomValues(new Uint8Array(16)))}`;
-  return { pass: `${body}.${await sigOf(body, serviceKey)}`, expiresAt: new Date(exp * 1000).toISOString() };
+  return {
+    pass: `${body}.${await sigOf(body, serviceKey)}`,
+    expiresAt: new Date(exp * 1000).toISOString(),
+    ttlSeconds: Math.floor((exp * 1000 - now) / 1000),
+  };
 }
 
 const PASS_SHAPE = /^v1\.(\d{10})\.([0-9a-f]{32})\.([0-9a-f]{64})$/;
@@ -63,19 +76,31 @@ export async function verifyBoardPass(pass: string, serviceKey: string, now = Da
   return sameHex(m[3], await sigOf(`v1.${m[1]}.${m[2]}`, serviceKey));
 }
 
-/** What the gate knows of this request's pass. No secret (or no service key to sign with): 'unconfigured' for everyone. */
-export async function passStateOf(h: Headers, serviceKey: string, secret: string, now = Date.now()): Promise<PassState> {
-  if (!secret || !serviceKey) return "unconfigured";
+/**
+ * What the gate knows of this request's pass, and the id the counter meters a
+ * valid one by. No secret (or no service key to sign with): 'unconfigured'
+ * for everyone. The id is null unless the pass is valid.
+ */
+export async function readBoardPass(
+  h: Headers, serviceKey: string, secret: string, now = Date.now(),
+): Promise<{ state: PassState; id: string | null }> {
+  if (!secret || !serviceKey) return { state: "unconfigured", id: null };
   const offered = (h.get(BOARD_PASS_HEADER) ?? "").trim();
-  if (!offered) return "none";
-  return (await verifyBoardPass(offered, serviceKey, now)) ? "valid" : "invalid";
+  if (!offered) return { state: "none", id: null };
+  if (!(await verifyBoardPass(offered, serviceKey, now))) return { state: "invalid", id: null };
+  return { state: "valid", id: offered.split(".")[2].slice(0, 16) };
+}
+
+export async function passStateOf(h: Headers, serviceKey: string, secret: string, now = Date.now()): Promise<PassState> {
+  return (await readBoardPass(h, serviceKey, secret, now)).state;
 }
 
 type Siteverify = { success?: unknown; hostname?: unknown; "error-codes"?: unknown };
 
 /**
- * The board-pass action: a Turnstile token in, a pass out. Not counted and no
- * database. 503 without the secret; 403 with Cloudflare's error codes when the
+ * The board-pass action: a Turnstile token in, {pass, expiresAt, ttlSeconds}
+ * out. Not counted and no database. 503 without the secret (the page then
+ * stops asking for the rest of its session); 403 with Cloudflare's error codes when the
  * token fails or was solved on a host we do not serve; 503 when siteverify
  * cannot be reached inside its deadline.
  */

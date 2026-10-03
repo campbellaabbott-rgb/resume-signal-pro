@@ -10,8 +10,9 @@
  * -- harvesting the corpus through the site's publishable key, around the
  * metered /v1 API. Migration 20261002140000 is the meter; anon-budget.ts
  * decides who reaches it. Migration 20261003180000 (.87) restates the counter
- * with the caller's network and board-pass state; its own rules are held in
- * the last describe block below.
+ * with the caller's network, board-pass state and pass id; its own rules
+ * (the network block, the pass meter, requirePass and the shared tooling
+ * row) are held in the last describe blocks below.
  *
  * WHAT THIS HOLDS, executed against the LAST migration that defines the
  * counter (what the database runs) applied over the meter's own migration, in
@@ -45,7 +46,9 @@
  *     rows equal the sum of its country rows;
  *   - the SHAPE: one INSERT into each table, both inside one data-modifying
  *     WITH, the verdict assigned inside the conflict update and returned by
- *     that statement, and no read-then-write of the counter anywhere.
+ *     that statement, and no read-then-write of the counter anywhere; the one
+ *     other meter INSERT is a pass's own day row, which decides and returns
+ *     its verdict the same way.
  * TEETH, in this file: a `<=` cap test lets a fourth call through a cap of 3;
  * a select-then-update rewrite fails the shape check.
  */
@@ -392,14 +395,24 @@ function statements(body: string): string[] {
 
 function shapeOffences(body: string): string[] {
   const out: string[] = [];
-  const meterIns = body.match(/INSERT INTO public\.job_board_anon_meter\b/g) ?? [];
   const hourIns = body.match(/INSERT INTO public\.job_board_anon_hourly\b/g) ?? [];
-  if (meterIns.length !== 1) out.push(`expected one INSERT into the meter, found ${meterIns.length}`);
   if (hourIns.length !== 1) out.push(`expected one INSERT into the hourly table, found ${hourIns.length}`);
   const stmts = statements(body);
-  const counting = stmts.find((s) => /INSERT INTO public\.job_board_anon_meter\b/.test(s)) ?? "";
-  if (!/^WITH\b/i.test(counting) || !/INSERT INTO public\.job_board_anon_hourly\b/.test(counting)) {
+  const meterStmts = stmts.filter((s) => /INSERT INTO public\.job_board_anon_meter\b/.test(s));
+  const counting = meterStmts.find((s) => /INSERT INTO public\.job_board_anon_hourly\b/.test(s)) ?? "";
+  if (!/^WITH\b/i.test(counting)) {
     out.push("the two upserts are not one data-modifying WITH statement");
+  }
+  const meterInCounting = (counting.match(/INSERT INTO public\.job_board_anon_meter\b/g) ?? []).length;
+  if (meterInCounting !== 1) out.push(`expected one INSERT into the meter in the counting statement, found ${meterInCounting}`);
+  // .87: the only other meter INSERT is a pass's own day row, and it decides
+  // and returns its verdict inside its own conflict update, the same way.
+  const others = meterStmts.filter((s) => s !== counting);
+  if (others.length > 1) out.push(`expected at most one other INSERT into the meter (a pass's day row), found ${others.length}`);
+  for (const o of others) {
+    if (!/VALUES\s*\(\s*v_day,\s*'pass:'\s*\|\|/.test(o)) out.push(`a meter INSERT outside the counting statement that is not a pass's day row: ${o.slice(0, 80)}`);
+    if (!/ON CONFLICT \(day_utc, bucket\) DO UPDATE SET[\s\S]*?\blast_call_over\s*=/.test(o)) out.push("the pass row's verdict is not assigned inside its conflict update");
+    if (!/RETURNING[^;]*\blast_call_over\s+INTO\b/.test(o)) out.push("the pass row's upsert does not return its own verdict");
   }
   if (!/ON CONFLICT \(day_utc, bucket\) DO UPDATE SET[\s\S]*?\blast_call_over\s*=/.test(counting)) out.push("the verdict is not assigned inside the conflict update");
   if (!/RETURNING[^;]*\blast_call_over\b/.test(counting)) out.push("the statement does not return its own verdict");
@@ -420,7 +433,7 @@ describe("the shape: one statement counts, decides and returns", () => {
 
   it("teeth: a select-then-update rewrite fails the shape check", () => {
     const stmts = statements(body);
-    const counting = stmts.find((s) => /INSERT INTO public\.job_board_anon_meter\b/.test(s))!;
+    const counting = stmts.find((s) => /INSERT INTO public\.job_board_anon_meter\b/.test(s) && /INSERT INTO public\.job_board_anon_hourly\b/.test(s))!;
     const racy = body.replace(counting, `SELECT m.within_cap INTO v_within FROM public.job_board_anon_meter m WHERE m.day_utc = v_day AND m.bucket = v_bucket;
   UPDATE public.job_board_anon_meter m SET within_cap = m.within_cap + 1 WHERE m.day_utc = v_day AND m.bucket = v_bucket;
   INSERT INTO public.job_board_anon_hourly AS hh (hour_utc, bucket, kind, country) VALUES (v_hour, v_bucket, v_kind, v_cc)`);
@@ -428,6 +441,16 @@ describe("the shape: one statement counts, decides and returns", () => {
     const off = shapeOffences(racy);
     expect(off.some((o) => /read of the counter/.test(o))).toBe(true);
     expect(off.some((o) => /separate UPDATE/.test(o))).toBe(true);
+  });
+
+  it("teeth: a pass row that reads its count back instead of returning its verdict fails the shape check", () => {
+    const passRow = statements(body).find((s) => /'pass:'\s*\|\|/.test(s) && /INSERT INTO public\.job_board_anon_meter\b/.test(s))!;
+    expect(passRow, "the pass row is in the counter").toBeTruthy();
+    const racy = body.replace(passRow, passRow.replace(/RETURNING pm\.last_call_over INTO v_pass_spent/, "RETURNING pm.within_cap INTO v_within"));
+    expect(racy).not.toBe(body);
+    expect(shapeOffences(racy)).toContain("the pass row's upsert does not return its own verdict");
+    const second = body.replace(passRow, `${passRow};\n    INSERT INTO public.job_board_anon_meter AS q (day_utc, bucket) VALUES (v_day, v_bucket || ':x') ON CONFLICT DO NOTHING`);
+    expect(shapeOffences(second).some((o) => /at most one other INSERT/.test(o))).toBe(true);
   });
 
   it("teeth: an off-by-one cap test lets a fourth call through a cap of 3", async () => {
@@ -452,15 +475,21 @@ describe("the shape: one statement counts, decides and returns", () => {
 // here: both refuse only while enforcing; an entry or a p_net that is not an
 // address is ignored, never an error (an error fails the gate open and turns
 // the whole meter off); 'unconfigured' and an older job-board's NULL are never
-// refused; only kinds address and unknown_address are asked for a pass; a
-// listed network or a zero-cap country refuses whatever the pass, and then
+// refused; kinds address, unknown_address and unproven_* are asked for a pass
+// (a declaration is not the reader proof); passless build and probe share ONE
+// row per kind at the code cap, so a public header cannot be multiplied by a
+// pool's addresses; a pass is metered by its id and is 'spent' past passCap;
+// a listed network or a zero-cap country refuses whatever the pass, and then
 // says so instead of pass_rule; every call lands in the network table; the
 // reader clamps and publishes aggregates only; the migration's own check has
-// teeth.
+// teeth, in the catalogue and in behaviour.
 
 type Verdict9 = Verdict & { network_rule: boolean; pass_rule: boolean };
 const call9 = async (db: PGlite, bucket: string, kind: string, cc: string | null, net: string | null, pass: string | null, caps = CAPS): Promise<Verdict9> =>
   (await db.query<Verdict9>("SELECT * FROM public.job_board_anon_check($1, $2, $3, $4, $5, $6, $7, $8, $9)", [bucket, kind, cc, ...caps, false, net, pass])).rows[0];
+/** The call job-board .87 makes: the pass id beside a valid pass. */
+const call10 = async (db: PGlite, bucket: string, kind: string, net: string | null, pass: string | null, passId: string | null, caps = CAPS): Promise<Verdict9> =>
+  (await db.query<Verdict9>("SELECT * FROM public.job_board_anon_check($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", [bucket, kind, "US", ...caps, false, net, pass, passId])).rows[0];
 type NetRow = { net: string; kind: string; pass: string; within_cap: number; over_cap: number };
 const netRows = async (db: PGlite) =>
   (await db.query<NetRow>("SELECT net, kind, pass, within_cap, over_cap FROM public.job_board_anon_net_hourly ORDER BY net, kind, pass")).rows;
@@ -512,8 +541,13 @@ describe(".87: the network and the pass, executed", () => {
     expect(await call9(db, "ip:u", "address", "US", "8.8.8.0/24", "unconfigured"), "a missing secret never takes the board down").toMatchObject({ is_allowed: true, pass_rule: false });
     expect(await call9(db, "ip:j", "address", "US", "8.8.8.0/24", "VALID"), "any other text is unconfigured").toMatchObject({ is_allowed: true, pass_rule: false });
     expect(await call(db, "ip:old", "address", "US"), "an older job-board's seven arguments: NULL is unconfigured").toMatchObject({ is_allowed: true });
-    for (const kind of ["build", "probe", "unproven_api", "unproven_mcp", "unproven_digest"]) {
-      expect(await call9(db, `ip:${kind}`, kind, "US", "8.8.8.0/24", "none"), `${kind} is never asked for a pass`).toMatchObject({ is_allowed: true, pass_rule: false });
+    for (const kind of ["unproven_api", "unproven_mcp", "unproven_digest"]) {
+      expect(await call9(db, `ip:${kind}`, kind, "US", "8.8.8.0/24", "none"), `${kind}: a declaration without the reader proof is asked`).toMatchObject({ is_allowed: false, pass_rule: true });
+      expect(await call9(db, `ip:${kind}:v`, kind, "US", "8.8.8.0/24", "valid")).toMatchObject({ is_allowed: true, pass_rule: false });
+      expect(await call9(db, `ip:${kind}:u`, kind, "US", "8.8.8.0/24", "unconfigured")).toMatchObject({ is_allowed: true, pass_rule: false });
+    }
+    for (const kind of ["build", "probe"]) {
+      expect(await call9(db, `ip:${kind}`, kind, "US", "8.8.8.0/24", "none"), `${kind} cannot solve a browser check, so it is not refused for one`).toMatchObject({ is_allowed: true, pass_rule: false });
     }
     await setting(db, { enforce: true, requirePass: "true" });
     expect(await call9(db, "ip:s", "address", "US", "8.8.8.0/24", "none"), "a string is not the switch").toMatchObject({ is_allowed: true, pass_rule: false });
@@ -538,12 +572,71 @@ describe(".87: the network and the pass, executed", () => {
     expect(await call9(db, "ip:o3", "address", "US", "8.8.8.0/24", "valid")).toMatchObject({ is_allowed: true, network_rule: false, pass_rule: false, over_today: 0 });
   });
 
+  it("under requirePass, passless build and probe share ONE row per kind at the code cap, whatever the override says", async () => {
+    await setting(db, { enforce: true, requirePass: true, buildCap: 100000000, probeCap: 100000000 });
+    // CAPS = address 3, build 10, probe 5: the shared rows are judged at 10 and 5, not at 100,000,000.
+    const builds: Verdict9[] = [];
+    for (let i = 0; i < 12; i++) builds.push(await call9(db, `ip:pool${i}`, "build", "US", `198.51.${i}.0/24`, "none"));
+    expect(builds.map((r) => r.is_allowed), "twelve addresses claiming build: ten served in total, not ten each").toEqual([...Array(10).fill(true), false, false]);
+    expect(builds.every((r) => r.cap_today === 10 && !r.pass_rule && !r.network_rule)).toBe(true);
+    expect(await meter(db, "tool:build")).toEqual({ within_cap: 10, over_cap: 2 });
+    expect(await meter(db, "ip:pool0"), "no per-address row for the pool to multiply").toBeUndefined();
+    expect((await hourly(db, "tool:build")).map((r) => r.kind)).toEqual(["build"]);
+    expect(await call9(db, "ip:probe1", "probe", "US", "8.8.8.0/24", "invalid")).toMatchObject({ is_allowed: true, cap_today: 5 });
+    expect(await meter(db, "tool:probe")).toEqual({ within_cap: 1, over_cap: 0 });
+    await setting(db, { enforce: true, requirePass: true, buildCap: 2 });
+    expect(await call9(db, "ip:pool99", "build", "US", "198.51.99.0/24", "none"), "a lower override still lowers it").toMatchObject({ is_allowed: false, cap_today: 2 });
+    expect(await call9(db, "ip:own", "build", "US", "8.8.8.0/24", "unconfigured"), "no secret: its own row, as before").toMatchObject({ is_allowed: true, cap_today: 2, used_today: 1 });
+    expect(await call9(db, "ip:own2", "build", "US", "8.8.8.0/24", "valid"), "a valid pass: its own row").toMatchObject({ is_allowed: true, used_today: 1 });
+    await setting(db, { enforce: true, requirePass: false });
+    expect(await call9(db, "ip:own3", "build", "US", "8.8.8.0/24", "none"), "requirePass off: its own row, as before").toMatchObject({ is_allowed: true, used_today: 1, cap_today: 10 });
+    await setting(db, { enforce: true, requirePass: true, countries: ["CN"], countryCap: 0 });
+    expect(await call9(db, "ip:cnb", "build", "CN", "1.80.0.0/24", "none"), "the country rule still outranks it").toMatchObject({ is_allowed: false, country_rule: true });
+    expect(await meter(db, "ip:cnb")).toEqual({ within_cap: 0, over_cap: 1 });
+  });
+
+  it("a pass is metered by its id: past passCap it is 'spent', shown by name, and refused only under requirePass", async () => {
+    const A = "0123456789abcdef";
+    const B = "fedcba9876543210";
+    await setting(db, { enforce: true, passCap: 2 });
+    const observed: Verdict9[] = [];
+    for (let i = 0; i < 4; i++) observed.push(await call10(db, `ip:rot${i}`, "address", `203.0.${i}.0/24`, "valid", A));
+    expect(observed.every((r) => r.is_allowed && !r.pass_rule), "observing: every call served").toBe(true);
+    expect(await meter(db, `pass:${A}`), "one pass, four addresses, one row").toEqual({ within_cap: 2, over_cap: 2 });
+    expect((await netRows(db)).map((r) => [r.pass, r.within_cap + r.over_cap]), "the telemetry names the spent calls").toEqual([["spent", 2], ["valid", 2]]);
+    await setting(db, { enforce: true, passCap: 2, requirePass: true });
+    expect(await call10(db, "ip:rot9", "address", "203.0.9.0/24", "valid", A), "under requirePass a spent pass is no pass").toMatchObject({ is_allowed: false, pass_rule: true, cap_today: 0 });
+    expect(await call10(db, "ip:rot9", "address", "203.0.9.0/24", "valid", B), "a fresh pass reads at once").toMatchObject({ is_allowed: true, pass_rule: false });
+    expect(await call10(db, "ip:rotb", "build", "203.0.9.0/24", "valid", A), "a spent pass does not buy a tool its own row either").toMatchObject({ is_allowed: true, cap_today: 10 });
+    expect(await meter(db, "tool:build")).toEqual({ within_cap: 1, over_cap: 0 });
+    for (const junk of ["0123456789ABCDEF", "0123456789abcde", "0123456789abcdef0", "xyz", ""]) {
+      expect(await call10(db, `ip:junk${junk}`, "address", "8.8.8.0/24", "valid", junk), JSON.stringify(junk)).toMatchObject({ is_allowed: true });
+      expect(await meter(db, `pass:${junk}`), `${JSON.stringify(junk)} is no id`).toBeUndefined();
+    }
+    await call10(db, "ip:inv", "address", "8.8.8.0/24", "invalid", "aaaaaaaaaaaaaaaa");
+    expect(await meter(db, "pass:aaaaaaaaaaaaaaaa"), "an id beside a pass that is not valid is not metered").toBeUndefined();
+  });
+
+  it("the default passCap is 600 counted reads per pass per UTC day", async () => {
+    await setting(db, { enforce: true, requirePass: true });
+    await db.exec("INSERT INTO public.job_board_anon_meter VALUES ((now() AT TIME ZONE 'UTC')::date, 'pass:1111111111111111', 599, 0, false)");
+    expect(await call10(db, "ip:d1", "address", "8.8.8.0/24", "valid", "1111111111111111"), "the 600th").toMatchObject({ is_allowed: true });
+    expect(await call10(db, "ip:d2", "address", "8.8.8.0/24", "valid", "1111111111111111"), "the 601st").toMatchObject({ is_allowed: false, pass_rule: true });
+    await setting(db, { enforce: true, requirePass: true, passCap: 1e20 });
+    expect(await call10(db, "ip:d3", "address", "8.8.8.0/24", "valid", "1111111111111111"), "an absurd override is clamped, never an error").toMatchObject({ is_allowed: true });
+  });
+
   it("with today's production row (CN at 0, the caps out of reach) nothing the .87 job-board sends is refused unless it reads CN", async () => {
     await setting(db, { enforce: true, countries: ["CN"], countryCap: 0, addressCap: 100000000, buildCap: 100000000, probeCap: 100000000 });
     for (const [net, pass] of [["8.8.8.0/24", "none"], ["43.130.1.0/24", "invalid"], ["2001:db8:1::/48", "valid"], [null, "unconfigured"]] as const) {
       expect(await call9(db, `ip:${net}`, "address", "XX", net, pass), `${net} ${pass}`).toMatchObject({ is_allowed: true, network_rule: false, pass_rule: false });
     }
     expect(await call9(db, "ip:cn", "address", "CN", "1.80.0.0/24", "valid"), "the China block still refuses").toMatchObject({ is_allowed: false, country_rule: true });
+    for (const kind of ["build", "probe", "unproven_api"]) {
+      expect(await call10(db, `ip:prod-${kind}`, kind, "8.8.8.0/24", "none", null), kind).toMatchObject({ is_allowed: true, pass_rule: false });
+    }
+    expect(await meter(db, "tool:build"), "no requirePass: nobody shares a tooling row").toBeUndefined();
+    for (let i = 0; i < 3; i++) expect((await call10(db, `ip:prod-p${i}`, "address", "8.8.8.0/24", "valid", "2222222222222222")).is_allowed).toBe(true);
   });
 
   it("every call lands in the network table by /16 (IPv4) or /32 (IPv6), kind and pass state; 'none' without a network", async () => {
@@ -606,17 +699,65 @@ describe(".87: the network and the pass, executed", () => {
     const check = code.slice(code.lastIndexOf("DO $$"));
     expect(check).toMatch(/RAISE EXCEPTION/);
     await db.exec(check); // passes on the state the migration left
-    const nine = "public.job_board_anon_check(text, text, text, integer, integer, integer, boolean, text, text)";
-    await db.exec(`GRANT EXECUTE ON FUNCTION ${nine} TO anon`);
+    const ten = "public.job_board_anon_check(text, text, text, integer, integer, integer, boolean, text, text, text)";
+    await db.exec(`GRANT EXECUTE ON FUNCTION ${ten} TO anon`);
     await expect(db.exec(check)).rejects.toThrow(/executable by anon/);
-    await db.exec(`REVOKE EXECUTE ON FUNCTION ${nine} FROM anon`);
-    await db.exec("GRANT SELECT ON public.job_board_anon_net_hourly TO authenticated");
-    await expect(db.exec(check)).rejects.toThrow(/readable or writable/);
-    await db.exec("REVOKE SELECT ON public.job_board_anon_net_hourly FROM authenticated");
+    await db.exec(`REVOKE EXECUTE ON FUNCTION ${ten} FROM anon`);
+    for (const [role, priv] of [["authenticated", "SELECT"], ["authenticated", "UPDATE"], ["anon", "DELETE"], ["anon", "INSERT"], ["authenticated", "TRUNCATE"]]) {
+      await db.exec(`GRANT ${priv} ON public.job_board_anon_net_hourly TO ${role}`);
+      await expect(db.exec(check), `${role} ${priv}`).rejects.toThrow(/readable or writable by a client role/);
+      await db.exec(`REVOKE ${priv} ON public.job_board_anon_net_hourly FROM ${role}`);
+    }
     await db.exec("CREATE FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean) RETURNS integer LANGUAGE sql AS 'SELECT 1'");
     await expect(db.exec(check)).rejects.toThrow(/want exactly one/);
     await db.exec("DROP FUNCTION public.job_board_anon_check(text, text, text, integer, integer, integer, boolean)");
     await db.exec(check);
+  });
+
+  it("the check's behaviour half rolls itself back: the owner's row and every table are exactly as they were", async () => {
+    const code = sqlCodeOf(MIGRATION.sql);
+    const check = code.slice(code.lastIndexOf("DO $$"));
+    const prod = { enforce: true, countries: ["CN"], countryCap: 0, addressCap: 100000000, buildCap: 100000000, probeCap: 100000000 };
+    await setting(db, prod);
+    await call9(db, "ip:before", "address", "US", "8.8.8.0/24", "none");
+    const snap = async () => (await db.query<{ t: string }>(`SELECT
+      coalesce((SELECT jsonb_agg(m ORDER BY m.bucket) FROM public.job_board_anon_meter m)::text, '-')
+      || coalesce((SELECT jsonb_agg(h ORDER BY h.bucket, h.kind) FROM public.job_board_anon_hourly h)::text, '-')
+      || coalesce((SELECT jsonb_agg(n ORDER BY n.net, n.kind, n.pass) FROM public.job_board_anon_net_hourly n)::text, '-')
+      || coalesce((SELECT v::text FROM public.job_board_meta WHERE k = 'anon_board_budget'), '-') AS t`)).rows[0].t;
+    const before = await snap();
+    expect(before).toMatch(/ip:before/);
+    await db.exec(check);
+    expect(await snap()).toBe(before);
+    await setting(db, null);
+    await db.exec(check);
+    expect((await db.query("SELECT 1 FROM public.job_board_meta WHERE k = 'anon_board_budget'")).rows, "a database with no row is left with none").toHaveLength(0);
+  });
+
+  it("teeth in behaviour: the counter without its defaults, or with a body that applies no rule, fails the migration", async () => {
+    // .86 calls with seven NAMED arguments; without the four defaults it gets
+    // PGRST202 and its gate fails open, switching the China block off.
+    const head = MIGRATION.sql.indexOf("CREATE OR REPLACE FUNCTION public.job_board_anon_check(");
+    const params = MIGRATION.sql.slice(head, MIGRATION.sql.indexOf("RETURNS TABLE", head));
+    const bare = params.replace(/ DEFAULT (?:false|NULL)/g, "");
+    expect(bare).not.toBe(params);
+    expect((params.match(/ DEFAULT /g) ?? []).length).toBe(4);
+    const noDefaults = MIGRATION.sql.replace(params, bare);
+    await expect(boot(chainWith(noDefaults)), "a counter without its defaults").rejects.toThrow(/want the last four arguments defaulted/);
+
+    const fresh = await boot(CHAIN);
+    try {
+      const code = sqlCodeOf(MIGRATION.sql);
+      const check = code.slice(code.lastIndexOf("DO $$"));
+      // The same signature and return shape, a body that refuses nothing: the
+      // catalogue half cannot tell; the behaviour half must.
+      await fresh.exec(`${params}
+        RETURNS TABLE (is_allowed boolean, used_today integer, over_today integer, cap_today integer, country_rule boolean, enforcing boolean, network_rule boolean, pass_rule boolean)
+        LANGUAGE sql AS $f$ SELECT true, 1, 0, 10000, false, true, false, false $f$`);
+      await expect(fresh.exec(check)).rejects.toThrow(/does not behave as this file intends: a caller inside a blockedNetworks entry was not refused/);
+      await fresh.exec(MIGRATION.sql); // the real file again: idempotent, and it passes its own check
+      await fresh.exec(check);
+    } finally { await fresh.close(); }
   });
 });
 
@@ -643,7 +784,7 @@ describe(".87: the owner's levers, run verbatim from the deploy note", () => {
 
   it("the note carries every lever, and READ THE NETWORKS names the reader's own arguments", async () => {
     expect(NOTE87.length).toBeGreaterThan(2000);
-    for (const n of ["READ THE NETWORKS", "BLOCK NETWORKS", "UNBLOCK ONE NETWORK", "UNBLOCK NETWORKS", "REQUIRE THE PASS", "UNREQUIRE"]) expect(lever(n).length, n).toBeGreaterThan(20);
+    for (const n of ["READ THE NETWORKS", "BLOCK NETWORKS", "UNBLOCK ONE NETWORK", "UNBLOCK NETWORKS", "SET THE PASS CAP", "REQUIRE THE PASS", "UNREQUIRE"]) expect(lever(n).length, n).toBeGreaterThan(20);
     const read = lever("READ THE NETWORKS");
     expect(read).toMatch(/rest\/v1\/rpc\/get_board_anon_networks/);
     const args = JSON.parse(/-d '([^']+)'/.exec(read)![1]) as Record<string, number>;
@@ -672,5 +813,17 @@ describe(".87: the owner's levers, run verbatim from the deploy note", () => {
     await db.exec(lever("UNREQUIRE"));
     expect(await row(), "every lever leaves the owner's row exactly as it found it").toEqual(prod);
     expect(await call9(db, "ip:l6", "address", "XX", "8.8.8.0/24", "none")).toMatchObject({ is_allowed: true });
+  });
+
+  it("set the pass cap, and back to the default: the cap moves and the rest of the row stays", async () => {
+    const prod = { enforce: true, countries: ["CN"], countryCap: 0, addressCap: 100000000, buildCap: 100000000, probeCap: 100000000 };
+    await setting(db, prod);
+    await db.exec(lever("SET THE PASS CAP"));
+    expect(await row()).toEqual({ ...prod, passCap: 300 });
+    const line = NOTE87.split("\n").find((l) => l.startsWith("- SET THE PASS CAP"))!;
+    const statements = [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((x) => /^(?:INSERT|UPDATE)\b/.test(x));
+    expect(statements, "the lever and its way back").toHaveLength(2);
+    await db.exec(statements[1]);
+    expect(await row(), "back to the default leaves the owner's row exactly as it found it").toEqual(prod);
   });
 });
