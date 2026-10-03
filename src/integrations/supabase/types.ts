@@ -6050,6 +6050,7 @@ export type Database = {
         }
         Returns: number
       }
+      queue_wrapper_exposure: { Args: never; Returns: Json }
       rate_budget_state: {
         Args: { p_function?: string; p_ip: string; p_window_minutes?: number }
         Returns: {

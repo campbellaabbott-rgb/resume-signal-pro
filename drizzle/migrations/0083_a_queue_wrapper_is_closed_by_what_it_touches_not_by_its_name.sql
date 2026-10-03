@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261002104317_a_queue_wrapper_is_closed_by_what_it_touches_not_by_its_name.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20261002104317_a_queue_wrapper_is_closed_by_what_it_touches_not_by_its_name.sql';
