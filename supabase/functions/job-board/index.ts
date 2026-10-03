@@ -94,6 +94,7 @@ import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointA
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS } from "./anon-budget.ts";
+import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +113,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.86"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.87"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -3954,21 +3955,30 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const liveIds = new Set(rowsById.keys());
         let newRows = rows.filter((r) => !existing.has(r.id as string));
         // Rationale: docs/job-board-index-notes.md#n099-newrows-length-0
+        // Tombstoned ids the feed has since re-dated; their tombstones move only after the insert lands.
+        // Rationale: docs/job-board-index-notes.md#n412-redated-past-tombstone
+        let readmitted: Array<Record<string, unknown>> = [];
         if (newRows.length > 0) {
           try {
-            const blocked = new Set<string>();
+            const tombs: Tombstone[] = [];
             const ids = newRows.map((r) => String(r.id));
             for (let i = 0; i < ids.length; i += 200) {
               const { data: tomb, error: tErr } = await client
                 .from("job_board_aged_out")
-                .select("id")
+                .select("id, posted_at")
                 .in("id", ids.slice(i, i + 200));
               if (tErr) throw tErr;
-              for (const t of tomb ?? []) blocked.add(String((t as { id: string }).id));
+              tombs.push(...((tomb ?? []) as Tombstone[]));
             }
+            const verdict = splitTombstoned(newRows, tombs);
+            const blocked = verdict.refused;
+            readmitted = verdict.readmitted;
             if (blocked.size > 0) {
               newRows = newRows.filter((r) => !blocked.has(String(r.id)));
               console.log(`[JOB-BOARD] ${s.token}: ${blocked.size} aged-out posting(s) refused re-entry`);
+            }
+            if (readmitted.length > 0) {
+              console.log(`[JOB-BOARD] ${s.token}: ${readmitted.length} aged-out posting(s) re-admitted — the feed re-dated them past their tombstone`);
             }
           } catch (e) {
             console.warn(`[JOB-BOARD] aged-out check skipped for ${s.token}:`, String((e as Error)?.message ?? e).slice(0, 120));
@@ -4358,6 +4368,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (!boardOk) {
           failed.push(`${s.name} (db-write)`);
           continue;
+        }
+        // The re-admitted rows are stored, so their tombstones now record the date they came back on.
+        if (readmitted.length > 0) {
+          const { error: rdErr } = await client.from("job_board_aged_out").upsert(
+            readmitted.map((r) => ({ id: String(r.id), source: String(r.source), company_token: String(r.company_token), posted_at: r.posted_at as string })),
+            { onConflict: "id" },
+          );
+          if (rdErr) console.warn(`[JOB-BOARD] ${s.token}: re-admitted tombstones not moved (a re-dated row may re-enter once more):`, String(rdErr.message ?? "").slice(0, 120));
         }
         // Rationale: docs/job-board-index-notes.md#n120-truncatedfetch
         const truncatedFetch = r.windowed === true;
@@ -5120,10 +5138,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
           const agedRows = agedRes.data as unknown as Array<Record<string, unknown>> | null;
           if (!agedRows?.length) continue;
-          // Write the tombstone for every aged row, whether or not it is new
-          // to us — this is what keeps it from coming back.
-          waitUntil(Promise.resolve(client.from("job_board_aged_out").upsert(
-            agedRows.map((r) => ({
+          // Write the tombstone for every aged row not already tombstoned —
+          // this is what keeps it from coming back. An existing tombstone keeps
+          // its date: a re-admitted row's records the date it came back on.
+          // Rationale: docs/job-board-index-notes.md#n412-redated-past-tombstone
+          const untombstoned = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
+          if (untombstoned.length > 0) waitUntil(Promise.resolve(client.from("job_board_aged_out").upsert(
+            untombstoned.map((r) => ({
               id: r.id as string,
               source: r.source as string,
               company_token: r.company_token as string,
