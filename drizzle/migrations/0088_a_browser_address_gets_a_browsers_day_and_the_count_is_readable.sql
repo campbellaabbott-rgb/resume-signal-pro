@@ -1,0 +1,2 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261002140000_a_browser_address_gets_a_browsers_day_and_the_count_is_readable.sql'));
+UPDATE public._mig_stage SET applied_at = now() WHERE name = '20261002140000_a_browser_address_gets_a_browsers_day_and_the_count_is_readable.sql';

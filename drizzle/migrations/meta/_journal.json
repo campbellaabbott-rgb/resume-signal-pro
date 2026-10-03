@@ -617,6 +617,13 @@
       "when": 1791037443085,
       "tag": "0087_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1791037451178,
+      "tag": "0088_a_browser_address_gets_a_browsers_day_and_the_count_is_readable",
+      "breakpoints": true
     }
   ]
 }
