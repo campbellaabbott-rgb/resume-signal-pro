@@ -1232,4 +1232,28 @@ code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/job_board_anon_n
 # The ten-argument counter, called as anon with its real argument names: 42501.
 probe job_board_anon_check '{"p_bucket":"verify:anon-probe","p_kind":"probe","p_country":"US","p_address_cap":0,"p_build_cap":0,"p_probe_cap":0,"p_bare":true,"p_net":"192.0.2.0/24","p_pass":"none","p_pass_id":"00000000000000ab"}'
 
+echo "== 7m. every cron job runs under its own function header, not the session two minutes (20261004010000) =="
+# A function header never governs a pg_cron run (20261003220000): the timer is
+# armed when the cron statement starts. 20261004010000 puts each header longer
+# than two minutes into its job command and adds get_cron_health, so a job
+# being cancelled is visible with the publishable key. The 24h window can
+# still hold cancels from before the apply, so a job that now sets a timeout
+# is reported, not judged; a job that sets none and is being cancelled FAILs.
+R get_cron_health '{"p_hours":24}' > /tmp/vd_7m.json
+node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+let rows=null;try{rows=JSON.parse(fs.readFileSync("/tmp/vd_7m.json","utf8"))}catch{}
+if(!Array.isArray(rows)){ok(false,"get_cron_health as anon -> "+JSON.stringify(rows).slice(0,160)+" (PGRST202 = 20261004010000 not applied)");process.exit(0)}
+const want=["ch_jobname","ch_schedule","ch_active","ch_timeout","ch_runs","ch_failed","ch_timeouts","ch_last_start","ch_last_status","ch_last_seconds","ch_max_seconds"];
+const keys=[...new Set(rows.flatMap((r)=>Object.keys(r)))];
+ok(rows.length>0&&keys.every((k)=>want.includes(k)),"get_cron_health answers anon with ch_* aggregates only: "+rows.length+" jobs (never a command or a message)");
+const set=rows.filter((r)=>r.ch_timeout);info(set.length+" jobs set their own timeout in the command: "+set.map((r)=>r.ch_jobname+"="+r.ch_timeout).join(", "));
+for(const j of ["refresh-stats-cache","refresh-explore-cache"]){const r=rows.find((x)=>x.ch_jobname===j);ok(!!r&&!!r.ch_timeout,j+" sets its timeout in the command ("+(r?r.ch_timeout:"no such job")+")")}
+const killed=rows.filter((r)=>!r.ch_timeout&&Number(r.ch_timeouts)>0&&r.ch_active!==false);
+ok(killed.length===0,"no active job without a timeout of its own was cancelled by a statement timeout in 24h"+(killed.length?": "+killed.map((r)=>r.ch_jobname+" ("+r.ch_timeouts+" cancels, longest "+r.ch_max_seconds+"s)").join(", "):""));
+for(const r of rows.filter((x)=>x.ch_timeout&&Number(x.ch_timeouts)>0))info(r.ch_jobname+": "+r.ch_timeouts+" statement-timeout cancels in 24h, last run "+r.ch_last_status+" in "+r.ch_last_seconds+"s at "+r.ch_last_start+" (cancels before the apply are expected; a cancel after it at ~"+r.ch_timeout+" means the header itself is too short)");
+const slow=rows.filter((r)=>Number(r.ch_max_seconds)>=110).sort((a,b)=>Number(b.ch_max_seconds)-Number(a.ch_max_seconds));
+for(const r of slow.slice(0,12))info("long runs: "+r.ch_jobname+" longest "+r.ch_max_seconds+"s, last "+r.ch_last_status+" "+r.ch_last_seconds+"s, timeout "+(r.ch_timeout||"none (session two minutes)"));
+const failing=rows.filter((r)=>r.ch_last_status==="failed");if(failing.length)info("jobs whose LAST run failed: "+failing.map((r)=>r.ch_jobname).join(", "));'
+
 echo "done."
