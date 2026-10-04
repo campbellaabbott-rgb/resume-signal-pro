@@ -437,10 +437,14 @@ async function triggerProductDelivery(
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
           body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId })
         }),
+        // The service-role key: the generator's spend gate never counts our
+        // own servers by address or against its free ceiling, so strangers
+        // spending the free allowance cannot drop a paid letter. The session
+        // names the purchase, whose daily allowance still counts.
         fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language, sessionId })
         })
       ]);
 
@@ -498,11 +502,14 @@ async function triggerProductDelivery(
         default: throw new Error(`Unknown product type: ${productType}`);
       }
 
+      // The service-role key, for the same reason as the Apply Assistant's
+      // letter above: a delivery is never counted against a free ceiling or
+      // our egress address (_shared/model-spend-gate.ts).
       const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+          'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
         },
         body: JSON.stringify(body)
       });

@@ -14,6 +14,9 @@ const corsHeaders = {
 };
 
 // Free from the job board: an address allowance plus a function-wide ceiling.
+// No purchase is delivered through this function (the Apply Assistant's
+// résumé comes from generate-apply-package), so no session is ever off the
+// ceiling here: a session id in the body is ignored.
 const TAILORED_LIMITS = { perAddress: 20, globalPerHour: 200 };
 
 // The output cap. The tool call is a summary, 5-7 bullet rewrites and tips
@@ -144,7 +147,9 @@ serve(async (req) => {
     }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const refused = await modelSpendGate(supabase, req, "generate-tailored-resume", TAILORED_LIMITS, corsHeaders, { paidSessionId: body?.sessionId });
+    const refused = await modelSpendGate(supabase, req, "generate-tailored-resume", TAILORED_LIMITS, corsHeaders, {
+      boardPass: body?.boardPass,
+    });
     if (refused) return refused;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

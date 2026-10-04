@@ -18,9 +18,10 @@ const corsHeaders = {
 };
 
 // Free tier reachable by a stranger: an address allowance plus a
-// function-wide ceiling; a paid delivery (a claimed session) is not charged
-// to the ceiling. See _shared/model-spend-gate.ts.
-const CAREER_PATH_LIMITS = { perAddress: 20, globalPerHour: 200 };
+// function-wide ceiling. A Career Path Simulator purchase (and only that) is
+// off the ceiling for its own daily allowance. See _shared/model-spend-gate.ts.
+const CAREER_PATH_LIMITS = { perAddress: 20, globalPerHour: 200, perSessionPerDay: 10 };
+const CAREER_PATH_PRODUCTS = ["career_path_simulator"] as const;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -42,7 +43,10 @@ serve(async (req) => {
     if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const refused = await modelSpendGate(supabase, req, "generate-career-path", CAREER_PATH_LIMITS, corsHeaders, { paidSessionId: sessionId });
+    const refused = await modelSpendGate(supabase, req, "generate-career-path", CAREER_PATH_LIMITS, corsHeaders, {
+      session: sessionId,
+      products: CAREER_PATH_PRODUCTS,
+    });
     if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");

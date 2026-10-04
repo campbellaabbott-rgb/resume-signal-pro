@@ -2,7 +2,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -356,13 +357,6 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  // Purchase-gated, so a stranger is refused before any model call: the
-  // address allowance is the whole limit here, keyed on the address the
-  // platform states (never the first forwarded hop, which the caller
-  // writes) and failing closed (see _shared/model-spend-gate.ts).
-  const refused = await modelSpendGate(supabase, req, "generate-premium-package", { perAddress: 20 }, corsHeaders);
-  if (refused) return refused;
-
   try {
     // Deliberately not applying the site's UI language here — this product's
     // core output (rewrittenResume) is an externally-facing document the
@@ -370,7 +364,10 @@ serve(async (req) => {
     // generate-apply-package and generate-cover-letter. Translating it into
     // the UI's language regardless of the candidate's actual job-search
     // language could quietly damage their real resume.
-    const { resumeText, jobDescription, jobTitle, jobCompany, sessionId } = await req.json();
+    const { resumeText, jobDescription: rawJobDescription, jobTitle: rawJobTitle, jobCompany: rawJobCompany, sessionId } = await req.json();
+    // Short fields reach the prompt cut to a line (defect sweep 1.64).
+    const jobTitle = clipField(rawJobTitle, 200);
+    const jobCompany = clipField(rawJobCompany, 200);
 
     // PAID CONTENT. verify_jwt=false, so without this anyone could POST
     // resumeText and receive the full package free, on our AI spend. The
@@ -398,6 +395,24 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Bounded like every other model input: a résumé past the shared cap is
+    // refused, and a posting is cut to its cap rather than refused, because a
+    // stored posting may be longer (store_temp_resume accepts 50,000) and a
+    // buyer is never refused for the length of the job they applied to.
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) {
+      return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const jobDescription = clipText(rawJobDescription, MAX_JOB_DESCRIPTION_LENGTH);
+
+    // COUNTED ONLY NOW, when the call is about to reach the model. A warm-up
+    // ping, an unpaid stranger and a malformed body are refused above without
+    // spending a slot -- warm-up posts from our own egress address, and anyone
+    // can make it -- and one purchase spends a daily allowance of its own, so
+    // a single session cannot feed an address pool. See _shared/model-spend-gate.ts.
+    const refused = await modelSpendGate(supabase, req, "generate-premium-package", { perAddress: 20 }, corsHeaders, { session: sessionId });
+    if (refused) return refused;
 
     logStep("Starting premium package generation", { 
       jobTitle,

@@ -66,6 +66,7 @@ import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { heldBoardPass } from "@/lib/board-pass";
 import { readBoardFacets } from "@/lib/board-facets";
 import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
@@ -4832,6 +4833,9 @@ export default function Jobs() {
           jobTitle: prepareJob.job.title,
           jobCompany: prepareJob.job.company,
           jobDescription: prepareJob.description || `${prepareJob.job.title} at ${prepareJob.job.company}.`,
+          // A board pass this tab already holds (never fetched here): the
+          // server counts a proven browser apart from the anonymous pool.
+          boardPass: heldBoardPass() ?? undefined,
         },
       });
       const d = data as (TailoredResumeContent & { success?: boolean }) | null;
@@ -4871,6 +4875,7 @@ export default function Jobs() {
           jobTitle: prepareJob.job.title,
           jobCompany: prepareJob.job.company,
           jobDescription: prepareJob.description || `${prepareJob.job.title} at ${prepareJob.job.company}.`,
+          boardPass: heldBoardPass() ?? undefined,
         },
       });
       const d = data as { success?: boolean; data?: { coverLetter?: string } } | null;
@@ -4904,7 +4909,7 @@ export default function Jobs() {
     setCoachQuestions(null);
     try {
       const { data, error } = await supabase.functions.invoke("generate-interview-coach", {
-        body: { resumeText: fitResume.current, targetRole: prepareJob.job.title, mode: "generate" },
+        body: { resumeText: fitResume.current, targetRole: prepareJob.job.title, mode: "generate", boardPass: heldBoardPass() ?? undefined },
       });
       const d = data as { success?: boolean; data?: { questions?: Array<{ category?: string; question?: string; whyAsked?: string }> } } | null;
       const qs = d?.data?.questions;

@@ -31,7 +31,8 @@ const FUNCTIONS_TO_WARM = [
   'generate-cover-letter',
   'generate-cover-letter-stream',
   'generate-tailored-resume',
-  'generate-tailored-resume-stream',
+  // generate-tailored-resume-stream is retired (it answers 410 and calls
+  // nothing), so there is nothing to keep warm.
   'generate-ats-defense',
   'generate-summary',
   'generate-keyword-fix',

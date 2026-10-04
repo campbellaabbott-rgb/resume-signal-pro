@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -36,15 +36,11 @@ serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  // Purchase-gated, so a stranger is refused before any model call: the
-  // address allowance is the whole limit here, keyed on the address the
-  // platform states (never the first forwarded hop, which the caller
-  // writes) and failing closed (see _shared/model-spend-gate.ts).
-  const refused = await modelSpendGate(supabase, req, "generate-premium-package-stream", { perAddress: 20 }, corsHeaders);
-  if (refused) return refused;
-
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, language, sessionId } = await req.json();
+    const { resumeText, jobDescription, jobTitle: rawJobTitle, jobCompany: rawJobCompany, language, sessionId } = await req.json();
+    // Short fields reach the prompt cut to a line (defect sweep 1.64).
+    const jobTitle = clipField(rawJobTitle, 200);
+    const jobCompany = clipField(rawJobCompany, 200);
 
     if (!resumeText) {
       return new Response(
@@ -61,6 +57,14 @@ serve(async (req) => {
     // product list a $2 scan-pack session opened every paid generator forever.
     const paidError = await assertPaidSession(supabase, sessionId, ["premium_package"]);
     if (paidError) return new Response(JSON.stringify({ error: paidError, retryable: true }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // COUNTED ONLY NOW, when the call is about to reach the model. A warm-up
+    // ping, an unpaid stranger and a malformed body are refused above without
+    // spending a slot -- warm-up posts from our own egress address, and anyone
+    // can make it -- and one purchase spends a daily allowance of its own, so
+    // a single session cannot feed an address pool. See _shared/model-spend-gate.ts.
+    const refused = await modelSpendGate(supabase, req, "generate-premium-package-stream", { perAddress: 20 }, corsHeaders, { session: sessionId });
+    if (refused) return refused;
 
     logStep("Starting streaming premium package generation", { 
       jobTitle,

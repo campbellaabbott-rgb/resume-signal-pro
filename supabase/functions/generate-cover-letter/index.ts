@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateProseClaims } from "../_shared/resume-grounding.ts";
-import { checkInputLimits } from "../_shared/input-limits.ts";
+import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
@@ -15,7 +15,10 @@ const corsHeaders = {
   "x-fn-build": FN_BUILD,
 };
 
-const COVER_LETTER_LIMITS = { perAddress: 20, globalPerHour: 200 };
+const COVER_LETTER_LIMITS = { perAddress: 20, globalPerHour: 200, perSessionPerDay: 10 };
+// The purchases this function delivers: the letter itself, and the letter half
+// of the Apply Assistant. Any other session (a scan pack) is no purchase here.
+const COVER_LETTER_PRODUCTS = ["cover_letter", "apply_assistant"] as const;
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-COVER-LETTER] ${step}`, details ? JSON.stringify(details) : '');
@@ -133,11 +136,15 @@ serve(async (req) => {
     // the candidate to read. The `language` field may still arrive in the
     // request body from shared call sites, but it's intentionally unused here.
     //
-    // Every field is bounded before it reaches the prompt: the résumé and the
-    // posting by the shared caps the stream twin already enforced, the short
-    // fields by length (defect sweep 1.64 -- this primary path had none).
+    // Every field is bounded before it reaches the prompt (defect sweep 1.64
+    // -- this primary path had none): the résumé by the shared cap, the short
+    // fields by length, and the posting CUT to the shared cap rather than
+    // refused, because the posting comes from places this function does not
+    // control -- a board listing, or a stored posting (store_temp_resume
+    // accepts 50,000) on a paid delivery -- and neither a board visitor nor a
+    // buyer should be refused for the length of the job they are applying to.
     const resumeText = typeof body.resumeText === "string" ? body.resumeText : undefined;
-    const jobDescription = typeof body.jobDescription === "string" ? body.jobDescription : undefined;
+    const jobDescription = clipText(body.jobDescription, MAX_JOB_DESCRIPTION_LENGTH);
     const jobTitle = clipField(body.jobTitle, 200);
     const jobCompany = clipField(body.jobCompany, 200);
     const tone = clipField(body.tone, 30) || "professional";
@@ -157,20 +164,25 @@ serve(async (req) => {
       );
     }
 
-    const limitError = checkInputLimits({ resumeText, jobDescription });
+    const limitError = checkInputLimits({ resumeText });
     if (limitError) {
       return new Response(JSON.stringify({ error: limitError }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Free from the job board, so a stranger reaches the model: an address
-    // allowance plus a function-wide ceiling; a paid delivery that carries its
-    // claimed session is not charged to the ceiling.
+    // allowance plus a function-wide ceiling. A Cover Letter or Apply
+    // Assistant purchase (and only those) is off the ceiling for its own
+    // daily allowance; a board pass the page holds buys the proven ceiling.
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-    const refused = await modelSpendGate(supabase, req, "generate-cover-letter", COVER_LETTER_LIMITS, corsHeaders, { paidSessionId: body.sessionId });
+    const refused = await modelSpendGate(supabase, req, "generate-cover-letter", COVER_LETTER_LIMITS, corsHeaders, {
+      session: body.sessionId,
+      products: COVER_LETTER_PRODUCTS,
+      boardPass: body.boardPass,
+    });
     if (refused) return refused;
 
     logStep("Starting cover letter generation", { 

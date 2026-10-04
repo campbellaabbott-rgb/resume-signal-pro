@@ -18,9 +18,12 @@ const corsHeaders = {
 };
 
 // Free on the results page and the job board, so a stranger reaches the model
-// without paying: an address allowance plus a function-wide ceiling. A paid
-// delivery (a claimed session in the body) is not charged to the ceiling.
-const COACH_LIMITS = { perAddress: 20, globalPerHour: 200 };
+// without paying: an address allowance plus a function-wide ceiling. An
+// Interview Coach purchase (and only that) is off the ceiling for its own
+// daily allowance, which is larger here because a buyer has every answer they
+// practise scored: fourteen questions, some answered twice.
+const COACH_LIMITS = { perAddress: 20, globalPerHour: 200, perSessionPerDay: 30 };
+const COACH_PRODUCTS = ["interview_coach"] as const;
 // A spoken two-minute answer is about 300 words; the bounds leave room for
 // a long one without letting a request carry a document.
 const MAX_QUESTION_LENGTH = 1_000;
@@ -69,7 +72,11 @@ serve(async (req) => {
     }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const refused = await modelSpendGate(supabase, req, "generate-interview-coach", COACH_LIMITS, corsHeaders, { paidSessionId: sessionId });
+    const refused = await modelSpendGate(supabase, req, "generate-interview-coach", COACH_LIMITS, corsHeaders, {
+      session: sessionId,
+      products: COACH_PRODUCTS,
+      boardPass: body.boardPass,
+    });
     if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
