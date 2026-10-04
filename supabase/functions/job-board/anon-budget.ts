@@ -177,6 +177,31 @@ function sameSecret(a: string, b: string): boolean {
 
 const DECLARED = new Map<string, BudgetKind>([["api", "unproven_api"], ["mcp", "unproven_mcp"], ["digest", "unproven_digest"]]);
 
+/** The service key, or our servers' reader proof derived from it; null for everyone else. An empty key matches nothing. */
+export async function exemptKind(h: Headers, serviceKey: string): Promise<"service" | "reader" | null> {
+  if (serviceKey && (h.get("authorization") === `Bearer ${serviceKey}` || h.get("apikey") === serviceKey)) return "service";
+  const offered = h.get(BOARD_READER_HEADER) ?? "";
+  return offered && sameSecret(offered, await boardReaderKey(serviceKey)) ? "reader" : null;
+}
+
+/**
+ * THE MOST ROWS ONE CALL MAY CARRY (.88). A browser gets the page's own size:
+ * /jobs asks for 60 (Jobs.tsx PAGE), and nothing a person can do there asks
+ * for more, so limit=1000 from a crafted client is answered with 60 rows, not
+ * the 200 every caller used to get. Our tooling's header (the prerender bake
+ * pages the board 200 at a time, and its per-bake call count is what
+ * BUILD_DAILY_CAP is sized against) and our servers keep 200. The tooling
+ * header is public, so a scraper that sends it reads 200 a call at most --
+ * against the build/probe caps, the gap named in the .87 notes.
+ */
+export const BROWSER_PAGE_ROWS = 60;
+export const TOOLING_PAGE_ROWS = 200;
+export async function pageCeiling(h: Headers, serviceKey: string): Promise<number> {
+  if (await exemptKind(h, serviceKey)) return TOOLING_PAGE_ROWS;
+  const tool = (h.get(BOARD_BUDGET_HEADER) ?? "").trim().toLowerCase();
+  return tool === "build" || tool === "probe" ? TOOLING_PAGE_ROWS : BROWSER_PAGE_ROWS;
+}
+
 /**
  * In order: the service key (exempt), our servers' reader proof (exempt), then
  * a counted address. A declared api/mcp/digest caller WITHOUT the proof is
@@ -187,11 +212,8 @@ const DECLARED = new Map<string, BudgetKind>([["api", "unproven_api"], ["mcp", "
  * build/probe in one shared row per kind (migration 20261003180000).
  */
 export async function classifyCaller(h: Headers, serviceKey: string, passSecret = ""): Promise<Caller> {
-  if (serviceKey && (h.get("authorization") === `Bearer ${serviceKey}` || h.get("apikey") === serviceKey)) {
-    return { exempt: true, kind: "service" };
-  }
-  const offered = h.get(BOARD_READER_HEADER) ?? "";
-  if (offered && sameSecret(offered, await boardReaderKey(serviceKey))) return { exempt: true, kind: "reader" };
+  const exempt = await exemptKind(h, serviceKey);
+  if (exempt) return { exempt: true, kind: exempt };
   const { address, source } = callerAddress(h);
   const key = address ? addressKey(address) : null;
   const pass = await readBoardPass(h, serviceKey, passSecret);
