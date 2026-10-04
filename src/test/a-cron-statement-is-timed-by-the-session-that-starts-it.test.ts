@@ -62,7 +62,10 @@ const jobs = async (db: PGlite) =>
   Object.fromEntries((await db.query<{ jobname: string; schedule: string; command: string }>(
     "SELECT jobname, schedule, command FROM cron.job ORDER BY jobname")).rows.map((r) => [r.jobname, r]));
 
-describe("the cron command sets the function's own header before the statement starts", () => {
+// Each case boots its own pglite; under a loaded machine that alone passes the
+// 5-second default (measured 5.5-9.4 s at load ~12-27 on 2026-10-04), so the
+// cases carry the suite's 30-second working range (helpers/mount-budget.ts).
+describe("the cron command sets the function's own header before the statement starts", { timeout: 30_000 }, () => {
   it("both jobs: the header first, then the call, on the minutes they had", async () => {
     const db = await boot();
     await db.exec(SQL);
