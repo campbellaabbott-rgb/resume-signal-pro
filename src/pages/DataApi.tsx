@@ -1,8 +1,9 @@
 // Hiring Data & API — the B2B data product page. The dataset we already
 // publish for free (lifecycle-tracked postings, fills vs re-listing churn,
 // salary ranges, daily accuracy audits) is licensable in bulk; this page
-// states what's in it, what's deliberately NOT in it (zero jobseeker data —
-// résumés are never stored), the access tiers, and the integrity fence:
+// states what's in it, what's deliberately NOT in it (zero jobseeker data:
+// no résumé or profile is in the dataset at any tier), the access tiers, and
+// the integrity fence:
 // data access never includes editing rights. EN-only, like the other data
 // pages (Ghost Job Index / Hiring Trends precedent).
 //
@@ -197,7 +198,7 @@ export default function DataApi() {
   ];
 
   const notInDataset = [
-    { title: "Zero jobseeker data", body: "Résumés are never stored — that is a product promise to our users, and it means there is nothing about job seekers to license. This dataset is about employers' public postings only." },
+    { title: "Zero jobseeker data", body: "No job seeker's résumé or profile is in this dataset, at any tier, and that data is not for sale. The résumés our users give us are kept only as long as /trust says, for their own use. This dataset is about employers' public postings only." },
     { title: "No scraped aggregators", body: "Nothing comes from job aggregators, search-engine scrapes, or third-party lists. Only companies' own official career-site feeds." },
     { title: "No modeled guesses", body: "No estimated salaries, no inferred headcounts, no synthetic history. Fields we can't observe are null, not imputed." },
   ];
@@ -396,7 +397,7 @@ export default function DataApi() {
                   <li>• A posting the employer has already withdrawn — those become 404, not stale rows.</li>
                   <li>• Anything older than the 30-day freshness window.</li>
                   <li>• Estimated or modelled fields. Salary is what the employer stated, or null.</li>
-                  <li>• Any jobseeker data. Résumés are never stored, so there is none to return.</li>
+                  <li>• Any jobseeker data. No résumé or profile is in the dataset, so there is none to return.</li>
                 </ul>
               </div>
             </div>

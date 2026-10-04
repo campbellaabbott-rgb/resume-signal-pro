@@ -1680,8 +1680,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
       // Use resilient checkout caller with built-in retry logic
       console.log("[Checkout] Calling create-checkout with resilient caller");
+      // No résumé text in this body: the server never needed it, and its
+      // first 500 characters used to end up in Stripe's copy of the session.
+      // The temporary-store id above is all the success page needs.
       const checkoutResult = await resilientCallers.createCheckout({
-        resumeData: contentToAnalyze,
         hasLinkedIn: !!linkedInContent,
         tempSessionId: tempSessionData,
         currency: currency.code,

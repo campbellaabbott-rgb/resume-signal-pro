@@ -89,7 +89,7 @@ export default function IndustryKeywordsEs() {
             <h2 className="text-xl font-bold mb-2">Escanea tu currículum gratis — también en español</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Informe diagnóstico completo en segundos: qué palabras clave te faltan, cómo leen tu archivo los grandes
-              sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum nunca se guarda.
+              sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum se borra en un máximo de 7 días.
             </p>
             <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
               Escanear mi currículum gratis <ArrowRight className="w-4 h-4" />

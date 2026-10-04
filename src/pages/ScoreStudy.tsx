@@ -284,7 +284,7 @@ export default function ScoreStudy() {
             <h2 className="text-lg font-bold mb-2">See where your resume lands in this distribution — free</h2>
             <p className="text-sm text-muted-foreground mb-4">
               The full diagnostic in about 20 seconds: your score with an audit trail, missing keywords, and
-              per-vendor parsing checks. No signup, resume never stored.
+              per-vendor parsing checks. No signup; your resume is deleted within 7 days.
             </p>
             <Link
               to="/"

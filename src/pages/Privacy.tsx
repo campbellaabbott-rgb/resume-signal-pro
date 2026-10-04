@@ -41,8 +41,8 @@ export default function Privacy() {
               
               <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.infoProvide')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-4">
-                <li><strong className="text-foreground">Resume Content:</strong> The text and information contained in resumes you upload (PDF, DOCX, or text format). <strong className="text-primary">Important: We do not store your resume content.</strong> Your resume is processed in real-time to generate your analysis and is immediately discarded afterward.</li>
-                <li><strong className="text-foreground">LinkedIn Profile Data:</strong> Professional information you provide via URL scraping or direct text input. This data is also processed in real-time and not stored.</li>
+                <li><strong className="text-foreground">Resume Content:</strong> The text and information contained in resumes you upload or paste (PDF, DOCX, or text format). How long each copy is kept is set out in Section 6 and, store by store, on our <Link to="/trust#retention" className="text-primary underline">Trust page</Link>. In short: the text is held for 24 hours and the free report that quotes it for 7 days, then both are deleted; a resume is kept longer only when you save it to your account or give it to the apply agent.</li>
+                <li><strong className="text-foreground">LinkedIn Profile Data:</strong> Professional information you provide via URL scraping or direct text input. Text you add alongside a resume is held with it in the same temporary store, for the same 24 hours.</li>
                 <li><strong className="text-foreground">Email Address:</strong> If you opt to receive your analysis via email</li>
                 <li><strong className="text-foreground">Payment Information:</strong> Processed by Stripe; we receive confirmation of payment but do not store full credit card numbers</li>
               </ul>
@@ -96,6 +96,7 @@ export default function Privacy() {
                     <li>Cloud hosting providers</li>
                   </ul>
                 </li>
+                <li><strong className="text-foreground">Employers You Apply To:</strong> If you turn on the apply agent, it sends your CV and your application answers to the employers it applies to on your behalf</li>
                 <li><strong className="text-foreground">Legal Requirements:</strong> When required by law, court order, or governmental authority</li>
                 <li><strong className="text-foreground">Protection of Rights:</strong> To protect our rights, privacy, safety, or property</li>
                 <li><strong className="text-foreground">Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
@@ -107,8 +108,10 @@ export default function Privacy() {
               <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.retention')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We retain your information as follows:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-                <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> <strong className="text-primary">Not retained.</strong> Your resume and LinkedIn data are processed in real-time and immediately discarded. We do not store your original resume content.</li>
-                <li><strong className="text-foreground">Analysis Results:</strong> The AI-generated feedback and suggestions (not your original resume) may be retained to allow access via shareable links, unless you request deletion</li>
+                <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> Held in a private temporary store for 24 hours after you upload or paste it, so a checkout can use it, then deleted automatically.</li>
+                <li><strong className="text-foreground">Free Reports:</strong> A free report quotes lines from your resume, including its first ~600 characters. It is cached for 7 days under a one-way fingerprint of the text, so the same file gets the same report, then deleted automatically. The fingerprint and the industry detected are kept so a rescan reads the same industry; the fingerprint cannot be turned back into your resume.</li>
+                <li><strong className="text-foreground">Analysis Results:</strong> A paid analysis, which quotes your resume, is kept behind its private share link for 90 days and then deleted automatically, or sooner if you delete it from the results page. Documents generated for other paid products are kept with your purchase record so you can recover them, until you ask us to erase them.</li>
+                <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, and the CV you give the apply agent (the file and its text) are kept until you delete your account. The apply agent sends that CV to the employers it applies to on your behalf. Deleting your account erases the saved text; to have an uploaded CV file erased, email privacy@resumebooster.com.</li>
                 <li><strong className="text-foreground">Payment Records:</strong> Retained as required by tax and financial regulations (typically 7 years)</li>
                 <li><strong className="text-foreground">Email Address:</strong> If provided, retained only as needed for sending your analysis results</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>

@@ -109,7 +109,7 @@ export default function VsCompetitor() {
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
             <h2 className="text-xl font-bold mb-2">The comparison that matters: run both, free</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              Our free scan gives you the full diagnostic — no signup, no gating, resume never stored.
+              Our free scan gives you the full diagnostic — no signup, no gating, and your resume is deleted within 7 days.
               Compare the reports yourself; that's the honest test.
             </p>
             <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">

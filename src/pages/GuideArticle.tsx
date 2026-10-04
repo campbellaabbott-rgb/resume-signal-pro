@@ -113,7 +113,7 @@ export default function GuideArticle() {
             <h2 className="text-xl font-bold mb-2">See where your resume actually stands — free</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               The full diagnostic in about 20 seconds: parsing, keywords, structure, and red flags — with every
-              finding quoted from your actual document. No signup, resume never stored.
+              finding quoted from your actual document. No signup; your resume is deleted within 7 days.
             </p>
             <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
               Run the free scan <ArrowRight className="w-4 h-4" />

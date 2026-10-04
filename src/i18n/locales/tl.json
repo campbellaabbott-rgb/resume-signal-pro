@@ -65,7 +65,7 @@
       "seniorRoles": "Para sa senior roles, managers, at competitive positions",
       "atsCompatible": "Gumagana sa lahat ng ATS (Workday, Greenhouse, Lever at 50+ pa)",
       "oneTime": "Isang beses na bayad (hindi awtomatikong nagre-renew)",
-      "private": "Hindi namin ini-store o sini-share ang resume"
+      "private": "Libreng scan: binubura ang resume mo sa loob ng 7 araw at hindi kailanman ibinebenta"
     },
     "stats": {
       "scannedToday": "Na-scan ngayon",
@@ -145,8 +145,8 @@
     "testimonialAuthorName": "— Sarah K., Software Engineer",
     "transparentScoring": "transparent na AI scoring, walang black box",
     "factGdpr": "Sumusunod sa GDPR",
-    "factAutoDelete": "Awtomatikong binubura ang mga resume sa loob ng 24 oras",
-    "factNoStorage": "Hindi kailanman iniimbak o ibinabahagi",
+    "factAutoDelete": "Binubura ang resume sa loob ng 7 araw",
+    "factNoStorage": "Hindi kailanman ibinebenta",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
     "browseJobs": "Tingnan ang 550,000+ verified na trabaho",
@@ -170,7 +170,7 @@
     "title": "24-Point Deep Resume Scan",
     "subtitle": "Ang aming AI ay nagsi-simulate kung paano ini-scan ng mga modernong ATS system ang iyong resume, na sinusuri ang bawat salita laban sa tunay na mga pamantayan ng recruiter.",
     "whatWeAnalyze": "Ano ang Aming Sinusuri",
-    "dataNotStored": "Ang iyong data ay hindi naka-store",
+    "dataNotStored": "Binubura ang resume mo sa loob ng 7 araw",
     "steps": {
       "upload": {
         "title": "1. I-upload ang Resume",
@@ -407,11 +407,11 @@
       },
       "dataStorage": {
         "question": "Iniimbak ba ninyo ang aking resume data?",
-        "answer": "Hindi. Hindi namin iniimbak o kinokolekta ang content ng iyong resume. Ang iyong resume ay pinoproseso sa real-time para likhain ang iyong pagsusuri, at agad na itinatapon. Hindi namin kinukunan ang iyong personal na impormasyon."
+        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report ng parehong file, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o ang CV na ibinigay mo sa apply agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
       },
       "vsChatGPT": {
         "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",
-        "answer": "Ang Resume Booster ay sadyang ginawa para sa ATS optimization na may 5-kategoryang weighted scoring system, 14 industry-specific na templates, at recruiter-calibrated feedback. Hindi tulad ng ChatGPT, makakakuha ka ng consistent 10-section structured output nang walang prompt engineering. Hindi tulad ng templates, nagbibigay kami ng personalized rewrites, LinkedIn analysis, at job description alignment. Ang iyong data ay agad na itinatapon—hindi ginagamit para sa training."
+        "answer": "Ang Resume Booster ay sadyang ginawa para sa ATS optimization na may 5-kategoryang weighted scoring system, 14 industry-specific na templates, at recruiter-calibrated feedback. Hindi tulad ng ChatGPT, makakakuha ka ng consistent 10-section structured output nang walang prompt engineering. Hindi tulad ng templates, nagbibigay kami ng personalized rewrites, LinkedIn analysis, at job description alignment. Hindi kailanman ginagamit sa training ang resume mo, at binubura ito ng libreng scan sa loob ng 7 araw."
       },
       "bringYourAgent": {
         "question": "Magagamit ba ito ng sarili kong AI agent?",
@@ -476,7 +476,7 @@
         "description": "Bank-level encryption"
       },
       "autoDelete": {
-        "label": "Auto-delete 24h",
+        "label": "Binubura sa 7 araw",
         "description": "Iyong data, iyong kontrol"
       },
       "gdpr": {
@@ -484,8 +484,8 @@
         "description": "Privacy muna"
       },
       "zeroStorage": {
-        "label": "Walang Storage",
-        "description": "Naproseso at tinanggal"
+        "label": "Hindi ibinebenta",
+        "description": "Hindi sa mga recruiter, hindi kaninuman"
       },
       "instant": {
         "label": "Instant Delivery",
@@ -742,7 +742,7 @@
     "subtitle": "Gumagamit ng Gemini Pro para sa pinakamataas na katumpakan",
     "complete": "{{percent}}% kumpleto",
     "live": "Live",
-    "securityNote": "Ang iyong resume ay sinusuri nang ligtas at hindi naka-store",
+    "securityNote": "Binubura ang resume mo sa loob ng 7 araw at hindi kailanman ibinebenta",
     "stages": {
       "parsing": {
         "label": "Pina-parse ang Resume",
@@ -2501,14 +2501,14 @@
   },
   "trustPage": {
     "metaTitle": "Tiwala at Seguridad — Resume Booster",
-    "metaDescription": "256-bit na encryption, walang permanenteng storage ng resume, GDPR-aligned na paghawak ng data. Tingnan kung paano namin pinapanatiling ligtas ang iyong data.",
+    "metaDescription": "Eksakto kung ano ang iniimbak namin mula sa resume mo, saan, at gaano katagal — kasama ang 256-bit na encryption at ang karapatan mong ipabura ito.",
     "privacyMatters": "Mahalaga ang Iyong Privacy",
     "titlePrefix": "Ang Iyong Resume ay",
     "titleHighlight": "Ligtas Sa Amin",
     "heroSubtitle": "Binuo namin ang Resume Booster gamit ang mga prinsipyong security-first. Ang iyong mga dokumento sa karera ay karapat-dapat sa proteksyon sa antas ng bangko, at ito mismo ang ibinibigay namin.",
     "badges": {
       "ssl": "256-bit SSL",
-      "zeroStorage": "Zero Storage",
+      "retention": "Nakalathalang Retention",
       "gdpr": "GDPR Compliant"
     },
     "stats": {
@@ -2522,21 +2522,21 @@
         "title": "256-bit SSL Encryption",
         "description": "Protektado ang iyong resume gamit ang encryption sa antas ng bangko habang nag-upload at nagproseso. Ginagamit namin ang parehong security standard ng mga malalaking institusyong pinansyal."
       },
-      "zeroStorage": {
-        "title": "Zero Storage Policy",
-        "description": "Hindi namin kailanman itinatabi ang iyong resume sa aming mga server. Ang iyong dokumento ay pinoproseso sa memory at agad na itinatapon pagkatapos ng pagsusuri."
+      "freeScan": {
+        "title": "Ano ang Iniimbak ng Libreng Scan",
+        "description": "Ang text ng resume mo nang {{tempHours}} oras, para magamit ng checkout, at ang report mo, na sumisipi sa resume mo, nang {{reportDays}} araw. Pagkatapos, awtomatikong binubura ang dalawa."
       },
       "autoDelete": {
-        "title": "Auto-Delete sa loob ng 24 Oras",
-        "description": "Anumang pansamantalang data na ginawa habang nagproseso ay awtomatikong tinatanggal sa loob ng 24 oras. Ang iyong data, ang iyong kontrol."
+        "title": "Binubura ayon sa Iskedyul",
+        "description": "Tumatakbo ang mga deletion job kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache at mga bayad na pagsusuri, kaya walang lumalampas sa nakasaad na oras nito nang higit sa isang oras."
       },
       "gdpr": {
         "title": "GDPR Compliant",
         "description": "Sinusunod namin ang mahigpit na European data protection standard. Maaari kang humiling ng pagtanggal ng anumang data anumang oras."
       },
-      "noSharing": {
-        "title": "Walang Pagbabahagi sa Third-Party",
-        "description": "Ang content ng iyong resume ay hindi kailanman ibinabahagi sa mga recruiter, employer, o anumang third party. Sinusuri ito nang eksklusibo upang tulungan ka."
+      "neverSold": {
+        "title": "Hindi Kailanman Ibinebenta",
+        "description": "Hindi namin kailanman ibinebenta ang resume mo o ipinapakita sa mga recruiter. Lumalabas lang ito sa amin papunta sa AI provider na sumusulat ng report mo, sa email provider na naghahatid ng report na ipinadala mo sa sarili mo, at, kung bubuksan mo ang apply agent, sa mga employer na inaaplayan nito para sa iyo. Ang Stripe ang humahawak ng bayad at walang natatanggap na text ng resume."
       },
       "transparent": {
         "title": "Transparent na Pagproseso",
@@ -2545,6 +2545,76 @@
     },
     "protectDataTitle": "Paano Namin Pinoprotektahan ang Iyong Data",
     "protectDataSubtitle": "Ang bawat aspeto ng Resume Booster ay idinisenyo nang isinasaalang-alang ang iyong privacy at seguridad.",
+    "retention": {
+      "title": "Ano ang iniimbak namin, saan, at gaano katagal",
+      "subtitle": "Bawat lugar kung saan maaaring maimbak ang kopya ng resume mo, o text na sinipi mula rito — at ang takdang oras ng bawat isa.",
+      "colWhat": "Ano",
+      "colWhere": "Saan",
+      "colHowLong": "Gaano katagal",
+      "rows": {
+        "upload": {
+          "what": "Ang text ng resume na in-upload o in-paste mo, kasama ang anumang LinkedIn text o job description na idinagdag mo",
+          "where": "Isang pribadong pansamantalang storage sa aming mga server",
+          "howLong": "{{tempHours}} oras, saka binubura"
+        },
+        "report": {
+          "what": "Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, kasama ang unang ~600 character nito",
+          "where": "Isang report cache, nakatala sa ilalim ng one-way fingerprint ng text",
+          "howLong": "{{reportDays}} araw, saka binubura"
+        },
+        "fingerprint": {
+          "what": "Ang one-way fingerprint na iyon, kasama ang industriyang natukoy namin",
+          "where": "Ang aming database",
+          "howLong": "Itinatago, para pareho ang industriyang mababasa kapag ni-rescan ang parehong file. Hindi ito maibabalik sa resume mo."
+        },
+        "browser": {
+          "what": "Ang text ng resume mo",
+          "where": "Ang sarili mong browser tab (session storage)",
+          "howLong": "Hanggang isara mo ang tab"
+        },
+        "ai": {
+          "what": "Ang text ng resume mo, habang isinusulat ang report",
+          "where": "Ang aming AI model provider",
+          "howLong": "Ipinapadala lang para gawin ang report mo, sa ilalim ng mga tuntunin ng provider na iyon"
+        },
+        "email": {
+          "what": "Ang report na ine-email mo sa sarili mo, at mga fix-plan email na pinili mong tanggapin",
+          "where": "Ang inbox mo, ipinadala sa pamamagitan ng aming email provider; naghihintay sa aming send queue ang mga naka-iskedyul na fix-plan email",
+          "howLong": "Ipinapadala ang mga naka-iskedyul na email sa loob ng 14 araw; kinakansela ng pag-unsubscribe ang natitira"
+        },
+        "paid": {
+          "what": "Ang bayad na pagsusuri, na sumisipi sa resume mo",
+          "where": "Sa likod ng pribadong share link nito",
+          "howLong": "{{analysisDays}} araw, o hanggang pindutin mo ang “{{deleteLabel}}” sa results page"
+        },
+        "products": {
+          "what": "Mga dokumentong ginawa para sa ibang bayad na produkto, gaya ng cover letter o rewrite",
+          "where": "Kasama ng purchase record mo, sa ilalim ng email mo",
+          "howLong": "Itinatago para mabawi mo; mag-email sa {{email}} para ipabura ang mga ito"
+        },
+        "account": {
+          "what": "Isang bersyon ng resume na sine-save mo, at ang resume na itinakda mo para sa job matching",
+          "where": "Ang account mo",
+          "howLong": "Hanggang burahin mo ang account mo"
+        },
+        "agent": {
+          "what": "Ang CV na ibinigay mo sa apply agent: ang file at ang text nito",
+          "where": "Pribadong storage na ikaw lang at ang agent ang makakabasa",
+          "howLong": "Habang ginagamit mo ang agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Binubura ng pagbura sa account mo ang text; mag-email sa {{email}} para ipabura ang file."
+        },
+        "payment": {
+          "what": "Ang bayad mo",
+          "where": "Stripe",
+          "howLong": "Walang natatanggap na text ng resume ang Stripe"
+        },
+        "shortlist": {
+          "what": "Mga resume ng kandidato na sinusuri ng isang employer gamit ang Shortlist",
+          "where": "Ang account ng employer na iyon, bilang redacted na text",
+          "howLong": "Hanggang burahin ng employer ang mga ito"
+        }
+      },
+      "footnote": "Tumatakbo ang pagbura kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache at mga bayad na pagsusuri. Para ipabura ang anuman nang mas maaga, mag-email sa {{email}}."
+    },
     "transparentScoringTitle": "Transparent na AI Scoring",
     "transparentScoringSubtitle": "Naniniwala kami sa kumpletong transparency. Tingnan nang eksakto kung paano sinusuri ng aming AI ang mga resume, anong mga factor namin isinasaalang-alang, at paano kinakalkula ang mga score.",
     "viewMethodology": "Tingnan ang Aming Methodology",

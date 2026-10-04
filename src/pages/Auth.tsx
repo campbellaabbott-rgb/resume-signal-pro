@@ -219,8 +219,8 @@ export default function Auth() {
             </button>
           </div>
           <p className="text-[11px] text-muted-foreground text-center mt-4">
-            Your resume is never stored — accounts only keep your scores, credits and purchases.{" "}
-            <Link to="/privacy" className="underline">Privacy</Link>
+            An account keeps your scores, credits and purchases, and a resume only if you save one or give one to the apply agent.{" "}
+            <Link to="/trust#retention" className="underline">What we keep</Link> · <Link to="/privacy" className="underline">Privacy</Link>
           </p>
         </div>
       </main>

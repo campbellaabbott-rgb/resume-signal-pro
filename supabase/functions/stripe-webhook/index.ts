@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-04T15:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,10 +24,12 @@ import { passSessionSettled } from "../_shared/pass-settlement.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
 // webhook only has to recognise it, by the same constant analyze-resume gates on.
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
+// What of an event is stored: never the résumé text old sessions carry.
+import { withoutResumeText } from "../_shared/webhook-payload.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-01.1";
+const FN_BUILD = "stripe-webhook.2026-10-04.no-resume-payload";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -621,13 +623,17 @@ serve(async (req) => {
     const supabase = getSupabase();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     
-    // OPTIMIZATION: Log webhook received in background
+    // OPTIMIZATION: Log webhook received in background. The stored payload
+    // drops any résumé-bearing metadata key: full-analysis sessions minted
+    // before 2026-10-04 carry the top of the buyer's résumé, and their events
+    // keep arriving. Only the copy written down is changed; the handler below
+    // reads the event exactly as Stripe sent it.
     EdgeRuntime.waitUntil(
       Promise.resolve(
         supabase.rpc('log_webhook_event', {
           p_event_type: event.type,
           p_event_id: event.id,
-          p_payload: event.data.object,
+          p_payload: withoutResumeText(event.data.object),
           p_processed: false
         })
       )
