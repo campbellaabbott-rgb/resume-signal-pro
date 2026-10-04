@@ -2360,7 +2360,7 @@
     "analysisProcessingDescription": "Nous n'avons pas pu extraire de recommandations détaillées de votre CV. Cela peut arriver si le format du CV est inhabituel ou si un problème est survenu lors du traitement.",
     "bottomCta": "Appliquez ces changements à votre CV et observez votre taux d'entretien s'améliorer !",
     "bottomCtaWithLinkedIn": "Appliquez ces changements à votre CV et votre profil LinkedIn et observez votre taux d'entretien s'améliorer !",
-    "analysisSaved": "Cette analyse a été enregistrée. Utilisez le lien de partage ci-dessus pour y accéder à tout moment."
+    "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours derrière le lien de partage ci-dessus, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie."
   },
   "personalization": {
     "experience": {
@@ -2528,7 +2528,7 @@
       },
       "autoDelete": {
         "title": "Suppression planifiée",
-        "description": "Les tâches de suppression tournent toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports et les analyses payantes : aucun ne dépasse son délai annoncé de plus d'une heure."
+        "description": "Les tâches de suppression tournent toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes : aucun ne dépasse son délai annoncé de plus d'une heure."
       },
       "gdpr": {
         "title": "Conforme au RGPD",
@@ -2536,7 +2536,7 @@
       },
       "neverSold": {
         "title": "Jamais vendu",
-        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport, le prestataire d'e-mail qui livre le rapport que vous vous envoyez et, si vous activez l'agent de candidature, les employeurs auxquels il postule pour vous. Stripe gère le paiement et ne reçoit aucun texte de CV."
+        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport, le prestataire d'e-mail qui livre le rapport que vous vous envoyez et l'analyse payante que nous vous envoyons et, si vous activez l'agent de candidature, les employeurs auxquels il postule pour vous. Stripe gère le paiement et ne reçoit aucun texte de CV."
       },
       "transparent": {
         "title": "Traitement transparent",
@@ -2567,10 +2567,20 @@
           "where": "Notre base de données",
           "howLong": "Conservée pour qu'une nouvelle analyse du même fichier détecte le même secteur. Elle ne permet pas de reconstituer votre CV."
         },
+        "aiCache": {
+          "what": "Le résumé rédigé par l'IA en haut de votre rapport gratuit, qui peut utiliser votre nom, et le rapport entier quand notre scanner de secours le rédige",
+          "where": "Un cache de réponses d'IA, classé sous une empreinte à sens unique du texte",
+          "howLong": "Jusqu'à {{aiCacheHours}} heures, puis supprimé"
+        },
         "browser": {
           "what": "Le texte de votre CV",
           "where": "Votre propre onglet de navigateur (stockage de session)",
           "howLong": "Jusqu'à la fermeture de l'onglet"
+        },
+        "browserLocal": {
+          "what": "Un CV que vous créez sur le site (dans le créateur ou dans Freelance Boost), un historique de vos derniers scans (nom, poste et scores) et vos derniers rapports",
+          "where": "Le stockage local de ce navigateur, sur votre appareil",
+          "howLong": "Jusqu'à ce qu'il soit vidé : le bouton d'effacement des données du navigateur sur une page de résultats payante efface tout, tout comme l'effacement des données de ce site dans votre navigateur"
         },
         "ai": {
           "what": "Le texte de votre CV, pendant la rédaction d'un rapport",
@@ -2578,7 +2588,7 @@
           "howLong": "Envoyé uniquement pour produire votre rapport, selon les conditions de ce fournisseur"
         },
         "email": {
-          "what": "Un rapport que vous vous envoyez par e-mail, et les e-mails du plan de correction auxquels vous vous inscrivez",
+          "what": "Un rapport que vous vous envoyez par e-mail, l'analyse payante que nous vous envoyons, et les e-mails du plan de correction auxquels vous vous inscrivez",
           "where": "Votre boîte de réception, via notre prestataire d'e-mail ; les e-mails programmés du plan attendent dans notre file d'envoi",
           "howLong": "Les e-mails programmés partent sur 14 jours ; vous désinscrire annule le reste"
         },
@@ -2605,7 +2615,7 @@
         "payment": {
           "what": "Votre paiement",
           "where": "Stripe",
-          "howLong": "Stripe ne reçoit aucun texte de CV"
+          "howLong": "Stripe ne reçoit aucun texte de CV, ni aucune référence à celui-ci"
         },
         "shortlist": {
           "what": "Les CV de candidats qu'un employeur évalue avec Shortlist",
@@ -2613,7 +2623,7 @@
           "howLong": "Jusqu'à ce que l'employeur les supprime"
         }
       },
-      "footnote": "La suppression tourne toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports et les analyses payantes. Pour faire effacer quoi que ce soit plus tôt, écrivez à {{email}}."
+      "footnote": "La suppression tourne toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes. Pour faire effacer quoi que ce soit plus tôt, écrivez à {{email}}."
     },
     "transparentScoringTitle": "Notation IA transparente",
     "transparentScoringSubtitle": "Nous croyons en une transparence totale. Découvrez exactement comment notre IA analyse les CV, quels facteurs nous prenons en compte et comment les scores sont calculés.",

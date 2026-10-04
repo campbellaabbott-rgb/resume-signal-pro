@@ -2360,7 +2360,7 @@
     "analysisProcessingDescription": "We could not extract detailed recommendations from your resume. This might happen if the resume format is unusual or if there was an issue during processing.",
     "bottomCta": "Apply these changes to your resume and watch your interview rate improve!",
     "bottomCtaWithLinkedIn": "Apply these changes to your resume and LinkedIn profile and watch your interview rate improve!",
-    "analysisSaved": "This analysis has been saved. Use the share link above to access it anytime."
+    "analysisSaved": "This analysis is kept for {{analysisDays}} days behind the share link above, then deleted. Download it as a PDF to keep your own copy."
   },
   "personalization": {
     "experience": {
@@ -2528,7 +2528,7 @@
       },
       "autoDelete": {
         "title": "Deleted on a Schedule",
-        "description": "Deletion jobs run every 15 minutes for the temporary store and every hour for the report cache and paid analyses, so none of those outlives its stated time by more than an hour."
+        "description": "Deletion jobs run every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses, so none of those outlives its stated time by more than an hour."
       },
       "gdpr": {
         "title": "GDPR Compliant",
@@ -2536,7 +2536,7 @@
       },
       "neverSold": {
         "title": "Never Sold",
-        "description": "We never sell your resume or show it to recruiters. It leaves us only for the AI provider that writes your report, the email provider that delivers any report you send yourself, and, if you turn on the apply agent, the employers it applies to for you. Stripe handles payment and receives no resume text."
+        "description": "We never sell your resume or show it to recruiters. It leaves us only for the AI provider that writes your report, the email provider that delivers any report you send yourself and the paid analysis we email you, and, if you turn on the apply agent, the employers it applies to for you. Stripe handles payment and receives no resume text."
       },
       "transparent": {
         "title": "Transparent Processing",
@@ -2567,10 +2567,20 @@
           "where": "Our database",
           "howLong": "Kept, so a rescan of the same file reads the same industry. It cannot be turned back into your resume."
         },
+        "aiCache": {
+          "what": "The AI-written summary at the top of your free report, which can use your name, and the whole report when our backup scanner writes it",
+          "where": "An AI response cache, filed under a one-way fingerprint of the text",
+          "howLong": "Up to {{aiCacheHours}} hours, then deleted"
+        },
         "browser": {
           "what": "Your resume text",
           "where": "Your own browser tab (session storage)",
           "howLong": "Until you close the tab"
+        },
+        "browserLocal": {
+          "what": "A resume you build on the site (in the builder or in Freelance Boost), a history of your recent scans (name, role and scores), and your recent reports",
+          "where": "This browser's local storage, on your device",
+          "howLong": "Until it is cleared: the Clear Browser Data button on a paid results page clears all of it, and so does clearing this site's data in your browser"
         },
         "ai": {
           "what": "Your resume text, while a report is written",
@@ -2578,7 +2588,7 @@
           "howLong": "Sent only to produce your report, under that provider's terms"
         },
         "email": {
-          "what": "A report you email to yourself, and any fix-plan emails you opt into",
+          "what": "A report you email to yourself, the paid analysis we email you, and any fix-plan emails you opt into",
           "where": "Your inbox, sent through our email provider; scheduled fix-plan emails wait in our send queue",
           "howLong": "The queued emails go out over 14 days; unsubscribing cancels the rest"
         },
@@ -2605,7 +2615,7 @@
         "payment": {
           "what": "Your payment",
           "where": "Stripe",
-          "howLong": "Stripe receives no resume text"
+          "howLong": "Stripe receives no resume text, and no reference to it"
         },
         "shortlist": {
           "what": "Candidates' resumes an employer screens with Shortlist",
@@ -2613,7 +2623,7 @@
           "howLong": "Until the employer deletes them"
         }
       },
-      "footnote": "Deletion runs every 15 minutes for the temporary store and every hour for the report cache and paid analyses. To have anything erased sooner, email {{email}}."
+      "footnote": "Deletion runs every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses. To have anything erased sooner, email {{email}}."
     },
     "transparentScoringTitle": "Transparent AI Scoring",
     "transparentScoringSubtitle": "We believe in complete transparency. See exactly how our AI analyzes resumes, what factors we consider, and how scores are calculated.",

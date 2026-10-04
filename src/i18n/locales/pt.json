@@ -2360,7 +2360,7 @@
     "analysisProcessingDescription": "Não foi possível extrair recomendações detalhadas do seu currículo. Isto pode acontecer se o formato do currículo for inusual ou se tiver ocorrido um problema durante o processamento.",
     "bottomCta": "Aplique estas alterações ao seu currículo e veja a sua taxa de entrevistas melhorar!",
     "bottomCtaWithLinkedIn": "Aplique estas alterações ao seu currículo e perfil LinkedIn e veja a sua taxa de entrevistas melhorar!",
-    "analysisSaved": "Esta análise foi guardada. Use o link de partilha acima para acedê-la em qualquer momento."
+    "analysisSaved": "Esta análise fica guardada {{analysisDays}} dias através do link de partilha acima e depois é apagada. Descarregue-a em PDF para guardar a sua própria cópia."
   },
   "personalization": {
     "experience": {
@@ -2528,7 +2528,7 @@
       },
       "autoDelete": {
         "title": "Apagado de forma programada",
-        "description": "As tarefas de eliminação correm a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios e nas análises pagas, por isso nenhum deles ultrapassa o prazo indicado em mais de uma hora."
+        "description": "As tarefas de eliminação correm a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas, por isso nenhum deles ultrapassa o prazo indicado em mais de uma hora."
       },
       "gdpr": {
         "title": "Conforme com o RGPD",
@@ -2536,7 +2536,7 @@
       },
       "neverSold": {
         "title": "Nunca vendido",
-        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório, o fornecedor de e-mail que entrega o relatório que enviar para si e, se ativar o agente de candidaturas, os empregadores a que se candidata por si. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
+        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório, o fornecedor de e-mail que entrega o relatório que enviar para si e a análise paga que lhe enviamos e, se ativar o agente de candidaturas, os empregadores a que se candidata por si. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
       },
       "transparent": {
         "title": "Processamento transparente",
@@ -2567,10 +2567,20 @@
           "where": "A nossa base de dados",
           "howLong": "Guardada para que uma nova análise do mesmo ficheiro leia o mesmo setor. Não permite reconstruir o seu currículo."
         },
+        "aiCache": {
+          "what": "O resumo escrito pela IA no topo do seu relatório gratuito, que pode usar o seu nome, e o relatório inteiro quando é o nosso analisador de reserva a escrevê-lo",
+          "where": "Uma cache de respostas de IA, arquivada sob uma impressão digital unidirecional do texto",
+          "howLong": "Até {{aiCacheHours}} horas, depois apagado"
+        },
         "browser": {
           "what": "O texto do seu currículo",
           "where": "O seu próprio separador do navegador (armazenamento de sessão)",
           "howLong": "Até fechar o separador"
+        },
+        "browserLocal": {
+          "what": "Um currículo que cria no site (no criador ou no Freelance Boost), um histórico das suas análises recentes (nome, função e pontuações) e os seus relatórios recentes",
+          "where": "O armazenamento local deste navegador, no seu dispositivo",
+          "howLong": "Até ser limpo: o botão para limpar os dados do navegador numa página de resultados paga limpa tudo, tal como limpar os dados deste site no seu navegador"
         },
         "ai": {
           "what": "O texto do seu currículo, enquanto um relatório é escrito",
@@ -2578,7 +2588,7 @@
           "howLong": "Enviado apenas para produzir o seu relatório, nos termos desse fornecedor"
         },
         "email": {
-          "what": "Um relatório que envia para si por e-mail, e os e-mails do plano de correções que aceitar",
+          "what": "Um relatório que envia para si por e-mail, a análise paga que lhe enviamos e os e-mails do plano de correções que aceitar",
           "where": "A sua caixa de entrada, através do nosso fornecedor de e-mail; os e-mails agendados do plano aguardam na nossa fila de envio",
           "howLong": "Os e-mails agendados saem ao longo de 14 dias; cancelar a subscrição cancela os restantes"
         },
@@ -2605,7 +2615,7 @@
         "payment": {
           "what": "O seu pagamento",
           "where": "Stripe",
-          "howLong": "A Stripe não recebe qualquer texto do currículo"
+          "howLong": "A Stripe não recebe qualquer texto do currículo, nem qualquer referência a ele"
         },
         "shortlist": {
           "what": "Currículos de candidatos que um empregador avalia com o Shortlist",
@@ -2613,7 +2623,7 @@
           "howLong": "Até o empregador os eliminar"
         }
       },
-      "footnote": "A eliminação corre a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios e nas análises pagas. Para apagar algo mais cedo, envie um e-mail para {{email}}."
+      "footnote": "A eliminação corre a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas. Para apagar algo mais cedo, envie um e-mail para {{email}}."
     },
     "transparentScoringTitle": "Pontuação de IA transparente",
     "transparentScoringSubtitle": "Acreditamos em total transparência. Veja exatamente como a nossa IA analisa currículos, que fatores consideramos e como as pontuações são calculadas.",

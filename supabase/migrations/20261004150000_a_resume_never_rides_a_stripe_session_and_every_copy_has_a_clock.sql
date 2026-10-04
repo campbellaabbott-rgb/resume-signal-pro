@@ -12,6 +12,14 @@
 -- sending events (expiry, retries, refunds) and an older deployment of the
 -- webhook may serve for a while.
 --
+-- THE SECOND ROUTE. create-product-checkout wrote the temporary store's id
+-- into every product session's metadata, and get_temp_resume answers that id
+-- to anyone holding the public key for its 24 hours -- so anyone who could read
+-- the Stripe account's session metadata could read the buyer's whole résumé.
+-- The id now stays on our side: section 6 keeps it in checkout_resume_refs,
+-- keyed by the Stripe session id, readable by service_role only, and deleted
+-- with the résumé it points to.
+--
 -- THE CLOCKS. The site now states, store by store, how long each copy of a
 -- résumé lives (src/lib/resume-retention.ts holds the numbers; the copy and
 -- the code are compared by src/test/a-resume-never-rides-a-stripe-session.test.ts).
@@ -23,23 +31,36 @@
 --   ai_response_cache    expires_at = 24h or 48h; cleanup_expired_cache()
 --                        exists and is scheduled nowhere
 --   resume_analyses      expires_at = created_at + 90 days; the share-link
---                        reader does NOT check it, so an "expired" paid
---                        analysis was served forever; cleanup_expired_analyses()
---                        is scheduled nowhere
+--                        reader has refused an expired row since 2025-12-18
+--                        (20251218205434), but cleanup_expired_analyses() is
+--                        scheduled nowhere, so every expired analysis was
+--                        still in the table
 --   scan_report_cache    7 days, purged nightly at 04:10, so up to 8 days
 -- Each gets an hourly (temp store: every 15 minutes) job that deletes exactly
 -- the rows its own readers already treat as gone, plus one immediate pass
 -- here so nothing expired survives the apply.
 --
--- WHAT CHANGES FOR A VISITOR. Nothing they can reach, except one thing: a
--- paid analysis's share link stops working 90 days after it was made, which is
--- what analyze-resume already assumes ("past its 90 days") and what the
--- 2025-12-16 privacy migration that added the column intended.
+-- THE PAID ANALYSIS HAD A SECOND COPY. analyze-resume also cached every paid
+-- analysis in ai_response_cache for 48 hours, where "Delete My Data" (which
+-- removes the resume_analyses row) could not reach it. The function stops
+-- caching it in the same change; section 5 deletes the copies already there,
+-- refuses any an older deployment still writes, and holds every other cached
+-- response to the 24 hours the site publishes.
+--
+-- WHAT CHANGES FOR A VISITOR. Nothing they can reach. The analyses deleted
+-- here are the ones the share-link reader already refused, plus any with no
+-- expiry at all (which the 2025-12-16 column default should have made
+-- impossible; such a row is given 90 days from when it was made). The AI cache
+-- rows are re-made on the next request, and a checkout's résumé is found as
+-- before.
 --
 -- SELF-VERIFYING. The DO block at the end refuses the file unless the stored
 -- payloads are clean, the trigger strips a probe row on insert AND on update,
 -- the helper is closed to anon and authenticated, all four jobs are scheduled
--- and active, and no expired row remains in any of the four stores.
+-- and active, no expired row remains in any of the four stores, the AI cache
+-- holds no paid analysis and nothing past 24 hours (and refuses a probe that
+-- tries), and checkout_resume_refs is closed to the API roles and empties
+-- itself when its résumé is deleted.
 
 -- ── 1. The key list, and a recursive strip ───────────────────────────────────
 -- One list, mirrored by RESUME_BEARING_METADATA_KEYS in
@@ -178,7 +199,75 @@ BEGIN
   END LOOP;
 END $$;
 
--- ── 5. Self-verify ──────────────────────────────────────────────────────────
+-- ── 5. The AI response cache: no paid analysis, nothing past 24 hours ────────
+-- The published clock is AI_CACHE_MAX_HOURS in src/lib/resume-retention.ts.
+-- The trigger enforces it whoever writes (store_cached_response inserts, and
+-- updates on conflict, so both are covered): a row for the paid analysis is
+-- dropped, and any other row's expiry is held to 24 hours after it was made.
+-- The hourly job in section 4 then deletes it.
+CREATE OR REPLACE FUNCTION public.ai_response_cache_keeps_its_clock()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF NEW.function_name = 'analyze-resume' THEN
+    RETURN NULL;
+  END IF;
+  NEW.expires_at := least(NEW.expires_at, coalesce(NEW.created_at, now()) + interval '24 hours');
+  RETURN NEW;
+END
+$$;
+
+REVOKE ALL ON FUNCTION public.ai_response_cache_keeps_its_clock() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS ai_response_cache_keeps_its_clock ON public.ai_response_cache;
+CREATE TRIGGER ai_response_cache_keeps_its_clock
+  BEFORE INSERT OR UPDATE ON public.ai_response_cache
+  FOR EACH ROW EXECUTE FUNCTION public.ai_response_cache_keeps_its_clock();
+
+DO $$
+DECLARE
+  n integer;
+BEGIN
+  DELETE FROM public.ai_response_cache WHERE function_name = 'analyze-resume';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RAISE NOTICE 'ai_response_cache: % cached paid analysis(es) deleted', n;
+
+  -- Through the trigger: each row's expiry is brought back to 24 hours.
+  UPDATE public.ai_response_cache
+     SET expires_at = expires_at
+   WHERE expires_at > created_at + interval '24 hours';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RAISE NOTICE 'ai_response_cache: % row(s) had an expiry past 24 hours and were brought back to it', n;
+
+  DELETE FROM public.ai_response_cache WHERE expires_at < now();
+END $$;
+
+-- ── 6. A checkout's résumé is resolved on our side, never through Stripe ─────
+-- create-product-checkout writes one row per Stripe session that names a
+-- résumé (supabase/functions/_shared/checkout-resume-ref.ts); stripe-webhook
+-- and verify-product-purchase read it back by the session id. The foreign key
+-- deletes the row with the temporary résumé it points to, so the reference
+-- lives exactly as long as the text it reaches (24 hours at most), and no job
+-- is needed for it.
+CREATE TABLE IF NOT EXISTS public.checkout_resume_refs (
+  stripe_session_id text PRIMARY KEY
+    CONSTRAINT checkout_resume_refs_is_a_stripe_session CHECK (stripe_session_id ~ '^cs_[A-Za-z0-9_]{1,250}$'),
+  resume_session_id uuid NOT NULL
+    REFERENCES public.temp_resume_storage (session_id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_checkout_resume_refs_resume ON public.checkout_resume_refs (resume_session_id);
+
+COMMENT ON TABLE public.checkout_resume_refs IS
+  'Which temporary résumé a Stripe Checkout session will be delivered from. Service role only; a row is deleted with the temp_resume_storage row it names (20261004150000).';
+
+ALTER TABLE public.checkout_resume_refs ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.checkout_resume_refs FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, DELETE ON TABLE public.checkout_resume_refs TO service_role;
+
+-- ── 7. Self-verify ──────────────────────────────────────────────────────────
 DO $$
 DECLARE
   v_id uuid;
@@ -289,5 +378,62 @@ BEGIN
     RAISE EXCEPTION 'self-verify: resume_analyses.expires_at default is %, not now() + 90 days', v_default;
   END IF;
 
-  RAISE NOTICE 'self-verify 20261004150000: webhook payloads clean, strip trigger proven on insert and update, four retention jobs scheduled, nothing expired left';
+  -- The AI cache: no paid analysis, nothing past 24 hours, and the trigger
+  -- proven on probe rows (deleted before the block ends).
+  IF EXISTS (SELECT 1 FROM public.ai_response_cache WHERE function_name = 'analyze-resume') THEN
+    RAISE EXCEPTION 'self-verify: a paid analysis is still cached in ai_response_cache';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.ai_response_cache WHERE expires_at > created_at + interval '24 hours') THEN
+    RAISE EXCEPTION 'self-verify: an AI cache row is set to outlive 24 hours';
+  END IF;
+  INSERT INTO public.ai_response_cache (cache_key, function_name, response, expires_at)
+  VALUES ('selfcheck_20261004150000_paid', 'analyze-resume', '{"probe":true}'::jsonb, now() + interval '48 hours');
+  IF EXISTS (SELECT 1 FROM public.ai_response_cache WHERE cache_key = 'selfcheck_20261004150000_paid') THEN
+    RAISE EXCEPTION 'self-verify: ai_response_cache accepted a paid analysis';
+  END IF;
+  INSERT INTO public.ai_response_cache (cache_key, function_name, response, expires_at)
+  VALUES ('selfcheck_20261004150000_long', 'selfcheck', '{"probe":true}'::jsonb, now() + interval '48 hours');
+  IF NOT EXISTS (
+    SELECT 1 FROM public.ai_response_cache
+     WHERE cache_key = 'selfcheck_20261004150000_long'
+       AND expires_at <= created_at + interval '24 hours'
+  ) THEN
+    RAISE EXCEPTION 'self-verify: ai_response_cache kept a row past 24 hours, or dropped one it should keep';
+  END IF;
+  DELETE FROM public.ai_response_cache WHERE cache_key LIKE 'selfcheck_20261004150000_%';
+
+  -- checkout_resume_refs: closed to the API roles, open to service_role, and
+  -- emptied with the résumé it points to.
+  IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid = 'public.checkout_resume_refs'::regclass AND relrowsecurity) THEN
+    RAISE EXCEPTION 'self-verify: checkout_resume_refs does not have row-level security on';
+  END IF;
+  IF has_table_privilege('anon', 'public.checkout_resume_refs', 'SELECT')
+     OR has_table_privilege('anon', 'public.checkout_resume_refs', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.checkout_resume_refs', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.checkout_resume_refs', 'INSERT') THEN
+    RAISE EXCEPTION 'self-verify: checkout_resume_refs is readable or writable by anon or authenticated';
+  END IF;
+  IF NOT has_table_privilege('service_role', 'public.checkout_resume_refs', 'SELECT')
+     OR NOT has_table_privilege('service_role', 'public.checkout_resume_refs', 'INSERT') THEN
+    RAISE EXCEPTION 'self-verify: service_role cannot read and write checkout_resume_refs, so no product could be delivered';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+     WHERE c.conrelid = 'public.checkout_resume_refs'::regclass
+       AND c.contype = 'f'
+       AND c.confrelid = 'public.temp_resume_storage'::regclass
+       AND c.confdeltype = 'c'
+  ) THEN
+    RAISE EXCEPTION 'self-verify: checkout_resume_refs is not deleted with the temporary résumé it names';
+  END IF;
+  INSERT INTO public.temp_resume_storage (resume_text) VALUES ('selfcheck 20261004150000')
+  RETURNING session_id INTO v_id;
+  INSERT INTO public.checkout_resume_refs (stripe_session_id, resume_session_id)
+  VALUES ('cs_selfcheck_20261004150000', v_id);
+  DELETE FROM public.temp_resume_storage WHERE session_id = v_id;
+  IF EXISTS (SELECT 1 FROM public.checkout_resume_refs WHERE stripe_session_id = 'cs_selfcheck_20261004150000') THEN
+    RAISE EXCEPTION 'self-verify: a checkout reference outlived the résumé it points to';
+  END IF;
+
+  RAISE NOTICE 'self-verify 20261004150000: webhook payloads clean, strip trigger proven on insert and update, four retention jobs scheduled, nothing expired left, the AI cache holds no paid analysis and nothing past 24 hours, checkout references closed and tied to their résumé';
 END $$;

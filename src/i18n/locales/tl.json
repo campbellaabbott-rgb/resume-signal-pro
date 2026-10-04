@@ -2360,7 +2360,7 @@
     "analysisProcessingDescription": "Hindi namin nakuha ang detalyadong rekomendasyon mula sa iyong resume. Maaari itong mangyari kung hindi pangkaraniwan ang format ng resume o nagkaroon ng isyu sa pagproseso.",
     "bottomCta": "I-apply ang mga pagbabagong ito sa iyong resume at panoorin ang pagpapahusay ng iyong interview rate!",
     "bottomCtaWithLinkedIn": "I-apply ang mga pagbabagong ito sa iyong resume at LinkedIn profile at panoorin ang pagpapahusay ng iyong interview rate!",
-    "analysisSaved": "Na-save ang pagsusuring ito. Gamitin ang share link sa itaas upang ma-access ito anumang oras."
+    "analysisSaved": "Itinatago ang pagsusuring ito nang {{analysisDays}} araw sa likod ng share link sa itaas, saka binubura. I-download ito bilang PDF para magtabi ng sarili mong kopya."
   },
   "personalization": {
     "experience": {
@@ -2528,7 +2528,7 @@
       },
       "autoDelete": {
         "title": "Binubura ayon sa Iskedyul",
-        "description": "Tumatakbo ang mga deletion job kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache at mga bayad na pagsusuri, kaya walang lumalampas sa nakasaad na oras nito nang higit sa isang oras."
+        "description": "Tumatakbo ang mga deletion job kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache, AI cache at mga bayad na pagsusuri, kaya walang lumalampas sa nakasaad na oras nito nang higit sa isang oras."
       },
       "gdpr": {
         "title": "GDPR Compliant",
@@ -2536,7 +2536,7 @@
       },
       "neverSold": {
         "title": "Hindi Kailanman Ibinebenta",
-        "description": "Hindi namin kailanman ibinebenta ang resume mo o ipinapakita sa mga recruiter. Lumalabas lang ito sa amin papunta sa AI provider na sumusulat ng report mo, sa email provider na naghahatid ng report na ipinadala mo sa sarili mo, at, kung bubuksan mo ang apply agent, sa mga employer na inaaplayan nito para sa iyo. Ang Stripe ang humahawak ng bayad at walang natatanggap na text ng resume."
+        "description": "Hindi namin kailanman ibinebenta ang resume mo o ipinapakita sa mga recruiter. Lumalabas lang ito sa amin papunta sa AI provider na sumusulat ng report mo, sa email provider na naghahatid ng report na ipinadala mo sa sarili mo at ng bayad na pagsusuri na ine-email namin sa iyo, at, kung bubuksan mo ang apply agent, sa mga employer na inaaplayan nito para sa iyo. Ang Stripe ang humahawak ng bayad at walang natatanggap na text ng resume."
       },
       "transparent": {
         "title": "Transparent na Pagproseso",
@@ -2567,10 +2567,20 @@
           "where": "Ang aming database",
           "howLong": "Itinatago, para pareho ang industriyang mababasa kapag ni-rescan ang parehong file. Hindi ito maibabalik sa resume mo."
         },
+        "aiCache": {
+          "what": "Ang buod na isinulat ng AI sa itaas ng libre mong report, na maaaring gumamit ng pangalan mo, at ang buong report kapag ang backup scanner namin ang sumulat nito",
+          "where": "Isang AI response cache, nakatala sa ilalim ng one-way fingerprint ng text",
+          "howLong": "Hanggang {{aiCacheHours}} oras, saka binubura"
+        },
         "browser": {
           "what": "Ang text ng resume mo",
           "where": "Ang sarili mong browser tab (session storage)",
           "howLong": "Hanggang isara mo ang tab"
+        },
+        "browserLocal": {
+          "what": "Ang resume na ginagawa mo sa site (sa builder o sa Freelance Boost), ang kasaysayan ng mga huli mong scan (pangalan, tungkulin at score), at ang mga huli mong report",
+          "where": "Ang local storage ng browser na ito, sa device mo",
+          "howLong": "Hanggang ma-clear ito: kini-clear lahat ng button na pang-clear ng browser data sa isang bayad na results page, pati ang pag-clear ng data ng site na ito sa browser mo"
         },
         "ai": {
           "what": "Ang text ng resume mo, habang isinusulat ang report",
@@ -2578,7 +2588,7 @@
           "howLong": "Ipinapadala lang para gawin ang report mo, sa ilalim ng mga tuntunin ng provider na iyon"
         },
         "email": {
-          "what": "Ang report na ine-email mo sa sarili mo, at mga fix-plan email na pinili mong tanggapin",
+          "what": "Ang report na ine-email mo sa sarili mo, ang bayad na pagsusuri na ine-email namin sa iyo, at mga fix-plan email na pinili mong tanggapin",
           "where": "Ang inbox mo, ipinadala sa pamamagitan ng aming email provider; naghihintay sa aming send queue ang mga naka-iskedyul na fix-plan email",
           "howLong": "Ipinapadala ang mga naka-iskedyul na email sa loob ng 14 araw; kinakansela ng pag-unsubscribe ang natitira"
         },
@@ -2605,7 +2615,7 @@
         "payment": {
           "what": "Ang bayad mo",
           "where": "Stripe",
-          "howLong": "Walang natatanggap na text ng resume ang Stripe"
+          "howLong": "Walang natatanggap na text ng resume ang Stripe, o anumang reference dito"
         },
         "shortlist": {
           "what": "Mga resume ng kandidato na sinusuri ng isang employer gamit ang Shortlist",
@@ -2613,7 +2623,7 @@
           "howLong": "Hanggang burahin ng employer ang mga ito"
         }
       },
-      "footnote": "Tumatakbo ang pagbura kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache at mga bayad na pagsusuri. Para ipabura ang anuman nang mas maaga, mag-email sa {{email}}."
+      "footnote": "Tumatakbo ang pagbura kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache, AI cache at mga bayad na pagsusuri. Para ipabura ang anuman nang mas maaga, mag-email sa {{email}}."
     },
     "transparentScoringTitle": "Transparent na AI Scoring",
     "transparentScoringSubtitle": "Naniniwala kami sa kumpletong transparency. Tingnan nang eksakto kung paano sinusuri ng aming AI ang mga resume, anong mga factor namin isinasaalang-alang, at paano kinakalkula ang mga score.",

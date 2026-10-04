@@ -9,7 +9,7 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Trust from "@/pages/Trust";
-import { PRIVACY_EMAIL, REPORT_CACHE_DAYS, SHARED_ANALYSIS_DAYS, TEMP_RESUME_HOURS } from "@/lib/resume-retention";
+import { AI_CACHE_MAX_HOURS, PRIVACY_EMAIL, REPORT_CACHE_DAYS, SHARED_ANALYSIS_DAYS, TEMP_RESUME_HOURS } from "@/lib/resume-retention";
 
 // The page's neighbours are not what this test is about, and several of them
 // read the network; each renders as nothing.
@@ -39,12 +39,17 @@ describe("/trust retention table", { timeout: 30_000 }, () => {
     const table = within(section).getByRole("table");
     const text = table.textContent ?? "";
 
-    expect(within(table).getAllByRole("row").length).toBe(1 + 12);
+    expect(within(table).getAllByRole("row").length).toBe(1 + 14);
     expect(text).toContain(`${TEMP_RESUME_HOURS} hours, then deleted`);
     expect(text).toContain(`${REPORT_CACHE_DAYS} days, then deleted`);
     expect(text).toContain(`${SHARED_ANALYSIS_DAYS} days, or until you press “Delete My Data” on the results page`);
     expect(text).toContain(PRIVACY_EMAIL);
-    expect(text).toContain("Stripe receives no resume text");
+    expect(text).toContain("Stripe receives no resume text, and no reference to it");
+    // The AI cache is a store of its own, with its own clock.
+    expect(text).toContain(`Up to ${AI_CACHE_MAX_HOURS} hours, then deleted`);
+    // Local storage outlives the tab, and says so.
+    expect(text).toContain("This browser's local storage, on your device");
+    expect(text).toContain("the Clear Browser Data button on a paid results page clears all of it");
     expect(container.textContent).not.toMatch(/\{\{|\}\}|trustPage\./);
   });
 

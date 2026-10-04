@@ -26,10 +26,12 @@ import { passSessionSettled } from "../_shared/pass-settlement.ts";
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 // What of an event is stored: never the résumé text old sessions carry.
 import { withoutResumeText } from "../_shared/webhook-payload.ts";
+// Which résumé a product is delivered from: kept on our side, never in Stripe.
+import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-04.no-resume-payload";
+const FN_BUILD = "stripe-webhook.2026-10-04.no-resume-in-stripe";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -238,7 +240,10 @@ async function triggerProductDelivery(
   const productType = session.metadata?.product_type;
   const productName = session.metadata?.product_name;
   const customerEmail = session.customer_email || session.metadata?.customer_email;
-  const resumeSessionId = session.metadata?.session_id;
+  // Looked up by the Stripe session id in checkout_resume_refs; the
+  // temporary-store id is no longer written to Stripe (it is a bearer key to
+  // the text). Sessions minted before that change still carry it in metadata.
+  const resumeSessionId = await resumeSessionForCheckout(supabase, sessionId, session.metadata);
 
   logStep("Triggering product delivery", { sessionId, productType });
 

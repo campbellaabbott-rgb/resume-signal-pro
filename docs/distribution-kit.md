@@ -28,7 +28,8 @@ Fill `[...]` placeholders before sending. Update the corpus number from
 > account and no email — they paste or upload a resume and get an ATS score
 > with a full audit trail, their weakest bullets rewritten, and per-vendor
 > parsing checks (Workday, Greenhouse, Lever, iCIMS) in about 20 seconds.
-> Resumes are never stored.
+> The free scan deletes the resume text within 24 hours and the report within
+> 7 days; resumebooster.work/trust lists every copy and its clock.
 >
 > Two things that might matter for your students specifically:
 > - It works in Spanish, French, German, Portuguese and more — the whole

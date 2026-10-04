@@ -2360,7 +2360,7 @@
     "analysisProcessingDescription": "Wir konnten keine detaillierten Empfehlungen aus deinem Lebenslauf extrahieren. Dies kann passieren, wenn das Lebenslaufformat ungewöhnlich ist oder es bei der Verarbeitung ein Problem gab.",
     "bottomCta": "Wende diese Änderungen auf deinen Lebenslauf an und beobachte, wie sich deine Interviewquote verbessert!",
     "bottomCtaWithLinkedIn": "Wende diese Änderungen auf deinen Lebenslauf und dein LinkedIn-Profil an und beobachte, wie sich deine Interviewquote verbessert!",
-    "analysisSaved": "Diese Analyse wurde gespeichert. Verwende den Freigabelink oben, um jederzeit darauf zuzugreifen."
+    "analysisSaved": "Diese Analyse bleibt {{analysisDays}} Tage hinter dem Freigabelink oben abrufbar und wird dann gelöscht. Lade sie als PDF herunter, um eine eigene Kopie zu behalten."
   },
   "personalization": {
     "experience": {
@@ -2528,7 +2528,7 @@
       },
       "autoDelete": {
         "title": "Löschung nach Zeitplan",
-        "description": "Löschjobs laufen alle 15 Minuten für den Zwischenspeicher und stündlich für den Bericht-Cache und bezahlte Analysen, sodass keines davon seine angegebene Frist um mehr als eine Stunde überschreitet."
+        "description": "Löschjobs laufen alle 15 Minuten für den Zwischenspeicher und stündlich für den Bericht-Cache, den KI-Cache und bezahlte Analysen, sodass keines davon seine angegebene Frist um mehr als eine Stunde überschreitet."
       },
       "gdpr": {
         "title": "DSGVO-konform",
@@ -2536,7 +2536,7 @@
       },
       "neverSold": {
         "title": "Nie verkauft",
-        "description": "Wir verkaufen deinen Lebenslauf nie und zeigen ihn keinem Recruiter. Er verlässt uns nur an den KI-Anbieter, der deinen Bericht schreibt, an den E-Mail-Anbieter, der einen Bericht zustellt, den du dir selbst schickst, und – wenn du den Bewerbungsagenten einschaltest – an die Arbeitgeber, bei denen er sich für dich bewirbt. Stripe wickelt die Zahlung ab und erhält keinen Lebenslauftext."
+        "description": "Wir verkaufen deinen Lebenslauf nie und zeigen ihn keinem Recruiter. Er verlässt uns nur an den KI-Anbieter, der deinen Bericht schreibt, an den E-Mail-Anbieter, der einen Bericht zustellt, den du dir selbst schickst, und die bezahlte Analyse, die wir dir mailen, und – wenn du den Bewerbungsagenten einschaltest – an die Arbeitgeber, bei denen er sich für dich bewirbt. Stripe wickelt die Zahlung ab und erhält keinen Lebenslauftext."
       },
       "transparent": {
         "title": "Transparente Verarbeitung",
@@ -2567,10 +2567,20 @@
           "where": "Unsere Datenbank",
           "howLong": "Bleibt erhalten, damit ein erneuter Scan derselben Datei dieselbe Branche erkennt. Aus ihm lässt sich dein Lebenslauf nicht wiederherstellen."
         },
+        "aiCache": {
+          "what": "Die KI-geschriebene Zusammenfassung oben in deinem kostenlosen Bericht, die deinen Namen verwenden kann, und der ganze Bericht, wenn unser Ersatz-Scanner ihn schreibt",
+          "where": "Ein KI-Antwort-Cache, abgelegt unter einem Einweg-Fingerabdruck des Textes",
+          "howLong": "Bis zu {{aiCacheHours}} Stunden, dann gelöscht"
+        },
         "browser": {
           "what": "Der Text deines Lebenslaufs",
           "where": "Dein eigener Browser-Tab (Session Storage)",
           "howLong": "Bis du den Tab schließt"
+        },
+        "browserLocal": {
+          "what": "Ein Lebenslauf, den du hier erstellst (im Builder oder in Freelance Boost), ein Verlauf deiner letzten Scans (Name, Rolle und Punktzahlen) und deine letzten Berichte",
+          "where": "Der lokale Speicher dieses Browsers, auf deinem Gerät",
+          "howLong": "Bis er geleert wird: Die Schaltfläche zum Löschen der Browserdaten auf einer bezahlten Ergebnisseite leert alles, ebenso das Löschen der Website-Daten in deinem Browser"
         },
         "ai": {
           "what": "Der Text deines Lebenslaufs, während ein Bericht geschrieben wird",
@@ -2578,7 +2588,7 @@
           "howLong": "Nur zur Erstellung deines Berichts gesendet, zu den Bedingungen dieses Anbieters"
         },
         "email": {
-          "what": "Ein Bericht, den du dir selbst mailst, und Fix-Plan-E-Mails, die du abonnierst",
+          "what": "Ein Bericht, den du dir selbst mailst, die bezahlte Analyse, die wir dir mailen, und Fix-Plan-E-Mails, die du abonnierst",
           "where": "Dein Postfach, versendet über unseren E-Mail-Anbieter; geplante Fix-Plan-E-Mails warten in unserer Versandwarteschlange",
           "howLong": "Die geplanten E-Mails gehen über 14 Tage hinweg raus; eine Abmeldung storniert den Rest"
         },
@@ -2605,7 +2615,7 @@
         "payment": {
           "what": "Deine Zahlung",
           "where": "Stripe",
-          "howLong": "Stripe erhält keinen Lebenslauftext"
+          "howLong": "Stripe erhält keinen Lebenslauftext und keinen Verweis darauf"
         },
         "shortlist": {
           "what": "Lebensläufe von Kandidaten, die ein Arbeitgeber mit Shortlist prüft",
@@ -2613,7 +2623,7 @@
           "howLong": "Bis der Arbeitgeber sie löscht"
         }
       },
-      "footnote": "Gelöscht wird alle 15 Minuten im Zwischenspeicher und stündlich im Bericht-Cache und bei bezahlten Analysen. Wenn etwas früher gelöscht werden soll, schreib an {{email}}."
+      "footnote": "Gelöscht wird alle 15 Minuten im Zwischenspeicher und stündlich im Bericht-Cache, im KI-Cache und bei bezahlten Analysen. Wenn etwas früher gelöscht werden soll, schreib an {{email}}."
     },
     "transparentScoringTitle": "Transparente KI-Bewertung",
     "transparentScoringSubtitle": "Wir glauben an vollständige Transparenz. Sieh genau, wie unsere KI Lebensläufe analysiert, welche Faktoren wir berücksichtigen und wie Punktzahlen berechnet werden.",

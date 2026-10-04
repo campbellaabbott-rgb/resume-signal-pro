@@ -10,6 +10,11 @@
  *   - the four stores the site now dates are purged at the published clocks,
  *     immediately and by a scheduled job, and nothing outside a clock moves;
  *   - the helper is closed to anon and authenticated, open to service_role;
+ *   - the AI cache holds no paid analysis and nothing past 24 hours, whoever
+ *     writes, by insert or by the upsert store_cached_response does;
+ *   - checkout_resume_refs is closed to anon and authenticated, open to
+ *     service_role, takes only a Stripe session id, refuses a résumé that does
+ *     not exist, and is emptied when the résumé it points to is deleted;
  *   - re-applying is harmless, and a database without pg_cron refuses the
  *     file instead of publishing a retention nothing enforces.
  */
@@ -60,6 +65,7 @@ const TABLES = `
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY, cache_key text NOT NULL, function_name text NOT NULL,
     response jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, hit_count integer NOT NULL DEFAULT 0
   );
+  CREATE UNIQUE INDEX idx_ai_cache_key_function ON public.ai_response_cache(cache_key, function_name);
   CREATE TABLE public.scan_report_cache (cache_key text PRIMARY KEY, report jsonb NOT NULL, engine_version text, created_at timestamptz NOT NULL DEFAULT now());
   CREATE TABLE public.resume_analyses (
     id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -82,7 +88,9 @@ const SEED = `
     ('overlong text', now() - interval '1 hour', now() + interval '6 days');
   INSERT INTO public.ai_response_cache (cache_key, function_name, response, expires_at) VALUES
     ('k1', 'analyze-resume', '{}', now() - interval '1 minute'),
-    ('k2', 'analyze-resume', '{}', now() + interval '40 hours');
+    ('k2', 'analyze-resume', '{"quotes":"Jordan Probe"}', now() + interval '40 hours'),
+    ('k4', 'generate-summary', '{"summary":"Jordan, ..."}', now() + interval '40 hours'),
+    ('k5', 'free-keyword-scan-stream', '{}', now() + interval '20 hours');
   INSERT INTO public.scan_report_cache (cache_key, report, created_at) VALUES
     ('old', '{"atsParsedPreview":"Jordan Probe"}', now() - interval '8 days'),
     ('new', '{"atsParsedPreview":"Jordan Probe"}', now() - interval '2 days');
@@ -140,7 +148,15 @@ describe("migration 20261004150000 on a database that has the leak", { timeout: 
     await db.exec(SQL);
     const temp = await rows<{ resume_text: string; within: boolean }>(db, "SELECT resume_text, expires_at <= coalesce(created_at, now()) + interval '24 hours' AS within FROM public.temp_resume_storage ORDER BY resume_text");
     expect(temp).toEqual([{ resume_text: "fresh text", within: true }, { resume_text: "overlong text", within: true }]);
-    expect((await rows<{ cache_key: string }>(db, "SELECT cache_key FROM public.ai_response_cache")).map((r) => r.cache_key)).toEqual(["k2"]);
+    // Every cached paid analysis is gone, live or not; the rest keep at most 24 hours.
+    const cache = await rows<{ cache_key: string; within: boolean; alive: boolean }>(db, `
+      SELECT cache_key, expires_at <= created_at + interval '24 hours' AS within,
+             expires_at > now() + interval '19 hours' AS alive
+        FROM public.ai_response_cache ORDER BY cache_key`);
+    expect(cache).toEqual([
+      { cache_key: "k4", within: true, alive: true },
+      { cache_key: "k5", within: true, alive: true },
+    ]);
     expect((await rows<{ cache_key: string }>(db, "SELECT cache_key FROM public.scan_report_cache")).map((r) => r.cache_key)).toEqual(["new"]);
     expect((await rows<{ share_id: string }>(db, "SELECT share_id FROM public.resume_analyses ORDER BY share_id")).map((r) => r.share_id)).toEqual(["live", "undated_new"]);
     // New rows get the published clocks by default.
@@ -171,6 +187,53 @@ describe("migration 20261004150000 on a database that has the leak", { timeout: 
     expect((await rows(db, "SELECT 1 FROM public.scan_report_cache WHERE cache_key = 'stale'")).length).toBe(0);
     expect((await rows(db, "SELECT 1 FROM public.resume_analyses WHERE share_id = 'stale'")).length).toBe(0);
     expect((await rows(db, "SELECT 1 FROM public.scan_report_cache WHERE cache_key = 'new'")).length).toBe(1);
+  });
+
+  it("the AI cache refuses a paid analysis and holds every other row to 24 hours, by insert and by upsert", async () => {
+    const db = await boot();
+    await db.exec(SQL);
+    await db.exec(`INSERT INTO public.ai_response_cache (cache_key, function_name, response, expires_at) VALUES ('late', 'analyze-resume', '{}', now() + interval '48 hours')`);
+    expect((await rows(db, "SELECT 1 FROM public.ai_response_cache WHERE cache_key = 'late'")).length).toBe(0);
+    // store_cached_response's own statement, asking for 48 hours twice.
+    const upsert = `
+      INSERT INTO public.ai_response_cache (cache_key, function_name, response, expires_at)
+      VALUES ('u1', 'generate-summary', '{"summary":"x"}', now() + interval '48 hours')
+      ON CONFLICT (cache_key, function_name) DO UPDATE SET response = EXCLUDED.response, expires_at = now() + interval '48 hours', created_at = now()`;
+    await db.exec(upsert);
+    await db.exec(upsert);
+    const [u] = await rows<{ h: number }>(db, "SELECT round(extract(epoch FROM expires_at - created_at) / 3600) AS h FROM public.ai_response_cache WHERE cache_key = 'u1'");
+    expect(Number(u.h)).toBe(24);
+    // A shorter window is left alone.
+    await db.exec(`INSERT INTO public.ai_response_cache (cache_key, function_name, response, expires_at) VALUES ('short', 'free-keyword-scan-stream', '{}', now() + interval '2 hours')`);
+    const [sh] = await rows<{ h: number }>(db, "SELECT round(extract(epoch FROM expires_at - created_at) / 3600) AS h FROM public.ai_response_cache WHERE cache_key = 'short'");
+    expect(Number(sh.h)).toBe(2);
+    // The self-verify's probes do not survive the apply.
+    expect((await rows(db, "SELECT 1 FROM public.ai_response_cache WHERE cache_key LIKE 'selfcheck%'")).length).toBe(0);
+  });
+
+  it("checkout_resume_refs: service_role only, Stripe session ids only, a real résumé only, and gone with it", async () => {
+    const db = await boot();
+    await db.exec(SQL);
+    for (const role of ["anon", "authenticated"]) {
+      await expect(db.exec(`SET ROLE ${role}; SELECT * FROM public.checkout_resume_refs;`)).rejects.toThrow(/permission denied/);
+      await db.exec("RESET ROLE");
+    }
+    const [{ session_id: temp }] = await rows<{ session_id: string }>(db, "INSERT INTO public.temp_resume_storage (resume_text) VALUES ('Jordan Probe') RETURNING session_id");
+    // service_role bypasses row-level security on Supabase; the stand-in role is given the same.
+    await db.exec("ALTER ROLE service_role BYPASSRLS");
+    await db.exec(`SET ROLE service_role; INSERT INTO public.checkout_resume_refs (stripe_session_id, resume_session_id) VALUES ('cs_live_a1', '${temp}'); RESET ROLE;`);
+    await db.exec("SET ROLE service_role");
+    expect((await rows<{ resume_session_id: string }>(db, "SELECT resume_session_id FROM public.checkout_resume_refs WHERE stripe_session_id = 'cs_live_a1'"))[0].resume_session_id).toBe(temp);
+    await db.exec("RESET ROLE");
+    // Not a Stripe session id; a résumé that does not exist.
+    await expect(db.exec(`INSERT INTO public.checkout_resume_refs (stripe_session_id, resume_session_id) VALUES ('pro_123', '${temp}')`)).rejects.toThrow(/checkout_resume_refs_is_a_stripe_session/);
+    await expect(db.exec(`INSERT INTO public.checkout_resume_refs (stripe_session_id, resume_session_id) VALUES ('cs_live_b2', gen_random_uuid())`)).rejects.toThrow(/foreign key/);
+    // The retention job deletes the résumé; the reference goes with it.
+    await db.exec(`UPDATE public.temp_resume_storage SET expires_at = now() - interval '1 second' WHERE session_id = '${temp}'`);
+    const job = (await rows<{ command: string }>(db, "SELECT command FROM cron.job WHERE jobname = 'temp-resume-retention'"))[0];
+    await db.exec(job.command);
+    expect((await rows(db, "SELECT 1 FROM public.checkout_resume_refs")).length).toBe(0);
+    expect((await rows(db, "SELECT 1 FROM public.temp_resume_storage WHERE resume_text LIKE 'selfcheck%'")).length).toBe(0);
   });
 
   it("closes the helper to anon and authenticated, and service_role can still write the table", async () => {

@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 
 export default function Privacy() {
   const { t, i18n } = useTranslation();
@@ -110,11 +111,13 @@ export default function Privacy() {
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> Held in a private temporary store for 24 hours after you upload or paste it, so a checkout can use it, then deleted automatically.</li>
                 <li><strong className="text-foreground">Free Reports:</strong> A free report quotes lines from your resume, including its first ~600 characters. It is cached for 7 days under a one-way fingerprint of the text, so the same file gets the same report, then deleted automatically. The fingerprint and the industry detected are kept so a rescan reads the same industry; the fingerprint cannot be turned back into your resume.</li>
-                <li><strong className="text-foreground">Analysis Results:</strong> A paid analysis, which quotes your resume, is kept behind its private share link for 90 days and then deleted automatically, or sooner if you delete it from the results page. Documents generated for other paid products are kept with your purchase record so you can recover them, until you ask us to erase them.</li>
+                <li><strong className="text-foreground">Cached AI Output:</strong> The AI-written summary at the top of a free report, and a report written by our backup scanner, are cached for up to {AI_CACHE_MAX_HOURS} hours under a one-way fingerprint of the text, then deleted automatically. A paid analysis is never cached.</li>
+                <li><strong className="text-foreground">Analysis Results:</strong> A paid analysis, which quotes your resume, is kept behind its private share link for {SHARED_ANALYSIS_DAYS} days and then deleted automatically, or sooner if you delete it from the results page; that link is its only copy on our servers, apart from any copy emailed to you. Documents generated for other paid products are kept with your purchase record so you can recover them, until you ask us to erase them.</li>
                 <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, and the CV you give the apply agent (the file and its text) are kept until you delete your account. The apply agent sends that CV to the employers it applies to on your behalf. Deleting your account erases the saved text; to have an uploaded CV file erased, email privacy@resumebooster.com.</li>
                 <li><strong className="text-foreground">Payment Records:</strong> Retained as required by tax and financial regulations (typically 7 years)</li>
                 <li><strong className="text-foreground">Email Address:</strong> If provided, retained only as needed for sending your analysis results</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
+                <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser.</li>
               </ul>
             </section>
 

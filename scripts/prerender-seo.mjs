@@ -184,7 +184,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
 export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
-export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
+export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
@@ -2418,6 +2418,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const clocks = {
       tempHours: D.TEMP_RESUME_HOURS,
       reportDays: D.REPORT_CACHE_DAYS,
+      aiCacheHours: D.AI_CACHE_MAX_HOURS,
       analysisDays: D.SHARED_ANALYSIS_DAYS,
       email: D.PRIVACY_EMAIL,
       deleteLabel: D.EN_LOCALE?.success?.actions?.deleteData || "Delete My Data",

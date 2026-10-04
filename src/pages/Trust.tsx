@@ -14,6 +14,7 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { FAQ } from "@/components/FAQ";
 import { ResumeBeforeAfter } from "@/components/ResumeBeforeAfter";
 import {
+  AI_CACHE_MAX_HOURS,
   PRIVACY_EMAIL,
   REPORT_CACHE_DAYS,
   SHARED_ANALYSIS_DAYS,
@@ -32,7 +33,9 @@ const RETENTION_ROWS = [
   "upload",
   "report",
   "fingerprint",
+  "aiCache",
   "browser",
+  "browserLocal",
   "ai",
   "email",
   "paid",
@@ -51,6 +54,7 @@ export default function Trust() {
   const clocks = {
     tempHours: TEMP_RESUME_HOURS,
     reportDays: REPORT_CACHE_DAYS,
+    aiCacheHours: AI_CACHE_MAX_HOURS,
     analysisDays: SHARED_ANALYSIS_DAYS,
     email: PRIVACY_EMAIL,
     deleteLabel: t('success.actions.deleteData'),

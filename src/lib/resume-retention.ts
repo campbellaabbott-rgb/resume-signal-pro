@@ -17,8 +17,13 @@ export const TEMP_RESUME_HOURS = 24;
 /** scan_report_cache: the finished free report (which quotes the résumé), keyed by a one-way fingerprint. */
 export const REPORT_CACHE_DAYS = 7;
 
-/** ai_response_cache: the longest window any caller asks for (the paid analysis; the free fallback asks 24). */
-export const AI_CACHE_MAX_HOURS = 48;
+/**
+ * ai_response_cache: the free report's AI summary (generate-summary) and the
+ * backup scanner's report (free-keyword-scan-stream), each asked for 24 hours.
+ * A trigger on the table holds every row to this many hours whatever a caller
+ * asks, and refuses the paid analysis outright (migration 20261004150000).
+ */
+export const AI_CACHE_MAX_HOURS = 24;
 
 /** resume_analyses: a paid analysis behind its private share link. */
 export const SHARED_ANALYSIS_DAYS = 90;
