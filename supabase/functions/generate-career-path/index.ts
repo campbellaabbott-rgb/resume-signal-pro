@@ -1,34 +1,49 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
+import { checkInputLimits } from "../_shared/input-limits.ts";
+import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-career-path.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+// Free tier reachable by a stranger: an address allowance plus a
+// function-wide ceiling; a paid delivery (a claimed session) is not charged
+// to the ceiling. See _shared/model-spend-gate.ts.
+const CAREER_PATH_LIMITS = { perAddress: 20, globalPerHour: 200 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-career-path", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
   try {
-    const { resumeText, industry, currentRole, isPremium, language } = await req.json();
+    const { resumeText, isPremium, language, sessionId, ...rest } = await req.json();
+    const industry = clipField(rest.industry, 120);
+    const currentRole = clipField(rest.currentRole, 120);
 
-    if (!resumeText) {
+    if (typeof resumeText !== "string" || !resumeText.trim()) {
       return new Response(
         JSON.stringify({ error: "Resume text is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const refused = await modelSpendGate(supabase, req, "generate-career-path", CAREER_PATH_LIMITS, corsHeaders, { paidSessionId: sessionId });
+    if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");

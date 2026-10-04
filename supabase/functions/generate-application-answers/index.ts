@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-07-24.2 — bump on ANY change to ../_shared/* that this
+// deploy-stamp: 2026-10-04.1 — bump on ANY change to ../_shared/* that this
 // function imports. The deploy only ships functions whose own directory
 // changed, so a shared-module-only commit leaves this function running a stale
 // bundled copy (confirmed twice on 2026-07-24 with the question classifier).
@@ -20,36 +20,57 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
+import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { classifyQuestion, selectDraftable, roleGuidance, type AppQuestion } from "../_shared/application-questions.ts";
 import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-application-answers.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+// Public (the apply page calls it with the publishable key): an address
+// allowance plus a function-wide ceiling. The apply agent calls it with the
+// service-role key and is not counted (see _shared/model-spend-gate.ts).
+const ANSWERS_LIMITS = { perAddress: 30, globalPerHour: 300 };
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-application-answers", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
-  if (!allowed) return json({ error: "Rate limit exceeded. Try again shortly." }, 429);
+  const spendGate = () => modelSpendGate(supabase, req, "generate-application-answers", ANSWERS_LIMITS, corsHeaders);
 
   try {
     const body = await req.json();
-    const { resumeText, jobTitle, jobCompany, jobDescription, questions, language, jobCategory, experienceBand,
-      mode, baseNote, candidateName } = body as {
-      resumeText?: string; jobTitle?: string; jobCompany?: string; jobDescription?: string;
-      questions?: AppQuestion[]; language?: string; jobCategory?: string; experienceBand?: string;
-      mode?: string; baseNote?: string; candidateName?: string;
+    const { resumeText, jobDescription, mode } = body as {
+      resumeText?: string; jobDescription?: string; mode?: string;
     };
+    const language = clipField(body?.language, 35);
+    // Every short field is bounded before it reaches a prompt (defect sweep
+    // 1.64); the résumé and posting by the shared caps below.
+    const jobTitle = clipField(body?.jobTitle, 200);
+    const jobCompany = clipField(body?.jobCompany, 200);
+    const jobCategory = clipField(body?.jobCategory, 60);
+    const experienceBand = clipField(body?.experienceBand, 60);
+    const candidateName = clipField(body?.candidateName, 100);
+    const baseNote = clipText(body?.baseNote, 3_000);
+    const questions: AppQuestion[] | undefined = Array.isArray(body?.questions)
+      ? (body.questions as unknown[])
+        .filter((q): q is Record<string, unknown> => !!q && typeof q === "object")
+        .slice(0, 60)
+        .map((q) => ({ ...q, label: clipField(q.label, 500) ?? "" }) as AppQuestion)
+      : undefined;
 
     const limitError = checkInputLimits({ resumeText, jobDescription });
     if (limitError) return json({ error: limitError }, 400);
-    if (!resumeText || resumeText.trim().length < 50) return json({ error: "Resume text is required." }, 400);
+    if (typeof resumeText !== "string" || resumeText.trim().length < 50) return json({ error: "Resume text is required." }, 400);
 
     // ── cover-note mode ──────────────────────────────────────────────────────
     // A different job from drafting screening answers, and it lives here rather
@@ -76,6 +97,9 @@ serve(async (req) => {
 
       const apiKeyCN = Deno.env.get("LOVABLE_API_KEY");
       if (!apiKeyCN) return json({ error: "AI is not configured." }, 500);
+
+      const refusedCN = await spendGate();
+      if (refusedCN) return refusedCN;
 
       const gateCtx = {
         resumeText, jobDescription, jobTitle, company: jobCompany,
@@ -147,6 +171,9 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "AI is not configured." }, 500);
+
+    const refused = await spendGate();
+    if (refused) return refused;
 
     const langInstruction = buildLanguageInstruction(language);
     const groundingRules = `ABSOLUTE RULES — grounding is everything:

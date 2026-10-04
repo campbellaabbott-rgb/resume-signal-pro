@@ -1,24 +1,27 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-premium-package-stream.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
   "Content-Type": "text/event-stream",
   "Cache-Control": "no-cache",
   "Connection": "keep-alive",
 };
 
-// This endpoint is public (verify_jwt=false) and streams an expensive LLM call,
-// so without a throttle anyone could loop it to burn AI credits
-// (and pull premium content) in a loop. Per-IP rate limit as an abuse backstop,
-// matching the pattern used across the other generators. NOTE: this caps burst
-// abuse; assertPaidSession below verifies the actual purchase (used_stripe_sessions
-// membership, written only by the payment-validating functions) — leak closed.
-const RATE_LIMIT = { p_max_requests: 20, p_window_minutes: 60 };
+// This endpoint is public (verify_jwt=false) and streams an expensive LLM call:
+// the per-address limit below caps burst abuse; assertPaidSession verifies the
+// actual purchase (used_stripe_sessions membership, written only by the
+// payment-validating functions).
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[PREMIUM-PACKAGE-STREAM] ${step}`, details ? JSON.stringify(details) : '');
@@ -32,10 +35,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-premium-package-stream", p_ip: clientIp, ...RATE_LIMIT });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  // Purchase-gated, so a stranger is refused before any model call: the
+  // address allowance is the whole limit here, keyed on the address the
+  // platform states (never the first forwarded hop, which the caller
+  // writes) and failing closed (see _shared/model-spend-gate.ts).
+  const refused = await modelSpendGate(supabase, req, "generate-premium-package-stream", { perAddress: 20 }, corsHeaders);
+  if (refused) return refused;
 
   try {
     const { resumeText, jobDescription, jobTitle, jobCompany, language, sessionId } = await req.json();

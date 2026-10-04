@@ -24,19 +24,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { SYSTEM_PROMPT, TOOL_PARAMETERS, validateParse } from "./parse.ts";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "nl-search.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+// One model call per typed query on the public board: an address allowance
+// plus a function-wide ceiling (see _shared/model-spend-gate.ts).
+const NL_SEARCH_LIMITS = { perAddress: 40, globalPerHour: 600 };
+// The tool call is a handful of filters (~200 tokens); the rest is headroom
+// for the model's thinking, which counts against the same cap.
+const MAX_OUTPUT_TOKENS = 2000;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "nl-search", p_ip: clientIp, p_max_requests: 40, p_window_minutes: 60 });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -45,6 +53,10 @@ serve(async (req) => {
     const { query } = await req.json();
     const raw = String(query ?? "").trim().slice(0, 300);
     if (raw.length < 3) return new Response(JSON.stringify({ error: "Query too short" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const refused = await modelSpendGate(supabase, req, "nl-search", NL_SEARCH_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -55,6 +67,7 @@ serve(async (req) => {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: raw },
         ],
+        max_tokens: MAX_OUTPUT_TOKENS,
         tools: [{
           type: "function",
           function: {

@@ -16,11 +16,22 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-freelance-boost.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+// Payment-verified, so a stranger never reaches the model; but every request
+// with a session id used to cost a Stripe lookup and there was no limiter at
+// all. The address allowance runs before the Stripe call.
+const BOOST_LIMITS = { perAddress: 20 };
 
 interface ProjectIntake {
   clientType: string;        // "a 10-person dental practice"
@@ -106,6 +117,9 @@ serve(async (req) => {
     const projects = body.projects.slice(0, 8); // Boost tier caps at 5 client-side; hard server cap 8
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+
+    const refused = await modelSpendGate(supabase, req, "generate-freelance-boost", BOOST_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     // ── Payment verification ────────────────────────────────────────────────
     const VALID_TYPES = ["freelance_boost", "freelance_transition_pro"];

@@ -1,11 +1,19 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "test-ai-fallback.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+const TEST_LIMITS = { perAddress: 3, globalPerHour: 30 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[TEST-AI-FALLBACK] ${step}`, details ? JSON.stringify(details) : '');
@@ -191,19 +199,14 @@ serve(async (req) => {
   // routes with no auth gate at all. So anyone who loads that page, or posts
   // {"mode":"all"} in a loop, spends real AI credit with no per-caller
   // accounting. Three an hour is ample for a health probe and useless as a
-  // drain.
-  try {
-    const rl = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-    const { data: allowed } = await rl.rpc("check_rate_limit", {
-      p_function: "test-ai-fallback", p_ip: ip, p_max_requests: 3, p_window_minutes: 60,
-    });
-    if (allowed === false) {
-      return new Response(JSON.stringify({ error: "Too many requests." }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-  } catch { /* limiter unavailable — fall through rather than break the health page */ }
+  // drain. The limiter used to fall through when it could not count (and
+  // keyed on the first forwarded hop, which the caller writes), so it was
+  // switchable off from outside; the shared gate fails closed instead.
+  const refused = await modelSpendGate(
+    createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""),
+    req, "test-ai-fallback", TEST_LIMITS, corsHeaders,
+  );
+  if (refused) return refused;
 
   try {
     const { mode = 'quick' } = await req.json().catch(() => ({ mode: 'quick' }));

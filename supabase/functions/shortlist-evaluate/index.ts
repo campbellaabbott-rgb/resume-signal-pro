@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 // Shortlist evaluation: redact → score → persist the audit row.
 //
 // Compliance-critical properties (see COMPLIANCE.md):
@@ -12,14 +12,28 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactForScoring, type RedactionConfig } from "../_shared/redaction.ts";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "shortlist-evaluate.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const PROMPT_VERSION = "shortlist-v1";
 const MODEL_ID = "google/gemini-2.5-flash";
+
+// Any signed-in account can own a role, and signing up is free, so a sign-in
+// is not a spending limit: an address allowance sized for an employer
+// screening a batch, plus a function-wide ceiling (_shared/model-spend-gate.ts).
+const SHORTLIST_LIMITS = { perAddress: 60, globalPerHour: 300 };
+// The evaluation tool call is ~800 tokens; the rest is headroom for the
+// model's thinking, which counts against the same cap.
+const MAX_OUTPUT_TOKENS = 4000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -73,6 +87,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    // check_rate_limit is granted to the service role only, so the count runs
+    // on a service client; everything the employer reads or writes stays on
+    // their own (RLS-scoped) client above.
+    const refused = await modelSpendGate(
+      createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""),
+      req, "shortlist-evaluate", SHORTLIST_LIMITS, corsHeaders,
+    );
+    if (refused) return refused;
+
     const systemPrompt = `You are an employment screening assistant that evaluates how well a REDACTED resume matches a job description. You assist a HUMAN reviewer — you never decide.
 
 STRICT RULES:
@@ -95,6 +118,7 @@ Return via the submit_evaluation tool.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        max_tokens: MAX_OUTPUT_TOKENS,
         tools: [{
           type: "function",
           function: {

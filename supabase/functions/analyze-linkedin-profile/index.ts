@@ -1,11 +1,26 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "analyze-linkedin-profile.2026-10-04.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
+
+// A pro-first chain on a free tool: the tightest address allowance of the
+// generators, plus a function-wide ceiling (see _shared/model-spend-gate.ts).
+const LINKEDIN_LIMITS = { perAddress: 10, globalPerHour: 100 };
+
+// The output cap. The JSON report is ~1,500 tokens; the rest is headroom for
+// the reasoning pro and gpt-5 spend against the same cap. Unset, a model could
+// run to its own ceiling on the project's key.
+const MAX_OUTPUT_TOKENS = 6000;
 
 const MODEL_FALLBACK_ORDER = [
   'google/gemini-2.5-pro',
@@ -25,7 +40,11 @@ async function callAI(apiKey: string, messages: Array<{ role: string; content: s
         const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages, response_format: { type: "json_object" } }),
+          body: JSON.stringify({
+            model, messages, response_format: { type: "json_object" },
+            // OpenAI's gpt-5 family names the cap max_completion_tokens.
+            ...(model.startsWith("openai/") ? { max_completion_tokens: MAX_OUTPUT_TOKENS } : { max_tokens: MAX_OUTPUT_TOKENS }),
+          }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -47,16 +66,22 @@ async function callAI(apiKey: string, messages: Array<{ role: string; content: s
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  let body: Record<string, unknown>;
+  try {
+    const parsed = await req.json();
+    body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid request body' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
 
-  const [{ data: allowed }, body] = await Promise.all([
-    supabase.rpc("check_rate_limit", { p_function: "analyze-linkedin-profile", p_ip: clientIp, p_max_requests: 10, p_window_minutes: 60 }),
-    req.json()
-  ]);
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-  const { resumeText, linkedinText, industry, resumeAtsScore } = body;
+  // Both documents are cut to 8,000 characters where the prompt reads them;
+  // the two short fields are bounded here (defect sweep 1.64).
+  const resumeText = typeof body.resumeText === "string" ? body.resumeText : "";
+  const linkedinText = typeof body.linkedinText === "string" ? body.linkedinText : "";
+  const industry = clipField(body.industry, 120);
+  const resumeAtsScore = typeof body.resumeAtsScore === "number" && Number.isFinite(body.resumeAtsScore)
+    ? Math.round(body.resumeAtsScore)
+    : clipField(body.resumeAtsScore, 10);
 
   if (!resumeText || !linkedinText) {
     return new Response(JSON.stringify({ error: 'resumeText and linkedinText are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -64,6 +89,10 @@ serve(async (req) => {
 
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) return new Response(JSON.stringify({ error: 'AI service not configured' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const refused = await modelSpendGate(supabase, req, "analyze-linkedin-profile", LINKEDIN_LIMITS, corsHeaders);
+  if (refused) return refused;
 
   const systemPrompt = `You are an expert career coach who analyzes LinkedIn profiles alongside resumes to give candidates a complete picture of their professional presence.
 
