@@ -1628,6 +1628,8 @@
       "emailSent": "Sent! Check your inbox for your scan summary and fix plan.",
       "emailPrivacy": "Only the analysis results are emailed — never your CV. No spam.",
       "pulseOptIn": "Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.",
+      "pulseConfirmSent": "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.",
+      "pulseNotCovered": "The monthly market pulse doesn't cover your field yet, so no confirmation was sent.",
       "placementTopQuartile": "Top quartile of {{n}} real {{industry}} scans",
       "placementAboveMedian": "Above the median of {{n}} real {{industry}} scans",
       "placementBelowMedian": "Below the median of {{n}} real {{industry}} scans",
@@ -5091,5 +5093,15 @@
     "descHeading": "The employer's own description",
     "sourceNote": "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
     "theEmployer": "the employer"
+  },
+  "pulseConfirm": {
+    "title": "Confirm your monthly market pulse",
+    "body": "One email a month with the keywords job postings in your field are screening for, and a free rescan link. Every email has a one-click unsubscribe.",
+    "button": "Yes, send me the pulse",
+    "done": "You're subscribed. The first pulse arrives within a day.",
+    "invalid": "This link has expired or was already used. Tick the box under your next scan report to get a new one.",
+    "missing": "This page needs the link from your confirmation email.",
+    "error": "Could not confirm right now. Try the link again shortly.",
+    "home": "Back to Resume Booster"
   }
 }

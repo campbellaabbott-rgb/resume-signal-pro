@@ -105,11 +105,19 @@ export class FakeDb {
     return new FakeQuery(this, table);
   }
 
-  async rpc(name: string, args: Record<string, unknown> = {}): Promise<DbResult> {
-    await Promise.resolve();
-    const f = this.rpcs[name];
-    if (!f) return { data: null, error: { code: "PGRST202", message: `fake: no rpc ${name}` } };
-    return f(args);
+  /**
+   * Awaitable directly, or through .maybeSingle() / .single() as supabase-js
+   * allows for a set-returning RPC: those take the first row of an array.
+   */
+  rpc(name: string, args: Record<string, unknown> = {}): Promise<DbResult> & { maybeSingle(): Promise<DbResult>; single(): Promise<DbResult> } {
+    const run = (async (): Promise<DbResult> => {
+      await Promise.resolve();
+      const f = this.rpcs[name];
+      if (!f) return { data: null, error: { code: "PGRST202", message: `fake: no rpc ${name}` } };
+      return f(args);
+    })();
+    const first = (r: DbResult): DbResult => ({ data: Array.isArray(r.data) ? (r.data[0] ?? null) : r.data, error: r.error });
+    return Object.assign(run, { maybeSingle: () => run.then(first), single: () => run.then(first) });
   }
 
   takeFault(table: string, op: string): DbError | null {

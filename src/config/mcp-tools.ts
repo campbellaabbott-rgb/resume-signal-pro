@@ -406,7 +406,7 @@ const cliKeyed = (add: (url: string) => string, reconnect: string): McpKeyed => 
   takesKey: true,
   title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
   steps: (ctx) => [
-    { text: `Get a free key at ${MCP_MINT_PATH} — it asks for an email and shows the key once.` },
+    { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
     {
       text: "Paste the key in the field above — the two lines below fill themselves (nothing is sent anywhere; the field only edits the text on this page). Run the first line, then the second:",
       copy: exportLine(ctx.key),
@@ -513,7 +513,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       takesKey: true,
       title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
       steps: (ctx) => [
-        { text: `Get a free key at ${MCP_MINT_PATH} — it asks for an email and shows the key once.` },
+        { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
         { text: "Paste the key in the field above; set it in your shell (nothing is sent anywhere):", copy: exportLine(ctx.key), copyLabel: "the export line", note: ctx.key ? undefined : PASTE_KEY_NOTE },
         { text: "Use this block instead — the header reads the variable, so the key never sits in the file:", copy: cursorBlock(ctx.url, true), copyLabel: "the keyed Cursor mcp.json block" },
         { text: `Restart Cursor, then ask: \`${ASK_KEY}\` — it names your tier and calls left.` },
@@ -545,7 +545,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       takesKey: false,
       title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
       steps: () => [
-        { text: `Get a free key at ${MCP_MINT_PATH} — it asks for an email and shows the key once.` },
+        { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
         { text: "When VS Code asks for the key at start (the block above declares it as a hidden input), paste it there — it is never written into the file." },
         { text: `Ask: \`${ASK_KEY}\` — it names your tier and calls left.` },
       ],

@@ -7,6 +7,7 @@ import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import {
   detectCountryFromResume,
   getMarketInsight,
@@ -1617,8 +1618,12 @@ serve(async (req) => {
         .maybeSingle();
       if (cached?.report && new Date(cached.created_at).getTime() > Date.now() - 7 * 24 * 3600 * 1000) {
         console.log(`[FREE-KEYWORD-SCAN] Report cache HIT (${reportCacheKey.slice(0, 12)}…) — served instantly`);
+        const cachedReport: Record<string, unknown> = { ...(cached.report as Record<string, unknown>), cachedReport: true };
+        // Sealed on the way out, so a report cached before the mail seal
+        // existed can still be emailed in full (see the seal at the end).
+        await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
         return new Response(
-          JSON.stringify({ ...(cached.report as Record<string, unknown>), cachedReport: true }),
+          JSON.stringify(cachedReport),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -4440,6 +4445,12 @@ ${resumeText.substring(0, 20000)}
         })
       );
     }
+
+    // THE MAIL SEAL. send-scan-report prints this report's sentences (verdict,
+    // issues, fix steps, occupation, report id) in an email only when this
+    // seal matches them, so nobody can put their own words in a mail from our
+    // domain (2026-10-04). Sealed last, over exactly what the browser receives.
+    await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
     return new Response(
       JSON.stringify(responseData),

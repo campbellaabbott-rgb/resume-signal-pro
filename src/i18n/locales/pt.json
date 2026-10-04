@@ -1628,6 +1628,8 @@
       "emailSent": "Enviado! Verifique sua caixa de entrada.",
       "emailPrivacy": "Apenas os resultados da análise são enviados — nunca seu currículo. Sem spam.",
       "pulseOptIn": "Envie-me também um pulso de mercado mensal: as palavras-chave em alta no meu setor, com um link de reescaneamento grátis. Cancele quando quiser.",
+      "pulseConfirmSent": "Se este endereço ainda não confirmou o pulso mensal do mercado, enviamos a ele um link de confirmação. O pulso só começa depois que esse link for clicado.",
+      "pulseNotCovered": "O pulso mensal do mercado ainda não cobre sua área, então nenhuma confirmação foi enviada.",
       "placementTopQuartile": "Quartil superior de {{n}} escaneamentos reais de {{industry}}",
       "placementAboveMedian": "Acima da mediana de {{n}} escaneamentos reais de {{industry}}",
       "placementBelowMedian": "Abaixo da mediana de {{n}} escaneamentos reais de {{industry}}",
@@ -5091,5 +5093,15 @@
     "descHeading": "A descrição do próprio empregador",
     "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
     "theEmployer": "o empregador"
+  },
+  "pulseConfirm": {
+    "title": "Confirme seu pulso mensal do mercado",
+    "body": "Um e-mail por mês com as palavras-chave que as vagas da sua área estão filtrando e um link para escanear de novo grátis. Todo e-mail tem cancelamento com um clique.",
+    "button": "Sim, quero o pulso",
+    "done": "Inscrição confirmada. O primeiro pulso chega em até um dia.",
+    "invalid": "Este link expirou ou já foi usado. Marque a caixa no seu próximo relatório de escaneamento para receber um novo.",
+    "missing": "Esta página precisa do link do seu e-mail de confirmação.",
+    "error": "Não foi possível confirmar agora. Tente o link novamente em instantes.",
+    "home": "Voltar para o Resume Booster"
   }
 }

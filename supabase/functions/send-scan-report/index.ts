@@ -1,15 +1,62 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T15:00Z
 // Sends the free scan summary to the user's email — our first lead-capture
 // touchpoint. Uses the same Resend setup as send-analysis-email and stores
 // the address in the leads table so follow-up campaigns have a source.
+//
+// A DOOR ANYONE CAN KNOCK ON, SO EVERYTHING ABOUT IT IS BOUNDED (2026-10-04).
+// The free scan has no session to ask for, and this sends from our verified
+// domain to whatever address the body names, so it cannot prove the address
+// belongs to the caller. What it does instead:
+//   - counts per NETWORK (the caller's /24 or /48, from the platform's address
+//     via clientAddress, never the first forwarded hop, which the caller
+//     writes): 12 an hour. The old per-first-hop limit could be reset by
+//     writing a new x-forwarded-for on every request;
+//   - counts per RECIPIENT: 3 reports a day, however many networks ask, and
+//     at most one fix-plan drip a month;
+//   - stops at 300 reports a day overall;
+//   - sends nothing to an address that unsubscribed, bounced or complained;
+//   - prints a SENTENCE only when free-keyword-scan sealed it: the verdict,
+//     issues, fix steps, occupation and report id must match the seal in the
+//     scan's reportMeta.mailSeal (_shared/scan-mail-seal.ts), so the words in
+//     a mail from our domain are our scanner's, never a caller's. An unsealed
+//     request gets the numbers and our own copy only, no drip, and its own
+//     much smaller daily ceiling, so it cannot use up the sealed allowance;
+//   - clamps every number, clips every text field, drops links from them, and
+//     escapes all of it.
+// The counters are mail_door_take (20261004100000), whose windows are as long
+// as they say; check_rate_limit's are not (each call there sweeps every row
+// older than its own window, and its callers' windows run from 24 minutes).
+//
+// IT NO LONGER TOUCHES THE MARKET-PULSE LIST. A ticked box here used to write
+// the address into that list, unconfirmed, for any address anyone typed
+// (defect sweep 1.59); the pulse now has its own double opt-in in
+// send-market-pulse, and a subscribePulse field in this body is ignored.
 
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { networkBucket } from "../_shared/network-bucket.ts";
+import { scanMailSealValid } from "../_shared/scan-mail-seal.ts";
+
+// Provable from outside without sending anything: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "send-scan-report.2026-10-04.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PER_NETWORK_PER_HOUR = 12;
+const PER_RECIPIENT_PER_DAY = 3;
+const ALL_PER_DAY = 300;
+/** Requests without a valid seal: numbers-only mails, on a ceiling of their own. */
+const UNSEALED_PER_DAY = 40;
+const DRIP_ONCE_PER_DAYS = 30;
+
+const reply = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 function escapeHtml(text: string | number | undefined | null): string {
   if (text === undefined || text === null) return "";
@@ -21,24 +68,128 @@ function escapeHtml(text: string | number | undefined | null): string {
     .replace(/'/g, "&#039;");
 }
 
-interface ScanReportRequest {
-  email: string;
-  verdict?: string;
+/**
+ * The report as this function will render it: every field below is rebuilt
+ * from the request by cleanReport, never passed through. The request itself is
+ * untyped input from anyone.
+ */
+interface ScanReport {
+  verdict: string;
   score: number;
-  projectedScore?: number | null;
-  scoreBreakdown?: { keywords: number; format: number; quantification: number } | null;
-  peerPercentile?: number | null;
-  applicationPassRate?: number | null;
-  redFlags?: Array<{ issue: string }>;
-  fixRoadmap?: { steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number }>; totalMinutes: number } | null;
-  industry?: string;
-  subscribePulse?: boolean;
-  reportId?: string | null;
-  scoreBand?: { low: number; high: number } | null;
-  findingsSummary?: { critical: number; warnings: number; passed: number } | null;
-  keywordSource?: { source: string; occupation?: string; code?: string } | null;
-  /** Explicit opt-in: queue the 7-day fix-plan sequence (days 2/4/6). */
-  dripOptIn?: boolean;
+  projectedScore: number | null;
+  scoreBreakdown: { keywords: number; format: number; quantification: number } | null;
+  peerPercentile: number | null;
+  applicationPassRate: number | null;
+  redFlags: Array<{ issue: string }>;
+  fixRoadmap: { steps: Array<{ order: number | null; step: string; minutes: number; scoreImpact: number }>; totalMinutes: number } | null;
+  industry: string | null;
+  reportId: string | null;
+  scoreBand: { low: number; high: number } | null;
+  findingsSummary: { critical: number; warnings: number; passed: number } | null;
+  keywordSource: { source: "onet" | "job_description" | "model"; occupation?: string; code?: string } | null;
+  /** Explicit opt-in: queue the fix-plan sequence (days 2/4/6/14). */
+  dripOptIn: boolean;
+  /**
+   * The sentences matched free-keyword-scan's seal. When false, every
+   * sentence field above is empty (verdict, redFlags, fixRoadmap, occupation,
+   * reportId): a mail carries no words a caller wrote.
+   */
+  sealed: boolean;
+}
+
+/** A finite number, rounded and clamped to [lo, hi]; null for anything else. */
+function num(v: unknown, lo: number, hi: number): number | null {
+  const n = typeof v === "number" ? v : NaN;
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : null;
+}
+
+/**
+ * Plain text, one line, at most `max` characters, with every link taken out.
+ * The scan writes these sentences for the person who ran it; a link in one is
+ * never ours, and a mail from our domain must not carry a stranger's.
+ */
+function plain(v: unknown, max: number): string {
+  if (typeof v !== "string") return "";
+  return v.replace(/\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)\S*/gi, "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/**
+ * The request, rebuilt field by field; null when there is no score to report.
+ * `sealed` says whether the request's sentences matched the scan's seal; when
+ * it is false they are all dropped, and only numbers and fixed enums remain.
+ */
+function cleanReport(b: Record<string, unknown>, sealed: boolean): ScanReport | null {
+  const score = num(b.score, 0, 100);
+  if (score === null) return null;
+  if (!sealed) b = { ...b, verdict: undefined, redFlags: undefined, fixRoadmap: undefined, reportId: undefined, keywordSource: isObj(b.keywordSource) ? { ...b.keywordSource, occupation: undefined } : b.keywordSource };
+  const sb = isObj(b.scoreBreakdown) ? b.scoreBreakdown : null;
+  const band = isObj(b.scoreBand) ? b.scoreBand : null;
+  const fs = isObj(b.findingsSummary) ? b.findingsSummary : null;
+  const ks = isObj(b.keywordSource) ? b.keywordSource : null;
+  const fr = isObj(b.fixRoadmap) ? b.fixRoadmap : null;
+  const steps = fr && Array.isArray(fr.steps)
+    ? fr.steps.filter(isObj).slice(0, 8).map((s) => ({
+      order: num(s.order, 1, 99),
+      step: plain(s.step, 240),
+      minutes: num(s.minutes, 0, 600) ?? 0,
+      scoreImpact: num(s.scoreImpact, -100, 100) ?? 0,
+    })).filter((s) => s.step)
+    : [];
+  const source = ks && (ks.source === "onet" || ks.source === "job_description" || ks.source === "model") ? ks.source : null;
+  const code = ks && typeof ks.code === "string" && /^\d{2}-\d{4}(?:\.\d{2})?$/.test(ks.code) ? ks.code : undefined;
+  const occupation = ks ? plain(ks.occupation, 120) || undefined : undefined;
+  const reportId = typeof b.reportId === "string" && /^[A-Za-z0-9]{6,32}$/.test(b.reportId) ? b.reportId : null;
+  const low = band ? num(band.low, 0, 100) : null;
+  const high = band ? num(band.high, 0, 100) : null;
+  return {
+    verdict: plain(b.verdict, 400),
+    score,
+    projectedScore: num(b.projectedScore, 0, 100),
+    scoreBreakdown: sb
+      ? { keywords: num(sb.keywords, 0, 100) ?? 0, format: num(sb.format, 0, 100) ?? 0, quantification: num(sb.quantification, 0, 100) ?? 0 }
+      : null,
+    peerPercentile: num(b.peerPercentile, 0, 100),
+    applicationPassRate: num(b.applicationPassRate, 0, 100),
+    redFlags: Array.isArray(b.redFlags)
+      ? b.redFlags.filter(isObj).slice(0, 3).map((f) => ({ issue: plain(f.issue, 240) })).filter((f) => f.issue)
+      : [],
+    fixRoadmap: steps.length ? { steps, totalMinutes: num(fr?.totalMinutes, 0, 6000) ?? 0 } : null,
+    industry: plain(b.industry, 64) || null,
+    reportId,
+    scoreBand: low !== null && high !== null ? { low, high } : null,
+    findingsSummary: fs
+      ? { critical: num(fs.critical, 0, 999) ?? 0, warnings: num(fs.warnings, 0, 999) ?? 0, passed: num(fs.passed, 0, 999) ?? 0 }
+      : null,
+    keywordSource: source ? { source, ...(occupation ? { occupation } : {}), ...(code ? { code } : {}) } : null,
+    dripOptIn: b.dripOptIn === true,
+    sealed,
+  };
+}
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf), (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+// deno-lint-ignore no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Admin = SupabaseClient<any, any, any>;
+
+/**
+ * One count at a mail door (mail_door_take, 20261004100000). Answers "ok" only
+ * when the database said yes: a door that cannot count stays shut.
+ */
+async function take(admin: Admin, door: string, bucket: string, max: number, windowMinutes: number): Promise<"ok" | "full" | "error"> {
+  const { data, error } = await admin.rpc("mail_door_take", {
+    p_door: door, p_bucket: bucket, p_max: max, p_window_minutes: windowMinutes,
+  });
+  if (error) {
+    console.error(`[SEND-SCAN-REPORT] ${door} count failed:`, error.message?.slice(0, 160));
+    return "error";
+  }
+  return data === true ? "ok" : "full";
 }
 
 Deno.serve(async (req) => {
@@ -68,75 +219,67 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body: ScanReportRequest = await req.json();
-    const email = (body.email || "").trim().toLowerCase();
-    // RATE LIMITED, because this endpoint is verify_jwt=false and sends mail
-    // FROM the project's own verified domain to whatever address the body names
-    // — and then enqueues four more over fourteen days. Unthrottled that is a
-    // mail bomb with our return address on it, and the spam complaints land on
-    // the same domain that carries password resets and purchase receipts.
-    //
-    // Per-IP, matching the shape create-product-checkout already uses. It does
-    // not make the endpoint authenticated — the free scan flow cannot require a
-    // session — but it bounds the blast radius, which nothing did before.
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || req.headers.get("x-real-ip") || "unknown";
-    const rlClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
-    const { data: rlAllowed } = await rlClient.rpc("check_rate_limit", {
-      p_function: "send-scan-report", p_ip: clientIp, p_max_requests: 12, p_window_minutes: 60,
-    });
-    if (rlAllowed === false) {
-      return new Response(JSON.stringify({ success: false, error: "Too many requests. Please try again later." }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const raw = await req.json().catch(() => null);
+    if (!isObj(raw)) return reply({ success: false, error: "Body must be a JSON object" }, 400);
+    const email = (typeof raw.email === "string" ? raw.email : "").trim().toLowerCase();
+    if (email.length > 254 || !EMAIL_RE.test(email)) {
+      return reply({ success: false, error: "Invalid email address" }, 400);
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid email address" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    // The sentences print only if free-keyword-scan sealed exactly these.
+    const sealed = await scanMailSealValid(serviceKey, raw, raw.mailSeal);
+    // From here on `body` is the rebuilt report, never the request.
+    const body = cleanReport(raw, sealed);
+    if (!body) return reply({ success: false, error: "Missing score" }, 400);
+
+    const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
+
+    // 1. THE NETWORK. Twelve an hour from one /24 (or /48), keyed on the
+    //    platform's address. The previous key was the FIRST x-forwarded-for
+    //    hop, which the caller writes, so a fresh header was a fresh allowance.
+    const net = await networkBucket(req.headers, serviceKey, "scan-report");
+    const atNet = await take(admin, "send-scan-report", net, PER_NETWORK_PER_HOUR, 60);
+    if (atNet === "error") return reply({ success: false, error: "Could not send right now. Please try again shortly." }, 503);
+    if (atNet === "full") return reply({ success: false, error: "Too many requests. Please try again later." }, 429);
+
+    // 2. THE RECIPIENT'S OWN WORD. An address that unsubscribed, bounced or
+    //    complained gets nothing from here, whoever typed it. The answer is
+    //    the ordinary one: whether an address opted out of our mail is its
+    //    owner's business, and a distinct answer would let anyone test any
+    //    address against our suppression list.
+    const { data: suppressed, error: supErr } = await admin
+      .from("suppressed_emails").select("email").eq("email", email).maybeSingle();
+    if (supErr) return reply({ success: false, error: "Could not send right now. Please try again shortly." }, 503);
+    if (suppressed) return reply({ success: true });
+
+    // 3. THE RECIPIENT. Three reports a day to one address, however many
+    //    networks ask: a stranger rotating networks still reaches a given
+    //    inbox three times. The bucket is a keyed hash, never the address.
+    const recipient = (await sha256Hex(`${serviceKey}:scan-report-recipient:${email}`)).slice(0, 32);
+    const atRecipient = await take(admin, "send-scan-report:recipient", recipient, PER_RECIPIENT_PER_DAY, 1440);
+    if (atRecipient === "error") return reply({ success: false, error: "Could not send right now. Please try again shortly." }, 503);
+    if (atRecipient === "full") {
+      return reply({ success: false, error: "That address has already been sent several reports today. Try again tomorrow, or use the PDF download." }, 429);
     }
-    if (typeof body.score !== "number" || !Number.isFinite(body.score)) {
-      return new Response(JSON.stringify({ success: false, error: "Missing score" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+
+    // 4. EVERYONE. A day's ceiling, so the worst case is a number. Unsealed
+    //    requests (numbers only) have a small ceiling of their own, so a flood
+    //    of them can never use up the allowance real scans' mails draw on.
+    const atAll = sealed
+      ? await take(admin, "send-scan-report:all", "all", ALL_PER_DAY, 1440)
+      : await take(admin, "send-scan-report:unsealed", "all", UNSEALED_PER_DAY, 1440);
+    if (atAll !== "ok") {
+      console.error(`[SEND-SCAN-REPORT] daily ceiling: ${atAll}`);
+      return reply({ success: false, error: "Report emails are paused for today. The PDF download works meanwhile." }, 503);
     }
 
     // Store the lead (non-blocking failure — email still sends)
     try {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      );
-      await supabase.rpc("save_free_scan_lead", {
+      await admin.rpc("save_free_scan_lead", {
         p_email: email,
-        p_ats_score: Math.round(body.score),
-        p_industry: body.industry ?? null,
+        p_ats_score: body.score,
+        p_industry: body.industry,
       });
-      // Market pulse opt-in — explicit checkbox in the report UI
-      if (body.subscribePulse) {
-        // NO `unsubscribed_at: null` HERE, and that omission is the fix.
-        //
-        // email is the PRIMARY KEY, so this upsert is an UPDATE for anyone
-        // already in the table — and writing null to that column is precisely
-        // how send-market-pulse decides who to mail (it selects
-        // `.is("unsubscribed_at", null)`). So an opt-in on this endpoint
-        // RESURRECTED anyone who had previously unsubscribed, silently, from an
-        // unauthenticated request that only needed to know their address.
-        //
-        // Re-subscribing must be its own deliberate act, not a side effect of a
-        // checkbox on someone else's scan.
-        await supabase.from("market_pulse_subscribers").upsert({
-          email,
-          industry: body.industry ?? "general",
-          last_score: Math.round(body.score),
-        });
-      }
     } catch (e) {
       console.warn("[SEND-SCAN-REPORT] Lead save failed (continuing):", e);
     }
@@ -246,7 +389,13 @@ Deno.serve(async (req) => {
       rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">Keyword analysis matched against the job posting you provided. Every quoted line in your full report is verified against your resume.</p>`);
     }
 
-    const preheader = `Your resume scored ${score}/100 — ${body.fixRoadmap?.totalMinutes ? `a ${body.fixRoadmap.totalMinutes}-minute fix plan is inside.` : "your fix plan is inside."}`;
+    // Without the seal there are no sentences to print, so the mail says where
+    // they are instead -- in our words, not the caller's.
+    if (!body.sealed) {
+      rows.push(`<p style="font-size:13px;color:#475569;margin:14px 0 0">The full findings and your fix plan are on the results page where you ran the scan. A fresh scan is free and takes about a minute.</p>`);
+    }
+
+    const preheader = `Your resume scored ${score}/100 — ${body.fixRoadmap?.totalMinutes ? `a ${body.fixRoadmap.totalMinutes}-minute fix plan is inside.` : body.sealed ? "your fix plan is inside." : "your scan summary is inside."}`;
 
     const html = `
 <!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
@@ -272,7 +421,8 @@ Deno.serve(async (req) => {
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
       Your resume was never stored — this summary contains only the analysis results you requested.<br>
-      You received this because you asked for your scan report at resumebooster.work. No follow-up emails unless you ask.
+      You received this because this address was entered for a scan report at resumebooster.work. If that wasn't you, ignore it.<br>
+      Follow-up emails come only if the fix-plan sequence was ticked, and every one has an unsubscribe link.
     </p>
   </div>
 </body></html>`;
@@ -281,25 +431,32 @@ Deno.serve(async (req) => {
     const { error } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
-      subject: `Your resume scored ${Math.round(body.score)}/100 — here's your fix plan`,
+      subject: body.sealed
+        ? `Your resume scored ${Math.round(body.score)}/100 — here's your fix plan`
+        : `Your resume scored ${Math.round(body.score)}/100 — your scan summary`,
       html,
     });
 
     if (error) {
       console.error("[SEND-SCAN-REPORT] Resend error:", error);
-      return new Response(JSON.stringify({ success: false, error: "Failed to send email" }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return reply({ success: false, error: "Failed to send email" }, 502);
     }
 
     // ── Opt-in 7-day fix plan: 3 short emails queued with pgmq delays ──────
     // Explicit checkbox opt-in (the report email itself stays one-shot).
     // Unsubscribe link in every email; the queue processor drops queued
     // messages for suppressed addresses, so opting out mid-sequence works.
-    if (body.dripOptIn) {
+    // ONE SEQUENCE PER ADDRESS PER 30 DAYS: the box is ticked by whoever typed
+    // the address, so a sequence can never be queued for an inbox again and
+    // again. And only for a SEALED report: the sequence is the fix plan's
+    // steps, and an unsealed request has none we can vouch for.
+    const dripDue = body.dripOptIn && body.sealed
+      ? (await take(admin, "send-scan-report:drip", recipient, 1, DRIP_ONCE_PER_DAYS * 1440)) === "ok"
+      : false;
+    if (body.dripOptIn && !body.sealed) console.log("[SEND-SCAN-REPORT] drip not queued: the report was not sealed by the scan");
+    else if (body.dripOptIn && !dripDue) console.log("[SEND-SCAN-REPORT] drip not queued: one already went to this address this month");
+    if (dripDue) {
       try {
-        const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
         // Get-or-create the address's unsubscribe token
         let token: string | null = null;
         const { data: existing } = await admin.from("email_unsubscribe_tokens").select("token").eq("email", email).maybeSingle();
@@ -310,7 +467,7 @@ Deno.serve(async (req) => {
           await admin.from("email_unsubscribe_tokens").insert({ token, email });
         }
         const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-scan-report?action=unsubscribe&token=${token}`;
-        const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails you asked for at resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>`;
+        const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails requested for this address at resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>`;
         const wrap = (inner: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
 
         const steps = body.fixRoadmap?.steps ?? [];

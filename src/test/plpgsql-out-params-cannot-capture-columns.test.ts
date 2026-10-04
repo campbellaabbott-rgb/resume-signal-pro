@@ -36,6 +36,12 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   job_board_pool_samples: ["sampled_at", "serving", "total"],
   // Added after the SECOND occurrence of this defect, 2026-08-26.
   api_keys: ["id", "key_hash", "key_prefix", "name", "owner_email", "tier", "rate_per_min", "daily_quota", "created_at", "last_used_at", "revoked_at", "notes", "user_id"],
+  // The pending/confirmed key requests api_key_issue redeems (20261004100000).
+  api_key_requests: ["id", "email", "mailbox", "key_name", "token_hash", "request_net", "created_at", "expires_at", "confirmed_at", "confirm_net", "issued_key_id"],
+  // The pulse list and the mail-door counter the same file writes through
+  // ON CONFLICT (market_pulse_request_confirm, mail_door_take).
+  market_pulse_subscribers: ["email", "industry", "last_score", "subscribed_at", "last_sent_at", "unsubscribed_at", "confirmed_at", "confirm_token_hash", "confirm_sent_at", "confirm_sends"],
+  mail_door_counts: ["door", "bucket", "window_start", "hits"],
   api_usage: ["key_id", "day", "endpoint", "calls"],
   api_rate: ["key_id", "minute", "calls"],
   // The Other-bucket anchor table (20260909224500): category_knn RETURNS TABLE

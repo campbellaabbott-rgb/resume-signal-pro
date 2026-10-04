@@ -1628,6 +1628,8 @@
       "emailSent": "Verzonden! Check je inbox.",
       "emailPrivacy": "Alleen de analyseresultaten worden gemaild — nooit je cv. Geen spam.",
       "pulseOptIn": "Stuur mij ook een maandelijkse marktpuls: de opkomende trefwoorden in mijn sector, met een gratis rescan-link. Altijd uitschrijfbaar.",
+      "pulseConfirmSent": "Als dit adres de maandelijkse marktpuls nog niet heeft bevestigd, hebben we het een bevestigingslink gemaild. De puls start pas nadat op die link is geklikt.",
+      "pulseNotCovered": "De maandelijkse marktpuls dekt jouw vakgebied nog niet, dus er is geen bevestiging verstuurd.",
       "placementTopQuartile": "Bovenste kwartiel van {{n}} echte {{industry}}-scans",
       "placementAboveMedian": "Boven de mediaan van {{n}} echte {{industry}}-scans",
       "placementBelowMedian": "Onder de mediaan van {{n}} echte {{industry}}-scans",
@@ -5091,5 +5093,15 @@
     "descHeading": "De eigen omschrijving van de werkgever",
     "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond en verdwijnt zodra de feed van de werkgever hem niet meer bevat.",
     "theEmployer": "de werkgever"
+  },
+  "pulseConfirm": {
+    "title": "Bevestig je maandelijkse marktpuls",
+    "body": "Eén e-mail per maand met de trefwoorden waarop vacatures in jouw vakgebied screenen, en een gratis rescan-link. Elke e-mail heeft een afmelding met één klik.",
+    "button": "Ja, stuur me de puls",
+    "done": "Je bent aangemeld. De eerste puls komt binnen een dag.",
+    "invalid": "Deze link is verlopen of al gebruikt. Vink het vakje aan onder je volgende scanrapport om een nieuwe te krijgen.",
+    "missing": "Deze pagina heeft de link uit je bevestigingsmail nodig.",
+    "error": "Bevestigen lukt nu niet. Probeer de link zo opnieuw.",
+    "home": "Terug naar Resume Booster"
   }
 }

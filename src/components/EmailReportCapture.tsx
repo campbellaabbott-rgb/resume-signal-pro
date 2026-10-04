@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Mail, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
+import { errorBodyOf } from "@/lib/confirm-link";
 
 interface EmailReportCaptureProps {
   payload: {
@@ -22,6 +23,9 @@ interface EmailReportCaptureProps {
     scoreBand?: { low: number; high: number } | null;
     findingsSummary?: { critical: number; warnings: number; passed: number } | null;
     keywordSource?: { source: 'job_description' | 'onet' | 'model'; occupation?: string; code?: string } | null;
+    /** free-keyword-scan's seal over this report's sentences (reportMeta.mailSeal).
+        Without it the server mails the numbers only, never the sentences. */
+    mailSeal?: string | null;
   };
   /** "compact" = one-row capture for the top of the report (peak attention). */
   variant?: "full" | "compact";
@@ -38,7 +42,15 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   const [email, setEmail] = useState(suggestedEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [subscribePulse, setSubscribePulse] = useState(true);
+  // OFF BY DEFAULT, like the drip below. It was pre-ticked -- and the compact
+  // variant, which renders no box at all, sent it ticked too -- so the pulse
+  // list filled with people who never chose it (defect sweep 1.59). A ticked
+  // box now only ASKS: send-market-pulse mails a confirmation link to the
+  // address, and nothing is sent to it until that link is clicked.
+  const [subscribePulse, setSubscribePulse] = useState(false);
+  // What the pulse request came back with: a link was mailed (or one is
+  // already due), or the pulse does not cover this field (422).
+  const [pulseOutcome, setPulseOutcome] = useState<"pending" | "not_covered" | null>(null);
   // Off by default — the drip is a commitment; defaulting it on would be the
   // dark pattern the rest of the product refuses to be.
   const [dripOptIn, setDripOptIn] = useState(false);
@@ -51,19 +63,39 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
     }
     setStatus("sending");
     setErrorMsg(null);
+    let refusal: string | null = null;
     try {
+      // The report request never carries the pulse choice: send-scan-report's
+      // own write to the pulse list enrolled an address with no confirmation.
       const { data, error } = await supabase.functions.invoke("send-scan-report", {
-        body: { email: trimmed, subscribePulse, dripOptIn, ...payload },
+        body: { email: trimmed, dripOptIn, ...payload },
       });
       if (error || !(data as { success?: boolean })?.success) {
-        throw new Error((data as { error?: string })?.error || error?.message || "send failed");
+        // A refusal says why (an inbox's daily allowance, an address that
+        // opted out, the day's ceiling): read it from the non-2xx body, which
+        // supabase-js does not put in data.
+        const b = error ? await errorBodyOf(error) : (data as { error?: string } | null);
+        refusal = typeof b?.error === "string" ? b.error : null;
+        throw new Error(refusal || error?.message || "send failed");
       }
       localStorage.setItem("rb_last_email", trimmed);
+      if (subscribePulse) {
+        // Best effort: the report already went, and a failed pulse request
+        // must not turn that into an error. Success means a link was mailed
+        // (or one was already due); the address is still not subscribed.
+        try {
+          const { data: p, error: pErr } = await supabase.functions.invoke("send-market-pulse", {
+            body: { action: "subscribe", email: trimmed, industry: payload.industry, score: payload.score },
+          });
+          if (!pErr && (p as { success?: boolean } | null)?.success) setPulseOutcome("pending");
+          else if ((pErr as { context?: { status?: number } } | null)?.context?.status === 422) setPulseOutcome("not_covered");
+        } catch { /* the report stands on its own */ }
+      }
       setStatus("sent");
     } catch (e) {
       console.error("[EmailReport] send failed:", e);
       setStatus("error");
-      setErrorMsg("Couldn't send right now — the PDF download above works offline.");
+      setErrorMsg(refusal ?? "Couldn't send right now — the PDF download above works offline.");
     }
   };
 
@@ -76,9 +108,24 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
 
   if (status === "sent") {
     return (
-      <div className="rounded-2xl border border-success/30 bg-success/5 p-4 flex items-center gap-2">
-        <Check className="w-4 h-4 text-success shrink-0" />
-        <p className="text-sm text-foreground">{t('freeResults.enterprise.emailSent', 'Sent! Check your inbox for your scan summary and fix plan.')}</p>
+      <div className="rounded-2xl border border-success/30 bg-success/5 p-4 flex items-start gap-2">
+        <Check className="w-4 h-4 text-success shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm text-foreground">{t('freeResults.enterprise.emailSent', 'Sent! Check your inbox for your scan summary and fix plan.')}</p>
+          {/* The server answers the same whatever the address's state (it is
+              its owner's business whether it is already confirmed), so this
+              line says only what is true in every case. */}
+          {pulseOutcome === "pending" && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('freeResults.enterprise.pulseConfirmSent', "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.")}
+            </p>
+          )}
+          {pulseOutcome === "not_covered" && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('freeResults.enterprise.pulseNotCovered', "The monthly market pulse doesn't cover your field yet, so no confirmation was sent.")}
+            </p>
+          )}
+        </div>
       </div>
     );
   }

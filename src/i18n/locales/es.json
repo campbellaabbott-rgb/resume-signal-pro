@@ -1628,6 +1628,8 @@
       "emailSent": "¡Enviado! Revisa tu bandeja de entrada.",
       "emailPrivacy": "Solo se envían los resultados del análisis — nunca tu currículum. Sin spam.",
       "pulseOptIn": "Envíame también un pulso de mercado mensual: las palabras clave en alza en mi industria, con un enlace de reescaneo gratis. Cancela cuando quieras.",
+      "pulseConfirmSent": "Si esta dirección aún no ha confirmado el pulso mensual del mercado, le hemos enviado un enlace de confirmación. El pulso solo empieza cuando se hace clic en ese enlace.",
+      "pulseNotCovered": "El pulso mensual del mercado aún no cubre tu sector, así que no se envió ninguna confirmación.",
       "placementTopQuartile": "Cuartil superior de {{n}} escaneos reales de {{industry}}",
       "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
       "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
@@ -5091,5 +5093,15 @@
     "descHeading": "La descripción del propio empleador",
     "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días y desaparece en cuanto el feed del empleador deja de incluirla.",
     "theEmployer": "el empleador"
+  },
+  "pulseConfirm": {
+    "title": "Confirma tu pulso mensual del mercado",
+    "body": "Un correo al mes con las palabras clave que buscan las ofertas de empleo de tu sector y un enlace para volver a escanear gratis. Cada correo incluye una baja con un clic.",
+    "button": "Sí, envíame el pulso",
+    "done": "Ya estás suscrito. El primer pulso llegará en un día.",
+    "invalid": "Este enlace ha caducado o ya se usó. Marca la casilla en tu próximo informe de escaneo para recibir uno nuevo.",
+    "missing": "Esta página necesita el enlace de tu correo de confirmación.",
+    "error": "No se pudo confirmar ahora. Vuelve a abrir el enlace en un momento.",
+    "home": "Volver a Resume Booster"
   }
 }

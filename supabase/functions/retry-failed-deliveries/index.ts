@@ -5,7 +5,7 @@ import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-01.1";
+const FN_BUILD = "retry-failed-deliveries.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -312,11 +312,13 @@ serve(async (req) => {
 
           // Now try to send email
           if (delivery.customer_email) {
+            // The service-role key: send-product-email is internal and
+            // refuses the publishable key, which every visitor holds.
             const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${supabaseServiceKey}`
               },
               body: JSON.stringify({
                 email: delivery.customer_email,
@@ -359,11 +361,13 @@ serve(async (req) => {
           const generatedContent = contentData[0].generated_content;
 
           if (delivery.customer_email) {
+            // The service-role key: send-product-email is internal and
+            // refuses the publishable key, which every visitor holds.
             const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${supabaseServiceKey}`
               },
               body: JSON.stringify({
                 email: delivery.customer_email,

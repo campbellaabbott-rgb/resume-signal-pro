@@ -1,10 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T12:00Z
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+
+// Provable from outside without sending anything: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "send-product-email.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 function escapeHtml(text: string | number | undefined | null): string {
@@ -233,12 +239,16 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
   let contentSummaryHtml = '';
   
   if (generatedContent) {
-    if (productType === 'basic_keyword_fix' && generatedContent.overallScore) {
+    // A NUMBER, NEVER MARKUP. This value used to be interpolated raw, so a
+    // caller could put a link in it; it is coerced and clamped before it
+    // reaches the HTML.
+    const keywordScore = Math.round(Number(generatedContent.overallScore));
+    if (productType === 'basic_keyword_fix' && Number.isFinite(keywordScore) && keywordScore > 0) {
       highlightsHtml = `
         <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
-          <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${generatedContent.overallScore}%</div>
+          <div style="font-size: 36px; font-weight: bold; color: #22c55e;">${escapeHtml(Math.min(100, keywordScore))}%</div>
           <div style="color: #166534; font-size: 14px;">Keyword Optimization Score</div>
-          ${generatedContent.missingKeywords?.length ? `<div style="color: #4b5563; font-size: 13px; margin-top: 8px;">${generatedContent.missingKeywords.length} keywords to add</div>` : ''}
+          ${Array.isArray(generatedContent.missingKeywords) && generatedContent.missingKeywords.length ? `<div style="color: #4b5563; font-size: 13px; margin-top: 8px;">${escapeHtml(generatedContent.missingKeywords.length)} keywords to add</div>` : ''}
         </div>
       `;
       
@@ -402,6 +412,20 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // INTERNAL ONLY. Every legitimate caller is one of our own functions
+  // (stripe-webhook, verify-product-purchase, retry-failed-deliveries), and
+  // each sends the service-role key. This used to be open to anyone, with the
+  // recipient, subject and part of the body taken from the request: a relay
+  // from reports@resumebooster.work to any address (defect sweep 1.15). The
+  // check comes before anything else, so a refused caller learns nothing about
+  // the mail configuration either.
+  if (!isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+    return new Response(
+      JSON.stringify({ error: "This endpoint is internal." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
