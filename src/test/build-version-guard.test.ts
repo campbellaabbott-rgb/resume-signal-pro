@@ -1376,9 +1376,12 @@ const PINNED = {
   // slice, twelve an hour, each once a cooldown, and only for a posting the
   // board holds; filter-integrity incidents are one row per field with nothing
   // the caller wrote; company tokens outside the catalogue's alphabet are
-  // refused; a browser's list call carries at most 60 rows; verify takes five
-  // ids; verify/report/click/fit-batch have per-address allowances; audit and
-  // vendor-health force are maintenance-only and run once per expiry.
+  // refused; a list call carries at most 60 rows to anyone without a secret
+  // (the public tooling header included); verify takes five ids;
+  // verify/report/click/fit-batch have hourly per-address allowances; audit and
+  // vendor-health force and searchQuality are maintenance-only; postedAfter is
+  // bound as one canonical instant; status, company-suggest and host_sweep
+  // cannot be looped into database or outbound work.
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.88",
 };

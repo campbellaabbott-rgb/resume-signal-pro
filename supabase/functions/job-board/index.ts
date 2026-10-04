@@ -95,14 +95,14 @@ import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automati
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
-import { addressAllowance, admitDemand, demandLaneStatus, incidentRows, summariseIncidents, takeDemand, type DemandRow } from "./abuse-guards.ts";
+import {
+  addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
+  REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
+} from "./abuse-guards.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
 const VERIFY_MAX_IDS = 5;
-const VERIFY_PER_ADDRESS_DAY = 400;
-const REPORT_PER_ADDRESS_DAY = 30;
-const CLICK_PER_ADDRESS_DAY = 1_000;
 /** semantic-search is a diagnostic no page calls: ten rows unless the caller is ours. */
 const SEMANTIC_PROBE_ROWS = 10;
 
@@ -2415,6 +2415,26 @@ function chainKey(): Promise<string> {
   return chainKeyPromise;
 }
 
+/**
+ * ONE STATUS ANSWER PER ISOLATE PER HALF MINUTE for a caller without a
+ * credential (.88). status is uncounted -- every homepage view and every
+ * monitor calls it -- and gathers ~40 reads, three RPCs and a cache write, so
+ * a loop of it was that much database work per request. Our servers and
+ * maintenance read fresh. The version is this bundle's own constant, so a
+ * memo never outlives the bundle that wrote it.
+ */
+const STATUS_MEMO_MS = 30_000;
+let statusMemo: { at: number; text: string } | null = null;
+/** host_sweep without a maintenance credential: one sweep per this gap, arrival to arrival (the cron's is 60 minutes). */
+const HOST_SWEEP_ANON_GAP_MS = 50 * 60_000;
+/**
+ * company-suggest's employer list, per isolate, for a minute (.88). The action
+ * is an autocomplete -- a call per keystroke -- and each call read the whole
+ * 1.3-1.6MB refresh row for two of its keys. The facet changes once a pass.
+ */
+const SUGGEST_MEMO_MS = 60_000;
+let suggestMemo: { at: number; facet: unknown; open: unknown } | null = null;
+
 /** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
 async function isMaintenance(req: Request, body: Record<string, unknown>): Promise<boolean> {
   if (typeof body.chainKey === "string" && body.chainKey === await chainKey()) return true;
@@ -2913,16 +2933,17 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // job disappears within one pass instead of waiting for its rotation.
   let demandBoards: JobSource[] = [];
   // .88: one board a slice, a capped number an hour, never a hot board (those
-  // re-check every pass anyway), and a taken board leaves the queue -- written
-  // below only once this slice is admitted. abuse-guards.ts has the rules.
-  let demandNext: DemandRow | null = null;
+  // re-check every pass anyway), and what it took is stamped served -- in the
+  // refresh's own row, below, only once this slice is admitted.
+  // abuse-guards.ts has the rules.
+  let demandTaken: string[] = [];
   if (!inHotPhase) {
     const sliceTokens = new Set(baseSlice.map((s) => s.token));
     const hotTokens = new Set(HOT_LIST.map((s) => s.token));
-    const { data: demandMeta } = await client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle();
-    const pick = takeDemand(demandMeta?.v as DemandRow | null, Date.now(), (t) => CATALOGUE_TOKENS.has(t) && !sliceTokens.has(t) && !hotTokens.has(t));
+    const demand = await readDemand(client);
+    const pick = takeDemand(demand.queue, demand.served, Date.now(), (t) => CATALOGUE_TOKENS.has(t) && !sliceTokens.has(t) && !hotTokens.has(t));
     demandBoards = pick.take.map((t) => JOB_SOURCES.find((s) => s.token === t)).filter((s): s is JobSource => !!s);
-    if (demandBoards.length) demandNext = pick.next;
+    demandTaken = demandBoards.map((s) => s.token);
     // Rationale: docs/job-board-index-notes.md#n060-
   }
   // Bootstrap lane: boards with ZERO rows (fresh catalog merges) jump the
@@ -3292,11 +3313,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       return { ok: true, detail: "skipped — a slice was admitted moments ago" };
     }
   }
-  // The demand board this admitted slice took leaves the queue and starts its
-  // cooldown. Best effort: a lost write costs one repeat of one board.
-  if (demandNext) {
-    await Promise.resolve(client.from("job_board_meta").upsert({ k: "demand", v: demandNext, updated_at: new Date().toISOString() }, { onConflict: "k" })).catch(() => {});
-  }
+  // The demand board this admitted slice took starts its cooldown and counts
+  // against the hour, in the row only the refresh writes.
+  if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
 
   const queue = [...slice];
   const okTokens: string[] = [];
@@ -7380,6 +7399,12 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "searchQuality") {
+      // MAINTENANCE ONLY (.88). Daily search volume, zero-result rate, clicks
+      // and CTR are the aggregate migration 20260821133259 revoked from anon
+      // ("it also reveals traffic volume"); this action handed it back to
+      // anyone through the service client, uncounted, at up to 90 days of
+      // aggregation a call. No page, script or function calls it.
+      if (!(await isMaintenance(req, body))) return json({ error: "searchQuality is a maintenance action" }, 403);
       // Rationale: docs/job-board-index-notes.md#n199-days
       const days = Math.min(Math.max(Number(body.days) || 7, 1), 90);
       const { data, error } = await client.rpc("get_search_quality", { p_days: days });
@@ -7398,20 +7423,37 @@ Deno.serve(async (req) => {
       // Rationale: docs/job-board-index-notes.md#n200-slice
       const SLICE = 200;
       const state = await client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle();
-      // Same stampede lock as the refresh slice: the cron fires hourly, so a
-      // second invocation inside 5 minutes is an overlap, not a schedule.
+      // The stampede lock: no sweep inside 5 minutes of the row's last write,
+      // for anyone. The cron fires hourly (:07) and posts no credential, so
+      // anyone can send this action, and that guard alone let a loop run a
+      // sweep of 200 outbound probes every 5 minutes, twelve times the cron.
+      // .88 also holds a caller without a maintenance credential to one sweep
+      // per HOST_SWEEP_ANON_GAP_MS counted from the last ARRIVAL, never from
+      // completion: arrival to arrival is the cron's own hour, while a slow
+      // sweep's completion stamp lands minutes later and would make the next
+      // tick look early.
       const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;
       if (lockAge < 5 * 60_000) return json({ skipped: "a sweep ran moments ago" });
+      const arrivedMs = Date.parse(String((state.data?.v as { lastArrivedAt?: unknown } | null)?.lastArrivedAt ?? ""));
+      const sinceArrival = Number.isFinite(arrivedMs) ? Date.now() - arrivedMs : lockAge;
+      if (sinceArrival < HOST_SWEEP_ANON_GAP_MS && !(await isMaintenance(req, body))) return json({ skipped: "a sweep ran moments ago" });
       // Stamp ARRIVAL before probing, not only completion. Overnight
       // 2026-08-23→24 the cursor advanced once in ten-plus cron ticks and
       // there was no way to tell arrivals-that-died from ticks-that-never-
       // fired. The arrival stamp also moves the stampede lock to entry time,
-      // where a lock belongs.
+      // where a lock belongs. CONDITIONAL since .88, on the stamp just read
+      // (or on the row not existing yet): callers arriving together all read
+      // an expired lock, and exactly one of them may sweep.
       const svArrive = { ...(state.data?.v as Record<string, unknown> ?? {}), lastArrivedAt: new Date().toISOString() };
-      await client.from("job_board_meta").upsert(
-        { k: "host_sweep", v: svArrive, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      );
+      const arriveAt = new Date().toISOString();
+      if (state.data?.updated_at) {
+        const { data: took, error: takeErr } = await client.from("job_board_meta").update({ v: svArrive, updated_at: arriveAt })
+          .eq("k", "host_sweep").eq("updated_at", state.data.updated_at).select("k");
+        if (!takeErr && !(Array.isArray(took) && took.length === 1)) return json({ skipped: "another caller took this sweep" });
+      } else {
+        const { error: insErr } = await client.from("job_board_meta").insert({ k: "host_sweep", v: svArrive, updated_at: arriveAt });
+        if (insErr?.code === "23505") return json({ skipped: "another caller took this sweep" });
+      }
       const sv = (state.data?.v ?? {}) as { cursor?: number; hosts?: Record<string, { fails: number; postings: number; lastAt: string; lastErr?: string }>; cycleAt?: string; list?: Array<{ host: string; postings: number }> };
       let list = Array.isArray(sv.list) ? sv.list : [];
       let cursor = Number(sv.cursor) || 0;
@@ -7506,6 +7548,12 @@ Deno.serve(async (req) => {
     }
 
     if (action === "status") {
+      // .88: a caller without a credential gets this isolate's last answer
+      // while it is under STATUS_MEMO_MS old; ours and maintenance read fresh.
+      const statusFresh = (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) !== null || await isMaintenance(req, body);
+      if (!statusFresh && statusMemo && Date.now() - statusMemo.at < STATUS_MEMO_MS) {
+        return new Response(statusMemo.text, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-status-age-ms": String(Date.now() - statusMemo.at) } });
+      }
       // Rationale: docs/job-board-index-notes.md#n202-try
       try {
       // Deploy + health introspection. Read-only, zero-cost (meta rows only — no
@@ -7517,14 +7565,15 @@ Deno.serve(async (req) => {
         client.from("job_board_meta").select("v").eq("k", "anon_board_budget").maybeSingle(),
       ).catch(() => null);
       // .88: the demand lane's use, as counts (abuse-guards.ts demandLaneStatus).
-      const demandRead = Promise.resolve(
-        client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle(),
-      ).catch(() => null);
+      const demandRead = readDemand(client).catch(() => ({ queue: null, served: null }));
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
-        client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
+        // ONE FIELD of the 1.3-1.6MB refresh row, by JSON path (.88): status is
+        // uncounted and every homepage view calls it, so the whole row was
+        // ~1.5MB of database egress per call to anyone who looped it.
+        client.from("job_board_meta").select("total:v->total, updated_at").eq("k", "refresh").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "hot_tokens").maybeSingle(),
         // Rationale: docs/job-board-index-notes.md#n203-withdeadline-client-rpc-get-freshness-stats
@@ -7621,7 +7670,7 @@ Deno.serve(async (req) => {
       const demandRow = await demandRead;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
-      const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
+      const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
       const dormant = ((bf.data?.v ?? {}) as { dormant?: Record<string, number> }).dormant ?? {};
       const hotTokens = ((hotMeta.data?.v ?? {}) as { tokens?: unknown[] }).tokens;
       const now = Date.now();
@@ -7642,13 +7691,14 @@ Deno.serve(async (req) => {
       const pbBacklogNow = await undatedBacklog(client);
       // Rationale: docs/job-board-index-notes.md#n210-chainwatchdog
       const chainWatchdog = await maybeRekickDeadChain(client);
-      return json({
+      // Serialised once, here, so the memo holds the exact bytes this caller gets.
+      const statusText = JSON.stringify({
         statusDegraded: false,
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
         // The anonymous budget's setting row and the code's default caps.
         anonBudget: anonBudgetStatus((anonBudgetRow as { data?: { v?: unknown } | null } | null)?.data?.v ?? null, { passConfigured: !!Deno.env.get("TURNSTILE_SECRET_KEY") }),
-        demandLane: demandLaneStatus((demandRow as { data?: { v?: unknown } | null } | null)?.data?.v as DemandRow | null, now),
+        demandLane: demandLaneStatus(demandRow.queue, demandRow.served, now),
         // Rationale: docs/job-board-index-notes.md#n211-questionvendors-realquestionvendors
         questionVendors: realQuestionVendors(),
         // Rationale: docs/job-board-index-notes.md#n212-applyagent-aameta-data-v
@@ -8079,6 +8129,8 @@ Deno.serve(async (req) => {
           : ((dcCache.data?.v as unknown[] | undefined) ?? null),
         at: new Date().toISOString(),
       });
+      statusMemo = { at: Date.now(), text: statusText };
+      return new Response(statusText, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } catch (statusErr) {
         // The skeleton always answers, because "which bundle is deployed?" is
         // a constant in this file and needs no database. Reported at 200 with
@@ -8977,8 +9029,8 @@ Deno.serve(async (req) => {
       // the resolution back over the caller hint the client may have sent is
       // the point: from this line on, body.caller is the answer, not a claim.
       body.caller = resolveCaller(req, body) ?? undefined;
-      // .88: no more rows a call than the caller's page holds -- 60 for a
-      // browser, whatever limit it sends (anon-budget.ts pageCeiling).
+      // .88: no more rows a call than the page holds -- 60, whatever limit is
+      // sent, for anyone without a secret (anon-budget.ts pageCeiling).
       const rowCap = await pageCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
       if (Number(body.limit) > rowCap) body.limit = rowCap;
 
@@ -9022,8 +9074,8 @@ Deno.serve(async (req) => {
       }
       // Deterministic compute, but still rate-limited -- on the platform's
       // address (.88), never the first forwarded hop, which the caller writes.
-      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-fit", 120))) {
-        return json({ error: "Daily fit-ranking limit reached.", rateLimited: true }, 429);
+      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-fit", FIT_PER_ADDRESS_HOUR))) {
+        return json({ error: "Fit-ranking limit reached for now; try again within the hour.", rateLimited: true }, 429);
       }
 
       const { data: rows, error } = await client
@@ -9752,9 +9804,9 @@ Deno.serve(async (req) => {
         return json({ error: "id and a valid reason are required" }, 400);
       }
       const note = String(body.note ?? "").replace(/\u0000/g, "").slice(0, 280);
-      // .88: a person reports a handful a day; a loop must not fill the log.
-      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-report", REPORT_PER_ADDRESS_DAY))) {
-        return json({ error: "Too many reports from this address today.", rateLimited: true }, 429);
+      // .88: a person reports a handful; a loop must not fill the log.
+      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-report", REPORT_PER_ADDRESS_HOUR))) {
+        return json({ error: "Too many reports from this address; try again within the hour.", rateLimited: true }, 429);
       }
       const { data: row } = await client.from("job_board_postings").select("id,company_token").eq("id", id).maybeSingle();
       const { error: repErr } = await client.from("job_board_posting_reports").insert({
@@ -9807,9 +9859,9 @@ Deno.serve(async (req) => {
           }
           : { company_token: null, category: null, salary_present: null }
       ).catch(() => ({ company_token: null, category: null, salary_present: null }));
-      // .88: past a day's allowance per address the beacon still answers, and
-      // records nothing (abuse-guards.ts addressAllowance).
-      const clickAllowed = addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-click", CLICK_PER_ADDRESS_DAY);
+      // .88: past an hour's allowance per address the beacon still answers,
+      // and records nothing (abuse-guards.ts addressAllowance).
+      const clickAllowed = addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-click", CLICK_PER_ADDRESS_HOUR);
       waitUntil(Promise.all([clickStamps, clickAllowed]).then(([stamps, ok]) => !ok ? undefined :
         client.from("job_board_search_clicks").insert({
           ...clickCore,
@@ -9842,8 +9894,8 @@ Deno.serve(async (req) => {
       if (ids.length === 0) return json({ live: {} });
       // Its own allowance on top of the board meter, because a call fans out to
       // vendors. No answer is not a closure: both callers keep the posting.
-      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-verify", VERIFY_PER_ADDRESS_DAY))) {
-        return json({ error: "Too many live checks from this address today.", rateLimited: true }, 429);
+      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-verify", VERIFY_PER_ADDRESS_HOUR))) {
+        return json({ error: "Too many live checks from this address; try again within the hour.", rateLimited: true }, 429);
       }
       // Rationale: docs/job-board-index-notes.md#n264-livemap
       const liveMap: Record<string, boolean | null> = {};
@@ -9893,10 +9945,11 @@ Deno.serve(async (req) => {
       }
       // Demand signal: boards a user just looked at jump the refresh queue --
       // one a slice, a capped number an hour, each at most once a cooldown.
+      // verify writes the queue row only; the served stamps are the refresh's.
       if (demandTokens.size > 0) {
-        const { data: dm } = await client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle();
-        const next = admitDemand(dm?.v as DemandRow | null, [...demandTokens], Date.now());
-        if (next) await client.from("job_board_meta").upsert({ k: "demand", v: next, updated_at: new Date().toISOString() }, { onConflict: "k" });
+        const demand = await readDemand(client);
+        const next = admitDemand(demand.queue, demand.served, [...demandTokens], Date.now());
+        if (next) await client.from("job_board_meta").upsert({ k: DEMAND_QUEUE_KEY, v: next, updated_at: new Date().toISOString() }, { onConflict: "k" });
       }
       return json({ live: liveMap, flagged: deadIds.length });
     }
@@ -10143,8 +10196,19 @@ Deno.serve(async (req) => {
       const q = String(body.q ?? "").trim().toLowerCase().slice(0, 80);
       if (q.length < 2) return json({ companies: [] });
       // Rationale: docs/job-board-index-notes.md#n273-const-data-metarow-await-client-from-job
-      const { data: metaRow } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
-      const suggestV = (metaRow?.v ?? {}) as Record<string, unknown>;
+      // .88: the two keys this needs, by JSON path, and this isolate's copy for
+      // SUGGEST_MEMO_MS -- an autocomplete re-read the whole refresh row per keystroke.
+      let suggestV: Record<string, unknown>;
+      if (suggestMemo && Date.now() - suggestMemo.at < SUGGEST_MEMO_MS) {
+        suggestV = { companiesFacet: suggestMemo.facet, companiesOpen: suggestMemo.open };
+      } else {
+        const { data: metaRow, error: metaErr } = await client.from("job_board_meta")
+          .select("companiesFacet:v->companiesFacet, companiesOpen:v->companiesOpen").eq("k", "refresh").maybeSingle();
+        const row = (metaRow ?? {}) as { companiesFacet?: unknown; companiesOpen?: unknown };
+        // Only a readable list is kept: an error or an absent row is asked again next call.
+        suggestMemo = !metaErr && Array.isArray(row.companiesFacet) ? { at: Date.now(), facet: row.companiesFacet, open: row.companiesOpen } : null;
+        suggestV = { companiesFacet: row.companiesFacet, companiesOpen: row.companiesOpen };
+      }
       const facet = (suggestV.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
       const openRaw = suggestV.companiesOpen;
       const openMap = openRaw && typeof openRaw === "object" && !Array.isArray(openRaw) ? openRaw as Record<string, number> : null;
@@ -10827,13 +10891,14 @@ async function serveList(
     // .88: an incident is one row PER FIELD (filter_integrity_incident.<field>),
     // so a page tripping one field cannot erase another field's record, and
     // nothing the caller wrote -- its filters, the `want` text -- is stored.
-    if (v.length || Math.random() < 0.02) {
+    // Each field's row is rewritten at most once per INCIDENT_REWRITE_MS, so
+    // a request that trips the sensor is not a write per request.
+    if (v.length) {
+      waitUntil(writeIncidents(client, incidentRows(v, jobs.length, new Date().toISOString())).catch(() => {}));
+    } else if (Math.random() < 0.02) {
       const stamp = new Date().toISOString();
       waitUntil(Promise.resolve(
-        client.from("job_board_meta").upsert(
-          v.length ? incidentRows(v, jobs.length, stamp) : { k: "filter_integrity_ok", v: { at: stamp, rows: jobs.length }, updated_at: stamp },
-          { onConflict: "k" },
-        ),
+        client.from("job_board_meta").upsert({ k: "filter_integrity_ok", v: { at: stamp, rows: jobs.length }, updated_at: stamp }, { onConflict: "k" }),
       ).then(() => {}).catch(() => {}));
     }
     // Rationale: docs/job-board-index-notes.md#n291-paycontrolactive
