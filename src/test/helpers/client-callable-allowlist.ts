@@ -46,14 +46,13 @@ export interface AllowedFunction {
 
 const A = (sig: string, caller: string, returns: string, writes?: string): AllowedFunction =>
   ({ sig, roles: "anon", caller, returns, ...(writes ? { writes } : {}) });
-const U = (sig: string, caller: string, returns: string): AllowedFunction =>
-  ({ sig, roles: "authenticated", caller, returns });
+const U = (sig: string, caller: string, returns: string, writes?: string): AllowedFunction =>
+  ({ sig, roles: "authenticated", caller, returns, ...(writes ? { writes } : {}) });
 
 export const CLIENT_CALLABLE: AllowedFunction[] = [
   // ── public pages: company- and board-level facts derived from public postings
   A("public.agent_sender_public_status()", "src/hooks/useAgentSender.ts", "aggregates: one boolean, is any apply worker alive"),
   A("public.get_actively_hiring_companies(integer)", "src/pages/GhostJobIndex.tsx", "aggregates: per-company closure and open-role counts"),
-  A("public.get_application_lifecycle(text[])", "src/pages/Account.tsx", "aggregates: outcome and days standing for job ids the caller already holds (<=500), never posting content"),
   A("public.get_audit_result()", "src/pages/GhostJobIndex.tsx", "public record: the cached board audit blob"),
   A("public.get_board_vendor_counts()", "src/hooks/useBoardVendorCounts.ts", "aggregates: postings per ATS vendor"),
   A("public.get_category_fill_curve(integer,integer)", "scripts/verify-deploy.sh", "aggregates: per-category fill curve"),
@@ -87,6 +86,13 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_trending_categories()", "src/pages/HiringTrends.tsx", "aggregates: per-category posting counts, last 7 vs prior 7 days"),
 
   // ── the owner's tooling, run with the publishable key (verify-deploy, smoke, scan-trends)
+  // The two board-meter readers and get_cron_health stay open ONLY because
+  // scripts/verify-deploy.sh (7j, 7l, 7m) reads them with the publishable key
+  // and that file is shared by every lane. They hold aggregates (no address,
+  // no command, no message); the over-cap counts are the closest thing to a
+  // scraper feedback signal, and a caller already learns its own caps from
+  // the board's status and budget-echo. Closing them = moving those three
+  // verify sections to admin-ops (x-admin-key) in the same change.
   A("public.get_board_anon_hourly(integer)", "scripts/verify-deploy.sh", "aggregates: anonymous board reads per hour, kind and country"),
   A("public.get_board_anon_networks(integer,integer)", "scripts/verify-deploy.sh", "aggregates: anonymous board reads per /16 (or /32 for IPv6) network, never an address"),
   A("public.get_board_flow(integer)", "scripts/verify-deploy.sh", "aggregates: intake, closures and serving counts for a window"),
@@ -107,20 +113,40 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.store_temp_resume(text,text,text)", "src/pages/Index.tsx", "own rows: a new session uuid", "stores <=50k characters of the caller's own resume under a fresh uuid that only the caller learns"),
   A("public.get_affiliate_dashboard(text)", "src/hooks/use-affiliate-auth.ts", "own rows: the dashboard of the affiliate whose session token is presented"),
   A("public.get_affiliate_clicks(text,integer)", "src/pages/Affiliates.tsx", "own rows: daily click counts for the presented affiliate session"),
-  A("public.login_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: a session token for the affiliate whose password matched", "inserts one affiliate session after a bcrypt password check"),
+  A("public.login_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: a session token (and the affiliate's own email) for the affiliate whose password matched", "inserts one affiliate session after a bcrypt password check; 20 attempts an hour per address and 20 an hour per email from every address together"),
   A("public.logout_affiliate(text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "deletes the session whose token the caller presents"),
-  A("public.register_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: the new affiliate's id, referral code and session token", "creates one affiliate account; the affiliate program is open sign-up by design"),
+  A("public.register_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: the new affiliate's id, referral code and session token", "creates one affiliate account (open sign-up by design); 3 attempts per address and 50 in all a day, because sign-up without a verification email cannot hide whether an address already has an account"),
 
-  // ── write-only telemetry from the browser
-  A("public.log_error_telemetry(text,text,text,integer,text,jsonb)", "src/lib/resilient-edge-function.ts", "write-only: true/false", "one error_telemetry row per client error; nothing readable comes back"),
-  A("public.log_industry_correction(text,text,text,text)", "src/components/FreeKeywordResults.tsx", "write-only: void", "one industry_corrections row with <=50-character labels"),
-  A("public.log_industry_correction(text,text,text,text,integer,text[],text,text,text)", "src/components/IndustryConfidenceIndicator.tsx", "write-only: the new row's id", "one industry_corrections row from the confirmation strip"),
-  A("public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)", "src/components/ScanFeedback.tsx", "write-only: void", "one scan_feedback row (thumbs up/down)"),
-  A("public.record_scan_outcome(text,text,text)", "src/components/ScanOutcomeAsk.tsx", "write-only: true/false", "one scan_outcomes upsert per report and address, behind check_rate_limit (5 a day)"),
-  A("public.track_affiliate_click(text,text,text,text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "one affiliate_clicks row for an active referral code"),
+  // ── write-only telemetry from the browser. Every one spends
+  // client_write_allowed (20261004110000): a per-address budget keyed on the
+  // PLATFORM's address (cf-connecting-ip, else the last forwarded hop -- never
+  // a value the caller passes) plus a ceiling for every caller together, which
+  // a rotating pool still meets. Every stored text is capped.
+  A("public.log_error_telemetry(text,text,text,integer,text,jsonb)", "src/lib/resilient-edge-function.ts", "write-only: true/false", "one error_telemetry row per client error, 30 per address and 600 in all per 10 minutes; text capped (message 1000 chars, context 4096 bytes), visitor_id kept only in visitor-id form"),
+  A("public.log_industry_correction(text,text,text,text)", "src/components/FreeKeywordResults.tsx", "write-only: void", "one industry_corrections row with <=50-character labels, 20 per address and 300 in all an hour"),
+  A("public.log_industry_correction(text,text,text,text,integer,text[],text,text,text)", "src/components/IndustryConfidenceIndicator.tsx", "write-only: the new row's id", "one industry_corrections row from the confirmation strip, every field capped (<=20 signals of 60 chars), 20 per address and 300 in all an hour"),
+  A("public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)", "src/components/ScanFeedback.tsx", "write-only: void", "one scan_feedback row (thumbs up/down, text <=1000 chars), 10 per address and 300 in all an hour"),
+  A("public.record_scan_outcome(text,text,text)", "src/components/ScanOutcomeAsk.tsx", "write-only: true/false", "one scan_outcomes upsert per report and browser, 5 per address and 200 in all a day; p_ip (the visitor id) names the answer but no longer picks the budget"),
+  A("public.track_affiliate_click(text,text,text,text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "one affiliate_clicks row for an active referral code, 3 per address per code and 500 per code a day; ip_hash derived from the platform address when there is one"),
 
   // ── signed-in browsers only
   U("public.agent_sender_online(integer)", "src/components/account/AgentStatusBand.tsx", "aggregates: one boolean, is the apply worker alive"),
+  // Was anon-callable for ANY 500 posting ids: the per-posting closure ledger
+  // (the moat), in bulk, behind no meter. 20261004110000 made it signed-in
+  // only and intersects the ids with the caller's own user_applications rows.
+  U("public.get_application_lifecycle(text[])", "src/pages/Account.tsx", "own rows: outcome, closure date and days standing for the job ids on the caller's own tracker (auth.uid()), never another user's and never posting content"),
+];
+
+/**
+ * Created by 20261004110000 already closed to clients: the budget and the
+ * address the writers above are held to, and the key check check-alerts asks
+ * with the service role. Listed so a test can hold them closed; they are not
+ * CLOSED_BY_CENSUS rows because no migration before the census created them.
+ */
+export const CREATED_CLOSED: Array<{ sig: string; why: string }> = [
+  { sig: "public.request_client_address()", why: "the platform's address for the caller (INVOKER); only the writers' budget reads it" },
+  { sig: "public.client_write_allowed(text,integer,integer,integer)", why: "spends the write budget; a client calling it directly could burn another scope's ceiling" },
+  { sig: "public.alerts_cron_key_matches(text)", why: "answers whether a value is the vault-held check-alerts cron key; service role only" },
 ];
 
 /**
@@ -218,10 +244,32 @@ export const OPEN_TABLES: Array<{ table: string; access: string; why: string }> 
   { table: "job_board_stats_rollup", access: "anon SELECT", why: "aggregates; get_freshness_stats and get_date_coverage read it with INVOKER rights for public pages" },
 ];
 
-/** Tables 20261004110000 closed to anon and authenticated. */
+/**
+ * Client-callable functions that take an array the caller fills and do NOT
+ * slice it. A RATCHET, not a permission: remove a row when its function
+ * slices, never add one (the census test fails on any other uncapped array).
+ *
+ * Why these three are not capped from the census migration: each is a
+ * per-company aggregate reader with a 25-second statement_timeout that
+ * already bounds one call (the whole catalogue in one call times out), every
+ * caller sends at most 200 tokens (Jobs.tsx batches at 200, agent-runner at
+ * 100, agent-mcp at 20), and each is re-issued only in a migration file of
+ * its own -- a dozen guards (the-bars-an-agent-is-told..., a-board-that-grew...,
+ * a-role-still-up-at-day-thirty..., the OUT-param guard) read the newest file
+ * that defines one of them as dedicated to it, and the census has one stamp.
+ * The cap is `p_tokens[1:200]`, the size every caller already uses.
+ */
+export const UNCAPPED_TOKEN_ARRAYS: Array<{ sig: string; why: string }> = [
+  { sig: "public.get_company_fill_curve(text[])", why: "25s statement_timeout; callers send <=200; an 830-line body re-issued only in its own file" },
+  { sig: "public.get_company_growth(text[])", why: "25s statement_timeout; callers send <=200; re-issued only in its own file" },
+  { sig: "public.get_company_hiring_health(text[])", why: "25s statement_timeout; callers send <=200 (agent-mcp 20); re-issued only in its own file" },
+];
+
+/** Tables 20261004110000 closed to anon and authenticated (one of them, the write budget, it created closed). */
 export const CLOSED_TABLES: Array<{ table: string; why: string }> = [
   { table: "job_board_verifications", why: "the whole crawl catalogue (every board token and when it was read); only the service role reads it" },
   { table: "job_board_closure_rollup", why: "monthly rollups of the closure ledger, the moat; only owner-run functions read it" },
   { table: "error_telemetry", why: "anyone could INSERT rows straight into it; the browser writes through log_error_telemetry" },
   { table: "industry_detection_metrics", why: "anyone could INSERT rows straight into it; the server writes through log_industry_detection" },
+  { table: "client_write_budget", why: "new: the per-address write budget the browser's writers spend; only client_write_allowed (as owner) touches it" },
 ];

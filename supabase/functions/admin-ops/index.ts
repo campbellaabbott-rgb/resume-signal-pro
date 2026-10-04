@@ -14,6 +14,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ADMIN_OPS_RPCS, ARG_NAME } from "./rpcs.ts";
+import { keyMatches } from "../_shared/admin-key.ts";
 
 // Provable from outside without the key: every response, the CORS preflight
 // included, carries this in x-fn-build.
@@ -32,19 +33,6 @@ const json = (status: number, body: unknown) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
-
-/**
- * Constant-time comparison. An EMPTY secret never matches anything, including
- * an empty header: an unset ADMIN_API_KEY must lock the door, not open it.
- */
-export function keyMatches(presented: string, secret: string): boolean {
-  if (!secret || !presented) return false;
-  const a = new TextEncoder().encode(presented);
-  const b = new TextEncoder().encode(secret);
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
-  return diff === 0;
-}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

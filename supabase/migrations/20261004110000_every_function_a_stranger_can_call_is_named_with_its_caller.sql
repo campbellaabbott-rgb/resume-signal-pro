@@ -38,6 +38,23 @@
 -- caller: the whole crawl catalogue (job_board_verifications), the closure
 -- ledger's monthly rollup, and direct INSERT into two telemetry tables.
 --
+-- And among the functions that STAY open, because a page calls them:
+--
+--   get_application_lifecycle answered ANY 500 posting ids (vendor:token:atsId,
+--                             constructible from public feeds) from the
+--                             closure ledger to anyone -- the moat, in bulk,
+--                             behind no meter. Its one caller is the signed-in
+--                             account page, for the user's own tracker.
+--   log_error_telemetry and   every browser writer was an unbounded anonymous
+--   seven more writers        write: no length caps, and either no rate limit
+--                             or (record_scan_outcome) one keyed on p_ip -- the
+--                             visitor id the caller chooses. Closing the
+--                             error_telemetry INSERT grant alone closed nothing
+--                             while the RPC wrote the same rows, and those rows
+--                             are mailed to the owner by check-error-spikes.
+--   check-alerts (an edge     answered any POST with the rates it computed from
+--   function, verify_jwt off) the readers this file closes.
+--
 -- WHAT THIS DOES.
 --   1. The two functions whose output was the leak are redefined first, same
 --      signature and return type (grants are kept by CREATE OR REPLACE):
@@ -45,6 +62,20 @@
 --      10-character digest, scrubs addresses out of the error text, clamps
 --      the window to a week and limits BEFORE aggregating; the cohort reader
 --      accepts only the eight dimensions its callers use.
+--      1b. request_client_address() (the platform's address: cf-connecting-ip,
+--      else the LAST x-forwarded-for hop, as _shared/client-address.ts) and
+--      client_write_allowed(), a per-address write budget plus a ceiling for
+--      all callers together, on a table of its own -- check_rate_limit's
+--      cleanup resets every longer window at random.
+--      1c. The eight browser writers re-issued with the same signatures:
+--      every stored text capped, each spending the budget, nothing RAISEd
+--      after it (an exception would roll the count back with the call).
+--      1d. get_application_lifecycle: signed-in only, and the ids intersected
+--      with the caller's own user_applications rows before either ledger is
+--      read.
+--      1e. A vault-held check-alerts cron key (generated here, never seen by
+--      a person), alerts_cron_key_matches() to check it, and the check-alerts
+--      cron job rescheduled to send it; the function refuses anything else.
 --   2. 56 signatures are revoked from PUBLIC, anon and authenticated BY EXACT
 --      SIGNATURE and granted to service_role. Every one was checked against
 --      every caller: the browser (src/, generated types excluded), scripts run
@@ -70,10 +101,11 @@
 --      not describe.
 --
 -- THE ALLOWLIST is src/test/helpers/client-callable-allowlist.ts: 62 functions
--- with the file that calls each with a client key and what it returns
--- (aggregates, a capability's own rows, public records, bounded write-only
--- telemetry). The census test there fails if anything else becomes
--- client-callable, or if the arrays below drift from that file.
+-- (60 for the publishable key, 2 signed-in only) with the file that calls
+-- each with a client key and what it returns (aggregates, a capability's own
+-- rows, public records, budgeted write-only telemetry). The census test there
+-- fails if anything else becomes client-callable, if an anonymous writer
+-- spends no budget, or if the arrays below drift from that file.
 --
 -- NOT TOUCHED: get_scan_credits and use_scan_credit (another lane owns them;
 -- listed as such), trigger functions (PostgREST cannot call a function that
@@ -248,6 +280,634 @@ BEGIN
   ORDER BY sc.landing_view DESC;
 END;
 $$;
+
+-- ── 1b. the caller's address, as the platform states it ────────────────────
+--
+-- The same rule as supabase/functions/_shared/client-address.ts: Cloudflare's
+-- cf-connecting-ip (it refuses a request that writes its own), else the LAST
+-- x-forwarded-for hop (the one the nearest proxy appended), never the first
+-- (whatever the client wrote). PostgREST hands every request's headers to SQL
+-- as request.headers. NULL when the platform named no address -- a direct SQL
+-- session, a pg_cron job -- and the budget below gives those one shared bucket.
+-- Closed to clients: only the definer writers below call it, as its owner.
+CREATE OR REPLACE FUNCTION public.request_client_address()
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $addr$
+DECLARE
+  v_headers json;
+  v_cf text;
+  v_hops text[];
+BEGIN
+  BEGIN
+    v_headers := NULLIF(current_setting('request.headers', true), '')::json;
+  EXCEPTION WHEN others THEN
+    RETURN NULL;
+  END;
+  IF v_headers IS NULL OR json_typeof(v_headers) <> 'object' THEN
+    RETURN NULL;
+  END IF;
+  v_cf := btrim(v_headers ->> 'cf-connecting-ip');
+  IF v_cf IS NOT NULL AND v_cf <> '' THEN
+    RETURN left(v_cf, 45);
+  END IF;
+  v_hops := string_to_array(v_headers ->> 'x-forwarded-for', ',');
+  IF v_hops IS NULL OR cardinality(v_hops) = 0 THEN
+    RETURN NULL;
+  END IF;
+  RETURN NULLIF(left(btrim(v_hops[cardinality(v_hops)]), 45), '');
+END
+$addr$;
+
+REVOKE ALL ON FUNCTION public.request_client_address() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.request_client_address() TO service_role;
+
+-- A write budget of its own rather than check_rate_limit: that function's
+-- opportunistic cleanup deletes EVERY limiter's row older than the CALLING
+-- limiter's window, so any one-minute caller resets record_scan_outcome's day
+-- window at random. Here the cleanup cutoff (two days) is longer than the
+-- longest window (one day), and one statement counts and reads.
+CREATE TABLE IF NOT EXISTS public.client_write_budget (
+  scope text NOT NULL,
+  bucket text NOT NULL,
+  window_start timestamptz NOT NULL,
+  n integer NOT NULL,
+  PRIMARY KEY (scope, bucket)
+);
+CREATE INDEX IF NOT EXISTS client_write_budget_window_idx ON public.client_write_budget (window_start);
+ALTER TABLE public.client_write_budget ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.client_write_budget FROM PUBLIC, anon, authenticated;
+GRANT ALL ON TABLE public.client_write_budget TO service_role;
+
+-- TRUE while this call is inside both budgets: p_per_address for the caller's
+-- own address in the window, and p_ceiling for every caller of the scope
+-- together -- the bound a pool that rotates addresses still meets. A call with
+-- no platform address shares one bucket held to the ceiling. The address is
+-- stored as md5, never as itself.
+CREATE OR REPLACE FUNCTION public.client_write_allowed(
+  p_scope text,
+  p_per_address integer,
+  p_ceiling integer,
+  p_window_minutes integer
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $budget$
+DECLARE
+  v_addr text := public.request_client_address();
+  v_window timestamptz;
+  v_mine integer;
+  v_all integer;
+BEGIN
+  IF p_scope IS NULL OR p_scope = '' OR p_per_address IS NULL OR p_per_address < 1
+     OR p_ceiling IS NULL OR p_ceiling < p_per_address
+     OR p_window_minutes IS NULL OR p_window_minutes < 1 OR p_window_minutes > 1440 THEN
+    RAISE EXCEPTION 'client_write_allowed: not a budget: %/%/%/%', p_scope, p_per_address, p_ceiling, p_window_minutes
+      USING ERRCODE = '22023';
+  END IF;
+  v_window := to_timestamp(floor(extract(epoch FROM now()) / (p_window_minutes * 60)) * (p_window_minutes * 60));
+  IF random() < 0.01 THEN
+    DELETE FROM public.client_write_budget WHERE window_start < now() - interval '2 days';
+  END IF;
+
+  INSERT INTO public.client_write_budget AS b (scope, bucket, window_start, n)
+  VALUES (left(p_scope, 120), COALESCE('ip:' || md5(v_addr), 'no-address'), v_window, 1)
+  ON CONFLICT (scope, bucket) DO UPDATE
+    SET n = CASE WHEN b.window_start = excluded.window_start THEN b.n + 1 ELSE 1 END,
+        window_start = excluded.window_start
+  RETURNING b.n INTO v_mine;
+  -- Parenthesised: PL/pgSQL reads an IF condition up to the first THEN, and a
+  -- bare CASE inside it would end the condition at its own THEN.
+  IF v_mine > (CASE WHEN v_addr IS NULL THEN p_ceiling ELSE p_per_address END) THEN
+    RETURN false;
+  END IF;
+
+  INSERT INTO public.client_write_budget AS b (scope, bucket, window_start, n)
+  VALUES (left(p_scope, 120), '*', v_window, 1)
+  ON CONFLICT (scope, bucket) DO UPDATE
+    SET n = CASE WHEN b.window_start = excluded.window_start THEN b.n + 1 ELSE 1 END,
+        window_start = excluded.window_start
+  RETURNING b.n INTO v_all;
+  RETURN v_all <= p_ceiling;
+END
+$budget$;
+
+REVOKE ALL ON FUNCTION public.client_write_allowed(text, integer, integer, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.client_write_allowed(text, integer, integer, integer) TO service_role;
+
+-- ── 1c. the browser's writers, each bounded ────────────────────────────────
+--
+-- Every function below stays callable with the publishable key (a page calls
+-- it) and was an unbounded anonymous write: no length cap, and either no rate
+-- limit or one keyed on a value the caller chose (record_scan_outcome's
+-- p_ip is the browser's own visitor id). Each now caps what it stores and
+-- spends client_write_allowed before writing. Signatures, defaults and return
+-- types are unchanged, so every caller keeps working; a refused call answers
+-- what a failed one always did (false / nothing).
+--
+-- NOTHING AFTER THE BUDGET RAISES. An exception rolls back the whole call,
+-- the budget's own increment included, so a sign-in that RAISEd on a wrong
+-- password was never counted: unlimited guesses behind a limit that read as
+-- real. The affiliate pair therefore RAISEs only on malformed input, before
+-- the budget, and answers every later failure as {success: false, error}.
+
+CREATE OR REPLACE FUNCTION public.log_error_telemetry(
+  p_error_code text,
+  p_error_type text,
+  p_error_message text DEFAULT NULL::text,
+  p_http_status integer DEFAULT NULL::integer,
+  p_function_name text DEFAULT NULL::text,
+  p_context jsonb DEFAULT NULL::jsonb
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_visitor text := p_context ->> 'visitor_id';
+BEGIN
+  IF NOT public.client_write_allowed('error-telemetry', 30, 600, 10) THEN
+    RETURN FALSE;
+  END IF;
+  INSERT INTO public.error_telemetry (error_code, error_type, error_message, http_status, function_name, context, visitor_id)
+  VALUES (
+    left(p_error_code, 64),
+    left(p_error_type, 64),
+    left(p_error_message, 1000),
+    CASE WHEN p_http_status BETWEEN 100 AND 599 THEN p_http_status END,
+    left(p_function_name, 128),
+    CASE
+      WHEN p_context IS NULL THEN NULL
+      WHEN octet_length(p_context::text) <= 4096 THEN p_context
+      ELSE jsonb_build_object('truncated', true, 'bytes', octet_length(p_context::text))
+    END,
+    CASE WHEN v_visitor ~ '^[A-Za-z0-9_-]{1,64}$' THEN v_visitor END
+  );
+  RETURN TRUE;
+EXCEPTION WHEN OTHERS THEN
+  RETURN FALSE;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.log_error_telemetry(text, text, text, integer, text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.log_error_telemetry(text, text, text, integer, text, jsonb) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.record_scan_outcome(
+  p_report_id text, p_outcome text, p_ip text
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF p_report_id IS NULL OR length(p_report_id) < 6 OR length(p_report_id) > 64 THEN
+    RETURN false;
+  END IF;
+  IF p_outcome IS NULL OR p_outcome NOT IN ('interview', 'no_response', 'rejected') THEN
+    RETURN false;
+  END IF;
+  -- Keyed on the platform's address. p_ip is the browser's visitor id: it
+  -- still names the answer (one per report per browser, updatable), but it no
+  -- longer picks the budget it is counted against.
+  IF NOT public.client_write_allowed('scan-outcome', 5, 200, 1440) THEN
+    RETURN false;
+  END IF;
+  INSERT INTO public.scan_outcomes (report_id, outcome, ip_hash)
+  VALUES (upper(p_report_id), p_outcome, md5(left(coalesce(p_ip, 'unknown'), 128)))
+  ON CONFLICT (report_id, ip_hash)
+  DO UPDATE SET outcome = excluded.outcome, created_at = now();
+  RETURN true;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.record_scan_outcome(text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_scan_outcome(text, text, text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.record_scan_feedback(
+  p_visitor_id        TEXT DEFAULT NULL,
+  p_rating            BOOLEAN DEFAULT true,
+  p_industry          TEXT DEFAULT NULL,
+  p_ats_score         INTEGER DEFAULT NULL,
+  p_had_job_description BOOLEAN DEFAULT false,
+  p_resume_word_count INTEGER DEFAULT NULL,
+  p_feedback_text     TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_rating IS NULL THEN
+    RETURN;
+  END IF;
+  IF NOT public.client_write_allowed('scan-feedback', 10, 300, 60) THEN
+    RETURN;
+  END IF;
+  INSERT INTO scan_feedback (
+    visitor_id, rating, industry, ats_score,
+    had_job_description, resume_word_count, feedback_text
+  ) VALUES (
+    left(p_visitor_id, 64), p_rating, left(p_industry, 60),
+    CASE WHEN p_ats_score BETWEEN 0 AND 100 THEN p_ats_score END,
+    p_had_job_description,
+    CASE WHEN p_resume_word_count BETWEEN 0 AND 100000 THEN p_resume_word_count END,
+    left(p_feedback_text, 1000)
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.record_scan_feedback(text, boolean, text, integer, boolean, integer, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_scan_feedback(text, boolean, text, integer, boolean, integer, text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.log_industry_correction(
+  p_detected text,
+  p_corrected text,
+  p_source text DEFAULT NULL,
+  p_confidence text DEFAULT NULL
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_detected IS NULL OR p_corrected IS NULL
+     OR length(p_detected) > 50 OR length(p_corrected) > 50
+     OR p_detected = p_corrected THEN
+    RETURN;
+  END IF;
+  IF NOT public.client_write_allowed('industry-correction', 20, 300, 60) THEN
+    RETURN;
+  END IF;
+  INSERT INTO public.industry_corrections (original_industry, corrected_industry, detection_source, original_confidence)
+  VALUES (lower(trim(p_detected)), lower(trim(p_corrected)), left(p_source, 60), left(p_confidence, 20));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.log_industry_correction(text, text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.log_industry_correction(text, text, text, text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.log_industry_correction(
+  p_original_industry TEXT,
+  p_corrected_industry TEXT,
+  p_original_confidence TEXT DEFAULT NULL,
+  p_detection_source TEXT DEFAULT NULL,
+  p_resume_text_length INTEGER DEFAULT NULL,
+  p_server_signals TEXT[] DEFAULT NULL,
+  p_ai_suggested_industry TEXT DEFAULT NULL,
+  p_visitor_id TEXT DEFAULT NULL,
+  p_ip_country TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_id UUID;
+BEGIN
+  IF p_original_industry IS NULL OR p_corrected_industry IS NULL
+     OR length(p_original_industry) > 50 OR length(p_corrected_industry) > 50 THEN
+    RETURN NULL;
+  END IF;
+  IF NOT public.client_write_allowed('industry-correction', 20, 300, 60) THEN
+    RETURN NULL;
+  END IF;
+  INSERT INTO public.industry_corrections (
+    original_industry,
+    corrected_industry,
+    original_confidence,
+    detection_source,
+    resume_text_length,
+    server_signals,
+    ai_suggested_industry,
+    visitor_id,
+    ip_country
+  ) VALUES (
+    p_original_industry,
+    p_corrected_industry,
+    left(p_original_confidence, 20),
+    left(p_detection_source, 60),
+    CASE WHEN p_resume_text_length BETWEEN 0 AND 1000000 THEN p_resume_text_length END,
+    ARRAY(SELECT left(s, 60) FROM unnest(p_server_signals[1:20]) AS s),
+    left(p_ai_suggested_industry, 50),
+    left(p_visitor_id, 64),
+    left(p_ip_country, 8)
+  )
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.log_industry_correction(text, text, text, text, integer, text[], text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.log_industry_correction(text, text, text, text, integer, text[], text, text, text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.track_affiliate_click(
+  p_referral_code TEXT,
+  p_ip_hash TEXT DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL,
+  p_referrer TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_affiliate_id UUID;
+  v_addr text := public.request_client_address();
+BEGIN
+  IF p_referral_code IS NULL OR length(p_referral_code) > 32 THEN
+    RETURN FALSE;
+  END IF;
+  SELECT id INTO v_affiliate_id
+  FROM affiliates
+  WHERE referral_code = p_referral_code
+    AND status = 'active';
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  -- Three clicks a day per address per code, five hundred a day per code in
+  -- all: a click counter, not a lever that inflates (or, by dilution, lowers
+  -- the conversion rate of) somebody else's affiliate account.
+  IF NOT public.client_write_allowed('affiliate-click:' || p_referral_code, 3, 500, 1440) THEN
+    RETURN FALSE;
+  END IF;
+  INSERT INTO affiliate_clicks (affiliate_id, ip_hash, user_agent, referrer)
+  VALUES (
+    v_affiliate_id,
+    CASE WHEN v_addr IS NOT NULL THEN md5('affiliate-click:' || v_addr) ELSE left(p_ip_hash, 64) END,
+    left(p_user_agent, 200),
+    left(p_referrer, 500)
+  );
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.track_affiliate_click(text, text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.track_affiliate_click(text, text, text, text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.register_affiliate(
+  p_email TEXT,
+  p_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_affiliate_id UUID;
+  v_referral_code TEXT;
+  v_session_token TEXT;
+BEGIN
+  IF p_email IS NULL OR length(p_email) > 254 OR p_email !~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
+    RAISE EXCEPTION 'Invalid email format';
+  END IF;
+  IF p_password IS NULL OR length(p_password) < 8 OR length(p_password) > 200 THEN
+    RAISE EXCEPTION 'Password must be 8 to 200 characters';
+  END IF;
+  -- Three attempts a day per address, fifty a day in all. Sign-up without a
+  -- verification email cannot hide whether an address already has an account
+  -- (a fresh address succeeds), so the bound is what keeps that from being a
+  -- bulk lookup.
+  IF NOT public.client_write_allowed('affiliate-register', 3, 50, 1440) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Too many sign-up attempts. Try again tomorrow.');
+  END IF;
+  IF EXISTS (SELECT 1 FROM affiliates WHERE email = lower(trim(p_email))) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'This email cannot be registered. If it is yours, sign in instead.');
+  END IF;
+  INSERT INTO affiliates (email, password_hash)
+  VALUES (lower(trim(p_email)), crypt(p_password, gen_salt('bf')))
+  RETURNING id, referral_code INTO v_affiliate_id, v_referral_code;
+  INSERT INTO affiliate_sessions (affiliate_id)
+  VALUES (v_affiliate_id)
+  RETURNING session_token INTO v_session_token;
+  RETURN jsonb_build_object(
+    'success', true,
+    'affiliate_id', v_affiliate_id,
+    'referral_code', v_referral_code,
+    'session_token', v_session_token
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.register_affiliate(text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.register_affiliate(text, text) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.login_affiliate(
+  p_email TEXT,
+  p_password TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_affiliate affiliates%ROWTYPE;
+  v_session_token TEXT;
+BEGIN
+  IF p_email IS NULL OR p_password IS NULL OR length(p_email) > 254 OR length(p_password) > 200 THEN
+    RAISE EXCEPTION 'Invalid email or password';
+  END IF;
+  -- Twenty attempts an hour per address, and twenty an hour against any one
+  -- email from every address together: a password guesser on a rotating pool
+  -- gets twenty bcrypt checks an hour per account, not unlimited.
+  IF NOT public.client_write_allowed('affiliate-login', 20, 1000, 60)
+     OR NOT public.client_write_allowed('affiliate-login:' || md5(lower(trim(p_email))), 20, 20, 60) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Too many sign-in attempts. Try again in an hour.');
+  END IF;
+  SELECT * INTO v_affiliate
+  FROM affiliates
+  WHERE email = lower(trim(p_email));
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Invalid email or password');
+  END IF;
+  IF v_affiliate.password_hash != crypt(p_password, v_affiliate.password_hash) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Invalid email or password');
+  END IF;
+  IF v_affiliate.status != 'active' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Account is not active');
+  END IF;
+  DELETE FROM affiliate_sessions
+  WHERE affiliate_id = v_affiliate.id
+    AND expires_at < now();
+  INSERT INTO affiliate_sessions (affiliate_id)
+  VALUES (v_affiliate.id)
+  RETURNING session_token INTO v_session_token;
+  RETURN jsonb_build_object(
+    'success', true,
+    'affiliate_id', v_affiliate.id,
+    'email', v_affiliate.email,
+    'referral_code', v_affiliate.referral_code,
+    'session_token', v_session_token
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.login_affiliate(text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.login_affiliate(text, text) TO anon, authenticated, service_role;
+
+-- ── 1d. the tracker's lifecycle answers only for the caller's own tracker ───
+--
+-- get_application_lifecycle took ANY 500 posting ids from anyone holding the
+-- publishable key and answered, per id, whether and when it came down, how
+-- long it stood and whether it was relisted -- the closure ledger, the one
+-- asset nobody else has, in bulk, behind no meter. Posting ids are
+-- vendor:token:atsId and constructible from public ATS feeds. Its only caller
+-- is the signed-in account page, for the job ids on the user's own tracker.
+-- So: signed-in only, and the ids are intersected with the caller's own
+-- user_applications rows before anything is read. The body is otherwise the
+-- 20260909201000 text: days_standing still goes NULL on a lap_backfill
+-- closure and the row stays.
+CREATE OR REPLACE FUNCTION public.get_application_lifecycle(p_job_ids text[])
+RETURNS TABLE (
+  job_id text,
+  outcome text,
+  closed_at timestamptz,
+  days_standing numeric,
+  relisted boolean,
+  closed_at_is_observation boolean
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+SET statement_timeout = '10s'
+AS $$
+  WITH ids AS (
+    SELECT DISTINCT a.job_id AS jid
+    FROM public.user_applications a
+    WHERE a.user_id = auth.uid()
+      AND a.job_id = ANY (p_job_ids[1:500])
+  ),
+  cl AS (
+    SELECT DISTINCT ON (c.posting_id)
+      c.posting_id, c.closed_at, c.posted_at, c.first_seen, c.company_token, c.title,
+      c.absence_basis
+    FROM public.job_board_closures c
+    WHERE c.posting_id IN (SELECT ids.jid FROM ids)
+    ORDER BY c.posting_id, c.closed_at DESC
+  ),
+  liv AS (
+    SELECT p.id, p.posted_at, p.first_seen
+    FROM public.job_board_postings p
+    WHERE p.id IN (SELECT ids.jid FROM ids)
+  )
+  SELECT
+    ids.jid AS job_id,
+    CASE
+      WHEN liv.id IS NOT NULL AND cl.posting_id IS NOT NULL THEN 'came_down_relisted'
+      WHEN liv.id IS NOT NULL THEN 'still_standing'
+      WHEN cl.posting_id IS NOT NULL THEN
+        CASE WHEN EXISTS (
+          SELECT 1 FROM public.job_board_postings p2
+          WHERE p2.company_token = cl.company_token
+            AND lower(p2.title) = lower(cl.title)
+            AND COALESCE(p2.posted_at, p2.first_seen) >= cl.closed_at
+        ) THEN 'came_down_relisted' ELSE 'came_down' END
+      ELSE 'not_observed'
+    END AS outcome,
+    cl.closed_at,
+    CASE
+      WHEN cl.posting_id IS NOT NULL AND cl.absence_basis = 'lap_backfill' THEN NULL
+      WHEN cl.posting_id IS NOT NULL AND COALESCE(cl.posted_at, cl.first_seen) IS NOT NULL
+        THEN round((EXTRACT(epoch FROM (cl.closed_at - COALESCE(cl.posted_at, cl.first_seen))) / 86400.0)::numeric, 1)
+      WHEN liv.id IS NOT NULL AND COALESCE(liv.posted_at, liv.first_seen) IS NOT NULL
+        THEN round((EXTRACT(epoch FROM (now() - COALESCE(liv.posted_at, liv.first_seen))) / 86400.0)::numeric, 1)
+      ELSE NULL
+    END AS days_standing,
+    (cl.posting_id IS NOT NULL AND liv.id IS NOT NULL) AS relisted,
+    COALESCE(cl.posting_id IS NOT NULL AND cl.absence_basis = 'lap_backfill', false) AS closed_at_is_observation
+  FROM ids
+  LEFT JOIN cl  ON cl.posting_id = ids.jid
+  LEFT JOIN liv ON liv.id = ids.jid;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_application_lifecycle(text[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_application_lifecycle(text[]) TO authenticated, service_role;
+
+-- ── 1e. check-alerts answers its own cron, not a stranger ──────────────────
+--
+-- check-alerts (verify_jwt = false) ran the alert evaluation for anyone who
+-- POSTed to it and handed back the delivery, AI, email, webhook and parse
+-- rates it had computed with the service role from the very readers this
+-- migration moves behind the admin key. The function now refuses a caller
+-- without the ADMIN_API_KEY or this cron key. The key is generated here, in
+-- the vault, the same way 20260802190000 armed the apply-agent cron, so no
+-- person copies it anywhere: the cron reads it from the vault and the function
+-- asks alerts_cron_key_matches, which answers a boolean and never the key.
+DO $arm$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'vault') THEN
+    RAISE NOTICE 'check-alerts cron key: no vault on this host; check-alerts answers only the admin key here';
+    RETURN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'alerts_cron_key') THEN
+    PERFORM vault.create_secret(
+      replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''),
+      'alerts_cron_key'
+    );
+    RAISE NOTICE 'check-alerts cron key: generated alerts_cron_key in the vault';
+  END IF;
+END
+$arm$;
+
+CREATE OR REPLACE FUNCTION public.alerts_cron_key_matches(p_key text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $keycheck$
+DECLARE
+  v_ok boolean := false;
+BEGIN
+  IF p_key IS NULL OR length(p_key) < 32 THEN
+    RETURN false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'vault') THEN
+    RETURN false;
+  END IF;
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM vault.decrypted_secrets s WHERE s.name = $1 AND s.decrypted_secret = $2)'
+     INTO v_ok USING 'alerts_cron_key', p_key;
+  RETURN COALESCE(v_ok, false);
+END
+$keycheck$;
+
+REVOKE ALL ON FUNCTION public.alerts_cron_key_matches(text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.alerts_cron_key_matches(text) TO service_role;
+
+DO $cron$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    RAISE NOTICE 'check-alerts cron: pg_cron is not installed here; nothing rescheduled';
+    RETURN;
+  END IF;
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'check-alerts') THEN
+    PERFORM cron.unschedule('check-alerts');
+  END IF;
+  PERFORM cron.schedule(
+    'check-alerts',
+    '18 */6 * * *',
+    $job$
+    SELECT net.http_post(
+      url := 'https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/check-alerts',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-alerts-cron', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'alerts_cron_key' LIMIT 1)
+      ),
+      body := '{}'::jsonb
+    )
+    WHERE EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'alerts_cron_key');
+    $job$
+  );
+END
+$cron$;
 
 -- ── 2 and 3. close by exact signature; then the overloads nobody wrote ─────
 
@@ -466,7 +1126,6 @@ AS $census$
         'public.get_affiliate_clicks(text,integer)',
         'public.get_affiliate_dashboard(text)',
         'public.get_analysis_by_share_id(text)',
-        'public.get_application_lifecycle(text[])',
         'public.get_audit_result()',
         'public.get_board_anon_hourly(integer)',
         'public.get_board_anon_networks(integer,integer)',
@@ -523,7 +1182,8 @@ AS $census$
         'public.track_affiliate_click(text,text,text,text)'
       ]::text[] AS allow_anon,
       ARRAY[
-        'public.agent_sender_online(integer)'
+        'public.agent_sender_online(integer)',
+        'public.get_application_lifecycle(text[])'
       ]::text[] AS allow_auth,
       ARRAY[
         'public.get_scan_credits(text)',
@@ -533,7 +1193,8 @@ AS $census$
         'public.job_board_verifications',
         'public.job_board_closure_rollup',
         'public.error_telemetry',
-        'public.industry_detection_metrics'
+        'public.industry_detection_metrics',
+        'public.client_write_budget'
       ]::text[] AS closed_tables
   ),
   listed AS (
@@ -579,6 +1240,14 @@ AS $census$
                                  WHERE f IS NULL
                                     OR NOT has_function_privilege('authenticated', f, 'EXECUTE')
                                     OR (for_anon AND NOT has_function_privilege('anon', f, 'EXECUTE'))),
+    'signed_in_only_open_to_anon', (SELECT COALESCE(jsonb_agg(sig ORDER BY sig), '[]'::jsonb) FROM allowed_state
+                                    WHERE f IS NOT NULL AND NOT for_anon
+                                      AND has_function_privilege('anon', f, 'EXECUTE')),
+    'request_address_source', (SELECT CASE
+                                 WHEN NULLIF(btrim(h.v ->> 'cf-connecting-ip'), '') IS NOT NULL THEN 'cf'
+                                 WHEN NULLIF(btrim(h.v ->> 'x-forwarded-for'), '') IS NOT NULL THEN 'xff'
+                                 ELSE 'none' END
+                               FROM (SELECT NULLIF(current_setting('request.headers', true), '')::json AS v) h),
     'closed_tables_still_open', (SELECT COALESCE(jsonb_agg(t ORDER BY t), '[]'::jsonb) FROM lists, unnest(lists.closed_tables) AS t
                                  WHERE to_regclass(t) IS NULL
                                     OR has_table_privilege('anon', to_regclass(t), 'SELECT, INSERT, UPDATE, DELETE')
@@ -588,8 +1257,9 @@ $census$;
 
 COMMENT ON FUNCTION public.client_callable_census() IS
   'How many SECURITY DEFINER functions in public anon or authenticated can execute, how many of those '
-  'no list in 20261004110000 describes, and which of the closed ones (or the four closed tables) are '
-  'callable again. INVOKER rights, catalogue reads only, names only from the repository''s own lists: '
+  'no list in 20261004110000 describes, which of the closed ones (or the closed tables) are callable again, '
+  'which signed-in-only one anon can call, and whether this request carried a platform address. '
+  'INVOKER rights, catalogue reads only, names only from the repository''s own lists: '
   'safe for the publishable key, and the way a deploy is proved without calling a closed function.';
 
 REVOKE ALL ON FUNCTION public.client_callable_census() FROM PUBLIC, anon, authenticated;
@@ -668,6 +1338,61 @@ BEGIN
   v_def := pg_get_functiondef(to_regprocedure('public.get_funnel_cohort_stats(text,integer)'));
   IF position('utmCampaign' in v_def) = 0 OR position('22023' in v_def) = 0 THEN
     v_bad := v_bad || 'get_funnel_cohort_stats does not refuse unknown dimensions'::text;
+  END IF;
+
+  -- The tracker's lifecycle: signed-in only, and only the caller's own rows.
+  IF jsonb_array_length(c -> 'signed_in_only_open_to_anon') <> 0 THEN
+    v_bad := v_bad || ('signed-in only, yet anon can execute: ' || (c ->> 'signed_in_only_open_to_anon'));
+  END IF;
+  v_def := pg_get_functiondef(to_regprocedure('public.get_application_lifecycle(text[])'));
+  IF position('auth.uid()' in v_def) = 0 OR position('user_applications' in v_def) = 0
+     OR position('lap_backfill' in v_def) = 0 THEN
+    v_bad := v_bad || 'get_application_lifecycle does not read only the caller''s own tracker'::text;
+  END IF;
+
+  -- The browser's writers each spend the write budget, and the budget and
+  -- the address it is keyed on are closed to clients themselves.
+  FOR r IN
+    SELECT x AS sig FROM unnest(ARRAY[
+      'public.log_error_telemetry(text,text,text,integer,text,jsonb)',
+      'public.record_scan_outcome(text,text,text)',
+      'public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)',
+      'public.log_industry_correction(text,text,text,text)',
+      'public.log_industry_correction(text,text,text,text,integer,text[],text,text,text)',
+      'public.track_affiliate_click(text,text,text,text)',
+      'public.register_affiliate(text,text)',
+      'public.login_affiliate(text,text)'
+    ]::text[]) AS x
+  LOOP
+    IF to_regprocedure(r.sig) IS NULL
+       OR position('client_write_allowed(' in pg_get_functiondef(to_regprocedure(r.sig))) = 0 THEN
+      v_bad := v_bad || ('an allowlisted writer spends no write budget: ' || r.sig);
+    END IF;
+  END LOOP;
+  v_def := pg_get_functiondef(to_regprocedure('public.log_error_telemetry(text,text,text,integer,text,jsonb)'));
+  IF position('left(p_error_message, 1000)' in v_def) = 0 OR position('4096' in v_def) = 0 THEN
+    v_bad := v_bad || 'log_error_telemetry stores uncapped text'::text;
+  END IF;
+  FOR r IN
+    SELECT x AS sig FROM unnest(ARRAY[
+      'public.request_client_address()',
+      'public.client_write_allowed(text,integer,integer,integer)',
+      'public.alerts_cron_key_matches(text)'
+    ]::text[]) AS x
+  LOOP
+    IF to_regprocedure(r.sig) IS NULL
+       OR has_function_privilege('anon', to_regprocedure(r.sig), 'EXECUTE')
+       OR has_function_privilege('authenticated', to_regprocedure(r.sig), 'EXECUTE')
+       OR NOT has_function_privilege('service_role', to_regprocedure(r.sig), 'EXECUTE') THEN
+      v_bad := v_bad || ('a helper is not closed to clients and open to service_role: ' || r.sig);
+    END IF;
+  END LOOP;
+
+  -- The alert cron sends its key wherever pg_cron runs it.
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'check-alerts' AND position('x-alerts-cron' in command) > 0) THEN
+      v_bad := v_bad || 'the check-alerts cron job does not send x-alerts-cron'::text;
+    END IF;
   END IF;
 
   -- The tables.

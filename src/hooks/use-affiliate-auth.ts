@@ -131,13 +131,17 @@ export function useAffiliateAuth() {
 
     const result = data as {
       success: boolean;
+      error?: string;
       affiliate_id: string;
       referral_code: string;
       session_token: string;
     };
 
+    // A refusal after the server has counted the attempt comes back as
+    // {success: false, error}, not as an RPC error: an exception would roll
+    // the attempt count back with it (migration 20261004110000).
     if (!result.success) {
-      throw new Error('Registration failed');
+      throw new Error(result.error || 'Registration failed');
     }
 
     const newSession: AffiliateSession = {
@@ -164,6 +168,7 @@ export function useAffiliateAuth() {
 
     const result = data as {
       success: boolean;
+      error?: string;
       affiliate_id: string;
       email: string;
       referral_code: string;
@@ -171,7 +176,7 @@ export function useAffiliateAuth() {
     };
 
     if (!result.success) {
-      throw new Error('Login failed');
+      throw new Error(result.error || 'Login failed');
     }
 
     const newSession: AffiliateSession = {

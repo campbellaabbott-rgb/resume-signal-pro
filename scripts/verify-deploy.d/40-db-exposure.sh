@@ -22,7 +22,12 @@ if(!c||typeof c!=="object"||Array.isArray(c)||!("closed" in c)){ok(false,"client
 ok(c.closed===56&&c.closed_missing===0,"the census names "+c.closed+" closed signatures, "+c.closed_missing+" missing (want 56 and 0)");
 ok(Array.isArray(c.closed_still_callable)&&c.closed_still_callable.length===0,"no closed function is callable by anon or authenticated: "+JSON.stringify(c.closed_still_callable));
 ok(Array.isArray(c.allowlisted_not_callable)&&c.allowlisted_not_callable.length===0,"every allowlisted function still answers its pages ("+c.allowlisted+" listed): "+JSON.stringify(c.allowlisted_not_callable));
-ok(Array.isArray(c.closed_tables_still_open)&&c.closed_tables_still_open.length===0,"the four closed tables give a client role nothing: "+JSON.stringify(c.closed_tables_still_open));
+ok(Array.isArray(c.closed_tables_still_open)&&c.closed_tables_still_open.length===0,"the closed tables (the write budget among them) give a client role nothing: "+JSON.stringify(c.closed_tables_still_open));
+ok(Array.isArray(c.signed_in_only_open_to_anon)&&c.signed_in_only_open_to_anon.length===0,"no signed-in-only function (get_application_lifecycle, agent_sender_online) is callable with the publishable key: "+JSON.stringify(c.signed_in_only_open_to_anon));
+// The writers budget per PLATFORM address, read in SQL from request.headers.
+// "none" here means PostgREST hands SQL no address: every browser would share
+// one bucket held to the ceiling of each writer -- telemetry thins out, nothing leaks.
+ok(c.request_address_source==="cf"||c.request_address_source==="xff","PostgREST hands SQL the address of the caller: request_address_source = "+c.request_address_source+" (want cf, or xff; none = the per-address write budgets collapse into one shared bucket)");
 if(c.unlisted_client_callable===0)ok(true,"no client-callable definer function outside the lists ("+c.client_callable+" client-callable of "+c.definers+" definers)");
 else info(c.unlisted_client_callable+" client-callable definer function(s) appear in no list (schema drift or new since the census): the apply NOTICE names them; "+c.client_callable+" of "+c.definers+" definers are client-callable");'
 
@@ -38,6 +43,10 @@ probe get_visitor_error_history '{"p_visitor_id":"verify-deploy-probe"}'
 probe get_db_size_stats '{}'
 probe get_stale_board_count '{}'
 probe email_delivery_health '{"p_hours":1}'
+# The tracker's lifecycle answered ANY 500 posting ids from the closure ledger
+# to anyone; it is signed-in only now (and reads only the caller's own
+# tracker). A pure reader: if the revoke had not landed it would only read.
+probe get_application_lifecycle '{"p_job_ids":["verify:deploy:probe"]}'
 
 # The cohort reader stays open for its eight dimensions and refuses any other key.
 FUN=$(R get_funnel_cohort_stats '{"p_cohort_dimension":"referrer","p_days_back":1}')
@@ -64,3 +73,21 @@ case "$BUILD" in admin-ops.2026-10-04.*) echo "PASS  admin-ops preflight x-fn-bu
 printf '%s' "$H" | tr -d '\r' | grep -i '^access-control-allow-headers:' | grep -qi 'x-admin-key' && echo "PASS  admin-ops allows the x-admin-key header" || echo "FAIL  admin-ops preflight does not allow x-admin-key (every dashboard panel would fail CORS)"
 NOKEY=$(curl -s -m 30 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1/admin-ops" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"fn":"get_delivery_health","args":{"p_hours_back":0}}')
 [ "$NOKEY" = "401" ] && echo "PASS  admin-ops without the admin key -> 401" || echo "FAIL  admin-ops without the admin key -> $NOKEY"
+
+# check-alerts: the build on the preflight, the cron/admin headers allowed, and
+# -- only once the new build is proven serving, since the old one ran the alert
+# evaluation (and could mail the owner) for any POST -- a keyless POST refused.
+H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/check-alerts" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: x-alerts-cron,content-type")
+CBUILD=$(printf '%s' "$H" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+case "$CBUILD" in
+  check-alerts.2026-10-04.*)
+    echo "PASS  check-alerts preflight x-fn-build = $CBUILD"
+    printf '%s' "$H" | tr -d '\r' | grep -i '^access-control-allow-headers:' | grep -qi 'x-alerts-cron' && echo "PASS  check-alerts allows the x-alerts-cron header" || echo "FAIL  check-alerts preflight does not allow x-alerts-cron"
+    CNOKEY=$(curl -s -m 30 -o /tmp/vd_40_alerts.json -w '%{http_code}' -X POST "$B/functions/v1/check-alerts" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}')
+    [ "$CNOKEY" = "401" ] && echo "PASS  check-alerts without a key -> 401 (no evaluation, no metrics)" || echo "FAIL  check-alerts without a key -> $CNOKEY $(head -c 160 /tmp/vd_40_alerts.json)";;
+  *) echo "FAIL  check-alerts preflight x-fn-build = '${CBUILD}' (want check-alerts.2026-10-04.1; the keyless POST is NOT sent until it is: the old build evaluates and may mail for anyone)";;
+esac
+EH=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/check-error-spikes" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST")
+EBUILD=$(printf '%s' "$EH" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+case "$EBUILD" in check-error-spikes.2026-10-04.*) echo "PASS  check-error-spikes preflight x-fn-build = $EBUILD (alert email defangs browser-written text)";; *) echo "FAIL  check-error-spikes preflight x-fn-build = '${EBUILD}' (want check-error-spikes.2026-10-04.1)";; esac
+
