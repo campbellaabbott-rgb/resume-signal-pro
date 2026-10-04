@@ -5214,6 +5214,22 @@ export type Database = {
           n: number
         }[]
       }
+      get_cron_health: {
+        Args: { p_hours?: number }
+        Returns: {
+          ch_active: boolean
+          ch_failed: number
+          ch_jobname: string
+          ch_last_seconds: number
+          ch_last_start: string
+          ch_last_status: string
+          ch_max_seconds: number
+          ch_runs: number
+          ch_schedule: string
+          ch_timeout: string
+          ch_timeouts: number
+        }[]
+      }
       get_date_coverage: {
         Args: never
         Returns: {
