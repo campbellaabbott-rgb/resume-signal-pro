@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Target, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
 
@@ -48,7 +48,7 @@ export function IndustryDetectionChart() {
   const fetchData = async () => {
     try {
       // Fetch overall stats
-      const { data: statsData } = await supabase.rpc('get_industry_detection_stats', { p_hours_back: 168 }); // 7 days
+      const { data: statsData } = await adminRpc('get_industry_detection_stats', { p_hours_back: 168 }); // 7 days
       if (statsData && statsData[0]) {
         setStats({
           total_detections: statsData[0].total_detections || 0,
@@ -66,8 +66,9 @@ export function IndustryDetectionChart() {
       // querying the table directly — industry_detection_metrics has RLS enabled
       // with no SELECT policy (it holds per-visitor data like visitor_id/ip_country
       // that shouldn't be publicly queryable), so a direct .from() call here would
-      // silently return nothing.
-      const { data: breakdownData } = await (supabase as any).rpc('get_industry_detection_breakdown', { p_hours_back: 168 }) as { data: Array<{ final_industry: string; final_confidence: string }> | null };
+      // silently return nothing. The RPC itself is closed to the publishable key
+      // (20261004110000), so it is reached through admin-ops with the admin key.
+      const { data: breakdownData } = await adminRpc('get_industry_detection_breakdown', { p_hours_back: 168 });
 
       if (breakdownData) {
         const grouped: Record<string, { count: number; confidences: string[] }> = {};
@@ -93,7 +94,7 @@ export function IndustryDetectionChart() {
       }
 
       // Fetch recent detections (same RLS/SECURITY DEFINER rationale as above)
-      const { data: recentData } = await (supabase as any).rpc('get_industry_detection_recent', { p_limit: 10 });
+      const { data: recentData } = await adminRpc('get_industry_detection_recent', { p_limit: 10 });
 
       if (recentData) {
         setRecentDetections(recentData as unknown as RecentDetection[]);

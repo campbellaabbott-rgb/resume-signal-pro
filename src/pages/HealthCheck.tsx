@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer, Flame, Snowflake, Thermometer, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
 import { HealthTrendChart } from '@/components/dashboard/HealthTrendChart';
 import { EmailTrendChart } from '@/components/dashboard/EmailTrendChart';
@@ -103,8 +104,11 @@ interface DeliveryHealth {
   pending: number;
   delivery_rate: number;
   avg_generation_time_ms: number;
+  // Redacted at the source since 20261004110000: a 10-character digest of the
+  // checkout session (never the session id, which unlocks the purchase) and a
+  // masked address.
   recent_failures: Array<{
-    session_id: string;
+    session_ref: string;
     email: string;
     product: string;
     status: string;
@@ -322,7 +326,7 @@ function HealthCheckContent() {
 
   const fetchEmailHealth = async () => {
     try {
-      const { data } = await supabase.rpc('get_email_health', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_email_health', { p_hours_back: 24 });
       if (data && data[0]) {
         setEmailHealth({
           ...data[0],
@@ -336,7 +340,7 @@ function HealthCheckContent() {
 
   const fetchFunctionErrors = async () => {
     try {
-      const { data } = await supabase.rpc('get_function_error_rates', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_function_error_rates', { p_hours_back: 24 });
       if (data) {
         setFunctionErrors(data as FunctionError[]);
       }
@@ -347,7 +351,7 @@ function HealthCheckContent() {
 
   const fetchRateLimitStats = async () => {
     try {
-      const { data } = await supabase.rpc('get_rate_limit_stats', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_rate_limit_stats', { p_hours_back: 24 });
       if (data && data[0]) {
         setRateLimitStats({
           ...data[0],
@@ -362,7 +366,7 @@ function HealthCheckContent() {
 
   const fetchPaymentHealth = async () => {
     try {
-      const { data } = await supabase.rpc('get_payment_health', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_payment_health', { p_hours_back: 24 });
       if (data && data[0]) {
         setPaymentHealth({
           ...data[0],
@@ -376,7 +380,7 @@ function HealthCheckContent() {
 
   const fetchDeliveryHealth = async () => {
     try {
-      const { data } = await supabase.rpc('get_delivery_health', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_delivery_health', { p_hours_back: 24 });
       if (data && data[0]) {
         setDeliveryHealth({
           ...data[0],
@@ -390,7 +394,7 @@ function HealthCheckContent() {
 
   const fetchAIQuality = async () => {
     try {
-      const { data } = await supabase.rpc('get_ai_quality_stats', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_ai_quality_stats', { p_hours_back: 24 });
       if (data && data[0]) {
         setAIQuality({
           ...data[0],
@@ -404,7 +408,7 @@ function HealthCheckContent() {
 
   const fetchCheckoutFunnel = async () => {
     try {
-      const { data } = await supabase.rpc('get_checkout_funnel', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_checkout_funnel', { p_hours_back: 24 });
       if (data && data[0]) {
         setCheckoutFunnel(data[0] as CheckoutFunnel);
       }
@@ -415,7 +419,7 @@ function HealthCheckContent() {
 
   const fetchWebhookHealth = async () => {
     try {
-      const { data } = await supabase.rpc('get_webhook_health', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_webhook_health', { p_hours_back: 24 });
       if (data && data[0]) {
         setWebhookHealth({
           ...data[0],
@@ -430,7 +434,7 @@ function HealthCheckContent() {
 
   const fetchParseFailures = async () => {
     try {
-      const { data } = await supabase.rpc('get_parse_failure_stats', { p_hours_back: 24 });
+      const { data } = await adminRpc('get_parse_failure_stats', { p_hours_back: 24 });
       if (data && data[0]) {
         setParseFailures({
           ...data[0],

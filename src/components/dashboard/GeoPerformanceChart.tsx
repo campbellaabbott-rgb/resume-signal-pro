@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Globe, MapPin, AlertTriangle, TrendingUp, TrendingDown, Clock, Activity } from 'lucide-react';
 
@@ -58,7 +58,7 @@ export function GeoPerformanceChart() {
 
   const fetchGeoStats = async () => {
     try {
-      const { data: stats, error } = await supabase.rpc('get_geo_latency_stats', { p_hours_back: 24 });
+      const { data: stats, error } = await adminRpc('get_geo_latency_stats', { p_hours_back: 24 });
 
       if (error) throw error;
 

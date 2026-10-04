@@ -235,28 +235,13 @@ async function sendCircuitBreakerAlert(
     console.error('[CircuitBreaker] Failed to log alert:', e);
   }
 
-  // Also log to dedicated alert table if should_send_alert returns true
-  try {
-    const { data: shouldAlert } = await supabase.rpc('should_send_alert', {
-      p_metric_name: `circuit_breaker_${serviceName}`,
-      p_alert_type: 'circuit_open',
-      p_cooldown_minutes: 15,
-    });
-
-    if (shouldAlert) {
-      await supabase.rpc('log_alert_sent', {
-        p_metric_name: `circuit_breaker_${serviceName}`,
-        p_alert_type: 'circuit_open',
-        p_threshold: config.failureThreshold || 3,
-        p_actual: config.failureThreshold || 3,
-        p_sent_to: 'system',
-        p_success: true,
-      });
-    }
-  } catch (e) {
-    // Non-critical, just log
-    console.debug('[CircuitBreaker] Alert logging skipped:', e);
-  }
+  // The browser does NOT write the alert ledger. It used to call the cooldown
+  // check and then insert a row into alert_log -- the same ledger the server
+  // monitor (check-alerts) reads to decide whether a critical alert is still
+  // in cooldown. Because anyone holding the publishable key could make that
+  // same insert, anyone could keep the owner's alerts silenced. Migration
+  // 20261004110000 closed both RPCs to the browser; the error_telemetry row
+  // above is the browser's whole record of a circuit opening.
 }
 
 /**
