@@ -21,10 +21,16 @@
  *   - the reader returns per-job counts and timings, the timeout each command
  *     sets, never the command or a message, and anon may call it.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+// Every test here boots its own pglite. Under the pre-push gate's parallel
+// workers a boot alone can pass the default 5s, and these were the two
+// pglite suites without a budget of their own: they failed the gate twice on
+// 2026-10-04 by timeout while passing in isolation.
+vi.setConfig({ testTimeout: 60_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const SQL = readFileSync(resolve(ROOT, "supabase/migrations/20261004010000_every_cron_job_gets_the_time_its_function_asks_for.sql"), "utf8");
