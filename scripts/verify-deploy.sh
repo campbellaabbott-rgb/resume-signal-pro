@@ -1256,4 +1256,10 @@ const slow=rows.filter((r)=>Number(r.ch_max_seconds)>=110).sort((a,b)=>Number(b.
 for(const r of slow.slice(0,12))info("long runs: "+r.ch_jobname+" longest "+r.ch_max_seconds+"s, last "+r.ch_last_status+" "+r.ch_last_seconds+"s, timeout "+(r.ch_timeout||"none (session two minutes)"));
 const failing=rows.filter((r)=>r.ch_last_status==="failed");if(failing.length)info("jobs whose LAST run failed: "+failing.map((r)=>r.ch_jobname).join(", "));'
 
+# SECTION FILES. Changes that ship in parallel each add their probes as
+# scripts/verify-deploy.d/<name>.sh instead of editing this file, so two
+# branches never conflict at its end. Each is sourced here, in name order,
+# with K, RB, B, SITE, UA and the J/R/MC/probe/title helpers above in scope.
+for f in scripts/verify-deploy.d/*.sh; do [ -f "$f" ] && . "$f"; done
+
 echo "done."
