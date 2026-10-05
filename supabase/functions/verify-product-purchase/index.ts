@@ -37,8 +37,10 @@ function buildGenerationRequest(
     // session it was a 402 every time, rescued only by the browser's own retry.
     case 'basic_keyword_fix':
       return { endpoint: 'generate-keyword-fix', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
+    // The free generators (cover letter, coach, career path) read the session
+    // to count this purchase's daily allowance -- see generate-cover-letter.
     case 'cover_letter':
-      return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
+      return { endpoint: 'generate-cover-letter', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
     // These three now gate on assertPaidSession (they are paid-only endpoints —
     // unlike cover_letter, whose generator the public board also calls free).
     // The sessionId is their proof of purchase; omit it and a real buyer 402s.
@@ -55,9 +57,9 @@ function buildGenerationRequest(
       // implicitly. Without it, this call always 401s.
       return { endpoint: 'generate-ats-defense', body: { sessionId, resumeText, jobDescription: jobDescriptionText, targetRoles: [], language } };
     case 'interview_coach':
-      return { endpoint: 'generate-interview-coach', body: { resumeText, isPremium: true, language } };
+      return { endpoint: 'generate-interview-coach', body: { sessionId, resumeText, isPremium: true, language } };
     case 'career_path_simulator':
-      return { endpoint: 'generate-career-path', body: { resumeText, isPremium: true, language } };
+      return { endpoint: 'generate-career-path', body: { sessionId, resumeText, isPremium: true, language } };
     default:
       return null;
   }
@@ -330,10 +332,14 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
               body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId })
             }),
+            // The service-role key: the generator's spend gate never counts
+            // our own servers by address or against its free ceiling; the
+            // session still counts against this purchase's daily allowance,
+            // which bounds the regeneration every refresh can trigger here.
             fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language, sessionId })
             })
           ]);
 
@@ -386,11 +392,12 @@ serve(async (req) => {
 
           if (request) {
             logStep(`Calling ${request.endpoint}`);
+            // The service-role key, as for the Apply Assistant's letter above.
             const genResponse = await fetch(`${supabaseUrl}/functions/v1/${request.endpoint}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
               },
               body: JSON.stringify(request.body)
             });

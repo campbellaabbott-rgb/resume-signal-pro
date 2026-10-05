@@ -241,8 +241,11 @@ export default function ProductSuccess() {
           supabase.functions.invoke('generate-apply-package', {
             body: { resumeText, jobPostingText: jobDescription, sessionId, language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
           }),
+          // The session names the purchase: the letter is counted against
+          // the Apply Assistant's own daily allowance, never the free tool's
+          // shared hourly one that strangers can spend.
           supabase.functions.invoke('generate-cover-letter', {
-            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional', language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
+            body: { resumeText, jobDescription, jobTitle: 'Target Position', tone: 'professional', sessionId, language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })() }
           })
         ]);
 
@@ -800,12 +803,14 @@ export default function ProductSuccess() {
                   language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
                 }
               }),
+              // The session names the purchase (see the regeneration path above).
               supabase.functions.invoke('generate-cover-letter', {
                 body: {
                   resumeText: sessionData.resumeText,
                   jobDescription: sessionData.jobDescriptionText,
                   jobTitle: 'Target Position',
                   tone: 'professional',
+                  sessionId,
                   language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
                 }
               })
@@ -1571,9 +1576,9 @@ export default function ProductSuccess() {
               </div>
 
               {isInterviewCoach ? (
-                <InterviewCoach resumeText={coachResumeText} isPremium />
+                <InterviewCoach resumeText={coachResumeText} isPremium sessionId={sessionId} />
               ) : (
-                <CareerPathSimulator resumeText={coachResumeText} isPremium />
+                <CareerPathSimulator resumeText={coachResumeText} isPremium sessionId={sessionId} />
               )}
             </div>
           </section>

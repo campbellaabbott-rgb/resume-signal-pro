@@ -1,12 +1,24 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateProseClaims } from "../_shared/resume-grounding.ts";
+import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
+import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-cover-letter.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+const COVER_LETTER_LIMITS = { perAddress: 20, globalPerHour: 200, perSessionPerDay: 10 };
+// The purchases this function delivers: the letter itself, and the letter half
+// of the Apply Assistant. Any other session (a scan pack) is no purchase here.
+const COVER_LETTER_PRODUCTS = ["cover_letter", "apply_assistant"] as const;
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-COVER-LETTER] ${step}`, details ? JSON.stringify(details) : '');
@@ -108,31 +120,35 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Rate limit per IP to prevent unauthenticated abuse
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") || "unknown";
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-  const [{ data: allowed }, body] = await Promise.all([
-    supabase.rpc("check_rate_limit", {
-      p_function: "generate-cover-letter", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60
-    }),
-    req.json()
-  ]);
-  if (!allowed) {
-    return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
   try {
+    let body: Record<string, unknown>;
+    try {
+      const parsed = await req.json();
+      body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Deliberately not applying the site's UI language to the letter itself —
     // same reasoning as generate-apply-package: this is an externally-facing
     // application document submitted to an employer, not advisory content for
     // the candidate to read. The `language` field may still arrive in the
     // request body from shared call sites, but it's intentionally unused here.
-    const { resumeText, jobDescription, jobTitle, jobCompany, tone = "professional", personalizationContext } = body;
+    //
+    // Every field is bounded before it reaches the prompt (defect sweep 1.64
+    // -- this primary path had none): the résumé by the shared cap, the short
+    // fields by length, and the posting CUT to the shared cap rather than
+    // refused, because the posting comes from places this function does not
+    // control -- a board listing, or a stored posting (store_temp_resume
+    // accepts 50,000) on a paid delivery -- and neither a board visitor nor a
+    // buyer should be refused for the length of the job they are applying to.
+    const resumeText = typeof body.resumeText === "string" ? body.resumeText : undefined;
+    const jobDescription = clipText(body.jobDescription, MAX_JOB_DESCRIPTION_LENGTH);
+    const jobTitle = clipField(body.jobTitle, 200);
+    const jobCompany = clipField(body.jobCompany, 200);
+    const tone = clipField(body.tone, 30) || "professional";
+    const personalizationContext = clipText(body.personalizationContext, 2_000);
 
     if (!resumeText) {
       return new Response(
@@ -147,6 +163,27 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) {
+      return new Response(JSON.stringify({ error: limitError }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Free from the job board, so a stranger reaches the model: an address
+    // allowance plus a function-wide ceiling. A Cover Letter or Apply
+    // Assistant purchase (and only those) is off the ceiling for its own
+    // daily allowance; a board pass the page holds buys the proven ceiling.
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    const refused = await modelSpendGate(supabase, req, "generate-cover-letter", COVER_LETTER_LIMITS, corsHeaders, {
+      session: body.sessionId,
+      products: COVER_LETTER_PRODUCTS,
+      boardPass: body.boardPass,
+    });
+    if (refused) return refused;
 
     logStep("Starting cover letter generation", { 
       jobTitle,

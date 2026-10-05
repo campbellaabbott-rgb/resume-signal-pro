@@ -117,9 +117,19 @@ describe("every caller hands the generator its proof of purchase", () => {
 describe("the streaming twins stay gated", () => {
   // These were the ones fixed in July. If a refactor ever drops the gate here,
   // the same hole reopens on the fallback path.
-  for (const ep of ["generate-cover-letter-stream", "generate-premium-package-stream", "generate-tailored-resume-stream"]) {
+  for (const ep of ["generate-cover-letter-stream", "generate-premium-package-stream"]) {
     it(`${ep} still calls assertPaidSession`, () => {
       expect(F(`${ep}/index.ts`)).toContain("assertPaidSession");
     });
   }
+
+  // The third twin had no product to check a purchase against, so any claimed
+  // session (a $2 scan pack) opened gpt-5 through it, and nothing ever called
+  // it. It is retired instead: it reaches neither the model nor the database
+  // (run in every-public-model-call-is-counted-before-it-is-made.test.ts).
+  it("generate-tailored-resume-stream is retired and reaches no model", () => {
+    const src = F("generate-tailored-resume-stream/index.ts");
+    expect(src).not.toMatch(/ai\.gateway\.lovable\.dev|createClient|req\.json/);
+    expect(src).toMatch(/status:\s*410/);
+  });
 });

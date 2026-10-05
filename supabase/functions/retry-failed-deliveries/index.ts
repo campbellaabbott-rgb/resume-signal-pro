@@ -204,10 +204,13 @@ serve(async (req) => {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
                 body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId: delivery.stripe_session_id })
               }),
+              // The service-role key: the generator's spend gate never counts
+              // our own servers by address or against its free ceiling; the
+              // session still counts against the purchase's daily allowance.
               fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-                body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
+                body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language, sessionId: delivery.stripe_session_id })
               })
             ]);
 
@@ -271,11 +274,12 @@ serve(async (req) => {
               throw new Error(`Unknown product type: ${delivery.product_type}`);
             }
 
+            // The service-role key, as for the Apply Assistant's letter above.
             const genResponse = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${supabaseServiceKey}`
               },
               body: JSON.stringify(body)
             });

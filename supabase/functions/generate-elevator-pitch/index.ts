@@ -1,24 +1,31 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
+import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-elevator-pitch.2026-10-04.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'x-fn-build': FN_BUILD,
 };
+
+// Public (verify_jwt=false) LLM endpoint: an address allowance plus a
+// function-wide ceiling, so it can't be looped to burn AI credits from one
+// address or from many (see _shared/model-spend-gate.ts).
+const PITCH_LIMITS = { perAddress: 20, globalPerHour: 200 };
+// A 200-word pitch in a tool call is ~500 tokens; the rest is headroom for
+// the model's thinking, which counts against the same cap.
+const MAX_OUTPUT_TOKENS = 4000;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
-  // Public (verify_jwt=false) LLM endpoint — per-IP rate limit so it can't be
-  // looped to burn AI credits. Mirrors the throttle on the other generators.
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-elevator-pitch", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -29,7 +36,13 @@ serve(async (req) => {
       });
     }
 
-    const { resumeText, industry, currentRole, experienceLevel, candidateName, targetRole } = await req.json();
+    const body = await req.json();
+    const resumeText = typeof body?.resumeText === "string" ? body.resumeText : undefined;
+    const industry = clipField(body?.industry, 120);
+    const currentRole = clipField(body?.currentRole, 120);
+    const experienceLevel = clipField(body?.experienceLevel, 60);
+    const candidateName = clipField(body?.candidateName, 100);
+    const targetRole = clipField(body?.targetRole, 120);
 
     const limitError = checkInputLimits({ resumeText });
     if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -40,6 +53,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const refused = await modelSpendGate(supabase, req, "generate-elevator-pitch", PITCH_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     const systemPrompt = `You are an expert career coach who crafts compelling 60-second elevator pitches. 
 
@@ -83,6 +100,7 @@ ${resumeText.substring(0, 8000)}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
+        max_tokens: MAX_OUTPUT_TOKENS,
         tools: [{
           type: "function",
           function: {

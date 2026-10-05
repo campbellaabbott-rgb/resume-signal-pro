@@ -14,6 +14,10 @@ interface CareerPathSimulatorProps {
   // Paid tier: a concrete 90-day action plan per path and a downloadable
   // roadmap PDF — distinct from the free version's high-level timeline only.
   isPremium?: boolean;
+  // The purchase this page delivers (the success page's session_id): counted
+  // against that purchase's own daily allowance instead of the free tool's
+  // shared hourly one, which strangers can spend.
+  sessionId?: string | null;
 }
 
 interface TimelineStep {
@@ -59,7 +63,7 @@ const pathColors: Record<string, { bg: string; border: string; accent: string }>
   pivot: { bg: "bg-orange-500/5", border: "border-orange-500/20", accent: "text-orange-700" },
 };
 
-export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium }: CareerPathSimulatorProps) {
+export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium, sessionId }: CareerPathSimulatorProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<CareerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +75,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-career-path", {
-        body: { resumeText, industry, currentRole, isPremium, language: localStorage.getItem('i18nextLng') },
+        body: { resumeText, industry, currentRole, isPremium, sessionId: sessionId || undefined, language: localStorage.getItem('i18nextLng') },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Generation failed");

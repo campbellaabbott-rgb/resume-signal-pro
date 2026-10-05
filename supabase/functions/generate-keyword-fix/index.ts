@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
@@ -6,10 +6,16 @@ import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
+import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-keyword-fix.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -21,15 +27,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Public (verify_jwt=false) LLM endpoint — per-IP rate limit so it can't be
-  // looped to burn AI credits. Mirrors the throttle on the other generators.
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-keyword-fix", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, personalizationContext, language, sessionId } = await req.json();
+    const { resumeText, jobDescription, jobTitle: rawJobTitle, jobCompany: rawJobCompany, personalizationContext: rawPersonalizationContext, language, sessionId } = await req.json();
+    // Short fields reach the prompt cut to a line (defect sweep 1.64).
+    const jobTitle = clipField(rawJobTitle, 200);
+    const jobCompany = clipField(rawJobCompany, 200);
+    const personalizationContext = clipText(rawPersonalizationContext, 2_000);
 
     const limitError = checkInputLimits({ resumeText, jobDescription });
     if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -49,6 +53,14 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // COUNTED ONLY NOW, when the call is about to reach the model. A warm-up
+    // ping, an unpaid stranger and a malformed body are refused above without
+    // spending a slot -- warm-up posts from our own egress address, and anyone
+    // can make it -- and one purchase spends a daily allowance of its own, so
+    // a single session cannot feed an address pool. See _shared/model-spend-gate.ts.
+    const refused = await modelSpendGate(supabase, req, "generate-keyword-fix", { perAddress: 20 }, corsHeaders, { session: sessionId });
+    if (refused) return refused;
 
     logStep("Starting keyword analysis", { 
       hasJobDescription: !!jobDescription,
