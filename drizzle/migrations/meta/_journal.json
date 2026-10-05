@@ -673,6 +673,13 @@
       "when": 1791222159776,
       "tag": "0095_20261004110000_every_function_a_stranger_can_call_is_named_with_its_caller",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1791222171392,
+      "tag": "0096_20261004150000_a_resume_never_rides_a_stripe_session_and_every_copy_has_a_clock",
+      "breakpoints": true
     }
   ]
 }

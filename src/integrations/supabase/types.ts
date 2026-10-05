@@ -1098,6 +1098,32 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_resume_refs: {
+        Row: {
+          created_at: string
+          resume_session_id: string
+          stripe_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          resume_session_id: string
+          stripe_session_id: string
+        }
+        Update: {
+          created_at?: string
+          resume_session_id?: string
+          stripe_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_resume_refs_resume_session_id_fkey"
+            columns: ["resume_session_id"]
+            isOneToOne: false
+            referencedRelation: "temp_resume_storage"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
       checkout_starts: {
         Row: {
           amount_cents: number | null
@@ -6660,6 +6686,7 @@ export type Database = {
             }
             Returns: string
           }
+      strip_resume_keys: { Args: { p: Json }; Returns: Json }
       track_ab_event: {
         Args: {
           p_event_type: string
