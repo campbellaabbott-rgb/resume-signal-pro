@@ -66,6 +66,7 @@ import {
   ukgBoardParams,
   workdayDetailPlace,
   isPlacelessLocation,
+  listMayRewriteMode,
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
@@ -76,7 +77,7 @@ import {
   backlogFromCoverage,
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
-import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
@@ -100,7 +101,7 @@ import {
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
-import { lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
+import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -1615,10 +1616,14 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
   // failed so nothing is pruned. Without this, persistent empty responses
   // eventually pass the two-pass + shrink-ratchet guards and delete the whole
   // board (live case: Four Seasons pruned to 0 while advertising 1,963 jobs).
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  // Past the top an empty page wraps instead: the feed ended before the
+  // cursor, or will not serve that deep (n420).
+  const empty = emptyFirstPage(startOffset, all.length, feedTotal);
+  if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
+  if (empty) exhausted = empty === "ended";
   // Rationale: docs/job-board-index-notes.md#n030-advanced
   const advanced = startOffset + all.length;
-  const nextOffset = exhausted || (feedTotal > 0 && advanced >= feedTotal) ? 0 : advanced;
+  const nextOffset = exhausted || empty === "restart" || (feedTotal > 0 && advanced >= feedTotal) ? 0 : advanced;
   // Rationale: docs/job-board-index-notes.md#n031-return-jobpostings-all-raw-jobpostings-a
   // Rationale: docs/job-board-index-notes.md#n413-workday-total-past-offset-zero
   return { jobPostings: all, raw: { jobPostings: all }, windowed: workdayWindowed(startOffset, feedTotal, all.length, exhausted), feedTotal, nextOffset, feedEnded: exhausted, endOffset: advanced };
@@ -1683,10 +1688,13 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   }
   // Same guard as Workday: an empty read against a non-zero advertised total is
   // a refusal (rate-limit/transient), NOT an empty board. Throwing marks the
-  // board failed so the orphan prune never deletes a live tenant.
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  // board failed so the orphan prune never deletes a live tenant. Past the
+  // top it wraps instead (n420).
+  const empty = emptyFirstPage(startOffset, all.length, feedTotal);
+  if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
+  if (empty) exhausted = empty === "ended";
   const advancedOr = startOffset + all.length;
-  const nextOffset = exhausted || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
+  const nextOffset = exhausted || empty === "restart" || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
   // Rationale: docs/job-board-index-notes.md#n034-return-items-all-raw-items-all-window
   return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
 }
@@ -1757,12 +1765,90 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
   }
   // Same guard as the other paginated vendors: a page-1 failure that
   // returns empty while the feed claims postings must NOT read as "board
-  // emptied" (the orphan prune would delete a live tenant).
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  // emptied" (the orphan prune would delete a live tenant). Past page 1 it
+  // wraps instead (n420).
+  const empty = emptyFirstPage(base, all.length, feedTotal);
+  if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
+  if (empty) exhausted = empty === "ended";
   const advancedIc = base + all.length;
-  const nextOffset = exhausted || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
+  const nextOffset = exhausted || empty === "restart" || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
   // A resumed read is windowed by definition — see the note in fetchOracle.
   return { items: all, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
+}
+
+/**
+ * fetchIcims at the largest page size whose first page fits the byte bound:
+ * a first page over it is retried at the next size down before the board is
+ * deferred (n414). Any other failure fails the board at once. The size that
+ * fitted is remembered per isolate, so the next visit starts there.
+ */
+async function fetchIcimsSized(s: JobSource, startOffset: number): Promise<Awaited<ReturnType<typeof fetchIcims>> & { pageSize: number }> {
+  let hint = ICIMS_PAGE_SIZES.indexOf(ICIMS_SIZE_HINT.get(s.token) ?? ICIMS_PAGE_SIZES[0]);
+  if (hint < 0) hint = 0;
+  for (let k = hint; ; k++) {
+    try {
+      const r = await fetchIcims(s, startOffset, ICIMS_PAGE_SIZES[k]);
+      if (k !== hint) ICIMS_SIZE_HINT.set(s.token, ICIMS_PAGE_SIZES[k]);
+      return { ...r, pageSize: ICIMS_PAGE_SIZES[k] };
+    } catch (e) {
+      if (!isOversize(e) || k + 1 >= ICIMS_PAGE_SIZES.length) throw e;
+      console.warn(`[JOB-BOARD] icims ${s.token}: page of ${ICIMS_PAGE_SIZES[k]} over the byte bound — retrying at ${ICIMS_PAGE_SIZES[k + 1]}`);
+    }
+  }
+}
+
+/**
+ * The deepest result USAJOBS serves to one query: 10,000, whatever
+ * SearchResultCountAll says (recorded by third-party guides and our own
+ * 2026-09-15 notes; the official reference states no cap and was not tested
+ * here, the API needs the key). A cursor is never sent past it: the walk wraps
+ * there without claiming an end, and an empty page short of it is judged by
+ * emptyFirstPage, so a lower real cap costs a lap restart, never the board.
+ */
+const USAJOBS_RESULT_CAP = 10_000;
+
+// A page of 500 never fit the 4 MB bound, so the federal feed never stored a
+// row (register L7-01). Pages of 100 from the cursor's page, capped per visit
+// and resumed like iCIMS.
+async function fetchUsajobs(s: JobSource, startOffset: number, key: string, ua: string): Promise<{ items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
+  const PAGE = 100, MAX_PAGES = Math.max(1, s.pages ?? 40);
+  const startPage = Math.floor(startOffset / PAGE) + 1;
+  const base = (startPage - 1) * PAGE;
+  // Past the deepest page the API serves nothing is asked: the walk restarts
+  // the lap below without claiming the feed's end (n420).
+  const pastCap = base >= USAJOBS_RESULT_CAP;
+  const lastPage = pastCap ? startPage - 1 : Math.min(startPage + MAX_PAGES - 1, USAJOBS_RESULT_CAP / PAGE);
+  const all: unknown[] = [];
+  let feedTotal = 0, exhausted = false;
+  for (let page = startPage; page <= lastPage; page++) {
+    const first = page === startPage;
+    const url = `https://data.usajobs.gov/api/search?ResultsPerPage=${PAGE}&Page=${page}`;
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(url, {
+        headers: { Host: "data.usajobs.gov", "User-Agent": ua, "Authorization-Key": key },
+      });
+    } catch (e) { if (chunkPageRefusal(e, first) === null) break; throw e; }
+    if (!res.ok) { discardBody(res); if (first) throw new Error(`HTTP ${res.status}`); break; }
+    const { body, over } = await readChunkPage(res);
+    if (over) { if (first) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${page}`); break; }
+    const sr = (body as { SearchResult?: { SearchResultCountAll?: number; SearchResultItems?: unknown[] } } | undefined)?.SearchResult;
+    if (!sr) { if (first) throw new Error("usajobs payload unreadable"); break; }
+    const batch = Array.isArray(sr.SearchResultItems) ? sr.SearchResultItems : [];
+    if (first) feedTotal = Number(sr.SearchResultCountAll) || 0;
+    all.push(...batch);
+    if (batch.length < PAGE) { exhausted = true; break; }
+    // Memory ceiling, not end-of-feed: resume here next visit.
+    if (all.length >= MAX_POSTINGS_PER_VISIT) break;
+  }
+  // From the top, an empty read against a stated total is a refusal; past it,
+  // the feed ended before the cursor or will not serve that deep (n420).
+  const empty = pastCap ? "restart" : emptyFirstPage(base, all.length, feedTotal);
+  if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
+  if (empty) exhausted = empty === "ended";
+  const advancedUs = base + all.length;
+  const nextOffset = exhausted || empty === "restart" || advancedUs >= USAJOBS_RESULT_CAP || (feedTotal > 0 && advancedUs >= feedTotal) ? 0 : advancedUs;
+  return { items: all, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedUs };
 }
 
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
@@ -1817,22 +1903,11 @@ async function fetchBoard(
     }
     if (s.source === "icims") {
       // Rationale: docs/job-board-index-notes.md#n035-icims-page
-      // A first page over the byte bound is retried smaller before the board is deferred (n414).
-      let hint = ICIMS_PAGE_SIZES.indexOf(ICIMS_SIZE_HINT.get(s.token) ?? ICIMS_PAGE_SIZES[0]);
-      if (hint < 0) hint = 0;
-      for (let k = hint; ; k++) {
-        try {
-          const r = await fetchIcims(s, startOffset, ICIMS_PAGE_SIZES[k]);
-          if (k !== hint) ICIMS_SIZE_HINT.set(s.token, ICIMS_PAGE_SIZES[k]);
-          return { jobs: normalizeIcims(r.items as never, s.name, s.token), raw: { items: r.items }, windowed: r.windowed, feedTotal: r.feedTotal, nextOffset: r.nextOffset, feedEnded: r.feedEnded, endOffset: r.endOffset };
-        } catch (e) {
-          if (!isOversize(e) || k + 1 >= ICIMS_PAGE_SIZES.length) throw e;
-          console.warn(`[JOB-BOARD] icims ${s.token}: page of ${ICIMS_PAGE_SIZES[k]} over the byte bound — retrying at ${ICIMS_PAGE_SIZES[k + 1]}`);
-        }
-      }
+      const r = await fetchIcimsSized(s, startOffset);
+      return { jobs: normalizeIcims(r.items as never, s.name, s.token), raw: { items: r.items }, windowed: r.windowed, feedTotal: r.feedTotal, nextOffset: r.nextOffset, feedEnded: r.feedEnded, endOffset: r.endOffset };
     }
     if (s.source === "usajobs") {
-      // Single national feed, paged 500 at a time. The key lives in secrets;
+      // Single national feed, paged by fetchUsajobs. The key lives in secrets;
       // a MISSING key returns empty rather than throwing, because throwing
       // marks the board failed and the dormancy prune would eventually delete
       // every federal posting over a config gap.
@@ -1842,38 +1917,8 @@ async function fetchBoard(
         console.warn("[JOB-BOARD] usajobs: USAJOBS_API_KEY/USAJOBS_USER_AGENT unset — skipping (not a board failure)");
         return { jobs: [], raw: { items: [] }, windowed: true, feedTotal: 0 };
       }
-      // A page of 500 never fit the 4 MB bound, so the feed never stored a row
-      // (register L7-01). Pages of 100, capped per visit and resumed like iCIMS.
-      const PAGE = 100, MAX_PAGES = Math.max(1, s.pages ?? 40);
-      const startPage = Math.floor(startOffset / PAGE) + 1;
-      const base = (startPage - 1) * PAGE;
-      const all: unknown[] = [];
-      let feedTotal = 0, exhausted = false;
-      for (let page = startPage; page < startPage + MAX_PAGES; page++) {
-        const first = page === startPage;
-        const url = `https://data.usajobs.gov/api/search?ResultsPerPage=${PAGE}&Page=${page}`;
-        let res: Response;
-        try {
-          res = await fetchWithTimeout(url, {
-            headers: { Host: "data.usajobs.gov", "User-Agent": ua, "Authorization-Key": key },
-          });
-        } catch (e) { if (chunkPageRefusal(e, first) === null) break; throw e; }
-        if (!res.ok) { discardBody(res); if (first) throw new Error(`HTTP ${res.status}`); break; }
-        const { body, over } = await readChunkPage(res);
-        if (over) { if (first) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${page}`); break; }
-        const sr = (body as { SearchResult?: { SearchResultCountAll?: number; SearchResultItems?: unknown[] } } | undefined)?.SearchResult;
-        if (!sr) { if (first) throw new Error("usajobs payload unreadable"); break; }
-        const batch = Array.isArray(sr.SearchResultItems) ? sr.SearchResultItems : [];
-        if (first) feedTotal = Number(sr.SearchResultCountAll) || 0;
-        all.push(...batch);
-        if (batch.length < PAGE) { exhausted = true; break; }
-        // Memory ceiling, not end-of-feed: resume here next visit.
-        if (all.length >= MAX_POSTINGS_PER_VISIT) break;
-      }
-      if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-      const advancedUs = base + all.length;
-      const nextOffset = exhausted || (feedTotal > 0 && advancedUs >= feedTotal) ? 0 : advancedUs;
-      return { jobs: normalizeUsajobs(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedUs };
+      const r = await fetchUsajobs(s, startOffset, key, ua);
+      return { jobs: normalizeUsajobs(r.items as never, s.name, s.token), raw: { items: r.items }, windowed: r.windowed, feedTotal: r.feedTotal, nextOffset: r.nextOffset, feedEnded: r.feedEnded, endOffset: r.endOffset };
     }
     if (s.source === "rippling") {
       const { items, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchRippling(s, startOffset);
@@ -2510,6 +2555,174 @@ async function pruneWholeBoard(
     }
   }
   return { logged, complete };
+}
+
+/**
+ * One chunk (at most 200 ids) of a board's confirmed-vanished postings: read
+ * each row, write its ledger row (an exit for a row the freshness cap aged
+ * out, a closure for one the employer took down), then delete exactly the rows
+ * whose ledger write landed. Rows whose read or insert failed stay (stamped,
+ * hidden) and are retried next visit (n416). Returns the ids it deleted.
+ */
+async function closeVanishedChunk(
+  client: SupabaseClient,
+  s: { source: string; token: string },
+  chunk: string[],
+  ctx: {
+    closedAt: string;
+    agedOutIds: ReadonlySet<string>;
+    freshCutoffMs: number;
+    liveTitles: ReadonlySet<string>;
+    recentSuperseded: ReadonlySet<string>;
+    batchSuspect: boolean;
+    absentInPass: number;
+    removableBefore: number;
+    lapMode: boolean;
+    lapBackfillUntil: string;
+    missingSinceById: ReadonlyMap<string, string | null | undefined>;
+    startIso: string;
+  },
+): Promise<string[]> {
+  const { closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect, absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso } = ctx;
+  const keep = new Set<string>();
+  try {
+    // Rationale: docs/job-board-index-notes.md#n122-logres
+    let logRes = await client
+      .from("job_board_postings")
+      .select(LIFECYCLE_SELECT)
+      .in("id", chunk);
+    // Deploy-before-migration: a select naming an absent column fails
+    // the WHOLE read, and a failed read here means the closure log —
+    // the one asset nobody can reproduce — records nothing. Fall back
+    // to the pre-.61 columns; a thinner row beats no row.
+    if (logRes.error) {
+      logRes = (await client
+        .from("job_board_postings")
+        .select("id, source, company_token, company, title, category, first_seen, posted_at")
+        .in("id", chunk)) as typeof logRes;
+    }
+    if (logRes.error) {
+      for (const id of chunk) keep.add(id);
+      console.warn(`[JOB-BOARD] closure-log read failed for ${s.token} (chunk kept, retried next visit):`, String(logRes.error.message ?? "").slice(0, 150));
+    }
+    const toLog = logRes.data as unknown as Array<Record<string, unknown>> | null;
+    // Rationale: docs/job-board-index-notes.md#n123-isagedout
+    const isAgedOut = (r: Record<string, unknown>) => {
+      if (agedOutIds.has(String(r.id))) return true;
+      const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
+      return Number.isFinite(posted) && posted < freshCutoffMs;
+    };
+    const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter(isAgedOut);
+    if (agedRows.length) {
+      // Rationale: docs/job-board-index-notes.md#n124-agedexitrow
+      const agedExitRow = (r: Record<string, unknown>) => {
+        const t = tenureDays(r.posted_at, r.first_seen, closedAt);
+        return {
+          posting_id: String(r.id),
+          source: String(r.source ?? s.source),
+          company_token: String(r.company_token ?? s.token),
+          company: (r.company as string | null) ?? null,
+          title: (r.title as string | null) ?? null,
+          category: String(r.category ?? "other"),
+          exit_reason: exitReasonFor(r.posted_at, r.first_seen),
+          posted_at: r.posted_at ?? null,
+          days_on_board: t.days,
+          origin_basis: t.basis,
+          exited_at: closedAt,
+          ...lifecycleFacets(r),
+        };
+      };
+      // Through insertExits (one write path for the ledger, so this site
+      // cannot get a narrower deploy-window retry than the other three),
+      // and awaited like the closure insert: an aged row whose exit did
+      // not land stays and is retried next visit, never deleted unrecorded.
+      const { error: agedErr } = await insertExits(client, agedRows.map(agedExitRow), s.token);
+      if (agedErr) {
+        for (const r of agedRows) keep.add(String(r.id));
+        console.warn(`[JOB-BOARD] aged-exit insert failed for ${s.token} (${agedRows.length} kept, retried next visit):`, String(agedErr.message ?? agedErr).slice(0, 150));
+      }
+    }
+    const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
+      if (isAgedOut(r)) return false; // (b) aged out, not closed
+      const norm = normalizeCloseTitle(String(r.title ?? ""));
+      return !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip
+    });
+    if (rows.length) {
+      // Rationale: docs/job-board-index-notes.md#n125-closurerows
+      const closureRows = rows.map((r) => ({
+        posting_id: r.id,
+        source: r.source,
+        company_token: r.company_token,
+        company: r.company ?? "",
+        title: r.title ?? "",
+        category: r.category ?? "other",
+        // first_seen is OUR DISCOVERY DATE, posted_at the EMPLOYER'S
+        // STATED one. Both ride raw and separate, which is why this
+        // table needs no origin_basis: a reader derives whatever
+        // duration it wants and can always see which clock it used.
+        // Nothing here coalesces them.
+        first_seen: r.first_seen ?? null,
+        posted_at: r.posted_at ?? null,
+        closed_at: closedAt,
+        superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
+        suspect: batchSuspect,
+        batch_removed: absentInPass,
+        batch_live_before: removableBefore,
+        // WHAT KIND OF EVIDENCE ENDED THIS POSTING. 'full_read' is a
+        // board we can read in one visit, where absence is a fact
+        // about one fetch; 'lap' is a board over the page cap, where
+        // it is a fact about a complete pass assembled across visits.
+        // The two populations are not interchangeable and no
+        // published number may pool them without saying so.
+        absence_basis: lapMode
+          ? (lapBackfillUntil && (missingSinceById.get(String(r.id)) ?? startIso) <= lapBackfillUntil ? "lap_backfill" : "lap")
+          : "full_read",
+        ...lifecycleFacets(r),
+      }));
+      // Rationale: docs/job-board-index-notes.md#n126-const-error-rawclerr-await-client-from-j
+      const { error: rawClErr } = await client.from("job_board_closures").insert(closureRows);
+      const clErr = await settleInsertError(client, "job_board_closures", rawClErr, () => closureRows, CLOSURE_OPTIONAL_COLS, s.token);
+      if (clErr) {
+        // Keep exactly the rows whose closures did not land; an aged row
+        // above may go only if its exit landed (kept above otherwise).
+        for (const r of rows) keep.add(String(r.id));
+        console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (${rows.length} kept, retried next visit):`, clErr.message?.slice(0, 150));
+      }
+      // Rationale: docs/job-board-index-notes.md#n127-removedexitrow
+      const removedExitRow = (r: Record<string, unknown>) => {
+        const t = tenureDays(r.posted_at, r.first_seen, closedAt);
+        return {
+          posting_id: r.id,
+          source: r.source,
+          company_token: r.company_token,
+          company: r.company ?? null,
+          title: r.title ?? null,
+          category: r.category ?? "other",
+          exit_reason: "removed",
+          posted_at: r.posted_at ?? null,
+          days_on_board: t.days,
+          origin_basis: t.basis,
+          exited_at: closedAt,
+          ...lifecycleFacets(r),
+        };
+      };
+      // Only beside a closure that landed: a kept row comes back next
+      // visit and would otherwise write its exit twice.
+      if (!clErr) waitUntil(Promise.resolve(insertExits(
+        client, rows.map(removedExitRow), s.token,
+      )).then(({ error }) => {
+        if (error) console.warn(`[JOB-BOARD] removed-exit insert failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
+      }).catch(() => {}));
+    }
+  } catch (e) {
+    for (const id of chunk) keep.add(id);
+    console.warn(`[JOB-BOARD] closure log failed for ${s.token} (chunk kept, retried next visit):`, String(e).slice(0, 150));
+  }
+  const doomed = keep.size > 0 ? chunk.filter((id) => !keep.has(id)) : chunk;
+  if (doomed.length === 0) return [];
+  const { error: delErr } = await client.from("job_board_postings").delete().in("id", doomed);
+  if (delErr) { console.warn(`[JOB-BOARD] closure prune delete failed for ${s.token} (non-fatal):`, delErr.message?.slice(0, 150)); return []; }
+  return doomed;
 }
 
 // Cap the aged-tail sweep per pass so a big backlog drains without a giant
@@ -3582,6 +3795,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           )).then(({ error }) => {
             if (error) console.warn(`[JOB-BOARD] board-state error write failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
           }).catch(() => {}));
+          // A deep visit that failed twice running starts the next from the top (n420).
+          {
+            const cur = deepCursors.get(s.token) ?? 0;
+            const streak = Object.prototype.hasOwnProperty.call(boardFailures.streaks, boardKeyOf(s)) ? Number(boardFailures.streaks[boardKeyOf(s)]) || 0 : 0;
+            if (cursorAfterFailure(cur, streak) !== cur) { deepCursors.delete(s.token); deepCursorsDirty = true; }
+          }
           continue;
         }
         // Advance (or wrap) this board's cursor. Written only for boards that
@@ -4274,8 +4493,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const changeMarks: number[] = [];
         // Rationale: docs/job-board-index-notes.md#n107-derived-not-employer-edits
         const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code"]);
-        // Rationale: docs/job-board-index-notes.md#n419-two-readers-one-posting
-        const LIST_MODE_UNSTATED = new Set(["workday", "jazzhr"]);
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
@@ -4333,9 +4550,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             if (next === null || next === undefined || next === "") { if (!allowNull) return; }
             if (next !== cur) { patch[k] = next ?? null; note(k, cur, next ?? null); }
           };
-          // The list's weaker reading never overwrites what the detail sweep filled (n419).
+          // The list's weaker reading never overwrites what the detail sweep filled.
+          // Rationale: docs/job-board-index-notes.md#n419-two-readers-one-posting
           const listPlaceholder = isPlacelessLocation(row.location as string | null) && !isPlacelessLocation(prev.location as string | null);
-          const keepStoredMode = LIST_MODE_UNSTATED.has(s.source) && prev.work_mode != null;
+          const keepStoredMode = !listMayRewriteMode(s.source, prev as { work_mode?: string | null; location?: string | null; title?: string | null }, row as { location?: string | null; title?: string | null });
           // Vendor-authoritative on every fetch: correct these even to null.
           put("title", row.title, prev.title, false);
           if (!listPlaceholder) put("location", row.location, prev.location, false);
@@ -4738,146 +4956,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             recentSuperseded = new Set(((recent ?? []) as Array<{ title: string }>).map((r) => normalizeCloseTitle(r.title)));
           } catch { /* dedupe is best-effort — worst case we log the duplicate */ }
           for (let i = 0; i < vanished.length; i += 200) {
-            const chunk = vanished.slice(i, i + 200);
-            // The ledger before the delete (n416): rows whose closure read or
-            // insert failed stay (stamped, hidden) and are retried next visit.
-            const keep = new Set<string>();
-            try {
-              // Rationale: docs/job-board-index-notes.md#n122-logres
-              let logRes = await client
-                .from("job_board_postings")
-                .select(LIFECYCLE_SELECT)
-                .in("id", chunk);
-              // Deploy-before-migration: a select naming an absent column fails
-              // the WHOLE read, and a failed read here means the closure log —
-              // the one asset nobody can reproduce — records nothing. Fall back
-              // to the pre-.61 columns; a thinner row beats no row.
-              if (logRes.error) {
-                logRes = (await client
-                  .from("job_board_postings")
-                  .select("id, source, company_token, company, title, category, first_seen, posted_at")
-                  .in("id", chunk)) as typeof logRes;
-              }
-              if (logRes.error) {
-                for (const id of chunk) keep.add(id);
-                console.warn(`[JOB-BOARD] closure-log read failed for ${s.token} (chunk kept, retried next visit):`, String(logRes.error.message ?? "").slice(0, 150));
-              }
-              const toLog = logRes.data as unknown as Array<Record<string, unknown>> | null;
-              // Rationale: docs/job-board-index-notes.md#n123-isagedout
-              const isAgedOut = (r: Record<string, unknown>) => {
-                if (agedOutIds.has(String(r.id))) return true;
-                const posted = r.posted_at ? new Date(String(r.posted_at)).getTime() : NaN;
-                return Number.isFinite(posted) && posted < freshCutoffMs;
-              };
-              const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter(isAgedOut);
-              if (agedRows.length) {
-                // Rationale: docs/job-board-index-notes.md#n124-agedexitrow
-                const agedExitRow = (r: Record<string, unknown>) => {
-                  const t = tenureDays(r.posted_at, r.first_seen, closedAt);
-                  return {
-                    posting_id: String(r.id),
-                    source: String(r.source ?? s.source),
-                    company_token: String(r.company_token ?? s.token),
-                    company: (r.company as string | null) ?? null,
-                    title: (r.title as string | null) ?? null,
-                    category: String(r.category ?? "other"),
-                    exit_reason: exitReasonFor(r.posted_at, r.first_seen),
-                    posted_at: r.posted_at ?? null,
-                    days_on_board: t.days,
-                    origin_basis: t.basis,
-                    exited_at: closedAt,
-                    ...lifecycleFacets(r),
-                  };
-                };
-                // Through insertExits: one write path for the ledger, so this
-                // site cannot end up with a narrower deploy-window retry than
-                // the other three.
-                waitUntil(Promise.resolve(insertExits(
-                  client, agedRows.map(agedExitRow), s.token,
-                )).then(({ error }) => {
-                  if (error) console.warn(`[JOB-BOARD] aged-exit insert failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
-                }).catch(() => {}));
-              }
-              const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
-                if (isAgedOut(r)) return false; // (b) aged out, not closed
-                const norm = normalizeCloseTitle(String(r.title ?? ""));
-                return !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip
-              });
-              if (rows.length) {
-                // Rationale: docs/job-board-index-notes.md#n125-closurerows
-                const closureRows = rows.map((r) => ({
-                  posting_id: r.id,
-                  source: r.source,
-                  company_token: r.company_token,
-                  company: r.company ?? "",
-                  title: r.title ?? "",
-                  category: r.category ?? "other",
-                  // first_seen is OUR DISCOVERY DATE, posted_at the EMPLOYER'S
-                  // STATED one. Both ride raw and separate, which is why this
-                  // table needs no origin_basis: a reader derives whatever
-                  // duration it wants and can always see which clock it used.
-                  // Nothing here coalesces them.
-                  first_seen: r.first_seen ?? null,
-                  posted_at: r.posted_at ?? null,
-                  closed_at: closedAt,
-                  superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
-                  suspect: batchSuspect,
-                  batch_removed: absentInPass,
-                  batch_live_before: removableBefore,
-                  // WHAT KIND OF EVIDENCE ENDED THIS POSTING. 'full_read' is a
-                  // board we can read in one visit, where absence is a fact
-                  // about one fetch; 'lap' is a board over the page cap, where
-                  // it is a fact about a complete pass assembled across visits.
-                  // The two populations are not interchangeable and no
-                  // published number may pool them without saying so.
-                  absence_basis: lapMode
-                    ? (lapBackfillUntil && (missingSinceById.get(String(r.id)) ?? startIso) <= lapBackfillUntil ? "lap_backfill" : "lap")
-                    : "full_read",
-                  ...lifecycleFacets(r),
-                }));
-                // Rationale: docs/job-board-index-notes.md#n126-const-error-rawclerr-await-client-from-j
-                const { error: rawClErr } = await client.from("job_board_closures").insert(closureRows);
-                const clErr = await settleInsertError(client, "job_board_closures", rawClErr, () => closureRows, CLOSURE_OPTIONAL_COLS, s.token);
-                if (clErr) {
-                  // Keep exactly the rows whose closures did not land; the aged
-                  // rows above already have their exits and may go.
-                  for (const r of rows) keep.add(String(r.id));
-                  console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (${rows.length} kept, retried next visit):`, clErr.message?.slice(0, 150));
-                }
-                // Rationale: docs/job-board-index-notes.md#n127-removedexitrow
-                const removedExitRow = (r: Record<string, unknown>) => {
-                  const t = tenureDays(r.posted_at, r.first_seen, closedAt);
-                  return {
-                    posting_id: r.id,
-                    source: r.source,
-                    company_token: r.company_token,
-                    company: r.company ?? null,
-                    title: r.title ?? null,
-                    category: r.category ?? "other",
-                    exit_reason: "removed",
-                    posted_at: r.posted_at ?? null,
-                    days_on_board: t.days,
-                    origin_basis: t.basis,
-                    exited_at: closedAt,
-                    ...lifecycleFacets(r),
-                  };
-                };
-                // Only beside a closure that landed: a kept row comes back next
-                // visit and would otherwise write its exit twice.
-                if (!clErr) waitUntil(Promise.resolve(insertExits(
-                  client, rows.map(removedExitRow), s.token,
-                )).then(({ error }) => {
-                  if (error) console.warn(`[JOB-BOARD] removed-exit insert failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
-                }).catch(() => {}));
-              }
-            } catch (e) {
-              for (const id of chunk) keep.add(id);
-              console.warn(`[JOB-BOARD] closure log failed for ${s.token} (chunk kept, retried next visit):`, String(e).slice(0, 150));
-            }
-            const doomed = keep.size > 0 ? chunk.filter((id) => !keep.has(id)) : chunk;
-            if (doomed.length === 0) continue;
-            const { error: delErr } = await client.from("job_board_postings").delete().in("id", doomed);
-            if (delErr) console.warn(`[JOB-BOARD] closure prune delete failed for ${s.token} (non-fatal):`, delErr.message?.slice(0, 150));
+            // The ledger before the delete (n416).
+            await closeVanishedChunk(client, s, vanished.slice(i, i + 200), {
+              closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect,
+              absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso,
+            });
           }
         } else if (vanished.length) {
           // Truncated fetch with NO completed lap behind it: prune without
@@ -5050,7 +5133,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       .filter((s) => !skipTokens.has(boardKeyOf(s)) && !quarantineSkipped.has(s.token) && !budgetSkippedSet.has(s.token) && !okKeySet.has(boardKeyOf(s)))
       .map(boardKeyOf))];
     if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
-      const { streaks, dormant, failedAt, firstFailedAt, toPrune } = updateBoardFailures({
+      const folded = updateBoardFailures({
         okTokens: okKeys,
         failedTokens,
         recheckTokens,
@@ -5063,14 +5146,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         dormantCap: DORMANT_CAP,
         now: Date.now(),
       });
-      for (const key of toPrune) {
+      const pruneUnfinished: string[] = [];
+      for (const key of folded.toPrune) {
         // One board: its own vendor's rows only, never a twin's (n417), and
         // only what the exit ledger recorded (n416).
         const board = boardByKey(key);
         const tk = board?.token ?? keyToken(key);
         const { logged: n, complete } = await pruneWholeBoard(client, tk, "board_dormant", board?.source ?? keySource(key));
-        console.warn(`[JOB-BOARD] board ${key} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures spanning at least ${Math.round(DEAD_BOARD_MIN_FAILING_MS / 3_600_000)}h (${n} postings pruned and logged as board_dormant${complete ? "" : "; the exit log broke, unlogged rows kept"}; fetch skipped until recheck)`);
+        if (!complete) pruneUnfinished.push(key);
+        console.warn(`[JOB-BOARD] board ${key} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures spanning at least ${Math.round(DEAD_BOARD_MIN_FAILING_MS / 3_600_000)}h (${n} postings pruned and logged as board_dormant${complete ? "; fetch skipped until recheck" : "; the exit log broke, unlogged rows kept and the board left one failure short of the prune, which retries on its next failing visit"})`);
       }
+      // A prune the exit log broke is retried, not left dormant (n416).
+      const { streaks, dormant, failedAt, firstFailedAt } = rearmIncompletePrunes(folded, pruneUnfinished, boardFailures, DEAD_BOARD_THRESHOLD, Date.now());
       await client.from("job_board_meta").upsert(
         { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
         { onConflict: "k" },

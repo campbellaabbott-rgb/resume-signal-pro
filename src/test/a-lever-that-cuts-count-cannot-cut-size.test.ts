@@ -79,17 +79,16 @@ describe("a lever that cuts count cannot cut size", () => {
   it("USAJOBS resumes since .89, and is therefore capped and reports where it stopped", () => {
     // Its 500-result page never fit the 4 MB bound, so the federal feed was
     // deferred on every visit and never stored a row. Pages of 100 from the
-    // cursor's page, capped per visit, resumed next visit.
-    const u = FN.indexOf('s.source === "usajobs"');
-    const usajobs = FN.slice(u, FN.indexOf('s.source === "rippling"', u));
-    expect(usajobs, "usajobs block not found").not.toBe("");
-    expect(usajobs).toMatch(/const startPage = Math\.floor\(startOffset \/ PAGE\) \+ 1;/);
-    expect(usajobs).toMatch(/if \(all\.length >= MAX_POSTINGS_PER_VISIT\) break;/);
+    // cursor's page, capped per visit, resumed next visit. The walk itself is
+    // run against a stub API in a-walk-that-broke-is-not-the-end-of-the-feed.
+    const usajobs = fnBody("fetchUsajobs");
+    expect(usajobs, "fetchUsajobs not found").not.toBe("");
     const capLine = /if \(all\.length >= MAX_POSTINGS_PER_VISIT\)[^\n]*/.exec(usajobs)?.[0] ?? "";
+    expect(capLine, "usajobs has no per-visit cap").not.toBe("");
     expect(capLine, "usajobs cap wraps the feed instead of resuming it").not.toMatch(/exhausted/);
-    expect(usajobs, "usajobs must return nextOffset so the deep cursor can resume it").toMatch(/return \{[\s\S]{0,400}?\bnextOffset\b/);
-    expect(usajobs, "a page of 500 is over the byte bound by itself").not.toMatch(/PAGE = 500/);
     expect(usajobs, "usajobs pages must be read through the byte bound").toMatch(/readChunkPage\(res\)/);
+    const u = FN.indexOf('if (s.source === "usajobs")');
+    expect(FN.slice(u, FN.indexOf('if (s.source === "rippling")', u)), "the dispatcher must hand usajobs its cursor").toMatch(/fetchUsajobs\(s, startOffset,/);
     expect(FN).toMatch(/const CAPPED_VISIT_VENDORS = new Set\(\[[^\]]*"usajobs"[^\]]*\]\);/);
   });
 

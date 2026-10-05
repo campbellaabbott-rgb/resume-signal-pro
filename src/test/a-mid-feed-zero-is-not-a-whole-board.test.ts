@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
-import { lapTotal, stampFeedTotal, workdayWindowed } from "../../supabase/functions/job-board/read-window";
+import { emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "../../supabase/functions/job-board/read-window";
 import { codeOf } from "./helpers/strip-comments";
 
 /**
@@ -39,15 +39,21 @@ function lifted(name: string): string {
   return ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
 }
 
-/** A Workday tenant that states its total only on the offset-0 page. */
-function tenant(size: number, opts: { totalPastZero?: (n: number) => number } = {}) {
+/**
+ * A Workday tenant that states its total only on the offset-0 page. Like the
+ * live CXS list, it answers an offset of 2,000 or more with page 0 again and
+ * the capped total (`wrapsAt2000`), and can refuse one offset with an empty
+ * page that still states the total (`refuseAt`).
+ */
+function tenant(size: number, opts: { totalPastZero?: (n: number) => number; wrapsAt2000?: boolean; refuseAt?: number } = {}) {
   const asked: number[] = [];
   const fetchWithTimeout = async (_url: string, init: { body: string }) => {
-    const { offset, limit } = JSON.parse(init.body) as { offset: number; limit: number };
-    asked.push(offset);
-    const n = Math.max(0, Math.min(limit, size - offset));
+    const { offset: asked0, limit } = JSON.parse(init.body) as { offset: number; limit: number };
+    asked.push(asked0);
+    const offset = opts.wrapsAt2000 && asked0 >= 2000 ? 0 : asked0;
+    const n = asked0 === opts.refuseAt ? 0 : Math.max(0, Math.min(limit, size - offset));
     const jobPostings = Array.from({ length: n }, (_, k) => ({ title: `Role ${offset + k}`, externalPath: `/job/x_R${offset + k}` }));
-    const total = offset === 0 ? Math.min(size, 2000) : (opts.totalPastZero ? opts.totalPastZero(size) : 0);
+    const total = offset === 0 || asked0 === opts.refuseAt ? Math.min(size, 2000) : (opts.totalPastZero ? opts.totalPastZero(size) : 0);
     return new Response(JSON.stringify({ total, jobPostings }), { status: 200, headers: { "content-type": "application/json" } });
   };
   return { fetchWithTimeout, asked };
@@ -67,14 +73,15 @@ function shippedFetchWorkday(fetchWithTimeout: unknown): (s: { token: string; pa
     MAX_POSTINGS_PER_VISIT: Number(/const MAX_POSTINGS_PER_VISIT = (\d+);/.exec(CODE)![1]),
     WORKDAY_PAGE_CAP: Number(/const WORKDAY_PAGE_CAP = (\d+);/.exec(CODE)![1]),
     workdayWindowed,
+    emptyFirstPage,
   };
   const names = Object.keys(deps);
   return new Function(...names, `${lifted("fetchWorkday")}\nreturn fetchWorkday;`)(...names.map((n) => deps[n as keyof typeof deps]));
 }
 
 /** Walk a board visit by visit the way the deep cursor does, until it wraps. */
-async function walk(size: number) {
-  const t = tenant(size);
+async function walk(size: number, opts: Parameters<typeof tenant>[1] = {}) {
+  const t = tenant(size, opts);
   const fetchWorkday = shippedFetchWorkday(t.fetchWithTimeout);
   const visits: Array<WorkdayVisit & { start: number }> = [];
   let cursor = 0;
@@ -152,11 +159,51 @@ describe("the advertised total a mid-feed visit carries", () => {
     expect(CODE).toMatch(/\.\.\.\(stampTotal === undefined \? \{\} : \{ feed_total: stampTotal \}\)/);
   });
 
-  it("fetchWorkday keeps the visit's own page-0 total for the WRAP arithmetic", () => {
+  it("fetchWorkday keeps the visit's own page-0 total for the WRAP arithmetic", async () => {
     // T-Mobile answers offsets >= 2,000 with page 0 again and total 2,000; the
-    // wrap at `advanced >= feedTotal` is what stops the walk there. Only the
-    // windowed verdict changed; nextOffset did not.
-    const body = FN.slice(FN.indexOf("async function fetchWorkday("), FN.indexOf("async function fetchOracle("));
-    expect(body).toMatch(/const nextOffset = exhausted \|\| \(feedTotal > 0 && advanced >= feedTotal\) \? 0 : advanced;/);
+    // wrap at `advanced >= feedTotal` is what stops the walk there instead of
+    // re-reading page 0 as offset 2,000 forever.
+    const visits = await walk(4_000, { wrapsAt2000: true });
+    expect(visits.map((v) => v.start)).toEqual([0, 260, 520, 780, 1040, 1300, 1560, 1820, 2080]);
+    expect(visits.at(-1)!.feedTotal, "page 0 again, stating the capped total").toBe(2000);
+    expect(visits.at(-1)!.nextOffset).toBe(0);
+  });
+});
+
+describe("an empty first page past the top wraps; from the top it is a refusal (n420)", () => {
+  it("a cursor left past a feed that shrank wraps on the feed's end instead of failing every visit", async () => {
+    // A tenant that states its total on every page, now 500 open, with the
+    // cursor at 520 from the last lap. This used to throw `empty page but
+    // total=500`; a failed visit keeps its cursor, so every visit failed the
+    // same way until six failures over 40 hours pruned the whole board.
+    const t = tenant(500, { totalPastZero: (n) => n });
+    const v = await shippedFetchWorkday(t.fetchWithTimeout)({ token: "cvshealth~wd1~CVS_Health_Careers" }, 520);
+    expect(v.jobPostings).toHaveLength(0);
+    expect(v.nextOffset).toBe(0);
+    expect(v.windowed, "a visit past the top is never whole").toBe(true);
+    expect(v.feedEnded, "the feed really ends before the cursor, as a short page would say").toBe(true);
+  });
+
+  it("an empty page past the top while the total says there is more restarts the lap without claiming an end", async () => {
+    const t = tenant(1_500, { totalPastZero: (n) => n, refuseAt: 520 });
+    const v = await shippedFetchWorkday(t.fetchWithTimeout)({ token: "cvshealth~wd1~CVS_Health_Careers" }, 520);
+    expect(v.jobPostings).toHaveLength(0);
+    expect(v.nextOffset).toBe(0);
+    expect(v.windowed).toBe(true);
+    expect(v.feedEnded, "a lap must not prove absence on a page the vendor would not serve").toBe(false);
+  });
+
+  it("from the top, an empty page against a stated total still fails the board (Four Seasons)", async () => {
+    const t = tenant(1_963, { refuseAt: 0 });
+    await expect(shippedFetchWorkday(t.fetchWithTimeout)({ token: "fourseasons~wd3~Search" }, 0)).rejects.toThrow(/empty page but total=1963/);
+  });
+
+  it("the verdict, in its own terms", () => {
+    expect(emptyFirstPage(0, 0, 1_963)).toBe("refused");
+    expect(emptyFirstPage(0, 0, 0), "an empty board read from the top is just empty").toBe(null);
+    expect(emptyFirstPage(520, 0, 500)).toBe("ended");
+    expect(emptyFirstPage(520, 0, 0), "a mid-feed zero states nothing, and the page is empty: the end").toBe("ended");
+    expect(emptyFirstPage(10_000, 0, 31_000)).toBe("restart");
+    expect(emptyFirstPage(520, 20, 1_500), "a page that read anything is not empty").toBe(null);
   });
 });

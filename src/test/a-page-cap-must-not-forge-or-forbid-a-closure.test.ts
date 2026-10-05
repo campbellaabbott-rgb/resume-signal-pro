@@ -558,9 +558,9 @@ describe("the log says which kind of evidence ended each posting", () => {
     // row without recording WHICH population it belongs to, because pooling a
     // full-read closure with a lap closure is a claim about coverage that
     // nobody made.
-    const closureRow = /const closureRows = rows\.map\(\(r\) => \(\{([\s\S]*?)\n {16}\}\)\);/.exec(CODE);
+    const closureRow = /const closureRows = rows\.map\(\(r\) => \(\{([\s\S]*?)\n\s*\}\)\);/.exec(CODE);
     expect(closureRow, "the closure row builder moved — re-anchor this test").toBeTruthy();
-    const basis = /absence_basis: ([\s\S]*?)\n {18}\.\.\.lifecycleFacets/.exec(closureRow![1]);
+    const basis = /absence_basis: ([\s\S]*?)\n\s*\.\.\.lifecycleFacets/.exec(closureRow![1]);
     expect(basis, "a closure row must record what kind of absence produced it").toBeTruthy();
     const decide = new Function(
       "lapMode",

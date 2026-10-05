@@ -255,6 +255,39 @@ export function updateBoardFailures(params: {
 }
 
 /**
+ * Hand boards whose dormant prune did not finish back to the failure lane.
+ *
+ * pruneWholeBoard keeps every row the exit log did not record, but toPrune
+ * fires only on the visit a streak crosses the threshold, and a dormant board
+ * is not fetched again until its recheck, whose failure only resets the timer.
+ * Left dormant, the unrecorded rows would wait for the freshness sweep and
+ * leave as aged-out rather than as the board going dark. So each such board
+ * goes back one failure short of the threshold, with the start-of-streak
+ * stamp it had before the prune (from `before`): the next failing visit
+ * prunes again, and a visit that reads clears it like any other.
+ */
+export function rearmIncompletePrunes(
+  state: { streaks: Record<string, number>; dormant: Record<string, number>; failedAt: Record<string, number>; firstFailedAt: Record<string, number> },
+  keys: readonly string[],
+  before: { firstFailedAt?: Record<string, number> },
+  deadThreshold: number,
+  now: number,
+): { streaks: Record<string, number>; dormant: Record<string, number>; failedAt: Record<string, number>; firstFailedAt: Record<string, number> } {
+  if (keys.length === 0) return state;
+  const streaks = { ...state.streaks };
+  const dormant = { ...state.dormant };
+  const failedAt = { ...state.failedAt };
+  const firstFailedAt = { ...state.firstFailedAt };
+  for (const k of keys) {
+    delete dormant[k];
+    streaks[k] = Math.max(1, deadThreshold - 1);
+    failedAt[k] = now;
+    firstFailedAt[k] = own(before.firstFailedAt ?? {}, k) ?? now;
+  }
+  return { streaks, dormant, failedAt, firstFailedAt };
+}
+
+/**
  * ONE BOARD, ONE KEY (n417).
  *
  * The catalog is not token-unique: 139 tokens carry two or three vendors

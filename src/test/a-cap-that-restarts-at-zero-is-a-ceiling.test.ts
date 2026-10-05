@@ -76,7 +76,9 @@ describe("a cap that restarts at zero is a ceiling", () => {
   it("a finished feed wraps to zero instead of paging into nothing", () => {
     // Without the feedTotal bound, a board whose total shrinks between passes
     // would page forever past the end and store nothing.
-    expect(CODE).toMatch(/exhausted \|\| \(feedTotal > 0 && advanced >= feedTotal\) \? 0 : advanced/);
+    // Since .89 an empty first page past the top also wraps (n420; run against
+    // a stub tenant in a-mid-feed-zero-is-not-a-whole-board).
+    expect(CODE).toMatch(/exhausted \|\| empty === "restart" \|\| \(feedTotal > 0 && advanced >= feedTotal\) \? 0 : advanced/);
     expect(CODE).toMatch(/reachedEnd \? 0 : lastPage \* RIPPLING_PER_PAGE/);
   });
 

@@ -9395,16 +9395,22 @@ and the boards would re-enrol on their next oversize read.
 
 ## n416-ledger-before-delete
 
-Above: the closure prune's `const keep = new Set<string>();`, pruneWholeBoard,
-and the Oracle sub-site shed's `if (exErr)`. A closure read or insert that
-failed used to be followed by the chunk's delete anyway; a whole-board exit log
-that broke on page 1 was followed by a delete of the whole token. Every one of
-these rows was already stamped missing (or is a duplicate), so keeping it loses
-nothing and the next visit retries the ledger write. Now: a failed read keeps
-the chunk, a failed closure insert keeps exactly the rows it was writing (the
-aged rows beside them already have their exits), the removed-exit row is only
-written beside a closure that landed, and a whole-board prune deletes the
-board only when every row was logged, otherwise exactly the logged ids.
+Above: closeVanishedChunk (the refresh's closure prune, one 200-id chunk at a
+time), pruneWholeBoard with rearmIncompletePrunes (dormancy.ts), and the Oracle
+sub-site shed's `if (exErr)`. A closure read or insert that failed used to be
+followed by the chunk's delete anyway; a whole-board exit log that broke on
+page 1 was followed by a delete of the whole token. Every one of these rows was
+already stamped missing (or is a duplicate), so keeping it loses nothing and
+the next visit retries the ledger write. Now: a failed read keeps the chunk, a
+failed closure insert keeps exactly the rows it was writing, an aged row's exit
+insert is awaited and a failed one keeps the aged rows (it was fire-and-forget,
+so they were deleted before anyone knew whether their exit landed), the
+removed-exit row is only written beside a closure that landed, and a
+whole-board prune deletes the board only when every row was logged, otherwise
+exactly the logged ids. A dormant prune that did not finish puts its board back
+one failure short of the threshold with its original streak start, so its next
+failing visit prunes again; toPrune fires only on the visit a streak crosses
+the threshold, and a dormant board is not fetched again until its recheck.
 
 ## n417-board-keys
 
@@ -9443,5 +9449,33 @@ detail's place; the refresh then compared the stored row with the LIST
 payload (work mode from title/location text only, usually null; location the
 placeholder) and wrote it back, noting each undo as an employer edit, after
 which the sweep (WHERE work_mode IS NULL) re-fetched the detail. Now a list
-placeholder never replaces a real place, and on workday/jazzhr a stored mode is
-the list's to fill when empty, never to overwrite (null or not).
+placeholder never replaces a real place, and on workday/jazzhr
+`listMayRewriteMode` (normalize.ts) decides: an empty stored mode is the
+list's to fill; with the list text unchanged (or a placeholder the stored
+place outranks) the list has nothing new; when the employer changed the text,
+a stored mode the OLD text reads as (detectWorkMode on the stored location and
+title) came from the list and is re-read from the new text, even to null, and
+one the old text does not explain came from the detail page and stays. The
+first cut froze every stored mode, which also froze a mode the list had
+guessed: "Remote - US" moved to "Austin, TX" kept the row under the remote
+filter for good. No schema column tells the two writers apart; the stored text
+does, without a deploy-before-migration window.
+
+## n420-an-empty-page-past-the-top
+
+Above: `emptyFirstPage` (read-window.ts) in fetchWorkday, fetchOracle,
+fetchIcims and fetchUsajobs, and `cursorAfterFailure` at the refresh's failure
+branch. An empty first page against a stated total threw `empty page but
+total=N` at any offset. From the top that is right (a refusal; Four Seasons).
+Past the top it stranded the board: a failed visit does not move the cursor, so
+a cursor left beyond a feed that shrank asked the same empty page every visit
+until six failures over 40 hours pruned the whole board. Now, past the top, an
+empty page wraps: with no stated total reaching the page the feed ended
+(feedEnded, as a short page says); with a total that says there is more, the
+vendor will not serve that deep or refused once, and the walk wraps WITHOUT
+feedEnded so no lap proves on it. USAJOBS also never asks past
+USAJOBS_RESULT_CAP (10,000, recorded by third-party guides; the official
+reference states none), and wraps there without feedEnded, so a 31,000-match
+feed is read 10,000 deep and never closes what it cannot see. A deep visit that
+fails twice running starts the next from the top, so an HTTP error at a
+stranded cursor cannot reach the dormancy prune either.

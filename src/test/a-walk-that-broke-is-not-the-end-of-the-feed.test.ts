@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { codeOf } from "./helpers/strip-comments";
+import { emptyFirstPage } from "../../supabase/functions/job-board/read-window";
 
 /**
  * FOUR WALKS THAT REPORTED THE WRONG THING ABOUT WHERE THEY STOPPED (.89).
@@ -138,6 +139,7 @@ describe("iCIMS: the page size comes from the caller, and the offsets it reports
     OVERSIZE_MARKER: "OVERSIZE_BODY",
     MAX_RESPONSE_BYTES: 4_000_000,
     MAX_POSTINGS_PER_VISIT: MAX,
+    emptyFirstPage,
   });
 
   it("at 25 a row, a visit still stops at the cap and resumes", async () => {
@@ -155,11 +157,158 @@ describe("iCIMS: the page size comes from the caller, and the offsets it reports
     expect(v.windowed).toBe(true);
   });
 
-  it("the dispatcher retries a first page over the byte bound smaller before deferring the board", () => {
-    expect(CODE).toMatch(/const ICIMS_PAGE_SIZES: readonly number\[\] = \[100, 50, 25\];/);
-    const block = CODE.slice(CODE.indexOf('if (s.source === "icims") {'), CODE.indexOf('if (s.source === "usajobs") {'));
-    expect(block).toMatch(/await fetchIcims\(s, startOffset, ICIMS_PAGE_SIZES\[k\]\)/);
-    expect(block, "only an oversize refusal earns a smaller retry; any other failure still fails the board").toMatch(/if \(!isOversize\(e\) \|\| k \+ 1 >= ICIMS_PAGE_SIZES\.length\) throw e;/);
+  it("a cursor past a feed that shrank wraps on the feed's end; from page 1 an empty page is still a refusal", async () => {
+    const shrunk = await icims(300)({ token: "jobs.zs.com" }, 400, 100);
+    expect(shrunk.items).toHaveLength(0);
+    expect(shrunk.nextOffset).toBe(0);
+    expect(shrunk.feedEnded).toBe(true);
+    expect(shrunk.windowed).toBe(true);
+    const refused = build<(s: { token: string }, o: number, p: number) => Promise<R>>("fetchIcims", {
+      fetchWithTimeout: async () => json({ totalCount: 278, jobs: [] }),
+      discardBody: () => {}, discardRest: () => {},
+      chunkPageRefusal: (e: unknown, first: boolean) => { if (first) throw e; return null; },
+      readChunkPage: async (res: Response) => ({ body: await res.json(), over: false }),
+      OVERSIZE_MARKER: "OVERSIZE_BODY", MAX_RESPONSE_BYTES: 4_000_000, MAX_POSTINGS_PER_VISIT: MAX, emptyFirstPage,
+    });
+    await expect(refused({ token: "jobs.zs.com" }, 0, 100)).rejects.toThrow(/empty page but total=278/);
+  });
+});
+
+describe("iCIMS: a first page over the byte bound is retried smaller before the board is deferred (L7-02b)", () => {
+  const SIZES = (() => {
+    const m = /const ICIMS_PAGE_SIZES: readonly number\[\] = \[([\d, ]+)\];/.exec(CODE);
+    expect(m, "ICIMS_PAGE_SIZES not found").toBeTruthy();
+    return m![1].split(",").map((x) => Number(x.trim()));
+  })();
+  /** fetchIcimsSized, the shipped one, over a fetchIcims stub whose first page is over the bound at `overAt` rows and above. */
+  const sized = (overAt: number, other?: Error) => {
+    const asked: number[] = [];
+    const hints = new Map<string, number>();
+    const fn = build<(s: { token: string }, o: number) => Promise<{ items: unknown[]; pageSize: number }>>("fetchIcimsSized", {
+      ICIMS_PAGE_SIZES: SIZES,
+      ICIMS_SIZE_HINT: hints,
+      isOversize: (e: unknown) => String((e as Error)?.message ?? e).includes("OVERSIZE_BODY"),
+      console: { warn: () => {} },
+      fetchIcims: async (_s: unknown, _o: number, pageSize: number) => {
+        asked.push(pageSize);
+        if (other) throw other;
+        if (pageSize >= overAt) throw new Error(`OVERSIZE_BODY over 4000000 on page 1`);
+        return { items: Array.from({ length: pageSize }, (_, k) => k), windowed: true, feedTotal: 278, nextOffset: pageSize, feedEnded: false, endOffset: pageSize };
+      },
+    });
+    return { fn, asked, hints };
+  };
+
+  it("jobs.zs.com (4.73 MB at 100 rows) reads at 50, and the next visit starts there", async () => {
+    const { fn, asked, hints } = sized(100);
+    const r = await fn({ token: "jobs.zs.com" }, 0);
+    expect(SIZES).toEqual([100, 50, 25]);
+    expect(asked).toEqual([100, 50]);
+    expect(r.pageSize).toBe(50);
+    expect(hints.get("jobs.zs.com")).toBe(50);
+    asked.length = 0;
+    await fn({ token: "jobs.zs.com" }, 50);
+    expect(asked, "the size that fitted is remembered").toEqual([50]);
+  });
+
+  it("a board over the bound even at 25 is deferred (the oversize error reaches the caller)", async () => {
+    const { fn, asked } = sized(25);
+    await expect(fn({ token: "careers.ringpower.com" }, 0)).rejects.toThrow(/OVERSIZE_BODY/);
+    expect(asked).toEqual([100, 50, 25]);
+  });
+
+  it("any other failure fails the board at once, with no smaller retry", async () => {
+    const { fn, asked } = sized(1_000, new Error("HTTP 503"));
+    await expect(fn({ token: "jobs.qxo.com" }, 0)).rejects.toThrow(/HTTP 503/);
+    expect(asked).toEqual([100]);
+  });
+});
+
+describe("USAJOBS: pages of 100 from the cursor, capped, resumed, and never stranded past the feed (L7-01, n420)", () => {
+  type R = { items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number };
+  const CAP = Number(/const USAJOBS_RESULT_CAP = ([\d_]+);/.exec(CODE)![1].replace(/_/g, ""));
+  /** A stub search API: `count` matches, at most `serves` reachable (empty pages past it), optional HTTP status on a page. */
+  const api = (count: number, opts: { serves?: number; status?: { page: number; code: number } } = {}) => {
+    const asked: Array<{ page: number; per: number; key: string | null }> = [];
+    const fn = build<(s: { token: string; pages?: number }, o: number, key: string, ua: string) => Promise<R>>("fetchUsajobs", {
+      fetchWithTimeout: async (url: string, init: { headers: Record<string, string> }) => {
+        const u = new URL(url);
+        const page = Number(u.searchParams.get("Page"));
+        const per = Number(u.searchParams.get("ResultsPerPage"));
+        asked.push({ page, per, key: init.headers["Authorization-Key"] ?? null });
+        if (opts.status && opts.status.page === page) return new Response("no", { status: opts.status.code });
+        const start = (page - 1) * per;
+        const reach = Math.min(count, opts.serves ?? CAP);
+        const n = Math.max(0, Math.min(per, reach - start));
+        return json({ SearchResult: { SearchResultCountAll: count, SearchResultItems: Array.from({ length: n }, (_, k) => ({ MatchedObjectId: String(start + k) })) } });
+      },
+      discardBody: () => {},
+      chunkPageRefusal: (e: unknown, first: boolean) => { if (first) throw e; return null; },
+      readChunkPage: async (res: Response) => ({ body: await res.json(), over: false }),
+      OVERSIZE_MARKER: "OVERSIZE_BODY",
+      MAX_RESPONSE_BYTES: 4_000_000,
+      MAX_POSTINGS_PER_VISIT: MAX,
+      USAJOBS_RESULT_CAP: CAP,
+      emptyFirstPage,
+    });
+    return { fn, asked };
+  };
+  const S = { token: "usajobs" };
+
+  it("asks pages of 100 with the key, stops at the visit cap and resumes where it stopped", async () => {
+    const { fn, asked } = api(1_234);
+    const v = await fn(S, 0, "k", "ua");
+    expect(asked.every((a) => a.per === 100 && a.key === "k")).toBe(true);
+    expect(v.items).toHaveLength(MAX % 100 === 0 ? MAX : Math.ceil(MAX / 100) * 100);
+    expect(v.nextOffset).toBe(v.endOffset);
+    expect(v.windowed).toBe(true);
+    expect(v.feedEnded).toBe(false);
+    asked.length = 0;
+    const next = await fn(S, v.nextOffset, "k", "ua");
+    expect(asked[0].page, "the next visit starts at the cursor's page").toBe(v.nextOffset / 100 + 1);
+    expect(next.endOffset).toBeGreaterThan(v.endOffset);
+  });
+
+  it("walks the whole feed in visits and wraps on its short last page", async () => {
+    const { fn } = api(1_234);
+    let cursor = 0, visits = 0, last: R | null = null;
+    do { last = await fn(S, cursor, "k", "ua"); cursor = last.nextOffset; visits++; } while (cursor !== 0 && visits < 50);
+    expect(last!.endOffset).toBe(1_234);
+    expect(last!.feedEnded).toBe(true);
+  });
+
+  it("a cursor past a feed that shrank wraps instead of failing every visit into the dormancy prune", async () => {
+    const { fn } = api(900);
+    const v = await fn(S, 1_000, "k", "ua");
+    expect(v.items).toHaveLength(0);
+    expect(v.nextOffset).toBe(0);
+    expect(v.feedEnded).toBe(true);
+  });
+
+  it("a feed larger than the result cap wraps at the cap without claiming an end, and never asks past it", async () => {
+    const { fn, asked } = api(31_000);
+    const atCap = await fn(S, CAP, "k", "ua");
+    expect(asked, "no page past the cap is requested").toEqual([]);
+    expect(atCap.nextOffset).toBe(0);
+    expect(atCap.feedEnded, "a lap must not prove absence on the 21,000 it cannot read").toBe(false);
+    const nearCap = await fn(S, CAP - 100, "k", "ua");
+    expect(nearCap.endOffset).toBe(CAP);
+    expect(nearCap.nextOffset).toBe(0);
+    expect(nearCap.feedEnded).toBe(false);
+  });
+
+  it("an API that serves less deep than the cap: the empty page restarts the lap, it does not fail", async () => {
+    const { fn } = api(31_000, { serves: 5_000 });
+    const v = await fn(S, 5_000, "k", "ua");
+    expect(v.nextOffset).toBe(0);
+    expect(v.feedEnded).toBe(false);
+  });
+
+  it("from the top, an empty answer against a stated count, or a non-200, fails the board", async () => {
+    const refused = api(15_000, { serves: 0 });
+    await expect(refused.fn(S, 0, "k", "ua")).rejects.toThrow(/empty page but total=15000/);
+    const down = api(15_000, { status: { page: 1, code: 503 } });
+    await expect(down.fn(S, 0, "k", "ua")).rejects.toThrow(/HTTP 503/);
   });
 });
 

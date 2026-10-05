@@ -51,8 +51,13 @@ const us=served("usajobs","usajobs");
 const ov=(st.oversizeBoards||[]).map((o)=>o.token);
 console.log(((us??0)>0?"PASS":(v89?"FAIL":"INFO"))+"  usajobs serves "+us+" (0 since it joined: every 500-row page was over the 4 MB bound; pages of 100 under .89)");
 console.log((!ov.includes("usajobs")?"PASS":(v89?"FAIL":"INFO"))+"  usajobs is "+(ov.includes("usajobs")?"STILL":"no longer")+" in status.oversizeBoards");
-for(const t of ["lush","samsara","pulse"]){const s=served("greenhouse",t);
+const usCur=((st.deepCursor||{}).top||[]);const usc=Array.isArray(usCur)?usCur.find((x)=>x&&(x.token==="usajobs"||x[0]==="usajobs")):null;
+info("usajobs deep cursor: "+JSON.stringify(usc||null)+" (advances by ~300 a visit and wraps at the feed end or at 10,000, the API result cap; it must never sit still while usajobs fails)");
+for(const t of ["lush","samsara"]){const s=served("greenhouse",t);
   console.log(((s??0)>0&&!ov.includes(t)?"PASS":(v89?"FAIL":"INFO"))+"  greenhouse:"+t+" serves "+s+(ov.includes(t)?", still oversize":"")+" (light mode is per board since .89; was refused for sharing its token)");}
+// pulse enrols in light mode too, but its LIGHT list is 20.6 MB (2,703 jobs, ~7 KB of metadata each, measured 2026-10-05):
+// still over the 4 MB bound, and greenhouse has no streamed reader (SLIM_SPECS), so it stays deferred. Not a .89 claim.
+{const s=served("greenhouse","pulse");info("greenhouse:pulse serves "+s+(ov.includes("pulse")?", in oversizeBoards":"")+" (expected: still deferred -- its light list alone is 20.6 MB; needs a greenhouse streamed reader)");}
 for(const t of ["jobs.zs.com","jobs.qxo.com","careers.ringpower.com"]){const s=served("icims",t);
   console.log(((s??0)>0&&!ov.includes(t)?"PASS":(v89?"FAIL":"INFO"))+"  icims:"+t+" serves "+s+(ov.includes(t)?", still oversize":"")+" (page 1 over 4 MB at 100 rows; retried at 50/25 since .89)");}
 const top=((st.deepCursor||{}).top||[]);const dom=Array.isArray(top)?top.find((x)=>x&&(x.token==="dominos"||x[0]==="dominos")):null;
