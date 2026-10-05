@@ -13,19 +13,17 @@
 echo "== resume privacy: no résumé text to Stripe; every copy on its published clock =="
 
 RP_CC=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/create-checkout" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-case "$RP_CC" in
-  "create-checkout.2026-10-04.no-resume-metadata") echo "PASS  create-checkout preflight x-fn-build = $RP_CC (the build that writes no résumé into session metadata)";;
-  "") echo "FAIL  create-checkout preflight carries no x-fn-build";;
-  *) echo "FAIL  create-checkout preflight x-fn-build = $RP_CC (want create-checkout.2026-10-04.no-resume-metadata; a newer build from another change is fine if it keeps the metadata fix)";;
-esac
+# A build dated after 2026-10-04 came from main, which carries the fix and the
+# tests that pin it (src/test, the résumé-privacy suite).
+if [ -z "$RP_CC" ]; then echo "FAIL  create-checkout preflight carries no x-fn-build"
+elif build_ge create-checkout "$RP_CC" 2026-10-04 no-resume-metadata; then echo "PASS  create-checkout preflight x-fn-build = $RP_CC (the no-résumé-metadata build or later)"
+else echo "FAIL  create-checkout preflight x-fn-build = $RP_CC (want create-checkout.2026-10-04.no-resume-metadata or later)"; fi
 
 RP_WH=$(curl -s -m 30 -D - -o /dev/null -X GET "$B/functions/v1/stripe-webhook" | tr -d '\r')
 RP_WB=$(printf '%s' "$RP_WH" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-case "$RP_WB" in
-  "stripe-webhook.2026-10-04.no-resume-in-stripe") echo "PASS  stripe-webhook x-fn-build = $RP_WB (stores no résumé text; finds a product's résumé by the session id)";;
-  "") echo "FAIL  stripe-webhook GET carries no x-fn-build";;
-  *) echo "FAIL  stripe-webhook x-fn-build = $RP_WB (want stripe-webhook.2026-10-04.no-resume-in-stripe)";;
-esac
+if [ -z "$RP_WB" ]; then echo "FAIL  stripe-webhook GET carries no x-fn-build"
+elif build_ge stripe-webhook "$RP_WB" 2026-10-04 no-resume-in-stripe; then echo "PASS  stripe-webhook x-fn-build = $RP_WB (stores no résumé text; finds a product's résumé by the session id)"
+else echo "FAIL  stripe-webhook x-fn-build = $RP_WB (want stripe-webhook.2026-10-04.no-resume-in-stripe or later)"; fi
 
 # The three other functions this change rebuilt, each on its preflight.
 for RP_PAIR in \
@@ -34,11 +32,10 @@ for RP_PAIR in \
   "analyze-resume|analyze-resume.2026-10-04.no-paid-cache|keeps no copy of a paid analysis in the AI cache"; do
   RP_FN=${RP_PAIR%%|*}; RP_REST=${RP_PAIR#*|}; RP_WANT=${RP_REST%%|*}; RP_WHY=${RP_REST#*|}
   RP_GOT=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$RP_FN" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-  case "$RP_GOT" in
-    "$RP_WANT") echo "PASS  $RP_FN preflight x-fn-build = $RP_GOT ($RP_WHY)";;
-    "") echo "FAIL  $RP_FN preflight carries no x-fn-build";;
-    *) echo "FAIL  $RP_FN preflight x-fn-build = $RP_GOT (want $RP_WANT)";;
-  esac
+  RP_TAG=${RP_WANT#"$RP_FN".2026-10-04.}
+  if [ -z "$RP_GOT" ]; then echo "FAIL  $RP_FN preflight carries no x-fn-build"
+  elif build_ge "$RP_FN" "$RP_GOT" 2026-10-04 "$RP_TAG"; then echo "PASS  $RP_FN preflight x-fn-build = $RP_GOT ($RP_WHY)"
+  else echo "FAIL  $RP_FN preflight x-fn-build = $RP_GOT (want $RP_WANT or later)"; fi
 done
 
 # checkout_resume_refs exists and refuses anon by name: a refusal, not rows,

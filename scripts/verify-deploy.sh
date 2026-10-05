@@ -17,7 +17,7 @@ UA="Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 # x-rb-budget: probe -- since .85 the board counts anonymous reads per address,
 # and this script is our own tooling, not a browser (job-board/anon-budget.ts).
 J() { curl -s -m 60 -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$1"; }
-R() { curl -s -m 60 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-{\}}"; }
+R() { curl -s -m 60 -X POST "$B/rest/v1/rpc/$1" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "${2:-"{}"}"; }
 MC() { curl -s -m 60 -X POST "$B/functions/v1/agent-mcp" -H "Content-Type: application/json" -H "apikey: $K" -H "mcp-protocol-version: 2025-06-18" "$@"; }
 # Table probes select `*`: a named column that the table lacks answers 400 before
 # the permission check runs, which reads as anything but the 401 it should be.
@@ -25,6 +25,17 @@ MC() { curl -s -m 60 -X POST "$B/functions/v1/agent-mcp" -H "Content-Type: appli
 probe() { local out; out=$(R "$1" "$2"); local code; code=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
   case "$code" in 42501) echo "PASS  $1 as anon -> 42501 (revoked by name)";; PGRST202) echo "INFO  $1 -> PGRST202 (argument names differ from the migration, or not applied)";; *) echo "FAIL  $1 as anon -> $code  $(printf '%s' "$out" | head -c 200)";; esac; }
 title() { curl -s -m 30 -A "$UA" "$SITE$1" | grep -oE "<title>[^<]*</title>" | head -1; }
+# build_ge FN HEADER DATE MIN: the header names FN, built on a day after DATE,
+# or on DATE with a suffix >= MIN (numeric) / equal to MIN (a named build). A
+# section that pinned one build exactly read FAIL the day any later change
+# rebuilt the same function (run5, 2026-10-05: 18 FAILs, every one a newer build).
+build_ge() {
+  case "$2" in "$1".20[0-9][0-9]-[0-9][0-9]-[0-9][0-9].*) ;; *) return 1;; esac
+  local rest="${2#"$1".}"; local d="${rest%%.*}"; local n="${rest#*.}"
+  [ "$d" \> "$3" ] && return 0
+  [ "$d" = "$3" ] || return 1
+  case "$n$4" in *[!0-9]*) [ "$n" = "$4" ];; *) [ "$n" -ge "$4" ];; esac
+}
 
 echo "== 1. job-board bundle =="
 J '{"action":"status"}' > /tmp/vd_status.json
@@ -573,7 +584,9 @@ echo "INFO  GET /companies -> HTTP $(curl -s -m 30 -o /dev/null -w '%{http_code}
 echo "== 7a. every rebuilt function answers its build on the preflight (deploy proof without a write) =="
 for FN in create-checkout create-product-checkout create-subscription-checkout create-agent-checkout create-pass-checkout create-scan-pack-checkout track-ab-event; do
   H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-  case "$H" in "$FN.2026-09-27.2") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-09-27.2)";; esac
+  if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)"
+  elif build_ge "$FN" "$H" 2026-09-27 2; then echo "PASS  $FN preflight x-fn-build = $H ($FN.2026-09-27.2 or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-09-27.2 or later)"; fi
 done
 
 echo "== 7b. checkout_starts exists and is closed to anon by name (a refusal, not an empty answer and not a 404) =="
@@ -629,19 +642,21 @@ grep -qiE '<urlset|<sitemapindex|<loc>' /tmp/vd_sm.txt \
 echo "== 7f. the paid products are deliverable, and the queue wrappers are closed to anon =="
 for FN in analyze-resume generate-apply-package generate-ats-defense verify-product-purchase verify-scan-pack-purchase retry-failed-deliveries; do
   H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-  case "$H" in "$FN.2026-10-01.1") echo "PASS  $FN preflight x-fn-build = $H";; "") echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving; baseline 2026-10-01: none)";; *) echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-01.1)";; esac
+  if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving; baseline 2026-10-01: none)"
+  elif build_ge "$FN" "$H" 2026-10-01 1; then echo "PASS  $FN preflight x-fn-build = $H ($FN.2026-10-01.1 or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-01.1 or later)"; fi
 done
 WH=$(curl -s -m 30 -D - -o /dev/null "$B/functions/v1/stripe-webhook" | tr -d '\r')
 WS=$(printf '%s' "$WH" | head -1 | awk '{print $2}')
 WB=$(printf '%s' "$WH" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-[ "$WS" = "405" ] && [ "$WB" = "stripe-webhook.2026-10-01.1" ] && echo "PASS  stripe-webhook GET -> 405 with x-fn-build = $WB" || echo "FAIL  stripe-webhook GET -> HTTP $WS x-fn-build='$WB' (want 405 and stripe-webhook.2026-10-01.1; baseline: 405 with none)"
+[ "$WS" = "405" ] && build_ge stripe-webhook "$WB" 2026-10-01 1 && echo "PASS  stripe-webhook GET -> 405 with x-fn-build = $WB (2026-10-01.1 or later)" || echo "FAIL  stripe-webhook GET -> HTTP $WS x-fn-build='$WB' (want 405 and stripe-webhook.2026-10-01.1 or later; baseline: 405 with none)"
 # ORDER. The webhook ships in the SAME deploy as analyze-resume. The new
 # analyze-resume accepts an old webhook's claim (no product, no address), so a
 # buyer is no longer refused if it lands first -- but the old webhook still
 # routes a full analysis to "No resume session ID" and the retry queue, and
 # nothing proves which webhook is live until this marker does.
 ARB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/analyze-resume" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-if [ "$ARB" = "analyze-resume.2026-10-01.1" ] && [ "$WB" != "stripe-webhook.2026-10-01.1" ]; then echo "FAIL  analyze-resume serves $ARB but stripe-webhook does not ('$WB'): the webhook is behind -- deploy it"; else echo "PASS  stripe-webhook is not behind analyze-resume (analyze-resume '$ARB', webhook '$WB')"; fi
+if build_ge analyze-resume "$ARB" 2026-10-01 1 && ! build_ge stripe-webhook "$WB" 2026-10-01 1; then echo "FAIL  analyze-resume serves $ARB but stripe-webhook does not ('$WB'): the webhook is behind -- deploy it"; else echo "PASS  stripe-webhook is not behind analyze-resume (analyze-resume '$ARB', webhook '$WB')"; fi
 # The columns the new writes name. A select of a column the table lacks answers
 # 400 42703 before RLS runs; present, RLS answers an empty list.
 for Q in "used_stripe_sessions?select=session_id,product_type,ip_address" "purchased_content?select=stripe_session_id,product_type,generated_content,customer_email" "product_deliveries?select=stripe_session_id,product_type,status,max_retries,generation_success,content_generation_completed_at"; do
