@@ -6,10 +6,12 @@ import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { assertPaidSession } from "../_shared/paid-session.ts";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-career-path.2026-10-04.1";
+const FN_BUILD = "generate-career-path.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +45,23 @@ serve(async (req) => {
     if (limitError) return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+
+    // THE PAID TIER NEEDS A PAID SESSION (defect sweep 1.60). A truthy
+    // isPremium selects the $5 Career Path Simulator (the 90-day plan, a
+    // larger budget) and was honoured for anyone who sent it. Our own servers
+    // deliver with the service-role key and name the purchase; a browser must
+    // name a Career Path Simulator purchase.
+    const premium = !!isPremium;
+    if (premium && !isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+      const paidError = await assertPaidSession(supabase, sessionId, CAREER_PATH_PRODUCTS);
+      if (paidError) {
+        return new Response(
+          JSON.stringify({ error: paidError, retryable: true }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const refused = await modelSpendGate(supabase, req, "generate-career-path", CAREER_PATH_LIMITS, corsHeaders, {
       session: sessionId,
       products: CAREER_PATH_PRODUCTS,
@@ -52,7 +71,7 @@ serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    const actionPlanField = isPremium
+    const actionPlanField = premium
       ? `,
       "actionPlan90Days": ["Specific, concrete step to take in the first 30 days", "Step for days 30-60", "Step for days 60-90"]`
       : "";
@@ -193,7 +212,7 @@ Create realistic, specific career trajectories based on their actual background.
         { role: "user", content: userPrompt }
       ],
       temperature: 0.7,
-      maxTokens: isPremium ? 5500 : 4000,
+      maxTokens: premium ? 5500 : 4000,
       jsonResponse: true,
       models: chainFrom("google/gemini-2.5-flash"),
       context: "CAREER-PATH",

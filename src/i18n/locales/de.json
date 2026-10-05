@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "10 Scan-Credits wurden deinem Konto gutgeschrieben",
+          "Deine Scan-Credits wurden gutgeschrieben",
           "Jeder Scan analysiert deinen Lebenslauf gegen eine bestimmte Stelle",
           "Vergleiche unbegrenzt Stellenbeschreibungen mit deinen Credits",
           "Credits verfallen nie"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Credits verfallen nie",
     "perCredit": "{{price}} pro Credit",
     "topUpCredits": "Credits aufladen",
-    "useDifferentEmail": "Andere E-Mail verwenden",
-    "checkYourCredits": "Scan-Credits prüfen",
-    "enterEmail": "Geben Sie die E-Mail-Adresse ein, die Sie beim Kauf verwendet haben.",
-    "checking": "Wird geprüft...",
-    "checkCredits": "Credits prüfen",
-    "noCredits": "Keine Credits für diese E-Mail gefunden.",
     "freeTier": "Kostenlose Stufe: Bis zu 7 Scans pro Tag, kostenlos für immer.",
     "buyCredits": "Credits kaufen — {{price}} pro Stück",
-    "myCredits": "Meine Credits"
+    "myCredits": "Meine Credits",
+    "provenHint": "In diesem Browser gekaufte Credits erscheinen hier automatisch.",
+    "signInHint": "In einem anderen Browser gekauft? Melde dich dort einmal an, dann folgen sie deinem Konto hierher.",
+    "signIn": "Anmelden",
+    "noCreditsHere": "In diesem Browser oder Konto gibt es noch keine Scan-Credits.",
+    "legacyHint": "Bei einem früheren Besuch Scan-Credits als {{email}} gekauft? Nicht genutzte Credits sind weiterhin erfasst. Schreib von dieser Adresse an {{support}}, dann fügen wir sie deinem Konto hinzu."
   },
   "industryConfidence": {
     "industry": "Branche:",

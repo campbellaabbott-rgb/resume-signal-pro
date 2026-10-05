@@ -428,13 +428,19 @@ interface MarketInsight {
 
 type CountryIndustryKey = `${string}:${string}` | string;
 
+// When the market tables below (and the skill-recency lists) were last
+// compiled. Prompts cite this date instead of asserting a year as "now", and
+// no sentence a reader sees names a year: a report rendered in October 2026
+// used to say "US tech hiring in 2025 is..." as if it were current
+// (register L5-18). Update it when the tables are refreshed.
+export const MARKET_DATA_AS_OF = 'mid-2025';
+
 // Market data keyed by "country:industry" with country-only fallbacks.
-// Reflects market conditions as of mid-2025.
 const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
 
   // ── UNITED KINGDOM ──
   'GB:technology': {
-    marketSummary: 'UK tech hiring is recovering in 2025 with strong demand in AI, fintech, and cybersecurity. London remains the hub but Manchester and Bristol are growing fast.',
+    marketSummary: 'UK tech hiring is recovering, with strong demand in AI, fintech, and cybersecurity. London remains the hub but Manchester and Bristol are growing fast.',
     hotSkills: ['Python', 'Kubernetes', 'TypeScript', 'LLM/GenAI', 'Terraform', 'Golang'],
     risingKeywords: ['AI integration', 'MLOps', 'platform engineering', 'FinOps'],
     cvNorms: ['UK CVs are typically 2 pages maximum', 'Do NOT include photo, age, or marital status — these can trigger unconscious bias claims', 'Spell out GCSE/A-Level grades if listed', 'Include "right to work" status if non-UK national'],
@@ -450,7 +456,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['CIMA, ACA, ACCA certifications valued over US CPA', 'FCA regulatory knowledge is a differentiator'],
   },
   'GB:consulting': {
-    marketSummary: 'Big 4 and MBB continue strong hiring. Public sector consulting saw budget cuts in 2024 but private sector demand is robust.',
+    marketSummary: 'Big 4 and MBB continue strong hiring. Public sector consulting has seen budget cuts but private sector demand is robust.',
     hotSkills: ['PowerPoint', 'Excel', 'Python', 'Tableau', 'stakeholder management'],
     risingKeywords: ['digital transformation', 'AI strategy', 'operating model', 'ESG'],
     cvNorms: ['Two pages maximum for MBB', 'A-Level grades expected by top firms', 'Include university rank and degree classification (2:1, First)'],
@@ -563,7 +569,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
 
   // ── US (DEFAULT) ──
   'US:technology': {
-    marketSummary: 'US tech hiring in 2025 is bifurcated: hyperscalers and AI companies are hiring aggressively while mid-size SaaS companies are more selective. Strong demand for AI/ML, platform, and security engineers.',
+    marketSummary: 'US tech hiring is bifurcated: hyperscalers and AI companies are hiring aggressively while mid-size SaaS companies are more selective. Strong demand for AI/ML, platform, and security engineers.',
     hotSkills: ['Python', 'TypeScript', 'Kubernetes', 'LLM APIs', 'Terraform', 'Golang', 'Rust'],
     risingKeywords: ['agentic AI', 'RAG', 'FinOps', 'platform engineering', 'zero trust security'],
     cvNorms: ['1 page for <10 years experience, 2 pages maximum', 'Do NOT include photo, age, nationality, or marital status', 'Include LinkedIn URL and GitHub for technical roles'],
@@ -571,7 +577,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['Work authorization status (US citizen, GC, H1B) affects hiring speed dramatically', 'Leetcode/system design skills expected at FAANG+'],
   },
   'US:finance': {
-    marketSummary: 'Wall Street hiring recovering in 2025. IB deal flow picking up; AM and hedge funds selective but paying well. Fintech and crypto roles growing again.',
+    marketSummary: 'Wall Street hiring is recovering. IB deal flow picking up; AM and hedge funds selective but paying well. Fintech and crypto roles growing again.',
     hotSkills: ['Excel/VBA', 'Python', 'Bloomberg', 'SQL', 'PowerPoint', 'financial modeling'],
     risingKeywords: ['AI in finance', 'RPA', 'ESG', 'alt data', 'quant finance'],
     cvNorms: ['One page preferred for analysts, two for VPs+', 'Do not include photo or personal demographics', 'GPA still expected for campus/entry-level roles'],
@@ -607,7 +613,7 @@ const MARKET_DATA: Record<CountryIndustryKey, MarketInsight> = {
     uniqueSignals: ['Attribution modeling and multi-touch analytics skills are increasingly valued', 'AI tool proficiency (Jasper, Copy.ai, Midjourney for creative) differentiates'],
   },
   'US:product_management': {
-    marketSummary: 'PM roles are highly competitive in 2025. AI PMs commanding significant premiums. B2B SaaS and AI companies are the main hirers.',
+    marketSummary: 'PM roles are highly competitive. AI PMs commanding significant premiums. B2B SaaS and AI companies are the main hirers.',
     hotSkills: ['SQL', 'Amplitude/Mixpanel', 'Figma', 'Jira', 'A/B testing', 'stakeholder management'],
     risingKeywords: ['AI product', 'LLM product development', 'agentic workflows', 'product-led growth'],
     cvNorms: ['Quantify product impact (e.g., "drove 40% DAU increase" not "improved engagement")', 'Include specific OKR outcomes', 'Ship velocity and team size context expected at senior level'],
@@ -691,7 +697,7 @@ export function formatGeoContextForPrompt(
 
 // ─── 3. SKILLS RECENCY SCORING ────────────────────────────────────────────────
 
-// Skills that are declining in job postings as of 2025
+// Skills that are declining in job postings (compiled MARKET_DATA_AS_OF)
 const AGING_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
   technology: [
     'jquery', 'backbone.js', 'angularjs', 'angular.js', 'coffeescript',
@@ -730,7 +736,7 @@ const AGING_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
   ],
 };
 
-// Skills that are rising in job postings as of 2025
+// Skills that are rising in job postings (compiled MARKET_DATA_AS_OF)
 const FRESH_SKILLS_BY_INDUSTRY: Record<string, string[]> = {
   technology: [
     'llm', 'langchain', 'rag', 'vector database', 'embedding',
@@ -799,11 +805,11 @@ export function formatSkillsRecencyForPrompt(recency: SkillsRecencyResult, indus
   if (!recency.hasAgingSignals && recency.freshSkills.length === 0) return '';
   const lines = ['\n\n<skills_recency_analysis>'];
   if (recency.agingSkills.length > 0) {
-    lines.push(`AGING SKILLS DETECTED (declining in ${industry} job postings as of 2025): ${recency.agingSkills.join(', ')}`);
+    lines.push(`AGING SKILLS DETECTED (declining in ${industry} job postings, per data compiled ${MARKET_DATA_AS_OF}): ${recency.agingSkills.join(', ')}`);
     lines.push('INSTRUCTION: Flag these as "skills that may date your resume" in red flags or quick wins. Suggest modern equivalents where possible (e.g., SVN → Git, AngularJS → React/Vue/Angular 17+). Do NOT tell the candidate to remove them entirely if they\'re genuinely experienced — instead suggest pairing them with modern equivalents.');
   }
   if (recency.freshSkills.length > 0) {
-    lines.push(`STRONG/CURRENT SKILLS (high demand in 2025 ${industry} market): ${recency.freshSkills.join(', ')}`);
+    lines.push(`STRONG/CURRENT SKILLS (high demand in the ${industry} market, per data compiled ${MARKET_DATA_AS_OF}): ${recency.freshSkills.join(', ')}`);
     lines.push('INSTRUCTION: Affirm these as genuine strengths and mention them as competitive advantages in your analysis.');
   }
   lines.push(`Skills Freshness Score: ${recency.freshnessScore}/100`);
@@ -1199,7 +1205,13 @@ export interface TimelineEntry {
   title: string;
   company?: string;
   startYear: number;
+  /** 1-12; a bare year reads as mid-year (6) and `startMonthExact` is false. */
+  startMonth: number;
+  startMonthExact: boolean;
   endYear: number | null; // null = present
+  /** 1-12 (the current month for "present"). */
+  endMonth: number;
+  endMonthExact: boolean;
   durationMonths: number;
 }
 
@@ -1221,21 +1233,41 @@ const MONTH_MAP: Record<string, number> = {
   nov: 11, november: 11, dec: 12, december: 12,
 };
 
-function parseYearMonth(raw: string): { year: number; month: number } {
+function parseYearMonth(raw: string): { year: number; month: number; exact: boolean } {
   const lower = raw.toLowerCase().trim();
   // "Jan 2020" / "January 2020"
   for (const [name, m] of Object.entries(MONTH_MAP)) {
     const re = new RegExp(`${name}[a-z]*[\\s,/]+([12]\\d{3})`);
     const match = lower.match(re);
-    if (match) return { year: parseInt(match[1]), month: m };
+    if (match) return { year: parseInt(match[1]), month: m, exact: true };
   }
   // "2020/01" or "01/2020"
   const slash1 = lower.match(/(\d{1,2})[\/\-]([12]\d{3})/);
-  if (slash1) return { year: parseInt(slash1[2]), month: parseInt(slash1[1]) };
+  if (slash1) {
+    const month = parseInt(slash1[1]);
+    if (month >= 1 && month <= 12) return { year: parseInt(slash1[2]), month, exact: true };
+  }
   // Bare year
   const bareYear = lower.match(/([12]\d{3})/);
-  if (bareYear) return { year: parseInt(bareYear[1]), month: 6 }; // mid-year estimate
-  return { year: 2020, month: 1 };
+  if (bareYear) return { year: parseInt(bareYear[1]), month: 6, exact: false }; // mid-year estimate
+  return { year: 2020, month: 1, exact: false };
+}
+
+/**
+ * Months between the end of one role and the start of the next, in calendar
+ * months: Dec 2019 -> Jan 2020 is 1 (consecutive), not the 7 the old
+ * "every role ends in June, every role starts in January" arithmetic gave
+ * every job change across a year boundary (register L5-05). A bare year
+ * carries no month, so it is read the way that cannot invent a gap: an end
+ * year as December, a start year as January.
+ */
+export function monthsBetweenRoles(
+  prevEnd: { year: number; month: number; exact: boolean },
+  nextStart: { year: number; month: number; exact: boolean },
+): number {
+  const endM = prevEnd.year * 12 + (prevEnd.exact ? prevEnd.month : 12);
+  const startM = nextStart.year * 12 + (nextStart.exact ? nextStart.month : 1);
+  return startM - endM;
 }
 
 /**
@@ -1248,9 +1280,10 @@ export function extractTimeline(resumeText: string): TimelineResult {
   const nowYear = now.getFullYear();
   const nowMonth = now.getMonth() + 1;
 
-  // Regex to catch date ranges on a line
-  const RANGE_RE = /([A-Za-z]+[\s,\/]*[12]\d{3}|[12]\d{3})\s*[–—\-–to]+\s*([A-Za-z]+[\s,\/]*[12]\d{3}|present|current|now)/i;
-  const YEAR_ONLY_RANGE = /([12]\d{3})\s*[–—\-–]+\s*([12]\d{3}|present|current|now)/i;
+  // Regexes to catch date ranges on a line. Global: a line can hold more than
+  // one range ("2015 - 2017, 2018 - 2020"), and each is a role.
+  const RANGE_RE = /([A-Za-z]+[\s,\/]*[12]\d{3}|[12]\d{3})\s*[–—\-–to]+\s*([A-Za-z]+[\s,\/]*[12]\d{3}|present|current|now)/gi;
+  const YEAR_ONLY_RANGE = /([12]\d{3})\s*[–—\-–]+\s*([12]\d{3}|present|current|now)/gi;
 
   const entries: TimelineEntry[] = [];
   let currentTitle = '';
@@ -1260,53 +1293,65 @@ export function extractTimeline(resumeText: string): TimelineResult {
     const isTitleLine = /\b(manager|director|engineer|developer|analyst|specialist|consultant|executive|lead|vp|president|associate|senior|principal|architect|designer|coordinator|administrator|officer|nurse|teacher|attorney|accountant|researcher|scientist|founder|ceo|cfo|cto|intern|head of|staff)\b/i.test(line) && line.length < 120;
     if (isTitleLine) currentTitle = line;
 
-    const m = line.match(RANGE_RE) || line.match(YEAR_ONLY_RANGE);
-    if (!m) continue;
+    let ranges = [...line.matchAll(RANGE_RE)];
+    if (ranges.length === 0) ranges = [...line.matchAll(YEAR_ONLY_RANGE)];
 
-    const start = parseYearMonth(m[1]);
-    const endRaw = m[2].toLowerCase().trim();
-    let endYear: number | null;
-    let endMonth: number;
+    for (const m of ranges) {
+      const start = parseYearMonth(m[1]);
+      const endRaw = m[2].toLowerCase().trim();
+      let endYear: number | null;
+      let endMonth: number;
+      let endMonthExact: boolean;
 
-    if (/present|current|now/.test(endRaw)) {
-      endYear = null;
-      endMonth = nowMonth;
-    } else {
-      const parsed = parseYearMonth(m[2]);
-      endYear = parsed.year;
-      endMonth = parsed.month;
+      if (/present|current|now/.test(endRaw)) {
+        endYear = null;
+        endMonth = nowMonth;
+        endMonthExact = true;
+      } else {
+        const parsed = parseYearMonth(m[2]);
+        endYear = parsed.year;
+        endMonth = parsed.month;
+        endMonthExact = parsed.exact;
+      }
+
+      const actualEndYear = endYear ?? nowYear;
+      const durationMonths = Math.max(1,
+        (actualEndYear - start.year) * 12 + (endMonth - start.month)
+      );
+
+      entries.push({
+        title: currentTitle || 'Role',
+        startYear: start.year,
+        startMonth: start.month,
+        startMonthExact: start.exact,
+        endYear,
+        endMonth,
+        endMonthExact,
+        durationMonths,
+      });
     }
-
-    const actualEndYear = endYear ?? nowYear;
-    const actualEndMonth = endMonth;
-    const durationMonths = Math.max(1,
-      (actualEndYear - start.year) * 12 + (actualEndMonth - start.month)
-    );
-
-    entries.push({
-      title: currentTitle || 'Role',
-      startYear: start.year,
-      endYear,
-      durationMonths,
-    });
   }
 
-  // Sort chronologically (oldest first for gap detection)
-  entries.sort((a, b) => a.startYear - b.startYear);
+  // Sort chronologically by year AND month (oldest first for gap detection).
+  entries.sort((a, b) => (a.startYear - b.startYear) || (a.startMonth - b.startMonth));
 
-  // Detect gaps between consecutive roles
+  // Detect gaps: a role that starts after every earlier role has ended. The
+  // latest end seen so far is the reference, so a role held alongside
+  // another (a part-time or overlapping job) never opens a false gap.
   const gapPeriods: Array<{ afterTitle: string; monthsGap: number }> = [];
-  for (let i = 1; i < entries.length; i++) {
-    const prev = entries[i - 1];
-    const curr = entries[i];
-    const prevEndYear = prev.endYear ?? nowYear;
-    const prevEndMonth = 6;
-    const currStartMonths = curr.startYear * 12 + 1;
-    const prevEndMonths = prevEndYear * 12 + prevEndMonth;
-    const gap = currStartMonths - prevEndMonths;
-    if (gap > 2) {
-      gapPeriods.push({ afterTitle: prev.title, monthsGap: gap });
+  let latestEnd: { year: number; month: number; exact: boolean; title: string } | null = null;
+  for (const e of entries) {
+    const end = { year: e.endYear ?? nowYear, month: e.endMonth, exact: e.endMonthExact, title: e.title };
+    if (latestEnd) {
+      // Calendar months with no role at all: Mar 2018 -> Jan 2019 is nine.
+      const idle = monthsBetweenRoles(latestEnd, { year: e.startYear, month: e.startMonth, exact: e.startMonthExact }) - 1;
+      if (idle > 2) {
+        gapPeriods.push({ afterTitle: latestEnd.title, monthsGap: idle });
+      }
     }
+    const endKey = end.year * 12 + (end.exact ? end.month : 12);
+    const latestKey = latestEnd ? latestEnd.year * 12 + (latestEnd.exact ? latestEnd.month : 12) : -Infinity;
+    if (endKey >= latestKey) latestEnd = end;
   }
 
   const totalExperienceMonths = entries.reduce((sum, e) => sum + e.durationMonths, 0);

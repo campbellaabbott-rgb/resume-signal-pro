@@ -50,7 +50,13 @@ export function ProductPreview({
       window.location.href = "/#upload";
       return;
     }
-    purchaseProduct(productId, { sessionId, ctaSection: "product_preview" });
+    // Bound to the résumé and posting this card previews, never to another
+    // stored copy (use-product-checkout.ts, bindPurchaseResume).
+    purchaseProduct(productId, {
+      sessionId,
+      ctaSection: "product_preview",
+      inputs: { resumeText: resumeText as string, jobDescription: jobDescription ?? null },
+    });
   };
 
   // Idle state — the entry-point button.

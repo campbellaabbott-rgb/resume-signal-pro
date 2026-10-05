@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "10 scan credit ang naidagdag sa iyong account",
+          "Naidagdag na ang iyong mga scan credit",
           "Bawat scan ay sinusuri ang iyong resume laban sa isang partikular na trabaho",
           "Ikumpara ang walang limitasyong job description gamit ang iyong mga credit",
           "Hindi nag-expire ang mga credit"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Ang mga kredito ay hindi mag-e-expire",
     "perCredit": "{{price}} bawat kredito",
     "topUpCredits": "Mag-top Up ng Credits",
-    "useDifferentEmail": "Gumamit ng ibang email",
-    "checkYourCredits": "Suriin ang Iyong mga Scan Credit",
-    "enterEmail": "Ilagay ang email na ginamit mo sa pagbili ng mga scan.",
-    "checking": "Sinusuri...",
-    "checkCredits": "Suriin ang Credits",
-    "noCredits": "Walang nahanap na kredito para sa email na ito.",
     "freeTier": "Libreng antas: Hanggang 7 scan bawat araw, libre magpakailanman.",
     "buyCredits": "Bumili ng Credits — {{price}} bawat isa",
-    "myCredits": "Aking mga Kredito"
+    "myCredits": "Aking mga Kredito",
+    "provenHint": "Awtomatikong lumalabas dito ang mga credit na binili sa browser na ito.",
+    "signInHint": "Binili sa ibang browser? Mag-sign in doon nang isang beses, at susunod ang mga ito sa iyong account dito.",
+    "signIn": "Mag-sign in",
+    "noCreditsHere": "Wala pang scan credit sa browser o account na ito.",
+    "legacyHint": "Bumili ng scan credit bilang {{email}} sa nakaraang pagbisita? Nakatala pa rin ang mga hindi mo nagamit. Mag-email sa {{support}} mula sa address na iyon at idaragdag namin ang mga ito sa iyong account."
   },
   "industryConfidence": {
     "industry": "Industriya:",

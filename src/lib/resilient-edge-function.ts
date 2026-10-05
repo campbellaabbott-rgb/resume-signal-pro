@@ -7,13 +7,37 @@
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError, FunctionsFetchError, FunctionsRelayError } from '@supabase/supabase-js';
 import { parseEdgeFunctionError, ParsedEdgeFunctionError } from './edge-function-errors';
-import { 
-  canAttemptService, 
-  recordServiceSuccess, 
+import {
+  canAttemptService,
+  recordServiceSuccess,
   recordServiceFailure,
+  countsAsServiceFailure,
   CircuitOpenError,
   getServiceCircuitState
 } from '@/hooks/use-circuit-breaker';
+
+/** Thrown when this caller's own clock ran out on an attempt. */
+export class EdgeCallTimeoutError extends Error {
+  constructor(functionName: string, timeoutMs: number) {
+    super(`${functionName} timed out after ${Math.round(timeoutMs / 1000)}s`);
+    this.name = 'EdgeCallTimeoutError';
+  }
+}
+
+const httpStatusOf = (error: unknown): number | undefined =>
+  error instanceof FunctionsHttpError ? (error.context as Response | undefined)?.status : undefined;
+
+/**
+ * The free scanner's retry rule (register L5-11, defect sweep 2.05): retry
+ * only when the request never got an answer (a dropped connection, a relay
+ * failure). Never a 4xx (a limit, a region, a short résumé), never a 5xx or
+ * a 504 (each retry walked the server's whole model chain again and spent
+ * another of the visitor's daily scans), never this caller's own timeout.
+ */
+export function shouldRetryScan(error: unknown): boolean {
+  if (error instanceof EdgeCallTimeoutError) return false;
+  return error instanceof FunctionsFetchError || error instanceof FunctionsRelayError;
+}
 
 export interface ResilientCallOptions {
   /** Maximum number of retry attempts (default: 3) */
@@ -46,6 +70,10 @@ export interface ResilientCallResult<T> {
   attempts: number;
   totalDuration: number;
   circuitOpen?: boolean;
+  /** The HTTP status of a non-2xx answer (absent for network errors and timeouts). */
+  httpStatus?: number;
+  /** The JSON body of a non-2xx answer, when it had one (e.g. { rateLimited, code }). */
+  errorBody?: Record<string, unknown> | null;
 }
 
 /**
@@ -250,21 +278,31 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
     attempts++;
 
     try {
-      // Create AbortController for timeout
+      // The attempt's own clock. The controller used to be created and never
+      // handed to invoke, so no timeout ever fired: a hung function was
+      // waited on until the platform's 504 (register L5-11).
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      let timedOut = false;
+      const timeoutId = setTimeout(() => { timedOut = true; controller.abort(); }, timeout);
 
       console.log(`[EdgeFunction] ${functionName} attempt ${attempts}/${maxRetries + 1}`);
 
-      const { data, error } = await supabase.functions.invoke<T>(functionName, {
-        body: isFormData ? payload : payload,
-        // Don't set Content-Type for FormData - browser sets it with boundary
-      });
-
-      clearTimeout(timeoutId);
+      let invoked: { data: T | null; error: unknown };
+      try {
+        invoked = await supabase.functions.invoke<T>(functionName, {
+          body: isFormData ? payload : payload,
+          // Don't set Content-Type for FormData - browser sets it with boundary
+          signal: controller.signal,
+        });
+      } catch (invokeError) {
+        throw timedOut ? new EdgeCallTimeoutError(functionName, timeout) : invokeError;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      const { data, error } = invoked;
 
       if (error) {
-        throw error;
+        throw timedOut ? new EdgeCallTimeoutError(functionName, timeout) : error;
       }
 
       // Success - record in circuit breaker
@@ -288,8 +326,10 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
       lastError = error;
       const totalDuration = Date.now() - startTime;
 
-      // Record failure in circuit breaker
-      if (enableCircuitBreaker) {
+      // Record failure in circuit breaker: only an outage counts, never a 4xx
+      // answer such as a reached limit (countsAsServiceFailure).
+      const failedStatus = httpStatusOf(error);
+      if (enableCircuitBreaker && countsAsServiceFailure(failedStatus)) {
         recordServiceFailure(functionName, error instanceof Error ? error.message : String(error));
       }
 
@@ -318,7 +358,27 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
         // No more retries, parse and return the error
         console.error(`[EdgeFunction] ${functionName} failed after ${attempts} attempt(s):`, error);
 
-        const parsedError = await parseEdgeFunctionError(error, functionName, enableTelemetry);
+        const parsedError = error instanceof EdgeCallTimeoutError
+          ? {
+              title: 'Taking too long',
+              description: 'The request took too long to answer. Please try again.',
+              isRetryable: true,
+              errorCode: 'CLIENT_TIMEOUT',
+            }
+          : await parseEdgeFunctionError(error, functionName, enableTelemetry);
+
+        // The answer's own JSON body, so a caller can tell a reached limit
+        // ({ rateLimited: true }) from a busy service without parsing prose.
+        let errorBody: Record<string, unknown> | null = null;
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const res = error.context as Response | undefined;
+            const parsed = res && typeof res.clone === 'function' ? await res.clone().json() : null;
+            errorBody = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null;
+          } catch {
+            errorBody = null;
+          }
+        }
 
         // Log final failure to telemetry
         if (enableTelemetry) {
@@ -352,6 +412,8 @@ export async function callEdgeFunctionWithRetry<T = unknown>(
           error: parsedError,
           attempts,
           totalDuration,
+          httpStatus: failedStatus,
+          errorBody,
         };
       }
 
@@ -411,14 +473,43 @@ export function createResilientCaller<T = unknown>(
 }
 
 /**
+ * WHAT A FAILED FREE SCAN MEANS, decided by the answer's status and body,
+ * never by an error code the parser does not produce (defect sweep 2.05: the
+ * page compared to 'RATE_LIMITED' while the parser emits 'RATE_LIMIT', so a
+ * region refusal, a too-short résumé and the daily limit were all re-sent to
+ * the streaming fork, which had none of those checks).
+ *   daily_limit  429 with { rateLimited: true } from the daily allowance: the
+ *                limit message and the scan-pack offer;
+ *   refused      any other 4xx (a region, a short résumé, the hourly request
+ *                budget, a busy gateway): say so, never retry elsewhere;
+ *   outage       a 5xx, no answer, a timeout or an open circuit: the only
+ *                case the streaming fallback may run.
+ */
+export type ScanFailureKind = 'daily_limit' | 'refused' | 'outage';
+
+export function scanFailureKind(result: Pick<ResilientCallResult<unknown>, 'httpStatus' | 'errorBody' | 'error'>): ScanFailureKind {
+  const status = result.httpStatus ?? result.error?.statusCode;
+  const body = result.errorBody ?? null;
+  if (status === 429 && body?.rateLimited === true && body?.code !== 'rate_limited_budget') return 'daily_limit';
+  if (typeof status === 'number' && status >= 400 && status < 500 && status !== 408) return 'refused';
+  return 'outage';
+}
+
+/**
  * Pre-configured callers for specific functions with appropriate defaults
  */
 export const resilientCallers = {
-  /** Free keyword scan - longer timeout due to AI processing */
+  /**
+   * Free keyword scan. The server serves its rule-based report once its own
+   * 85-second model clock runs out, so this waits longer than that (plus the
+   * work around the model calls) and retries only a request that never got an
+   * answer: see shouldRetryScan (register L5-11).
+   */
   freeKeywordScan: createResilientCaller('free-keyword-scan', {
-    maxRetries: 2,
-    timeout: 90000, // 90 seconds for AI
+    maxRetries: 1,
+    timeout: 120000,
     initialDelay: 2000,
+    shouldRetry: shouldRetryScan,
   }),
 
   /** Analyze resume - similar to keyword scan */

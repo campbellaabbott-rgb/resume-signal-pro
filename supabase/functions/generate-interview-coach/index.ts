@@ -6,10 +6,12 @@ import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { assertPaidSession } from "../_shared/paid-session.ts";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-interview-coach.2026-10-04.1";
+const FN_BUILD = "generate-interview-coach.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,6 +74,19 @@ serve(async (req) => {
     }
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+
+    // Any truthy value selects the paid tier below, so any truthy value is gated.
+    const premium = !!isPremium;
+    // THE PAID TIER NEEDS A PAID SESSION (defect sweep 1.60). isPremium:true
+    // selects the $5 Interview Coach (model answers, a 9,000-token budget) and
+    // was honoured for anyone who sent it. Our own servers (the webhook, the
+    // purchase verifier, the retry sweep) deliver with the service-role key and
+    // name the purchase; a browser must name an Interview Coach purchase.
+    if (premium && !isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+      const paidError = await assertPaidSession(supabase, sessionId, COACH_PRODUCTS);
+      if (paidError) return json({ error: paidError, retryable: true }, 402);
+    }
+
     const refused = await modelSpendGate(supabase, req, "generate-interview-coach", COACH_LIMITS, corsHeaders, {
       session: sessionId,
       products: COACH_PRODUCTS,
@@ -90,7 +105,7 @@ serve(async (req) => {
 
     const role = targetRole || currentRole || "the role matching their background";
 
-    const questionFieldSchema = isPremium
+    const questionFieldSchema = premium
       ? `"strongAnswerTips": ["Tip for a strong answer", "Another tip"],
       "redFlags": ["What would make the interviewer concerned"],
       "sampleOpener": "A strong first sentence to start the answer",
@@ -130,7 +145,7 @@ GROUNDING RULE for sampleOpener and modelAnswer: build on facts that actually ap
   }
 }
 
-${isPremium
+${premium
   ? "Generate exactly 14 questions: 4 behavioral, 4 situational, 3 technical, 3 culture fit. Cover a wider range of angles (leadership, conflict, failure, ambiguity, technical depth) so this works as a full mock-interview prep session."
   : "Generate exactly 6 questions: 2 behavioral, 2 situational, 1 technical, 1 culture fit."}
 Make them SPECIFIC to the candidate's actual experience.${buildLanguageInstruction(language)}`;
@@ -154,7 +169,7 @@ Create questions that reference their ACTUAL experience from the resume.`;
         { role: "user", content: userPrompt }
       ],
       temperature: 0.7,
-      maxTokens: isPremium ? 9000 : 4000,
+      maxTokens: premium ? 9000 : 4000,
       jsonResponse: true,
       context: "INTERVIEW-COACH",
     });

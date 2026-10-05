@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "10 scan credits have been added to your account",
+          "Your scan credits have been added",
           "Each scan analyses your CV against a specific job",
           "Compare unlimited job descriptions with your credits",
           "Credits never expire"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Credits never expire",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Top Up Credits",
-    "useDifferentEmail": "Use different email",
-    "checkYourCredits": "Check Your Scan Credits",
-    "enterEmail": "Enter the email you used to purchase scans.",
-    "checking": "Checking...",
-    "checkCredits": "Check Credits",
-    "noCredits": "No credits found for this email.",
     "freeTier": "Free tier: Up to 7 scans per day, free forever.",
     "buyCredits": "Buy Credits — {{price}} each",
-    "myCredits": "My Credits"
+    "myCredits": "My Credits",
+    "provenHint": "Credits bought in this browser show here automatically.",
+    "signInHint": "Bought them in another browser? Sign in there once, and they'll follow your account here.",
+    "signIn": "Sign in",
+    "noCreditsHere": "No scan credits on this browser or account yet.",
+    "legacyHint": "Bought scan credits as {{email}} on an earlier visit? Any you haven't used are still on record. Email {{support}} from that address and we'll add them to your account."
   },
   "industryConfidence": {
     "industry": "Industry:",

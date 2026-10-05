@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "Se han añadido 10 créditos de escaneo a tu cuenta",
+          "Se han añadido tus créditos de escaneo",
           "Cada escaneo analiza tu currículum frente a un puesto específico",
           "Compara descripciones de puestos ilimitadas con tus créditos",
           "Los créditos nunca caducan"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Los créditos nunca caducan",
     "perCredit": "{{price}} por crédito",
     "topUpCredits": "Recargar créditos",
-    "useDifferentEmail": "Usar otro correo electrónico",
-    "checkYourCredits": "Verificar créditos de escaneo",
-    "enterEmail": "Ingresa el correo que usaste para comprar escaneos.",
-    "checking": "Verificando...",
-    "checkCredits": "Verificar créditos",
-    "noCredits": "No se encontraron créditos para este correo.",
     "freeTier": "Nivel gratuito: hasta 7 escaneos por día, gratis para siempre.",
     "buyCredits": "Comprar créditos — {{price}} cada uno",
-    "myCredits": "Mis créditos"
+    "myCredits": "Mis créditos",
+    "provenHint": "Los créditos comprados en este navegador aparecen aquí automáticamente.",
+    "signInHint": "¿Los compraste en otro navegador? Inicia sesión allí una vez y aparecerán en tu cuenta aquí.",
+    "signIn": "Iniciar sesión",
+    "noCreditsHere": "Todavía no hay créditos de escaneo en este navegador ni en tu cuenta.",
+    "legacyHint": "¿Compraste créditos de escaneo como {{email}} en una visita anterior? Los que no hayas usado siguen registrados. Escribe a {{support}} desde esa dirección y los añadiremos a tu cuenta."
   },
   "industryConfidence": {
     "industry": "Industria:",

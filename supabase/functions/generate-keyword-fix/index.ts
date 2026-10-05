@@ -10,7 +10,7 @@ import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-keyword-fix.2026-10-04.1";
+const FN_BUILD = "generate-keyword-fix.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -154,16 +154,15 @@ Provide a comprehensive keyword analysis with actionable suggestions.`;
         throw new Error("No JSON found in response");
       }
     } catch (parseError) {
-      logStep("JSON parse error, using raw content", { error: String(parseError) });
-      result = {
-        missingKeywords: [],
-        industryKeywords: [],
-        actionVerbs: [],
-        skillGaps: [],
-        overallScore: 50,
-        summary: content.substring(0, 500),
-        raw: content
-      };
+      // NO SYNTHESISED DELIVERY (register L5-12). This used to answer 200 with
+      // an empty analysis and an invented "overallScore: 50", which the
+      // webhook saved and marked delivered. A retryable failure keeps the
+      // delivery open for the retry sweep and tells the success page to retry.
+      logStep("JSON parse error: the analysis is unusable", { error: String(parseError) });
+      return new Response(
+        JSON.stringify({ error: "The AI returned an unreadable analysis. Please try again.", retryable: true }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     logStep("Keyword analysis complete", { 

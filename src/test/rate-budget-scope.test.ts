@@ -160,8 +160,12 @@ describe("a 429 says which limit fired", () => {
 
   it("every enforcer sends Retry-After, so the caller is told when to come back", () => {
     for (const fn of enforcers) {
-      expect(src(fn), `${fn} 429s without telling the caller when to retry`)
-        .toMatch(/["']Retry-After["']:\s*["']\d+["']/);
+      // A streaming enforcer (free-keyword-scan-stream, since 2026-10-05) has
+      // already answered 200 text/event-stream when it refuses, so there is no
+      // header left to set: its refusal EVENT carries the wait instead.
+      const stream = /text\/event-stream/.test(src(fn));
+      expect(src(fn), `${fn} refuses without telling the caller when to retry`)
+        .toMatch(stream ? /retryAfterSeconds:\s*\d+/ : /["']Retry-After["']:\s*["']\d+["']/);
     }
   });
 });

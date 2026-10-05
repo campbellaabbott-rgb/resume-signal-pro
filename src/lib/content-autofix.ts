@@ -1,4 +1,20 @@
-// Client-side auto-fix for common AI content corruption patterns
+// Client-side auto-fix for common AI content corruption patterns, applied to
+// the streamed Premium Package résumé and cover letter (ProductSuccess).
+//
+// WHAT WAS REMOVED, AND WHY (register L5-03). Five rules rewrote correct text
+// in the paid deliverable:
+//   - a space between a letter and 2+ digits: "jsmith1987@gmail.com" became
+//     "jsmith 1987@gmail.com" and "github.com/jsmith2020" a broken URL;
+//   - every "Git" became "GitHub" (a skill the candidate never claimed);
+//   - every "linked" became "LinkedIn" ("closely LinkedIn to retention");
+//   - a lower-case letter followed by a capitalised word got a full stop
+//     between them, so "GitHub" printed "Git. Hub", "LinkedIn" "Linked. In",
+//     "JavaScript" "Java. Script";
+//   - "apply the ...", "year over ..." and "finished top 3 of ..." were
+//     rewritten wherever they appeared, changing what sentences say.
+// And emails and URLs are now set aside before any rule runs and put back
+// unchanged afterwards: no rule below may touch an address a buyer pastes
+// into a real application.
 
 export interface AutoFixResult {
   fixed: string;
@@ -7,9 +23,18 @@ export interface AutoFixResult {
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// An email, or a URL / bare domain path (linkedin.com/in/..., github.com/...).
+const ADDRESS = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|(?:https?:\/\/)?(?:www\.)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:com|net|org|io|dev|co|me|ai|app|edu|gov|uk|de|fr|ca|au|in|us)\b(?:\/[^\s|,)]*)?/g;
+const MASK_OPEN = "";
+const MASK_CLOSE = "";
+
 export const autoFixContent = (content: string, originalResume?: string): AutoFixResult => {
-  let fixed = content;
   const corrections: string[] = [];
+  const addresses: string[] = [];
+  let fixed = content.replace(ADDRESS, (m) => {
+    addresses.push(m);
+    return `${MASK_OPEN}${addresses.length - 1}${MASK_CLOSE}`;
+  });
 
   // Remove random commas at the start of lines
   if (/^\s*,\s*/m.test(fixed)) {
@@ -53,41 +78,12 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     if (fixed !== before) corrections.push("Inserted newline before Professional Experience header");
   }
 
-  // Fix missing space before numbers (e.g., "across67" → "across 67")
-  {
-    const before = fixed;
-    fixed = fixed.replace(/([a-zA-Z])(\d{2,})/g, (match, letter, num) => {
-      // Don't fix things like "gpt5" or version numbers, or common patterns
-      if (/^[a-z]$/.test(letter) && /^\d{1,2}$/.test(num)) return match;
-      if (["x", "v", "k", "m", "b"].includes(String(letter).toLowerCase())) return match; // 1x, v2, etc.
-      return `${letter} ${num}`;
-    });
-    if (fixed !== before) corrections.push("Added missing spaces before numbers");
-  }
-
   // Fix truncated CI/CD
   if (/\/CD\b/i.test(fixed) && !/CI\/CD/i.test(fixed)) {
     fixed = fixed.replace(/\b\/CD\b/gi, "CI/CD");
     corrections.push("Fixed truncated CI/CD");
   }
   fixed = fixed.replace(/including\s*\/CD/gi, "including CI/CD");
-
-  // Fix truncated GitHub (Git without Hub following)
-  {
-    const before = fixed;
-    fixed = fixed.replace(
-      /\bGit\b(?!\s*(Hub|Lab|Actions|Flow|Kraken|ignore|config|Bash|commit|branch|merge|push|pull|clone|remote|log|diff|status|add|checkout|reset))/gi,
-      "GitHub"
-    );
-    if (fixed !== before) corrections.push("Fixed truncated Git → GitHub");
-  }
-
-  // Fix truncated LinkedIn
-  {
-    const before = fixed;
-    fixed = fixed.replace(/\bLinked\b(?!\s*(In|Sales|List))/gi, "LinkedIn");
-    if (fixed !== before) corrections.push("Fixed truncated Linked → LinkedIn");
-  }
 
   // Fix Fortune without 500
   if (originalResume?.includes("Fortune 500") && /Fortune\b(?!\s*\d)/i.test(fixed)) {
@@ -129,8 +125,8 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     corrections.push("Fixed truncated Copilot");
   }
 
-  // Fix Git Actions → GitHub Actions
-  if (/\bGit\s+Actions\b/.test(fixed)) {
+  // Fix Git Actions → GitHub Actions (only when the candidate wrote GitHub Actions)
+  if (originalResume?.includes("GitHub Actions") && /\bGit\s+Actions\b/.test(fixed)) {
     fixed = fixed.replace(/\bGit\s+Actions\b/g, "GitHub Actions");
     corrections.push("Fixed Git Actions → GitHub Actions");
   }
@@ -203,10 +199,11 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     if (fixed !== before) corrections.push("Fixed 'I deals' → 'I closed deals'");
   }
 
-  // Fix "apply the Target Position" → "apply for the Target Position"
+  // Fix "apply the Target Position" → "apply for the Target Position" (only
+  // that placeholder: "apply the same rigour" must stay as written)
   {
     const before = fixed;
-    fixed = fixed.replace(/\bapply the\b/gi, "apply for the");
+    fixed = fixed.replace(/\bapply the Target Position\b/g, "apply for the Target Position");
     if (fixed !== before) corrections.push("Fixed 'apply the' → 'apply for the'");
   }
 
@@ -218,10 +215,11 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     if (fixed !== before) corrections.push("Added missing 'At' before company name");
   }
 
-  // Fix "year over" at end (incomplete "year over year") 
+  // Fix "year over" at the end of a sentence (incomplete "year over year");
+  // "a year over the target" is left alone.
   {
     const before = fixed;
-    fixed = fixed.replace(/\byear over\b(?!\s*year)/gi, "year over year");
+    fixed = fixed.replace(/\byear over(?=\s*(?:[.,;]|$))/gim, "year over year");
     if (fixed !== before) corrections.push("Fixed incomplete 'year over' → 'year over year'");
   }
 
@@ -267,13 +265,6 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     if (fixed !== before) corrections.push("Fixed 'I look to connecting' → 'I look forward to connecting'");
   }
 
-  // Fix "finishing top 3 of" → "finishing top 3 on"
-  {
-    const before = fixed;
-    fixed = fixed.replace(/\b(finished|finishing) top (\d+) of\b/gi, "$1 top $2 on");
-    if (fixed !== before) corrections.push("Fixed 'top X of' → 'top X on'");
-  }
-
   // Fix "Earlier, at Stack," incomplete sentences - add context
   {
     const before = fixed;
@@ -293,13 +284,6 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
     const before = fixed;
     fixed = fixed.replace(/\bleaderboard in(\d)\b/gi, "leaderboard in Q$1");
     if (fixed !== before) corrections.push("Fixed 'leaderboard inX' → 'leaderboard in QX'");
-  }
-
-  // Fix run-together sentences missing period+space
-  {
-    const before = fixed;
-    fixed = fixed.replace(/([a-z])([A-Z][a-z])/g, "$1. $2");
-    if (fixed !== before) corrections.push("Added missing periods between run-together sentences");
   }
 
   // === DUPLICATE SUMMARY REMOVAL ===
@@ -355,14 +339,19 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
       const prefix = y.slice(0, 3); // "202" for 2024
       yearsByPrefix.set(prefix, [...(yearsByPrefix.get(prefix) || []), y]);
     }
-    fixed = fixed.replace(/\b(20\d)\.?\b/g, (match, prefix: string) => {
-      const candidates = yearsByPrefix.get(prefix) || [];
-      if (candidates.length === 1) {
-        corrections.push(`Restored year ${match} → ${candidates[0]}`);
-        return candidates[0];
-      }
-      return match;
-    });
+    // Only where a year belongs (after a month name or a range dash): "201
+    // employees" is a headcount, not a truncated 2019.
+    fixed = fixed.replace(
+      /(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+|[–—-]\s*)(20\d)(?![\d.])/gi,
+      (match, lead: string, prefix: string) => {
+        const candidates = yearsByPrefix.get(prefix) || [];
+        if (candidates.length === 1) {
+          corrections.push(`Restored year ${prefix} → ${candidates[0]}`);
+          return `${lead}${candidates[0]}`;
+        }
+        return match;
+      },
+    );
 
     // 3) Dollar amounts: restore commas / missing digits / missing $ when we can match by digits
     const originalAmounts = Array.from(new Set(originalResume.match(/\$\d[\d,]*(?:\.\d+)?[MBK]?\+?/g) || []));
@@ -409,6 +398,9 @@ export const autoFixContent = (content: string, originalResume?: string): AutoFi
       }
     }
   }
+
+  // The addresses set aside at the start go back exactly as written.
+  fixed = fixed.replace(new RegExp(`${MASK_OPEN}(\\d+)${MASK_CLOSE}`, "g"), (_m, i: string) => addresses[Number(i)] ?? "");
 
   if (corrections.length > 0) {
     console.log(`[AUTO-FIX] Applied ${corrections.length} corrections:`, corrections);

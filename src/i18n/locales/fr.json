@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "10 crédits de scan ont été ajoutés à votre compte",
+          "Vos crédits de scan ont été ajoutés",
           "Chaque scan analyse votre CV par rapport à un poste spécifique",
           "Comparez un nombre illimité d'offres d'emploi avec vos crédits",
           "Les crédits n'expirent jamais"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Les crédits n'expirent jamais",
     "perCredit": "{{price}} par crédit",
     "topUpCredits": "Recharger des crédits",
-    "useDifferentEmail": "Utiliser un autre e-mail",
-    "checkYourCredits": "Vérifier vos crédits de scan",
-    "enterEmail": "Entrez l'e-mail utilisé pour acheter des scans.",
-    "checking": "Vérification...",
-    "checkCredits": "Vérifier les crédits",
-    "noCredits": "Aucun crédit trouvé pour cet e-mail.",
     "freeTier": "Niveau gratuit : jusqu'à 7 scans par jour, gratuit pour toujours.",
     "buyCredits": "Acheter des crédits — {{price}} chacun",
-    "myCredits": "Mes crédits"
+    "myCredits": "Mes crédits",
+    "provenHint": "Les crédits achetés dans ce navigateur s'affichent ici automatiquement.",
+    "signInHint": "Achetés dans un autre navigateur ? Connectez-vous-y une fois et ils suivront votre compte ici.",
+    "signIn": "Se connecter",
+    "noCreditsHere": "Aucun crédit de scan sur ce navigateur ou ce compte pour l'instant.",
+    "legacyHint": "Vous avez acheté des crédits de scan en tant que {{email}} lors d'une visite précédente ? Ceux que vous n'avez pas utilisés sont toujours enregistrés. Écrivez à {{support}} depuis cette adresse et nous les ajouterons à votre compte."
   },
   "industryConfidence": {
     "industry": "Secteur :",

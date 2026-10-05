@@ -153,6 +153,8 @@ const versionName = (s: UserScan) =>
 interface AccountData {
   credits: number;
   purchases: Array<{ product: string; date: string }>;
+  /** False while this sign-in has not proven the account's mailbox (get-account-data). */
+  mailboxProven?: boolean;
 }
 
 const toFixPlan = (value: Json | null | undefined): FixItem[] | null => {
@@ -432,8 +434,8 @@ export default function Account() {
     const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
     setTargetScore(prof?.target_score ?? null);
     setMatching({ scanId: prof?.matching_scan_id ?? null, text: prof?.matching_resume_text ?? null });
-    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"] } }).data;
-    setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [] });
+    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"]; mailboxProven?: boolean } }).data;
+    setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [], mailboxProven: acc?.mailboxProven !== false });
     setFetching(false);
     void checkPostingFreshness(apps);
   }, [session]);
@@ -1831,7 +1833,11 @@ export default function Account() {
               <h2 className="font-semibold text-foreground text-sm">{t("accountPage.credits", "Scan credits")}</h2>
             </div>
             <p className="text-3xl font-bold text-foreground mb-1">{fetching ? "…" : account?.credits ?? 0}</p>
-            <p className="text-xs text-muted-foreground mb-3">Credits are linked to your email and never expire.</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              {account?.mailboxProven === false
+                ? "Credits bought in a browser where you're signed in follow your account and never expire. Credits under your email address count here once it's confirmed: sign in with Google using it."
+                : "Credits are linked to your email and never expire."}
+            </p>
             <Link to="/pricing" className="inline-block px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
               Get more credits →
             </Link>
@@ -1844,7 +1850,11 @@ export default function Account() {
             {fetching ? (
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             ) : (account?.purchases.length ?? 0) === 0 ? (
-              <p className="text-xs text-muted-foreground">No purchases yet. Anything you buy with this email shows up here.</p>
+              <p className="text-xs text-muted-foreground">
+                {account?.mailboxProven === false
+                  ? "Purchases made under your email address show here once this sign-in confirms the address: sign in with Google using it."
+                  : "No purchases yet. Anything you buy with this email shows up here."}
+              </p>
             ) : (
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {account!.purchases.map((p, i) => (
