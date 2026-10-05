@@ -19,6 +19,12 @@
  *   L6-27  subscription and Freelance Boost sales became false failures.
  *   L6-18  refunds and disputes left no trace a person would read.
  *
+ * And from the review of those fixes (2026-10-05): when the success page
+ * claimed a sale first and its credit grant or generation failed, its
+ * confirmation mail closed the row as 'delivered' anyway, so the sweeper
+ * never retried it -- and the row it wrote carried no metadata, so a retry
+ * would have credited 10 for a 50-credit pack and had no résumé to use.
+ *
  * Each is run here against the shipped handler with only its network faked.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -350,6 +356,44 @@ describe("verify-product-purchase", () => {
     expect(rpcCalls.filter((c) => c.name === "add_scan_credits")).toHaveLength(1);
     expect(savedFor("cs_live_verify_scan")?.generated_content).toMatchObject({ credits: 20 });
     expect(rpcCalls.some((c) => c.name === "log_delivery_step" && c.args.p_step === "generation_completed")).toBe(true);
+  });
+
+  const steps = () => rpcCalls.filter((c) => c.name === "log_delivery_step").map((c) => c.args);
+  const mailed = () => fetches.some((f) => f.url.includes("send-product-email"));
+
+  it("a pack whose credits failed is left failed with what it bought, and not confirmed (review of L6-13 / L6-26)", async () => {
+    world.sessions.cs_live_verify_credit_flake = paid("cs_live_verify_credit_flake", { product_type: "scan_pack", credits: "50", customer_email: "b@example.com" }, { amount_total: 1000 });
+    db.rpcs.add_scan_credits = () => ({ data: null, error: { message: "fake: deadlock detected" } });
+    const r = await post({ sessionId: "cs_live_verify_credit_flake" });
+    expect(r.status).toBe(200);
+    expect(r.json.emailSent).toBe(false);
+    expect(mailed(), "a confirmation went out for credits that never landed").toBe(false);
+    const all = steps();
+    expect(all.find((a) => a.p_step === "payment_received")?.p_metadata, "the row does not say how many credits were bought").toMatchObject({ credits: 50 });
+    expect(all.find((a) => a.p_step === "generation_completed")).toMatchObject({ p_success: false });
+    expect(String(all.find((a) => a.p_step === "generation_completed")?.p_error)).toMatch(/deadlock/);
+    expect(all.some((a) => a.p_step === "email_sent"), "the mail step would close the row as delivered").toBe(false);
+  });
+
+  it("a keyword fix whose generation failed is not confirmed, and its row keeps the résumé to retry from", async () => {
+    const id = "cs_live_verify_kwfix_down";
+    db.rows("checkout_resume_refs").push({ stripe_session_id: id, resume_session_id: RESUME_ID });
+    world.sessions[id] = paid(id, { product_type: "basic_keyword_fix", job_title: "Analyst", language: "de" }, { amount_total: 300 });
+    generatorAnswer = () => new Response(JSON.stringify({ error: "model busy" }), { status: 503 });
+    const r = await post({ sessionId: id, generateContent: true });
+    expect(r.status).toBe(200);
+    expect(mailed()).toBe(false);
+    const all = steps();
+    expect(all.find((a) => a.p_step === "payment_received")?.p_metadata).toMatchObject({ resume_session_id: RESUME_ID, job_title: "Analyst", language: "de" });
+    expect(all.filter((a) => a.p_step === "generation_completed").map((a) => a.p_success)).toEqual([false]);
+    expect(all.some((a) => a.p_step === "email_sent")).toBe(false);
+  });
+
+  it("a delivery that succeeded is still confirmed by mail", async () => {
+    world.sessions.cs_live_verify_ok = paid("cs_live_verify_ok", { product_type: "scan_pack", credits: "30", customer_email: "b@example.com" }, { amount_total: 600 });
+    const r = await post({ sessionId: "cs_live_verify_ok" });
+    expect(r.json.emailSent).toBe(true);
+    expect(steps().map((a) => a.p_step)).toEqual(["payment_received", "generation_completed", "email_sent"]);
   });
 
   it("verifies a $0 comp and names the address the buyer typed into Checkout (L6-10, L6-25)", async () => {

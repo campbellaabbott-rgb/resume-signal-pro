@@ -14,6 +14,14 @@
  *   - check-subscription served a cached "inactive" row for an hour, so a
  *     buyer who had just paid read as not subscribed.
  *
+ * AND FROM THE REVIEW OF THAT FIX (2026-10-05).
+ *   - With no row created for a non-subscriber, every page view by a
+ *     signed-in one was a fresh Stripe lookup; a signed-in caller who sent
+ *     any cs_... string skipped the per-address allowance altogether.
+ *   - create-product-checkout's signed-out "sign in to use your Pro plan"
+ *     answer started reading the agent table too, so it told a stranger
+ *     about $99 plans and comped agent accounts that nothing else reveals.
+ *
  * WHAT THIS HOLDS, against the shipped handlers with only Stripe, the
  * database and the auth server faked (helpers/edge-harness).
  */
@@ -39,13 +47,15 @@ interface StripeWorld {
   sessions: Record<string, Record<string, unknown>>;
   calls: string[];
   created: Array<Record<string, unknown>>;
+  /** Runs inside customers.list: what lands in the database mid-lookup. */
+  onCustomersList?: (email: string) => void;
 }
 
 const STRIPE_STUB = `
 export default class Stripe {
   constructor() {
     const w = () => globalThis.__stripe;
-    this.customers = { list: async ({ email }) => { w().calls.push("customers.list"); return { data: w().customers[email] ?? [], has_more: false }; } };
+    this.customers = { list: async ({ email }) => { w().calls.push("customers.list"); w().onCustomersList?.(email); return { data: w().customers[email] ?? [], has_more: false }; } };
     this.subscriptions = { list: async ({ customer }) => { w().calls.push("subscriptions.list"); return { data: w().subs[customer] ?? [], has_more: false }; } };
     this.checkout = { sessions: {
       create: async (p) => { w().calls.push("sessions.create"); w().created.push(p); return { id: "cs_test_new", url: "https://checkout.stripe.com/c/cs_test_new", amount_total: 0, currency: "usd", mode: p.mode, payment_status: "unpaid" }; },
@@ -78,7 +88,7 @@ let authCalls: string[];
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
   g.Deno = { env: { get: (k: string) => env[k] } };
-  for (const fn of ["check-subscription", "create-subscription-checkout", "create-agent-checkout"]) {
+  for (const fn of ["check-subscription", "create-subscription-checkout", "create-agent-checkout", "create-product-checkout"]) {
     handlers[fn] = await loadEdgeHandler(fn, STUBS);
   }
 }, 120_000);
@@ -90,6 +100,7 @@ beforeEach(() => {
   authCalls = [];
   db.rpcs.check_rate_limit = () => { rateCalls++; return { data: rateAllowed, error: null }; };
   db.rpcs.record_checkout_start = () => ({ data: true, error: null });
+  db.unique = { pro_subscribers: ["email"] };
   stripe = { customers: {}, subs: {}, sessions: {}, calls: [], created: [] };
   const g = globalThis as Record<string, unknown>;
   g.__stripe = stripe;
@@ -174,6 +185,100 @@ describe("check-subscription answers only about the caller", () => {
   });
 });
 
+describe("check-subscription remembers 'not subscribed' for a signed-in caller (2026-10-05 review)", () => {
+  it("five page views by a signed-in non-subscriber cost one Stripe lookup, not five", async () => {
+    for (let i = 0; i < 5; i++) {
+      const res = await post("check-subscription", {}, "jwt-owner");
+      expect(res.status).toBe(200);
+      expect((await res.json()).active).toBe(false);
+    }
+    expect(stripe.calls.filter((c) => c === "customers.list"), "every view went to Stripe").toHaveLength(1);
+    expect(rateCalls, "the allowance was spent on views the cache answered").toBe(1);
+    expect(db.rows("pro_subscribers")).toEqual([expect.objectContaining({ email: "owner@example.com", status: "inactive", stripe_customer_id: null })]);
+  });
+
+  it("after five minutes the address is looked up again, so a purchase the webhook missed still shows", async () => {
+    db.rows("pro_subscribers").push({ email: "owner@example.com", status: "inactive", stripe_customer_id: null, current_period_end: null, updated_at: new Date(Date.now() - 6 * 60_000).toISOString() });
+    stripe.customers["owner@example.com"] = [{ id: "cus_owner" }];
+    stripe.subs.cus_owner = [sub("active", PRO)];
+    expect((await (await post("check-subscription", {}, "jwt-owner")).json()).active).toBe(true);
+  });
+
+  it("never writes 'not subscribed' over a row the webhook wrote during the lookup", async () => {
+    stripe.onCustomersList = (email) => {
+      db.rows("pro_subscribers").push({ email, status: "active", stripe_customer_id: "cus_new", current_period_end: null, updated_at: new Date().toISOString() });
+    };
+    await post("check-subscription", {}, "jwt-owner");
+    expect(db.rows("pro_subscribers")).toEqual([expect.objectContaining({ email: "owner@example.com", status: "active", stripe_customer_id: "cus_new" })]);
+  });
+
+  it("nor downgrades a row the webhook rewrote during the lookup", async () => {
+    db.rows("pro_subscribers").push({ email: "owner@example.com", status: "inactive", stripe_customer_id: null, current_period_end: null, updated_at: new Date(Date.now() - 6 * 60_000).toISOString() });
+    stripe.onCustomersList = (email) => {
+      Object.assign(db.rows("pro_subscribers").find((r) => r.email === email)!, { status: "active", stripe_customer_id: "cus_new", updated_at: new Date().toISOString() });
+    };
+    await post("check-subscription", {}, "jwt-owner");
+    expect(db.rows("pro_subscribers")[0]).toMatchObject({ status: "active", stripe_customer_id: "cus_new" });
+  });
+
+  it("but a stale row Stripe no longer backs is still downgraded, and served from then on", async () => {
+    db.rows("pro_subscribers").push({ email: "owner@example.com", status: "active", stripe_customer_id: "cus_gone", current_period_end: null, updated_at: new Date(Date.now() - 2 * 3600_000).toISOString() });
+    expect((await (await post("check-subscription", {}, "jwt-owner")).json()).active).toBe(false);
+    expect(db.rows("pro_subscribers")[0]).toMatchObject({ status: "inactive", stripe_customer_id: null });
+    expect(Date.now() - new Date(String(db.rows("pro_subscribers")[0].updated_at)).getTime()).toBeLessThan(60_000);
+  });
+
+  it("an anonymous caller still writes nothing and costs nothing", async () => {
+    await post("check-subscription", { email: "owner@example.com" });
+    expect(db.writes).toEqual([]);
+    expect(stripe.calls).toEqual([]);
+  });
+
+  it("a signed-in caller holding the checkout they just completed is told the live answer, not a not-live row", async () => {
+    db.rows("pro_subscribers").push({ email: "owner@example.com", status: "inactive", stripe_customer_id: null, current_period_end: null, updated_at: new Date(Date.now() - 60_000).toISOString() });
+    stripe.customers["owner@example.com"] = [{ id: "cus_owner" }];
+    stripe.subs.cus_owner = [sub("active", PRO)];
+    const body = await (await post("check-subscription", { sessionId: "cs_test_just_paid" }, "jwt-owner")).json();
+    expect(body.active).toBe(true);
+    expect(rateCalls, "the live check was not counted").toBe(1);
+  });
+
+  it("a session id in the body is not a way past the allowance", async () => {
+    rateAllowed = false;
+    const res = await post("check-subscription", { sessionId: "cs_test_invented_0000" }, "jwt-owner");
+    expect(res.status).toBe(429);
+    expect(stripe.calls, "an invented session id bought a Stripe lookup over the allowance").toEqual([]);
+  });
+});
+
+describe("create-product-checkout tells a signed-out caller no more than it did before the wave (2026-10-05 review)", () => {
+  const buy = async (email: string, bearer?: string) =>
+    (await post("create-product-checkout", { productId: "coverLetter", email }, bearer)).json();
+
+  it("a comped or $99 agent account looks like any stranger to a signed-out caller", async () => {
+    db.rows("agent_subscribers").push({ email: "comped@example.com", status: "active", current_period_end: null, stripe_customer_id: null });
+    const comped = await buy("comped@example.com");
+    const stranger = await buy("nobody@example.com");
+    expect(comped.proRequiresSignIn, "the agent table answered a stranger").toBeUndefined();
+    expect(Object.keys(comped).sort()).toEqual(Object.keys(stranger).sort());
+    expect(comped.url).toBe("https://checkout.stripe.com/c/cs_test_new");
+  });
+
+  it("the Pro answer it already gave is kept until the owner decides (a signed-out subscriber is not charged)", async () => {
+    db.rows("pro_subscribers").push({ email: "pro@example.com", status: "active", current_period_end: null });
+    expect(await buy("pro@example.com")).toEqual({ proRequiresSignIn: true });
+    expect(stripe.calls).not.toContain("sessions.create");
+  });
+
+  it("signed in, the agent plan's owner gets the included tool without Stripe", async () => {
+    db.rows("agent_subscribers").push({ email: "owner@example.com", status: "active", current_period_end: null, stripe_customer_id: null });
+    const body = await buy("someone-else@example.com", "jwt-owner");
+    expect(body.proIncluded).toBe(true);
+    expect(db.rows("pro_grants")[0]).toMatchObject({ email: "owner@example.com", product_id: "coverLetter" });
+    expect(stripe.calls).not.toContain("sessions.create");
+  });
+});
+
 describe("the subscription checkouts sell only to a signed-in account, and never a second plan", () => {
   for (const fn of ["create-subscription-checkout", "create-agent-checkout"]) {
     it(`${fn}: an anonymous request is a 401 that names no status and makes no Stripe call`, async () => {
@@ -245,7 +350,7 @@ describe("the subscription checkouts sell only to a signed-in account, and never
     expect(stripe.calls).toEqual([]);
   });
 
-  it("every response of the three carries its build", async () => {
+  it("every response of the four carries its build", async () => {
     for (const fn of Object.keys(handlers)) {
       const res = await handlers[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
       expect(res.headers.get("x-fn-build")).toMatch(new RegExp(`^${fn}\\.2026-10-05\\.\\d+$`));

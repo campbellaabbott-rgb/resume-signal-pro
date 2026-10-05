@@ -11,11 +11,16 @@
  *     failed, silently, for every such sale);
  *   - the retry selector leaves a payment_received row alone for its first
  *     ten minutes (the webhook may still be generating it) and still never
- *     picks a row whose next_retry_at is infinity.
+ *     picks a row whose next_retry_at is infinity;
+ *   - (2026-10-05 review) the row keeps the credits bought and the résumé to
+ *     regenerate from, so a failed delivery the success page claimed is
+ *     retried for what was bought.
  *
  * 20261005113000 (2026-10-04 completeness review): the reconcile cron sends
  * its vault key as x-reconcile-cron, the key check answers a boolean and is
- * closed to every client role, and the tick still stamps lastCronAt.
+ * closed to every client role, and the tick still stamps lastCronAt -- and
+ * (2026-10-05 review) the file refuses to apply when the key the tick would
+ * send is missing, unreadable or refused by the check.
  */
 import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -79,6 +84,26 @@ describe("20261005110000: a sale the success page claims first leaves a delivery
     await db.query("SELECT public.log_delivery_step('cs_no_metadata', 'generation_started')");
     const bare = await db.query<{ product_type: string }>("SELECT product_type FROM public.product_deliveries WHERE stripe_session_id = 'cs_no_metadata'");
     expect(bare.rows[0].product_type, "a step with no metadata still creates its row").toBe("unknown");
+  });
+
+  it("keeps what the sweeper needs on the row, and a failed delivery is picked up at once for what was bought", async () => {
+    const db = new PGlite();
+    await db.exec(ROLES + DELIVERIES);
+    await db.exec(DELIVERY_SQL);
+    await db.query("SELECT public.log_delivery_step($1, 'payment_received', true, NULL, NULL, $2::jsonb)", [
+      "cs_page_first", JSON.stringify({
+        email: "b@example.com", product_type: "scan_pack", product_name: "50 credits", amount_cents: 1000,
+        credits: 50, resume_session_id: "11111111-2222-4333-8444-555555555555", job_title: "Analyst", job_company: null, language: "de",
+      }),
+    ]);
+    await db.query("SELECT public.log_delivery_step('cs_page_first', 'generation_completed', false, 'add_scan_credits: deadlock')");
+    const { rows } = await db.query<{ metadata: Record<string, unknown>; status: string; customer_email: string }>(
+      "SELECT metadata, status, customer_email FROM public.product_deliveries WHERE stripe_session_id = 'cs_page_first'");
+    expect(rows[0].status).toBe("generation_failed");
+    expect(rows[0].customer_email).toBe("b@example.com");
+    expect(rows[0].metadata).toEqual({ credits: 50, resume_session_id: "11111111-2222-4333-8444-555555555555", job_title: "Analyst", language: "de" });
+    const due = await db.query<{ stripe_session_id: string; metadata: { credits?: number } }>("SELECT stripe_session_id, metadata FROM public.get_failed_deliveries_for_retry(10)");
+    expect(due.rows).toEqual([expect.objectContaining({ stripe_session_id: "cs_page_first", metadata: expect.objectContaining({ credits: 50 }) })]);
   });
 
   it("the sweeper waits ten minutes for the webhook, and never picks a row it was told to leave", async () => {
@@ -164,6 +189,18 @@ describe("20261005113000: the payment safety net answers its cron and nobody els
               has_function_privilege('service_role', 'public.reconcile_cron_key_matches(text)', 'EXECUTE') AS svc,
               has_function_privilege('anon', 'public.reconcile_stripe_tick()', 'EXECUTE') AS tick_anon`);
     expect(priv.rows[0]).toEqual({ anon: false, auth: false, svc: true, tick_anon: false });
+  });
+
+  it("refuses to apply when the tick's key cannot be read back from the vault", async () => {
+    const db = new PGlite();
+    await db.exec(ROLES + PLATFORM.replace("SELECT id, name, secret AS decrypted_secret", "SELECT id, name, NULL::text AS decrypted_secret"));
+    await expect(db.exec(RECONCILE_SQL)).rejects.toThrow(/cannot be read back/);
+  });
+
+  it("refuses to apply when the key already in the vault is one the function would refuse", async () => {
+    const db = new PGlite();
+    await db.exec(ROLES + PLATFORM + "INSERT INTO vault.secrets (name, secret) VALUES ('reconcile_cron_key', 'too-short');");
+    await expect(db.exec(RECONCILE_SQL)).rejects.toThrow(/refuses the key the tick sends/);
   });
 
   it("on a host with no vault the tick still fires, unkeyed (and the function refuses it), rather than failing", async () => {

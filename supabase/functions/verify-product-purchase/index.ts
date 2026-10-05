@@ -10,7 +10,7 @@ import { isProCached } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-05.1";
+const FN_BUILD = "verify-product-purchase.2026-10-05.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +21,31 @@ const corsHeaders = {
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[VERIFY-PRODUCT-PURCHASE] ${step}`, details ? JSON.stringify(details) : '');
 };
+
+const SCAN_CREDIT_PRODUCT_TYPES = ['scan_pack', 'scan_credits', 'career_bundle'];
+// The products this path can generate when asked: the Apply Assistant and
+// every case of buildGenerationRequest below.
+const GENERATED_PRODUCT_TYPES = [
+  'apply_assistant', 'basic_keyword_fix', 'cover_letter', 'premium_package', 'graduate_gameplan',
+  'career_snapshot', 'ats_defense', 'interview_coach', 'career_path_simulator',
+];
+
+/**
+ * How many credits a scan purchase bought: the metadata, else the line item's
+ * quantity (create-scan-pack-checkout), else the product's default. Capped at
+ * 500, as the webhook caps it. Read once, so the credit grant and the delivery
+ * row the sweeper re-credits from can never disagree.
+ */
+function creditsBoughtBy(session: {
+  metadata: Record<string, string>;
+  line_items?: { data?: Array<{ quantity?: number | null }> };
+}): number {
+  const productType = session.metadata?.product_type;
+  const fallback = productType === 'career_bundle' ? 75 : 10;
+  let credits = parseInt(session.metadata?.credits || '', 10);
+  if (!(credits > 0) && productType !== 'career_bundle') credits = session.line_items?.data?.[0]?.quantity ?? 0;
+  return Math.min(credits > 0 ? Math.floor(credits) : fallback, 500);
+}
 
 // Maps each content product to its generation endpoint and request body.
 // Mirrors stripe-webhook's switch — this is the recovery path used when the
@@ -282,6 +307,9 @@ serve(async (req) => {
       logStep("Session marked as used");
     }
 
+    const isScanProduct = SCAN_CREDIT_PRODUCT_TYPES.includes(productType ?? '');
+    const purchasedCredits = isScanProduct ? creditsBoughtBy(session) : null;
+
     if (isFirstUse) {
       // Log delivery step: payment received. This is the ONLY delivery record
       // a sale gets when this page claims it first (every Pro grant, and any
@@ -290,6 +318,12 @@ serve(async (req) => {
       // row (its INSERT omitted the NOT NULL product_type) and the error was
       // never read, so those sales left no trace for the monitors or the
       // sweeper (L6-26, register 2.04). Read now, and said out loud.
+      //
+      // The rest of p_metadata is what the retry sweeper needs to finish the
+      // sale -- the keys the webhook writes on its own row: the credits
+      // bought (or it re-credits its default of 10), and the résumé and job
+      // to regenerate from. log_delivery_step keeps them in the row's
+      // metadata (20261005110000).
       const { error: trackError } = await supabase.rpc('log_delivery_step', {
         p_stripe_session_id: sessionId,
         p_step: 'payment_received',
@@ -297,7 +331,13 @@ serve(async (req) => {
           email: customerEmail,
           product_type: productType,
           product_name: productName,
-          amount_cents: session.amount_total
+          amount_cents: session.amount_total,
+          resume_session_id: resumeSessionId || null,
+          job_title: session.metadata?.job_title || null,
+          job_company: session.metadata?.job_company || null,
+          referral_code: session.metadata?.referral_code || null,
+          language: session.metadata?.language || null,
+          ...(purchasedCredits != null ? { credits: purchasedCredits } : {}),
         }
       });
       if (trackError) logStep("Delivery record could not be written", { error: trackError.message });
@@ -306,6 +346,24 @@ serve(async (req) => {
 
     // If content generation is requested and we have resume data
     let generatedContent: any = null;
+    // WHAT THIS REQUEST OWED THE BUYER AND COULD NOT DO: a credit grant or a
+    // generation that failed. While it is set the confirmation mail is not
+    // sent, because its 'email_sent' step closed the row as 'delivered' over
+    // the failure, and the sweeper never looked at it again (2026-10-05
+    // review of L6-13 / L6-26). The row is left generation_failed, with the
+    // reason, for the sweeper to finish: it re-credits what the row says was
+    // bought, or regenerates the product and mails it.
+    let undelivered: string | null = null;
+    const recordUndelivered = async (reason: string) => {
+      undelivered = reason.slice(0, 500);
+      if (!isFirstUse) return;
+      await supabase.rpc('log_delivery_step', {
+        p_stripe_session_id: sessionId,
+        p_step: 'generation_completed',
+        p_success: false,
+        p_error: undelivered
+      });
+    };
     
     // Idempotency for the (expensive, AI-billed) generation path. The Stripe
     // webhook ALSO generates every product's content, gated on the atomic
@@ -421,6 +479,7 @@ serve(async (req) => {
           } else {
             const errorText = await packageResponse.text();
             logStep("Apply package generation failed", { status: packageResponse.status, error: errorText });
+            undelivered = `generate-apply-package ${packageResponse.status}: ${errorText}`.slice(0, 500);
 
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
@@ -477,6 +536,7 @@ serve(async (req) => {
             } else {
               const errorText = genResponse.ok ? `${request.endpoint} answered 200 with no content` : await genResponse.text();
               logStep(`${request.endpoint} generation failed`, { status: genResponse.status, error: errorText });
+              undelivered = `${request.endpoint} ${genResponse.status}: ${errorText}`.slice(0, 500);
 
               await supabase.rpc('log_delivery_step', {
                 p_stripe_session_id: sessionId,
@@ -497,28 +557,31 @@ serve(async (req) => {
       logStep("Content generation requested but no resume session ID available");
     }
 
+    // Asked to generate a product this path generates, and nothing came of it
+    // without a failure being recorded above (no résumé linked, or the stored
+    // one gone): that is a failed delivery too, not a sale to confirm.
+    if (generateContent && !generatedContent && !undelivered && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
+      await recordUndelivered(resumeSessionId
+        ? 'The résumé for this purchase could not be read; nothing was generated'
+        : 'No résumé is linked to this purchase; nothing was generated');
+    }
+
     // Handle credits for scan pack (used by both create-product-checkout and create-scan-pack-checkout)
     if ((productType === 'scan_pack' || productType === 'scan_credits') && isFirstUse && customerEmail) {
-      // Get credits from metadata first, fallback to line_items quantity
-      let credits = parseInt(session.metadata?.credits || "0");
-      
-      // If no credits in metadata, check line_items quantity (for create-scan-pack-checkout)
-      if (credits === 0 && session.line_items?.data?.length) {
-        credits = session.line_items.data[0].quantity || 10;
-      }
-      
-      // Default to 10 if still no credits found
-      if (credits === 0) credits = 10;
-      
+      // Metadata first, then line_items quantity, then 10; capped at 500 --
+      // matches stripe-webhook (creditsBoughtBy above).
+      const credits = purchasedCredits ?? creditsBoughtBy(session);
+
       logStep("Adding scan pack credits", { credits, email: customerEmail, productType });
-      
+
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 500) // Cap at 500 — matches stripe-webhook cap
+        p_credits: credits
       });
 
       if (creditError) {
         logStep("Error adding scan pack credits", { error: creditError.message });
+        await recordUndelivered(`add_scan_credits: ${creditError.message}`);
       } else {
         logStep("Scan pack credits added successfully", { credits, email: customerEmail });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
@@ -527,16 +590,17 @@ serve(async (req) => {
 
     // Handle credits for career bundle
     if (productType === 'career_bundle' && isFirstUse && customerEmail) {
-      const credits = parseInt(session.metadata?.credits || "75");
+      const credits = purchasedCredits ?? creditsBoughtBy(session);
       logStep("Adding career bundle credits", { credits, email: customerEmail });
-      
+
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 500) // Cap at 500 — matches stripe-webhook cap
+        p_credits: credits // capped at 500 by creditsBoughtBy -- matches stripe-webhook
       });
 
       if (creditError) {
         logStep("Error adding career bundle credits", { error: creditError.message });
+        await recordUndelivered(`add_scan_credits: ${creditError.message}`);
       } else {
         logStep("Career bundle credits added successfully", { credits, email: customerEmail });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
@@ -548,7 +612,7 @@ serve(async (req) => {
     // scan row it finds undelivered unless a receipt shows the credits landed.
     // Written beside the credit, and the row moved past payment_received, so
     // a buyer is never credited twice for one purchase.
-    if (isFirstUse && customerEmail && ['scan_pack', 'scan_credits', 'career_bundle'].includes(productType ?? '')
+    if (isFirstUse && customerEmail && isScanProduct
         && generatedContent && typeof generatedContent === 'object' && 'credits' in generatedContent) {
       const { error: receiptError } = await supabase.rpc('save_purchased_content', {
         p_stripe_session_id: sessionId,
@@ -636,7 +700,12 @@ serve(async (req) => {
       }
     }
     let emailSent = false;
-    if (isFirstUse && customerEmail) {
+    if (isFirstUse && customerEmail && undelivered) {
+      // Not mailed: the row stays generation_failed with the reason above
+      // for the retry sweeper, which mails a product when it has made it.
+      logStep("Confirmation mail held back: this delivery failed and is left for the retry sweeper", { reason: undelivered });
+    }
+    if (isFirstUse && customerEmail && !undelivered) {
       try {
         // The service-role key: send-product-email is internal and refuses
         // the publishable key, which every visitor holds.

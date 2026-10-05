@@ -12,7 +12,17 @@
 --    sales left no delivery record at all: no monitor saw them and the retry
 --    sweeper could not retry them. The insert now carries the product type
 --    (from p_metadata, 'unknown' when absent -- the webhook's own default)
---    and the buyer's address. Same signature, same body otherwise.
+--    and the buyer's address.
+--
+--    And the row now keeps what the sweeper needs to finish the sale. The
+--    'payment_received' step wrote p_metadata into the row's columns and
+--    dropped the rest, so a row the success page created had no metadata:
+--    the sweeper re-credited a failed 50-credit pack with its default of 10
+--    and had no resume_session_id to regenerate a product from (2026-10-05
+--    review). That step now merges every OTHER key of p_metadata (credits,
+--    resume_session_id, job_title, job_company, language, referral_code --
+--    the keys the webhook writes on its own row) into metadata, nulls
+--    dropped. Same signature, same body otherwise.
 --
 -- 2. get_failed_deliveries_for_retry picked up a 'payment_received' row the
 --    moment it existed. The webhook writes that row and then generates for up
@@ -72,6 +82,9 @@ BEGIN
         product_type = COALESCE((p_metadata->>'product_type')::TEXT, product_type),
         product_name = COALESCE((p_metadata->>'product_name')::TEXT, product_name),
         amount_cents = COALESCE((p_metadata->>'amount_cents')::INTEGER, amount_cents),
+        -- Everything that is not a column above: what the sweeper reads.
+        metadata = COALESCE(metadata, '{}'::JSONB)
+          || jsonb_strip_nulls(COALESCE(p_metadata, '{}'::JSONB) - 'email' - 'product_type' - 'product_name' - 'amount_cents'),
         status = 'payment_received'
       WHERE id = v_delivery_id;
 
@@ -164,8 +177,13 @@ BEGIN
   v_def := pg_get_functiondef(to_regprocedure('public.log_delivery_step(text,text,boolean,text,integer,jsonb)'));
   IF v_def IS NULL THEN
     v_bad := v_bad || 'log_delivery_step(text,text,boolean,text,integer,jsonb) does not exist'::text;
-  ELSIF position('INSERT INTO product_deliveries (stripe_session_id, status, product_type, customer_email)' in v_def) = 0 THEN
-    v_bad := v_bad || 'log_delivery_step still inserts a row without product_type'::text;
+  ELSE
+    IF position('INSERT INTO product_deliveries (stripe_session_id, status, product_type, customer_email)' in v_def) = 0 THEN
+      v_bad := v_bad || 'log_delivery_step still inserts a row without product_type'::text;
+    END IF;
+    IF position($k$- 'email' - 'product_type' - 'product_name' - 'amount_cents'$k$ in v_def) = 0 THEN
+      v_bad := v_bad || 'log_delivery_step payment_received does not keep the sweeper''s metadata'::text;
+    END IF;
   END IF;
 
   v_def := pg_get_functiondef(to_regprocedure('public.get_failed_deliveries_for_retry(integer)'));
@@ -196,6 +214,6 @@ BEGIN
     RAISE EXCEPTION 'delivery bookkeeping self-check failed (% problem(s)): %',
       cardinality(v_bad), array_to_string(v_bad, ' | ');
   END IF;
-  RAISE NOTICE 'delivery bookkeeping: log_delivery_step creates its row with a product type; the sweeper waits ten minutes for the webhook';
+  RAISE NOTICE 'delivery bookkeeping: log_delivery_step creates its row with a product type and keeps the sweeper''s metadata; the sweeper waits ten minutes for the webhook';
 END
 $verify$;

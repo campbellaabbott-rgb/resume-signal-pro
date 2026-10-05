@@ -3,7 +3,8 @@
 // charges: Stripe's minimum USD charge is $0.50, so at $0.20 a credit one or
 // two credits can never be bought. The pickers offered both, and Stripe
 // refused every such checkout as a generic failure (platform sweep L6-11).
-// src/test/the-smallest-credit-pack-is-one-stripe-will-charge reads both.
+// src/test/the-smaller-payment-defects-stay-fixed.test.ts reads both and
+// fails if they drift ("the pickers' bounds are the checkout's").
 export const MIN_SCAN_CREDITS = 3;
 export const MAX_SCAN_CREDITS = 100;
 

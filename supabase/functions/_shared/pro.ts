@@ -57,6 +57,19 @@ export async function subscriptionStandingByEmail(stripe: Stripe, email: string)
   return standingFrom(await customersWithSubscriptions(stripe, email.trim().toLowerCase()), isAgentPriced);
 }
 
+export interface ProRefreshOptions {
+  /**
+   * For a caller that read the cache row before asking Stripe
+   * (check-subscription): the updated_at it saw, or null for no row. Given,
+   * the downgrade applies only to THAT row -- one the webhook wrote while
+   * Stripe was being asked is newer evidence than this lookup, and was being
+   * overwritten with "inactive" (2026-10-05 review) -- and null means there is
+   * nothing to downgrade. Omitted, the row is downgraded whatever it holds,
+   * as before.
+   */
+  seenUpdatedAt?: string | null;
+}
+
 /**
  * Look up the subscription state for an email directly in Stripe and refresh
  * the pro_subscribers cache. `supabase` must be a service-role client.
@@ -71,13 +84,15 @@ export async function subscriptionStandingByEmail(stripe: Stripe, email: string)
  * used to run whatever the answer, so the checkout's own pre-check wrote an
  * "inactive" row for every first-time buyer minutes before they paid, and
  * check-subscription served that row as the truth for an hour after they had
- * (platform sweep L6-28). An existing row is still downgraded; a missing one
- * stays missing until the webhook writes it when the payment lands.
+ * (platform sweep L6-28). An existing row is still downgraded (see
+ * ProRefreshOptions); a missing one stays missing until the webhook writes it
+ * when the payment lands.
  */
 export async function checkProByEmail(
   stripe: Stripe,
   supabase: { from: (t: string) => any },
   email: string,
+  opts: ProRefreshOptions = {},
 ): Promise<ProStatus> {
   const normalized = email.trim().toLowerCase();
   let result: ProStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null };
@@ -109,10 +124,12 @@ export async function checkProByEmail(
   try {
     if (result.stripeCustomerId) {
       await supabase.from("pro_subscribers").upsert({ email: normalized, ...cached });
-    } else {
+    } else if (opts.seenUpdatedAt !== null) {
       // No subscription anywhere in Stripe for this address: downgrade a row
-      // that exists, never create one.
-      await supabase.from("pro_subscribers").update(cached).eq("email", normalized);
+      // that exists (the one the caller saw, when it says), never create one.
+      let downgrade = supabase.from("pro_subscribers").update(cached).eq("email", normalized);
+      if (typeof opts.seenUpdatedAt === "string") downgrade = downgrade.eq("updated_at", opts.seenUpdatedAt);
+      await downgrade;
     }
   } catch (_) {
     // Cache refresh is best-effort; the caller already has the live answer.
@@ -126,6 +143,12 @@ export interface ProCacheRule {
   statuses?: ReadonlySet<string>;
   /** How long past current_period_end a row still counts. Default: a day. */
   graceMs?: number;
+  /**
+   * Which caches are read. Default: both, Pro then the agent tier (which
+   * includes Pro). Narrowed only where the answer reaches someone who has not
+   * proved who they are, so that answer reveals no more than it used to.
+   */
+  tables?: ReadonlyArray<"pro_subscribers" | "agent_subscribers">;
 }
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -150,6 +173,7 @@ export async function isProCached(
   const normalized = email.trim().toLowerCase();
   const statuses = rule.statuses ?? ACTIVE_STATUSES;
   const graceMs = rule.graceMs ?? DAY_MS;
+  const tables = rule.tables ?? ["pro_subscribers", "agent_subscribers"];
 
   const activeIn = async (table: string): Promise<boolean> => {
     const { data } = await supabase
@@ -168,7 +192,8 @@ export async function isProCached(
   };
 
   try {
-    if (await activeIn("pro_subscribers")) return true;
+    if (tables.includes("pro_subscribers") && await activeIn("pro_subscribers")) return true;
+    if (!tables.includes("agent_subscribers")) return false;
 
     // THE AGENT TIER INCLUDES PRO. It costs more ($99 vs $45) and is a superset
     // by definition — nobody pays the higher price for less.

@@ -9,7 +9,7 @@ import { isProCached } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-05.1";
+const FN_BUILD = "create-product-checkout.2026-10-05.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -250,11 +250,19 @@ serve(async (req) => {
       // It does reveal whether an address is a Pro subscriber (one bit, from
       // the cache, no Stripe call, under this function's per-address limit).
       // check-subscription no longer answers that for a stranger (2026-10-05),
-      // so this is now the one place that does: whether to keep it -- and so
-      // not charge a signed-out subscriber for a tool their plan includes --
-      // is an owner decision recorded in the payments wave report.
+      // so this is now the one place that does.
+      //
+      // OWNER DECISION, NOT TAKEN HERE: keep this bit (a signed-out subscriber
+      // is not charged for an included tool) or drop the branch and send every
+      // visitor with a stored address to sign in first (nobody learns anything,
+      // and a signed-out subscriber who skips sign-in pays). Listed as not
+      // fixed in the payments wave's review report and its commit. Until it is
+      // decided the bit is NO WIDER than it was before that wave: it reads
+      // pro_subscribers only, never the agent table, so a $99 plan or a comped
+      // agent account (no Stripe customer, visible nowhere else) is never
+      // revealed by it. The signed-in branch above reads both.
       try {
-        const proActive = await isProCached(supabase, normalizedEmail);
+        const proActive = await isProCached(supabase, normalizedEmail, { tables: ["pro_subscribers"] });
         if (proActive) {
           return new Response(
             JSON.stringify({ proRequiresSignIn: true }),

@@ -143,6 +143,7 @@ DO $verify$
 DECLARE
   v_bad text[] := ARRAY[]::text[];
   v_def text;
+  v_key text;
 BEGIN
   IF to_regprocedure('public.reconcile_cron_key_matches(text)') IS NULL THEN
     v_bad := v_bad || 'reconcile_cron_key_matches(text) does not exist'::text;
@@ -168,6 +169,27 @@ BEGIN
     END IF;
   END IF;
 
+  -- THE KEYED PATH, END TO END. Where there is a vault, the key must exist,
+  -- this role (the owner the tick runs as) must be able to read it the way the
+  -- tick does, and the function's key check must accept exactly that value.
+  -- Without this the file passed while every daily post went out unkeyed or
+  -- mis-keyed and was refused, and lastCronAt kept advancing as if the sweep
+  -- ran (2026-10-05 review).
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'vault') THEN
+    IF NOT EXISTS (SELECT 1 FROM vault.secrets WHERE name = 'reconcile_cron_key') THEN
+      v_bad := v_bad || 'the vault holds no reconcile_cron_key'::text;
+    ELSE
+      EXECUTE 'SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = $1 LIMIT 1'
+         INTO v_key USING 'reconcile_cron_key';
+      IF v_key IS NULL THEN
+        v_bad := v_bad || 'reconcile_cron_key cannot be read back from vault.decrypted_secrets, so the tick would post unkeyed'::text;
+      ELSIF to_regprocedure('public.reconcile_cron_key_matches(text)') IS NOT NULL
+            AND NOT public.reconcile_cron_key_matches(v_key) THEN
+        v_bad := v_bad || 'reconcile_cron_key_matches refuses the key the tick sends'::text;
+      END IF;
+    END IF;
+  END IF;
+
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
     IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'reconcile-stripe' AND position('reconcile_stripe_tick' in command) > 0) THEN
       v_bad := v_bad || 'the reconcile-stripe cron job does not call reconcile_stripe_tick()'::text;
@@ -178,6 +200,6 @@ BEGIN
     RAISE EXCEPTION 'reconcile cron key self-check failed (% problem(s)): %',
       cardinality(v_bad), array_to_string(v_bad, ' | ');
   END IF;
-  RAISE NOTICE 'reconcile-stripe: the cron sends its vault key; the function answers only that, the service role and the admin key';
+  RAISE NOTICE 'reconcile-stripe: the cron sends its vault key (read back and accepted by reconcile_cron_key_matches here); the function answers only that, the service role and the admin key';
 END
 $verify$;

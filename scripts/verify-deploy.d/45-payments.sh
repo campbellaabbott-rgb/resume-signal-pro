@@ -44,6 +44,25 @@ if vd45_new stripe-webhook "$WH45"; then echo "PASS  stripe-webhook GET x-fn-bui
 else echo "FAIL  stripe-webhook GET x-fn-build = '${WH45}' (want stripe-webhook.2026-10-05.N or later)"; fi
 echo "INFO  section 7a pins the checkouts at .2026-09-27.2; after this wave it prints FAIL for create-checkout, create-product-checkout, create-subscription-checkout, create-agent-checkout and create-scan-pack-checkout -- judge them here"
 
+# The review of this wave (2026-10-05) rides build .2 of three functions; a .1
+# build passes the date check above without it: check-subscription caches
+# "not subscribed" for a signed-in caller and counts every live check;
+# create-product-checkout's signed-out answer reads pro_subscribers only;
+# verify-product-purchase holds the confirmation mail when its credit grant or
+# generation failed, and records what the sweeper needs.
+vd45_rev() { # $1 fn, $2 header value, $3 least build number on 2026-10-05
+  vd45_new "$1" "$2" || return 1
+  local rest="${2#"$1".}"; local d="${rest%%.*}"; local n="${rest##*.}"
+  [ "$d" \> "2026-10-05" ] && return 0
+  case "$n" in ''|*[!0-9]*) return 1;; esac
+  [ "$n" -ge "$3" ]
+}
+for FN in check-subscription create-product-checkout verify-product-purchase; do
+  H=$(vd45_build "$FN")
+  if vd45_rev "$FN" "$H" 2; then echo "PASS  $FN x-fn-build = $H (carries the 2026-10-05 review fixes)"
+  else echo "FAIL  $FN x-fn-build = '${H}' (want $FN.2026-10-05.2 or later: the review fixes are not serving)"; fi
+done
+
 # An anonymous status question about an address gets the same non-answer for
 # every address, and only on the new build (see the header).
 CS45=$(vd45_build check-subscription)
