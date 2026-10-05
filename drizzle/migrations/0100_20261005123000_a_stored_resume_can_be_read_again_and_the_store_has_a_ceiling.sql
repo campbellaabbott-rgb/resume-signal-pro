@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261005123000_a_stored_resume_can_be_read_again_and_the_store_has_a_ceiling.sql'));

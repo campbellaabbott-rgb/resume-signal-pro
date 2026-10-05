@@ -4264,6 +4264,8 @@ export type Database = {
           linkedin_text: string | null
           resume_text: string
           session_id: string
+          writer_net: string | null
+          writer_wide: string | null
         }
         Insert: {
           created_at?: string | null
@@ -4272,6 +4274,8 @@ export type Database = {
           linkedin_text?: string | null
           resume_text: string
           session_id?: string
+          writer_net?: string | null
+          writer_wide?: string | null
         }
         Update: {
           created_at?: string | null
@@ -4280,6 +4284,8 @@ export type Database = {
           linkedin_text?: string | null
           resume_text?: string
           session_id?: string
+          writer_net?: string | null
+          writer_wide?: string | null
         }
         Relationships: []
       }
