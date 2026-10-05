@@ -202,10 +202,19 @@ export function isPrototypeName(token: string): boolean {
  * inherited names, so tokensOf({}) does not contain 'constructor'. Anything
  * that is not a plain object yields the empty set — a meta row can hold a
  * string, null, or an array left by an older writer.
+ *
+ * board_failures keys a SHARED token's boards `source:token` since .89 (n417),
+ * while this lane's RPC rows name tokens; such a key yields its token, so a
+ * shared token with one failing twin is treated as failing here (the cautious
+ * direction for a lane that only ever adds a fetch). No catalog token contains
+ * a colon, so a bare token passes through unchanged.
  */
 export function tokensOf(rec: unknown): Set<string> {
   if (rec === null || typeof rec !== "object" || Array.isArray(rec)) return new Set();
-  return new Set(Object.keys(rec as Record<string, unknown>));
+  return new Set(Object.keys(rec as Record<string, unknown>).map((k) => {
+    const at = k.indexOf(":");
+    return at < 0 ? k : k.slice(at + 1);
+  }));
 }
 
 /** Meta stale_lane.tries -> Map. Non-integer or negative counts are dropped. */

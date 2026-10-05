@@ -60,7 +60,8 @@ describe("federal postings are honest, attributed, and never agent-ready", () =>
     expect(body).toMatch(/if \(!key \|\| !ua\) \{/);
     // Returns empty, does NOT throw — a throw marks the board failed and the
     // dormancy prune would delete every federal posting over a config gap.
-    const guard = body.slice(body.indexOf("if (!key || !ua)"), body.indexOf("const PAGE"));
+    const guard = body.slice(body.indexOf("if (!key || !ua)"), body.indexOf("fetchUsajobs("));
+    expect(guard, "the key check must come before the fetch").not.toBe("");
     expect(guard).toMatch(/return \{ jobs: \[\]/);
     expect(guard).not.toMatch(/throw/);
   });
@@ -74,10 +75,13 @@ describe("federal postings are honest, attributed, and never agent-ready", () =>
   });
 
   it("keeps the page-1-failure guard every paginated vendor has", () => {
-    const branch = FN.slice(FN.indexOf('if (s.source === "usajobs")'));
-    const body = branch.slice(0, branch.indexOf('if (s.source === "rippling")'));
-    // An empty read against a non-zero advertised total is a refusal, not an
-    // empty board — throwing here is correct and protects against the prune.
-    expect(body).toMatch(/if \(all\.length === 0 && feedTotal > 0\) throw new Error/);
+    // An empty read FROM THE TOP against a non-zero advertised total is a
+    // refusal, not an empty board — throwing there is correct and protects
+    // against the prune. Past the top an empty page wraps instead (n420); both
+    // are run against a stub API in a-walk-that-broke-is-not-the-end-of-the-feed.
+    const i = FN.indexOf("async function fetchUsajobs(");
+    const body = FN.slice(i, FN.indexOf("\n}\n", i));
+    expect(body).toMatch(/emptyFirstPage\(base, all\.length, feedTotal\)/);
+    expect(body).toMatch(/if \(empty === "refused"\) throw new Error/);
   });
 });

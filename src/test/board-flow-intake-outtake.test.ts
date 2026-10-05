@@ -190,19 +190,37 @@ describe("every delete path leaves a trace", () => {
     return i < 0 ? "" : FN.slice(Math.max(0, i - back), i + fwd);
   };
 
-  it("logs a dormant board's postings before deleting them", () => {
-    const blk = sliceAround('console.warn(`[JOB-BOARD] board ${tk} dormant', 400, 200);
-    expect(blk, "dormancy prune not found").not.toBe("");
-    expect(blk).toMatch(/logWholeBoardExit\(client, tk, "board_dormant"\)/);
+  // Since .89 both prunes go through pruneWholeBoard, which logs first and
+  // deletes only what the ledger recorded (the whole board only when every
+  // row was logged), scoped to the board's own vendor when it has one.
+  const pruneBody = () => {
+    const i = FN.indexOf("async function pruneWholeBoard(");
+    return i < 0 ? "" : FN.slice(i, FN.indexOf("\n}\n", i));
+  };
+
+  it("the whole-board prune logs before it deletes, and deletes only what it logged", () => {
+    const body = pruneBody();
+    expect(body, "pruneWholeBoard not found").not.toBe("");
     // Read BEFORE delete — after the delete there is nothing left to read.
-    expect(blk.indexOf("logWholeBoardExit")).toBeLessThan(blk.indexOf(".delete()"));
+    expect(body.indexOf("await logWholeBoardExit(")).toBeGreaterThan(-1);
+    expect(body.indexOf("await logWholeBoardExit(")).toBeLessThan(body.indexOf(".delete()"));
+    // The token-wide delete sits behind `complete`; the fallback deletes the logged ids only.
+    expect(body).toMatch(/if \(complete\) \{[\s\S]*?\.delete\(\)\.eq\("company_token", token\)/);
+    expect(body).toMatch(/\.delete\(\)\.in\("id", loggedIds\.slice\(/);
+    expect(body).toMatch(/if \(source\) q = q\.eq\("source", source\);/);
   });
 
-  it("logs an orphaned board's postings before deleting them", () => {
-    const blk = sliceAround("orphanLogged += await logWholeBoardExit", 300, 400);
+  it("a dormant board is pruned through it, as its own vendor's board", () => {
+    const blk = sliceAround("console.warn(`[JOB-BOARD] board ${key} dormant", 700, 200);
+    expect(blk, "dormancy prune not found").not.toBe("");
+    expect(blk).toMatch(/await pruneWholeBoard\(client, tk, "board_dormant", board\?\.source \?\? keySource\(key\)\)/);
+    expect(blk).not.toMatch(/\.delete\(\)/);
+  });
+
+  it("an orphaned board is pruned through it", () => {
+    const blk = sliceAround('await pruneWholeBoard(client, tk, "untracked", null)', 300, 300);
     expect(blk, "orphan prune not found").not.toBe("");
-    expect(blk).toMatch(/logWholeBoardExit\(client, tk, "untracked"\)/);
-    expect(blk.indexOf("logWholeBoardExit")).toBeLessThan(blk.indexOf(".delete()"));
+    expect(blk).not.toMatch(/\.delete\(\)/);
   });
 
   it("writes only exit reasons the DATABASE actually admits", () => {

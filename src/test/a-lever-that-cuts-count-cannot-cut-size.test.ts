@@ -64,31 +64,45 @@ describe("a lever that cuts count cannot cut size", () => {
   });
 
   it("never caps a fetcher that cannot resume — that would TRUNCATE a board", () => {
-    // UKG, ADP and USAJOBS take no startOffset and return no nextOffset, so a
-    // cap there does not defer the rest of the board, it discards it. They
-    // need offset support before they can be bounded. (iCIMS gained it in
-    // .28 and moved to the capped list below.)
+    // UKG and ADP take no startOffset and return no nextOffset, so a cap
+    // there does not defer the rest of the board, it discards it. They need
+    // offset support before they can be bounded. (iCIMS gained it in .28 and
+    // USAJOBS in .89; both moved to the capped list.)
     for (const fn of ["fetchUkg", "fetchAdp"]) {
       const body = fnBody(fn);
       if (!body) continue;
       expect(body, `${fn} cannot resume, so capping it silently truncates the board`)
         .not.toMatch(/MAX_POSTINGS_PER_VISIT/);
     }
-    const u = FN.indexOf('s.source === "usajobs"');
-    const usajobs = FN.slice(u, FN.indexOf("return { jobs:", u));
-    expect(usajobs, "usajobs cannot resume, so capping it truncates the federal feed").not.toMatch(/MAX_POSTINGS_PER_VISIT/);
+  });
+
+  it("USAJOBS resumes since .89, and is therefore capped and reports where it stopped", () => {
+    // Its 500-result page never fit the 4 MB bound, so the federal feed was
+    // deferred on every visit and never stored a row. Pages of 100 from the
+    // cursor's page, capped per visit, resumed next visit. The walk itself is
+    // run against a stub API in a-walk-that-broke-is-not-the-end-of-the-feed.
+    const usajobs = fnBody("fetchUsajobs");
+    expect(usajobs, "fetchUsajobs not found").not.toBe("");
+    const capLine = /if \(all\.length >= MAX_POSTINGS_PER_VISIT\)[^\n]*/.exec(usajobs)?.[0] ?? "";
+    expect(capLine, "usajobs has no per-visit cap").not.toBe("");
+    expect(capLine, "usajobs cap wraps the feed instead of resuming it").not.toMatch(/exhausted/);
+    expect(usajobs, "usajobs pages must be read through the byte bound").toMatch(/readChunkPage\(res\)/);
+    const u = FN.indexOf('if (s.source === "usajobs")');
+    expect(FN.slice(u, FN.indexOf('if (s.source === "rippling")', u)), "the dispatcher must hand usajobs its cursor").toMatch(/fetchUsajobs\(s, startOffset,/);
+    expect(FN).toMatch(/const CAPPED_VISIT_VENDORS = new Set\(\[[^\]]*"usajobs"[^\]]*\]\);/);
   });
 
   it("iCIMS resumes since .28, and is therefore capped like Workday and Oracle", () => {
     // It held the single largest per-visit fetch on the board (20,800) and
     // was the one giant .27 could not touch. The dispatcher already persisted
     // nextOffset for ANY vendor; iCIMS only had to consume startOffset and
-    // report where it stopped.
-    const i = FN.indexOf('s.source === "icims"');
-    const block = FN.slice(i, FN.indexOf('s.source === "usajobs"', i));
-    expect(block, "iCIMS block not found").not.toBe("");
-    expect(block).toMatch(/const startPage = Math\.floor\(startOffset \/ ICIMS_PAGE\) \+ 1;/);
-    expect(block, "iCIMS must report where it stopped").toMatch(/startOffset \+ all\.length/);
+    // report where it stopped. Since .89 the walk lives in fetchIcims and takes
+    // its page size from the caller (100, then 50, then 25 for a first page
+    // over the byte bound).
+    const block = fnBody("fetchIcims");
+    expect(block, "fetchIcims not found").not.toBe("");
+    expect(block).toMatch(/const startPage = Math\.floor\(startOffset \/ pageSize\) \+ 1;/);
+    expect(block, "iCIMS must report where it stopped, from the offset it really started at").toMatch(/const advancedIc = base \+ all\.length;/);
     // The PROPERTY, not the trailing brace: this used to pin
     // `feedTotal, nextOffset }` and would have gone red the moment the return
     // grew feedEnded/endOffset for the lap proof — a guard failing over a
@@ -103,7 +117,10 @@ describe("a lever that cuts count cannot cut size", () => {
   it("a capped board still reads as windowed, so the prune stays off it", () => {
     // The Four Seasons rule: a board that is still filling must not look like a
     // board that shrank, or the closure prune deletes live postings.
-    expect(fnBody("fetchWorkday")).toMatch(/windowed: feedTotal > all\.length/);
+    // Since .89 through workdayWindowed, which also calls a mid-feed visit
+    // windowed (a tenant that states its total only at offset 0 answers 0
+    // past it); its behaviour is held by a-mid-feed-zero-is-not-a-whole-board.
+    expect(fnBody("fetchWorkday")).toMatch(/windowed: workdayWindowed\(startOffset, feedTotal, all\.length, exhausted\)/);
     expect(fnBody("fetchOracle")).toMatch(/windowed: !exhausted/);
   });
 });

@@ -32,7 +32,7 @@ describe("a slice with no clock", () => {
     expect(CODE).toMatch(/if \(Date\.now\(\) - sliceWallStart >= SLICE_WALL_BUDGET_MS\) \{\s*wallStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
     const stop = CODE.indexOf("Date.now() - sliceWallStart >= SLICE_WALL_BUDGET_MS");
     expect(stop, "before the fetch it prevents").toBeLessThan(CODE.indexOf("r = await fetchBoard(s,"));
-    expect(stop, "after the dormancy skip, like the other bounds").toBeGreaterThan(CODE.indexOf("if (skipTokens.has(s.token)) continue;"));
+    expect(stop, "after the dormancy skip, like the other bounds").toBeGreaterThan(CODE.indexOf("if (skipTokens.has(boardKeyOf(s))) continue;"));
   });
 
   it("the budget leaves room for an in-flight fetch AND the stamps that follow", () => {
