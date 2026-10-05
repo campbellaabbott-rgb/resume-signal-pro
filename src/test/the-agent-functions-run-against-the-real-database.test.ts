@@ -302,8 +302,9 @@ describe("create-agent-checkout: signed in, about the caller only, and the plan 
     stripe.subs["cus_victim"] = [agentSub("active")];
     const res = await post("create-agent-checkout", { email: "victim@example.com" }, bearer("jwt-registrant"));
     const body = await res.json() as Record<string, unknown>;
-    // The registrant's own address holds a plan: that is the only thing it learns.
-    expect(body).toEqual({ alreadySubscribed: true });
+    // The registrant's own address holds a plan: that is the only thing it
+    // learns (the merged checkout names the plan's tier, as payments' guard does).
+    expect(body).toEqual({ alreadySubscribed: true, tier: "agent" });
     stripe.calls = [];
     const res2 = await post("create-agent-checkout", { email: "victim@example.com" }, bearer("jwt-kit"));
     expect(res2.status).toBe(200);
