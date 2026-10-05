@@ -680,6 +680,13 @@
       "when": 1791222171392,
       "tag": "0096_20261004150000_a_resume_never_rides_a_stripe_session_and_every_copy_has_a_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1791222182853,
+      "tag": "0097_20261005110000_a_sale_the_success_page_claims_first_leaves_a_delivery_record",
+      "breakpoints": true
     }
   ]
 }
