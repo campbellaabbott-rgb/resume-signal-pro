@@ -81,7 +81,8 @@ describe("the apply seam is agent_queue and nothing later", () => {
     // release applications checked that a row EXISTED, and an unauthenticated
     // endpoint could mint rows.
     expect(MCP).toMatch(/rowIsEntitled\(/);
-    expect(MCP).toMatch(/ENTITLEMENT_COLUMNS/);
+    // ...over the ACCOUNT's own row, read by user id (agent_subscription_rows).
+    expect(MCP).toMatch(/ACCOUNT_SUBSCRIPTION_RPC/);
   });
 
   it("the vendor set is imported, never a sixth hand-copied list", () => {

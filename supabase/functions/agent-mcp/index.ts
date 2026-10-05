@@ -60,9 +60,9 @@ import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { computeFit, resumeRoleTerms } from "../_shared/fit-score.ts";
 import { applyServingFences, parseCountries } from "../_shared/mandate-reach.ts";
 import {
-  ENTITLEMENT_COLUMNS,
+  ACCOUNT_SUBSCRIPTION_RPC,
+  accountSubscription,
   mayApply,
-  normalizeEmail,
   passIsLive,
   rowIsEntitled,
   type PassRow,
@@ -216,6 +216,9 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // instead of calling it a duplicate, keeps every warning, and says how a
 // review-mode send is approved; employer_hiring_record names closed_90d as
 // takedown events.
+//
+// 2026-10-05.2: key_status and request_application read the subscription by
+// the account's user id (agent_subscription_rows), never by its address.
 const SERVER_INFO = {
   name: "resumebooster-job-board",
   version: "2026-09-04.11",
@@ -231,7 +234,7 @@ const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Pas
 /** The JSON-RPC methods this server answers, for the error that names them. */
 const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
 /** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
-const FN_BUILD = "agent-mcp.2026-10-05.1";
+const FN_BUILD = "agent-mcp.2026-10-05.2";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -2885,7 +2888,7 @@ function passBlockerReason(p: PassRow): string {
  * It re-checks nothing and enforces nothing: enqueueApplication still runs
  * every gate, and the pipeline behind it re-runs its own at preparation and
  * again at claim. This reads the same rows with the same shared predicates —
- * rowIsEntitled over ENTITLEMENT_COLUMNS, the 100-character resume floor —
+ * rowIsEntitled over the account's own subscription row, the 100-character resume floor —
  * precisely so a "ready" here cannot come to mean something different from a
  * "yes" there.
  *
@@ -2917,10 +2920,12 @@ async function applyReadiness(
   // same length there and here or this tool would promise a refusal.
   const resumeOnFile = String(m?.resume_text ?? "").length >= 100;
 
-  const { data: userRes } = await client.auth.admin.getUserById(userId);
-  const email = normalizeEmail(userRes?.user?.email ?? "");
-  const { data: subRow } = await client.from("agent_subscribers")
-    .select(ENTITLEMENT_COLUMNS).eq("email", email).maybeSingle();
+  // The account's subscription BY ITS USER ID (agent_subscription_rows): a
+  // plan bound to it, or one on a mailbox it proved — never one found by an
+  // address, which a sign-up nobody confirmed could claim. A failed read is
+  // no plan.
+  const { data: subData, error: subErr } = await client.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: [userId] });
+  const subRow = subErr ? null : accountSubscription(subData, userId);
   // Two ways to be allowed, asked separately so the answer can name which one
   // holds — and combined by the same predicate the seam refuses on.
   const subscribed = rowIsEntitled(subRow as SubscriberRow | null);
@@ -3051,10 +3056,11 @@ async function enqueueApplication(
   // one of its applications in the same statement that writes the row. The
   // pipeline re-checks the subscription at preparation and again at claim,
   // and for a pass-funded row asks only "was this row paid for" (pass_id).
-  const { data: userRes } = await client.auth.admin.getUserById(userId);
-  const email = normalizeEmail(userRes?.user?.email ?? "");
-  const { data: subRow } = await client.from("agent_subscribers")
-    .select(ENTITLEMENT_COLUMNS).eq("email", email).maybeSingle();
+  // BY THE ACCOUNT'S USER ID (agent_subscription_rows), never an address: a
+  // sign-up nobody confirmed could otherwise claim a subscriber's plan by
+  // registering its address. A failed read is no plan.
+  const { data: subData, error: subErr } = await client.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: [userId] });
+  const subRow = subErr ? null : accountSubscription(subData, userId);
   const subscribed = rowIsEntitled(subRow as SubscriberRow | null);
   const pass = subscribed ? null : await openPassOf(client, userId);
   if (!mayApply(subRow as SubscriberRow | null, pass)) {

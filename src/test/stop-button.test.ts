@@ -66,7 +66,7 @@ describe("stop means stop, at every gate", () => {
     // The packet must go back in the pool, not vanish: if the candidate turns
     // the agent on again it should still be there.
     const idx = code(broker).indexOf("mandate.active !== true");
-    expect(code(broker).slice(idx, idx + 80)).toMatch(/await unclaim\(\)/);
+    expect(code(broker).slice(idx, idx + 80)).toMatch(/await unclaim\([^)]*\)/);
   });
 
   it("is checked BEFORE the entitlement query, so a stop costs no extra work", () => {

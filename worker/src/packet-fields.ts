@@ -48,6 +48,31 @@ export const COVER_NOTE_FIELD_KEY = "__coverNote";
  */
 export const MUST_FILL_IF_SHOWN: readonly PacketFieldKey[] = ["fullName", "firstName", "lastName", "email", "confirmEmail"];
 
+/**
+ * THE NAME AND REPLY ADDRESS AN APPLICATION CANNOT GO WITHOUT, judged from
+ * the ADAPTER'S OWN MAP rather than from what its locators happened to find
+ * (agents-api review of 1.13, 2026-10-05).
+ *
+ * The partial-application guard counts placed boxes against SHOWN boxes, and
+ * a box is "shown" only when adapter.locate() finds it. A vendor that renames
+ * its email input makes locate() return null: the key is then neither shown
+ * nor shown-but-empty, placed/shown stays 100%, and the form goes without a
+ * name or an email. Every sendable vendor's form asks for both, so a core key
+ * this adapter maps, that the candidate holds a value for, and that was never
+ * placed by the time the form would submit, is a selector that stopped
+ * matching — and a refusal. confirmEmail is a repeat of email, not core.
+ */
+export const CORE_IDENTITY: readonly PacketFieldKey[] = ["fullName", "firstName", "lastName", "email"];
+
+export function unplacedCoreIdentity(
+  fieldKeys: ReadonlySet<PacketFieldKey> | undefined,
+  fields: Partial<Record<PacketFieldKey, PacketField>>,
+  placed: ReadonlySet<PacketFieldKey>,
+): PacketFieldKey[] {
+  if (!fieldKeys) return [];
+  return CORE_IDENTITY.filter((k) => fieldKeys.has(k) && !!fields[k]?.value?.trim() && !placed.has(k));
+}
+
 export function identityFields(
   a: IdentityWire,
   packetFields?: Record<string, { value?: string | null; source?: string | null }> | null,

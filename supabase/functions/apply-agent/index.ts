@@ -24,7 +24,7 @@ import { buildPacket, toDraftedAnswers, type DraftedAnswer, type PacketQuestion,
 import { decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
-import { ENTITLEMENT_COLUMNS, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 import { PASS_TIER } from "../_shared/pass.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
 
@@ -42,7 +42,13 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // already prepared (L9-03); the cooldown counts this run's releases (2.14);
 // a pass-funded row a gate refuses is given back (L6-07); entitlement read by
 // the ACCOUNT's address, never the mandate's (1.07).
-const BUILD_VERSION = "2026-10-05.1";
+// 2026-10-05.2: a release needs a sender that has run inside one backstop
+// period, not one awake this minute (the worker is an ephemeral job, so
+// "online" was almost never true and sender-offline packets never went); the
+// wake is asked AFTER the run, so it sees this run's releases; a posting that
+// already has a packet is never refunded as a refusal; the subscription is
+// read by the account's user id (agent_subscription_rows), never an address.
+const BUILD_VERSION = "2026-10-05.2";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
@@ -66,6 +72,23 @@ const TRANSIENT_REFUSALS: ReadonlySet<ReleaseRefusal> = new Set<ReleaseRefusal>(
 // the invocation or gets killed mid-write. Stopping on time and self-chaining is
 // the pattern the dating sweep needed after it spun forever on a row count.
 const SOFT_DEADLINE_MS = 100_000;
+/**
+ * HOW RECENTLY A SENDER MUST HAVE RUN FOR A PACKET TO BE RELEASED TO IT.
+ *
+ * The worker is an ephemeral GitHub Actions job: it starts (on a wake, or on
+ * the six-hourly backstop schedule), drains what is claimable and leaves a
+ * minute later. "A heartbeat in the last 900 s" is true for minutes a day, and
+ * a release decided at :23 on that test refused nearly every packet
+ * 'sender-offline' — and the wake, which counts only released work, never
+ * started the worker those packets waited for (review of L9-22). A packet is
+ * released now when a sender has run inside one backstop period plus a
+ * margin for the schedule's delays: one WILL run again, the wake starts one
+ * sooner, and every control (the stop button, the pause, the blocklist, the
+ * cooldown, funding) is enforced again at the claim. Past this a sender is
+ * really gone, the packet waits with the truthful reason, and the wake (which
+ * counts packets waiting on a sender) asks for one.
+ */
+const SENDER_REACHABLE_SECONDS = 8 * 60 * 60;
 const MANDATES_PER_RUN = 50;
 const PACKETS_PER_MANDATE = 10;
 const MIN_FIT_PCT = 55; // floor for unattended sending; review mode ignores it
@@ -242,35 +265,21 @@ serve(async (req) => {
     p_max_age_seconds: 900,
   });
   const senderOnline = !onlineErr && onlineRow === true;
-  let wake: unknown = null;
+  // REACHABLE: a sender has run inside one backstop period (see
+  // SENDER_REACHABLE_SECONDS). This, not "awake this minute", is what a
+  // release asks. Fails closed exactly as the 900 s check does: a query that
+  // did not answer is not a sender.
+  let senderReachable = senderOnline;
   if (!senderOnline) {
-    console.warn(`[APPLY-AGENT] sender OFFLINE (${onlineErr?.message ?? "no recent heartbeat"}) — preparing packets but releasing none`);
-
-    // Ask for a sender to be started — but only if there is genuinely paid work
-    // waiting. Both halves of that matter: a subscriber with an empty queue and
-    // a full queue with no subscriber should each start nothing, and only
-    // agent_work_pending() knows both at once.
-    //
-    // With WORKER_START_URL unset — the state today, since no worker exists
-    // anywhere — this is a no-op and everything below runs exactly as before.
-    // Packets prepared on this pass simply wait, which is the design: they
-    // drain whenever a sender next appears, so nothing is lost by not having
-    // one, and nothing needs to run while nobody has bought.
-    try {
-      const { data: pend } = await client.rpc("agent_work_pending");
-      const p = (pend ?? {}) as { should_run?: boolean; pending?: number };
-      wake = await wakeSender(p.should_run === true);
-      if (p.should_run) {
-        console.warn(`[APPLY-AGENT] ${p.pending} packet(s) waiting on a sender — wake: ${JSON.stringify(wake)}`);
-      }
-    } catch (e) {
-      // Never fatal. A failed wake leaves packets waiting, the same safe state
-      // as before this existed. Letting it throw would stop packets being
-      // PREPARED, which is strictly worse than them being prepared and queued.
-      wake = { attempted: true, ok: false, error: String(e).slice(0, 120) };
-      console.warn(`[APPLY-AGENT] wake check failed: ${String(e).slice(0, 120)}`);
-    }
+    const { data: recentRow, error: recentErr } = await client.rpc("agent_sender_online", {
+      p_max_age_seconds: SENDER_REACHABLE_SECONDS,
+    });
+    senderReachable = !recentErr && recentRow === true;
+    console.warn(`[APPLY-AGENT] sender not awake (${onlineErr?.message ?? "no heartbeat in 900 s"}) — ${senderReachable
+      ? "one ran inside the backstop period, so packets are released for the next run or the wake"
+      : "none ran inside the backstop period, so packets are prepared and none released"}`);
   }
+  let wake: unknown = null;
 
   const startedAt = Date.now();
   const outOfTime = () => Date.now() - startedAt > SOFT_DEADLINE_MS;
@@ -300,8 +309,8 @@ serve(async (req) => {
     // Packets prepared on an earlier run and released (or re-reasoned) now.
     // Zero here forever, with packets waiting, is the 1.09 shape coming back.
     rereleased: 0, rereasoned: 0,
-    // Pass-funded queue rows a gate refused (blocked employer, cooldown, a
-    // posting already handled) and gave back to the pass.
+    // Pass-funded queue rows a gate refused (blocked employer, cooldown) and
+    // gave back to the pass. Never a row a packet was prepared from.
     passRowsRefunded: 0,
   };
 
@@ -342,20 +351,23 @@ serve(async (req) => {
       continue;
     }
 
-    // THE ACCOUNT'S ADDRESS, NEVER THE MANDATE'S (register 1.07). The mandate's
-    // `email` column is written by its owner through RLS, so reading the
-    // subscription by it let any signed-in account type a subscriber's (or the
-    // comped support) address into its own mandate and have the agent work
-    // for it. The address the subscription is looked up by now comes from
-    // auth.users by user_id — the same lookup request_application makes — and
-    // a failed lookup funds nothing (pass rows still go: they carry their own
-    // receipt). 20261005130000 also pins the column to the account's address,
-    // so every other reader of it is covered too.
+    // THE ACCOUNT'S SUBSCRIPTION, BY ITS USER ID (register 1.07). The
+    // mandate's `email` column was written by its owner through RLS, so
+    // reading the subscription by it let any signed-in account type a
+    // subscriber's (or the comped support) address into its own mandate; and
+    // reading it by the ACCOUNT's address still let anyone who registered a
+    // subscriber's address (sign-ups are confirmed automatically) take the
+    // subscription. agent_subscription_rows answers by user id: a row bound to
+    // this account, or one on a mailbox it has proven. A failed read funds
+    // nothing (pass rows still go: they carry their own receipt).
+    //
+    // The account's address is still read, for the one thing it is: the
+    // reply address the employer's form receives.
     const { data: acct } = await client.auth.admin.getUserById(m.user_id).catch(() => ({ data: null }));
     const accountEmail = normalizeEmail((acct as { user?: { email?: string | null } } | null)?.user?.email ?? "");
-    const { data: sub } = accountEmail
-      ? await client.from("agent_subscribers").select(ENTITLEMENT_COLUMNS).eq("email", accountEmail).maybeSingle()
-      : { data: null };
+    const { data: subData, error: subErr } = await client.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: [m.user_id] });
+    if (subErr) console.warn(`[APPLY-AGENT] subscription read failed for a mandate: ${String(subErr.message ?? "").slice(0, 120)} — pass rows only`);
+    const sub = subErr ? null : accountSubscription(subData, m.user_id);
     // COUNTED, because this was the one skip that left no trace.
     //
     // Every neighbouring skip increments something — skippedPaused,
@@ -396,13 +408,15 @@ serve(async (req) => {
 
     /**
      * A PAID REQUEST A GATE REFUSES SPENDS NOTHING (L6-07) — the pass page
-     * says so, and until now a pass-funded row for a blocked employer, an
-     * employer in cooldown, or a posting already handled was skipped with a
-     * bare `continue`: no packet, so the refund trigger on agent_submissions
-     * never fired, and the row sat until the 14-day delete with its
-     * application spent. agent_queue_refuse marks the row decided and gives
-     * the application back in one statement, once (a second call finds the row
-     * already decided). Rows the subscription funds are skipped as before.
+     * says so, and until now a pass-funded row for a blocked employer or an
+     * employer in cooldown was skipped with a bare `continue`: no packet, so
+     * the refund trigger on agent_submissions never fired, and the row sat
+     * until the 14-day delete with its application spent. agent_queue_refuse
+     * marks the row decided and gives the application back in one statement,
+     * once (a second call finds the row already decided), and never for a row
+     * a packet was prepared from — that packet is the paid work, and the
+     * refund trigger answers for it. Rows the subscription funds are skipped
+     * as before.
      */
     const refusePassRow = async (q: QueueRow, reason: string): Promise<void> => {
       if (!q.pass_id) return;
@@ -523,7 +537,9 @@ serve(async (req) => {
           fitPct: w.fit_pct,
           minFitPct: MIN_FIT_PCT,
           duplicate: false,
-          senderOnline,
+          // A sender that ran inside the backstop period, not one awake
+          // this minute — see SENDER_REACHABLE_SECONDS.
+          senderOnline: senderReachable,
           holdFirstN: m.hold_first_n ?? 0,
           autoReleasedCount: autoReleased,
         });
@@ -569,6 +585,23 @@ serve(async (req) => {
       // what keeps that filter and the broker's gate the same question.
       if (!packetIsFunded(sub, q)) { summary.skippedNotEntitled++; continue; }
 
+      // A packet already exists for this posting: skipped, and NEVER refunded.
+      // The unique index would reject the insert anyway; checking first keeps
+      // us from spending an LLM call to rediscover that. (agent_queue_unprepared
+      // leaves such rows out; this stays for its fallback read and for two
+      // overlapping runs.) Checked BEFORE the gates that refund a pass row: the
+      // packet carries this row's pass_id and is the paid work itself, and the
+      // refund trigger on agent_submissions gives the application back if the
+      // packet ends blocked — refunding the row too was a free send, or the
+      // same application refunded twice (review of L6-07).
+      const { data: existing } = await client
+        .from("agent_submissions").select("id,status")
+        .eq("user_id", m.user_id).eq("posting_id", q.posting_id).maybeSingle();
+      if (existing) {
+        summary.skippedDuplicate++;
+        continue;
+      }
+
       // NEVER apply here. Checked before any query, because it is the cheapest
       // guard and the most consequential one: for anyone currently employed, an
       // application to their own employer is not an inconvenience, it is how
@@ -590,19 +623,6 @@ serve(async (req) => {
       if (await inCooldown(q.company)) {
         summary.skippedEmployerCooldown++;
         await refusePassRow(q, "employer-cooldown");
-        continue;
-      }
-
-      // A packet already exists for this posting. The unique index would reject
-      // the insert anyway; checking first keeps us from spending an LLM call to
-      // rediscover that. (agent_queue_unprepared already leaves such rows out;
-      // this stays for the fallback read.)
-      const { data: existing } = await client
-        .from("agent_submissions").select("id,status")
-        .eq("user_id", m.user_id).eq("posting_id", q.posting_id).maybeSingle();
-      if (existing) {
-        summary.skippedDuplicate++;
-        await refusePassRow(q, "already-prepared");
         continue;
       }
 
@@ -814,7 +834,9 @@ serve(async (req) => {
           fitPct: q.fit_pct,
           minFitPct: MIN_FIT_PCT,
           duplicate,
-          senderOnline,
+          // A sender that ran inside the backstop period, not one awake
+          // this minute — see SENDER_REACHABLE_SECONDS.
+          senderOnline: senderReachable,
           // THE ON-RAMP. Read from the mandate and counted forward on each
           // auto release, so the first few go out with the candidate looking.
           // Both are permissive when absent: a mandate written before the
@@ -896,13 +918,40 @@ serve(async (req) => {
     }
   }
 
+  // ASK FOR A SENDER — AFTER THE RUN, so the count includes what this run
+  // released. Only when none is awake, and only for genuinely paid work:
+  // agent_work_pending counts what the claim would hand out now, what it will
+  // hand out inside twenty minutes (a cancel window ending — the woken worker
+  // waits for it), and funded packets waiting on a sender. Asked before the
+  // run, it never saw this run's releases (each still inside its cancel
+  // window), so a packet released at :23 waited for the next hour's wake.
+  //
+  // With WORKER_START_URL unset this is a no-op, and packets wait for the
+  // backstop schedule, which is the design: nothing is lost by not having a
+  // wake, and nothing runs while nobody has bought.
+  if (!senderOnline) {
+    try {
+      const { data: pend } = await client.rpc("agent_work_pending");
+      const p = (pend ?? {}) as { should_run?: boolean; pending?: number; soon?: number; waiting_on_sender?: number };
+      wake = await wakeSender(p.should_run === true);
+      if (p.should_run) {
+        console.warn(`[APPLY-AGENT] work for a sender (claimable ${p.pending ?? 0}, soon ${p.soon ?? 0}, waiting on a sender ${p.waiting_on_sender ?? 0}) — wake: ${JSON.stringify(wake)}`);
+      }
+    } catch (e) {
+      // Never fatal. A failed wake leaves packets waiting, the same safe state
+      // as before this existed.
+      wake = { attempted: true, ok: false, error: String(e).slice(0, 120) };
+      console.warn(`[APPLY-AGENT] wake check failed: ${String(e).slice(0, 120)}`);
+    }
+  }
+
   // Reported on every run, not just the standalone action. A missing bucket
   // blocks essentially every application at the résumé step, and that is far
   // too quiet a failure to leave out of the summary.
   // senderOnline is in the summary because "0 released" has two very different
   // meanings — nothing qualified, or nothing could be sent at all — and a run
   // report that cannot tell them apart is the same trap as a silent refusal.
-  console.log(`[APPLY-AGENT] senderOnline=${senderOnline} wake=${JSON.stringify(wake)} resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
+  console.log(`[APPLY-AGENT] senderOnline=${senderOnline} senderReachable=${senderReachable} wake=${JSON.stringify(wake)} resumesBucket=${bucketState} ${JSON.stringify(summary)}`);
 
   // THE RUN STAMP. Makes "has the apply agent ever actually run?" answerable
   // from outside, with no database access, no dashboard and no service key —
@@ -948,7 +997,7 @@ serve(async (req) => {
   // `wake` rides along for the same reason senderOnline does: "0 released" has
   // several very different causes, and a run that asked for a sender and was
   // refused looks identical to one that never asked unless it is recorded.
-  return new Response(JSON.stringify({ ...summary, senderOnline, wake, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
+  return new Response(JSON.stringify({ ...summary, senderOnline, senderReachable, wake, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
     headers: { "content-type": "application/json", "x-fn-build": FN_BUILD },
   });
 });

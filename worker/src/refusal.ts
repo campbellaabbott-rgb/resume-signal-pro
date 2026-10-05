@@ -33,6 +33,8 @@
  *      allow-list, because the default of a deny-list is to publish.
  */
 
+import { learnedKey } from "./questions/learned.js";
+
 /**
  * The closed list. Derived from the return sites in apply.ts, one stage per
  * distinct cause rather than per sentence — two sentences describing the same
@@ -72,6 +74,31 @@ export interface RefusalFacts {
 export interface BlockedLike {
   label?: string;
   category?: string;
+  /** False for a question no answer may lift (an ID number, a date of birth). */
+  learnable?: boolean;
+}
+
+/**
+ * WHICH ANSWERS WOULD LIFT A QUESTION REFUSAL (L9-07, agents-api review).
+ *
+ * When the candidate answers a question the agent stopped on, a trigger on
+ * agent_learned_answers (20261005133000) puts the packets it stopped back in
+ * line. It needs to know which packets: the ones whose every learnable
+ * question now has an answer, and none of whose questions is one no answer
+ * may lift. `question_keys` is the learned key of each learnable question —
+ * the same key recordPending files the question under, so the candidate's
+ * answer lands on it — and `unlearnable` counts the rest (a refusal of
+ * principle, or a label with nothing in it to key on).
+ */
+export function questionRefusalKeys(blocked?: BlockedLike[]): { question_keys: string[]; unlearnable: number } {
+  const keys = new Set<string>();
+  let unlearnable = 0;
+  for (const b of blocked ?? []) {
+    const key = b?.learnable === true ? learnedKey(String(b?.label ?? "")) : "";
+    if (key) keys.add(key);
+    else unlearnable++;
+  }
+  return { question_keys: [...keys], unlearnable };
 }
 
 const MAX_WORDING = 200;
@@ -162,7 +189,8 @@ export function classifyRefusal(reason: string, blocked?: BlockedLike[]): Refusa
   // A name or email input the form showed and the worker could not fill
   // (register 1.13). The keys are the adapter's own field names, never a value.
   if (/without the candidate's name or email/i.test(r)) {
-    const m = r.match(/asks for ([A-Za-z, ]+) and it could not be filled/);
+    const m = r.match(/asks for ([A-Za-z, ]+) and it could not be filled/)
+      ?? r.match(/never showed a box for ([A-Za-z, ]+) —/);
     return say("partial-fill", m ? `missing: ${m[1]}` : "");
   }
   if (/refusing to submit a partial application/i.test(r)) {
@@ -196,7 +224,10 @@ export function refusalBlocker(
   reason: string,
   source: string,
   blocked?: BlockedLike[],
-): { kind: "worker"; detail: string; stage: RefusalStage; wording: string; source: string } {
+): {
+  kind: "worker"; detail: string; stage: RefusalStage; wording: string; source: string;
+  question_keys?: string[]; unlearnable?: number;
+} {
   const facts = classifyRefusal(reason, blocked);
   return {
     kind: "worker",
@@ -207,6 +238,8 @@ export function refusalBlocker(
     // Without it the aggregate says a label pattern is failing and not where,
     // and every adapter's field map is vendor-specific.
     source: String(source ?? "").toLowerCase().slice(0, 40),
+    // Which answers would send this packet again — see questionRefusalKeys.
+    ...(facts.stage === "question-unanswerable" && blocked?.length ? questionRefusalKeys(blocked) : {}),
   };
 }
 

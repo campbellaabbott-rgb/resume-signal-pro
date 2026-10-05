@@ -22,6 +22,7 @@ import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import { isTransientRefusal, refusalBlocker } from "./refusal.js";
 import { identityFields } from "./packet-fields.js";
+import { mayLeaveIdle, waitForNextClaimMs, WAIT_HORIZON_SECONDS } from "./idle.js";
 import { normaliseLabel, type StandingAnswers } from "./questions/match.js";
 
 const WORKER_ID = process.env.WORKER_ID ?? `worker-${Math.random().toString(36).slice(2, 8)}`;
@@ -41,7 +42,10 @@ const IDLE_MS = 30_000;
 const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // Reported in the heartbeat so two overlapping versions during a redeploy can be
 // told apart when one of them is the one misbehaving.
-const WORKER_VERSION = "2026-07-31.2";
+// 2026-10-05.1: waits for a cancel window the broker names instead of leaving;
+// stamps question keys on a question refusal; refuses a submit that never
+// placed the name or email its adapter maps.
+const WORKER_VERSION = "2026-10-05.1";
 // Where an unresolved submit leaves its evidence, for the human who has to
 // decide whether the application actually went out. The hosted container runs
 // as a non-root user in a root-owned /app, so it sets WORKER_SHOT_DIR (fly.toml)
@@ -525,7 +529,24 @@ async function main() {
     const hello = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
     if (!hello.ok) console.warn(`[worker] heartbeat failed (${hello.kind}): ${hello.detail}`);
 
-    const r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    let r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    // A PACKET ABOUT TO OPEN IS WORK (L9-22 review). A worker woken for a
+    // packet released a minute ago finds it inside its cancel window; leaving
+    // then stranded it until the next run, hours away. While the broker says
+    // a window ends inside the horizon, wait for it — before the browser, so
+    // the wait costs no Chromium — and claim again. Bounded: never past the
+    // horizon from this point, whatever the hints say.
+    const waitDeadline = Date.now() + WAIT_HORIZON_SECONDS * 1000 + 60_000;
+    while (r.ok && !r.data && IDLE_EXIT_MS > 0 && Date.now() < waitDeadline) {
+      const wait = waitForNextClaimMs(r.nextClaimableInSeconds);
+      if (wait === null) break;
+      const ms = Math.min(wait, Math.max(0, waitDeadline - Date.now()));
+      console.log(`[worker] nothing claimable yet — a cancel window ends in ${Math.round(ms / 1000)}s, waiting for it`);
+      await sleep(ms);
+      const again = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
+      if (!again.ok) console.warn(`[worker] heartbeat failed (${again.kind}): ${again.detail}`);
+      r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    }
     if (!r.ok) {
       // Could not ASK is not the same as nothing to do. Exit non-zero so a
       // scheduled run shows red rather than quietly reporting an empty queue.
@@ -557,7 +578,9 @@ async function main() {
   // reached it and the worker ran forever. Under a launchd schedule that is a
   // new Chromium every five minutes, none of them ever leaving. Found by
   // running it with a deliberately wrong key and watching it not stop.
-  const idleTooLong = () => IDLE_EXIT_MS > 0 && Date.now() - lastWorkAt > IDLE_EXIT_MS;
+  // ...and never while a packet the broker named is about to open (idle.ts).
+  let waitUntil: number | null = null;
+  const idleTooLong = () => mayLeaveIdle(Date.now(), lastWorkAt, IDLE_EXIT_MS, waitUntil);
 
   while (!stopping) {
     // Check in BEFORE claiming, every loop including idle ones. An idle worker
@@ -586,6 +609,10 @@ async function main() {
         continue;
       }
       claimed = r.data;
+      if (!claimed) {
+        const wait = waitForNextClaimMs(r.nextClaimableInSeconds);
+        waitUntil = wait === null ? null : Date.now() + wait;
+      }
     }
 
     if (!claimed) {
@@ -602,6 +629,7 @@ async function main() {
     }
     const p = claimed.packet as unknown as Packet;
     lastWorkAt = Date.now();
+    waitUntil = null;
 
     console.log(`[worker] claimed ${who(p)}`);
     try {

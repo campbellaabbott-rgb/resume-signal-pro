@@ -22,7 +22,7 @@ import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
 import { planAnswers, type PreparedAnswers, type StandingAnswers } from "./questions/match.js";
 import { applyResolution } from "./questions/answer.js";
 import { isLearnable, type LearnedAnswers } from "./questions/learned.js";
-import { MUST_FILL_IF_SHOWN } from "./packet-fields.js";
+import { MUST_FILL_IF_SHOWN, unplacedCoreIdentity } from "./packet-fields.js";
 
 export type PacketField = { value: string; source: string };
 
@@ -305,7 +305,10 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
             // posting for this candidate and then trips the duplicate guard when
             // they try to apply properly themselves.
             if (dq.required) {
-              return { kind: "not-submitted", reason: `could not answer "${dq.label || dq.name}": ${res.why}` };
+              // `in`, not the `ok` discriminant: this file is also checked by
+              // the app's non-strict tsconfig (a test drives applyToPosting),
+              // where a boolean discriminant does not narrow.
+              return { kind: "not-submitted", reason: `could not answer "${dq.label || dq.name}": ${"why" in res ? res.why : ""}` };
             }
           }
         }
@@ -328,6 +331,21 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       const unplaced = [...shown].filter((k) => !placed.has(k));
       const guard = await preSubmitGuard(page, adapter, shown.size, placed.size, unplaced);
       if (guard) return guard;
+
+      // THE LAST STEP CARRIES A NAME AND AN EMAIL. `shown` comes from the
+      // locators, so a renamed input drops out of every count above; this asks
+      // the adapter's own map instead, at the one moment it matters — when the
+      // next click would submit (canProceed is proceed's side-effect-free
+      // twin, which proceed itself delegates to).
+      if ((await adapter.canProceed(page).catch(() => "stuck" as const)) === "would-submit") {
+        const missing = unplacedCoreIdentity(adapter.fieldKeys, input.fields, placed);
+        if (missing.length > 0) {
+          return {
+            kind: "not-submitted",
+            reason: `the form never showed a box for ${missing.join(", ")} — not sending an application without the candidate's name or email`,
+          };
+        }
+      }
 
       const step_result = await adapter.proceed(page).catch(() => "stuck" as const);
       if (step_result === "stuck") {

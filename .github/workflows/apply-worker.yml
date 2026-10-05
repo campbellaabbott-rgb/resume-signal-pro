@@ -82,7 +82,10 @@ jobs:
     runs-on: ubuntu-latest
     # Generous ceiling, not an expectation. The worker exits on its own when the
     # queue is empty; this only stops a wedged run burning the whole budget.
-    timeout-minutes: 30
+    # 45, not 30: a worker woken for a packet still inside its cancel window
+    # now waits for it (up to twenty minutes, worker/src/idle.ts) instead of
+    # leaving, and the setup alone is about four.
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4

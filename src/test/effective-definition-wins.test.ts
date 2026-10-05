@@ -89,7 +89,9 @@ describe("agent_claim_submission — the last gate before an employer", () => {
     expect(code).toMatch(/JOIN public\.agent_mandates m ON m\.user_id = c\.user_id/);
     expect(code).toMatch(/m\.active = true/);
     expect(code).toMatch(/m\.paused_until IS NULL OR m\.paused_until <= now\(\)/);
-    expect(code).toMatch(/c\.pass_id IS NOT NULL\s+OR EXISTS \(/);
+    // Funding by the ACCOUNT (agent_subscription_live, 20261005130000) — the
+    // key apply-broker reads too, never an address.
+    expect(code).toMatch(/c\.pass_id IS NOT NULL OR public\.agent_subscription_live\(c\.user_id\)/);
   });
 
   it("a released packet for an employer the candidate has since blocked is parked, never handed out", () => {

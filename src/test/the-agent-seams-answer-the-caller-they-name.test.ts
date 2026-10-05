@@ -1,10 +1,17 @@
 /**
  * THE AGENT'S DENO AND CI SEAMS (platform debug sweep 2026-10-04, agents-api).
  *
- * These files cannot be imported by the Node suite (each starts a server or a
- * worker when loaded), so their properties are read off COMMENT-STRIPPED code
- * — a guard literal in a comment has blinded guards here before — and each
- * assertion names the structure that makes the behaviour, not a sentence.
+ * STRUCTURE ONLY, AND NOT THE PROOF. The review of this branch (2026-10-05)
+ * found these assertions were the only evidence for its security claims, and
+ * that the one seam it reproduced was invisible to every one of them. The
+ * behaviours are now EXECUTED: agent-access, apply-broker,
+ * create-agent-checkout and apply-agent run against the real migrations in
+ * the-agent-functions-run-against-the-real-database.test.ts, the SQL in
+ * a-paid-agent-is-funded-by-its-account-and-stopped-by-its-owner.test.ts, and
+ * the worker in a-started-worker-waits-for-its-packet-and-never-sends-nameless.
+ * What stays here pins the shapes those runs do not reach (an MCP tool's
+ * order of checks, a CI step that must not exist), read off COMMENT-STRIPPED
+ * code — a guard literal in a comment has blinded guards here before.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -127,17 +134,20 @@ describe("the preparer", () => {
     expect(AGENT).toMatch(/rpc\("agent_queue_unprepared"/);
   });
 
-  it("L6-07: a pass-funded row a gate refuses is given back", () => {
-    for (const reason of ["blocked-company", "employer-cooldown", "already-prepared"]) {
+  it("L6-07: a pass-funded row a gate refuses is given back — and a prepared posting never is", () => {
+    for (const reason of ["blocked-company", "employer-cooldown"]) {
       expect(AGENT).toMatch(new RegExp(`await refusePassRow\\(q, "${reason}"\\)`));
     }
+    // Review: refunding a posting whose packet exists handed back an
+    // application the packet was still spending (executed in
+    // the-agent-functions-run-against-the-real-database).
+    expect(AGENT).not.toMatch(/refusePassRow\(q, "already-prepared"\)/);
   });
 
-  it("1.07: the subscription is looked up by the account's address, not the mandate's", () => {
-    expect(AGENT).toMatch(/auth\.admin\.getUserById\(m\.user_id\)/);
-    expect(AGENT).not.toMatch(/\.eq\("email", normalizeEmail\(m\.email\)\)/);
-    expect(BROKER).toMatch(/auth\.admin\.getUserById\(String\(row\.user_id\)\)/);
-    expect(BROKER).not.toMatch(/\.eq\("email", normalizeEmail\(mandate\.email\)\)/);
+  it("1.07: the subscription is read by the account's user id, never by an address", () => {
+    expect(AGENT).toMatch(/client\.rpc\(ACCOUNT_SUBSCRIPTION_RPC, \{ p_user_ids: \[m\.user_id\] \}\)/);
+    expect(BROKER).toMatch(/client\.rpc\(ACCOUNT_SUBSCRIPTION_RPC, \{\s*p_user_ids: \[String\(row\.user_id\)\],?\s*\}\)/);
+    for (const src of [AGENT, BROKER]) expect(src).not.toMatch(/from\("agent_subscribers"\)/);
   });
 });
 

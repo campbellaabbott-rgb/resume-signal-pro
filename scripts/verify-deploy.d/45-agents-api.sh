@@ -9,6 +9,15 @@
 # resources/templates/list; /v1 refuses fractional limits and unparseable
 # salaries and dates, and its quota Retry-After runs to midnight UTC.
 #
+# AND THE REVIEW OF THAT BRANCH (builds .2): a subscription answers only the
+# account it is bound to, or one that proved the mailbox (agent_subscription_
+# rows, account_mailbox_proven, mailbox_proof_settings); the claim and the
+# broker read funding by that one key; a handed-back packet steps aside; the
+# wake counts packets waiting on a sender; create-agent-checkout stamps the
+# buyer's user id; the explore grid's one-click list is one_click_vendors()
+# (20261005134500). The behaviour is executed in the test suite; this section
+# proves the bundles and the closed doors landed.
+#
 # READ-ONLY. OPTIONS preflights run no function logic. agent-access is called
 # with the publishable key only, so it refuses at the session check before any
 # read. The MCP probes are the free listing and the free guide (with a made-up
@@ -19,16 +28,20 @@
 # of our own key's quota each.
 echo "== 45. the agent and the data API: who agent-access answers, bounded keys, the claim's gates (20261005130000, 20261005133000) =="
 
-vd45_build_ok() { # $1 fn, $2 header value, $3 minimum date part (YYYY-MM-DD)
+vd45_build_ok() { # $1 fn, $2 header value, $3 minimum date part (YYYY-MM-DD), $4 minimum build number on that date
   case "$2" in "$1".20[0-9][0-9]-[0-9][0-9]-[0-9][0-9].*) ;; *) return 1;; esac
-  local d="${2#"$1".}"; d="${d%%.*}"
-  [ "$d" = "$3" ] || [ "$d" \> "$3" ]
+  local d="${2#"$1".}"; local n="${d#*.}"; d="${d%%.*}"; n="${n%%[!0-9]*}"
+  [ "$d" \> "$3" ] && return 0
+  [ "$d" = "$3" ] && [ "${n:-0}" -ge "${4:-1}" ]
 }
-for FN in agent-access agent-connect agent-pass-status apply-agent apply-broker agent-runner public-api agent-mcp; do
+# fn:minimum build on 2026-10-05. The .2 builds carry the review's fixes;
+# create-agent-checkout's merged bundle must carry the buyer's user id (.2+).
+for SPEC in agent-access:2 agent-connect:1 agent-pass-status:1 apply-agent:2 apply-broker:2 agent-runner:2 public-api:1 agent-mcp:2 create-agent-checkout:2; do
+  FN="${SPEC%%:*}"; MIN="${SPEC##*:}"
   H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)"
-  elif vd45_build_ok "$FN" "$H" "2026-10-05"; then echo "PASS  $FN preflight x-fn-build = $H (2026-10-05 or later)"
-  else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-05.N or later)"; fi
+  elif vd45_build_ok "$FN" "$H" "2026-10-05" "$MIN"; then echo "PASS  $FN preflight x-fn-build = $H (2026-10-05.$MIN or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-05.$MIN or later)"; fi
 done
 
 # 2.09: no answer about an address in a body. The old function answered 200
@@ -54,7 +67,12 @@ else echo "FAIL  the guide with an unknown key -> $(printf '%s' "$GD" | head -c 
 # a revoke had not landed (see the head of this file).
 probe agent_packet_decide '{"p_user_id":null,"p_submission_id":null,"p_decision":"verify"}'
 probe agent_queue_refuse '{"p_row_id":0,"p_reason":"verify-probe"}'
-probe agent_unclaim_submission '{"p_submission_id":0}'
+probe agent_unclaim_submission '{"p_submission_id":0,"p_hold_minutes":0}'
+# The account-bound subscription read (pure readers) and the one-click list.
+probe agent_subscription_rows '{"p_user_ids":[]}'
+probe agent_subscription_live '{"p_user_id":"00000000-0000-0000-0000-000000000000"}'
+probe account_mailbox_proven '{"p_user_id":"00000000-0000-0000-0000-000000000000"}'
+probe one_click_vendors '{}'
 probe agent_queue_unprepared '{"p_user_id":"00000000-0000-0000-0000-000000000000","p_statuses":[],"p_pass_only":false,"p_limit":1}'
 probe api_key_issue_agent '{"p_user_id":null,"p_email":"","p_key_hash":"","p_key_prefix":""}'
 MT=$(curl -s -m 30 -w '\n%{http_code}' "$B/rest/v1/api_key_agent_mints?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
@@ -64,6 +82,17 @@ case "$MT_CODE" in
   404) echo "INFO  api_key_agent_mints -> 404 (20261005130000 not applied yet)";;
   *) echo "FAIL  api_key_agent_mints as anon -> $MT_CODE $(printf '%s' "$MT" | sed '$d' | head -c 120)";;
 esac
+# The owner's record of when confirmation became real: nobody else reads it.
+MP=$(curl -s -m 30 -w '\n%{http_code}' "$B/rest/v1/mailbox_proof_settings?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+MP_CODE=$(printf '%s' "$MP" | tail -1)
+case "$MP_CODE" in
+  401|403) echo "PASS  mailbox_proof_settings as anon -> $MP_CODE (closed)";;
+  404) echo "INFO  mailbox_proof_settings -> 404 (20261005130000 not applied yet)";;
+  *) echo "FAIL  mailbox_proof_settings as anon -> $MP_CODE $(printf '%s' "$MP" | sed '$d' | head -c 120)";;
+esac
+echo "INFO  stripe-webhook and create-pass-checkout bundle _shared/agent.ts, whose checkAgentByEmail now binds a plan to the user id its Stripe subscription carries: redeploy them too (their x-fn-build belongs to the payments wave)"
+echo "INFO  OWNER STEP (closes the address-only tail of 1.07): switch sign-up email confirmation on, then run"
+echo "INFO    UPDATE public.mailbox_proof_settings SET confirmation_required_since = now();"
 
 if [ -z "$RB" ]; then
   echo "INFO  RB_API_KEY missing from .env.local -- the keyed /v1 parameter probes are skipped"

@@ -28,6 +28,16 @@
 // switched off". A pass that is open (bought and not yet started, or running
 // with applications left) now answers active, tier "pass".
 //
+// AND THE SUBSCRIPTION IS THE ACCOUNT'S, NOT THE ADDRESS'S. Sign-ups are
+// confirmed automatically, so "the session's address has a plan" is not proof
+// the session bought it: registering a subscriber's address (one with no
+// account yet) made this answer active for the registrant. The answer is now
+// agent_subscription_rows(user id): a plan bound to this account (the buyer's
+// user id rides the Stripe subscription, stamped by create-agent-checkout and
+// copied onto the row by checkAgentByEmail), or one on a mailbox the account
+// has proven. A live plan on the address that is neither answers inactive with
+// subscriptionUnbound, so the page can say so rather than sell a second one.
+//
 // The two decisions go through the service-role agent_packet_decide with the
 // verified user id; the vendor check is made here because "can the worker
 // complete this vendor's form" lives in TypeScript (SENDABLE_VENDORS).
@@ -35,12 +45,16 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAgentByEmail } from "../_shared/agent.ts";
-import { ENTITLEMENT_COLUMNS, normalizeEmail, rowIsEntitled, type SubscriberRow } from "../_shared/agent-entitlement.ts";
+import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, normalizeEmail, rowIsEntitled, type AccountSubscriptionRow } from "../_shared/agent-entitlement.ts";
 import { isSendableVendor } from "../_shared/apply-automation.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
 
 // Provable from outside without signing in: the preflight carries it.
-const FN_BUILD = "agent-access.2026-10-05.1";
+// 2026-10-05.2: the subscription is the account's by user id
+// (agent_subscription_rows) — a live Stripe plan on the caller's address that
+// is not bound to the account and not on a proven mailbox answers inactive,
+// and says so (subscriptionUnbound).
+const FN_BUILD = "agent-access.2026-10-05.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -164,19 +178,22 @@ serve(async (req) => {
       .order("purchased_at", { ascending: false }).limit(1).maybeSingle();
     const pass = passState(passRow as PassRow | null);
 
-    // The cached row first. A live answer written in the last ten minutes (by
-    // the webhook, or by this endpoint) is served as it stands: Stripe is not
-    // asked twice in ten minutes about a subscription that is live.
-    type CachedRow = SubscriberRow & { updated_at?: string | null };
-    const sub: CachedRow | null = email
-      ? ((await service.from("agent_subscribers")
-        .select(`${ENTITLEMENT_COLUMNS}, updated_at`).eq("email", email).maybeSingle()).data as CachedRow | null)
-      : null;
+    // The account's own row first, by user id. A live answer written in the
+    // last ten minutes (by the webhook, or by this endpoint) is served as it
+    // stands: Stripe is not asked twice in ten minutes about a live plan. A
+    // read that fails is no subscription — never a fallback to the address.
+    const accountRow = async (): Promise<AccountSubscriptionRow | null> => {
+      const { data, error } = await service.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: [user.id] });
+      if (error) console.error("[AGENT-ACCESS] subscription read failed:", String(error.message ?? "").slice(0, 160));
+      return error ? null : accountSubscription(data, user.id);
+    };
+    let sub = await accountRow();
     const cachedLive = rowIsEntitled(sub);
     const cacheFresh = !!sub?.updated_at && Date.now() - Date.parse(sub.updated_at) < CACHE_FRESH_MS;
 
-    let subscription = { active: cachedLive, status: cachedLive ? String(sub?.status ?? "active") : "inactive", currentPeriodEnd: sub?.current_period_end ?? null };
     let stale = false;
+    // A live Stripe plan on this address that the account may not use.
+    let unbound = false;
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (email && stripeKey && !(cachedLive && cacheFresh)) {
       // METERED. Per account and per network, through the atomic door
@@ -192,13 +209,23 @@ serve(async (req) => {
       const allowed = await take("agent-access", `u:${(await sha256Hex(user.id)).slice(0, 32)}`, STRIPE_READS_PER_ACCOUNT_HOUR)
         && await take("agent-access-net", await networkBucket(req.headers, serviceKey, "agent-access"), STRIPE_READS_PER_NETWORK_HOUR);
       if (allowed) {
+        // Refreshes the cache row (and binds it, when the plan carries this
+        // account's user id); the ANSWER is still the account's row.
         const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
         const live = await checkAgentByEmail(stripe, service, email);
-        subscription = { active: live.active, status: live.status, currentPeriodEnd: live.currentPeriodEnd };
+        sub = await accountRow();
+        unbound = live.active && !rowIsEntitled(sub);
       } else {
         stale = true;
       }
     }
+
+    const subscribed = rowIsEntitled(sub);
+    const subscription = {
+      active: subscribed,
+      status: subscribed ? String(sub?.status ?? "active") : String(sub?.status ?? "inactive"),
+      currentPeriodEnd: sub?.current_period_end ?? null,
+    };
 
     const tier = subscription.active ? "subscription" : pass.usable ? "pass" : "none";
     return json({
@@ -208,6 +235,7 @@ serve(async (req) => {
       currentPeriodEnd: subscription.active ? subscription.currentPeriodEnd : null,
       pass,
       ...(stale ? { cached: true } : {}),
+      ...(unbound ? { subscriptionUnbound: true } : {}),
     });
   } catch (error) {
     console.error("[AGENT-ACCESS] Error:", String((error as Error)?.message ?? error).slice(0, 200));

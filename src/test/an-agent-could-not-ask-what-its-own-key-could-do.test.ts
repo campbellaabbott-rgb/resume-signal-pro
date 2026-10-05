@@ -168,7 +168,10 @@ describe("a key can be asked what it is", () => {
     const fn = between(MCP, "async function applyReadiness(", "async function runRequestApplication(");
     expect(fn).toMatch(/from\("agent_mandates"\)/);
     expect(fn).toMatch(/rowIsEntitled\(subRow as SubscriberRow \| null\)/);
-    expect(fn, "existence is not entitlement — the same columns the seam reads").toMatch(/select\(ENTITLEMENT_COLUMNS\)/);
+    // The same account-keyed read the seam makes (agent_subscription_rows by
+    // user id, 20261005130000) — never agent_subscribers by an address.
+    expect(fn, "the seam's own read of the plan").toMatch(/client\.rpc\(ACCOUNT_SUBSCRIPTION_RPC, \{ p_user_ids: \[userId\] \}\)/);
+    expect(fn).not.toMatch(/from\("agent_subscribers"\)/);
     expect(fn, "the seam's own resume floor, or 'ready' would promise a refusal")
       .toMatch(/String\(m\?\.resume_text \?\? ""\)\.length >= 100/);
     expect(fn).toMatch(/const pausedUntil = m\?\.paused_until && Date\.parse\(m\.paused_until\) > Date\.now\(\)/);

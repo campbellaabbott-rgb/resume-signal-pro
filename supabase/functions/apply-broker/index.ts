@@ -14,14 +14,21 @@
 // Those are different situations and they get different responses, deliberately.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ENTITLEMENT_COLUMNS, normalizeEmail, packetIsFunded } from "../_shared/agent-entitlement.ts";
+import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, normalizeEmail, packetIsFunded } from "../_shared/agent-entitlement.ts";
+import { HANDBACK_HOLD_MINUTES, retryClaimableAt } from "../_shared/apply-retry.ts";
 
 // 2026-10-05.1: a claim handed back unworked spends no attempt (L9-02); the
 // subscription is read by the ACCOUNT's address (1.07); the claim itself now
 // refuses a paused, switched-off, blocklisted or unfunded packet (1.44, in
 // agent_claim_submission); `peek` answers "is there work" without claiming;
 // the packet carries its attempt count so the worker can tell a last try.
-const BUILD_VERSION = "2026-10-05.1";
+// 2026-10-05.2: a packet handed back steps aside so the next claim reaches
+// the next account, and a failed entitlement read answers 503 instead of
+// looping; funding is read by the account's user id (agent_subscription_rows),
+// the key the claim uses; a transient refusal's retry waits (10, then 30
+// minutes); an empty claim says when the next cancel window ends, so a
+// started worker waits for it instead of leaving.
+const BUILD_VERSION = "2026-10-05.2";
 // Provable from outside with no secret: the preflight and every response carry it.
 const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;
@@ -140,18 +147,77 @@ serve(async (req) => {
         p_worker: worker, p_version: str(body.version), p_claimed: 0,
       });
 
+      // WHEN THE NEXT CANCEL WINDOW ENDS. A released packet is not claimable
+      // until its window passes (fifteen minutes by default), and the worker
+      // is an ephemeral job that leaves on an empty claim — so a worker woken
+      // for a packet released a minute ago found nothing and left, and the
+      // packet waited for the next run. An empty answer now carries the
+      // seconds until the first such window ends (inside twenty minutes), and
+      // the worker waits for it. Best effort: no hint is the old answer.
+      const emptyAnswer = async () => {
+        const { data: pend, error: pendErr } = await client.rpc("agent_work_pending");
+        const next = Number((pend as { next_claimable_seconds?: unknown } | null)?.next_claimable_seconds);
+        return json({
+          packet: null,
+          ...(!pendErr && Number.isFinite(next) && next > 0 ? { nextClaimableInSeconds: Math.ceil(next) } : {}),
+        });
+      };
+
       // Claim, then check entitlement. The claim itself must stay atomic (the
       // UPDATE ... WHERE claimed_at IS NULL is the only thing stopping two
       // workers sending one application twice), so an unpaid user's packet is
       // claimed and immediately handed back rather than filtered beforehand.
+      //
+      // ONE PACKET CANNOT HOLD THE QUEUE. A packet handed back gets its
+      // attempt back, which makes it the oldest claimable packet again; the
+      // next pass of this loop used to claim the same one, five times, while
+      // every other account's work waited. A hand-back now steps the packet
+      // aside (agent_unclaim_submission's hold), and a packet this call has
+      // already handed back ends the call rather than going round again.
+      const handedBack = new Set<number>();
       for (let attempt = 0; attempt < 5; attempt++) {
         const { data, error } = await client.rpc("agent_claim_submission", {
           p_worker: worker, p_lease_minutes: LEASE_MINUTES,
         });
         if (error) return json({ error: error.message }, 500);
         const row = Array.isArray(data) ? data[0] : data;
-        if (!row) return json({ packet: null });
+        if (!row) return await emptyAnswer();
 
+        // HANDED BACK WITHOUT SPENDING AN ATTEMPT (L9-02). The claim adds one
+        // to `attempts` and the claim refuses a packet at three, so handing a
+        // packet back by clearing the lease alone spent an attempt per hand-
+        // back: an owner unfunded or switched off for an hour lost the head
+        // packet's whole budget in one poll and found it "exhausted". The RPC
+        // gives the attempt back with the lease, and `holdMinutes` steps the
+        // packet aside so the next claim reaches the next one. The plain
+        // update stays as the fallback for a database without the RPC yet —
+        // the old behaviour.
+        const unclaim = async (holdMinutes: number) => {
+          handedBack.add(Number(row.id));
+          const { error: uerr } = await client.rpc("agent_unclaim_submission", {
+            p_submission_id: row.id, p_hold_minutes: holdMinutes,
+          });
+          if (uerr) {
+            await client.from("agent_submissions")
+              .update({ claimed_at: null, claimed_by: "" }).eq("id", row.id);
+          }
+        };
+
+        // Seen already in this call: the hold did not take (a database without
+        // it), and going round again would only claim it a sixth time.
+        if (handedBack.has(Number(row.id))) { await unclaim(0); return await emptyAnswer(); }
+
+        const { data: mandateRow, error: mandateErr } = await client
+          .from("agent_mandates")
+          .select("email,full_name,phone,linkedin,website,city,country,address,postcode," +
+            "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
+            "work_authorized_countries,salary_expectation,earliest_start,cover_note," +
+            "share_demographics,consent_to_processing,active")
+          .eq("user_id", row.user_id).maybeSingle();
+        // A READ THAT FAILED IS NOT AN ANSWER. Handing the packet back as if
+        // the owner were switched off would loop on it; the worker is told the
+        // broker failed and tries again later.
+        if (mandateErr) { await unclaim(0); return json({ error: "mandate lookup failed" }, 503); }
         // NARROWED, because `deno check` types a maybeSingle() result as the
         // row OR GenericStringError and refuses every field access on the union
         // — the function ran fine in production while the repo's mandatory
@@ -162,31 +228,9 @@ serve(async (req) => {
         // through str()/trinary(), which return "" and null for anything that
         // is not the expected type. The narrowing changes no behaviour; it just
         // lets the checker see what those helpers already handle.
-        const { data: mandateRow } = await client
-          .from("agent_mandates")
-          .select("email,full_name,phone,linkedin,website,city,country,address,postcode," +
-            "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
-            "work_authorized_countries,salary_expectation,earliest_start,cover_note," +
-            "share_demographics,consent_to_processing,active")
-          .eq("user_id", row.user_id).maybeSingle();
         const mandate = mandateRow as Record<string, unknown> | null;
 
-        // HANDED BACK WITHOUT SPENDING AN ATTEMPT (L9-02). The claim adds one
-        // to `attempts` and the claim refuses a packet at three, so handing a
-        // packet back by clearing the lease alone spent an attempt per hand-
-        // back: an owner unfunded or switched off for an hour lost the head
-        // packet's whole budget in one poll and found it "exhausted". The RPC
-        // gives the attempt back with the lease. The plain update stays as the
-        // fallback for a database without the RPC yet — the old behaviour.
-        const unclaim = async () => {
-          const { error: uerr } = await client.rpc("agent_unclaim_submission", { p_submission_id: row.id });
-          if (uerr) {
-            await client.from("agent_submissions")
-              .update({ claimed_at: null, claimed_by: "" }).eq("id", row.id);
-          }
-        };
-
-        if (!mandate) { await unclaim(); continue; }
+        if (!mandate) { await unclaim(HANDBACK_HOLD_MINUTES); continue; }
 
         /**
          * THE STOP BUTTON, ENFORCED WHERE STOPPING ACTUALLY HAPPENS.
@@ -212,7 +256,7 @@ serve(async (req) => {
          * send. Off is the safe direction for a control whose whole purpose is
          * to make something stop.
          */
-        if (mandate.active !== true) { await unclaim(); continue; }
+        if (mandate.active !== true) { await unclaim(HANDBACK_HOLD_MINUTES); continue; }
 
         // Funding, checked at claim time rather than at prepare time: a
         // lapsed subscriber must stop being applied for the day they lapse.
@@ -231,16 +275,30 @@ serve(async (req) => {
         // "is the pass live now" here is exactly the shape that unclaimed paid
         // work in the day-8 lapse.
         //
-        // BY THE ACCOUNT'S ADDRESS (register 1.07). mandate.email is written
-        // by the mandate's owner; the subscription is looked up by the address
-        // on the account itself, resolved here by user id. The same address is
-        // what the employer's form receives below.
-        const { data: acct } = await client.auth.admin.getUserById(String(row.user_id)).catch(() => ({ data: null }));
+        // BY THE ACCOUNT'S USER ID (register 1.07). The subscription is the
+        // one agent_subscription_rows answers for this account — bound to it,
+        // or on a mailbox it proved — never one found by an address, which a
+        // sign-up confirmed by nobody could claim. agent_claim_submission
+        // asks the same function (agent_subscription_live), so the claim and
+        // this gate cannot disagree about one account.
+        //
+        // A READ THAT FAILED IS NOT AN ANSWER. supabase-js answers a failed
+        // call with {error}, not a throw; read as "unfunded" it handed the
+        // packet back on every pass. The worker is told the broker failed.
+        const { data: subData, error: subErr } = await client.rpc(ACCOUNT_SUBSCRIPTION_RPC, {
+          p_user_ids: [String(row.user_id)],
+        });
+        if (subErr) { await unclaim(0); return json({ error: "entitlement lookup failed" }, 503); }
+        const sub = accountSubscription(subData, String(row.user_id));
+        if (!packetIsFunded(sub, row as { pass_id?: string | null })) { await unclaim(HANDBACK_HOLD_MINUTES); continue; }
+
+        // The reply address the employer's form receives: the account's own,
+        // resolved by user id. A lookup that fails falls back to the
+        // mandate's copy, which the database pins to the account's address
+        // on every mandate write.
+        const { data: acct } = await client.auth.admin.getUserById(String(row.user_id))
+          .catch(() => ({ data: null }));
         const accountEmail = normalizeEmail((acct as { user?: { email?: string | null } } | null)?.user?.email ?? "");
-        const { data: sub } = accountEmail
-          ? await client.from("agent_subscribers").select(ENTITLEMENT_COLUMNS).eq("email", accountEmail).maybeSingle()
-          : { data: null };
-        if (!packetIsFunded(sub, row as { pass_id?: string | null })) { await unclaim(); continue; }
 
         const { data: learnedRows } = await client
           .from("agent_learned_answers")
@@ -309,7 +367,7 @@ serve(async (req) => {
         });
       }
       // Five claims in a row belonged to nobody entitled — treat as no work.
-      return json({ packet: null });
+      return await emptyAnswer();
     }
 
     if (action === "release") {
@@ -323,6 +381,18 @@ serve(async (req) => {
       for (const key of ["status", "submitted_at", "submitted_via", "error",
         "blockers", "attempts", "sent_answers", "sent_evidence"]) {
         if (patch[key] !== undefined) update[key] = patch[key];
+      }
+      // A send leaves no stale reason behind, whatever the worker sent.
+      if (update.status === "submitted" && update.error === undefined) update.error = "";
+      // A TRANSIENT REFUSAL WAITS before its next claim (10 minutes after the
+      // first attempt, 30 after the second). Decided here from the row's own
+      // attempt count, never taken from the worker: the worker writes
+      // outcomes, not schedules. Without it the packet was the oldest
+      // claimable one again and the worker spent all three attempts in about
+      // a minute.
+      if (update.status === "ready") {
+        const { data: cur } = await client.from("agent_submissions").select("attempts").eq("id", id).maybeSingle();
+        update.claimable_at = retryClaimableAt(Number((cur as { attempts?: unknown } | null)?.attempts ?? 1));
       }
 
       // The trigger on agent_submissions refuses `submitted` without both a
