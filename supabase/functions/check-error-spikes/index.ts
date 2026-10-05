@@ -1,9 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T20:00Z
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { defang } from './defang.ts';
 
-const corsHeaders = {
+// Provable from outside without the key: every response, the preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = 'check-error-spikes.2026-10-04.1';
+
+const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key',
+  'Access-Control-Expose-Headers': 'x-fn-build',
+  'x-fn-build': FN_BUILD,
 };
 
 interface ErrorSpike {
@@ -98,19 +105,22 @@ Deno.serve(async (req) => {
     const hasIssues = allRecentErrors.length > 0 || activeSpikes.length > 0;
     
     if (hasIssues && adminEmail && resendApiKey) {
-      // Build error summary
+      // Every string below that came from error_telemetry was written by a
+      // browser -- by anyone holding the publishable key -- so each passes
+      // through defang() before it reaches the owner's inbox: no clickable
+      // link, no mailto, capped. Counts and multipliers are ours and are not.
       const errorSummary = allRecentErrors.slice(0, 10).map((e: Record<string, unknown>) =>
-        `- [${e.error_type}] ${e.error_code}: ${e.error_message || 'No message'}\n  Function: ${e.function_name || 'N/A'} | Visitor: ${(e.visitor_id as string)?.substring(0, 12) || 'unknown'}...`
+        `- [${defang(e.error_type, 64)}] ${defang(e.error_code, 64)}: ${e.error_message ? defang(e.error_message) : 'No message'}\n  Function: ${e.function_name ? defang(e.function_name, 128) : 'N/A'} | Visitor: ${e.visitor_id ? defang(String(e.visitor_id).substring(0, 12), 12) : 'unknown'}...`
       ).join('\n');
 
-      const spikeDetails = activeSpikes.length > 0 
-        ? activeSpikes.map(s => 
-            `- Visitor ${s.visitor_id.substring(0, 12)}...: ${s.recent_error_count} errors (${s.spike_multiplier.toFixed(1)}x baseline)\n  Types: ${s.recent_error_types.join(', ')}`
+      const spikeDetails = activeSpikes.length > 0
+        ? activeSpikes.map(s =>
+            `- Visitor ${defang(String(s.visitor_id ?? '').substring(0, 12), 12)}...: ${s.recent_error_count} errors (${Number(s.spike_multiplier).toFixed(1)}x baseline)\n  Types: ${(s.recent_error_types ?? []).map((t) => defang(t, 64)).join(', ')}`
           ).join('\n')
         : 'No spikes detected';
 
       const diagnosticSummary = recentDiagnostics.slice(0, 5).map(d =>
-        `- ${d.error_type}/${d.error_code}: ${d.error_count} errors affecting ${d.unique_users} users`
+        `- ${defang(d.error_type, 64)}/${defang(d.error_code, 64)}: ${d.error_count} errors affecting ${d.unique_users} users`
       ).join('\n');
 
       const emailBody = `

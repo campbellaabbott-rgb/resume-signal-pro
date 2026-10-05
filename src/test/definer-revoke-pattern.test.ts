@@ -25,6 +25,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { anonCan, authenticatedCan, migrationReplay } from "./helpers/function-acl";
 
 const DIR = resolve(__dirname, "../../supabase/migrations");
 const files = readdirSync(DIR).filter((f) => f.endsWith(".sql"));
@@ -127,12 +128,23 @@ describe("the pattern, so the next one is not written the same way", () => {
     expect(all).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_layoff_partition\(\) TO anon, authenticated, service_role/);
   });
 
-  it("does NOT touch the functions that are anon-readable on purpose", () => {
-    // email_delivery_health and product_delivery_health are deliberately
-    // granted to anon: they return counts only, and the heartbeat reads them
-    // without a session. Locking them would be a different bug.
+  it("the two delivery-health counters were opened to anon on purpose, and the census closed them on evidence", () => {
+    // They were granted to anon in 20260807050000 on the belief that the
+    // heartbeat reads them "without a session". It does not: scan-heartbeat,
+    // stripe-webhook and retry-failed-deliveries all call them with the
+    // service key, and no browser, publishable-key script or worker calls
+    // either. The 2026-10-04 census (20261004110000) traced every caller and
+    // closed both; the original grant stays in the tree as history.
     const all = files.map(read).join("\n");
     expect(all).toMatch(/GRANT EXECUTE ON FUNCTION public\.email_delivery_health\(integer\) TO anon/);
     expect(all).toMatch(/GRANT EXECUTE ON FUNCTION public\.product_delivery_health\(integer\) TO anon/);
+    const { fns } = migrationReplay();
+    for (const s of ["public.email_delivery_health(integer)", "public.product_delivery_health(integer)"]) {
+      const f = fns.get(s)!;
+      expect(f, `${s} missing from the replay`).toBeTruthy();
+      expect(anonCan(f) || authenticatedCan(f), `${s} is client-callable again`).toBe(false);
+    }
+    const hb = readFileSync(resolve(__dirname, "../../supabase/functions/scan-heartbeat/index.ts"), "utf8");
+    expect(hb, "the heartbeat must read them with the service key").toMatch(/createClient\(supabaseUrl, supabaseServiceKey\)/);
   });
 });

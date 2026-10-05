@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getVisitorId } from '@/lib/track-transport';
 import { postTrackEvent } from '@/lib/track-transport';
 
 // =============================================================================
@@ -104,67 +103,10 @@ export function useTodayScanCount() {
   return { ...data, isLoading, refresh };
 }
 
-interface ErrorHistory {
-  totalErrors: number;
-  recentErrors: number;
-  lastErrorAt: string | null;
-  errorTypes: string[];
-  hasHadErrors: boolean;
-}
-
-const DEFAULT_ERROR_HISTORY: ErrorHistory = {
-  totalErrors: 0,
-  recentErrors: 0,
-  lastErrorAt: null,
-  errorTypes: [],
-  hasHadErrors: false
-};
-
-// Cached error history - deduplicates calls
-export function useVisitorErrorHistory() {
-  const [data, setData] = useState<ErrorHistory>(DEFAULT_ERROR_HISTORY);
-  const [isLoading, setIsLoading] = useState(true);
-  const visitorId = useRef(getVisitorId());
-  
-  const refresh = useCallback(async () => {
-    try {
-      const history = await getCachedOrFetch<ErrorHistory>(
-        `error_history_${visitorId.current}`,
-        async () => {
-          const { data, error } = await supabase.rpc('get_visitor_error_history', {
-            p_visitor_id: visitorId.current
-          });
-          
-          if (error || !data || data.length === 0) {
-            return DEFAULT_ERROR_HISTORY;
-          }
-          
-          const result = data[0];
-          return {
-            totalErrors: result.total_errors || 0,
-            recentErrors: result.recent_errors || 0,
-            lastErrorAt: result.last_error_at || null,
-            errorTypes: result.error_types || [],
-            hasHadErrors: (result.total_errors || 0) > 0
-          };
-        },
-        300_000 // 5 minute TTL for error history
-      );
-      
-      setData(history);
-    } catch (e) {
-      console.error('[SharedData] Error fetching error history:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-  
-  return { ...data, isLoading, refresh, visitorId: visitorId.current };
-}
+// useVisitorErrorHistory lived here: it read get_visitor_error_history, a
+// SECURITY DEFINER RPC that answered ANY visitor id's error history to the
+// publishable key. Nothing mounted it. Migration 20261004110000 closed the RPC
+// to the browser, and the hook went with it.
 
 // =============================================================================
 // A/B EVENT BATCHING

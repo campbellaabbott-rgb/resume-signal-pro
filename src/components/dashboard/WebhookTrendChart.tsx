@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Webhook, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -37,7 +37,7 @@ export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
     setLoading(true);
     try {
       const hoursBack = timeRange === '24h' ? 24 : 168;
-      const { data: metrics, error } = await supabase.rpc('get_webhook_metrics_hourly', {
+      const { data: metrics, error } = await adminRpc('get_webhook_metrics_hourly', {
         p_hours_back: hoursBack
       });
       

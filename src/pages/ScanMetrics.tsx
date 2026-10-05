@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import {
   LineChart,
@@ -93,7 +94,7 @@ function ScanMetricsContent() {
       // Fetch all metrics in parallel
       const [successRateRes, hourlyRes, geoRes, healthRes, heartbeatsRes] = await Promise.all([
         supabase.rpc('get_scan_success_rate', { p_hours_back: hoursBack }),
-        supabase.rpc('get_scan_metrics_hourly', { p_hours_back: hoursBack }),
+        adminRpc('get_scan_metrics_hourly', { p_hours_back: hoursBack }),
         supabase.rpc('get_scan_geo_stats', { p_hours_back: hoursBack }),
         supabase.rpc('get_scan_health_status'),
         supabase.from('heartbeat_results')

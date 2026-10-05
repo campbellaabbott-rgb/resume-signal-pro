@@ -16,7 +16,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import {
   Collapsible,
   CollapsibleContent,
@@ -59,7 +59,7 @@ export function UserHealthTable() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcError } = await supabase.rpc('detect_user_error_spikes', {
+      const { data, error: rpcError } = await adminRpc('detect_user_error_spikes', {
         p_baseline_hours: 24,
         p_recent_minutes: 60,
         p_spike_threshold: 2
@@ -91,7 +91,7 @@ export function UserHealthTable() {
     }));
 
     try {
-      const { data, error: rpcError } = await supabase.rpc('check_user_health', {
+      const { data, error: rpcError } = await adminRpc('check_user_health', {
         p_visitor_id: visitorId
       });
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getVisitorId } from '@/lib/track-transport';
 
@@ -13,46 +13,8 @@ interface ErrorContext {
   [key: string]: unknown;
 }
 
-interface ErrorHistory {
-  totalErrors: number;
-  recentErrors: number;
-  lastErrorAt: string | null;
-  errorTypes: string[];
-  hasHadErrors: boolean;
-}
-
-interface UserHealthStatus {
-  status: 'healthy' | 'minor_issues' | 'degraded' | 'critical';
-  recentErrors: number;
-  errorTrend: 'improving' | 'stable' | 'worsening';
-  primaryIssue: string;
-  recommendation: string;
-}
-
-interface ErrorSpike {
-  visitorId: string;
-  recentErrorCount: number;
-  baselineHourlyRate: number;
-  spikeMultiplier: number;
-  recentErrorTypes: string[];
-  lastErrorAt: string;
-  isSpike: boolean;
-}
-
-interface ErrorDiagnostics {
-  errorType: string;
-  errorCode: string;
-  errorCount: number;
-  uniqueUsers: number;
-  avgPerUser: number;
-  mostRecent: string;
-  sampleMessage: string;
-  affectedFunctions: string[];
-}
-
 export function useErrorTracking() {
   const visitorId = useRef<string>(getVisitorId());
-  const errorHistory = useRef<ErrorHistory | null>(null);
 
   // Track an error event
   const trackError = useCallback(async (
@@ -134,146 +96,13 @@ export function useErrorTracking() {
     );
   }, [trackError]);
 
-  // Check if user has had errors before
-  const checkErrorHistory = useCallback(async (): Promise<ErrorHistory> => {
-    try {
-      const { data, error } = await supabase.rpc('get_visitor_error_history', {
-        p_visitor_id: visitorId.current
-      });
-
-      if (error || !data || data.length === 0) {
-        return {
-          totalErrors: 0,
-          recentErrors: 0,
-          lastErrorAt: null,
-          errorTypes: [],
-          hasHadErrors: false
-        };
-      }
-
-      const result = data[0];
-      const history: ErrorHistory = {
-        totalErrors: result.total_errors || 0,
-        recentErrors: result.recent_errors || 0,
-        lastErrorAt: result.last_error_at || null,
-        errorTypes: result.error_types || [],
-        hasHadErrors: (result.total_errors || 0) > 0
-      };
-
-      errorHistory.current = history;
-      return history;
-    } catch (e) {
-      console.error('[ErrorTracking] Failed to check error history:', e);
-      return {
-        totalErrors: 0,
-        recentErrors: 0,
-        lastErrorAt: null,
-        errorTypes: [],
-        hasHadErrors: false
-      };
-    }
-  }, []);
-
-  // Check current user's health status with self-diagnosis
-  const checkUserHealth = useCallback(async (): Promise<UserHealthStatus> => {
-    try {
-      const { data, error } = await supabase.rpc('check_user_health', {
-        p_visitor_id: visitorId.current
-      });
-
-      if (error || !data || data.length === 0) {
-        return {
-          status: 'healthy',
-          recentErrors: 0,
-          errorTrend: 'stable',
-          primaryIssue: 'none',
-          recommendation: 'No action needed'
-        };
-      }
-
-      const result = data[0];
-      return {
-        status: result.status as UserHealthStatus['status'],
-        recentErrors: result.recent_errors || 0,
-        errorTrend: result.error_trend as UserHealthStatus['errorTrend'],
-        primaryIssue: result.primary_issue || 'none',
-        recommendation: result.recommendation || 'No action needed'
-      };
-    } catch (e) {
-      console.error('[ErrorTracking] Failed to check user health:', e);
-      return {
-        status: 'healthy',
-        recentErrors: 0,
-        errorTrend: 'stable',
-        primaryIssue: 'none',
-        recommendation: 'No action needed'
-      };
-    }
-  }, []);
-
-  // Detect error spikes across all users
-  const detectErrorSpikes = useCallback(async (
-    spikeThreshold = 5,
-    recentMinutes = 15,
-    baselineHours = 24
-  ): Promise<ErrorSpike[]> => {
-    try {
-      const { data, error } = await supabase.rpc('detect_user_error_spikes', {
-        p_spike_threshold: spikeThreshold,
-        p_recent_minutes: recentMinutes,
-        p_baseline_hours: baselineHours
-      });
-
-      if (error || !data) {
-        console.error('[ErrorTracking] Failed to detect spikes:', error);
-        return [];
-      }
-
-      return data.map((row: Record<string, unknown>) => ({
-        visitorId: row.visitor_id as string,
-        recentErrorCount: row.recent_error_count as number,
-        baselineHourlyRate: row.baseline_hourly_rate as number,
-        spikeMultiplier: row.spike_multiplier as number,
-        recentErrorTypes: row.recent_error_types as string[],
-        lastErrorAt: row.last_error_at as string,
-        isSpike: row.is_spike as boolean
-      }));
-    } catch (e) {
-      console.error('[ErrorTracking] Exception detecting spikes:', e);
-      return [];
-    }
-  }, []);
-
-  // Get error diagnostics summary
-  const getErrorDiagnostics = useCallback(async (hoursBack = 24): Promise<ErrorDiagnostics[]> => {
-    try {
-      const { data, error } = await supabase.rpc('get_error_diagnostics', {
-        p_hours_back: hoursBack
-      });
-
-      if (error || !data) {
-        console.error('[ErrorTracking] Failed to get diagnostics:', error);
-        return [];
-      }
-
-      return data.map((row: Record<string, unknown>) => ({
-        errorType: row.error_type as string,
-        errorCode: row.error_code as string,
-        errorCount: row.error_count as number,
-        uniqueUsers: row.unique_users as number,
-        avgPerUser: row.avg_per_user as number,
-        mostRecent: row.most_recent as string,
-        sampleMessage: row.sample_message as string,
-        affectedFunctions: row.affected_functions as string[] || []
-      }));
-    } catch (e) {
-      console.error('[ErrorTracking] Exception getting diagnostics:', e);
-      return [];
-    }
-  }, []);
-
-  // Skip auto-load on mount - use useVisitorErrorHistory from use-shared-data.ts instead
-  // This prevents duplicate calls when multiple components use this hook
+  // The four readers that used to live here -- checkErrorHistory,
+  // checkUserHealth, detectErrorSpikes, getErrorDiagnostics -- called SECURITY
+  // DEFINER RPCs that returned any visitor's error history (or every visitor's
+  // id) to whoever held the publishable key. No component called them; the
+  // operations dashboard reaches the same data through admin-ops with the
+  // admin key. Migration 20261004110000 closed the RPCs to the browser, so the
+  // readers went with them rather than failing quietly on every call.
 
   return {
     visitorId: visitorId.current,
@@ -281,11 +110,6 @@ export function useErrorTracking() {
     trackRateLimitError,
     trackApiError,
     trackClientError,
-    checkErrorHistory,
-    checkUserHealth,
-    detectErrorSpikes,
-    getErrorDiagnostics,
-    errorHistory: errorHistory.current
   };
 }
 
