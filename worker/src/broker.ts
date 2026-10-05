@@ -58,6 +58,8 @@ export type ClaimedPacket = {
     id: number; user_id: string; posting_id: string; title: string;
     company: string; company_token: string; apply_url: string; source: string;
     fields: Record<string, { value: string; source: string }>;
+    /** Attempts INCLUDING this claim. Absent from a broker older than 2026-10-05. */
+    attempts?: number;
   };
   answers: StandingAnswersWire;
   learned: Array<{ key: string; label: string; kind: "fill" | "choose" | "check"; value: string }>;
@@ -105,11 +107,19 @@ async function post<T>(body: Record<string, unknown>): Promise<{ ok: true; data:
  * be treated as an empty queue.
  */
 export async function claim(workerId: string, version: string) {
-  const r = await post<{ packet: ClaimedPacket["packet"] | null } & Partial<ClaimedPacket>>({
+  const r = await post<{ packet: ClaimedPacket["packet"] | null; nextClaimableInSeconds?: number } & Partial<ClaimedPacket>>({
     action: "claim", worker_id: workerId, version,
   });
   if (!r.ok) return r;
-  return { ok: true as const, data: r.data.packet ? (r.data as ClaimedPacket) : null };
+  // On an empty claim the broker may say when the first cancel window ends
+  // (inside twenty minutes). A worker that leaves before then strands the
+  // packet until the next run — see idle.ts.
+  const hint = Number(r.data.nextClaimableInSeconds);
+  return {
+    ok: true as const,
+    data: r.data.packet ? (r.data as ClaimedPacket) : null,
+    nextClaimableInSeconds: !r.data.packet && Number.isFinite(hint) && hint > 0 ? hint : null,
+  };
 }
 
 /** Write the outcome back and drop the lease. */
@@ -141,6 +151,14 @@ export async function pending(
   }>,
 ) {
   return post<{ ok: boolean }>({ action: "pending", user_id: userId, questions });
+}
+
+/**
+ * Is there claimable work? A read-only look that leases and spends nothing —
+ * claiming to find out cost the head packet an attempt per look.
+ */
+export async function peek() {
+  return post<{ pending: number; shouldRun: boolean; oldestWaitMinutes: number }>({ action: "peek" });
 }
 
 /** Heartbeat. What makes the pricing card admit the sender is live. */

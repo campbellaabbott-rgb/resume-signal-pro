@@ -58,20 +58,24 @@ case "${1:-}" in
       200)
         echo "  broker reachable and the secret is accepted."
         # Now ask the question that decides whether a browser is worth starting.
-        CBODY='{"action":"claim","worker_id":"applyd-check","version":"check"}'
+        #
+        # A PEEK, NOT A CLAIM. This used to claim, which leased a real packet
+        # for ten minutes and spent one of its three attempts — three checks
+        # and the packet was exhausted without ever being tried (L9-02). The
+        # broker's `peek` answers from the claim's own predicate and takes
+        # nothing.
+        CBODY='{"action":"peek"}'
         COUT=$(curl -s -X POST "$APPLY_BROKER_URL" \
           -H "Authorization: Bearer $APPLY_WORKER_SECRET" \
           -H "Content-Type: application/json" -d "$CBODY")
         case "$COUT" in
-          *'"packet":null'*)
+          *'"pending":0'*)
             echo "  nothing queued. A worker started now would exit without a browser." ;;
-          *'"packet"'*)
-            # NOTE: this claim took a 10-minute lease on a real packet. It will
-            # be picked up by the next run once the lease lapses, or immediately
-            # if you run `once` now.
-            echo "  a packet is waiting — ./mac/applyd once will send it."
-            echo "  (this check leased it for 10 minutes; run 'once' now or wait)" ;;
-          *) echo "  unexpected claim response: $(echo "$COUT" | head -c 200)" ;;
+          *'"pending":'*)
+            echo "  packets are waiting — ./mac/applyd once will send them. ($(echo "$COUT" | head -c 120))" ;;
+          *'unknown action'*)
+            echo "  this broker predates 'peek'; not claiming just to look (that would spend an attempt)." ;;
+          *) echo "  unexpected peek response: $(echo "$COUT" | head -c 200)" ;;
         esac ;;
       401|403)
         echo "  broker rejected the secret ($CODE)."

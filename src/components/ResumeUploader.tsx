@@ -150,7 +150,8 @@ interface ResumeUploaderProps {
   /** For paste mode: lets parent reflect the textarea (for preview + floating CTAs) */
   onResumeDraftChange?: (text: string) => void;
   onCheckout: (linkedInText?: string, jobDescriptionText?: string) => void;
-  onFreeScan?: (resumeOverrideText?: string) => void;
+  /** The box's own job description rides along (register L13-31). */
+  onFreeScan?: (resumeOverrideText?: string, jobDescriptionText?: string) => void;
   onClearResume?: () => void;
   isLoading?: boolean;
   isFreeScanLoading?: boolean;
@@ -445,6 +446,29 @@ export function ResumeUploader({
       return `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`;
     }
     return localJobDescriptionText || jobDescriptionText;
+  };
+
+  // THE JOB DESCRIPTION THE FREE SCAN USES IS THE ONE IN THIS BOX (register
+  // L13-31). The box kept its text in local state and the scan button sent
+  // only the résumé, so the advertised match score never appeared for a JD
+  // typed or pasted here, and a handed-off JD the visitor edited or cleared
+  // was still sent unchanged. The box is hydrated from the parent's JD, so
+  // its own content is the truth: empty means no JD. An import failure
+  // message shown in the box is not a job description.
+  const jobDescriptionForScan = (): string => {
+    const own = jobDescriptionMode === "url" && jobDescriptionUrl.trim()
+      ? `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`
+      : localJobDescriptionText;
+    const failure = own.startsWith("Error:") ||
+      own === t('uploader.gsheetsImportFailed') || own === t('uploader.gsheetsImportFailedShared');
+    return failure ? "" : own.trim();
+  };
+
+  const handleFreeScanClick = () => {
+    if (!onFreeScan) return;
+    const jd = jobDescriptionForScan();
+    onJobDescriptionTextChange?.(jd);
+    onFreeScan(resumeMode === "paste" ? textInput.trim() : undefined, jd);
   };
 
   const handleTextPaste = () => {
@@ -1213,7 +1237,7 @@ export function ResumeUploader({
                     <Button
                       size="xl"
                       disabled={!canProceed}
-                      onClick={() => onFreeScan(resumeMode === "paste" ? textInput.trim() : undefined)}
+                      onClick={handleFreeScanClick}
                       onMouseEnter={prefetchScan}
                       onFocus={prefetchScan}
                       className="w-full sm:w-auto sm:min-w-[340px] h-16 text-lg gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"

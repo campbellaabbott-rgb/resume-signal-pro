@@ -2,12 +2,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateProseClaims } from "../_shared/resume-grounding.ts";
+import { looksLikeBrokenJson } from "../_shared/ai-fallback.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-cover-letter.2026-10-04.1";
+const FN_BUILD = "generate-cover-letter.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -359,6 +360,15 @@ Write something that sounds like this specific person wrote it - confident, spec
       }
     } catch (parseError) {
       logStep("JSON parse error, extracting cover letter", { error: String(parseError) });
+      // Prose is a letter; a broken or truncated JSON object is not one, and
+      // shipping it as the paid letter was a delivery in name only (register
+      // L5-12). A retryable failure keeps the delivery open instead.
+      if (looksLikeBrokenJson(content)) {
+        return new Response(
+          JSON.stringify({ error: "The AI returned an unreadable draft. Please try again.", retryable: true }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       result = {
         coverLetter: content,
         openingLine: content.split('\n')[0] || "",

@@ -16,7 +16,7 @@
 // a vendor is spelled one way across the site.
 import { ATS_VENDORS } from "./ats-vendors";
 
-export const SENDABLE_VENDOR_KEYS: readonly string[] = ["breezy", "oracle", "personio", "pinpoint", "teamtailor"];
+export const SENDABLE_VENDOR_KEYS: readonly string[] = ["breezy", "personio", "pinpoint", "teamtailor"];
 
 /** Display names, in the mirror's order, e.g. "Breezy, Oracle, Personio". */
 export const SENDABLE_VENDOR_LABELS: readonly string[] = SENDABLE_VENDOR_KEYS.map(

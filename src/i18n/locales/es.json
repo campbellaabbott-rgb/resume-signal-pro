@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "Se han añadido 10 créditos de escaneo a tu cuenta",
+          "Se han añadido tus créditos de escaneo",
           "Cada escaneo analiza tu currículum frente a un puesto específico",
           "Compara descripciones de puestos ilimitadas con tus créditos",
           "Los créditos nunca caducan"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Los créditos nunca caducan",
     "perCredit": "{{price}} por crédito",
     "topUpCredits": "Recargar créditos",
-    "useDifferentEmail": "Usar otro correo electrónico",
-    "checkYourCredits": "Verificar créditos de escaneo",
-    "enterEmail": "Ingresa el correo que usaste para comprar escaneos.",
-    "checking": "Verificando...",
-    "checkCredits": "Verificar créditos",
-    "noCredits": "No se encontraron créditos para este correo.",
     "freeTier": "Nivel gratuito: hasta 7 escaneos por día, gratis para siempre.",
     "buyCredits": "Comprar créditos — {{price}} cada uno",
-    "myCredits": "Mis créditos"
+    "myCredits": "Mis créditos",
+    "provenHint": "Los créditos comprados en este navegador aparecen aquí automáticamente.",
+    "signInHint": "¿Los compraste en otro navegador? Inicia sesión allí una vez y aparecerán en tu cuenta aquí.",
+    "signIn": "Iniciar sesión",
+    "noCreditsHere": "Todavía no hay créditos de escaneo en este navegador ni en tu cuenta.",
+    "legacyHint": "¿Compraste créditos de escaneo como {{email}} en una visita anterior? Los que no hayas usado siguen registrados. Escribe a {{support}} desde esa dirección y los añadiremos a tu cuenta."
   },
   "industryConfidence": {
     "industry": "Industria:",
@@ -4767,7 +4766,8 @@
     "searchDeleted": "Búsqueda eliminada.",
     "anyRole": "Cualquier puesto",
     "searchLimitHit": "Puedes tener hasta 10 búsquedas activas. Pausa una para añadir otra.",
-    "searchLastRun": "Última ejecución: {{scanned}} revisadas, {{picked}} en cola."
+    "searchLastRun": "Última ejecución: {{scanned}} revisadas, {{picked}} en cola.",
+    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes."
   },
   "applyProfile": {
     "authorized": "¿Tienes autorización para trabajar donde te postulas?",
@@ -4860,7 +4860,15 @@
     },
     "tryAgain": "Reintentar",
     "retried": "En cola otra vez: saldrá en la próxima ejecución",
-    "retryFailed": "No se pudo poner en cola: inténtalo de nuevo"
+    "retryFailed": "No se pudo poner en cola: inténtalo de nuevo",
+    "approveSend": "Aprobar y enviar",
+    "cancelSend": "No enviar esta",
+    "approved": "Aprobada: pasa al envío cuando termine tu margen para cancelar.",
+    "cancelled": "Detenida: esta solicitud no se enviará.",
+    "decideAgentOff": "Primero activa tu agente: una solicitud aprobada espera a que lo hagas.",
+    "decideBlockedCompany": "Esta empresa está en tu lista de no postular nunca, así que el agente no le enviará nada.",
+    "decideInFlight": "El envío la tiene ahora mismo: ya es tarde para cambiarla.",
+    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo."
   },
   "agentPlan": {
     "badge": "Se postula por ti",
@@ -5100,7 +5108,9 @@
     "stepsTitle": "Pasos para {{host}}:",
     "keyedTitle": "Luego añade tu clave de agente — lleva el pase:",
     "connectorNoOauth2": "El inicio de sesión para este host aún no está activado, así que desde aquí solo responden las herramientas sin clave. Para gastar el pase, conéctate desde {{headerHosts}} con tu clave de agente.",
-    "connectorPassGate": "Desde {{host}} el pase solo podrá usarse cuando el inicio de sesión esté activado; hoy, úsalo desde {{headerHosts}} con tu clave de agente."
+    "connectorPassGate": "Desde {{host}} el pase solo podrá usarse cuando el inicio de sesión esté activado; hoy, úsalo desde {{headerHosts}} con tu clave de agente.",
+    "repairSecondPass": "Este pago no creó un segundo pase: una cuenta tiene un solo pase abierto a la vez, y el tuyo se muestra aquí sin cambios. Ya nos han avisado y este pago se reembolsará; si no vuelve a tu tarjeta en unos días, escribe a resumeboostersupp@gmail.com.",
+    "repairNotYours": "Esta compra pertenece a una cuenta distinta de aquella con la que has iniciado sesión, y su pase está en esa cuenta. Inicia sesión con la cuenta que pagó para verlo."
   },
   "oauthConsent": {
     "title": "Conecta tu agente",

@@ -20,8 +20,9 @@ import * as broker from "./broker.js";
 import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
-import { refusalBlocker } from "./refusal.js";
-import type { PacketFieldKey } from "./vendors/types.js";
+import { isTransientRefusal, refusalBlocker } from "./refusal.js";
+import { identityFields } from "./packet-fields.js";
+import { mayLeaveIdle, waitForNextClaimMs, WAIT_HORIZON_SECONDS } from "./idle.js";
 import { normaliseLabel, type StandingAnswers } from "./questions/match.js";
 
 const WORKER_ID = process.env.WORKER_ID ?? `worker-${Math.random().toString(36).slice(2, 8)}`;
@@ -41,10 +42,33 @@ const IDLE_MS = 30_000;
 const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // Reported in the heartbeat so two overlapping versions during a redeploy can be
 // told apart when one of them is the one misbehaving.
-const WORKER_VERSION = "2026-07-31.2";
+// 2026-10-05.1: waits for a cancel window the broker names instead of leaving;
+// stamps question keys on a question refusal; refuses a submit that never
+// placed the name or email its adapter maps.
+const WORKER_VERSION = "2026-10-05.1";
 // Where an unresolved submit leaves its evidence, for the human who has to
-// decide whether the application actually went out.
+// decide whether the application actually went out. The hosted container runs
+// as a non-root user in a root-owned /app, so it sets WORKER_SHOT_DIR (fly.toml)
+// and the Dockerfile pre-creates the default; a directory that still cannot be
+// written falls back to the OS temp dir rather than losing the screenshot (L9-20).
 const SHOT_DIR = process.env.WORKER_SHOT_DIR ?? join(process.cwd(), "mac", "uncertain");
+
+/**
+ * WHAT THE LOG MAY NAME (L12-09). This worker runs on GitHub Actions in a
+ * PUBLIC repository, where every log line is readable by anyone. It printed
+ * the candidate's user id, the employers they applied to, and up to 220
+ * characters of the employer's post-submit page — which can quote the
+ * candidate's own name and answers. By default a log line now names the
+ * packet by its id and vendor only; employer names, titles, user ids, page
+ * text and URLs are left out. WORKER_VERBOSE_LOGS=1 restores them, for an
+ * operator watching their own terminal. The full reason still reaches the
+ * candidate's own record through the broker; only stdout is quieter.
+ */
+const VERBOSE_LOGS = process.env.WORKER_VERBOSE_LOGS === "1";
+const scrub = (s: string): string =>
+  VERBOSE_LOGS ? s : s.replace(/https?:\/\/\S+/gi, "<url>").replace(/page said: "[^"]*"/gi, "page said: <omitted>");
+const who = (p: { id: number; source?: string; company?: string; title?: string }): string =>
+  VERBOSE_LOGS ? `#${p.id} ${p.source ?? ""} ${p.company ?? ""}${p.title ? ` — ${p.title}` : ""}`.trim() : `#${p.id} ${p.source ?? ""}`.trim();
 
 // The measured zero-CAPTCHA set. Duplicated here deliberately: the worker is the
 // last gate before a real submission and must not depend on a database row being
@@ -113,52 +137,19 @@ async function stageResume(resumeUrl: string | null): Promise<{ path: string; di
 }
 
 
-/**
- * Packet answers arrive keyed by the QUESTION LABEL the vendor used. The driver
- * wants a closed set of field keys so each adapter can decide where a value
- * belongs on its own form.
- *
- * Anything unrecognised is dropped rather than guessed into a nearby field —
- * putting a salary expectation into a cover-note box because both are text is
- * the kind of "helpful" that reaches a real employer.
+/*
+ * The adapter's own fields (name, email, phone, place, links) are built from
+ * the broker's LIVE answers by identityFields in ./packet-fields.ts — no
+ * longer from packet labels through a regex table, which left first and last
+ * name empty on three vendors (register 1.13).
  */
-const FIELD_ALIASES: Array<[RegExp, PacketFieldKey]> = [
-  [/^(full|your)?\s*name$/i, "fullName"],
-  [/first\s*name/i, "firstName"],
-  [/last\s*name|surname|family name/i, "lastName"],
-  [/^confirm.*email/i, "confirmEmail"],
-  [/e-?mail/i, "email"],
-  [/phone|mobile|telephone/i, "phone"],
-  [/^city|town$/i, "city"],
-  [/^country/i, "country"],
-  [/post\s*code|zip\s*code|postal/i, "postcode"],
-  [/address/i, "address"],
-  [/linked\s*in/i, "linkedin"],
-  [/website|portfolio|personal site/i, "website"],
-  [/cover|message|why|summary|tell us/i, "coverNote"],
-  [/salary|compensation|expected pay/i, "salaryExpectation"],
-];
-
-function toFieldKeys(
-  raw: Record<string, { value: string; source: string }>,
-): Partial<Record<PacketFieldKey, { value: string; source: string }>> {
-  const out: Partial<Record<PacketFieldKey, { value: string; source: string }>> = {};
-  for (const [label, field] of Object.entries(raw ?? {})) {
-    const hit = FIELD_ALIASES.find(([re]) => re.test(label.trim()));
-    // First alias wins, and an already-filled key is not overwritten: the
-    // earliest label is the one the packet builder considered primary.
-    if (hit && !out[hit[1]]) out[hit[1]] = field;
-  }
-  return out;
-}
 
 /**
  * The packet fields that are QUESTION LABELS, not adapter fields.
  *
- * `toFieldKeys` above keeps the entries an adapter fills directly — name,
- * email, phone. Everything it drops is a label read off the employer's own
- * form, and for the draftable ones apply-agent has already written a grounded
- * answer. Until 2026-08-03 they were dropped here and nowhere else looked at
+ * The adapter's fields come from the live answers (identityFields). The
+ * packet's entries are labels read off the employer's own form, and for the
+ * draftable ones apply-agent has already written a grounded answer. Until 2026-08-03 they were dropped here and nowhere else looked at
  * them, so the worker refused postings as "no standing answer covers ..." while
  * carrying the answer in memory. See PreparedAnswers in questions/match.ts.
  *
@@ -220,7 +211,7 @@ async function recordPending(
     console.error(`[worker] could not record pending questions (${r.kind}): ${r.detail}`);
     return;
   }
-  console.log(`[worker] ${askable.length} question(s) recorded for ${p.user_id} to answer once`);
+  console.log(`[worker] ${askable.length} question(s) recorded for the candidate of ${who(p)} to answer once`);
 }
 
 /**
@@ -309,7 +300,7 @@ async function pauseForEmployer(company: string): Promise<void> {
   if (last !== undefined) {
     const wait = EMPLOYER_GAP_MS - (Date.now() - last);
     if (wait > 0) {
-      console.log(`[worker] pausing ${Math.round(wait / 1000)}s — already applied to ${company} this run`);
+      console.log(`[worker] pausing ${Math.round(wait / 1000)}s — already applied to ${VERBOSE_LOGS ? company : "this employer"} this run`);
       await sleep(wait);
     }
   }
@@ -365,7 +356,9 @@ async function runOne(
   try {
     outcome = await applyToPosting(browser, {
       learned,
-      applyUrl: p.apply_url, source: src, fields: toFieldKeys(p.fields ?? {}),
+      // The candidate's LIVE identity, split the way the broker splits it —
+      // not the packet's labels (register 1.13). See packet-fields.ts.
+      applyUrl: p.apply_url, source: src, fields: identityFields(claimed.answers, p.fields),
       resumePath: staged?.path, answers,
       // The drafted answers apply-agent already wrote for this posting's real
       // questions. Dropped on the floor until 2026-08-03.
@@ -393,7 +386,7 @@ async function runOne(
       sent_answers: outcome.answered ?? [],
       sent_evidence: outcome.evidence.slice(0, 500),
     });
-    return `SENT ${p.company} — ${p.title}`;
+    return `SENT ${who(p)}`;
   }
 
   if (outcome.kind === "uncertain") {
@@ -403,18 +396,31 @@ async function runOne(
     // a candidate's own details, so it stays on the machine the operator
     // already trusts with the service-role key instead of going to a bucket
     // with its own access rules.
+    //
+    // NEVER AS A PUBLIC ARTIFACT (L12-09). The Actions workflow used to upload
+    // this directory for anyone to download; that step is gone, and the file
+    // name carries the packet id only — no employer.
     if (outcome.screenshot) {
-      const shot = join(SHOT_DIR, `uncertain-${p.id}-${p.company.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40)}.png`);
-      await mkdir(SHOT_DIR, { recursive: true }).catch(() => {});
-      await writeFile(shot, outcome.screenshot).then(
-        () => console.log(`[worker] screenshot: ${shot}`),
-        (e) => console.warn(`[worker] could not save screenshot: ${String(e).slice(0, 80)}`),
-      );
+      const save = async (dir: string): Promise<string | null> => {
+        const shot = join(dir, `uncertain-${p.id}.png`);
+        try {
+          await mkdir(dir, { recursive: true });
+          await writeFile(shot, outcome.screenshot!);
+          return shot;
+        } catch {
+          return null;
+        }
+      };
+      // The configured place first; a container user who cannot write there
+      // (L9-20) still keeps it, in the OS temp dir.
+      const saved = await save(SHOT_DIR) ?? await save(join(tmpdir(), "rb-uncertain"));
+      if (saved) console.log(`[worker] screenshot for ${who(p)}: ${VERBOSE_LOGS ? saved : "saved on this machine"}`);
+      else console.warn(`[worker] could not save the screenshot for ${who(p)}`);
     }
     // Never our call to resolve. The RPC parks it for a human AND pushes
     // attempts past the ceiling so nothing picks it up again.
     await broker.uncertain(p.id, outcome.reason);
-    return `UNCERTAIN ${p.company} — ${outcome.reason}`;
+    return `UNCERTAIN ${who(p)} — ${scrub(outcome.reason)}`;
   }
 
   // not-submitted: nothing was sent, so this is safely retryable within the
@@ -433,13 +439,28 @@ async function runOne(
   // and the employer's own question label, on the same terms that make
   // agent_confirmation_gaps safe to read without a session. `kind` and `detail`
   // are untouched, so packetState and the candidate's own view do not move.
-  await release(p.id, {
-    status: "blocked",
-    blockers: [refusalBlocker(outcome.reason, src, outcome.blocked)],
-    error: outcome.reason.slice(0, 300),
-  });
-  return `not sent ${p.company} — ${outcome.reason}`;
+  //
+  // NOT EVERY REFUSAL IS FINAL (L9-07). A driver timeout, a form that did not
+  // load, a résumé that did not attach this time: nothing was sent, and the
+  // same packet may well go on the next claim. Those go back as `ready`
+  // (with the reason) while the claim still allows another attempt — the
+  // claim's three-attempt ceiling bounds the retries — and as `blocked` on
+  // the last one. A refusal of principle or of a missing answer stays
+  // `blocked` at once: the next attempt would refuse identically.
+  const attempts = Number(claimed.packet?.attempts ?? 0);
+  const retryable = isTransientRefusal(outcome.reason) && attempts > 0 && attempts < MAX_CLAIM_ATTEMPTS;
+  await release(p.id, retryable
+    ? { status: "ready", error: `will retry: ${outcome.reason}`.slice(0, 300) }
+    : {
+      status: "blocked",
+      blockers: [refusalBlocker(outcome.reason, src, outcome.blocked)],
+      error: outcome.reason.slice(0, 300),
+    });
+  return `not sent ${who(p)}${retryable ? " (will retry)" : ""} — ${scrub(outcome.reason)}`;
 }
+
+/** agent_claim_submission refuses a packet at this many attempts. */
+const MAX_CLAIM_ATTEMPTS = 3;
 
 async function main() {
   console.log(`[worker] ${WORKER_ID} starting`);
@@ -508,7 +529,24 @@ async function main() {
     const hello = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
     if (!hello.ok) console.warn(`[worker] heartbeat failed (${hello.kind}): ${hello.detail}`);
 
-    const r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    let r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    // A PACKET ABOUT TO OPEN IS WORK (L9-22 review). A worker woken for a
+    // packet released a minute ago finds it inside its cancel window; leaving
+    // then stranded it until the next run, hours away. While the broker says
+    // a window ends inside the horizon, wait for it — before the browser, so
+    // the wait costs no Chromium — and claim again. Bounded: never past the
+    // horizon from this point, whatever the hints say.
+    const waitDeadline = Date.now() + WAIT_HORIZON_SECONDS * 1000 + 60_000;
+    while (r.ok && !r.data && IDLE_EXIT_MS > 0 && Date.now() < waitDeadline) {
+      const wait = waitForNextClaimMs(r.nextClaimableInSeconds);
+      if (wait === null) break;
+      const ms = Math.min(wait, Math.max(0, waitDeadline - Date.now()));
+      console.log(`[worker] nothing claimable yet — a cancel window ends in ${Math.round(ms / 1000)}s, waiting for it`);
+      await sleep(ms);
+      const again = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
+      if (!again.ok) console.warn(`[worker] heartbeat failed (${again.kind}): ${again.detail}`);
+      r = await broker.claim(WORKER_ID, WORKER_VERSION);
+    }
     if (!r.ok) {
       // Could not ASK is not the same as nothing to do. Exit non-zero so a
       // scheduled run shows red rather than quietly reporting an empty queue.
@@ -540,7 +578,9 @@ async function main() {
   // reached it and the worker ran forever. Under a launchd schedule that is a
   // new Chromium every five minutes, none of them ever leaving. Found by
   // running it with a deliberately wrong key and watching it not stop.
-  const idleTooLong = () => IDLE_EXIT_MS > 0 && Date.now() - lastWorkAt > IDLE_EXIT_MS;
+  // ...and never while a packet the broker named is about to open (idle.ts).
+  let waitUntil: number | null = null;
+  const idleTooLong = () => mayLeaveIdle(Date.now(), lastWorkAt, IDLE_EXIT_MS, waitUntil);
 
   while (!stopping) {
     // Check in BEFORE claiming, every loop including idle ones. An idle worker
@@ -569,6 +609,10 @@ async function main() {
         continue;
       }
       claimed = r.data;
+      if (!claimed) {
+        const wait = waitForNextClaimMs(r.nextClaimableInSeconds);
+        waitUntil = wait === null ? null : Date.now() + wait;
+      }
     }
 
     if (!claimed) {
@@ -585,14 +629,15 @@ async function main() {
     }
     const p = claimed.packet as unknown as Packet;
     lastWorkAt = Date.now();
+    waitUntil = null;
 
-    console.log(`[worker] claimed #${p.id} ${p.source} ${p.company}`);
+    console.log(`[worker] claimed ${who(p)}`);
     try {
       console.log(`[worker] ${await runOne(browser, claimed)}`);
     } catch (e) {
       // A crash after clicking submit is the same ambiguity as a timeout, and
       // gets the same treatment: parked, never retried.
-      console.error(`[worker] #${p.id} threw:`, String(e).slice(0, 200));
+      console.error(`[worker] #${p.id} threw:`, scrub(String(e)).slice(0, 200));
       await broker.uncertain(p.id, `worker crashed: ${String(e).slice(0, 140)}`);
     }
     await sleep(GAP_MS);

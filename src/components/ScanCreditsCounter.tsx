@@ -1,26 +1,40 @@
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
-import { Coins, Check, ChevronDown, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Coins, ChevronDown, Plus, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useScanCredits } from "@/hooks/use-scan-credits";
+import { useScanCredits, CREDITS_UPDATED_EVENT, legacyCreditsEmail } from "@/hooks/use-scan-credits";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { useCurrency } from "@/hooks/use-currency";
+import { supabase } from "@/integrations/supabase/client";
+
+/**
+ * THE HEADER'S CREDIT BALANCE: ONLY WHAT THIS BROWSER CAN PROVE.
+ *
+ * This widget used to take any typed email and show that address's balance
+ * (and remember it, so every later scan spent that address's credits): an
+ * open door to anyone's purchase (defect sweep 1.26 / 2.07). It now shows the
+ * balance the scan-credits function answers for the signed-in account plus
+ * the purchases whose Stripe session this browser kept at checkout (a
+ * purchase follows the account once a signed-in browser holding it has
+ * shown it). A buyer from before browsers kept purchases has only the address
+ * they typed here; nothing proves it, so they are told how to get their
+ * credits added rather than that they have none.
+ */
+const SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
 
 export function ScanCreditsCounter() {
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
-  const [checkedEmail, setCheckedEmail] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
-  const { credits, checkCredits, isLoading, pricePerCredit } = useScanCredits();
+  const { credits, email, signedIn, known, refreshCredits, pricePerCredit } = useScanCredits();
   const { formatPrice, isLocalCurrency } = useCurrency();
-  
+
   const formatLocalPrice = (usd: number) => {
     if (isLocalCurrency) {
       return `$${usd.toFixed(2)} (${formatPrice(usd)})`;
@@ -28,45 +42,30 @@ export function ScanCreditsCounter() {
     return `$${usd.toFixed(2)}`;
   };
 
-  // Try to load email from localStorage on mount
+  // Read on mount, after a purchase or a scan that spent a credit (the event),
+  // and when the visitor signs in or out (the account's pool joins or leaves).
   useEffect(() => {
-    const savedEmail = localStorage.getItem("scanCreditsEmail");
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setCheckedEmail(savedEmail);
-      checkCredits(savedEmail);
-    }
-  }, [checkCredits]);
-
-  // Pick up credits immediately after a same-tab purchase (e.g. scan pack checkout
-  // success), without requiring the user to manually find this widget and re-enter
-  // their email — see ProductSuccess.tsx where this event is dispatched.
-  useEffect(() => {
-    const handleCreditsUpdated = (e: Event) => {
-      const updatedEmail = (e as CustomEvent<{ email: string }>).detail?.email;
-      if (updatedEmail) {
-        setEmail(updatedEmail);
-        setCheckedEmail(updatedEmail);
-        checkCredits(updatedEmail);
-      }
+    refreshCredits();
+    const onUpdated = () => { refreshCredits(); };
+    window.addEventListener(CREDITS_UPDATED_EVENT, onUpdated);
+    // The header mounts on every page, including pages rendered without an
+    // auth client (tests, a failed client init): the balance then simply
+    // does not follow sign-in until the next page load.
+    let unsubscribe: (() => void) | undefined;
+    try {
+      const { data } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") refreshCredits();
+      });
+      unsubscribe = () => data?.subscription?.unsubscribe();
+    } catch { /* no auth client */ }
+    return () => {
+      window.removeEventListener(CREDITS_UPDATED_EVENT, onUpdated);
+      unsubscribe?.();
     };
-    window.addEventListener("scanCreditsEmailUpdated", handleCreditsUpdated);
-    return () => window.removeEventListener("scanCreditsEmailUpdated", handleCreditsUpdated);
-  }, [checkCredits]);
+  }, [refreshCredits]);
 
-  const handleCheckCredits = async () => {
-    if (!email || !email.includes("@")) return;
-    
-    const normalizedEmail = email.toLowerCase().trim();
-    await checkCredits(normalizedEmail);
-    setCheckedEmail(normalizedEmail);
-    localStorage.setItem("scanCreditsEmail", normalizedEmail);
-  };
-
-  const isValidEmail = email.includes("@") && email.includes(".");
-
-  // If user has checked and has credits, show counter badge
-  if (checkedEmail && credits > 0) {
+  // A proven balance: show the counter badge
+  if (known && credits > 0) {
     return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
@@ -89,19 +88,19 @@ export function ScanCreditsCounter() {
               </div>
               <div>
                 <p className="font-semibold">{t("scanCredits.yourScanCredits")}</p>
-                <p className="text-sm text-muted-foreground">{checkedEmail}</p>
+                {email && <p className="text-sm text-muted-foreground">{email}</p>}
               </div>
             </div>
-            
+
             <div className="p-3 rounded-lg bg-secondary/50 text-center">
               <p className="text-3xl font-bold text-success">{credits}</p>
               <p className="text-sm text-muted-foreground">{t("scanCredits.creditsRemaining")}</p>
             </div>
-            
+
             <p className="text-xs text-muted-foreground text-center">
               {t("scanCredits.neverExpire")} • {t("scanCredits.perCredit", { price: formatLocalPrice(pricePerCredit) })}
             </p>
-            
+
             <Button
               onClick={() => {
                 setShowPurchase(true);
@@ -113,31 +112,28 @@ export function ScanCreditsCounter() {
               <Plus className="w-4 h-4" />
               {t("scanCredits.topUpCredits")}
             </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-xs"
-              onClick={() => {
-                setCheckedEmail(null);
-                localStorage.removeItem("scanCreditsEmail");
-                setIsOpen(false);
-              }}
-            >
-              {t("scanCredits.useDifferentEmail")}
-            </Button>
+
+            {!signedIn && (
+              <p className="text-xs text-muted-foreground text-center">
+                {t("scanCredits.signInHint")}{" "}
+                <Link to="/auth" className="text-primary hover:underline" onClick={() => setIsOpen(false)}>
+                  {t("scanCredits.signIn")}
+                </Link>
+              </p>
+            )}
           </div>
-          
-          <ScanPackPurchase 
-            open={showPurchase} 
-            onOpenChange={setShowPurchase} 
+
+          <ScanPackPurchase
+            open={showPurchase}
+            onOpenChange={setShowPurchase}
           />
         </PopoverContent>
       </Popover>
     );
   }
 
-  // Show "Check Credits" button that opens email input
+  // No proven balance: explain where credits show up, and offer sign-in and purchase
+  const legacyEmail = legacyCreditsEmail();
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -153,42 +149,29 @@ export function ScanCreditsCounter() {
       <PopoverContent className="w-80 p-4" align="end">
         <div className="space-y-4">
           <div>
-            <h4 className="font-semibold mb-1">{t("scanCredits.checkYourCredits")}</h4>
+            <h4 className="font-semibold mb-1">{t("scanCredits.yourScanCredits")}</h4>
             <p className="text-sm text-muted-foreground">
-              {t("scanCredits.enterEmail")}
+              {known ? t("scanCredits.noCreditsHere") : t("scanCredits.provenHint")}
             </p>
-          </div>
-          
-          <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCheckCredits()}
-              className="h-10"
-            />
-            <Button
-              onClick={handleCheckCredits}
-              disabled={!isValidEmail || isLoading}
-              className="w-full"
-              size="sm"
-            >
-              {isLoading ? t("scanCredits.checking") : t("scanCredits.checkCredits")}
-            </Button>
-          </div>
-          
-          {checkedEmail && credits === 0 && (
-            <div className="p-3 rounded-lg bg-muted/50 text-center">
-              <p className="text-sm text-muted-foreground">
-                {t("scanCredits.noCredits")}
+            {known && legacyEmail && (
+              <p className="text-sm text-muted-foreground mt-2" data-testid="legacy-credits-hint">
+                {t("scanCredits.legacyHint", { email: legacyEmail, support: SUPPORT_EMAIL })}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("scanCredits.perCredit", { price: formatLocalPrice(pricePerCredit) })}
-              </p>
+            )}
+          </div>
+
+          {!signedIn && (
+            <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+              <p className="text-xs text-muted-foreground">{t("scanCredits.signInHint")}</p>
+              <Button asChild variant="outline" size="sm" className="w-full gap-2">
+                <Link to="/auth" onClick={() => setIsOpen(false)}>
+                  <LogIn className="w-4 h-4" />
+                  {t("scanCredits.signIn")}
+                </Link>
+              </Button>
             </div>
           )}
-          
+
           <div className="pt-2 border-t border-border space-y-2">
             <p className="text-xs text-muted-foreground">
               {t("scanCredits.freeTier")}
@@ -207,10 +190,10 @@ export function ScanCreditsCounter() {
             </Button>
           </div>
         </div>
-        
-        <ScanPackPurchase 
-          open={showPurchase} 
-          onOpenChange={setShowPurchase} 
+
+        <ScanPackPurchase
+          open={showPurchase}
+          onOpenChange={setShowPurchase}
         />
       </PopoverContent>
     </Popover>

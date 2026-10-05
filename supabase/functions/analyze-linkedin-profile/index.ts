@@ -2,10 +2,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { coerceLinkedInAnalysis } from "./coerce.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-linkedin-profile.2026-10-04.1";
+const FN_BUILD = "analyze-linkedin-profile.2026-10-05.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -171,14 +172,20 @@ Return valid JSON only.`;
     const raw = data.choices?.[0]?.message?.content;
     if (!raw) return new Response(JSON.stringify({ error: "Empty AI response" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    let analysis;
+    let parsedAnalysis: unknown;
     try {
-      analysis = JSON.parse(raw);
+      parsedAnalysis = JSON.parse(raw);
     } catch {
       const match = raw.match(/\{[\s\S]*\}/);
       if (!match) return new Response(JSON.stringify({ error: "Invalid AI response format" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      analysis = JSON.parse(match[0]);
+      try {
+        parsedAnalysis = JSON.parse(match[0]);
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid AI response format", retryable: true }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
+    // In the documented shape, every field present (register L5-17).
+    const analysis = coerceLinkedInAnalysis(parsedAnalysis);
 
     console.log("[ANALYZE-LINKEDIN] Analysis complete, model:", model);
     return new Response(JSON.stringify({ success: true, ...analysis, modelUsed: model }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

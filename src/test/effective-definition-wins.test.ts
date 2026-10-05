@@ -78,8 +78,24 @@ describe("agent_claim_submission — the last gate before an employer", () => {
     expect(clause).not.toMatch(/d\.released_at/);
   });
 
-  it("a missing mandate row does not strand packets forever", () => {
-    expect(code).toMatch(/NOT EXISTS\s*\(\s*SELECT 1 FROM public\.agent_mandates/);
+  // REPLACED 2026-10-05 (register 1.44 / L9-02). This pinned a
+  // `NOT EXISTS (mandate) OR <daily cap>` arm, which let a packet with no
+  // mandate be claimed only for apply-broker to hand it straight back — an
+  // attempt spent per poll until the packet read "exhausted". The claim now
+  // JOINS the mandate and reads its stop button: a packet is handed out only
+  // while its mandate is on, not paused, and funded, so a packet waiting on
+  // any of those waits without spending its three attempts.
+  it("the claim reads the mandate's off switch, its pause and its funding", () => {
+    expect(code).toMatch(/JOIN public\.agent_mandates m ON m\.user_id = c\.user_id/);
+    expect(code).toMatch(/m\.active = true/);
+    expect(code).toMatch(/m\.paused_until IS NULL OR m\.paused_until <= now\(\)/);
+    // Funding by the ACCOUNT (agent_subscription_live, 20261005130000) — the
+    // key apply-broker reads too, never an address.
+    expect(code).toMatch(/c\.pass_id IS NOT NULL OR public\.agent_subscription_live\(c\.user_id\)/);
+  });
+
+  it("a released packet for an employer the candidate has since blocked is parked, never handed out", () => {
+    expect(code).toMatch(/blocked-company:[\s\S]*?unnest\(coalesce\(m\.blocked_companies/);
   });
 
   it("no top-level OR — one unbracketed operator makes every guard optional", () => {

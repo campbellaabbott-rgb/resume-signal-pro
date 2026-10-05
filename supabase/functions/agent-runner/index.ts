@@ -18,14 +18,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { computeFit } from "../_shared/fit-score.ts";
 import { isSendableVendor, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
-import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ACCOUNT_SUBSCRIPTION_RPC, entitledAccounts } from "../_shared/agent-entitlement.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
 // The two reach rules live in _shared so a vitest suite can EXECUTE them.
 // This file imports from https://deno.land, which the Node ESM loader refuses,
 // so every test of it is a regex over its source — able to prove a line exists
 // and never able to prove what it does. These two decide whether a subscriber
 // sees a quarter of the board, which is worth more than a text match.
-import { applyCategory, applyCountries, applyMaxAge, applyServingFences } from "../_shared/mandate-reach.ts";
+import { applyCategory, applyCountries, applyMaxAge, applyServingFences, searchRunRow } from "../_shared/mandate-reach.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -45,7 +45,12 @@ import { applyCategory, applyCountries, applyMaxAge, applyServingFences } from "
 // and it would have reported the same version string as the bundle without any
 // of that. "Did the reach change deploy?" would then have been unanswerable
 // from outside, which is the whole reason this constant exists.
-const BUILD_VERSION = "2026-08-07.1";
+// 2026-10-05.1: each saved search's own countries reach its run (L9-04).
+// 2026-10-05.2: entitlement read by user id (agent_subscription_rows), never
+// by the mandate's address.
+const BUILD_VERSION = "2026-10-05.2";
+// Provable from outside with no key: the preflight carries it.
+const FN_BUILD = `agent-runner.${BUILD_VERSION}`;
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
@@ -128,7 +133,8 @@ interface HealthRow {
 }
 
 serve(async (req) => {
-  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") return new Response(null, { headers: { "x-fn-build": FN_BUILD } });
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: { "x-fn-build": FN_BUILD } });
 
   const client = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -248,18 +254,20 @@ serve(async (req) => {
     }
   }
 
-  // This check was already correct. It is routed through the shared predicate
-  // anyway, so that "what does entitled mean" has exactly one answer in the
-  // codebase — the two functions that got it wrong got it wrong by writing a
-  // fourth version of this loop.
-  const emails = [...new Set((mandates ?? []).map((m) => normalizeEmail(m.email)).filter(Boolean))];
+  // Routed through the shared predicate, so that "what does entitled mean"
+  // has exactly one answer in the codebase — the two functions that got it
+  // wrong got it wrong by writing a fourth version of this loop.
+  //
+  // BY USER ID, NEVER BY ADDRESS (register 1.07). The mandate's address is the
+  // account's, and sign-ups are confirmed automatically, so a plan found by
+  // address answered for whoever registered a subscriber's address.
+  // agent_subscription_rows answers each account's own plan: bound to it, or
+  // on a mailbox it proved. A failed read entitles nobody.
   let entitled = new Set<string>();
-  if (emails.length) {
-    const { data: subs } = await client
-      .from("agent_subscribers")
-      .select(ENTITLEMENT_COLUMNS)
-      .in("email", emails);
-    entitled = entitledFromRows(subs);
+  if (userIds.length) {
+    const { data: subs, error: subErr } = await client.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: userIds });
+    if (subErr) console.warn(`[AGENT-RUNNER] subscription read failed: ${String(subErr.message ?? "").slice(0, 120)}`);
+    else entitled = entitledAccounts(subs);
   }
 
   // SAVED SEARCHES — many per candidate.
@@ -318,7 +326,7 @@ serve(async (req) => {
   // themselves were added to remove.
   const eligible: MandateRow[] = [];
   for (const m of (mandates ?? []) as MandateRow[]) {
-    if (!isEntitled(entitled, m.email)) { skippedUnentitled++; continue; }
+    if (!entitled.has(m.user_id)) { skippedUnentitled++; continue; }
     if ((m.resume_text ?? "").trim().length < 100) { skippedNoResume++; continue; }
     eligible.push(m);
   }
@@ -337,19 +345,10 @@ serve(async (req) => {
   for (const m of eligible) {
     const list = searchesByUser.get(m.user_id) ?? [];
     if (list.length) {
-      for (const s of list) {
-        runRows.push({
-          ...m,
-          q: s.q, category: s.category, location: s.location,
-          remote_only: s.remote_only, salary_min: s.salary_min,
-          daily_count: s.daily_count,
-          // Reach is per SEARCH, not per person: "anything posted this week" and
-          // "anything at all" are different searches, and taking the mandate's
-          // value here would make one of them wrong.
-          max_age_days: s.max_age_days, include_uncategorised: s.include_uncategorised,
-          search_id: s.id, search_label: s.label,
-        });
-      }
+      // Reach is per SEARCH, not per person: "anything posted this week" and
+      // "anything at all" are different searches, and so are "Germany" and
+      // "anywhere" — searchRunRow carries countries across with the rest.
+      for (const s of list) runRows.push(searchRunRow(m, s));
     } else {
       runRows.push({ ...m, search_id: 0, search_label: "My search" });
     }

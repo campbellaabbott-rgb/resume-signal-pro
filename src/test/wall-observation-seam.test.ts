@@ -65,7 +65,8 @@ describe("the broker's wall action refuses what the table refuses", () => {
   })();
 
   it("exists and is dispatched", () => {
-    expect(BROKER).toMatch(/"claim", "release", "uncertain", "pending", "ping", "wall"/);
+    // "peek" (2026-10-05) is the read-only look applyd check uses (L9-02).
+    expect(BROKER).toMatch(/"claim", "peek", "release", "uncertain", "pending", "ping", "wall"/);
   });
 
   it("refuses a non-boolean verdict instead of coercing it", () => {
@@ -103,6 +104,9 @@ describe("the weekly run can actually persist", () => {
   });
 
   it("the broker declares a bumped BUILD_VERSION so the deploy is checkable", () => {
-    expect(BROKER).toMatch(/const BUILD_VERSION = "2026-08-10\.\d+"/);
+    // A floor, not an equality: the wall seam shipped in 2026-08-10, and every
+    // later build still carries it (an equality fails on the next bump).
+    const v = /const BUILD_VERSION = "(\d{4}-\d{2}-\d{2})\.\d+"/.exec(BROKER)?.[1] ?? "";
+    expect(v >= "2026-08-10", `broker BUILD_VERSION ${v} predates the wall seam`).toBe(true);
   });
 });

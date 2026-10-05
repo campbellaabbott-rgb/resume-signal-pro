@@ -4,10 +4,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-premium-package-stream.2026-10-04.1";
+const FN_BUILD = "generate-premium-package-stream.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,9 +197,10 @@ Provide the enhanced resume first, then the cover letter. Use the exact markers 
 
     logStep("Streaming response back to client");
 
-    // Stream the response directly to the client (SSE). IMPORTANT: buffer line-by-line to avoid token loss.
+    // Stream the response directly to the client (SSE), line-buffered across
+    // network reads. A complete line that does not parse is dropped, never put
+    // back: re-queueing it spun the newline loop forever (register L5-19).
     const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -208,35 +210,14 @@ Provide the enhanced resume first, then the cover letter. Use the exact markers 
           return;
         }
 
-        let textBuffer = "";
-
         const enqueueEvent = (event: Record<string, unknown>) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         };
-
-        const processLine = (rawLine: string) => {
-          let line = rawLine;
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") return;
-          if (!line.startsWith("data: ")) return;
-
-          const data = line.slice(6).trim();
-          if (!data) return;
-
-          if (data === "[DONE]") {
-            enqueueEvent({ type: "done" });
-            return;
-          }
-
-          try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) enqueueEvent({ type: "content", content });
-          } catch {
-            // Likely partial JSON (split across chunks). Put it back and wait for more data.
-            textBuffer = rawLine + "\n" + textBuffer;
-          }
-        };
+        const deltas = createGatewayDeltaReader({
+          onContent: (content) => enqueueEvent({ type: "content", content }),
+          onDone: () => enqueueEvent({ type: "done" }),
+          onBadLine: (line) => logStep("Dropped an unparseable stream line", { length: line.length }),
+        });
 
         try {
           enqueueEvent({ type: "start", message: "Generation started" });
@@ -244,21 +225,9 @@ Provide the enhanced resume first, then the cover letter. Use the exact markers 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
-            textBuffer += decoder.decode(value, { stream: true });
-
-            let newlineIndex: number;
-            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-              const line = textBuffer.slice(0, newlineIndex);
-              textBuffer = textBuffer.slice(newlineIndex + 1);
-              processLine(line);
-            }
+            deltas.push(value);
           }
-
-          // Flush any remaining buffered line
-          if (textBuffer.trim()) {
-            for (const line of textBuffer.split("\n")) processLine(line);
-          }
+          deltas.flush();
 
           enqueueEvent({ type: "complete" });
         } catch (error) {

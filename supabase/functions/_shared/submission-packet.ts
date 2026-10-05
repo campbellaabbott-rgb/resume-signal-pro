@@ -49,6 +49,35 @@ export type Profile = {
 export type DraftedAnswer = { label: string; answer: string; supported: boolean; note?: string };
 
 /**
+ * generate-application-answers answers in ITS shape, keyed by `question`:
+ * {question, answer, supported, note, anticipated}. buildPacket reads
+ * `label`. apply-agent handed the first to the second unconverted, so every
+ * posting with a draftable question threw inside buildPacket (`d.label` was
+ * undefined), the per-posting catch counted a failure, no row was written, and
+ * the model was asked again the next hour (register 1.11). One converter, used
+ * at the boundary, so the two shapes cannot meet unconverted again: `question`
+ * or `label` becomes the label, `supported` is true only when it is literally
+ * true, and an entry with no label at all is dropped rather than guessed at.
+ */
+export function toDraftedAnswers(raw: unknown): DraftedAnswer[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DraftedAnswer[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const a = item as Record<string, unknown>;
+    const label = String(a.question ?? a.label ?? "").trim();
+    if (!label) continue;
+    out.push({
+      label,
+      answer: String(a.answer ?? ""),
+      supported: a.supported === true,
+      ...(typeof a.note === "string" && a.note.trim() ? { note: a.note } : {}),
+    });
+  }
+  return out;
+}
+
+/**
  * Reserved key carrying the cover note through `fields` to the worker.
  *
  * Every other key in `fields` is a QUESTION LABEL read off the employer's form.
@@ -96,6 +125,26 @@ const t = (v: unknown): string => String(v ?? "").trim();
 
 // Identity questions map to profile fields by intent, not by exact label —
 // "Full name", "Your name" and "Name" are the same box.
+//
+// BUT A NAME BOX IS NOT ALWAYS THE CANDIDATE'S WHOLE NAME. "First name" and
+// "Last name" are halves of it, and "Company name", "Referrer name" or
+// "Emergency contact name" are somebody else's altogether — every one of them
+// was filled with the full name (register 2.32 / L9-05). The halves are split
+// the way the broker splits them for the worker; someone else's name is
+// answered with nothing, so a required one blocks instead of being invented.
+const SOMEONE_ELSES_NAME =
+  /\b(company|employer|organi[sz]ation|business|referr\w*|referee|reference|recruiter|manager|supervisor|emergency|contact\s+person|school|university|college|institution|spouse|partner|parent|guardian|father|mother|maiden)\b/;
+function nameValue(l: string, fullName: string): string {
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  if (SOMEONE_ELSES_NAME.test(l)) return "";
+  if (/\b(first|given|fore)\s*-?\s*name\b|\bfirstname\b/.test(l)) return parts[0] ?? "";
+  if (/\b(last|sur|family)\s*-?\s*name\b|\bsurname\b|\blastname\b/.test(l)) {
+    return parts.length > 1 ? parts.slice(1).join(" ") : "";
+  }
+  if (/\bmiddle\s+name\b/.test(l)) return "";
+  return fullName;
+}
+
 function identityValue(label: string, p: Profile): string {
   const l = label.toLowerCase();
   if (/e-?mail/.test(l)) return t(p.email);
@@ -104,9 +153,31 @@ function identityValue(label: string, p: Profile): string {
   if (/website|portfolio|github|personal site/.test(l)) return t(p.website);
   if (/city|town|location|where are you/.test(l)) return t(p.city);
   if (/country/.test(l)) return t(p.country);
-  if (/name/.test(l)) return t(p.fullName);
+  if (/name/.test(l)) return nameValue(l, t(p.fullName));
   return "";
 }
+
+/**
+ * The same three rules the worker's matcher (worker/src/questions/match.ts)
+ * applies to the same labels, so the review sheet a candidate reads and the
+ * form the worker fills cannot state opposite things:
+ *
+ *   CURRENT pay is not held. An expectation is not a substitute for it — a
+ *   current salary stated to a prospective employer is a fabrication with
+ *   consequences in a negotiation.
+ *   "...WITHOUT sponsorship" flips the answer.
+ *   A START DATE is asked many ways; "What days are you available to work?"
+ *   is not one of them (it asks for a schedule).
+ */
+const SALARY_CURRENT =
+  /\b(current|present|existing|latest|most\s+recent)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|earnings|wage)|(salary|compensation|package|ctc|remuneration|earnings)\b[^?]{0,20}\b(current|present)\b/;
+const SPONSOR_INVERTED =
+  /without\s+(the\s+need\s+for\s+|needing\s+(any\s+)?|requiring\s+(any\s+)?)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/;
+const START_DATE =
+  /notice\s+period|when\s+(can|could|are|would)\s+you\s+(be\s+able\s+to\s+)?(start|commence|be\s+available\s+to\s+start)|start\s+date|date\s+(that\s+)?you\s+(could|can|would\s+be\s+able\s+to)\s+start|available\s+to\s+(start|commence|begin)|availability\s+to\s+start|earliest[^?]{0,30}(start|begin|commence)|how\s+soon\s+(can|could)\s+you/;
+
+/** A cover-letter box: a document slot, or a text area that wants the note itself. */
+const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s+motivation/;
 
 // Factual questions are the ones a résumé genuinely cannot answer — work
 // authorisation, sponsorship, salary, start date, relocation. Guessing at these
@@ -116,12 +187,20 @@ function identityValue(label: string, p: Profile): string {
 function standingValue(label: string, s: StandingAnswers): string | null {
   const l = label.toLowerCase();
   const yn = (b: boolean | null | undefined) => (b === true ? "Yes" : b === false ? "No" : null);
-  if (/sponsor/.test(l)) return yn(s.requiresSponsorship);
+  if (/sponsor/.test(l)) {
+    // "Authorized to work ... WITHOUT sponsorship?" asks the opposite question
+    // to "Will you require sponsorship?", and answering both with the same
+    // boolean told an authorised candidate's review sheet to say No.
+    if (s.requiresSponsorship === null || s.requiresSponsorship === undefined) return null;
+    return yn(SPONSOR_INVERTED.test(l) ? !s.requiresSponsorship : s.requiresSponsorship);
+  }
   if (/authori[sz]ed|legally able|right to work|work permit|eligible to work/.test(l)) {
     return yn(s.workAuthorized);
   }
+  // Current pay first, and never answered: null blocks a required one.
+  if (SALARY_CURRENT.test(l)) return null;
   if (/salary|compensation|pay expectation|desired pay/.test(l)) return t(s.salaryExpectation) || null;
-  if (/start date|available|notice period|when can you/.test(l)) return t(s.earliestStart) || null;
+  if (START_DATE.test(l)) return t(s.earliestStart) || null;
   if (/relocat/.test(l)) return yn(s.willingToRelocate);
   return null;
 }
@@ -145,7 +224,13 @@ export function buildPacket(opts: {
   const { questions, profile, standing, drafted, automationTier } = opts;
   const fields: FilledField[] = [];
   const blockers: Blocker[] = [];
-  const draftMap = new Map(drafted.map((d) => [d.label.toLowerCase().trim(), d]));
+  // Tolerant of an entry with no label (see toDraftedAnswers): such an entry
+  // answers nothing and is skipped, rather than throwing for the whole packet.
+  const draftMap = new Map<string, DraftedAnswer>();
+  for (const d of drafted ?? []) {
+    const key = t((d as { label?: unknown } | null)?.label).toLowerCase();
+    if (key && !draftMap.has(key)) draftMap.set(key, d);
+  }
 
   for (const q of questions) {
     const label = t(q.label);
@@ -162,6 +247,24 @@ export function buildPacket(opts: {
     }
 
     if (cls === "file") {
+      // A COVER LETTER IS NOT THE RÉSUMÉ. The classifier calls any label
+      // naming one a file question whatever the control is, and this branch
+      // then put the résumé's storage path in a "Cover Letter" text box (or
+      // attached the résumé as the cover letter). A text box gets the note;
+      // a document slot has nothing we hold, so a required one blocks.
+      if (COVER_LETTER.test(label.toLowerCase())) {
+        const type = String(q.fieldType ?? "").toLowerCase();
+        const isDocument = type.includes("file");
+        const note = t(opts.coverNote?.value);
+        if (!isDocument && note) {
+          fields.push({ key: label, value: note, source: opts.coverNote?.tailored ? "drafted" : "standing" });
+        } else if (q.required) {
+          blockers.push(isDocument
+            ? { kind: "missing-file", detail: `"${label}" wants a cover-letter document, and the account holds only a résumé` }
+            : { kind: "missing-standing", detail: `"${label}" — write a cover note once in your agent profile and it is used here` });
+        }
+        continue;
+      }
       if (t(profile.resumeFileUrl)) {
         fields.push({ key: label, value: t(profile.resumeFileUrl), source: "resume" });
       } else if (q.required) {

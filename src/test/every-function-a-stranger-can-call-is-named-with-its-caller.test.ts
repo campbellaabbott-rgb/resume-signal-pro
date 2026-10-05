@@ -586,9 +586,9 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
    */
   const UNBUDGETED: Record<string, string> = {
     "public.delete_analysis_by_share_id(text)": "deletes only the analysis whose 24/32-hex share id the caller holds",
-    "public.get_temp_resume(text)": "deletes only the row whose session uuid the caller holds, as it reads it",
+    "public.get_temp_resume(text)": "reads only the row whose session uuid the caller holds (it writes nothing since 20261005123000)",
     "public.logout_affiliate(text)": "deletes only the session whose token the caller presents",
-    "public.store_temp_resume(text,text,text)": "the checkout's own step; per-row caps and a 24-hour expiry bound it",
+    "public.store_temp_resume(text,text,text)": "spends a budget of its own, defined after the census (20261005123000): per address, per network, and live-row ceilings that one network cannot fill",
   };
 
   it("every anon-callable function whose body writes spends client_write_allowed, or is a named capability writer", () => {

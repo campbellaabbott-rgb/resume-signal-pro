@@ -82,7 +82,10 @@ jobs:
     runs-on: ubuntu-latest
     # Generous ceiling, not an expectation. The worker exits on its own when the
     # queue is empty; this only stops a wedged run burning the whole budget.
-    timeout-minutes: 30
+    # 45, not 30: a worker woken for a packet still inside its cancel window
+    # now waits for it (up to twenty minutes, worker/src/idle.ts) instead of
+    # leaving, and the setup alone is about four.
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -127,14 +130,12 @@ jobs:
           APPLY_EMPLOYER_GAP_MS: "120000"
         run: npx tsx src/index.ts
 
-      - name: Upload evidence for uncertain outcomes
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: uncertain-${{ github.run_id }}
-          # Screenshots the worker keeps when it submitted but could not confirm.
-          # `if-no-files-found: ignore` because the healthy case is an empty
-          # directory, and a failed upload step would make a clean run look red.
-          path: worker/mac/uncertain/
-          if-no-files-found: ignore
-          retention-days: 14
+      # NO EVIDENCE UPLOAD, deliberately (L12-09). This repository is public:
+      # an Actions artifact here is downloadable by any signed-in GitHub user
+      # for its whole retention. The step that uploaded worker/mac/uncertain/
+      # would have published a screenshot of the employer's post-submit page —
+      # the candidate's name, email, phone and answers — for 14 days, the first
+      # time a send ended "uncertain". The screenshot now dies with the runner;
+      # the reason, with the page's own wording, is recorded on the candidate's
+      # packet by the broker, and the log names packets by id and vendor only
+      # (WORKER_VERBOSE_LOGS is deliberately not set here).

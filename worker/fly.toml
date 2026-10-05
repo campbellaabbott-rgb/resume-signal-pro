@@ -36,6 +36,13 @@ primary_region = "iad"
   # would call from anywhere, and it is useless without APPLY_WORKER_SECRET.
   APPLY_BROKER_URL = "https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/apply-broker"
 
+  # Where an "uncertain" submit's screenshot is kept. The process runs as a
+  # non-root user and /app is root-owned, so the default under /app could not
+  # be written (L9-20). /tmp is the user's own, and it stays on this machine:
+  # the screenshot can show the candidate's details and never goes anywhere
+  # shared.
+  WORKER_SHOT_DIR = "/tmp/uncertain"
+
 [[vm]]
   # Chromium is memory-hungry; 512MB gets OOM-killed mid-application, which is
   # the worst moment to die because a submit may already be in flight and the

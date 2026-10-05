@@ -247,10 +247,11 @@ describe("the gate is in front of every public model endpoint", () => {
 
       it("answers its build on the preflight, so a deploy is provable without a model call", async () => {
         const res = await handlers.get(c.fn)!(new Request(`https://harness.supabase.co/functions/v1/${c.fn}`, { method: "OPTIONS" }));
-        // That build or a later one: a later change to the same function
-        // (the 2026-10-05 payments wave rebuilt two of these) carries the
-        // gate forward under its own build string.
-        expect(res.headers.get("x-fn-build")).toMatch(new RegExp(`^${c.fn}\\.2026-10-(0[4-9]|[1-3]\\d)\\.\\d+$`));
+        // This gate's build (2026-10-04.1) or a later one of the same function.
+        const build = res.headers.get("x-fn-build") ?? "";
+        const m = new RegExp(`^${c.fn}\\.(\\d{4}-\\d{2}-\\d{2})\\.(\\d+)$`).exec(build);
+        expect(m, `${c.fn} answered x-fn-build "${build}"`).not.toBeNull();
+        expect(m![1] >= "2026-10-04", `${c.fn} answers a build older than the gate: ${build}`).toBe(true);
       });
     });
   }
@@ -309,8 +310,11 @@ describe("a purchase is off a free generator's ceiling only for a product that g
       const r = await call({ ...c, body: { ...c.body, isPremium: true, sessionId: "cs_live_scanpack" } }, { "cf-connecting-ip": `198.51.100.${i + 1}` });
       statuses.push(r.status);
     }
-    expect([...new Set(statuses)]).toEqual([429]);
-    expect(world("generate-interview-coach").length).toBe(50);
+    // Since 2026-10-05 (defect sweep 1.60) the paid tier needs an Interview
+    // Coach purchase, so a scan-pack session asking for isPremium is refused
+    // with 402 before any allowance is even counted.
+    expect([...new Set(statuses)]).toEqual([402]);
+    expect(world("generate-interview-coach").length).toBe(0);
     expect(aiBodies).toEqual([]);
   });
 

@@ -20,8 +20,19 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { refusalFace } from "@/lib/refusalCopy";
 import { packetState, needsAttention as packetNeedsAttention } from "@/lib/packetState";
+import { isSendableVendor } from "../../../supabase/functions/_shared/apply-automation";
 
-const sb = supabase as unknown as { from: (t: string) => any };
+const sb = supabase as unknown as {
+  from: (t: string) => any;
+  functions: { invoke: (fn: string, opts: { body: unknown }) => Promise<{ data: any; error: any }> };
+};
+
+/**
+ * Refusals that describe the MOMENT — a packet good to go that is waiting on
+ * the candidate's say-so, the sender, or the day's cap. These are the ones
+ * "Approve and send" may release (agent_packet_decide refuses the rest).
+ */
+const APPROVABLE = new Set(["review-mode", "held-for-review", "sender-offline", "daily-cap"]);
 
 type Status = "preparing" | "ready" | "blocked" | "submitted" | "failed" | "stale";
 
@@ -52,6 +63,8 @@ interface Packet {
   attempts: number | null;
   claimed_at: string | null;
   released_at: string | null;
+  /** Released, but no worker may take it before this — the cancel window. */
+  claimable_at?: string | null;
 }
 
 const TONE: Record<Status, string> = {
@@ -74,7 +87,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     const { data } = await sb.from("agent_submissions")
       .select("id,posting_id,title,company,apply_url,source,status,fields,questions," +
         "questions_are_real,blockers,fit_pct,prepared_at,submitted_at,submitted_via," +
-        "release_refusal,attempts,claimed_at,released_at," +
+        "release_refusal,attempts,claimed_at,released_at,claimable_at," +
         // The receipt. Recorded since 2026-08-01 and read by nothing until now.
         "sent_answers,sent_evidence")
       .eq("user_id", userId)
@@ -117,6 +130,43 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     setBusy(null);
     if (error) { toast.error(t("applyQueue.retryFailed", "Could not queue that again — try again")); return; }
     toast.success(t("applyQueue.retried", "Queued again — it will go out on the next run"));
+    void load();
+  }, [load, t]);
+
+  // APPROVE AND SEND, AND STOP (register 1.09, 1.44). A packet held for
+  // review — every one in review mode, the first three of every auto-mode
+  // agent — had no way to go: nothing ever wrote released_at after the insert,
+  // while the queue told the candidate "approve it and it goes". And a
+  // released packet waiting out its cancel window had no cancel control.
+  // Both go through agent-access, which acts for the signed-in user only; the
+  // database refuses anything already sent, in a worker's hands, or (for an
+  // approval) for an agent that is off, paused, or an employer on the
+  // never-apply list.
+  const decide = useCallback(async (p: Packet, action: "approve" | "cancel") => {
+    setBusy(p.id);
+    const { data, error } = await sb.functions.invoke("agent-access", { body: { action, id: p.id } });
+    setBusy(null);
+    let reason: string | undefined = (data as { reason?: string } | null)?.reason;
+    if (error && !reason) {
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+        reason = ((await ctx?.json?.()) as { reason?: string } | null)?.reason;
+      } catch { /* body unreadable */ }
+    }
+    if (!error && (data as { ok?: boolean } | null)?.ok) {
+      toast.success(action === "approve"
+        ? t("applyQueue.approved", "Approved — it goes to the sender once your cancel window has passed.")
+        : t("applyQueue.cancelled", "Stopped — this application will not be sent."));
+      void load();
+      return;
+    }
+    const why: Record<string, string> = {
+      agent_off: t("applyQueue.decideAgentOff", "Switch your agent on first — an approved application waits for that."),
+      agent_paused: t("applyQueue.decideAgentOff", "Switch your agent on first — an approved application waits for that."),
+      blocked_company: t("applyQueue.decideBlockedCompany", "This employer is on your never-apply list, so the agent will not send to it."),
+      in_flight: t("applyQueue.decideInFlight", "The sender has this one right now — it is too late to change it."),
+    };
+    toast.error(why[reason ?? ""] ?? t("applyQueue.decideFailed", "Could not do that — refresh and try again."));
     void load();
   }, [load, t]);
 
@@ -299,6 +349,36 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                           <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${tone}`}>
                             <Icon className="w-3.5 h-3.5 shrink-0 mt-[1px]" aria-hidden />
                             <span>{t(face.key, face.fallback)}</span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* The candidate's two decisions. Approve only where the
+                          worker can complete the vendor's form; stop wherever
+                          nothing has been sent and no worker holds it. */}
+                      {p.status === "ready" && !p.submitted_at && (() => {
+                        const leased = !!p.claimed_at && Date.now() - Date.parse(p.claimed_at) < 10 * 60_000;
+                        if (leased) return null;
+                        const canApprove = !p.released_at && APPROVABLE.has(String(p.release_refusal ?? ""))
+                          && isSendableVendor(p.source);
+                        return (
+                          <div className="mt-2 flex flex-wrap gap-3">
+                            {canApprove && (
+                              <button
+                                type="button" disabled={busy === p.id}
+                                onClick={() => void decide(p, "approve")}
+                                className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                              >
+                                {t("applyQueue.approveSend", "Approve and send")}
+                              </button>
+                            )}
+                            <button
+                              type="button" disabled={busy === p.id}
+                              onClick={() => void decide(p, "cancel")}
+                              className="text-xs text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
+                            >
+                              {t("applyQueue.cancelSend", "Don't send this")}
+                            </button>
                           </div>
                         );
                       })()}

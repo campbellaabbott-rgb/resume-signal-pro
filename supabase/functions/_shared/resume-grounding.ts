@@ -100,8 +100,14 @@ const yearsIn = (s: string) => [...s.matchAll(/\b(19|20)\d{2}\b/g)].map((m) => m
 
 const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{2,}\b/g;
 
-/** Canonical digit-string for matching: "1,200" == "1200", "32 %" == "32%". */
-const canonNum = (s: string) => s.replace(/[\s,]/g, "").toLowerCase();
+/**
+ * Canonical digit-string for matching: "1,200" == "1200", "32 %" == "32%",
+ * and "$250,000." == "$250,000". The currency arm above (and the source
+ * digit-run below) swallow a sentence's full stop, so a figure ending a
+ * sentence on one side and not the other was refused as invented: an honest
+ * cover letter or apply kit got a 422 (register L5-06).
+ */
+const canonNum = (s: string) => s.replace(/[\s,]/g, "").toLowerCase().replace(/\.+$/, "");
 
 const numClaims = (text: string): string[] =>
   [...(text.matchAll(NUM_CLAIM))].map((m) => m[0]).filter((raw) => {
@@ -124,7 +130,7 @@ export function unsupportedNumericClaims(sourceResume: string, text: string): st
   const bad: string[] = [];
   for (const claim of numClaims(text)) {
     const canon = canonNum(claim);
-    const digits = canon.replace(/[^0-9.]/g, "");
+    const digits = canon.replace(/[^0-9.]/g, "").replace(/\.+$/, "");
     if (sourceNums.has(canon) || sourceNums.has(digits)) continue;
     bad.push(claim.trim());
   }

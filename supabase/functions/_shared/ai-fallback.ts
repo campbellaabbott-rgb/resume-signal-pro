@@ -16,8 +16,33 @@
 const MAX_RETRIES = 1;
 const REQUEST_TIMEOUT_MS = 55000;
 const RETRY_DELAY_MS = 1000;
+// THE WHOLE CHAIN'S CLOCK (register L5-11). Three models x two attempts x
+// 55 s could run five minutes, far past the platform's 150-second limit, so a
+// stalled gateway ended in the platform's 504 instead of this function's own
+// retryable error. Each attempt now gets at most what is left of this budget.
+const CHAIN_DEADLINE_MS = 125_000;
+const MIN_ATTEMPT_MS = 5_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A model answered, but with nothing a paid delivery can use (unparseable or
+ * truncated JSON). Callers turn it into a retryable 5xx so the delivery stays
+ * open for the retry sweep, instead of shipping an invented placeholder as a
+ * successful delivery (register L5-12).
+ */
+export class UnusableModelOutput extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnusableModelOutput";
+  }
+}
+
+/** True when a reply that failed to parse was meant to be JSON (so it is not usable prose either). */
+export function looksLikeBrokenJson(text: string): boolean {
+  const t = (text ?? "").trim();
+  return t === "" || t.startsWith("{") || t.startsWith("[") || t.startsWith("```") || /"[A-Za-z_]+"\s*:/.test(t.slice(0, 600));
+}
 
 export interface FallbackAIOptions {
   messages: Array<{ role: string; content: string }>;
@@ -32,6 +57,8 @@ export interface FallbackAIOptions {
   models?: string[];
   /** Label for log lines, e.g. "FREELANCE-BOOST". */
   context?: string;
+  /** The whole chain's budget in ms (default 125 s, inside the platform's 150 s). */
+  deadlineMs?: number;
 }
 
 // Default order: the paid-quality primary, then the same-family model the
@@ -60,12 +87,19 @@ export async function callAIWithModelFallback(
   const context = options.context ?? 'AI call';
   let lastError: Error | null = null;
   let lastRateLimited: { response: Response; modelUsed: string } | null = null;
+  const deadlineAt = Date.now() + (options.deadlineMs ?? CHAIN_DEADLINE_MS);
 
-  for (const model of models) {
+  chain: for (const model of models) {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const left = deadlineAt - Date.now();
+      if (left < MIN_ATTEMPT_MS) {
+        console.warn(`[${context}] chain deadline reached before ${model} attempt ${attempt + 1}`);
+        lastError = lastError ?? new Error(`${context}: timed out before any model answered`);
+        break chain;
+      }
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+        const timeoutId = setTimeout(() => controller.abort(), Math.min(REQUEST_TIMEOUT_MS, left));
 
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -151,4 +185,71 @@ export async function callAIWithModelFallback(
   // existing retryable-error handling.
   if (lastRateLimited) return lastRateLimited;
   throw lastError ?? new Error(`${context}: all models failed`);
+}
+
+/**
+ * READS THE GATEWAY'S STREAMED REPLY (OpenAI-style SSE) INTO CONTENT DELTAS.
+ *
+ * Network chunks do not respect line boundaries. generate-cover-letter-stream
+ * decoded each chunk on its own and split it on newlines with no carry-over,
+ * so a `data:` line cut across two reads failed to parse in its first half,
+ * lost its prefix in its second, and both halves were dropped: paid cover
+ * letters arrived with words missing (register L5-04). Multibyte characters
+ * cut across reads broke the same way. generate-premium-package-stream had
+ * the carry-over, but put an unparseable COMPLETE line back on the buffer,
+ * where the newline loop took it straight out again: a synchronous infinite
+ * loop on one malformed line (register L5-19).
+ *
+ * Here: bytes are decoded with { stream: true }, only complete lines are
+ * handled, the remainder waits for the next read, and a complete line that
+ * does not parse is reported and dropped, never re-queued. flush() handles
+ * the last line when the stream ends without a trailing newline.
+ */
+export function createGatewayDeltaReader(handlers: {
+  onContent: (text: string) => void;
+  onDone?: () => void;
+  onBadLine?: (line: string) => void;
+}): { push: (bytes: Uint8Array) => void; flush: () => void } {
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  const handleLine = (raw: string) => {
+    const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
+    if (line === "" || line.startsWith(":") || !line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data) return;
+    if (data === "[DONE]") {
+      handlers.onDone?.();
+      return;
+    }
+    try {
+      const parsed = JSON.parse(data);
+      const content = parsed?.choices?.[0]?.delta?.content;
+      if (typeof content === "string" && content) handlers.onContent(content);
+    } catch {
+      handlers.onBadLine?.(data.slice(0, 120));
+    }
+  };
+
+  const drain = () => {
+    let i: number;
+    while ((i = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, i);
+      buffer = buffer.slice(i + 1);
+      handleLine(line);
+    }
+  };
+
+  return {
+    push(bytes: Uint8Array) {
+      buffer += decoder.decode(bytes, { stream: true });
+      drain();
+    },
+    flush() {
+      buffer += decoder.decode();
+      drain();
+      if (buffer.trim()) handleLine(buffer);
+      buffer = "";
+    },
+  };
 }

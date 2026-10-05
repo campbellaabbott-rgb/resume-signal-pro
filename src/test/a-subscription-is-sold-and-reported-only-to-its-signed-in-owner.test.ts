@@ -111,7 +111,8 @@ beforeEach(() => {
       getUser: async (jwt: string) => {
         authCalls.push(jwt);
         const email = TOKENS[jwt];
-        return email ? { data: { user: { email } }, error: null } : { data: { user: null }, error: { message: "bad jwt" } };
+        // A real auth user always carries an id; the agent checkout stamps it on the plan.
+        return email ? { data: { user: { id: `uid-${jwt}`, email } }, error: null } : { data: { user: null }, error: { message: "bad jwt" } };
       },
     },
   };

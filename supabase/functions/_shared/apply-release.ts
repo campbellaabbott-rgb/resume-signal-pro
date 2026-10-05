@@ -9,7 +9,7 @@
 // agent did nothing last night" must always be answerable. A silent no is
 // indistinguishable from a broken cron, which is the same trap as an alarm that
 // only records failures.
-import { automationFor } from "./apply-automation.ts";
+import { automationFor, isSendableVendor } from "./apply-automation.ts";
 
 export type ReleaseInput = {
   applyMode: "review" | "auto";
@@ -133,6 +133,18 @@ export function decideRelease(i: ReleaseInput): ReleaseDecision {
       release: false,
       code: "vendor-needs-human",
       reason: `${src} needs a step only you can do`,
+    };
+  }
+  // NO CAPTCHA IS NOT AN ADAPTER. The tier above answers "is there a CAPTCHA
+  // in the way"; whether the worker can reach a submit on this vendor at all
+  // is SENDABLE_VENDORS (the mirror of the worker's adapters). Oracle is
+  // `auto` above and has no submit path, so releasing it handed the worker a
+  // packet it could only refuse — a release that read as "on its way".
+  if (!isSendableVendor(src)) {
+    return {
+      release: false,
+      code: "vendor-needs-human",
+      reason: `the agent cannot complete ${src} forms yet — this one is prepared for you to send`,
     };
   }
 

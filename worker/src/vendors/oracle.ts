@@ -92,6 +92,7 @@ export const oracle: VendorAdapter = {
   requiredAttributeIsTrustworthy: true,
 
   mappedNames: new Set(Object.values(FIELDS).map((sel) => /\[name="([^"]+)"\]/.exec(sel)?.[1] ?? sel)),
+  fieldKeys: new Set(Object.keys(FIELDS) as PacketFieldKey[]),
 
   async resolveFormUrl(page, postingUrl) {
     if (!/\/hcmUI\/CandidateExperience\//i.test(postingUrl)) return null;

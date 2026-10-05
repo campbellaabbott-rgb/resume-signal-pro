@@ -57,6 +57,7 @@ import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
 import { StreamingContentDisplay } from "@/components/StreamingContentDisplay";
 import { autoFixContent } from "@/lib/content-autofix";
+import { CREDITS_UPDATED_EVENT, fetchProvenCredits, rememberCreditSession } from "@/hooks/use-scan-credits";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -197,6 +198,11 @@ export default function ProductSuccess() {
   
   // Get product details
   const product = productKey && PRODUCTS[productKey] ? PRODUCTS[productKey] : null;
+  // The catalogue names the scan pack "(10 Credits)", but a buyer chooses 5 to
+  // 100: the count shown is what THIS purchase bought, in the credits box.
+  const productDisplayName = product
+    ? (productKey === 'scanPack' ? product.name.replace(/\s*\(\d+\s+credits?\)\s*$/i, '') : product.name)
+    : '';
   const Icon = productKey ? productIcons[productKey] || Sparkles : Sparkles;
   const info = productKey ? getProductInfo(t, productKey) : null;
 
@@ -669,35 +675,34 @@ export default function ProductSuccess() {
           return;
         }
         setBuyerEmailOnFile(Boolean(data?.customerEmail));
+        
+        // SCAN CREDITS: CONFIRMED WHOEVER CREDITED THEM (register L3-05). The
+        // webhook almost always claims a scan-pack purchase first, and the
+        // verifier then answers with no generated content, so the
+        // confirmation below used to run almost never: buyers saw no count
+        // (or the catalogue's "10"), no balance, and were offered a scan pack
+        // again on their next scan while their credits sat unused. Now the
+        // Stripe session id from this URL is kept as the browser's proof of
+        // the purchase (the scanner spends credits only for a proof), and the
+        // count shown is what this purchase bought, read back from the server.
+        if (productKey === 'scanPack') {
+          rememberCreditSession(sessionId);
+          const proven = await fetchProvenCredits([sessionId]);
+          const fromContent = data?.generatedContent && typeof data.generatedContent === 'object' && 'credits' in data.generatedContent
+            ? Number((data.generatedContent as { credits: number }).credits) || 0
+            : 0;
+          const email = proven?.email ?? (data?.customerEmail ? String(data.customerEmail).toLowerCase().trim() : null);
+          // A convenience for sign-in and checkout prefill, never a proof.
+          if (email) {
+            try { localStorage.setItem('scanCreditsEmail', email); } catch { /* no storage */ }
+          }
+          setScanCreditsResult({ credits: proven?.bought || fromContent, email: email ?? '' });
+          window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
+        }
 
         // If we already have generated content from the verification, use it
         if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
-
-          // Scan pack / career bundle purchases grant credits rather than generated
-          // content. Persist the purchase email so the header's "My Credits" widget
-          // picks it up automatically, and surface an explicit on-page confirmation —
-          // otherwise the customer has no way to know the credits actually landed
-          // without manually finding and re-entering their email in that widget.
-          if (
-            productKey === 'scanPack' &&
-            typeof data.generatedContent === 'object' &&
-            data.generatedContent !== null &&
-            'credits' in data.generatedContent &&
-            data?.customerEmail
-          ) {
-            const normalizedEmail = String(data.customerEmail).toLowerCase().trim();
-            localStorage.setItem('scanCreditsEmail', normalizedEmail);
-            // The header's credits widget already mounted (and read localStorage)
-            // before this async verification resolved, so it won't pick up the new
-            // email on its own — notify it directly so the badge updates without
-            // requiring a page refresh.
-            window.dispatchEvent(new CustomEvent('scanCreditsEmailUpdated', { detail: { email: normalizedEmail } }));
-            setScanCreditsResult({
-              credits: Number((data.generatedContent as { credits: number }).credits) || 0,
-              email: normalizedEmail
-            });
-          }
 
           // Track purchase completion
           if (productKey && product) {
@@ -1122,7 +1127,7 @@ export default function ProductSuccess() {
                   Thank You for Your Purchase!
                 </h1>
                 <p className="text-lg text-muted-foreground">
-                  You've purchased the <span className="text-foreground font-semibold">{product.name}</span>
+                  You've purchased the <span className="text-foreground font-semibold">{productDisplayName}</span>
                 </p>
               </div>
 
@@ -1133,7 +1138,7 @@ export default function ProductSuccess() {
                     <Icon className="w-7 h-7 text-primary" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-bold text-lg">{product.name}</h3>
+                    <h3 className="font-bold text-lg">{productDisplayName}</h3>
                     <p className="text-sm text-muted-foreground">{product.description}</p>
                   </div>
                 </div>
@@ -1155,12 +1160,18 @@ export default function ProductSuccess() {
                   <div className="flex items-center gap-2 mb-2">
                     <Coins className="w-5 h-5 text-success" />
                     <h3 className="font-bold text-lg text-success">
-                      {t('productSuccess.creditsAdded', { count: scanCreditsResult.credits })}
+                      {scanCreditsResult.credits > 0
+                        ? t('productSuccess.creditsAdded', { count: scanCreditsResult.credits })
+                        : t('scanCredits.yourScanCredits')}
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {t('productSuccess.creditsLiveOn')}{" "}
-                    <span className="font-medium text-foreground">{scanCreditsResult.email}</span>.{" "}
+                    {scanCreditsResult.email && (
+                      <>
+                        {t('productSuccess.creditsLiveOn')}{" "}
+                        <span className="font-medium text-foreground">{scanCreditsResult.email}</span>.{" "}
+                      </>
+                    )}
                     {t('productSuccess.creditsBalancePrefix')} <strong>{t('productSuccess.myCredits')}</strong> {t('productSuccess.creditsBalanceSuffix')}
                   </p>
                 </div>

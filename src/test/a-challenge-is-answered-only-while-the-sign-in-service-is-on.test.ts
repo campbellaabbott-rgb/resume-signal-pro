@@ -583,7 +583,9 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     expect(MCP.match(/`unknown tool: \$\{toolName\} — call tools\/list for the names`/g)?.length).toBe(3);
     expect(MCP).not.toMatch(/`unknown tool: \$\{toolName\}`/);
     const methods = [...(/const SUPPORTED_METHODS = \[([^\]]*)\] as const;/.exec(MCP)?.[1] ?? "").matchAll(/"([a-z/]+)"/g)].map((m) => m[1]);
-    expect(methods).toEqual(["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/read"]);
+    // resources/templates/list joined 2026-10-05: the resources capability is
+    // declared, so a strict client asks for it (L9-16).
+    expect(methods).toEqual(["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"]);
     for (const m of methods) expect(MCP, `${m} is not handled`).toMatch(new RegExp(`method [!=]== "${m.replace("/", "\\/")}"`));
     expect(MCP).toMatch(/`method not found: \$\{String\(method\)\} — supported: \$\{SUPPORTED_METHODS\.join\(", "\)\}`/);
   });

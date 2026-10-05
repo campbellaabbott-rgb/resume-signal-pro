@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "10 scancredits zijn toegevoegd aan je account",
+          "Je scancredits zijn toegevoegd",
           "Elke scan analyseert je cv tegen een specifieke functie",
           "Vergelijk onbeperkt functiebeschrijvingen met je credits",
           "Credits verlopen nooit"
@@ -3519,15 +3519,14 @@
     "neverExpire": "Credits verlopen nooit",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Credits bijvullen",
-    "useDifferentEmail": "Ander e-mailadres gebruiken",
-    "checkYourCredits": "Scan-credits controleren",
-    "enterEmail": "Voer het e-mailadres in dat u hebt gebruikt voor aankopen.",
-    "checking": "Controleren...",
-    "checkCredits": "Credits controleren",
-    "noCredits": "Geen credits gevonden voor dit e-mailadres.",
     "freeTier": "Gratis laag: tot 7 scans per dag, voor altijd gratis.",
     "buyCredits": "Credits kopen — {{price}} per stuk",
-    "myCredits": "Mijn credits"
+    "myCredits": "Mijn credits",
+    "provenHint": "Credits die je in deze browser hebt gekocht, verschijnen hier automatisch.",
+    "signInHint": "In een andere browser gekocht? Log daar één keer in, dan volgen ze je account hierheen.",
+    "signIn": "Inloggen",
+    "noCreditsHere": "Nog geen scancredits in deze browser of dit account.",
+    "legacyHint": "Bij een eerder bezoek scancredits gekocht als {{email}}? Wat je nog niet hebt gebruikt, staat nog geregistreerd. Mail {{support}} vanaf dat adres en we voegen ze toe aan je account."
   },
   "industryConfidence": {
     "industry": "Industrie:",
@@ -4767,7 +4766,8 @@
     "searchDeleted": "Zoekopdracht verwijderd.",
     "anyRole": "Elke functie",
     "searchLimitHit": "Je kunt maximaal 10 actieve zoekopdrachten hebben. Pauzeer er een om een nieuwe toe te voegen.",
-    "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij."
+    "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij.",
+    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen."
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",
@@ -4860,7 +4860,15 @@
     },
     "tryAgain": "Opnieuw proberen",
     "retried": "Opnieuw in de wachtrij — gaat mee met de volgende ronde",
-    "retryFailed": "Kon niet opnieuw in de wachtrij — probeer het nog eens"
+    "retryFailed": "Kon niet opnieuw in de wachtrij — probeer het nog eens",
+    "approveSend": "Goedkeuren en versturen",
+    "cancelSend": "Niet versturen",
+    "approved": "Goedgekeurd — hij gaat naar de verzender zodra je annuleertermijn voorbij is.",
+    "cancelled": "Gestopt — deze sollicitatie wordt niet verstuurd.",
+    "decideAgentOff": "Zet eerst je agent aan — een goedgekeurde sollicitatie wacht daarop.",
+    "decideBlockedCompany": "Deze werkgever staat op je nooit-solliciteren-lijst, dus de agent verstuurt er niets naartoe.",
+    "decideInFlight": "De verzender is hier nu mee bezig — het is te laat om hem te wijzigen.",
+    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw."
   },
   "agentPlan": {
     "badge": "Solliciteert voor je",
@@ -5100,7 +5108,9 @@
     "stepsTitle": "Stappen voor {{host}}:",
     "keyedTitle": "Voeg dan je agentsleutel toe — die draagt de pas:",
     "connectorNoOauth2": "Inloggen voor deze host staat nog niet aan, dus vanaf hier antwoorden alleen de tools zonder sleutel. Om de pas te gebruiken, verbind je vanuit {{headerHosts}} met je agentsleutel.",
-    "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel."
+    "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel.",
+    "repairSecondPass": "Deze betaling heeft geen tweede pass gemaakt: een account heeft steeds één open pass, en de jouwe staat hier ongewijzigd. We zijn op de hoogte en deze betaling wordt terugbetaald — staat hij over een paar dagen niet terug op je kaart, mail dan naar resumeboostersupp@gmail.com.",
+    "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien."
   },
   "oauthConsent": {
     "title": "Verbind je agent",

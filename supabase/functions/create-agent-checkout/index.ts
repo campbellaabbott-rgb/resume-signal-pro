@@ -19,20 +19,27 @@
 // A new subscription is billed to the Stripe customer the address already
 // has, so one portal sees everything it pays for.
 
-// deploy-stamp: 2026-10-05T11:00Z
+// AND THE PLAN BELONGS TO THE ACCOUNT THAT BOUGHT IT (1.07). The buyer's user
+// id rides the session (client_reference_id, metadata) and the subscription
+// itself (subscription_data.metadata.user_id); checkAgentByEmail — which the
+// webhook runs on purchase — copies it onto agent_subscribers.user_id, and
+// every gate reads the plan by that id (agent_subscription_rows). Sign-ups are
+// confirmed automatically, so an address alone is not proof of who paid.
+
+// deploy-stamp: 2026-10-05T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, manualAgentGrant } from "../_shared/agent.ts";
 import { subscriptionStandingByEmail } from "../_shared/pro.ts";
 import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.ts";
-import { signedInEmail } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-05.1";
+const FN_BUILD = "create-agent-checkout.2026-10-05.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,8 +71,17 @@ serve(async (req) => {
     });
     if (allowed === false) return json({ error: "Too many requests. Please try again later." }, 429);
 
-    const email = await signedInEmail(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
-    if (!email) {
+    // The buyer, from the VERIFIED token: id and address. The publishable key
+    // every visitor holds is not a user and is never sent to the auth server,
+    // and a body address is never read for identity.
+    const token = bearerOf(req.headers);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const { data: userData } = token && token !== anonKey
+      ? await supabase.auth.getUser(token).catch(() => ({ data: null }))
+      : { data: null };
+    const user = (userData as { user?: { id?: string; email?: string | null } | null } | null)?.user ?? null;
+    const email = typeof user?.email === "string" && user.email.includes("@") ? user.email.trim().toLowerCase() : "";
+    if (!user?.id || !email) {
       return json({ error: "Sign in to start the agent, so it is attached to your account.", signInRequired: true }, 401);
     }
     const body = await req.json().catch(() => ({}));
@@ -82,8 +98,15 @@ serve(async (req) => {
     if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 
     const origin = req.headers.get("origin") || "https://resumebooster.work";
+    // The buyer's user id ON THE SUBSCRIPTION — the copy checkAgentByEmail
+    // reads to bind agent_subscribers.user_id, on every later refresh.
+    const subscriptionBuyer = { user_id: user.id };
     const session = await stripe.checkout.sessions.create({
       ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
+      // THE BUYER, three ways: the session, its metadata, and the
+      // subscription the session creates -- the last is what checkAgentByEmail
+      // reads to bind agent_subscribers.user_id.
+      client_reference_id: user.id,
       mode: "subscription",
       line_items: [
         {
@@ -108,7 +131,7 @@ serve(async (req) => {
       // returning subscriber gets another trial is an open owner decision
       // (platform sweep L6-29); the guard above already refuses a new trial
       // to anyone whose plan owes money.
-      subscription_data: { trial_period_days: 7 },
+      subscription_data: { trial_period_days: 7, metadata: subscriptionBuyer },
       // LAND THEM WHERE THE AGENT IS SET UP, NOT ON THE ACCOUNT PAGE.
       //
       // This used to return the buyer to `/account?agent=success` — and nothing
@@ -139,7 +162,7 @@ serve(async (req) => {
       // and the guard rejected it within a minute, because nothing reads it.
       // Someone who backed out of a payment needs no banner about it.
       cancel_url: `${origin}/agent`,
-      metadata: { product_type: "apply_agent", customer_email: email },
+      metadata: { product_type: "apply_agent", customer_email: email, user_id: user.id },
     });
 
     // The start is on record before the browser has the url, so no

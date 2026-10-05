@@ -4,10 +4,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-cover-letter-stream.2026-10-04.1";
+const FN_BUILD = "generate-cover-letter-stream.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -149,8 +150,7 @@ Write the cover letter directly - no JSON formatting needed. Just the letter tex
     }
 
     const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    
+
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body?.getReader();
@@ -159,38 +159,27 @@ Write the cover letter directly - no JSON formatting needed. Just the letter tex
           return;
         }
 
+        const send = (event: Record<string, unknown>) =>
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        // Line-buffered across network reads (register L5-04): a line cut in
+        // two by the network used to be dropped, words and all.
+        const deltas = createGatewayDeltaReader({
+          onContent: (content) => send({ type: "content", content }),
+          onDone: () => send({ type: "done" }),
+          onBadLine: (line) => logStep("Dropped an unparseable stream line", { length: line.length }),
+        });
+
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "start" })}\n\n`));
+          send({ type: "start" });
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`));
-                  continue;
-                }
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (content) {
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "content", content })}\n\n`));
-                  }
-                } catch {
-                  // Ignore parse errors
-                }
-              }
-            }
+            deltas.push(value);
           }
+          deltas.flush();
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`));
+          send({ type: "complete" });
         } catch (error) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: String(error) })}\n\n`));
         } finally {

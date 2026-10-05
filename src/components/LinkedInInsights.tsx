@@ -7,6 +7,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+// The server coerces the model's JSON to this shape; the page applies the same
+// coercion, so a response from an older deployment (or a fallback model that
+// omitted a field) cannot crash the report with a missing array or object
+// (register L5-17).
+import { coerceLinkedInAnalysis } from "../../supabase/functions/analyze-linkedin-profile/coerce";
 
 interface LinkedInAnalysis {
   linkedinScore: number;
@@ -88,7 +93,7 @@ export function LinkedInInsights({ resumeText, linkedinText, industry, resumeAts
       });
       if (fnError) throw new Error(fnError.message);
       if (!data?.success) throw new Error(data?.error || "Analysis failed");
-      setAnalysis(data);
+      setAnalysis(coerceLinkedInAnalysis(data));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed");
     } finally {

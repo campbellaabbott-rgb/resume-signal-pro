@@ -4,10 +4,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
+import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { autoFixContent, validateContent } from "./auto-fix.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-premium-package.2026-10-04.1";
+const FN_BUILD = "generate-premium-package.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,171 +19,6 @@ const corsHeaders = {
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-PREMIUM-PACKAGE] ${step}`, details ? JSON.stringify(details) : '');
-};
-
-// Auto-fix common AI corruption patterns
-const autoFixContent = (content: string, originalResume: string): { fixed: string, corrections: string[] } => {
-  let fixed = content;
-  const corrections: string[] = [];
-
-  // Fix double commas
-  if (/,,+/.test(fixed)) {
-    fixed = fixed.replace(/,,+/g, ',');
-    corrections.push('Fixed double commas');
-  }
-
-  // Fix malformed dollar amounts like $20,,000 → $20,000
-  if (/\$\d+,,\d/.test(fixed)) {
-    fixed = fixed.replace(/(\$\d+),,(\d)/g, '$1,$2');
-    corrections.push('Fixed malformed dollar amounts');
-  }
-
-  // Fix truncated dollar amounts $,000 - try to find correct value from original
-  const truncatedDollar = fixed.match(/\$,(\d{3})/g);
-  if (truncatedDollar) {
-    // Try to find the full amount in original
-    const originalAmounts = originalResume.match(/\$[\d,]+/g) || [];
-    for (const truncated of truncatedDollar) {
-      const suffix = truncated.slice(2); // e.g., "000" from "$,000"
-      const match = originalAmounts.find(a => a.endsWith(suffix));
-      if (match) {
-        fixed = fixed.replace(truncated, match);
-        corrections.push(`Restored ${truncated} to ${match}`);
-      }
-    }
-  }
-
-  // Fix missing space before numbers (e.g., "across67" → "across 67")
-  fixed = fixed.replace(/([a-zA-Z])(\d{2,})/g, (match, letter, num) => {
-    // Don't fix things like "gpt5" or version numbers
-    if (/^[a-z]$/.test(letter) && /^\d{1,2}$/.test(num)) return match;
-    corrections.push(`Added space: ${match} → ${letter} ${num}`);
-    return `${letter} ${num}`;
-  });
-
-  // Fix truncated CI/CD
-  if (/\/CD\b/i.test(fixed) && !/CI\/CD/i.test(fixed)) {
-    fixed = fixed.replace(/\b\/CD\b/gi, 'CI/CD');
-    corrections.push('Fixed truncated CI/CD');
-  }
-
-  // Fix "including/CD" → "including CI/CD"
-  fixed = fixed.replace(/including\s*\/CD/gi, 'including CI/CD');
-
-  // Fix truncated GitHub (Git without Hub following)
-  fixed = fixed.replace(/\bGit\b(?!\s*(Hub|Lab|Actions|Flow|Kraken|ignore|config))/gi, 'GitHub');
-  if (content !== fixed && /\bGit\b/.test(content)) {
-    corrections.push('Fixed truncated Git → GitHub');
-  }
-
-  // Fix truncated LinkedIn
-  fixed = fixed.replace(/\bLinked\b(?!\s*(In|Sales|List))/gi, 'LinkedIn');
-  if (content !== fixed && /\bLinked\b/.test(content)) {
-    corrections.push('Fixed truncated Linked → LinkedIn');
-  }
-
-  // Fix Fortune without 500
-  if (originalResume.includes('Fortune 500') && /Fortune\b(?!\s*\d)/.test(fixed)) {
-    fixed = fixed.replace(/Fortune\b(?!\s*\d)/gi, 'Fortune 500');
-    corrections.push('Added missing Fortune 500');
-  }
-
-  // Fix broken percentage %+
-  if (/%\+/.test(fixed)) {
-    fixed = fixed.replace(/%\+/g, '%');
-    corrections.push('Fixed broken percentage');
-  }
-
-  // Fix empty/malformed parentheses
-  fixed = fixed.replace(/\(\s*,\s*\)/g, '');
-  fixed = fixed.replace(/\(\s*\)/g, '');
-
-  // Fix "building -1" or similar nonsense
-  fixed = fixed.replace(/building\s*-\s*\d+/gi, 'building');
-  
-  // Fix broken hyphenated phrases like "0-to- go-to-market"
-  fixed = fixed.replace(/(\d+)-to-\s+/g, '$1-to-');
-
-  // Fix Codes) → Codespaces (if original has Codespaces)
-  if (originalResume.includes('Codespaces') && /\bCodes\)/.test(fixed)) {
-    fixed = fixed.replace(/\bCodes\)/g, 'Codespaces');
-    corrections.push('Fixed truncated Codespaces');
-  }
-
-  // Fix GitHub Cop → GitHub Copilot
-  if (originalResume.includes('Copilot') && /GitHub\s+Cop\b/.test(fixed)) {
-    fixed = fixed.replace(/GitHub\s+Cop\b/g, 'GitHub Copilot');
-    corrections.push('Fixed truncated Copilot');
-  }
-
-  // Fix Git Actions → GitHub Actions
-  if (/\bGit\s+Actions\b/.test(fixed)) {
-    fixed = fixed.replace(/\bGit\s+Actions\b/g, 'GitHub Actions');
-    corrections.push('Fixed Git Actions → GitHub Actions');
-  }
-
-  // Fix Full-C → Full-Cycle
-  if (originalResume.includes('Full-Cycle') && /Full-C\b/.test(fixed)) {
-    fixed = fixed.replace(/Full-C\b/g, 'Full-Cycle');
-    corrections.push('Fixed truncated Full-Cycle');
-  }
-
-  if (corrections.length > 0) {
-    console.log(`[AUTO-FIX] Applied ${corrections.length} corrections:`, corrections);
-  }
-
-  return { fixed, corrections };
-};
-
-// Post-processing validation for common AI corruption patterns
-const validateContent = (content: string, originalResume: string): { issues: string[], score: number } => {
-  const issues: string[] = [];
-  
-  // Pattern checks
-  const patterns = [
-    { regex: /,,+/g, name: 'double_comma', desc: 'Double commas found' },
-    { regex: /\$,\d/g, name: 'truncated_dollar', desc: 'Truncated dollar amount ($,XXX)' },
-    { regex: /\$\d+,,\d/g, name: 'malformed_dollar', desc: 'Malformed dollar amount' },
-    { regex: /[a-zA-Z]\d{2,}/g, name: 'missing_space_before_number', desc: 'Missing space before number' },
-    { regex: /\d{2,}[a-zA-Z]/g, name: 'missing_space_after_number', desc: 'Missing space after number' },
-    { regex: /[A-Za-z]+\)/g, name: 'truncated_word', desc: 'Possible truncated word ending in )' },
-    { regex: /\([,\s]*\)/g, name: 'empty_parens', desc: 'Empty or malformed parentheses' },
-    { regex: /\/CD\b/gi, name: 'truncated_cicd', desc: 'Truncated CI/CD' },
-    { regex: /\bGit\b(?!\s*(Hub|Lab|Actions|Flow|Kraken))/gi, name: 'truncated_github', desc: 'Possible truncated GitHub' },
-    { regex: /\bLinked\b(?!\s*(In|Sales|List))/gi, name: 'truncated_linkedin', desc: 'Possible truncated LinkedIn' },
-    { regex: /Fortune\b(?!\s*\d)/gi, name: 'missing_fortune_number', desc: 'Fortune without number (e.g., Fortune 500)' },
-    { regex: /\b\d+-to-\s+/g, name: 'broken_hyphen_phrase', desc: 'Broken hyphenated phrase' },
-    { regex: /building\s*-?\d/gi, name: 'nonsense_building', desc: 'Nonsensical "building -1" pattern' },
-    { regex: /\b[A-Z][a-z]+ator\b/g, name: 'garbled_name', desc: 'Possible garbled name (ending in -ator)' },
-    { regex: /%\+/g, name: 'broken_percentage', desc: 'Broken percentage (%+)' },
-  ];
-
-  for (const { regex, name, desc } of patterns) {
-    const matches = content.match(regex);
-    if (matches && matches.length > 0) {
-      // Filter out false positives for some patterns
-      if (name === 'truncated_word' && matches.every(m => ['Actions)', 'Codespaces)'].includes(m))) continue;
-      
-      issues.push(`${desc}: ${matches.slice(0, 3).join(', ')}${matches.length > 3 ? '...' : ''}`);
-    }
-  }
-
-  // Check if key terms from original are preserved
-  const keyTerms = ['GitHub', 'LinkedIn', 'CI/CD', 'Fortune 500', 'Copilot', 'Actions'];
-  for (const term of keyTerms) {
-    if (originalResume.includes(term) && !content.includes(term)) {
-      issues.push(`Missing key term: ${term}`);
-    }
-  }
-
-  // Calculate quality score (100 = perfect, lower = more issues)
-  const score = Math.max(0, 100 - (issues.length * 10));
-
-  if (issues.length > 0) {
-    console.log(`[VALIDATION] Found ${issues.length} potential issues:`, issues);
-  }
-
-  return { issues, score };
 };
 
 // Retry and fallback configuration
@@ -684,15 +521,12 @@ Write a cover letter that sounds like it was written by this specific person - c
         throw new Error("No JSON found in resume response");
       }
     } catch (parseError) {
+      // NO SYNTHESISED DELIVERY (register L5-12). This used to ship the raw
+      // model text as the résumé with an invented "ATS 50 -> 85", recorded as
+      // a successful paid delivery. A retryable failure keeps the delivery
+      // open: the webhook marks it failed and the retry sweep tries again.
       logStep("Resume JSON parse error", { error: String(parseError) });
-      resumeResult = {
-        rewrittenResume: resumeContent,
-        professionalSummary: "",
-        keyChanges: [],
-        addedKeywords: [],
-        atsScore: { before: 50, after: 85, improvement: "Optimized for ATS" },
-        highlights: []
-      };
+      throw new UnusableModelOutput("The résumé rewrite came back unreadable");
     }
 
     const coverLetterAiResponse = await coverLetterResponse.json();
@@ -709,6 +543,10 @@ Write a cover letter that sounds like it was written by this specific person - c
       }
     } catch (parseError) {
       logStep("Cover letter JSON parse error", { error: String(parseError) });
+      // Prose is a letter; a broken JSON object is not one.
+      if (looksLikeBrokenJson(coverLetterContent)) {
+        throw new UnusableModelOutput("The cover letter came back unreadable");
+      }
       coverLetterResult = {
         coverLetter: coverLetterContent,
         openingLine: "",
@@ -719,6 +557,19 @@ Write a cover letter that sounds like it was written by this specific person - c
     }
 
     logStep("Both results parsed");
+
+    // Auto-fix common corruption patterns FIRST, so the contact guard below
+    // has the last word over every email, URL and phone in the text.
+    const resumeFix = autoFixContent(resumeResult.rewrittenResume || '', resumeText);
+    const coverLetterFix = autoFixContent(coverLetterResult.coverLetter || '', resumeText);
+    if (resumeFix.corrections.length > 0) {
+      resumeResult.rewrittenResume = resumeFix.fixed;
+      logStep("Resume auto-fixed", { corrections: resumeFix.corrections.length });
+    }
+    if (coverLetterFix.corrections.length > 0) {
+      coverLetterResult.coverLetter = coverLetterFix.fixed;
+      logStep("Cover letter auto-fixed", { corrections: coverLetterFix.corrections.length });
+    }
 
     // Contact-integrity guard: deterministically strip any URL, email, or
     // phone-shaped string in the output that does not appear in the original
@@ -757,20 +608,6 @@ Write a cover letter that sounds like it was written by this specific person - c
     if (letterContactGuard.removed.length > 0) {
       coverLetterResult.coverLetter = letterContactGuard.text;
       logStep("Contact-integrity guard (letter) removed invented items", { removed: letterContactGuard.removed });
-    }
-
-    // Auto-fix common corruption patterns before validation
-    const resumeFix = autoFixContent(resumeResult.rewrittenResume || '', resumeText);
-    const coverLetterFix = autoFixContent(coverLetterResult.coverLetter || '', resumeText);
-    
-    // Apply fixes to results
-    if (resumeFix.corrections.length > 0) {
-      resumeResult.rewrittenResume = resumeFix.fixed;
-      logStep("Resume auto-fixed", { corrections: resumeFix.corrections.length });
-    }
-    if (coverLetterFix.corrections.length > 0) {
-      coverLetterResult.coverLetter = coverLetterFix.fixed;
-      logStep("Cover letter auto-fixed", { corrections: coverLetterFix.corrections.length });
     }
 
     // Validate after auto-fix to see remaining issues
@@ -823,7 +660,14 @@ Write a cover letter that sounds like it was written by this specific person - c
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[GENERATE-PREMIUM-PACKAGE] Error:", errorMessage);
-    
+
+    if (error instanceof UnusableModelOutput) {
+      return new Response(
+        JSON.stringify({ error: "The AI returned an unreadable draft. Please try again.", retryable: true }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check for timeout errors and return a more helpful message
     if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
       return new Response(

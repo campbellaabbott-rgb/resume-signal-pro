@@ -22,6 +22,7 @@ import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
 import { planAnswers, type PreparedAnswers, type StandingAnswers } from "./questions/match.js";
 import { applyResolution } from "./questions/answer.js";
 import { isLearnable, type LearnedAnswers } from "./questions/learned.js";
+import { MUST_FILL_IF_SHOWN, unplacedCoreIdentity } from "./packet-fields.js";
 
 export type PacketField = { value: string; source: string };
 
@@ -136,8 +137,23 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
     }
 
     // ---- fill, stepping through the form as the adapter directs ----
-    const wanted = Object.keys(input.fields) as PacketFieldKey[];
+    //
+    // ONLY THE KEYS THIS ADAPTER CAN PLACE count toward the partial-
+    // application guard. The fields now carry the candidate's whole live
+    // identity (packet-fields.ts), and a LinkedIn URL on a vendor with no
+    // LinkedIn box is not a field the form is missing.
+    const wanted = (Object.keys(input.fields) as PacketFieldKey[])
+      .filter((k) => !adapter.fieldKeys || adapter.fieldKeys.has(k));
     const placed = new Set<PacketFieldKey>();
+    // The mapped inputs THIS form actually shows. The fields now carry every
+    // identity value the candidate has, and a mapped box a tenant left off
+    // its form is not a field the application is missing — so the partial-
+    // application guard compares what was placed against what was shown.
+    const shown = new Set<PacketFieldKey>();
+    // A name or email input the form SHOWS that is still empty at submit:
+    // refused, never sent nameless (register 1.13). Tracked across steps —
+    // a field placed on a later step clears it.
+    const shownButEmpty = new Set<PacketFieldKey>();
     let resumeAttached = false;
     // Answered questions persist across steps: a multi-step wizard keeps earlier
     // steps in the DOM, and re-answering would re-click a radio (toggling
@@ -152,7 +168,17 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
         if (!field?.value) continue;
         const target = await adapter.locate(page, key).catch(() => null);
         if (!target || !(await target.isVisible())) continue;
-        await target.fill(field.value).then(() => { placed.add(key); }, () => {});
+        shown.add(key);
+        await target.fill(field.value).then(() => { placed.add(key); shownButEmpty.delete(key); }, () => {});
+        if (!placed.has(key) && MUST_FILL_IF_SHOWN.includes(key)) shownButEmpty.add(key);
+      }
+      // The must-fill inputs the candidate has NO value for: if the form
+      // shows one, it stays empty, and that is a refusal too.
+      for (const key of MUST_FILL_IF_SHOWN) {
+        if (placed.has(key) || input.fields[key]?.value) continue;
+        if (adapter.fieldKeys && !adapter.fieldKeys.has(key)) continue;
+        const target = await adapter.locate(page, key).catch(() => null);
+        if (target && (await target.isVisible().catch(() => false))) shownButEmpty.add(key);
       }
 
       if (!resumeAttached && input.resumePath) {
@@ -279,15 +305,47 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
             // posting for this candidate and then trips the duplicate guard when
             // they try to apply properly themselves.
             if (dq.required) {
-              return { kind: "not-submitted", reason: `could not answer "${dq.label || dq.name}": ${res.why}` };
+              // `in`, not the `ok` discriminant: this file is also checked by
+              // the app's non-strict tsconfig (a test drives applyToPosting),
+              // where a boolean discriminant does not narrow.
+              return { kind: "not-submitted", reason: `could not answer "${dq.label || dq.name}": ${"why" in res ? res.why : ""}` };
             }
           }
         }
       }
 
-      const unplaced = wanted.filter((k) => !placed.has(k) && input.fields[k]?.value);
-      const guard = await preSubmitGuard(page, adapter, wanted.length, placed.size, unplaced);
+      if (shownButEmpty.size > 0) {
+        return {
+          kind: "not-submitted",
+          reason: `the form asks for ${[...shownButEmpty].join(", ")} and it could not be filled — not sending an application without the candidate's name or email`,
+        };
+      }
+      // Nothing the adapter maps could be found on the form at all: that is
+      // a form we cannot read, not a sparse one.
+      if (wanted.length > 0 && shown.size === 0) {
+        return {
+          kind: "not-submitted",
+          reason: `only placed 0/${wanted.length} fields (missing: ${wanted.join(", ")}) — refusing to submit a partial application`,
+        };
+      }
+      const unplaced = [...shown].filter((k) => !placed.has(k));
+      const guard = await preSubmitGuard(page, adapter, shown.size, placed.size, unplaced);
       if (guard) return guard;
+
+      // THE LAST STEP CARRIES A NAME AND AN EMAIL. `shown` comes from the
+      // locators, so a renamed input drops out of every count above; this asks
+      // the adapter's own map instead, at the one moment it matters — when the
+      // next click would submit (canProceed is proceed's side-effect-free
+      // twin, which proceed itself delegates to).
+      if ((await adapter.canProceed(page).catch(() => "stuck" as const)) === "would-submit") {
+        const missing = unplacedCoreIdentity(adapter.fieldKeys, input.fields, placed);
+        if (missing.length > 0) {
+          return {
+            kind: "not-submitted",
+            reason: `the form never showed a box for ${missing.join(", ")} — not sending an application without the candidate's name or email`,
+          };
+        }
+      }
 
       const step_result = await adapter.proceed(page).catch(() => "stuck" as const);
       if (step_result === "stuck") {

@@ -1,9 +1,17 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+// Quote-aware CSV rows and header matching that ignores empty headers
+// (register L5-09).
+import { findColumnIndex, parseCSV } from "./csv.ts";
+
+// Provable from outside without an upload: every response, the CORS preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "parse-spreadsheet.2026-10-05.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
 interface JobEntry {
@@ -13,43 +21,6 @@ interface JobEntry {
   description: string;
   location?: string;
   url?: string;
-}
-
-// Parse CSV content into rows
-function parseCSV(content: string): string[][] {
-  const lines = content.split(/\r?\n/);
-  const result: string[][] = [];
-  
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    
-    // Handle quoted fields with commas
-    const row: string[] = [];
-    let inQuotes = false;
-    let currentField = '';
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          currentField += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        row.push(currentField.trim());
-        currentField = '';
-      } else {
-        currentField += char;
-      }
-    }
-    row.push(currentField.trim());
-    result.push(row);
-  }
-  
-  return result;
 }
 
 // Parse Excel file into rows using SheetJS
@@ -77,20 +48,6 @@ function parseExcel(buffer: ArrayBuffer): string[][] {
   
   console.log(`[parse-spreadsheet] Parsed ${rows.length} rows from Excel`);
   return rows;
-}
-
-// Find column indices by header name (case-insensitive, fuzzy matching)
-function findColumnIndex(headers: string[], possibleNames: string[]): number {
-  const normalizedHeaders = headers.map(h => String(h || '').toLowerCase().trim());
-  
-  for (const name of possibleNames) {
-    const index = normalizedHeaders.findIndex(h => 
-      h.includes(name.toLowerCase()) || name.toLowerCase().includes(h)
-    );
-    if (index !== -1) return index;
-  }
-  
-  return -1;
 }
 
 // Extract jobs from parsed rows

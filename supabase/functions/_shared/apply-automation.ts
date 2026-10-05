@@ -71,7 +71,14 @@ const FACTS: Record<string, AutomationFact> = {
   smartrecruiters: { tier: "auto", realQuestions: false, sampled: 60, note: "0/60 captcha; JS form" },
   breezy: { tier: "auto", realQuestions: true, sampled: 54, note: "0/54 captcha; JS form. QUESTIONS HARVESTABLE 2026-08-01: the /apply route server-renders the questionnaire as HTML-escaped JSON. Parsed by _shared/vendor-questions.ts" },
   oracle: { tier: "auto", realQuestions: false, sampled: 39, note: "0/39 captcha; JS form" },
-  teamtailor: { tier: "auto", realQuestions: true, sampled: 22, note: "0 captcha, no login wall. ADAPTER SHIPPED 2026-07-31: form is inline on the posting page, names are Rails-nested (candidate[first_name] etc), screening questions carry real labels. A cookie overlay must be declined first or the form does not render, and the CV input is unnamed — located by its accept list." },
+  // realQuestions FALSE until a reader exists. The flag gates apply-agent's
+  // harvest call and feeds the public status's questionVendors, and job-board's
+  // application-questions action has no Teamtailor branch: every Teamtailor
+  // row paid an edge call that answered unsupported/[] while the status
+  // claimed the questions were read (L9-15). The WORKER still reads the real
+  // screening labels off the live form; this flag is only about harvesting
+  // them in advance.
+  teamtailor: { tier: "auto", realQuestions: false, sampled: 22, note: "0 captcha, no login wall. ADAPTER SHIPPED 2026-07-31: form is inline on the posting page, names are Rails-nested (candidate[first_name] etc), screening questions carry real labels. A cookie overlay must be declined first or the form does not render, and the CV input is unnamed — located by its accept list. No advance question reader (job-board application-questions has no Teamtailor branch)." },
   personio: { tier: "auto", realQuestions: false, sampled: 7, note: "0/7 captcha — thin sample" },
   pinpoint: { tier: "auto", realQuestions: true, sampled: 5, note: "0/5 captcha - thin sample. QUESTIONS HARVESTABLE 2026-08-01: the /applications/new route server-renders one react-on-rails script per question carrying questionDetails{title,questionType,required}. The POSTING page does NOT - probing it and concluding JS-only was wrong. Parsed by _shared/vendor-questions.ts" },
 
@@ -173,14 +180,18 @@ export function automationLabel(source: string): string {
  * Adding a vendor here without an adapter would point the queue at postings the
  * worker then refuses — the queue would look productive and send nothing.
  */
-// oracle added 2026-08-19: ~14,000 postings, the largest single expansion of
-// the agent's reach since launch. It was believed blocked by a credential wall
-// for three weeks; a live read of the apply screen disproved that ("You don't
-// need to have an account... simply using your email"). Its required terms
-// checkbox is governed by the per-candidate consentToProcessing opt-in, not by
-// membership in this list — a mandate without that opt-in still refuses every
-// Oracle posting and routes it to review.
-export const SENDABLE_VENDORS: readonly string[] = ["breezy", "oracle", "personio", "pinpoint", "teamtailor"];
+// ORACLE IS NOT HERE, and it was for six weeks (register 1.12 / L13-04).
+// It was added 2026-08-19 on the strength of a live read showing no account
+// wall on the email step. But the adapter (worker/src/vendors/oracle.ts) maps
+// one field and maps nothing past that step: its canProceed answers only
+// "would-advance" or "stuck", and it never returns "would-submit", so no
+// Oracle application could ever be sent. Counting it here made status.sendable,
+// the "Agent can apply" chip, the agent-only filter and the runner's sendable
+// boost all describe a capability that did not exist — most of the advertised
+// reach was Oracle. It returns when a measured submit path does, and the guard
+// in src/test pins that every vendor listed here has an adapter that can
+// reach a submit.
+export const SENDABLE_VENDORS: readonly string[] = ["breezy", "personio", "pinpoint", "teamtailor"];
 
 const SENDABLE = new Set(SENDABLE_VENDORS);
 

@@ -67,7 +67,14 @@ const COLUMNS_BY_TABLE: Record<string, string[]> = {
   agent_queue: [
     "id", "user_id", "posting_id", "title", "company", "company_token", "location", "apply_url", "salary",
     "category", "posted_at", "fit_pct", "reasons", "status", "created_at", "decided_at", "search_id", "search_label", "pass_id",
+    // 20261005130000: the receipt of a refused pass-funded row.
+    "pass_refunded_at",
   ],
+  // 20261005130000: api_key_issue_agent reads the subscription cache (is this
+  // account paying?) and writes its own mint ledger, both held to the
+  // zero-collision rule below with its prefixed OUT names.
+  agent_subscribers: ["email", "stripe_customer_id", "status", "current_period_end", "updated_at"],
+  api_key_agent_mints: ["id", "user_id", "mint_net", "via", "paying", "created_at"],
   agent_submissions: [
     "id", "user_id", "posting_id", "title", "company", "company_token", "apply_url", "source", "status",
     "fields", "questions", "questions_are_real", "answers", "blockers", "resume_version_id", "cover_letter", "fit_pct",

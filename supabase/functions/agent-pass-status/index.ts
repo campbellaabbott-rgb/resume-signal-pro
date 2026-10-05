@@ -33,11 +33,62 @@ import {
 } from "../_shared/pass.ts";
 import { passSessionSettled } from "../_shared/pass-settlement.ts";
 
+// Provable from outside without signing in: the preflight carries it. The
+// name and the date sit on separate lines on purpose: a guard reads every line
+// that names the product for a spelled pass number, and a build date's "10"
+// is not one.
+const FN_NAME = "agent-pass-status";
+const FN_BUILD = `${FN_NAME}.2026-10-05.1`;
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "x-fn-build": FN_BUILD,
 };
+
+/**
+ * REPAIR REFUSALS THAT NO WAIT WILL CHANGE (L6-09). A second paid pass (two
+ * checkouts opened in two tabs, both paid) is refused at grant because an
+ * account holds one open pass at a time, and a session paid by another
+ * account is not this one's. Both were rendered with "give it a minute and
+ * retry — the receipt arrives on its own", which never happens: $29 taken,
+ * a false instruction, and the owner learning only from delivery health.
+ * Both are now terminal on the page; for the second pass, the owner is told
+ * once per session so the charge can be refunded (a session another account
+ * paid has its pass on that account, and the page says to sign in there).
+ */
+const TERMINAL_REPAIRS = new Set(["pass_already_open", "not_yours"]);
+
+async function tellOwnerOnce(service: ServiceClient, reason: string, sessionId: string): Promise<void> {
+  try {
+    const bucket = `pass:${reason}:${sessionId}`.slice(0, 64);
+    const { data: first, error } = await service.rpc("mail_door_take", {
+      p_door: "owner-alert", p_bucket: bucket, p_max: 1, p_window_minutes: 43200,
+    });
+    if (error || first !== true) return;
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendKey) return;
+    const to = Deno.env.get("OWNER_NOTIFY_EMAIL") ?? "resumeboostersupp@gmail.com";
+    const what = "was paid while the buyer's account already held an open pass, so no pass was granted";
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Resume Booster <reports@resumebooster.work>",
+        to: [to],
+        subject: "Agent Pass payment with no pass: refund it",
+        html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
+          <p>A $29 Agent Pass checkout ${what}.</p>
+          <p>Stripe checkout session: <code>${sessionId.replace(/[^A-Za-z0-9_]/g, "")}</code></p>
+          <p>Find it in Stripe and refund the charge. The buyer was told the payment did not create a pass and that it will be refunded.</p>
+        </div>`,
+      }),
+    });
+  } catch (e) {
+    console.warn("[AGENT-PASS-STATUS] owner alert failed:", String((e as Error)?.message ?? e).slice(0, 120));
+  }
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...cors } });
@@ -178,6 +229,9 @@ Deno.serve(async (req) => {
       if (!bySession) {
         repair = await repairFromSession(service, user.id, sessionId);
         // A grant closes nothing itself; a pass granted just now is open.
+        // Only a second pass is money taken for nothing: a session another
+        // account paid has its pass on that account.
+        if (repair === "pass_already_open") await tellOwnerOnce(service, repair, sessionId);
       }
     }
 
@@ -203,7 +257,7 @@ Deno.serve(async (req) => {
       key: key
         ? { live: true, prefix: key.key_prefix ?? null, createdAt: key.created_at ?? null }
         : { live: false },
-      ...(repair ? { repair } : {}),
+      ...(repair ? { repair, repairTerminal: TERMINAL_REPAIRS.has(repair) } : {}),
     });
   } catch (e) {
     console.error("[AGENT-PASS-STATUS] failed:", String((e as Error)?.message ?? e).slice(0, 200));

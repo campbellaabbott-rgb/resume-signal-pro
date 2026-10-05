@@ -409,12 +409,15 @@ export async function subToKeyHash(client: KeyStore, sub: string): Promise<KeyMa
   const rawKey = API_KEY_PREFIX + [...crypto.getRandomValues(new Uint8Array(32))]
     .map((b) => b.toString(16).padStart(2, "0")).join("");
   const keyHash = await sha256Hex(rawKey);
-  const { data: issued, error } = await client.rpc("api_key_issue_agent", {
-    p_user_id: sub,
-    p_email: email,
-    p_key_hash: keyHash,
-    p_key_prefix: rawKey.slice(0, 16),
-  }).maybeSingle();
+  const base = { p_user_id: sub, p_email: email, p_key_hash: keyHash, p_key_prefix: rawKey.slice(0, 16) };
+  // No network: the caller here is a chat service's server, so a network
+  // bound would be one bucket for every OAuth user. The per-account and
+  // daily ceilings of 20261005130000 still apply.
+  let { data: issued, error } = await client.rpc("api_key_issue_agent", { ...base, p_via: "oauth" }).maybeSingle();
+  // Until that migration applies, only the four-argument mint exists (PGRST202).
+  if (error && (error as { code?: string }).code === "PGRST202") {
+    ({ data: issued, error } = await client.rpc("api_key_issue_agent", base).maybeSingle());
+  }
   if (error) return null;
   const row = issued as { issued_ok?: boolean } | null;
   if (!row?.issued_ok) return null;
