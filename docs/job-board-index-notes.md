@@ -9300,8 +9300,9 @@ they came back on (AFTER, or a failed insert would lock the row out on a
 date it never held), and the sweep no longer re-upserts a tombstone that
 already exists, so nothing moves it back. Net cost for that case: one
 re-entry per distinct list date. Failure of the move is logged and costs at
-most one more re-entry; a failed alreadyTombstoned read degrades to the old
-upsert-everything.
+most one more re-entry. Since .89 the sweep's tombstone upsert also carries
+ignoreDuplicates, so a failed alreadyTombstoned read can no longer move an
+existing tombstone back (it used to degrade to the old upsert-everything).
 
 LEDGER. Unchanged. A re-admitted row that ages out again is already
 tombstoned, so the sweep writes no second aged_out exit for it; a re-admitted
@@ -9312,3 +9313,135 @@ posted_at (rows are never re-dated in place), so it still ages out on the old
 date and comes back on the next visit with a new first_seen. Correcting
 posted_at in place would avoid that gap but moves the row between dated
 cohorts in the S(30) estimator, and that is its own decision.
+
+## n413-workday-total-past-offset-zero
+
+Above: fetchWorkday's return (`windowed: workdayWindowed(startOffset, ...)`),
+the lap proof's `const totalNow = lapTotal(r.feedTotal, cursorBefore, rec.t0);`
+and the verification stamp's `stampFeedTotal(...)`. Logic: `read-window.ts`.
+
+A ZERO FROM A MID-FEED PAGE IS THE TENANT NOT SAYING. Many Workday tenants
+state `total` only on the offset-0 page and answer `total: 0` on every later
+one. Measured 2026-10-05 against the tenants' own CXS lists: Adobe 526 at
+offset 0, 0 at offsets 20, 250 and 500; Novartis 816 then 0; TD 1,521 then 0;
+T-Mobile 2,000 then 0, and past offset 2,000 page 0 again with total 2,000
+(Workday's reporting cap: nothing past offset 1,999 is reachable). Of the 689
+Workday boards whose verification stamp read 0 or more than 250, 540 behave
+this way (105 state the total on every page, 44 fit one visit).
+
+With MAX_POSTINGS_PER_VISIT at 250 every such board is read over several
+visits, and every visit after the first starts mid-feed and sees 0. The old
+test `windowed: feedTotal > all.length` was then false, so the ingest took the
+250-row slice for the whole board: every other stored row was stamped
+missing_since (hidden at once), deleted after the grace or the 6h ratchet and
+written to job_board_closures as a 'full_read' takedown; the lap entry was
+dropped (the `else if (deepLaps[lapKey])` branch); the verification stamp
+published feed_total 0, which get_company_fill_curve buckets as full_read.
+On 2026-10-05 those 540 boards advertised 396,254 postings, held 238,780 inside
+the 30-day window, and served 51,953; 207 served none.
+
+THE RULE. A visit that did not start at the top is never whole, whatever the
+page said; from the top, a stated total must not exceed what was read, and
+with no stated total only a walk that reached the feed's end (a short page) is
+whole. The wrap arithmetic (`nextOffset`) still uses the visit's own page-0
+total, because that is what stops T-Mobile's walk at offset 2,000.
+
+THE LAP. A wrap visit on such a tenant states 0, so the proof measures it
+against the lap's t0 (the offset-0 total pinned when the lap opened): proven
+only when the walk ended on a short page with `s >= t0 - slack`. The
+collapse test is vacuous for those wraps (there is no later reading), and the
+early-ending walk is what still catches a feed that shrank mid-lap.
+
+THE STAMP. A mid-feed zero writes the lap's t0, or leaves feed_total out of the
+upsert so the last stated total stands; a visit from the top still writes what
+it read, including an honest 0 for an empty board. board_state.feed_total, the
+append-only history of what the employer stated that day, is unchanged (null
+on a day with no offset-0 read).
+
+STORAGE (measured read-only 2026-10-05, scratch measure-l101.mjs): retaining
+these boards' in-window postings adds at most 188,921 rows (sum over the 540
+of in-window on the feed minus served now; an upper bound, since rows stamped
+but not yet deleted are already stored). Corpus 836,035 + 188,921 = 1,024,956
+against CORPUS_CEILING 1,200,000, so the capacity governor does not bind and
+no flag was needed. The disk-size question (20 or 27 GB) is still open.
+
+## n414-icims-page-size
+
+Above: `const ICIMS_PAGE_SIZES: readonly number[] = [100, 50, 25];` and
+fetchIcims. An iCIMS page of 100 carries full descriptions; three boards sent
+page 1 at 4.05-4.73 MB (jobs.zs.com 278 live, jobs.qxo.com 330,
+careers.ringpower.com 106) and were deferred as oversize on every visit. A
+first page over the bound is now retried at 50, then 25, in the same visit;
+the size that worked is remembered for the isolate's life. fetchIcims reports
+every offset from where its first page really starts (`base`), because a cursor
+left at another page size may fall inside a page: re-reading the head of that
+page is harmless, overstating coverage to the lap is not.
+
+## n415-light-mode-is-per-board
+
+Above: `const lightKey = ...` and lightBoardRefusal. Light mode used to be
+keyed by token, and 52 greenhouse tokens share their token with another
+vendor, so admitting the greenhouse board would have flipped the twin to its
+light list form (workable details=false) with no filler behind it; the gate
+refused every shared token. A greenhouse ?content=true board over the byte
+bound on a shared token was therefore deferred forever (lush 5.2 MB with
+personio, samsara 4.1 MB with pinpoint, pulse 38.8 MB with ashby, helsing).
+DYNAMIC_LIGHT now holds `source:token`, isLight takes the board, and
+backfill-desc's count and fill read the greenhouse board only. Bare tokens a
+pre-.89 build persisted convert to their greenhouse boards' keys on load (each
+was admitted only when every board on it was light-capable) and the row is
+rewritten once. A rollback to .88 would sweep the new keys as uncatalogued
+and the boards would re-enrol on their next oversize read.
+
+## n416-ledger-before-delete
+
+Above: the closure prune's `const keep = new Set<string>();`, pruneWholeBoard,
+and the Oracle sub-site shed's `if (exErr)`. A closure read or insert that
+failed used to be followed by the chunk's delete anyway; a whole-board exit log
+that broke on page 1 was followed by a delete of the whole token. Every one of
+these rows was already stamped missing (or is a duplicate), so keeping it loses
+nothing and the next visit retries the ledger write. Now: a failed read keeps
+the chunk, a failed closure insert keeps exactly the rows it was writing (the
+aged rows beside them already have their exits), the removed-exit row is only
+written beside a closure that landed, and a whole-board prune deletes the
+board only when every row was logged, otherwise exactly the logged ids.
+
+## n417-board-keys
+
+Above: SHARED_TOKENS, boardKeyOf, boardByKey (index.ts) and boardKey /
+dropBareSharedKeys (dormancy.ts). board_failures was keyed by token; on the 139
+tokens carried by two or three vendors a twin that read cleared the failing
+twin's streak every visit, so a dead board there was never pruned and served
+under its sibling's stamp, and when both failed the prune deleted both
+vendors' rows. A shared token's boards are now keyed `source:token`; every other
+board keeps its bare token, so the persisted state of the other ~44,000 boards
+did not move. Entries an older build wrote under a bare shared token are
+dropped on load (forgetting a streak delays a prune, never causes one). The
+stale lane's tokensOf maps a keyed entry back to its token. NOT DONE (they need
+schema changes and serving-path readers): the verification stamp
+(job_board_verifications PK company_token), job_board_board_state (PK
+company_token, observed_on), attachRecheckedAt, OVERSIZE_BOARDS, and the orphan
+prune, whose company list comes from a token-level facet.
+
+## n418-verify-stamps-never-deletes
+
+Above: the verify action's dead-id block. verify used to delete a row whose
+missing_since stamp was 6h old (VERIFY_GRACE_MS, removed) with no closure and no
+exit row, and treated an uncatalogued source:token as dead without asking any
+vendor. A re-listed id then came back with a new first_seen, and verify called
+every few hours erased an employer's fills from the lifecycle log. It now only
+stamps (the row is hidden at once); the refresh's absence path, which reads the
+whole feed and writes the ledger, removes it. An uncatalogued board answers
+null (undecidable), which both callers already keep showing.
+
+## n419-two-readers-one-posting
+
+Above: `const LIST_MODE_UNSTATED = new Set(["workday", "jazzhr"]);`,
+listPlaceholder and keepStoredMode in the refresh diff loop. The detail sweeps
+write Workday's structured remoteType and replace "8 Locations" with the
+detail's place; the refresh then compared the stored row with the LIST
+payload (work mode from title/location text only, usually null; location the
+placeholder) and wrote it back, noting each undo as an employer edit, after
+which the sweep (WHERE work_mode IS NULL) re-fetched the detail. Now a list
+placeholder never replaces a real place, and on workday/jazzhr a stored mode is
+the list's to fill when empty, never to overwrite (null or not).

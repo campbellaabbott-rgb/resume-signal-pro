@@ -65,7 +65,7 @@ describe("a cap that restarts at zero is a ceiling", () => {
     // as fixed and changes nothing.
     expect(CODE).toMatch(/offset: startOffset \+ page \* 20/);                       // workday
     expect(CODE).toMatch(/offset=\$\{startOffset \+ page \* ORACLE_PAGE_SIZE\}/);     // oracle
-    expect(CODE).toMatch(/offset=\$\{startOffset \+ offset\}/);                       // smartrecruiters
+    expect(CODE).toMatch(/offset=\$\{startOffset \+ content\.length\}/);               // smartrecruiters (.89: the next unread offset under the cap)
     expect(CODE).toMatch(/Math\.floor\(startOffset \/ RIPPLING_PER_PAGE\)/);          // rippling
   });
 
@@ -189,7 +189,10 @@ describe("a cap that restarts at zero is a ceiling", () => {
   it("a board read WHOLE still prunes normally", () => {
     // The relaxation is scoped to windowed boards. If `windowed` were hardcoded
     // true anywhere, every board would stop pruning and closures would stall.
-    expect(CODE).toMatch(/windowed: feedTotal > all\.length/);
-    expect(CODE).toMatch(/windowed: totalPages > RIPPLING_PAGE_CAP/);
+    // .89: through workdayWindowed and Rippling's broken-walk flag; both are
+    // RUN (whole board -> not windowed) in a-mid-feed-zero-is-not-a-whole-board
+    // and a-walk-that-broke-is-not-the-end-of-the-feed.
+    expect(CODE).toMatch(/windowed: workdayWindowed\(startOffset, feedTotal, all\.length, exhausted\)/);
+    expect(CODE).toMatch(/windowed: totalPages > RIPPLING_PAGE_CAP \|\| startPage > 0 \|\| broke,/);
   });
 });

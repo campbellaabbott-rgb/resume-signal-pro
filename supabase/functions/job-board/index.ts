@@ -76,7 +76,7 @@ import {
   backlogFromCoverage,
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
-import { classifyDormancy, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
@@ -100,6 +100,7 @@ import {
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
+import { lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -519,7 +520,7 @@ const MIN_BOARDS_PER_SLICE = 80;
 // stops a slice made entirely of tiny boards from running long.
 const MAX_BOARDS_PER_SLICE = 80;
 const BOARDS_RAMP_STEP = 8;
-const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling"]);
+const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs"]);
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=5 is 16 sequential rounds, and SLICE_POSTING_BUDGET stops the loop near 51 boards long before the list is exhausted — the list size is a ceiling, not a plan. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // Rationale: docs/job-board-index-notes.md#n013-
@@ -552,6 +553,21 @@ const STALE_RPC_LIMIT = 60;
 const STALE_RPC_DEADLINE_MS = 4_000;
 /** Every catalogued token, once: the stale lane's 'uncatalogued' test. A Set, so a token named 'constructor' is a real member. */
 const CATALOGUE_TOKENS: ReadonlySet<string> = new Set(JOB_SOURCES.map((s) => s.token));
+/** Tokens carried by more than one vendor (139 on 2026-10-05): their boards are failure-tracked by `source:token` (n417). */
+const SHARED_TOKENS: ReadonlySet<string> = (() => {
+  const seen = new Set<string>();
+  const dup = new Set<string>();
+  for (const s of JOB_SOURCES) { if (seen.has(s.token)) dup.add(s.token); else seen.add(s.token); }
+  return dup;
+})();
+/** A board's key in board_failures: its bare token, or `source:token` when the token is shared. */
+const boardKeyOf = (s: { source: string; token: string }) => boardKey(s.source, s.token, SHARED_TOKENS);
+let boardsByKey: Map<string, JobSource> | null = null;
+/** The catalog board a board_failures key names, if it is still catalogued. */
+const boardByKey = (key: string): JobSource | undefined => {
+  boardsByKey ??= new Map(JOB_SOURCES.map((s) => [boardKeyOf(s), s]));
+  return boardsByKey.get(key);
+};
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -595,23 +611,27 @@ const waitUntil = (p: Promise<unknown>) => {
 // Rationale: docs/job-board-index-notes.md#n017-light-capable-vendors
 const LIGHT_CAPABLE_VENDORS = new Set(["greenhouse"]);
 
+/** The light set's key: one BOARD (`source:token`), so a shared token's greenhouse board can go light alone (n415). */
+const lightKey = (s: { source: string; token: string }) => `${s.source}:${s.token}`;
+
 // Rationale: docs/job-board-index-notes.md#n018-lighttokenrefusal
-const lightTokenRefusal = (token: string): string | null => {
-  let seen = 0;
-  let blocker = "";
+// Rationale: docs/job-board-index-notes.md#n415-light-mode-is-per-board
+const lightBoardRefusal = (key: string): string | null => {
+  const at = key.indexOf(":");
+  if (at <= 0) return "not a source:token key";
+  const source = key.slice(0, at);
+  const token = key.slice(at + 1);
+  let seen = false;
   for (const s of JOB_SOURCES) {
-    if (s.token !== token) continue;
-    seen++;
-    if (!LIGHT_CAPABLE_VENDORS.has(s.source) && !blocker) blocker = s.source;
+    if (s.token === token && s.source === source) { seen = true; break; }
   }
-  if (seen === 0) return "not in the catalog";
-  if (blocker) return seen > 1 ? `token shared with ${blocker}` : `vendor ${blocker}`;
+  if (!seen) return "not in the catalog";
+  if (!LIGHT_CAPABLE_VENDORS.has(source)) return `vendor ${source}`;
   return null;
 };
 
 /**
- * A set that can only ever hold a token every one of whose boards is
- * light-capable.
+ * A set that can only ever hold a light-capable vendor's board.
  *
  * Refusing inside `add` covers every writer at once — today's two
  * content-volume enrolments and the byte-budget bound, tomorrow's third one,
@@ -622,13 +642,13 @@ const lightTokenRefusal = (token: string): string | null => {
  * description problem for an ingest outage.
  */
 class LightCapableOnly extends Set<string> {
-  override add(token: string): this {
-    const refusal = lightTokenRefusal(token);
+  override add(key: string): this {
+    const refusal = lightBoardRefusal(key);
     if (refusal) {
-      console.warn(`[JOB-BOARD] light mode REFUSED for ${token} (${refusal}): no filler can refill a light board on that vendor, so its descriptions would be deleted rather than deferred`);
+      console.warn(`[JOB-BOARD] light mode REFUSED for ${key} (${refusal}): no filler can refill a light board on that vendor, so its descriptions would be deleted rather than deferred`);
       return this;
     }
-    return super.add(token);
+    return super.add(key);
   }
 }
 
@@ -636,7 +656,7 @@ class LightCapableOnly extends Set<string> {
 const DYNAMIC_LIGHT: Set<string> = new LightCapableOnly();
 const AUTO_LIGHT_THRESHOLD_CHARS = 2_500_000; // ~2.5MB of raw content HTML
 const AUTO_LIGHT_CAP = 500; // 107 greenhouse boards needed a slot on 2026-10-01, and 50 made every one of them miss; see n019
-const isLight = (token: string) => LIGHT_DESC_TOKENS.has(token) || DYNAMIC_LIGHT.has(token);
+const isLight = (s: { source: string; token: string }) => LIGHT_DESC_TOKENS.has(s.token) || DYNAMIC_LIGHT.has(lightKey(s));
 
 /**
  * THE BOARDS backfill-desc CAN ACTUALLY FILL — one predicate, two readers.
@@ -657,7 +677,7 @@ const isLight = (token: string) => LIGHT_DESC_TOKENS.has(token) || DYNAMIC_LIGHT
  */
 const DESC_BACKFILL_VENDOR = "greenhouse"; // backfill-desc hits the GH per-JOB endpoint and only that
 const descBackfillBoards = (): JobSource[] =>
-  JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s.token));
+  JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s));
 
 async function loadDynamicLight(client: SupabaseClient): Promise<void> {
   try {
@@ -671,29 +691,38 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
     // the row can tell which boards were stranded. Rewrite it ONCE, naming the
     // removals, so the row says what happened and stops repeating itself.
     const refused: string[] = [];
+    // Builds before .89 persisted bare tokens. Each became light only when
+    // every board on it was light-capable, so it converts to those boards'
+    // keys; the row is rewritten once in the new form (n415).
+    let converted = 0;
     if (Array.isArray(tokens)) {
       for (const t of tokens) {
         if (typeof t !== "string") continue;
-        DYNAMIC_LIGHT.add(t);
-        if (!DYNAMIC_LIGHT.has(t)) refused.push(t);
+        const keys = t.includes(":") ? [t] : JOB_SOURCES.filter((s) => s.token === t && LIGHT_CAPABLE_VENDORS.has(s.source)).map(lightKey);
+        if (!t.includes(":")) converted++;
+        if (keys.length === 0) refused.push(t);
+        for (const k of keys) {
+          DYNAMIC_LIGHT.add(k);
+          if (!DYNAMIC_LIGHT.has(k)) refused.push(k);
+        }
       }
     }
-    if (refused.length > 0) {
+    if (refused.length > 0 || converted > 0) {
       // One write, and only on a dirty row: the next load finds nothing to
-      // refuse. The stranded boards recover on their own — listUrl stops
-      // emitting the light form for them, so new postings carry descriptions
-      // again, and rows already stored NULL are refilled by the desc-sweep
-      // BOARD lane (workable is in BOARD_DESC_SOURCES), which is the lane the
-      // maintenance-ladder fix below un-starves.
-      console.warn(`[JOB-BOARD] light_desc_dynamic swept: ${refused.length} non-light-capable token(s) removed (${refused.slice(0, 10).join(", ")})`);
+      // refuse or convert. The stranded boards recover on their own — listUrl
+      // stops emitting the light form for them, so new postings carry
+      // descriptions again, and rows already stored NULL are refilled by the
+      // desc-sweep BOARD lane (workable is in BOARD_DESC_SOURCES), which is the
+      // lane the maintenance-ladder fix below un-starves.
+      if (refused.length > 0) console.warn(`[JOB-BOARD] light_desc_dynamic swept: ${refused.length} non-light-capable board(s) removed (${refused.slice(0, 10).join(", ")})`);
       await client.from("job_board_meta").upsert(
         {
           k: "light_desc_dynamic",
           v: {
             tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP),
             updatedAt: new Date().toISOString(),
-            strandedRemovedAt: new Date().toISOString(),
-            strandedRemoved: refused.slice(0, AUTO_LIGHT_CAP),
+            keyedBy: "source:token",
+            ...(refused.length > 0 ? { strandedRemovedAt: new Date().toISOString(), strandedRemoved: refused.slice(0, AUTO_LIGHT_CAP) } : {}),
           },
           updated_at: new Date().toISOString(),
         },
@@ -751,16 +780,17 @@ async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
  * at the byte bound no board slot may be handed back for a re-fetch that would
  * be byte-for-byte identical to the one that just failed.
  */
-async function enrolDynamicLight(client: SupabaseClient, token: string, why: string): Promise<boolean> {
-  DYNAMIC_LIGHT.add(token);
-  if (!DYNAMIC_LIGHT.has(token)) return false;
-  console.warn(`[JOB-BOARD] auto-light: ${token} ${why} — enrolled in light mode (descs via backfill)`);
+async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, "source" | "token">, why: string): Promise<boolean> {
+  const key = lightKey(board);
+  DYNAMIC_LIGHT.add(key);
+  if (!DYNAMIC_LIGHT.has(key)) return false;
+  console.warn(`[JOB-BOARD] auto-light: ${key} ${why} — enrolled in light mode (descs via backfill)`);
   try {
     const { error: alErr } = await client.from("job_board_meta").upsert(
-      { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+      { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString(), keyedBy: "source:token" }, updated_at: new Date().toISOString() },
       { onConflict: "k" },
     );
-    if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${token} (re-enrolls next fetch):`, alErr.message?.slice(0, 120));
+    if (alErr) console.warn(`[JOB-BOARD] auto-light persist failed for ${key} (re-enrolls next fetch):`, alErr.message?.slice(0, 120));
   } catch { /* re-enrolls on the next fetch — never blocks the slice */ }
   return true;
 }
@@ -773,7 +803,7 @@ const listUrl = (s: JobSource, startOffset = 0) =>
   s.source === "greenhouse"
     // content=true costs a bigger payload but delivers every description in
     // ONE call — fit-ranking coverage for GH boards, plus real departments.
-    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s.token) ? "" : "?content=true"}`)(greenhouseApi(s.token))
+    ? (({ host, token }) => `https://${host}/v1/boards/${token}/jobs${isLight(s) ? "" : "?content=true"}`)(greenhouseApi(s.token))
     : s.source === "lever"
       ? (({ host, token }) => `https://${host}/v0/postings/${token}?mode=json`)(leverApi(s.token))
       : s.source === "ashby"
@@ -787,7 +817,7 @@ const listUrl = (s: JobSource, startOffset = 0) =>
             // Light boards fall back for the same reason Greenhouse giants drop
             // content=true: the bulk htmlToText pass is what wedges the isolate.
             // Their descriptions arrive via the backfill sweep instead.
-            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${isLight(s.token) ? "false" : "true"}`
+            ? `https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${isLight(s) ? "false" : "true"}`
             : s.source === "recruitee"
               ? `https://${s.token}.recruitee.com/api/offers/`
               : s.source === "breezy"
@@ -825,18 +855,17 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   // has no way to tell the two apart and would report every stop as an ending.
   // A short page is the only end-of-feed observation SmartRecruiters offers.
   let srEnded = (page1.content ?? []).length < SR_PAGE;
-  for (let offset = SR_PAGE; offset < total; offset += SR_PAGE) {
-    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${SR_PAGE}&offset=${startOffset + offset}`);
-    if (!res.ok) break; // partial page set is fine — prune guard keys off success of THIS board overall
+  // The visit stops at MAX_POSTINGS_PER_VISIT (the slice reserves that for a
+  // CAPPED_VISIT_VENDOR; this used to run to SR_CAP), srEnded false, so it resumes.
+  for (let offset = SR_PAGE; !srEnded && offset < total && content.length < MAX_POSTINGS_PER_VISIT; offset += SR_PAGE) {
+    const want = Math.min(SR_PAGE, MAX_POSTINGS_PER_VISIT - content.length);
+    const res = await fetchWithTimeout(`https://api.smartrecruiters.com/v1/companies/${s.token}/postings?limit=${want}&offset=${startOffset + content.length}`);
+    if (!res.ok) { discardBody(res); break; } // partial page set: windowed below, so nothing is pruned on it
     const page = await res.json();
     const batch = (page.content ?? []) as unknown[];
     content.push(...batch);
-    // RECORD the ending; do not act on it. Breaking here would leave a
-    // non-zero nextOffset where the loop used to run to `total` and wrap, which
-    // changes this lane's cursor rate — a thing this repo re-measures on
-    // purpose rather than changes in passing. Pages past the end return
-    // nothing, so `content` (and therefore nextOffset) is unaffected either way.
-    if (batch.length < SR_PAGE) srEnded = true;
+    // RECORD the ending; a short page is the only end-of-feed observation.
+    if (batch.length < want) { srEnded = true; break; }
   }
   // windowed, reported the same way Workday and Oracle report it: the company
   // holds more than we fetched, so a posting's ABSENCE from our copy proves
@@ -845,8 +874,8 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
   // was inferred from `rowsById.size >= SR_CAP` — a proxy that cannot tell a
   // board of exactly 2,000 from one of 24,566.
   const advancedSr = startOffset + content.length;
-  const nextOffset = content.length === 0 || (feedTotal > 0 && advancedSr >= feedTotal) ? 0 : advancedSr;
-  return { content, windowed: feedTotal > content.length, feedTotal, nextOffset, feedEnded: srEnded || content.length === 0, endOffset: advancedSr };
+  const nextOffset = srEnded || content.length === 0 || (feedTotal > 0 && advancedSr >= feedTotal) ? 0 : advancedSr;
+  return { content, windowed: feedTotal > content.length || startOffset > 0, feedTotal, nextOffset, feedEnded: srEnded || content.length === 0, endOffset: advancedSr };
 }
 
 /**
@@ -868,7 +897,7 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  * largest response in flight. The memory is whole HTTP response bodies, and
  * until this constant nothing bounded them:
  *
- *   - MAX_POSTINGS_PER_VISIT binds only CAPPED_VISIT_VENDORS — five of twenty.
+ *   - MAX_POSTINGS_PER_VISIT binds only CAPPED_VISIT_VENDORS — six of twenty (usajobs joined in .89).
  *     The other fifteen fetch an entire board in ONE request.
  *   - greenhouse asks for ?content=true, which inlines every description.
  *   - AUTO_LIGHT_THRESHOLD_CHARS measures contentChars AFTER the body is
@@ -1181,23 +1210,30 @@ async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: un
   // Walk at most RIPPLING_PAGE_CAP pages from wherever we started.
   const lastPage = Math.min(totalPages, startPage + RIPPLING_PAGE_CAP);
   let ranOut = items.length === 0;
+  // A later page that fails or will not parse (a 200 bot wall) is a window, not
+  // the feed ending; only a parsed, empty page is (register L13-54).
+  let brokeAt = -1;
   for (let p = startPage + 1; p < lastPage; p++) {
     const res = await fetchWithTimeout(pageUrl(p));
-    if (!res.ok) break;
+    if (!res.ok) { discardBody(res); brokeAt = p; break; }
     const more = extractRipplingJobPosts(await res.text());
-    if (!more || more.items.length === 0) { ranOut = true; break; }
+    if (!more) { brokeAt = p; break; }
+    if (more.items.length === 0) { ranOut = true; break; }
     items.push(...more.items);
   }
-  const reachedEnd = ranOut || lastPage >= totalPages;
+  const broke = brokeAt >= 0;
+  const reachedEnd = !broke && (ranOut || lastPage >= totalPages);
   const feedTotal = totalPages * RIPPLING_PER_PAGE; // pages is all the vendor tells us
+  // Windowed boards resume at the broken page; one inside the cap restarts at the top.
+  const brokeResume = startPage > 0 || totalPages > RIPPLING_PAGE_CAP ? brokeAt * RIPPLING_PER_PAGE : 0;
   return {
     items,
     raw: html,
-    // A board inside the cap is read whole, so absence IS provable and the
-    // prune must stay on for it. Only a genuinely deeper board is windowed.
-    windowed: totalPages > RIPPLING_PAGE_CAP,
+    // A board inside the cap read from the top, all the way down, is read
+    // whole, so absence IS provable and the prune must stay on for it.
+    windowed: totalPages > RIPPLING_PAGE_CAP || startPage > 0 || broke,
     feedTotal,
-    nextOffset: reachedEnd ? 0 : lastPage * RIPPLING_PER_PAGE,
+    nextOffset: broke ? brokeResume : reachedEnd ? 0 : lastPage * RIPPLING_PER_PAGE,
     // Rationale: docs/job-board-index-notes.md#n025-feedended-ranout
     feedEnded: ranOut,
     endOffset: startPage * RIPPLING_PER_PAGE + items.length,
@@ -1584,7 +1620,8 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
   const advanced = startOffset + all.length;
   const nextOffset = exhausted || (feedTotal > 0 && advanced >= feedTotal) ? 0 : advanced;
   // Rationale: docs/job-board-index-notes.md#n031-return-jobpostings-all-raw-jobpostings-a
-  return { jobPostings: all, raw: { jobPostings: all }, windowed: feedTotal > all.length, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advanced };
+  // Rationale: docs/job-board-index-notes.md#n413-workday-total-past-offset-zero
+  return { jobPostings: all, raw: { jobPostings: all }, windowed: workdayWindowed(startOffset, feedTotal, all.length, exhausted), feedTotal, nextOffset, feedEnded: exhausted, endOffset: advanced };
 }
 
 // Rationale: docs/job-board-index-notes.md#n032-fetchoracle
@@ -1654,6 +1691,80 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
 }
 
+/** iCIMS page sizes, largest first: a first page over the byte bound is retried smaller (n414). */
+const ICIMS_PAGE_SIZES: readonly number[] = [100, 50, 25];
+const ICIMS_SIZE_HINT = new Map<string, number>();
+
+// RESUMABLE SINCE .28. iCIMS pages 1-based by `page`, so the deep cursor's
+// posting offset maps to a starting page; the visit then covers its page budget
+// FROM there and reports nextOffset like Workday and Oracle do — which is what
+// lets MAX_POSTINGS_PER_VISIT bound it without truncating the board. Before
+// this, iCIMS held the single largest per-visit fetch on the board (20,800
+// postings) and could not be capped.
+async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): Promise<{ items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
+  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 5;
+  const startPage = Math.floor(startOffset / pageSize) + 1;
+  // Where the first page really starts: a cursor from another page size may fall inside one.
+  const base = (startPage - 1) * pageSize;
+  const lastPage = startPage + ICIMS_MAX_PAGES - 1;
+  const all: unknown[] = [];
+  let feedTotal = 0, exhausted = false;
+  // Fetch the chunk concurrently; READ the bodies one at a time. An iCIMS
+  // page of 100 carries description, qualifications and responsibilities
+  // per item — measured 2.0MB (AccentCare) to 3.3MB (AMD) — so holding
+  // five parsed pages at once was ~16MB of wire per worker, three times a
+  // worker's whole allotment, with no single response near the bound. See
+  // MAX_RESPONSE_BYTES.
+  const fetchPage = async (page: number) => {
+    try {
+      const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${pageSize}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
+      return res;
+    } catch (e) { return chunkPageRefusal(e, page === startPage); }
+  };
+  outer: for (let start = startPage; start <= lastPage; start += ICIMS_CHUNK) {
+    const pages: number[] = [];
+    for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, lastPage); p++) pages.push(p);
+    const responses = await Promise.all(pages.map(fetchPage));
+    let read = 0;
+    try {
+      for (let i = 0; i < responses.length; i++) {
+        read = i + 1;
+        // null = a page refused before it could be read (see
+        // chunkPageRefusal) — end the walk with what landed.
+        if (responses[i] === null) break outer;
+        const { body, over } = await readChunkPage(responses[i]!);
+        // Over the byte budget mid-walk is a WINDOW, not a failure: keep
+        // the pages that landed and leave `exhausted` false so nextOffset
+        // resumes here. Only a first page bigger than an isolate can hold
+        // reaches the caller, which retries it smaller or defers the board.
+        if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
+        const page = body as { jobs?: unknown[]; totalCount?: number } | undefined;
+        if (!page) { if (all.length === 0) throw new Error("icims payload unreadable"); break outer; }
+        const batch = Array.isArray(page.jobs) ? page.jobs! : [];
+        if (feedTotal === 0) feedTotal = Number(page.totalCount) || 0; // first page fetched, whichever it is
+        all.push(...batch);
+        // A short page inside a chunk ends the walk — later chunk members
+        // past the end return empty and must not be treated as data.
+        if (batch.length < pageSize) { exhausted = true; break outer; }
+        // Memory ceiling, not end-of-feed: `exhausted` stays false so
+        // nextOffset resumes here rather than wrapping to the top.
+        if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
+      }
+    } finally { discardRest(responses, read); }
+  }
+  // Same guard as the other paginated vendors: a page-1 failure that
+  // returns empty while the feed claims postings must NOT read as "board
+  // emptied" (the orphan prune would delete a live tenant).
+  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
+  const advancedIc = base + all.length;
+  const nextOffset = exhausted || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
+  // A resumed read is windowed by definition — see the note in fetchOracle.
+  return { items: all, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
+}
+
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
 async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs: number): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   const spec = SLIM_SPECS[s.source];
@@ -1706,71 +1817,19 @@ async function fetchBoard(
     }
     if (s.source === "icims") {
       // Rationale: docs/job-board-index-notes.md#n035-icims-page
-      const ICIMS_PAGE = 100, ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 5;
-      // RESUMABLE SINCE .28. iCIMS pages 1-based by `page`, so the deep
-      // cursor's posting offset maps to a starting page; the visit then covers
-      // its page budget FROM there and reports nextOffset like Workday and
-      // Oracle do — which is what lets MAX_POSTINGS_PER_VISIT bound it without
-      // truncating the board. Before this, iCIMS held the single largest
-      // per-visit fetch on the board (20,800 postings) and could not be capped.
-      const startPage = Math.floor(startOffset / ICIMS_PAGE) + 1;
-      const lastPage = startPage + ICIMS_MAX_PAGES - 1;
-      const all: unknown[] = [];
-      let feedTotal = 0, exhausted = false;
-      // Fetch the chunk concurrently; READ the bodies one at a time. An iCIMS
-      // page of 100 carries description, qualifications and responsibilities
-      // per item — measured 2.0MB (AccentCare) to 3.3MB (AMD) — so holding
-      // five parsed pages at once was ~16MB of wire per worker, three times a
-      // worker's whole allotment, with no single response near the bound. See
-      // MAX_RESPONSE_BYTES.
-      const fetchPage = async (page: number) => {
+      // A first page over the byte bound is retried smaller before the board is deferred (n414).
+      let hint = ICIMS_PAGE_SIZES.indexOf(ICIMS_SIZE_HINT.get(s.token) ?? ICIMS_PAGE_SIZES[0]);
+      if (hint < 0) hint = 0;
+      for (let k = hint; ; k++) {
         try {
-          const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${ICIMS_PAGE}`, {
-            headers: { Accept: "application/json" },
-          });
-          if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
-          return res;
-        } catch (e) { return chunkPageRefusal(e, page === startPage); }
-      };
-      outer: for (let start = startPage; start <= lastPage; start += ICIMS_CHUNK) {
-        const pages: number[] = [];
-        for (let p = start; p <= Math.min(start + ICIMS_CHUNK - 1, lastPage); p++) pages.push(p);
-        const responses = await Promise.all(pages.map(fetchPage));
-        let read = 0;
-        try {
-          for (let i = 0; i < responses.length; i++) {
-            read = i + 1;
-            // null = a page refused before it could be read (see
-            // chunkPageRefusal) — end the walk with what landed.
-            if (responses[i] === null) break outer;
-            const { body, over } = await readChunkPage(responses[i]!);
-            // Over the byte budget mid-walk is a WINDOW, not a failure: keep
-            // the pages that landed and leave `exhausted` false so nextOffset
-            // resumes here. Only a first page bigger than an isolate can hold
-            // reaches the caller as a deferral.
-            if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
-            const page = body as { jobs?: unknown[]; totalCount?: number } | undefined;
-            if (!page) { if (all.length === 0) throw new Error("icims payload unreadable"); break outer; }
-            const batch = Array.isArray(page.jobs) ? page.jobs! : [];
-            if (feedTotal === 0) feedTotal = Number(page.totalCount) || 0; // first page fetched, whichever it is
-            all.push(...batch);
-            // A short page inside a chunk ends the walk — later chunk members
-            // past the end return empty and must not be treated as data.
-            if (batch.length < ICIMS_PAGE) { exhausted = true; break outer; }
-            // Memory ceiling, not end-of-feed: `exhausted` stays false so
-            // nextOffset resumes here rather than wrapping to the top.
-            if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;
-          }
-        } finally { discardRest(responses, read); }
+          const r = await fetchIcims(s, startOffset, ICIMS_PAGE_SIZES[k]);
+          if (k !== hint) ICIMS_SIZE_HINT.set(s.token, ICIMS_PAGE_SIZES[k]);
+          return { jobs: normalizeIcims(r.items as never, s.name, s.token), raw: { items: r.items }, windowed: r.windowed, feedTotal: r.feedTotal, nextOffset: r.nextOffset, feedEnded: r.feedEnded, endOffset: r.endOffset };
+        } catch (e) {
+          if (!isOversize(e) || k + 1 >= ICIMS_PAGE_SIZES.length) throw e;
+          console.warn(`[JOB-BOARD] icims ${s.token}: page of ${ICIMS_PAGE_SIZES[k]} over the byte bound — retrying at ${ICIMS_PAGE_SIZES[k + 1]}`);
+        }
       }
-      // Same guard as the other paginated vendors: a page-1 failure that
-      // returns empty while the feed claims postings must NOT read as "board
-      // emptied" (the orphan prune would delete a live tenant).
-      if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-      const advancedIc = startOffset + all.length;
-      const nextOffset = exhausted || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
-      // A resumed read is windowed by definition — see the note in fetchOracle.
-      return { jobs: normalizeIcims(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
     }
     if (s.source === "usajobs") {
       // Single national feed, paged 500 at a time. The key lives in secrets;
@@ -1783,24 +1842,38 @@ async function fetchBoard(
         console.warn("[JOB-BOARD] usajobs: USAJOBS_API_KEY/USAJOBS_USER_AGENT unset — skipping (not a board failure)");
         return { jobs: [], raw: { items: [] }, windowed: true, feedTotal: 0 };
       }
-      const PAGE = 500, MAX_PAGES = Math.max(1, s.pages ?? 40);
+      // A page of 500 never fit the 4 MB bound, so the feed never stored a row
+      // (register L7-01). Pages of 100, capped per visit and resumed like iCIMS.
+      const PAGE = 100, MAX_PAGES = Math.max(1, s.pages ?? 40);
+      const startPage = Math.floor(startOffset / PAGE) + 1;
+      const base = (startPage - 1) * PAGE;
       const all: unknown[] = [];
       let feedTotal = 0, exhausted = false;
-      for (let page = 1; page <= MAX_PAGES; page++) {
+      for (let page = startPage; page < startPage + MAX_PAGES; page++) {
+        const first = page === startPage;
         const url = `https://data.usajobs.gov/api/search?ResultsPerPage=${PAGE}&Page=${page}`;
-        const res = await fetchWithTimeout(url, {
-          headers: { Host: "data.usajobs.gov", "User-Agent": ua, "Authorization-Key": key },
-        });
-        if (!res.ok) { if (page === 1) throw new Error(`HTTP ${res.status}`); break; }
-        const body = await res.json() as { SearchResult?: { SearchResultCountAll?: number; SearchResultItems?: unknown[] } };
-        const sr = body.SearchResult ?? {};
+        let res: Response;
+        try {
+          res = await fetchWithTimeout(url, {
+            headers: { Host: "data.usajobs.gov", "User-Agent": ua, "Authorization-Key": key },
+          });
+        } catch (e) { if (chunkPageRefusal(e, first) === null) break; throw e; }
+        if (!res.ok) { discardBody(res); if (first) throw new Error(`HTTP ${res.status}`); break; }
+        const { body, over } = await readChunkPage(res);
+        if (over) { if (first) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${page}`); break; }
+        const sr = (body as { SearchResult?: { SearchResultCountAll?: number; SearchResultItems?: unknown[] } } | undefined)?.SearchResult;
+        if (!sr) { if (first) throw new Error("usajobs payload unreadable"); break; }
         const batch = Array.isArray(sr.SearchResultItems) ? sr.SearchResultItems : [];
-        if (page === 1) feedTotal = Number(sr.SearchResultCountAll) || 0;
+        if (first) feedTotal = Number(sr.SearchResultCountAll) || 0;
         all.push(...batch);
         if (batch.length < PAGE) { exhausted = true; break; }
+        // Memory ceiling, not end-of-feed: resume here next visit.
+        if (all.length >= MAX_POSTINGS_PER_VISIT) break;
       }
       if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-      return { jobs: normalizeUsajobs(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted, feedTotal };
+      const advancedUs = base + all.length;
+      const nextOffset = exhausted || (feedTotal > 0 && advancedUs >= feedTotal) ? 0 : advancedUs;
+      return { jobs: normalizeUsajobs(all as never, s.name, s.token), raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedUs };
     }
     if (s.source === "rippling") {
       const { items, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchRippling(s, startOffset);
@@ -2331,22 +2404,36 @@ async function insertExits(
 }
 
 // Rationale: docs/job-board-index-notes.md#n049-logwholeboardexit
+/**
+ * Log every posting of one board (or of one token, when `source` is null) to
+ * the exit ledger before the caller deletes them. `complete` is true only when
+ * every page was read and every insert landed; a caller deletes ONLY then
+ * (n416). A board whose exit log broke on page 1 used to be deleted whole with
+ * zero exit rows.
+ */
 async function logWholeBoardExit(
   client: SupabaseClient,
   token: string,
+  source: string | null,
   reason: "board_dormant" | "untracked",
-): Promise<number> {
+): Promise<{ logged: number; complete: boolean; loggedIds: string[] }> {
   const exitedAt = new Date().toISOString();
   let logged = 0;
+  let complete = false;
+  const loggedIds: string[] = [];
+  // One vendor's board when `source` is given, so a token's twin keeps its rows (n417).
+  const board: Record<string, string> = source ? { company_token: token, source } : { company_token: token };
   try {
     for (let from = 0; ; from += 500) {
       // Widened with the row's facets (see lifecycleFacets): after the delete
       // below there is no other copy of this posting's pay, team, geography or
-      // level anywhere, and this select was already running.
+      // level anywhere, and this select was already running. Ordered, so the
+      // pages neither overlap nor skip.
       let res = await client
         .from("job_board_postings")
         .select(LIFECYCLE_SELECT)
-        .eq("company_token", token)
+        .match(board)
+        .order("id")
         .range(from, from + 499);
       // Deploy-before-migration: a select naming an absent column fails the
       // WHOLE read, which would stop the ledger writing at all. Fall back to
@@ -2355,13 +2442,14 @@ async function logWholeBoardExit(
         res = (await client
           .from("job_board_postings")
           .select("id, source, company_token, company, title, category, posted_at, first_seen")
-          .eq("company_token", token)
+          .match(board)
+          .order("id")
           .range(from, from + 499)) as typeof res;
       }
       const { data: page, error } = res;
-      if (error) { console.warn(`[JOB-BOARD] exit-log read failed for ${token} (non-fatal):`, error.message?.slice(0, 120)); break; }
+      if (error) { console.warn(`[JOB-BOARD] exit-log read failed for ${token} (board kept, nothing deleted):`, error.message?.slice(0, 120)); break; }
       const rows = (page ?? []) as unknown as Array<Record<string, unknown>>;
-      if (!rows.length) break;
+      if (!rows.length) { complete = true; break; }
       // origin_basis, not a coalesce: this was one of the two sites feeding
       // mixed-clock durations into the hiring-health model's censoring input.
       // posted_at rides along verbatim so the employer's own date survives the
@@ -2386,14 +2474,42 @@ async function logWholeBoardExit(
       const { error: insErr } = await insertExits(client, rows.map(exitRow), token);
       // supabase-js RETURNS errors rather than throwing. An unchecked insert is
       // how lifecycle history goes missing without anyone noticing.
-      if (insErr) { console.warn(`[JOB-BOARD] exit-log insert failed for ${token} (non-fatal):`, insErr.message?.slice(0, 120)); break; }
+      if (insErr) { console.warn(`[JOB-BOARD] exit-log insert failed for ${token} (unlogged rows kept):`, insErr.message?.slice(0, 120)); break; }
       logged += rows.length;
-      if (rows.length < 500) break;
+      for (const r of rows) loggedIds.push(String(r.id));
+      if (rows.length < 500) { complete = true; break; }
     }
   } catch (e) {
-    console.warn(`[JOB-BOARD] exit-log threw for ${token} (non-fatal):`, String(e).slice(0, 120));
+    complete = false;
+    console.warn(`[JOB-BOARD] exit-log threw for ${token} (unlogged rows kept):`, String(e).slice(0, 120));
   }
-  return logged;
+  return { logged, complete, loggedIds };
+}
+
+/**
+ * Log a whole board to the exit ledger, then delete what was logged: the whole
+ * board (scoped to its vendor when `source` is given, so a token's twin on
+ * another vendor keeps its rows) when every row was logged, otherwise exactly
+ * the logged ids. Deleted always implies ledgered (n416).
+ */
+async function pruneWholeBoard(
+  client: SupabaseClient,
+  token: string,
+  reason: "board_dormant" | "untracked",
+  source: string | null,
+): Promise<{ logged: number; complete: boolean }> {
+  const { logged, complete, loggedIds } = await logWholeBoardExit(client, token, source, reason);
+  if (complete) {
+    let q = client.from("job_board_postings").delete().eq("company_token", token);
+    if (source) q = q.eq("source", source);
+    const { error } = await q;
+    if (error) console.warn(`[JOB-BOARD] whole-board delete failed for ${token} (rows stay, already logged):`, error.message?.slice(0, 120));
+  } else {
+    for (let i = 0; i < loggedIds.length; i += 200) {
+      await client.from("job_board_postings").delete().in("id", loggedIds.slice(i, i + 200));
+    }
+  }
+  return { logged, complete };
 }
 
 // Cap the aged-tail sweep per pass so a big backlog drains without a giant
@@ -3142,12 +3258,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // Rationale: docs/job-board-index-notes.md#n069-const-data-bfmeta-await-client-from-job
   const { data: bfMeta } = await client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle();
   const bfV = (bfMeta?.v ?? {}) as Partial<BoardFailureState>;
-  const boardFailures: BoardFailureState = {
+  // Entries an older build keyed by a bare shared token go: their boards are
+  // tracked per `source:token` now (n417).
+  const boardFailures: BoardFailureState = dropBareSharedKeys({
     streaks: { ...(bfV.streaks ?? {}) },
     dormant: { ...(bfV.dormant ?? {}) },
     failedAt: { ...(bfV.failedAt ?? {}) },
     firstFailedAt: { ...(bfV.firstFailedAt ?? {}) },
-  };
+  }, SHARED_TOKENS).state;
 
   // THE RETRY LANE. A board that failed gets another attempt in minutes rather
   // than in a full rotation — which is the only thing that moves the freshness
@@ -3159,8 +3277,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   let retryLane: { at: string; candidates: number; selected: number } | null = null;
   if (!inHotPhase) {
     try {
-      const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...deepBoards].map((s) => s.token));
-      const dueTokens = selectRetries({
+      const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...deepBoards].map(boardKeyOf));
+      const dueKeys = selectRetries({
         streaks: boardFailures.streaks,
         failedAt: boardFailures.failedAt ?? {},
         dormant: boardFailures.dormant,
@@ -3168,8 +3286,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         now: Date.now(),
         cap: effRetryPerSlice,
       });
-      retryBoards = dueTokens
-        .map((t) => JOB_SOURCES.find((s) => s.token === t))
+      // By board key, so a shared token retries the twin that failed (n417).
+      retryBoards = dueKeys
+        .map(boardByKey)
         .filter((s): s is JobSource => !!s);
       // Instrumented for the reason every lane here is: "ran and selected none"
       // and "never ran" are otherwise the same observation, and this file has
@@ -3279,8 +3398,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   let skipTokens = new Set<string>();
   let recheckTokens = new Set<string>();
   if (!inHotPhase) {
-    const demandSet = new Set(demandBoards.map((s) => s.token));
-    const eligible = baseSlice.map((s) => s.token).filter((t) => !demandSet.has(t));
+    // Board keys, not tokens (n417): skipTokens/recheckTokens hold boardKeyOf(s).
+    const demandSet = new Set(demandBoards.map(boardKeyOf));
+    const eligible = baseSlice.map(boardKeyOf).filter((k) => !demandSet.has(k));
     ({ skip: skipTokens, recheck: recheckTokens } = classifyDormancy(eligible, boardFailures.dormant, Date.now(), DORMANT_RECHECK_MS));
   }
   // Rationale: docs/job-board-index-notes.md#n073-the-cursor-rule-advanceprogress-is-shared-w
@@ -3320,6 +3440,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
 
   const queue = [...slice];
   const okTokens: string[] = [];
+  // The same boards by board key (n417), for the failure state; okTokens stays token-keyed for the stale lane.
+  const okKeys: string[] = [];
   const failed: string[] = [];
   let sliceTotal = 0;
   let fetchedInSlice = 0;
@@ -3361,7 +3483,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (!s) return;
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
-        if (skipTokens.has(s.token)) continue;
+        if (skipTokens.has(boardKeyOf(s))) continue;
         // Deferred only on what has LANDED. When it is the reservation that
         // fills the budget, this worker retires and hands the board back to a
         // worker still in flight — concurrency shrinks, the queue does not.
@@ -3437,8 +3559,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             OVERSIZE_BOARDS.delete(s.token); // re-insert so the cap keeps the most RECENT
             OVERSIZE_BOARDS.set(s.token, { source: s.source, mb, at: new Date().toISOString() });
             // Rationale: docs/job-board-index-notes.md#n081-light-capable-vendors-has-s-source
-            if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s.token)) {
-              const enrolled = await enrolDynamicLight(client, s.token, `list response ${failReason} — over the byte budget`);
+            if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s)) {
+              const enrolled = await enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`);
               if (enrolled && baseTokens.has(s.token) && baseAttempted > 0) baseAttempted--;
             }
             budgetSkipped.push(s.token);
@@ -3515,7 +3637,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             lapEpoch = rec.e;
             lapSeen = rec.s;
             // Rationale: docs/job-board-index-notes.md#n086-totalnow
-            const totalNow = Math.max(0, Math.trunc(r.feedTotal ?? 0));
+            // A mid-feed visit on a tenant that states its total only at offset 0 is judged against the lap's t0 (n413).
+            const totalNow = lapTotal(r.feedTotal, cursorBefore, rec.t0);
             const totalRef = Math.max(totalNow, 0);
             const tailSlack = Math.min(LAP_TAIL_SLACK, Math.floor((1 - LAP_COVERAGE_MIN) * totalRef));
             if (r.nextOffset === 0 && cursorBefore > 0 && rec.f === 0 &&
@@ -3626,7 +3749,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
             if (text) descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));
           }
-        } else if (s.source === "greenhouse" && !isLight(s.token)) {
+        } else if (s.source === "greenhouse" && !isLight(s)) {
           const ghJobs = (r.raw as { jobs?: Array<{ id: number; content?: string }> }).jobs ?? [];
           // Self-tuning light mode: measure the raw content volume BEFORE the
           // htmlToText pass — that pass is what kills the isolate on giants.
@@ -3635,7 +3758,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const contentChars = ghJobs.reduce((n, j) => n + (j.content?.length ?? 0), 0);
           if (contentChars >= AUTO_LIGHT_THRESHOLD_CHARS) {
             // Rationale: docs/job-board-index-notes.md#n089-await-enroldynamiclight-client-s-token
-            if (!await enrolDynamicLight(client, s.token, `content payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold`)) descsDeferred = true;
+            if (!await enrolDynamicLight(client, s, `content payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold`)) descsDeferred = true;
           } else {
             for (const j of ghJobs) {
               const text = j.content ? htmlToText(String(j.content).slice(0, RAW_HTML_CAP)).trim() : "";
@@ -3647,7 +3770,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const text = htmlToText([o.description, o.requirements].filter(Boolean).join("\n").slice(0, RAW_HTML_CAP)).trim();
             if (text) descs.set(`recruitee:${s.token}:${o.id}`, text.slice(0, STORED_DESC_CAP));
           }
-        } else if (s.source === "workable" && !isLight(s.token)) {
+        } else if (s.source === "workable" && !isLight(s)) {
           // Same self-tuning guard as Greenhouse: details=true payloads are ~10x
           // bigger, and it's the bulk htmlToText pass — not the fetch — that kills
           // the isolate on a giant board. Measure first, enroll, fill via backfill.
@@ -3655,7 +3778,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const contentChars = wkJobs.reduce((n, j) => n + (j.description?.length ?? 0), 0);
           if (contentChars >= AUTO_LIGHT_THRESHOLD_CHARS) {
             // Rationale: docs/job-board-index-notes.md#n090-await-enroldynamiclight-client-s-token
-            if (!await enrolDynamicLight(client, s.token, `workable payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold`)) descsDeferred = true;
+            if (!await enrolDynamicLight(client, s, `workable payload ${(contentChars / 1e6).toFixed(1)}MB >= threshold`)) descsDeferred = true;
           } else {
             for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);
           }
@@ -3695,7 +3818,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // descsDeferred covers the board whose enrolment was REFUSED: its descs
         // were skipped too, and writing the column would null out text we
         // already hold. Omitting it is what makes a deferral recoverable.
-        const lightDescs = isLight(s.token) || descsDeferred;
+        const lightDescs = isLight(s) || descsDeferred;
         const rowsById = new Map<string, Record<string, unknown>>();
         // Rationale: docs/job-board-index-notes.md#n091-schedulewordsbyid
         const scheduleWordsById = new Map<string, string>();
@@ -3997,8 +4120,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                 };
               };
               const { error: exErr } = await insertExits(client, shedRows.map(exitRow), s.token);
-              if (exErr) console.warn(`[JOB-BOARD] oracle dedupe exit-log insert failed for ${s.token} (non-fatal):`, String(exErr.message ?? "").slice(0, 120));
-              for (let i = 0; i < shed.length; i += 200) {
+              // No exit rows, no delete (n416): the copies stay one more visit and the shed retries.
+              if (exErr) console.warn(`[JOB-BOARD] oracle dedupe exit-log insert failed for ${s.token} (${shed.length} row(s) kept, retried next visit):`, String(exErr.message ?? "").slice(0, 120));
+              else for (let i = 0; i < shed.length; i += 200) {
                 const { error: delErr } = await client.from("job_board_postings").delete().in("id", shed.slice(i, i + 200));
                 if (delErr) console.warn(`[JOB-BOARD] oracle dedupe delete failed for ${s.token} (retries next visit):`, String(delErr.message ?? "").slice(0, 120));
               }
@@ -4150,6 +4274,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const changeMarks: number[] = [];
         // Rationale: docs/job-board-index-notes.md#n107-derived-not-employer-edits
         const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code"]);
+        // Rationale: docs/job-board-index-notes.md#n419-two-readers-one-posting
+        const LIST_MODE_UNSTATED = new Set(["workday", "jazzhr"]);
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
@@ -4207,9 +4333,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             if (next === null || next === undefined || next === "") { if (!allowNull) return; }
             if (next !== cur) { patch[k] = next ?? null; note(k, cur, next ?? null); }
           };
+          // The list's weaker reading never overwrites what the detail sweep filled (n419).
+          const listPlaceholder = isPlacelessLocation(row.location as string | null) && !isPlacelessLocation(prev.location as string | null);
+          const keepStoredMode = LIST_MODE_UNSTATED.has(s.source) && prev.work_mode != null;
           // Vendor-authoritative on every fetch: correct these even to null.
           put("title", row.title, prev.title, false);
-          put("location", row.location, prev.location, false);
+          if (!listPlaceholder) put("location", row.location, prev.location, false);
           put("apply_url", row.apply_url, prev.apply_url, false);
           put("country", row.country, prev.country, false);
           // Rationale: docs/job-board-index-notes.md#n110-regioncolunknown
@@ -4222,7 +4351,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             }
           }
           // Stated-only: silence from the vendor must not erase enrichment.
-          put("work_mode", row.work_mode, prev.work_mode, false);
+          if (!keepStoredMode) put("work_mode", row.work_mode, prev.work_mode, false);
           put("employment_type", (row as Record<string, unknown>).employment_type, (prev as Record<string, unknown>).employment_type, false);
           // Rationale: docs/job-board-index-notes.md#n112-nextpay
           const nextPay = (row.salary ?? null) as string | null;
@@ -4249,7 +4378,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             patch.salary_currency = rp?.currency ?? null;
           }
           // Rationale: docs/job-board-index-notes.md#n115-nextmode
-          if (typeof row.remote === "boolean") {
+          if (typeof row.remote === "boolean" && !keepStoredMode) {
             if (row.remote !== prev.remote) {
               patch.remote = row.remote;
               note("remote", prev.remote, row.remote);
@@ -4610,6 +4739,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           } catch { /* dedupe is best-effort — worst case we log the duplicate */ }
           for (let i = 0; i < vanished.length; i += 200) {
             const chunk = vanished.slice(i, i + 200);
+            // The ledger before the delete (n416): rows whose closure read or
+            // insert failed stay (stamped, hidden) and are retried next visit.
+            const keep = new Set<string>();
             try {
               // Rationale: docs/job-board-index-notes.md#n122-logres
               let logRes = await client
@@ -4627,7 +4759,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                   .in("id", chunk)) as typeof logRes;
               }
               if (logRes.error) {
-                console.warn(`[JOB-BOARD] closure-log read failed for ${s.token} (non-fatal):`, String(logRes.error.message ?? "").slice(0, 150));
+                for (const id of chunk) keep.add(id);
+                console.warn(`[JOB-BOARD] closure-log read failed for ${s.token} (chunk kept, retried next visit):`, String(logRes.error.message ?? "").slice(0, 150));
               }
               const toLog = logRes.data as unknown as Array<Record<string, unknown>> | null;
               // Rationale: docs/job-board-index-notes.md#n123-isagedout
@@ -4705,7 +4838,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                 // Rationale: docs/job-board-index-notes.md#n126-const-error-rawclerr-await-client-from-j
                 const { error: rawClErr } = await client.from("job_board_closures").insert(closureRows);
                 const clErr = await settleInsertError(client, "job_board_closures", rawClErr, () => closureRows, CLOSURE_OPTIONAL_COLS, s.token);
-                if (clErr) console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (non-fatal):`, clErr.message?.slice(0, 150));
+                if (clErr) {
+                  // Keep exactly the rows whose closures did not land; the aged
+                  // rows above already have their exits and may go.
+                  for (const r of rows) keep.add(String(r.id));
+                  console.warn(`[JOB-BOARD] closure insert failed for ${s.token} (${rows.length} kept, retried next visit):`, clErr.message?.slice(0, 150));
+                }
                 // Rationale: docs/job-board-index-notes.md#n127-removedexitrow
                 const removedExitRow = (r: Record<string, unknown>) => {
                   const t = tenureDays(r.posted_at, r.first_seen, closedAt);
@@ -4724,16 +4862,21 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
                     ...lifecycleFacets(r),
                   };
                 };
-                waitUntil(Promise.resolve(insertExits(
+                // Only beside a closure that landed: a kept row comes back next
+                // visit and would otherwise write its exit twice.
+                if (!clErr) waitUntil(Promise.resolve(insertExits(
                   client, rows.map(removedExitRow), s.token,
                 )).then(({ error }) => {
                   if (error) console.warn(`[JOB-BOARD] removed-exit insert failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
                 }).catch(() => {}));
               }
             } catch (e) {
-              console.warn(`[JOB-BOARD] closure log failed for ${s.token} (non-fatal):`, String(e).slice(0, 150));
+              for (const id of chunk) keep.add(id);
+              console.warn(`[JOB-BOARD] closure log failed for ${s.token} (chunk kept, retried next visit):`, String(e).slice(0, 150));
             }
-            const { error: delErr } = await client.from("job_board_postings").delete().in("id", chunk);
+            const doomed = keep.size > 0 ? chunk.filter((id) => !keep.has(id)) : chunk;
+            if (doomed.length === 0) continue;
+            const { error: delErr } = await client.from("job_board_postings").delete().in("id", doomed);
             if (delErr) console.warn(`[JOB-BOARD] closure prune delete failed for ${s.token} (non-fatal):`, delErr.message?.slice(0, 150));
           }
         } else if (vanished.length) {
@@ -4747,6 +4890,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           }
         }
         okTokens.push(s.token);
+        okKeys.push(boardKeyOf(s));
         // A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
         // greenhouse giant reads fine on its very next visit, and a vendor
         // trimming its payload heals the same way. Left in the registry the
@@ -4764,8 +4908,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // can render floors as "N+". Deploy-before-migration tolerance: if
           // the column doesn't exist yet, retry without it — the stamp itself
           // must never be lost to a new optional column (country-column rule).
+          // A mid-feed zero is the tenant not saying, never "0 open": the lap's t0, else the last stated total stands (n413).
+          const stampTotal = stampFeedTotal(r.feedTotal, cursorBefore, deepLaps[lapKey]?.t0);
           let { error: stampErr } = await client.from("job_board_verifications").upsert(
-            { company_token: s.token, verified_at: new Date().toISOString(), feed_total: r.feedTotal ?? null },
+            { company_token: s.token, verified_at: new Date().toISOString(), ...(stampTotal === undefined ? {} : { feed_total: stampTotal }) },
             { onConflict: "company_token" },
           );
           if (stampErr?.message?.includes("feed_total")) {
@@ -4897,12 +5043,15 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // firstFailedAt advanced for boards no fetch ever touched, feeding the
     // retry lane and, sustained, the prune. Reviewed 2026-09-03.
     const budgetSkippedSet = new Set(budgetSkipped);
-    const failedTokens = slice
-      .map((s) => s.token)
-      .filter((tk) => !skipTokens.has(tk) && !quarantineSkipped.has(tk) && !budgetSkippedSet.has(tk) && !okSet.has(tk));
-    if (okTokens.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
+    // BY BOARD KEY (n417): on a shared token the twin that read no longer
+    // clears the failing twin's streak. The deferral sets stay token-keyed.
+    const okKeySet = new Set(okKeys);
+    const failedTokens = [...new Set(slice
+      .filter((s) => !skipTokens.has(boardKeyOf(s)) && !quarantineSkipped.has(s.token) && !budgetSkippedSet.has(s.token) && !okKeySet.has(boardKeyOf(s)))
+      .map(boardKeyOf))];
+    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
       const { streaks, dormant, failedAt, firstFailedAt, toPrune } = updateBoardFailures({
-        okTokens,
+        okTokens: okKeys,
         failedTokens,
         recheckTokens,
         streaks: boardFailures.streaks,
@@ -4914,10 +5063,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         dormantCap: DORMANT_CAP,
         now: Date.now(),
       });
-      for (const tk of toPrune) {
-        const n = await logWholeBoardExit(client, tk, "board_dormant");
-        await client.from("job_board_postings").delete().eq("company_token", tk);
-        console.warn(`[JOB-BOARD] board ${tk} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures spanning at least ${Math.round(DEAD_BOARD_MIN_FAILING_MS / 3_600_000)}h (${n} postings pruned and logged as board_dormant; fetch skipped until recheck)`);
+      for (const key of toPrune) {
+        // One board: its own vendor's rows only, never a twin's (n417), and
+        // only what the exit ledger recorded (n416).
+        const board = boardByKey(key);
+        const tk = board?.token ?? keyToken(key);
+        const { logged: n, complete } = await pruneWholeBoard(client, tk, "board_dormant", board?.source ?? keySource(key));
+        console.warn(`[JOB-BOARD] board ${key} dormant after ${DEAD_BOARD_THRESHOLD} consecutive failures spanning at least ${Math.round(DEAD_BOARD_MIN_FAILING_MS / 3_600_000)}h (${n} postings pruned and logged as board_dormant${complete ? "" : "; the exit log broke, unlogged rows kept"}; fetch skipped until recheck)`);
       }
       await client.from("job_board_meta").upsert(
         { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
@@ -5128,8 +5280,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       if (orphanTokens.length > 0) {
         let orphanLogged = 0;
         for (const tk of orphanTokens) {
-          orphanLogged += await logWholeBoardExit(client, tk, "untracked");
-          await client.from("job_board_postings").delete().eq("company_token", tk);
+          // Deletes only what the exit ledger recorded (n416); the token is in
+          // no catalog entry, so no vendor's twin can be standing on it.
+          orphanLogged += (await pruneWholeBoard(client, tk, "untracked", null)).logged;
         }
         console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
         companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
@@ -5741,7 +5894,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
 }
 
 // Rationale: docs/job-board-index-notes.md#n167-verify-grace-ms
-const VERIFY_GRACE_MS = 6 * 60 * 60_000;
 
 const MAINTENANCE_ANY_GAP_MS = 10 * 60_000; // floor between any two kicks
 // Rationale: docs/job-board-index-notes.md#n168-maintenance-stall-ms
@@ -5989,7 +6141,7 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
     const lightTokens = descBackfillBoards().map((s) => s.token);
     let missingCoverage = false;
     if (lightTokens.length > 0 && bfAge > 30 * 60_000) {
-      const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).is("description", null);
+      const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).in("company_token", lightTokens).eq("source", DESC_BACKFILL_VENDOR).is("description", null);
       missingCoverage = (count ?? 0) > 50;
     }
     // Rationale: docs/job-board-index-notes.md#n175-missingcoverage-bfage-bfincomplete
@@ -9161,7 +9313,7 @@ Deno.serve(async (req) => {
         // not thrash the sweep — settle to the daily cadence for those.
         let remaining = 0;
         for (const b of BOARDS) {
-          const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("company_token", b.token).is("description", null);
+          const { count } = await client.from("job_board_postings").select("id", { count: "exact", head: true }).eq("company_token", b.token).eq("source", b.source).is("description", null);
           remaining += count ?? 0;
         }
         const incomplete = remaining > 50;
@@ -9180,6 +9332,7 @@ Deno.serve(async (req) => {
         // as USD — inflating its rank ~1.37x and misstating the offer.
         .select("id, country, title")
         .eq("company_token", s.token)
+        .eq("source", s.source)
         .is("description", null)
         .order("id")
         .limit(PER_HOP);
@@ -9934,7 +10087,9 @@ Deno.serve(async (req) => {
         const [source, token, ...rest] = id.split(":");
         const externalId = rest.join(":");
         const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
-        if (!src || !externalId) { liveMap[id] = false; deadIds.push(id); continue; }
+        // A board we no longer catalogue was asked nothing, so nothing was
+        // learned: undecidable, never dead (n418). The orphan prune owns it.
+        if (!src || !externalId) { liveMap[id] = null; continue; }
         // Only a posting the board holds asks for its board: an id we never
         // stored is not a reader looking at that employer.
         if (applyBy.has(id)) demandTokens.add(src.token);
@@ -9943,26 +10098,15 @@ Deno.serve(async (req) => {
         else liveMap[id] = live; // true = confirmed at the source; null = undecidable (page-capped feed). Both keep showing; only one is a confirmation.
       }
       // Rationale: docs/job-board-index-notes.md#n265-deadids-length-0
+      // Verify stamps and never deletes (n418): only the refresh, which writes the ledger, removes a row.
       if (deadIds.length > 0) {
         const { data: stamps } = await client
           .from("job_board_postings").select("id, missing_since").in("id", deadIds);
-        const stampBy = new Map((stamps ?? []).map((r) => [String(r.id), r.missing_since as string | null]));
-        const nowMs = Date.now();
-        const confirmed: string[] = [];
-        const firstMiss: string[] = [];
-        for (const id of deadIds) {
-          const st = stampBy.get(id);
-          if (st && nowMs - Date.parse(st) >= VERIFY_GRACE_MS) confirmed.push(id);
-          else if (!st) firstMiss.push(id);
-          // stamped but still inside the grace window → leave it, re-probe later
-        }
+        const firstMiss = (stamps ?? []).filter((r) => !r.missing_since).map((r) => String(r.id));
         const stampIso = new Date().toISOString();
         for (let i = 0; i < firstMiss.length; i += 50) {
           await client.from("job_board_postings")
             .update({ missing_since: stampIso }).in("id", firstMiss.slice(i, i + 50));
-        }
-        for (let i = 0; i < confirmed.length; i += 50) {
-          await client.from("job_board_postings").delete().in("id", confirmed.slice(i, i + 50));
         }
       }
       // Demand signal: boards a user just looked at jump the refresh queue --

@@ -1390,14 +1390,19 @@ describe("verify-on-apply cannot destroy a live posting on one probe", () => {
     // destroying the row. The probe is fixed; the two-pass rule stays, because
     // no single probe should ever be able to destroy an open job.
     expect(verify.slice(0, 3800)).toMatch(/update\(\{ missing_since: stampIso \}\)/);
-    expect(verify.slice(0, 3800)).toMatch(/nowMs - Date\.parse\(st\) >= VERIFY_GRACE_MS/);
   });
 
-  it("its grace outlasts a cold rotation", () => {
-    // The refresh prune's 5-minute GRACE_MS corroborates against a FULL feed
-    // re-read; this path has only a single-posting probe with a measured 14%
-    // false-negative rate, so one rotation must be able to clear the stamp.
-    expect(fn).toMatch(/const VERIFY_GRACE_MS = 6 \* 60 \* 60_000;/);
+  it("verify never deletes: only the refresh, which writes the ledger, removes a row (.89)", () => {
+    // Until .89 a second miss 6h after the stamp (VERIFY_GRACE_MS) DELETED the
+    // row with no closure and no exit, so verify called every few hours erased
+    // an employer's fills from the lifecycle log. The action ends at its JSON
+    // answer; nothing between its dead-id list and that answer may delete.
+    const end = verify.indexOf("return json({ live: liveMap");
+    expect(end, "verify's answer not found").toBeGreaterThan(-1);
+    expect(verify.slice(0, end)).not.toMatch(/\.delete\(\)/);
+    // And an uncatalogued board is undecidable, never dead: no vendor was asked.
+    const v = fn.slice(fn.indexOf('if (action === "verify")'));
+    expect(v.slice(0, v.indexOf("return json({ live: liveMap"))).toMatch(/if \(!src \|\| !externalId\) \{ liveMap\[id\] = null; continue; \}/);
   });
 
   it("the workday probe confirms a miss before calling it a closure", () => {

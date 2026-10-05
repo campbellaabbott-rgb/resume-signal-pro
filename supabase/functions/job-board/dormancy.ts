@@ -253,3 +253,59 @@ export function updateBoardFailures(params: {
   );
   return { streaks, dormant, failedAt: bounded, firstFailedAt: boundedFirst, toPrune };
 }
+
+/**
+ * ONE BOARD, ONE KEY (n417).
+ *
+ * The catalog is not token-unique: 139 tokens carry two or three vendors
+ * (`lush` is greenhouse and personio, `samsara` greenhouse and pinpoint). Keyed
+ * by token, a twin that reads cleared the failing twin's streak every visit, so
+ * a dead board on a shared token was never pruned and kept serving under its
+ * sibling's stamp; and when both did fail, the prune deleted both vendors'
+ * rows. So a shared token's boards are keyed `source:token`. Every other board
+ * keeps its bare token, which leaves the persisted state of the other 44,000
+ * boards exactly as it was. No catalog token contains a colon.
+ */
+export function boardKey(source: string, token: string, shared: ReadonlySet<string>): string {
+  return shared.has(token) ? `${source}:${token}` : token;
+}
+
+/** The token a board key names. */
+export function keyToken(key: string): string {
+  const at = key.indexOf(":");
+  return at < 0 ? key : key.slice(at + 1);
+}
+
+/** The vendor a board key names, or null for a bare-token key. */
+export function keySource(key: string): string | null {
+  const at = key.indexOf(":");
+  return at < 0 ? null : key.slice(0, at);
+}
+
+/**
+ * Drop entries an older build keyed by a bare SHARED token. Such an entry
+ * cannot be told apart per board, nothing will ever clear it (a board that
+ * reads now clears its `source:token` key), and the retry lane would chase it
+ * forever, so it goes; each board re-earns its streak under its own key. The
+ * conservative direction: forgetting a streak delays a prune, never causes one.
+ */
+export function dropBareSharedKeys(state: BoardFailureState, shared: ReadonlySet<string>): { state: BoardFailureState; dropped: number } {
+  let dropped = 0;
+  const clean = (rec: Record<string, number> | undefined): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(rec ?? {})) {
+      if (shared.has(k)) { dropped++; continue; }
+      out[k] = v;
+    }
+    return out;
+  };
+  return {
+    state: {
+      streaks: clean(state.streaks),
+      dormant: clean(state.dormant),
+      failedAt: clean(state.failedAt),
+      firstFailedAt: clean(state.firstFailedAt),
+    },
+    dropped,
+  };
+}

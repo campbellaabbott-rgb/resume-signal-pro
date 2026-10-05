@@ -289,8 +289,9 @@ describe("a body read before anything counted it", () => {
   it("a light-capable vendor ENROLS rather than being deferred forever", () => {
     const i = CODE.indexOf('if (failReason.startsWith("oversize"))');
     const block = CODE.slice(i, i + 1400);
-    expect(block).toMatch(/LIGHT_CAPABLE_VENDORS\.has\(s\.source\) && !isLight\(s\.token\)/);
-    expect(block).toMatch(/await enrolDynamicLight\(client, s\.token,/);
+    // Since .89 light mode is keyed by BOARD (source:token), so the board itself is passed.
+    expect(block).toMatch(/LIGHT_CAPABLE_VENDORS\.has\(s\.source\) && !isLight\(s\)/);
+    expect(block).toMatch(/await enrolDynamicLight\(client, s,/);
     // AND IT GETS ITS SLOT BACK. Every other budget deferral `continue`s
     // before `baseAttempted++`, so its board is re-offered on the next slice;
     // this branch sits after that line. Left alone, a board enrolled for a
@@ -309,7 +310,8 @@ describe("a body read before anything counted it", () => {
     const h = CODE.indexOf("async function enrolDynamicLight(");
     const helper = CODE.slice(h, CODE.indexOf("\n}", h));
     expect(helper, "enrolDynamicLight not found").not.toBe("");
-    expect(helper).toMatch(/DYNAMIC_LIGHT\.add\(token\);/);
+    expect(helper).toMatch(/DYNAMIC_LIGHT\.add\(key\);/);
+    expect(helper).toMatch(/const key = lightKey\(board\);/);
     expect(helper).toMatch(/k: "light_desc_dynamic"/);
     expect(helper).toMatch(/tokens: \[\.\.\.DYNAMIC_LIGHT\]\.slice\(-AUTO_LIGHT_CAP\)/);
   });

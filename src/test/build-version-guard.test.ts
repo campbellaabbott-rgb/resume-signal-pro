@@ -1383,9 +1383,18 @@ const PINNED = {
   // bound as one canonical instant; status, company-suggest and host_sweep
   // cannot be looped into database or outbound work.
   // sources.ts UNCHANGED.
-  // 2026-09-09.89: an aged-out id the feed has re-dated (Ashby re-publishes
-  // under the same id) walks back in instead of being refused for 180 days
-  // (tombstone.ts; open PR #5's .87, renumbered).
+  // 2026-09-09.89: the ingest reads what the employers publish (platform debug
+  // sweep 2026-10-04). A Workday visit that resumed mid-feed and saw the
+  // tenant's `total: 0` is windowed, not a whole board (read-window.ts; it was
+  // deleting live postings and logging them as takedowns), and its lap and
+  // stamp carry the offset-0 total; an aged-out id the feed has re-dated
+  // walks back in (tombstone.ts; open PR #5's .87, renumbered); USAJOBS reads
+  // pages of 100 and resumes; light mode is keyed by board; iCIMS retries an
+  // oversize first page smaller; SmartRecruiters visits stop at 250; a broken
+  // Rippling page is a window; no prune deletes what its ledger did not
+  // record, and verify never deletes; a shared token's boards fail apart;
+  // the list never undoes the detail sweep. Migration 20261005100000 marks
+  // the Workday mid-feed closures suspect, reversibly.
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.89",
 };

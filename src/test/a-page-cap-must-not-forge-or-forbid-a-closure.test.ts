@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { lapTotal } from "../../supabase/functions/job-board/read-window";
 
 /**
  * A PAGE CAP MUST NOT FORGE A CLOSURE, AND MUST NOT FORBID ONE FOREVER.
@@ -102,21 +103,25 @@ const LAP_TAIL_SLACK = Number(lift("LAP_TAIL_SLACK", /const LAP_TAIL_SLACK = (\d
  * decision — a harness that passed them in as parameters would be testing its
  * own arithmetic rather than the shipped rule.
  */
+// Since .89 the visit's total goes through lapTotal (read-window.ts): a
+// mid-feed visit on a tenant that states its total only at offset 0 is judged
+// against the lap's t0. The real function is handed in, not re-implemented.
 const provenPre = lift(
   "lap-proof preamble",
-  /(const totalNow = Math\.max\(0, Math\.trunc\(r\.feedTotal \?\? 0\)\);[\s\S]*?const tailSlack = [^;]+;)/,
+  /(const totalNow = lapTotal\(r\.feedTotal, cursorBefore, rec\.t0\);[\s\S]*?const tailSlack = [^;]+;)/,
 );
 const provenSrc = lift(
   "lap-proven condition",
   /if \((r\.nextOffset === 0 && cursorBefore > 0[\s\S]*?)\) \{\s*lapProven = true;/,
 );
-const isLapProven = new Function(
+const isLapProvenWith = new Function(
   "r",
   "cursorBefore",
   "rec",
   "lapSeen",
   "LAP_COVERAGE_MIN",
   "LAP_TAIL_SLACK",
+  "lapTotal",
   `${provenPre}\nreturn !!(${provenSrc});`,
 ) as (
   r: { nextOffset: number | undefined; feedTotal: number | null; feedEnded?: boolean },
@@ -125,7 +130,16 @@ const isLapProven = new Function(
   lapSeen: number,
   min: number,
   slack: number,
+  lapTotalFn: typeof lapTotal,
 ) => boolean;
+const isLapProven = (
+  r: { nextOffset: number | undefined; feedTotal: number | null; feedEnded?: boolean },
+  cursorBefore: number,
+  rec: { f: 0 | 1; t0: number },
+  lapSeen: number,
+  min: number,
+  slack: number,
+) => isLapProvenWith(r, cursorBefore, rec, lapSeen, min, slack, lapTotal);
 
 /** A wrap that satisfies everything, so a scenario only has to say what it breaks. */
 const cleanWrap = (over: Partial<{ nextOffset: number; feedTotal: number | null; feedEnded: boolean }> = {}) =>
@@ -266,6 +280,20 @@ describe("absence that cannot be distinguished from displacement is never a clos
     expect(proven(cleanWrap({ feedTotal: null }), 9_750, cleanRec({ t0: 0 }), 10_000)).toBe(false);
     // Not a wrap at all — an ordinary mid-lap visit.
     expect(proven(cleanWrap({ nextOffset: 9_750 }), 9_500, cleanRec(), 10_000)).toBe(false);
+  });
+
+  it("a tenant that states its total only at offset 0 proves against the total its lap opened on (.89)", () => {
+    // Adobe, 2026-10-05: total 526 at offset 0, total 0 at offset 20 and past.
+    // The wrap visit starts at 500 and reads 26, so it states 0. Judged against
+    // 0 the lap could never prove; judged against t0 it proves exactly when
+    // the walk covered what the board advertised when the lap opened.
+    expect(proven({ nextOffset: 0, feedTotal: 0, feedEnded: true }, 500, { f: 0, t0: 526 }, 526)).toBe(true);
+    // A walk that ended early (a short page at 250 of 526) still proves nothing.
+    expect(proven({ nextOffset: 0, feedTotal: 0, feedEnded: true }, 250, { f: 0, t0: 526 }, 260)).toBe(false);
+    // And the feed must still have said it ended.
+    expect(proven({ nextOffset: 0, feedTotal: 0, feedEnded: false }, 500, { f: 0, t0: 526 }, 526)).toBe(false);
+    // A lap that opened with no stated total still has nothing to prove against.
+    expect(proven({ nextOffset: 0, feedTotal: 0, feedEnded: true }, 500, { f: 0, t0: 0 }, 526)).toBe(false);
   });
 
   it("a lap that lost an epoch write proves nothing, because its gaps are unfalsifiable", () => {
