@@ -163,8 +163,47 @@ function foldForNameMatch(s: string): string {
     .toLowerCase()
     .replace(/['’]s\b/g, "")
     .replace(/[^a-z0-9+#.]+/g, " ")
+    // A dot is kept INSIDE a token ("node.js") and dropped at either end of
+    // one. Kept at the end, a résumé line "...written in Kotlin." folded to
+    // "kotlin." and an honest note naming Kotlin matched nothing — rejected,
+    // and the tailoring silently fell back (L9-06).
+    .replace(/\.+(?=\s|$)/g, "")
+    .replace(/(^|\s)\.+/g, "$1")
     .replace(/\s+/g, " ")
     .trim()} `;
+}
+
+/**
+ * Words a sentence may open with that name nothing. The first token of a
+ * sentence is capitalised for grammar, so it used to be skipped outright —
+ * which let "Google taught me how to run payments at scale" through to a real
+ * employer with an employer the résumé never mentions (L9-06). It is now
+ * checked like any other capitalised word UNLESS it is one of these, or reads
+ * as a gerund, adverb or past participle ("Having", "Recently", "Excited").
+ * A word wrongly checked here costs only the tailoring — the gate's failure
+ * mode is the candidate's own note, never a false one.
+ */
+const COMMON_SENTENCE_OPENERS = new Set([
+  "about", "above", "across", "additionally", "also", "although", "among", "another",
+  "are", "around", "be", "because", "being", "beyond", "by", "can", "could", "do",
+  "does", "each", "either", "else", "equally", "even", "ever", "every", "finally",
+  "further", "furthermore", "given", "had", "has", "have", "he", "her", "his",
+  "however", "into", "is", "just", "let", "like", "likewise", "may", "me", "meanwhile",
+  "might", "moreover", "much", "must", "no", "nor", "not", "of", "on", "once", "only",
+  "other", "our", "outside", "overall", "perhaps", "please", "rather", "she", "should",
+  "similarly", "since", "still", "such", "than", "then", "thereafter", "therefore",
+  "they", "thus", "to", "together", "until", "upon", "us", "very", "was", "were",
+  "whatever", "whether", "will", "within", "without", "would", "yes", "yet",
+  "working", "building", "leading", "joining", "helping", "seeing", "reading",
+  "beyond", "across", "eager", "keen", "happy", "glad", "delighted", "excited",
+]);
+
+function isGrammaticalOpener(tok: string): boolean {
+  const l = tok.toLowerCase();
+  if (CAPITALISED_BUT_NOT_A_CLAIM.has(l) || COMMON_SENTENCE_OPENERS.has(l)) return true;
+  // Gerunds, adverbs and participles open sentences constantly and are never
+  // a proper name on their own.
+  return /^[a-z]{3,}(ing|ly|ed)$/.test(l);
 }
 
 /**
@@ -197,11 +236,16 @@ function assertedNames(text: string): string[] {
         .replace(/[^A-Za-z0-9+#.]+$/, "")
         .replace(/\.+$/, "");
       if (!tok) { flush(); return; }
-      const isCapitalised = /^[A-Z]/.test(tok);
+      // MIXED CASE IS A NAME TOO: "eBay", "iOS", "iPhone", "macOS". Only
+      // tokens starting with a capital were checked, so "two years at eBay"
+      // passed unexamined (L9-06).
+      const isMixedCase = /^[a-z]+[A-Z][A-Za-z0-9+#.]*$/.test(tok);
+      const isCapitalised = /^[A-Z]/.test(tok) || isMixedCase;
       const isAcronym = /^[A-Z0-9][A-Z0-9+#.]{1,}$/.test(tok) && /[A-Z]/.test(tok);
-      // An acronym counts even at position 0: a sentence that opens with "AWS
-      // is where I spent four years" is still a claim about AWS.
-      const positional = i === 0 && !isAcronym;
+      // An acronym or a mixed-case name counts even at position 0, and so
+      // does any other capitalised word that is not a grammatical opener: a
+      // sentence that opens with "Google taught me..." is a claim about Google.
+      const positional = i === 0 && !isAcronym && !isMixedCase && isGrammaticalOpener(tok);
       if (!isCapitalised || positional || CAPITALISED_BUT_NOT_A_CLAIM.has(tok.toLowerCase())) {
         flush();
         return;

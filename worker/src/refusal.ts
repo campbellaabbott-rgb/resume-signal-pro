@@ -159,6 +159,12 @@ export function classifyRefusal(reason: string, blocked?: BlockedLike[]): Refusa
   }
   if (QUOTED.test(r)) return say("control-refused", r.match(QUOTED)![1] ?? "");
 
+  // A name or email input the form showed and the worker could not fill
+  // (register 1.13). The keys are the adapter's own field names, never a value.
+  if (/without the candidate's name or email/i.test(r)) {
+    const m = r.match(/asks for ([A-Za-z, ]+) and it could not be filled/);
+    return say("partial-fill", m ? `missing: ${m[1]}` : "");
+  }
   if (/refusing to submit a partial application/i.test(r)) {
     const m = r.match(MISSING);
     return say("partial-fill", m ? `missing: ${m[1]}` : "");
@@ -202,4 +208,18 @@ export function refusalBlocker(
     // and every adapter's field map is vendor-specific.
     source: String(source ?? "").toLowerCase().slice(0, 40),
   };
+}
+
+/**
+ * A refusal about the MOMENT, not the packet (L9-07): the browser or the
+ * network failed, or the page did not finish arriving. Every worker refusal
+ * used to be released as blocked and never tried again, so a one-off timeout
+ * was as final as a CAPTCHA. Anything about the form's questions, the
+ * candidate's profile, a CAPTCHA, a closed posting or a vendor is NOT here:
+ * retrying those spends a browser to hear the same no.
+ */
+export function isTransientRefusal(reason: string): boolean {
+  const r = String(reason ?? "");
+  return /^driver error:|net::ERR_|timeout|timed out|could not find the application form|could not read this form's questions|the résumé did not attach/i.test(r)
+    && !/captcha|posting is closed|no adapter|cannot answer|no standing answers|wants a résumé and none/i.test(r);
 }

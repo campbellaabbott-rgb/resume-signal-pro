@@ -49,6 +49,7 @@ export const smartrecruiters: VendorAdapter = {
   // refused. Correct behaviour while the vendor 403s headless anyway; if it is
   // ever served again, question matching here needs a label-keyed path.
   mappedNames: new Set<string>(),
+  fieldKeys: new Set(Object.keys(LABELS) as PacketFieldKey[]),
 
   enumerateQuestions: (page) => enumerateOn(page),
 

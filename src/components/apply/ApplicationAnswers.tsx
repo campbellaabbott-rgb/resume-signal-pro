@@ -33,8 +33,11 @@ export interface DraftedAnswer { question: string; answer: string; supported: bo
  * then labelled as inferred and was honest about, so nothing looked broken; the
  * candidate simply got a guess where the employer's actual form was available.
  */
+// teamtailor: left 2026-10-05 with the table's flag (L9-15): job-board's
+// application-questions has no Teamtailor branch, so the fetch always
+// answered unsupported and cost a round trip per kit.
 export const REAL_QUESTION_PREFIXES = [
-  "ashby:", "breezy:", "greenhouse:", "pinpoint:", "recruitee:", "teamtailor:",
+  "ashby:", "breezy:", "greenhouse:", "pinpoint:", "recruitee:",
 ];
 
 /**

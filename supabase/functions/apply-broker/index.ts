@@ -16,14 +16,21 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ENTITLEMENT_COLUMNS, normalizeEmail, packetIsFunded } from "../_shared/agent-entitlement.ts";
 
-const BUILD_VERSION = "2026-08-10.1";
+// 2026-10-05.1: a claim handed back unworked spends no attempt (L9-02); the
+// subscription is read by the ACCOUNT's address (1.07); the claim itself now
+// refuses a paused, switched-off, blocklisted or unfunded packet (1.44, in
+// agent_claim_submission); `peek` answers "is there work" without claiming;
+// the packet carries its attempt count so the worker can tell a last try.
+const BUILD_VERSION = "2026-10-05.1";
+// Provable from outside with no secret: the preflight and every response carry it.
+const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;
 const RESUME_URL_TTL_SECONDS = 300; // 5 minutes; the worker downloads and deletes
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    headers: { "content-type": "application/json", "cache-control": "no-store", "x-fn-build": FN_BUILD },
   });
 
 /** Constant-time string equality. Length is compared first and the loop still
@@ -49,6 +56,7 @@ const trinary = (v: unknown): boolean | null =>
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: { "x-fn-build": FN_BUILD } });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const expected = Deno.env.get("APPLY_WORKER_SECRET") ?? "";
@@ -108,6 +116,23 @@ serve(async (req) => {
       return json({ ok: true, build: BUILD_VERSION });
     }
 
+    // A READ-ONLY LOOK (L9-02). A diagnostic that asked "is there work" by
+    // claiming spent one attempt of the head packet per look and never handed
+    // it back, so three checks killed it. This answers from the same
+    // predicate the claim uses and takes nothing. No heartbeat either: a look
+    // is not a sender.
+    if (action === "peek") {
+      const { data, error } = await client.rpc("agent_work_pending");
+      if (error) return json({ error: error.message }, 500);
+      const p = (data ?? {}) as { pending?: number; should_run?: boolean; oldest_wait_minutes?: number };
+      return json({
+        pending: Number(p.pending ?? 0),
+        shouldRun: p.should_run === true,
+        oldestWaitMinutes: Number(p.oldest_wait_minutes ?? 0),
+        build: BUILD_VERSION,
+      });
+    }
+
     if (action === "claim") {
       const worker = str(body.worker_id) || "unknown";
       // Heartbeat on claim too: a worker that is polling is a worker that is up.
@@ -146,9 +171,19 @@ serve(async (req) => {
           .eq("user_id", row.user_id).maybeSingle();
         const mandate = mandateRow as Record<string, unknown> | null;
 
+        // HANDED BACK WITHOUT SPENDING AN ATTEMPT (L9-02). The claim adds one
+        // to `attempts` and the claim refuses a packet at three, so handing a
+        // packet back by clearing the lease alone spent an attempt per hand-
+        // back: an owner unfunded or switched off for an hour lost the head
+        // packet's whole budget in one poll and found it "exhausted". The RPC
+        // gives the attempt back with the lease. The plain update stays as the
+        // fallback for a database without the RPC yet — the old behaviour.
         const unclaim = async () => {
-          await client.from("agent_submissions")
-            .update({ claimed_at: null, claimed_by: "" }).eq("id", row.id);
+          const { error: uerr } = await client.rpc("agent_unclaim_submission", { p_submission_id: row.id });
+          if (uerr) {
+            await client.from("agent_submissions")
+              .update({ claimed_at: null, claimed_by: "" }).eq("id", row.id);
+          }
         };
 
         if (!mandate) { await unclaim(); continue; }
@@ -195,9 +230,16 @@ serve(async (req) => {
         // at hour seven is honoured, because the row is the receipt. Asking
         // "is the pass live now" here is exactly the shape that unclaimed paid
         // work in the day-8 lapse.
-        const { data: sub } = await client
-          .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
-          .eq("email", normalizeEmail(mandate.email)).maybeSingle();
+        //
+        // BY THE ACCOUNT'S ADDRESS (register 1.07). mandate.email is written
+        // by the mandate's owner; the subscription is looked up by the address
+        // on the account itself, resolved here by user id. The same address is
+        // what the employer's form receives below.
+        const { data: acct } = await client.auth.admin.getUserById(String(row.user_id)).catch(() => ({ data: null }));
+        const accountEmail = normalizeEmail((acct as { user?: { email?: string | null } } | null)?.user?.email ?? "");
+        const { data: sub } = accountEmail
+          ? await client.from("agent_subscribers").select(ENTITLEMENT_COLUMNS).eq("email", accountEmail).maybeSingle()
+          : { data: null };
         if (!packetIsFunded(sub, row as { pass_id?: string | null })) { await unclaim(); continue; }
 
         const { data: learnedRows } = await client
@@ -230,12 +272,16 @@ serve(async (req) => {
             apply_url: row.apply_url,
             source: row.source,
             fields: row.fields ?? {},
+            // Post-claim count: 3 means this is the last try the claim allows,
+            // so the worker reports a transient failure as final instead of
+            // leaving a packet "ready" that nothing will ever claim again.
+            attempts: Number(row.attempts ?? 0),
           },
           answers: {
             fullName: full,
             firstName: parts[0] ?? "",
             lastName: parts.length > 1 ? parts.slice(1).join(" ") : "",
-            email: str(mandate.email),
+            email: accountEmail || str(mandate.email),
             phone: str(mandate.phone),
             city: str(mandate.city),
             country: str(mandate.country),
@@ -410,7 +456,7 @@ serve(async (req) => {
 
     return json({
       error: "unknown action",
-      actions: ["claim", "release", "uncertain", "pending", "ping", "wall"],
+      actions: ["claim", "peek", "release", "uncertain", "pending", "ping", "wall"],
     }, 400);
   } catch (e) {
     console.error(`[APPLY-BROKER] ${action}: ${String(e).slice(0, 200)}`);

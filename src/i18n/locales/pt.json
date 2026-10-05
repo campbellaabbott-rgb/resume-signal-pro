@@ -4766,7 +4766,8 @@
     "searchDeleted": "Busca removida.",
     "anyRole": "Qualquer cargo",
     "searchLimitHit": "Você pode ter até 10 buscas ativas. Pause uma para adicionar outra.",
-    "searchLastRun": "Última execução: {{scanned}} analisadas, {{picked}} na fila."
+    "searchLastRun": "Última execução: {{scanned}} analisadas, {{picked}} na fila.",
+    "passFunds": "O seu Agent Pass financia este agente: restam {{left}} candidaturas. Ative o agente abaixo e a sua IA conectada poderá pedir candidaturas."
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",
@@ -4859,7 +4860,15 @@
     },
     "tryAgain": "Tentar de novo",
     "retried": "De novo em fila — segue na próxima execução",
-    "retryFailed": "Não foi possível pôr em fila — tente de novo"
+    "retryFailed": "Não foi possível pôr em fila — tente de novo",
+    "approveSend": "Aprovar e enviar",
+    "cancelSend": "Não enviar esta",
+    "approved": "Aprovada — segue para o envio assim que terminar o seu prazo para cancelar.",
+    "cancelled": "Parada — esta candidatura não será enviada.",
+    "decideAgentOff": "Ative primeiro o seu agente — uma candidatura aprovada espera por isso.",
+    "decideBlockedCompany": "Este empregador está na sua lista de nunca candidatar, por isso o agente não lhe envia nada.",
+    "decideInFlight": "O envio está a tratar desta agora — já é tarde para a alterar.",
+    "decideFailed": "Não foi possível — atualize a página e tente de novo."
   },
   "agentPlan": {
     "badge": "Candidata-se por si",
@@ -5095,7 +5104,9 @@
     "stepsTitle": "Passos para {{host}}:",
     "keyedTitle": "Depois adicione sua chave de agente — ela carrega o passe:",
     "connectorNoOauth2": "O login para este host ainda não está ativado, então daqui só respondem as ferramentas sem chave. Para gastar o passe, conecte-se a partir de {{headerHosts}} com sua chave de agente.",
-    "connectorPassGate": "A partir de {{host}} o passe só poderá ser usado quando o login estiver ativado; hoje, use-o a partir de {{headerHosts}} com sua chave de agente."
+    "connectorPassGate": "A partir de {{host}} o passe só poderá ser usado quando o login estiver ativado; hoje, use-o a partir de {{headerHosts}} com sua chave de agente.",
+    "repairSecondPass": "Este pagamento não criou um segundo passe: uma conta tem um passe aberto de cada vez, e o seu aparece aqui sem alterações. Já fomos avisados e este pagamento será reembolsado — se não voltar ao seu cartão dentro de alguns dias, escreva para resumeboostersupp@gmail.com.",
+    "repairNotYours": "Esta compra pertence a uma conta diferente daquela em que tem sessão iniciada, e o passe está nessa conta. Inicie sessão na conta que pagou para o ver."
   },
   "oauthConsent": {
     "title": "Ligue o seu agente",

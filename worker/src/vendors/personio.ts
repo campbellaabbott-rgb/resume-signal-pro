@@ -53,6 +53,7 @@ export const personio: VendorAdapter = {
   requiredAttributeIsTrustworthy: false,
 
   mappedNames: new Set([...Object.values(KEYS), RESUME_KEY]),
+  fieldKeys: new Set(Object.keys(KEYS) as PacketFieldKey[]),
 
   enumerateQuestions: (page) => enumerateOn(page),
 

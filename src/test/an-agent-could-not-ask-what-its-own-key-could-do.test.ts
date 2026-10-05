@@ -277,7 +277,10 @@ describe("the four filters the board served and the agent could not ask for", ()
   it("map to the board's own parameter names", () => {
     const body = between(MCP, "function searchBody(args: Record<string, unknown>)", "\n}");
     expect(body).toMatch(/\.\.\.\(args\.experience \? \{ experience: String\(args\.experience\) \} : \{\}\)/);
-    expect(body).toMatch(/\.\.\.\(args\.postedAfter \? \{ postedAfter: String\(args\.postedAfter\) \} : \{\}\)/);
+    // Since 2026-10-05 postedAfter is checked as an ISO date and sent
+    // normalised (2.26: '2026-09' passed Date.parse and 500'd on timestamptz).
+    expect(body).toMatch(/\.\.\.\(postedAfter !== undefined \? \{ postedAfter \} : \{\}\)/);
+    expect(body).toMatch(/postedAfter = new Date\(raw\)\.toISOString\(\);/);
     expect(body, "literal true only — the board names a non-boolean and the flag silently fails to widen")
       .toMatch(/\.\.\.\(args\.includeUnstatedPay === true \? \{ includeUnstatedPay: true \} : \{\}\)/);
     expect(body).toMatch(/\.\.\.\(companies\.length \? \{ companies \} : \{\}\)/);

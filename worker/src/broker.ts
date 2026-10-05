@@ -58,6 +58,8 @@ export type ClaimedPacket = {
     id: number; user_id: string; posting_id: string; title: string;
     company: string; company_token: string; apply_url: string; source: string;
     fields: Record<string, { value: string; source: string }>;
+    /** Attempts INCLUDING this claim. Absent from a broker older than 2026-10-05. */
+    attempts?: number;
   };
   answers: StandingAnswersWire;
   learned: Array<{ key: string; label: string; kind: "fill" | "choose" | "check"; value: string }>;
@@ -141,6 +143,14 @@ export async function pending(
   }>,
 ) {
   return post<{ ok: boolean }>({ action: "pending", user_id: userId, questions });
+}
+
+/**
+ * Is there claimable work? A read-only look that leases and spends nothing —
+ * claiming to find out cost the head packet an attempt per look.
+ */
+export async function peek() {
+  return post<{ pending: number; shouldRun: boolean; oldestWaitMinutes: number }>({ action: "peek" });
 }
 
 /** Heartbeat. What makes the pricing card admit the sender is live. */

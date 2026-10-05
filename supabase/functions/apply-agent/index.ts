@@ -20,8 +20,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { wakeConfig, wakeSender } from "../_shared/wake-sender.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildPacket, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
-import { decideRelease } from "../_shared/apply-release.ts";
+import { buildPacket, toDraftedAnswers, type DraftedAnswer, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
+import { decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
 import { ENTITLEMENT_COLUMNS, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
@@ -37,7 +37,29 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // identical: the bundle never deployed, or it deployed and has not run since.
 // That is the same one-value-two-states fault agent-runner was bumped for
 // twelve hours earlier, repeated in the next function along.
-const BUILD_VERSION = "2026-08-06.1";
+// 2026-10-05.1: drafted answers converted at the boundary (1.11); waiting
+// packets re-decided instead of skipped (1.09); the queue read skips rows
+// already prepared (L9-03); the cooldown counts this run's releases (2.14);
+// a pass-funded row a gate refuses is given back (L6-07); entitlement read by
+// the ACCOUNT's address, never the mandate's (1.07).
+const BUILD_VERSION = "2026-10-05.1";
+// Provable from outside with no key: the CORS preflight and every response
+// carry this in x-fn-build.
+const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
+
+/**
+ * Refusals that describe the MOMENT, not the packet. A packet stored with one
+ * of these was good; it was not released because the sender was offline, the
+ * day's cap was spent, or it sat inside the on-ramp. Each of them clears on
+ * its own — and until 2026-10-05 nothing ever looked again, because the
+ * release was decided once at insert and every later run skipped a posting
+ * that already had a row (register 1.09). "review-mode" joins them only while
+ * the mandate is in auto mode: the candidate has since said the agent may send
+ * unattended, and the packet they approved for preparation is exactly that.
+ */
+const TRANSIENT_REFUSALS: ReadonlySet<ReleaseRefusal> = new Set<ReleaseRefusal>([
+  "sender-offline", "daily-cap", "held-for-review",
+]);
 
 // Wall clock, not a row count. Question fetches and answer drafting are both
 // network-bound and wildly variable, so a fixed "20 packets" budget either wastes
@@ -78,7 +100,9 @@ interface QueueRow {
 }
 
 serve(async (req) => {
-  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+  // The build answers a preflight, so "did the deploy land?" needs no key.
+  if (req.method === "OPTIONS") return new Response(null, { headers: { "x-fn-build": FN_BUILD } });
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: { "x-fn-build": FN_BUILD } });
 
   // Maintenance-gated. This function reads every mandate on the platform and can
   // release applications; it is never reachable from a browser.
@@ -146,7 +170,7 @@ serve(async (req) => {
       error: "apply-agent is a maintenance action",
       version: BUILD_VERSION,
     }), {
-      status: 403, headers: { "content-type": "application/json" },
+      status: 403, headers: { "content-type": "application/json", "x-fn-build": FN_BUILD },
     });
   }
 
@@ -202,7 +226,7 @@ serve(async (req) => {
   const trigger = body.source === "cron" ? "cron" : "manual";
   if (body.action === "ensure-storage") {
     return new Response(JSON.stringify({ resumesBucket: await ensureResumeBucket() }), {
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-fn-build": FN_BUILD },
     });
   }
   const bucketState = await ensureResumeBucket();
@@ -273,6 +297,12 @@ serve(async (req) => {
     // the only visible symptom would be an absence of tailored notes — which is
     // exactly what the fallback is designed to look like.
     coverNotesTailored: 0, coverNotesRejected: 0,
+    // Packets prepared on an earlier run and released (or re-reasoned) now.
+    // Zero here forever, with packets waiting, is the 1.09 shape coming back.
+    rereleased: 0, rereasoned: 0,
+    // Pass-funded queue rows a gate refused (blocked employer, cooldown, a
+    // posting already handled) and gave back to the pass.
+    passRowsRefunded: 0,
   };
 
   const { data: mandates } = await client
@@ -312,9 +342,20 @@ serve(async (req) => {
       continue;
     }
 
-    const { data: sub } = await client
-      .from("agent_subscribers").select(ENTITLEMENT_COLUMNS)
-      .eq("email", normalizeEmail(m.email)).maybeSingle();
+    // THE ACCOUNT'S ADDRESS, NEVER THE MANDATE'S (register 1.07). The mandate's
+    // `email` column is written by its owner through RLS, so reading the
+    // subscription by it let any signed-in account type a subscriber's (or the
+    // comped support) address into its own mandate and have the agent work
+    // for it. The address the subscription is looked up by now comes from
+    // auth.users by user_id — the same lookup request_application makes — and
+    // a failed lookup funds nothing (pass rows still go: they carry their own
+    // receipt). 20261005130000 also pins the column to the account's address,
+    // so every other reader of it is covered too.
+    const { data: acct } = await client.auth.admin.getUserById(m.user_id).catch(() => ({ data: null }));
+    const accountEmail = normalizeEmail((acct as { user?: { email?: string | null } } | null)?.user?.email ?? "");
+    const { data: sub } = accountEmail
+      ? await client.from("agent_subscribers").select(ENTITLEMENT_COLUMNS).eq("email", accountEmail).maybeSingle()
+      : { data: null };
     // COUNTED, because this was the one skip that left no trace.
     //
     // Every neighbouring skip increments something — skippedPaused,
@@ -332,19 +373,58 @@ serve(async (req) => {
     // A mandate with neither is the skip that leaves no trace, still counted.
     const subscribed = rowIsEntitled(sub);
     const wanted = m.apply_mode === "auto" ? ["ready", "approved"] : ["approved"];
-    const queueRows = (passOnly: boolean) => {
+    // ONLY ROWS NOBODY HAS PREPARED YET (L9-03). A queue row keeps its status
+    // after its packet is written, so the newest-ten window filled with rows
+    // that already had a packet and were skipped as duplicates every hour,
+    // while every row past the tenth — a second saved search, the twelfth
+    // approval — waited until it expired. agent_queue_unprepared anti-joins
+    // agent_submissions in SQL, so the window always holds work. If the
+    // function is not deployed yet the old read runs, exactly as before.
+    const queueRows = async (passOnly: boolean): Promise<QueueRow[]> => {
+      const { data, error } = await client.rpc("agent_queue_unprepared", {
+        p_user_id: m.user_id, p_statuses: wanted, p_pass_only: passOnly, p_limit: PACKETS_PER_MANDATE,
+      });
+      if (!error && Array.isArray(data)) return data as unknown as QueueRow[];
       let q = client
         .from("agent_queue")
         .select("id,user_id,posting_id,title,company,company_token,apply_url,fit_pct,status,pass_id")
         .eq("user_id", m.user_id).in("status", wanted);
       if (passOnly) q = q.not("pass_id", "is", null);
-      return q.order("created_at", { ascending: false }).limit(PACKETS_PER_MANDATE);
+      const { data: old } = await q.order("created_at", { ascending: false }).limit(PACKETS_PER_MANDATE);
+      return (old ?? []) as unknown as QueueRow[];
     };
+
+    /**
+     * A PAID REQUEST A GATE REFUSES SPENDS NOTHING (L6-07) — the pass page
+     * says so, and until now a pass-funded row for a blocked employer, an
+     * employer in cooldown, or a posting already handled was skipped with a
+     * bare `continue`: no packet, so the refund trigger on agent_submissions
+     * never fired, and the row sat until the 14-day delete with its
+     * application spent. agent_queue_refuse marks the row decided and gives
+     * the application back in one statement, once (a second call finds the row
+     * already decided). Rows the subscription funds are skipped as before.
+     */
+    const refusePassRow = async (q: QueueRow, reason: string): Promise<void> => {
+      if (!q.pass_id) return;
+      const { data: refunded, error } = await client.rpc("agent_queue_refuse", { p_row_id: q.id, p_reason: reason });
+      if (error) console.error(`[APPLY-AGENT] pass refund for queue row ${q.id} failed: ${error.message.slice(0, 120)}`);
+      else if (refunded === true) summary.passRowsRefunded++;
+    };
+
+    // Waiting packets are re-decided whether or not any NEW row is due, so a
+    // subscriber with an empty queue still gets yesterday's held packets.
+    const hasWaiting = async (): Promise<boolean> => {
+      const { count } = await client.from("agent_submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", m.user_id).eq("status", "ready").is("released_at", null).is("submitted_at", null);
+      return (count ?? 0) > 0;
+    };
+
     let rows: QueueRow[] | null = null;
     if (!rowIsEntitled(sub)) {
-      const { data: passRows } = await queueRows(true);
-      if (!passRows?.length) { summary.skippedNotEntitled++; continue; }
-      rows = passRows as unknown as QueueRow[];
+      const passRows = await queueRows(true);
+      if (!passRows.length && !(await hasWaiting())) { summary.skippedNotEntitled++; continue; }
+      rows = passRows;
     }
 
     // Normalised once per mandate rather than per posting. Case- and
@@ -361,11 +441,7 @@ serve(async (req) => {
     // prepares what the candidate approved. The queue is the same table either
     // way — the mode decides which rows are its business. A subscriber gets
     // every row; the pass-only read above already ran for everyone else.
-    if (rows === null) {
-      const { data: allRows } = await queueRows(false);
-      rows = (allRows ?? []) as unknown as QueueRow[];
-    }
-    if (!rows?.length) continue;
+    if (rows === null) rows = await queueRows(false);
 
     // Read the day's sends ONCE and count locally as we release. Re-reading per
     // row would be correct but slower; recomputing from a stale read would let a
@@ -377,8 +453,105 @@ serve(async (req) => {
     // they are still inside the on-ramp.
     let autoReleased = Number(m.auto_released_count ?? 0);
 
+    // THE EMPLOYERS RELEASED IN THIS RUN (register 2.14). The cooldown RPC
+    // counted only applications already SENT, so every same-employer role in
+    // one run passed it and was released together, minutes apart. The RPC now
+    // counts released-but-unsent packets too (20261005133000); this set
+    // covers the same run before that lands, and costs nothing after.
+    const releasedCompanies = new Set<string>();
+    const companyKey = (c: unknown) => String(c ?? "").trim().toLowerCase();
+    const inCooldown = async (company: string): Promise<boolean> => {
+      if (cooldownDays <= 0 || !company) return false;
+      if (releasedCompanies.has(companyKey(company))) return true;
+      const { data } = await client.rpc("agent_employer_in_cooldown", {
+        p_user_id: m.user_id, p_company: company, p_days: cooldownDays,
+      });
+      return data === true;
+    };
+    const releaseFields = () => ({
+      released_at: new Date().toISOString(),
+      release_refusal: "",
+      // NULL when the window is 0 — the column's own comment says NULL means
+      // immediately claimable.
+      claimable_at: Number(m.undo_window_seconds ?? 0) > 0
+        ? new Date(Date.now() + Number(m.undo_window_seconds) * 1000).toISOString()
+        : null,
+    });
+    const dailyCap = effectiveDailyCap(m.auto_apply_daily_cap, subscribed ? sub?.status : PASS_TIER);
+
+    // ── 1. PACKETS ALREADY PREPARED, WAITING ON A REFUSAL THAT HAS CLEARED ──
+    //
+    // released_at was decided once, at INSERT, and every later run skipped a
+    // posting that already had a row (register 1.09). With the database's
+    // defaults — hold_first_n 3, and auto_released_count moving only on a
+    // release — that meant an auto-mode agent held its first packet for
+    // review, and its fortieth, forever; and "sender offline" or "today's cap
+    // is used up" meant never, while the panel said "goes when it is back" and
+    // "goes tomorrow". So the oldest waiting packets are decided again, first,
+    // with the same decideRelease and the same counters as a new one. The
+    // UPDATE is guarded on released_at IS NULL, so two overlapping runs cannot
+    // both release one packet.
+    {
+      const transient = [...TRANSIENT_REFUSALS, ...(m.apply_mode === "auto" ? ["review-mode"] : [])];
+      const { data: waiting } = await client.from("agent_submissions")
+        .select("id,posting_id,company,source,fit_pct,blockers,pass_id,release_refusal")
+        .eq("user_id", m.user_id).eq("status", "ready")
+        .is("released_at", null).is("submitted_at", null)
+        .in("release_refusal", transient)
+        .order("prepared_at", { ascending: true })
+        .limit(PACKETS_PER_MANDATE);
+      for (const w of (waiting ?? []) as Array<{
+        id: number; posting_id: string; company: string; source: string; fit_pct: number | null;
+        blockers: unknown; pass_id: string | null; release_refusal: string;
+      }>) {
+        if (outOfTime()) { summary.stoppedEarly = true; break; }
+        if (!packetIsFunded(sub, w)) continue;
+        // A blocked employer or a cooldown is not a reason to change the
+        // packet: it waits, and the claim gate (20261005133000) refuses it too.
+        if (blockedCompanies.has(companyKey(w.company))) continue;
+        if (await inCooldown(w.company)) continue;
+        const blockerCount = Array.isArray(w.blockers) ? w.blockers.length : 0;
+        const decision = decideRelease({
+          applyMode: m.apply_mode,
+          packetReady: blockerCount === 0,
+          blockerCount,
+          source: w.source,
+          allowedSources: m.auto_apply_sources ?? [],
+          sentToday,
+          dailyCap,
+          alreadySubmitted: false,
+          fitPct: w.fit_pct,
+          minFitPct: MIN_FIT_PCT,
+          duplicate: false,
+          senderOnline,
+          holdFirstN: m.hold_first_n ?? 0,
+          autoReleasedCount: autoReleased,
+        });
+        if (!decision.release) {
+          // The reason a candidate reads must be today's, not the first run's.
+          if (decision.code !== w.release_refusal) {
+            await client.from("agent_submissions").update({ release_refusal: decision.code })
+              .eq("id", w.id).is("released_at", null);
+            summary.rereasoned++;
+          }
+          continue;
+        }
+        const { data: done } = await client.from("agent_submissions").update(releaseFields())
+          .eq("id", w.id).is("released_at", null).eq("status", "ready").select("id");
+        if (!Array.isArray(done) || !done.length) continue;
+        summary.rereleased++; summary.released++; sentToday++;
+        releasedCompanies.add(companyKey(w.company));
+        if (m.apply_mode === "auto") {
+          autoReleased += 1;
+          await client.rpc("agent_note_auto_release", { p_user_id: m.user_id });
+        }
+      }
+    }
+
+    if (!rows?.length) continue;
+
     const profile: Profile = {
-      fullName: m.full_name, email: m.email, phone: m.phone, linkedin: m.linkedin,
+      fullName: m.full_name, email: accountEmail || m.email, phone: m.phone, linkedin: m.linkedin,
       website: m.website, city: m.city, country: m.country, resumeFileUrl: m.resume_file_url,
     };
     const standing: StandingAnswers = {
@@ -400,8 +573,9 @@ serve(async (req) => {
       // guard and the most consequential one: for anyone currently employed, an
       // application to their own employer is not an inconvenience, it is how
       // they find out they are job hunting.
-      if (blockedCompanies.size && blockedCompanies.has(String(q.company ?? "").trim().toLowerCase())) {
+      if (blockedCompanies.size && blockedCompanies.has(companyKey(q.company))) {
         summary.skippedBlockedCompany++;
+        await refusePassRow(q, "blocked-company");
         continue;
       }
 
@@ -409,20 +583,28 @@ serve(async (req) => {
       // spaces submissions WITHIN a run; nothing stopped eight applications to
       // the same company across eight consecutive days, which reads as a burst
       // from the recruiter's side however reasonable each one is alone.
-      if (cooldownDays > 0 && q.company) {
-        const { data: inCooldown } = await client.rpc("agent_employer_in_cooldown", {
-          p_user_id: m.user_id, p_company: q.company, p_days: cooldownDays,
-        });
-        if (inCooldown === true) { summary.skippedEmployerCooldown++; continue; }
+      //
+      // A PASS-FUNDED row is refused and refunded here rather than held: the
+      // window is days and a pass is hours, so holding it would be spending
+      // an application on something that cannot go out inside the pass.
+      if (await inCooldown(q.company)) {
+        summary.skippedEmployerCooldown++;
+        await refusePassRow(q, "employer-cooldown");
+        continue;
       }
 
       // A packet already exists for this posting. The unique index would reject
       // the insert anyway; checking first keeps us from spending an LLM call to
-      // rediscover that.
+      // rediscover that. (agent_queue_unprepared already leaves such rows out;
+      // this stays for the fallback read.)
       const { data: existing } = await client
         .from("agent_submissions").select("id,status")
         .eq("user_id", m.user_id).eq("posting_id", q.posting_id).maybeSingle();
-      if (existing) { summary.skippedDuplicate++; continue; }
+      if (existing) {
+        summary.skippedDuplicate++;
+        await refusePassRow(q, "already-prepared");
+        continue;
+      }
 
       // ...and the candidate may have applied by hand. The tracker is the record
       // of what a HUMAN did; agent_submissions only knows what the agent did.
@@ -538,7 +720,7 @@ serve(async (req) => {
         // builder classified correctly and discarded the bad draft afterwards —
         // but the model had already been asked to write it, and a draft nobody
         // uses is still a draft that was generated in the candidate's name.
-        let drafted: Array<{ label: string; answer: string; supported: boolean; note?: string }> = [];
+        let drafted: DraftedAnswer[] = [];
         const needsDraft = questions.filter(
           (x) => classifyQuestion(x.label ?? "", x.fieldType) === "draftable",
         );
@@ -550,8 +732,12 @@ serve(async (req) => {
               questions: needsDraft.map((x) => ({ label: x.label, required: x.required })),
             },
           });
-          const list = (ans as { answers?: typeof drafted })?.answers;
-          if (Array.isArray(list)) drafted = list;
+          // CONVERTED, never assigned. The answers come back keyed by
+          // `question`; buildPacket reads `label`. Assigning one to the other
+          // threw inside buildPacket for every posting with a draftable
+          // question — no packet, a paid model call repeated hourly, and a
+          // pass application spent with no row to refund it (register 1.11).
+          drafted = toDraftedAnswers((ans as { answers?: unknown } | null)?.answers);
         }
 
         // ── the cover note ───────────────────────────────────────────────────
@@ -623,7 +809,7 @@ serve(async (req) => {
           // A pass-funded mandate has no subscriber status to read; its tier
           // is the pass, whose ceiling is its own application count. Without
           // that entry tierCeiling answers 0 and nothing paid for releases.
-          dailyCap: effectiveDailyCap(m.auto_apply_daily_cap, subscribed ? sub?.status : PASS_TIER),
+          dailyCap,
           alreadySubmitted: false,
           fitPct: q.fit_pct,
           minFitPct: MIN_FIT_PCT,
@@ -698,7 +884,10 @@ serve(async (req) => {
         if (q.pass_id) summary.passRowsPrepared++;
         if (status === "ready") summary.ready++;
         if (status === "blocked") summary.blocked++;
-        if (decision.release) { summary.released++; sentToday++; }
+        if (decision.release) {
+          summary.released++; sentToday++;
+          releasedCompanies.add(companyKey(q.company));
+        }
       } catch (e) {
         // One posting failing must never stop a candidate's whole batch.
         summary.failed++;
@@ -760,6 +949,6 @@ serve(async (req) => {
   // several very different causes, and a run that asked for a sender and was
   // refused looks identical to one that never asked unless it is recorded.
   return new Response(JSON.stringify({ ...summary, senderOnline, wake, resumesBucket: bucketState, ms: Date.now() - startedAt }), {
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-fn-build": FN_BUILD },
   });
 });

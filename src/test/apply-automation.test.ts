@@ -110,10 +110,13 @@ describe("apply automation tiers reflect what was actually measured", () => {
     // agent can read Greenhouse's and Ashby's questions and still cannot submit
     // to either. Six as of 2026-08-03; recruitee's reader shipped with the other
     // five and its flag was left false for three days.
+    // teamtailor left the list 2026-10-05 (L9-15): job-board's
+    // application-questions action has no Teamtailor branch, so the flag
+    // claimed a reader that did not exist and cost an edge call per packet.
     expect(realQuestionVendors()).toEqual(
-      ["ashby", "breezy", "greenhouse", "pinpoint", "recruitee", "teamtailor"],
+      ["ashby", "breezy", "greenhouse", "pinpoint", "recruitee"],
     );
-    for (const v of ["smartrecruiters", "bamboohr", "workable", "lever", "workday", "icims", "oracle", "rippling"]) {
+    for (const v of ["smartrecruiters", "bamboohr", "workable", "lever", "workday", "icims", "oracle", "rippling", "teamtailor"]) {
       expect(automationFor(v).realQuestions, `${v} must not claim real questions`).toBe(false);
     }
   });

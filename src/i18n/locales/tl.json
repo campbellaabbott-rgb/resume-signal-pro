@@ -4766,7 +4766,8 @@
     "searchDeleted": "Inalis ang search.",
     "anyRole": "Kahit anong role",
     "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
-    "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue."
+    "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue.",
+    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI."
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
@@ -4859,7 +4860,15 @@
     },
     "tryAgain": "Subukan ulit",
     "retried": "Nakapila ulit — aalis sa susunod na takbo",
-    "retryFailed": "Hindi maibalik sa pila — subukan ulit"
+    "retryFailed": "Hindi maibalik sa pila — subukan ulit",
+    "approveSend": "Aprubahan at ipadala",
+    "cancelSend": "Huwag itong ipadala",
+    "approved": "Naaprubahan — mapupunta ito sa sender kapag lumipas na ang iyong cancel window.",
+    "cancelled": "Itinigil — hindi ipapadala ang aplikasyong ito.",
+    "decideAgentOff": "I-on muna ang iyong agent — hinihintay iyon ng naaprubahang aplikasyon.",
+    "decideBlockedCompany": "Nasa listahan mo ng hindi kailanman aaplayan ang employer na ito, kaya hindi magpapadala rito ang agent.",
+    "decideInFlight": "Hawak na ito ng sender ngayon — huli na para baguhin ito.",
+    "decideFailed": "Hindi ito nagawa — i-refresh at subukang muli."
   },
   "agentPlan": {
     "badge": "Siya ang mag-a-apply para sa iyo",
@@ -5095,7 +5104,9 @@
     "stepsTitle": "Mga hakbang para sa {{host}}:",
     "keyedTitle": "Pagkatapos ay idagdag ang iyong agent key — dala nito ang pass:",
     "connectorNoOauth2": "Hindi pa naka-on ang sign-in para sa host na ito, kaya mula rito ay ang mga tool lang na walang key ang sumasagot. Para magamit ang pass, kumonekta mula sa {{headerHosts}} gamit ang iyong agent key.",
-    "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key."
+    "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key.",
+    "repairSecondPass": "Hindi lumikha ng ikalawang pass ang bayad na ito: isang bukas na pass lang ang hawak ng isang account sa bawat pagkakataon, at nakikita rito ang sa iyo nang walang pagbabago. Naabisuhan na kami at ire-refund ang bayad na ito — kung hindi ito bumalik sa card mo sa loob ng ilang araw, sumulat sa resumeboostersupp@gmail.com.",
+    "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito."
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",

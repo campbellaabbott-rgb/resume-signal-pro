@@ -25,7 +25,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // so every test of it is a regex over its source — able to prove a line exists
 // and never able to prove what it does. These two decide whether a subscriber
 // sees a quarter of the board, which is worth more than a text match.
-import { applyCategory, applyCountries, applyMaxAge, applyServingFences } from "../_shared/mandate-reach.ts";
+import { applyCategory, applyCountries, applyMaxAge, applyServingFences, searchRunRow } from "../_shared/mandate-reach.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -45,7 +45,10 @@ import { applyCategory, applyCountries, applyMaxAge, applyServingFences } from "
 // and it would have reported the same version string as the bundle without any
 // of that. "Did the reach change deploy?" would then have been unanswerable
 // from outside, which is the whole reason this constant exists.
-const BUILD_VERSION = "2026-08-07.1";
+// 2026-10-05.1: each saved search's own countries reach its run (L9-04).
+const BUILD_VERSION = "2026-10-05.1";
+// Provable from outside with no key: the preflight carries it.
+const FN_BUILD = `agent-runner.${BUILD_VERSION}`;
 
 const MANDATES_PER_RUN = 200;      // safety cap; batches long before this matters
 const CANDIDATES_PER_MANDATE = 400;
@@ -128,7 +131,8 @@ interface HealthRow {
 }
 
 serve(async (req) => {
-  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") return new Response(null, { headers: { "x-fn-build": FN_BUILD } });
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: { "x-fn-build": FN_BUILD } });
 
   const client = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -337,19 +341,10 @@ serve(async (req) => {
   for (const m of eligible) {
     const list = searchesByUser.get(m.user_id) ?? [];
     if (list.length) {
-      for (const s of list) {
-        runRows.push({
-          ...m,
-          q: s.q, category: s.category, location: s.location,
-          remote_only: s.remote_only, salary_min: s.salary_min,
-          daily_count: s.daily_count,
-          // Reach is per SEARCH, not per person: "anything posted this week" and
-          // "anything at all" are different searches, and taking the mandate's
-          // value here would make one of them wrong.
-          max_age_days: s.max_age_days, include_uncategorised: s.include_uncategorised,
-          search_id: s.id, search_label: s.label,
-        });
-      }
+      // Reach is per SEARCH, not per person: "anything posted this week" and
+      // "anything at all" are different searches, and so are "Germany" and
+      // "anywhere" — searchRunRow carries countries across with the rest.
+      for (const s of list) runRows.push(searchRunRow(m, s));
     } else {
       runRows.push({ ...m, search_id: 0, search_label: "My search" });
     }

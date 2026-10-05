@@ -153,11 +153,13 @@ describe("the agent honours where it may not apply", () => {
   it("matches companies case- and whitespace-insensitively", () => {
     const c = code(agent);
     expect(c).toMatch(/\.trim\(\)\.toLowerCase\(\)/);
-    expect(c).toMatch(/blockedCompanies\.has\(String\(q\.company \?\? ""\)\.trim\(\)\.toLowerCase\(\)\)/);
+    // One normaliser for the queue rows and the waiting packets (2026-10-05).
+    expect(c).toMatch(/const companyKey = \(c: unknown\) => String\(c \?\? ""\)\.trim\(\)\.toLowerCase\(\)/);
+    expect(c).toMatch(/blockedCompanies\.has\(companyKey\(q\.company\)\)/);
   });
 
   it("cooldown of 0 disables the rule rather than blocking everything", () => {
-    expect(code(agent)).toMatch(/cooldownDays > 0 && q\.company/);
+    expect(code(agent)).toMatch(/if \(cooldownDays <= 0 \|\| !company\) return false;/);
     expect(sql).toMatch(/p_days <= 0/);
   });
 

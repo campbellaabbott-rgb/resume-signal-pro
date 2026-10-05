@@ -337,7 +337,13 @@ describe("listing is free, a credentialed read is metered under its own family, 
     expect(caps).toMatch(/prompts: \{ listChanged: false \}/);
     expect(caps).toMatch(/resources: \{ listChanged: false, subscribe: false \}/);
     expect(caps).not.toMatch(/completions|sampling|elicitation/);
-    expect(MCP).not.toMatch(/resources\/templates\/list|resourceTemplates/);
+    // NO TEMPLATES ARE OFFERED — but the listing is answered (2026-10-05,
+    // L9-16): the resources capability is declared, so a strict client asks
+    // resources/templates/list after initialize, and "method not found" broke
+    // it. The answer is the one empty list, and nothing else in the server
+    // names a template.
+    expect(MCP).toMatch(/if \(method === "resources\/templates\/list"\) \{\s*return json\(rpcResult\(id, \{ resourceTemplates: \[\] \}\)\);\s*\}/);
+    expect((MCP.match(/resourceTemplates/g) ?? []).length, "a template registry crept in").toBe(1);
   });
 
   it("prompts/list and resources/list answer before the credential is read and touch no meter and no challenge", () => {

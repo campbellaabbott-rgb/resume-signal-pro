@@ -372,6 +372,9 @@ describe("effectiveDailyCap clamps the candidate's choice to their tier", () => 
     // A subscriber's tier is the subscriber row's status; a pass-funded
     // mandate has none, so its tier is the pass — whose ceiling is its own
     // application count (TIER_SEND_CEILING[PASS_TIER]).
-    expect(agent).toMatch(/dailyCap: effectiveDailyCap\(m\.auto_apply_daily_cap, subscribed \? sub\?\.status : PASS_TIER\)/);
+    // Computed once per mandate since 2026-10-05, and used by both the new
+    // packets and the waiting ones re-decided in the same run.
+    expect(agent).toMatch(/const dailyCap = effectiveDailyCap\(m\.auto_apply_daily_cap, subscribed \? sub\?\.status : PASS_TIER\)/);
+    expect((agent.match(/^\s*dailyCap,$/gm) ?? []).length, "both release decisions read the clamped cap").toBe(2);
   });
 });

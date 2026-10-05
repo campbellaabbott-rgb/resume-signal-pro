@@ -217,12 +217,24 @@ export default function AgentPass() {
               {/* (1) the clock */}
               <section className="p-6 rounded-2xl bg-card border border-primary/30">
                 <h1 className="text-xl font-bold mb-2 flex items-center gap-2"><Timer className="w-5 h-5 text-primary" /> {clockLine()}</h1>
-                {status.repair && (
+                {/* A refusal no wait will change is not told to wait (L6-09):
+                    a second pass paid while one is open, or a session another
+                    account paid. The owner was alerted by agent-pass-status
+                    to refund it; the page says so instead of "retry". */}
+                {status.repair === "pass_already_open" ? (
+                  <p className="text-sm text-warning mb-2">
+                    {t("agentPass.repairSecondPass", "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.")}
+                  </p>
+                ) : status.repair === "not_yours" ? (
+                  <p className="text-sm text-warning mb-2">
+                    {t("agentPass.repairNotYours", "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.")}
+                  </p>
+                ) : status.repair ? (
                   <p className="text-sm text-warning mb-2">
                     {t("agentPass.repairPending", "This checkout is not matched to a pass yet ({{reason}}). If you just paid, give it a minute and retry — the receipt arrives on its own.", { reason: status.repair })}{" "}
                     <button type="button" onClick={refresh} className="underline">{t("agentPass.retry", "Retry")}</button>
                   </p>
-                )}
+                ) : null}
                 {/* (2) applications left */}
                 {open && (
                   <>

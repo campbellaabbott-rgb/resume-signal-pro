@@ -206,6 +206,16 @@ const MCP_PROTOCOL_VERSIONS = ["2025-06-18"];
 // refused when it names a restricted source, because the token a federal row
 // carries is the source name and an empty answer to it was the same false
 // statement the vendor argument already refused to make.
+//
+// 2026-10-05 (FN_BUILD agent-mcp.2026-10-05.1; serverInfo.version stays .11,
+// which scripts/verify-deploy.sh's section 7j pins exactly): the guide answers
+// every caller before the credential is read; resources/templates/list
+// answers an empty list; numeric filters forward on presence, so maxYears 0
+// binds; request_application refuses a blocked employer or one in cooldown
+// before a pass is spent, flips a dismissed/expired/unfunded queue row
+// instead of calling it a duplicate, keeps every warning, and says how a
+// review-mode send is approved; employer_hiring_record names closed_90d as
+// takedown events.
 const SERVER_INFO = {
   name: "resumebooster-job-board",
   version: "2026-09-04.11",
@@ -219,11 +229,15 @@ const DOCS_URL = SERVER_INFO.websiteUrl;
 /** What a browser sees at this address: the one string a hurried human meets when they open the server like a page. */
 const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Paste this address into your agent; the how-to is at ${DOCS_URL}.`;
 /** The JSON-RPC methods this server answers, for the error that names them. */
-const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/read"] as const;
+const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
+/** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
+const FN_BUILD = "agent-mcp.2026-10-05.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
 const PASS_URL = "https://resumebooster.work/agents/pass";
+/** Where the candidate approves a prepared application: the agent page's Applications tab (ApplyQueuePanel). */
+const QUEUE_URL = "https://resumebooster.work/agent?tab=applications";
 /** A posting's address on the site: the board opens ?job= in its detail panel (Jobs.tsx jobHref). */
 const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${encodeURIComponent(id)}`;
 
@@ -346,6 +360,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Expose-Headers":
     "Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Unkeyed-Remaining",
+  "x-fn-build": FN_BUILD,
 };
 
 // Field names mirror api_key_check's OUT parameters, which were RENAMED in
@@ -823,7 +838,8 @@ const HIRING_RECORD_WINDOW_DAYS = 90;
  */
 const HIRING_RECORD_BASIS =
   `A record of one BOARD (a vendor tenant), never summed across an employer's boards, and never a headcount. ` +
-  `closed_${HIRING_RECORD_WINDOW_DAYS}d counts postings we watched come off this board in the last ${HIRING_RECORD_WINDOW_DAYS} days ` +
+  `closed_${HIRING_RECORD_WINDOW_DAYS}d counts TAKEDOWN EVENTS, not distinct postings (a posting that came back and came down again counts each time), ` +
+  `that we watched on this board in the last ${HIRING_RECORD_WINDOW_DAYS} days ` +
   `on a board read to the end — in one visit or across a provable full lap — excluding re-lists (an identical title still live within a day, counted separately in ` +
   `superseded_${HIRING_RECORD_WINDOW_DAYS}d, which is a floor), excluding takedowns the collector marked as its own ` +
   `collection failure, and excluding takedowns first observable on a big board's first laps. A takedown is not a hire ` +
@@ -1328,7 +1344,7 @@ const TOOLS = [
     title: "An employer's hiring record on this board",
     description:
       `For each employer handle (companyToken, up to ${EMPLOYER_TOKENS_MAX} per call), that employer's own record on this board: open_roles now, ` +
-      `closed_${HIRING_RECORD_WINDOW_DAYS}d (postings we watched come off this board in the last ${HIRING_RECORD_WINDOW_DAYS} days, re-lists excluded), ` +
+      `closed_${HIRING_RECORD_WINDOW_DAYS}d (takedown events we watched on this board in the last ${HIRING_RECORD_WINDOW_DAYS} days, re-lists excluded — one posting that came back and came down again counts each time), ` +
       `superseded_${HIRING_RECORD_WINDOW_DAYS}d (the re-lists, a floor), the two medians from the employer's own stated dates (lower bounds), ` +
       `tracking_days (how long we have watched THIS board, capped at ${HIRING_RECORD_WINDOW_DAYS}) and feed_total (what its feed advertised at the last check). ` +
       "A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — " +
@@ -1849,7 +1865,7 @@ function guideText(): string {
     `- "${NOT_A_WEB_PAGE}" — the address was opened in a browser; nothing is wrong.`,
     `- "${tool("fit_resume")} is a paid feature…" — résumé fit scoring needs a paid key (${MINT_URL}) or a live Agent Pass (${PASS_URL}); search keeps working.`,
     `- "The apply agent needs an active Agent plan or a live pass." / "No agent mandate on this account." / "Your agent is switched off." / "No resume on file…" — the apply agent is not funded, not set up, off, or has no CV; each answer names the page to fix it. The off switch always wins.`,
-    `- "The pass on this account is not live." / "No applications left on this pass." — the pass ended or its applications are used; search keeps working.`,
+    `- "The pass on this account is not live." / "No applications left on this pass." — the pass ended or its applications are used; search keeps working on the key's own daily quota, which counts every call made that UTC day, the pass's calls included — a key that made more than that during the pass waits for midnight UTC.`,
     `- "ids is required…" from ${tool("get_jobs")} or ${tool("check_jobs_open")} — send {ids: [...]}.`,
     ``,
     `The sign-in row for today's state is under "Sign-in today" above; this document is free to read, unmetered, so an agent can read it the moment it sees a refusal.`,
@@ -2072,6 +2088,46 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
       "Drop it from `companies` and the rest of the search is answered normally.",
     );
   }
+  // NUMBERS ON PRESENCE, NOT TRUTHINESS (register 1.71 / L9-24). Every
+  // numeric filter was forwarded only when truthy, so maxYears:0 — "no
+  // experience required" — bound nothing and named nothing, and an agent
+  // helping a new graduate was handed roles asking for nine years with no
+  // ignoredFilters to say why. A value that is present is forwarded and the
+  // board's normaliser accepts it or names it; one that is not a number (or,
+  // for the whole-number filters, not a whole number) is refused here in band,
+  // because the board binds those to integer columns and answers a fraction
+  // with a 500 the agent was told to retry (2.26).
+  const present = (v: unknown) => v !== undefined && v !== null && v !== "";
+  const num = (name: string, v: unknown, whole: boolean): number | undefined => {
+    if (!present(v)) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n) || (whole && !Number.isInteger(n)) || n < 0) {
+      throw new ToolArgumentError(
+        `${name} must be ${whole ? "a whole number" : "a number"} of 0 or more, got ${JSON.stringify(v)}.`,
+        `Send ${name} as ${whole ? "an integer" : "a number"}, or leave it out.`,
+      );
+    }
+    return n;
+  };
+  const maxAgeDays = num("maxAgeDays", args.maxAgeDays, true);
+  const salaryMin = num("salaryMin", args.salaryMin, false);
+  const salaryMax = num("salaryMax", args.salaryMax, false);
+  const maxYears = num("maxYears", args.maxYears, true);
+  const offset = num("offset", args.offset, true);
+  // postedAfter binds to a timestamptz: '2026-09' passes Date.parse and fails
+  // there with a 500. An ISO date (or date-time) only, sent normalised.
+  let postedAfter: string | undefined;
+  if (present(args.postedAfter)) {
+    const raw = String(args.postedAfter).trim();
+    const ok = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(raw) && Number.isFinite(Date.parse(raw));
+    if (!ok) {
+      throw new ToolArgumentError(
+        `postedAfter must be an ISO date such as 2026-09-01, got ${JSON.stringify(args.postedAfter)}.`,
+        "Send a full date (YYYY-MM-DD), or use maxAgeDays for a rolling window.",
+      );
+    }
+    postedAfter = new Date(raw).toISOString();
+  }
   return {
     action: "list", limit, includeFacets: false,
     ...(args.query ? { q: String(args.query) } : {}),
@@ -2084,22 +2140,22 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
     ...(args.department ? { department: String(args.department) } : {}),
     ...(companies.length ? { companies } : {}),
     ...(args.experience ? { experience: String(args.experience) } : {}),
-    ...(args.maxAgeDays ? { maxAgeDays: Number(args.maxAgeDays) } : {}),
-    ...(args.postedAfter ? { postedAfter: String(args.postedAfter) } : {}),
-    ...(args.salaryMin ? { salaryFloor: Number(args.salaryMin) } : {}),
-    ...(args.salaryMax ? { salaryCeiling: Number(args.salaryMax) } : {}),
+    ...(maxAgeDays !== undefined ? { maxAgeDays } : {}),
+    ...(postedAfter !== undefined ? { postedAfter } : {}),
+    ...(salaryMin !== undefined ? { salaryFloor: salaryMin } : {}),
+    ...(salaryMax !== undefined ? { salaryCeiling: salaryMax } : {}),
     // WIDENING, and literal true only — the board reads anything else as a
     // non-boolean and names it. Passed as its own flag rather than folded into
     // salaryFloor: it relaxes an active band, it does not move one.
     ...(args.includeUnstatedPay === true ? { includeUnstatedPay: true } : {}),
     ...(args.hasStatedPay === true ? { hasStatedPay: true } : {}),
     ...(args.payBasis === "hourly" || args.payBasis === "salaried" ? { payBasis: String(args.payBasis) } : {}),
-    ...(args.maxYears ? { maxYears: Number(args.maxYears) } : {}),
+    ...(maxYears !== undefined ? { maxYears } : {}),
     ...(args.vendor ? { vendor: String(args.vendor) } : {}),
     ...(args.excludeAgencies === true ? { excludeAgencies: true } : {}),
     ...(args.agentReadyOnly === true ? { sendableOnly: true } : {}),
     ...(args.sort === "newest" ? { sort: "newest" } : args.sort === "salary" ? { sort: "salary" } : {}),
-    ...(args.offset ? { offset: Number(args.offset) } : {}),
+    ...(offset !== undefined && offset > 0 ? { offset } : {}),
   };
 }
 
@@ -2725,6 +2781,10 @@ async function runCheckApplySupport(client: SupabaseClient, args: Record<string,
       agentReady: false,
       vendor: source || null,
       restricted: true,
+      // The outputSchema requires `requirements`, and this branch omitted it,
+      // so a strict client rejected the result (L9-16). What applying takes
+      // here is a person on the site.
+      requirements: [`This posting cannot be served to an agent (${NO_REDISTRIBUTION_REASON}) — the human reads it and applies at ${SITE_JOB_URL(id)}.`],
       note: NO_REDISTRIBUTION_REASON,
       fix: `Open ${SITE_JOB_URL(id)} to read this posting on the site and apply from there.`,
     };
@@ -2962,7 +3022,7 @@ async function enqueueApplication(
   }
 
   const { data: mandate } = await client.from("agent_mandates")
-    .select("active, paused_until, resume_text, apply_mode, daily_count, countries, category, include_uncategorised, max_age_days, salary_min, last_prepare_kick_at")
+    .select("active, paused_until, resume_text, apply_mode, daily_count, countries, category, include_uncategorised, max_age_days, salary_min, last_prepare_kick_at, blocked_companies, employer_cooldown_days")
     .eq("user_id", userId).maybeSingle();
   if (!mandate) {
     return refuse("mandate", "No agent mandate on this account.", "Set up your agent in Account — that is where you authorize what it may do and hand it your details.");
@@ -2971,6 +3031,7 @@ async function enqueueApplication(
     active?: boolean; paused_until?: string | null; resume_text?: string | null; apply_mode?: string;
     countries?: string | null; category?: string | null; include_uncategorised?: boolean | null;
     max_age_days?: number | null; salary_min?: number | null; last_prepare_kick_at?: string | null;
+    blocked_companies?: string[] | null; employer_cooldown_days?: number | null;
   };
   if (m.active !== true) {
     return refuse("mandate", "Your agent is switched off.", "Turn it on in Account — the off switch always wins, including over this tool.");
@@ -3002,7 +3063,10 @@ async function enqueueApplication(
         `The pass on this account has ${passBlockerReason(pass)}.`,
         pass.expires_at && Date.parse(pass.expires_at) > Date.now()
           ? `No applications left on this pass — ${Math.max(1, Math.round((Date.parse(pass.expires_at) - Date.now()) / 3_600_000))} hours remain for search and scoring. Buy another at ${PASS_URL} when the clock ends.`
-          : `Buy a pass at ${PASS_URL}, or subscribe at https://resumebooster.work/agent — search tools keep working without either.`);
+          // L9-10: after a pass the key is back on its own daily quota, and
+          // that day's count includes every call the pass made. Said here,
+          // because "search keeps working" was false for a heavy pass day.
+          : `Buy a pass at ${PASS_URL}, or subscribe at https://resumebooster.work/agent — search tools keep working without either, on the key's own daily quota (today's pass calls count toward it, and it resets at midnight UTC).`);
     }
     return refuse("plan", "The apply agent needs an active Agent plan or a live pass.", `Buy a pass at ${PASS_URL} or subscribe at https://resumebooster.work/agent — search tools keep working without either.`);
   }
@@ -3055,14 +3119,49 @@ async function enqueueApplication(
     }
   }
 
-  // The pre-read for the alreadyQueued note (the existing row's status). Not
-  // the duplicate guard: that is the RPC's ON CONFLICT, which is what makes a
-  // duplicate cost nothing on a pass — a race between two identical requests
-  // ends with one row and one application spent.
-  const { data: existing } = await client.from("agent_queue")
-    .select("status").eq("user_id", userId).eq("posting_id", jobId).maybeSingle();
-  if (existing) {
-    return { accepted: true, alreadyQueued: true, queueStatus: (existing as { status?: string }).status, note: "This job was already in your agent's queue — nothing duplicated." };
+  // THE CANDIDATE'S OWN TWO FENCES, BEFORE A PASS IS SPENT (L6-07). The
+  // preparer refuses a blocked employer and one inside the cooldown, and until
+  // 2026-10-05 it did so after the enqueue had already spent one of a pass's
+  // ten applications — with no packet, so nothing ever gave it back, against
+  // the pass page's "a request a gate refuses spends nothing". Refused here
+  // with the fix named; the preparer still checks both (and now refunds a row
+  // that slips past, e.g. an employer blocked a minute after the request).
+  const companyKey = String(p.company ?? "").trim().toLowerCase();
+  const blocked = (Array.isArray(m.blocked_companies) ? m.blocked_companies : [])
+    .map((c) => String(c ?? "").trim().toLowerCase()).filter(Boolean);
+  if (companyKey && blocked.includes(companyKey)) {
+    return refuse("blocked-company", `You asked your agent never to apply to ${String(p.company)}.`, "Remove it from \"Never apply to these employers\" in Account if that has changed — nothing was spent.");
+  }
+  const cooldownDays = Number(m.employer_cooldown_days ?? 0);
+  if (companyKey && cooldownDays > 0) {
+    const { data: inCooldown } = await client.rpc("agent_employer_in_cooldown", {
+      p_user_id: userId, p_company: String(p.company), p_days: cooldownDays,
+    });
+    if (inCooldown === true) {
+      return refuse("cooldown", `An application to ${String(p.company)} went out (or is on its way) inside your ${cooldownDays}-day employer cooldown.`, "Wait for the cooldown, or shorten it in Account — nothing was spent.");
+    }
+  }
+
+  // A PACKET ALREADY EXISTS for this posting: nothing a new request can add.
+  // Said as what it is — prepared, and where it stands — rather than as
+  // "queued", which promised a preparation that will not happen again.
+  const { data: packet } = await client.from("agent_submissions")
+    .select("status, release_refusal, released_at, submitted_at").eq("user_id", userId).eq("posting_id", jobId).maybeSingle();
+  if (packet) {
+    const pk = packet as { status?: string; release_refusal?: string | null; released_at?: string | null; submitted_at?: string | null };
+    const waitingForYou = pk.status === "ready" && !pk.released_at;
+    return {
+      accepted: true,
+      alreadyQueued: true,
+      alreadyPrepared: true,
+      applicationStatus: pk.submitted_at ? "submitted" : pk.status ?? "unknown",
+      ...(pk.release_refusal ? { notReleasedBecause: pk.release_refusal } : {}),
+      note: pk.submitted_at
+        ? "An application to this job was already sent — nothing duplicated, nothing spent."
+        : waitingForYou
+        ? `An application for this job is already prepared and waiting for your approval in your agent's queue (${QUEUE_URL}) — nothing duplicated, nothing spent.`
+        : "An application for this job was already prepared — nothing duplicated, nothing spent. Track it with application_status.",
+    };
   }
 
   // fit_pct must be populated: decideRelease refuses fit-unknown on null and
@@ -3112,8 +3211,12 @@ async function enqueueApplication(
     }
     throw new Error(`queue write refused: ${reason}`);
   }
+  // already_queued now means exactly one thing: the row was approved and paid
+  // for before this call, so it changed nothing. A dismissed, expired,
+  // unread or unfunded row is flipped to approved by the RPC and answers
+  // "requeued", which is an accept like any other (L9-01).
   if (e.enqueue_reason === "already_queued") {
-    return { accepted: true, alreadyQueued: true, note: "This job was already in your agent's queue — nothing duplicated, nothing spent." };
+    return { accepted: true, alreadyQueued: true, note: "This job was already approved in your agent's queue — nothing duplicated, nothing spent." };
   }
 
   // THE HEAD START, BOUND TO THE RIGHT EVENT THIS TIME. The preparer runs at
@@ -3136,6 +3239,14 @@ async function enqueueApplication(
 
   const vendor = parts[0];
   const agentReady = SENDABLE_VENDORS.includes(vendor);
+  // EVERY WARNING, KEPT (L9-17). Two spreads both wrote `warning`, so a
+  // low-fit posting on a non-submittable system lost the fit warning to the
+  // vendor one. `warning` stays (the first, for a client that reads only it);
+  // `warnings` carries them all.
+  const warnings: string[] = [];
+  if (!agentReady) warnings.push(`This employer's system (${vendor}) is not agent-submittable — the packet will be prepared for one-click manual sending instead.`);
+  if (fit.pct !== null && fit.pct < 55 && m.apply_mode === "auto") warnings.push("Fit is below the 55% release floor — the packet will be prepared but refused unattended release unless the resume covers more of this posting's terms.");
+  if (fit.pct !== null && fit.pct < 55 && m.apply_mode !== "auto") warnings.push("Fit is below the 55% floor the agent uses for unattended sends — worth a look before you approve it.");
   return {
     accepted: true,
     jobId,
@@ -3143,11 +3254,12 @@ async function enqueueApplication(
     company: row.company,
     fitPct: fit.pct,
     passApplicationsLeft: passFunded ? (e.pass_apps_left ?? null) : null,
-    ...(fit.pct !== null && fit.pct < 55 ? { warning: "Fit is below the 55% release floor — the packet will be prepared but refused release unless the resume covers more of this posting's terms." } : {}),
-    ...(agentReady ? {} : { warning: `This employer's system (${vendor}) is not agent-submittable — the packet will be prepared for one-click manual sending instead.` }),
-    whatHappensNext: m.apply_mode === "auto"
-      ? "The preparer builds the application from your profile (answers are grounded — nothing is invented), then releases it within your daily cap and vendor allow-list. Track it with application_status."
-      : "The application is prepared and waits in your morning queue for your review — you approve the actual send. Track it with application_status.",
+    ...(warnings.length ? { warning: warnings[0], warnings } : {}),
+    whatHappensNext: !agentReady
+      ? `The application is prepared for you to send yourself: open it in your agent's queue (${QUEUE_URL}) and submit it on the employer's site. Track it with application_status.`
+      : m.apply_mode === "auto"
+      ? "The preparer builds the application from your profile (answers are grounded — nothing is invented), then releases it within your daily cap and vendor allow-list; the first few unattended sends wait for your approval in the queue. Track it with application_status."
+      : `The application is prepared and waits in your agent's queue (${QUEUE_URL}) — you approve the actual send there with "Approve and send". Track it with application_status.`,
     ...(passFunded ? { funding: "This request was paid for by your pass; it is honoured even if the clock ends before it is sent." } : {}),
   };
 }
@@ -3177,9 +3289,14 @@ async function readApplicationStatus(client: SupabaseClient, userId: string, lim
     })),
     applications: ((subs ?? []) as Array<Record<string, unknown>>).map(compactSub),
     statusKey: {
-      preparing: "being assembled", ready: "prepared, awaiting release/claim",
-      blocked: "needs the human first (see needsHumanFor)", submitted: "sent to the employer",
-      failed: "preparation failed", stale: "posting closed before sending",
+      preparing: "being assembled",
+      ready: "prepared; with notReleasedBecause it waits (review-mode or held-for-review: the human approves it in the queue), without it it is released and waiting for the sender",
+      blocked: "not sent: needs the human first (see needsHumanFor), or stopped by the human (cancelled-by-you)", submitted: "sent to the employer",
+      failed: "preparation failed",
+      // apply-agent writes `stale` for a posting the human had already applied
+      // to by hand (notReleasedBecause: duplicate). It was explained as "posting
+      // closed", which sent agents to tell users their job had closed (L9-17).
+      stale: "not sent: the human had already applied to this posting themselves (notReleasedBecause: duplicate)",
     },
   };
 }
@@ -3587,6 +3704,13 @@ Deno.serve(async (req) => {
   if (method === "resources/list") {
     return json(rpcResult(id, { resources: RESOURCES.map(({ uri, name, title, mimeType, description }) => ({ uri, name, title, mimeType, description })) }));
   }
+  // Declared with the resources capability, so a strict client asks for it
+  // after initialize — and got "method not found" (L9-16). This server has no
+  // parameterised resources (a job's card is a plain uri from a search), so
+  // the honest answer is an empty list, free like the other two listings.
+  if (method === "resources/templates/list") {
+    return json(rpcResult(id, { resourceTemplates: [] }));
+  }
 
   const auth = req.headers.get("authorization") ?? "";
   const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
@@ -3606,6 +3730,24 @@ Deno.serve(async (req) => {
   }
   const read: MeteredRead | null = resolved;
 
+  // ── the guide: free for EVERY caller, before any credential is read ──────
+  // The guide says it is "free to read, unmetered, so an agent can read it the
+  // moment it sees a refusal" — and it was free only with NO credential. With
+  // a mistyped key it was refused with the same "not recognised" it explains,
+  // a non-key token was told it needed a key, and a valid key paid a call for
+  // it (L9-08). The recovery path was unreachable for exactly the callers who
+  // need it. Answered here, through neither meter, whatever the slot holds.
+  if (read && read.kind === "resource") {
+    try {
+      if (read.resource.uri === GUIDE_URI) {
+        await probeSignIn();
+        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText())));
+      }
+    } catch (e) {
+      return readFailed(id, read, e, {});
+    }
+  }
+
   // ── resources/read with NO credential ─────────────────────────────────────
   // The guide is documentation and free. The statistics are the unkeyed
   // board_stats answer, counted as one — the same runner, the same
@@ -3618,10 +3760,7 @@ Deno.serve(async (req) => {
   // 500 with no body and no CORS.
   if (read && !bearer) {
     try {
-      if (read.kind === "resource" && read.resource.uri === GUIDE_URI) {
-        await probeSignIn();
-        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText())));
-      }
+      // (The guide never reaches here: it is answered above, for every caller.)
       if (read.kind === "resource" && read.resource.uri === BOARD_STATS_URI) {
         const { rpc, headers } = await answerUnkeyed(client, req, id, tool("board_stats"), {});
         return json(asContents(id, BOARD_STATS_URI, read.resource.mimeType, rpc), 200, headers);
