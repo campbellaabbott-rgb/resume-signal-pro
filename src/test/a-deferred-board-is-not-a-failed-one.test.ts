@@ -12,7 +12,9 @@ const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 describe("a deferred board is not a failed one", () => {
   it("budget-deferred tokens are excluded from failure accounting", () => {
     expect(CODE).toMatch(/const budgetSkippedSet = new Set\(budgetSkipped\);/);
-    expect(CODE).toMatch(/\.filter\(\(tk\) => !skipTokens\.has\(tk\) && !quarantineSkipped\.has\(tk\) && !budgetSkippedSet\.has\(tk\) && !okSet\.has\(tk\)\);/);
+    // Since .89 the failure set is built per BOARD (a shared token's twins are
+    // tracked apart); the deferral sets stay token-keyed.
+    expect(CODE).toMatch(/\.filter\(\(s\) => !skipTokens\.has\(boardKeyOf\(s\)\) && !quarantineSkipped\.has\(s\.token\) && !budgetSkippedSet\.has\(s\.token\) && !okKeySet\.has\(boardKeyOf\(s\)\)\)/);
   });
 
   it("betterDate keys the Workday rule on the ROW's vendor, never the hop's slot", () => {
@@ -21,7 +23,7 @@ describe("a deferred board is not a failed one", () => {
   });
 
   it("a board whose visit can return the cap reserves the cap, even in a cold slice", () => {
-    expect(CODE).toMatch(/const CAPPED_VISIT_VENDORS = new Set\(\["workday", "oracle", "icims", "smartrecruiters", "rippling"\]\);/);
+    expect(CODE).toMatch(/const CAPPED_VISIT_VENDORS = new Set\(\["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs"\]\);/);
     expect(CODE).toMatch(/const reserve = inHotPhase \|\| deepTokens\.has\(s\.token\) \|\| CAPPED_VISIT_VENDORS\.has\(s\.source\) \|\| !!s\.pages \? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;/);
     // every fetcher that carries a resume offset is in the set
     for (const v of ["workday", "oracle", "icims", "smartrecruiters", "rippling"]) expect(CODE).toContain(`"${v}"`);

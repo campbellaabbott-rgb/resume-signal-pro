@@ -11,59 +11,99 @@
 // cross-checks the markers, and EMAILS THE OWNER any orphans to recover through
 // the existing recover-purchase flow. Alert-first by design: it never mutates
 // money or entitlement state, and the HTTP response carries counts only (no PII).
+//
+// WHO MAY RUN IT (2026-10-04 completeness review). It used to answer anyone:
+// "counts only, so no secret gate is needed". But every POST paged through up
+// to 20 Stripe list calls on our key, with a lookback the caller chose -- an
+// unauthenticated amplifier for spending our Stripe rate limit, which every
+// checkout shares. It now answers only:
+//   - the pg_cron job, whose x-reconcile-cron key migration 20261005113000
+//     generated in the vault (reconcile_cron_key_matches checks it and never
+//     returns it), or
+//   - the service-role key, or the owner's ADMIN_API_KEY (x-admin-key), for a
+//     hand-run.
+// Anything else is a 401 before any client is built or any Stripe call made.
+// The lookback stays bounded (1 hour to 14 days) and the paging at 20 pages.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { findOrphanSessions, type ReconcileSession } from "./reconcile.ts";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { keyMatches } from "../_shared/admin-key.ts";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { buyerEmailOf } from "../_shared/buyer-email.ts";
 
 // The only external tell of which bundle is live. Bump on every deploy — twice
 // this month a fix was "deployed" and the old code was still answering, and the
 // version marker is the single thing that separates that from a job not running.
-const BUILD_VERSION = "2026-08-06.1";
+const BUILD_VERSION = "2026-10-05.1";
+const FN_BUILD = `reconcile-stripe.${BUILD_VERSION}`;
+
+const MAX_PAGES = 20;
+const DEFAULT_LOOKBACK_HOURS = 48;
+const MAX_LOOKBACK_HOURS = 24 * 14;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-reconcile-cron, x-admin-key",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+const unauthorized = () => json({ error: "Unauthorized" }, 401);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
-  // Safe by design (mirrors send-search-digest): the HTTP response returns counts
-  // only — never customer PII — and the sole side effect is an email to the fixed
-  // owner address, sent only when genuine orphans exist. So a stray trigger on a
-  // healthy system does nothing observable, and no secret gate is needed.
+  // The owner's key or the service role opens it outright. Otherwise only a
+  // cron key long enough to be the vault's is even asked about, so a
+  // stranger's POST costs no database call and no Stripe call.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const byServer = isServiceRoleCaller(req.headers, serviceKey)
+    || keyMatches(req.headers.get("x-admin-key") ?? "", Deno.env.get("ADMIN_API_KEY") ?? "");
+  const cronKey = req.headers.get("x-reconcile-cron") ?? "";
+  if (!byServer && cronKey.length < 32) return unauthorized();
+
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
+  if (!byServer) {
+    const { data: matches, error: keyError } = await supabase.rpc("reconcile_cron_key_matches", { p_key: cronKey });
+    if (keyError || matches !== true) {
+      if (keyError) console.error("[RECONCILE-STRIPE] cron key check failed:", keyError.message?.slice(0, 160));
+      return unauthorized();
+    }
+  }
+
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeKey) return json({ error: "STRIPE_SECRET_KEY not configured" }, 500);
   const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   let body: { lookbackHours?: number } = {};
   try { body = await req.json(); } catch { /* cron may send an empty body */ }
   // Look back long enough to clear Stripe's webhook retry window but stay inside
   // the 30-day used_stripe_sessions retention.
-  const lookbackHours = Math.min(Math.max(Number(body.lookbackHours) || 48, 1), 24 * 14);
+  const lookbackHours = Math.min(Math.max(Number(body.lookbackHours) || DEFAULT_LOOKBACK_HOURS, 1), MAX_LOOKBACK_HOURS);
   const sinceEpoch = Math.floor((Date.now() - lookbackHours * 3_600_000) / 1000);
 
   try {
     // Page through recent checkout sessions (Stripe = source of truth for money).
     const paid: ReconcileSession[] = [];
     let startingAfter: string | undefined;
-    for (let page = 0; page < 20; page++) {
+    for (let page = 0; page < MAX_PAGES; page++) {
       const res = await stripe.checkout.sessions.list({
         created: { gte: sinceEpoch },
         limit: 100,
         ...(startingAfter ? { starting_after: startingAfter } : {}),
       });
       for (const s of res.data) {
-        // Match the webhook's own definition of "should be fulfilled".
-        if (s.status === "complete" && s.payment_status === "paid") {
+        // Match the webhook's own definition of "should be fulfilled": paid,
+        // or a payment-mode session a 100%-off code completed at $0.
+        if (s.status === "complete" && checkoutSessionSettled(s)) {
           paid.push({
             id: s.id,
-            email: s.customer_email ?? (s.metadata?.customer_email ?? null),
+            // customer_details first: an anonymous buyer's address exists only there.
+            email: buyerEmailOf(s),
             amountCents: s.amount_total ?? null,
             currency: s.currency ?? "usd",
             product: s.metadata?.product_name ?? s.metadata?.product_type ?? null,
@@ -126,11 +166,8 @@ serve(async (req) => {
     // endpoint and a sweep must not become a way to enumerate purchases.
     //
     // Note what is NOT written here: lastCronAt. That belongs to
-    // reconcile_stripe_tick(), which only the scheduler can call. This function
-    // is open to the internet, so anything it writes about itself can be
-    // triggered by anyone — fine for "here is what I found", useless as proof
-    // that the schedule is alive. Keeping them in separate rows keeps a hand-run
-    // from ever looking like a cron run.
+    // reconcile_stripe_tick(), which only the scheduler can call. Keeping them
+    // in separate rows keeps a hand-run from ever looking like a cron run.
     const stampedAt = new Date().toISOString();
     try {
       await supabase.from("job_board_meta").upsert({
@@ -145,11 +182,11 @@ serve(async (req) => {
       console.error("[RECONCILE-STRIPE] run stamp failed:", e);
     }
 
-    // Counts only — never PII — so an unauthenticated caller learns nothing sensitive.
+    // Counts only — never PII.
     return json({ checkedPaid: paid.length, orphans: orphans.length, alerted, lookbackHours,
                   buildVersion: BUILD_VERSION, at: stampedAt });
   } catch (e) {
     console.error("[RECONCILE-STRIPE] error:", e);
-    return json({ error: e instanceof Error ? e.message : "reconciliation failed" }, 500);
+    return json({ error: "reconciliation failed" }, 500);
   }
 });

@@ -1,13 +1,16 @@
-// deploy-stamp: 2026-10-04T18:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { buyerEmailOf } from "../_shared/buyer-email.ts";
+import { isProCached } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-04.resume-ref";
+const FN_BUILD = "verify-product-purchase.2026-10-05.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +21,31 @@ const corsHeaders = {
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[VERIFY-PRODUCT-PURCHASE] ${step}`, details ? JSON.stringify(details) : '');
 };
+
+const SCAN_CREDIT_PRODUCT_TYPES = ['scan_pack', 'scan_credits', 'career_bundle'];
+// The products this path can generate when asked: the Apply Assistant and
+// every case of buildGenerationRequest below.
+const GENERATED_PRODUCT_TYPES = [
+  'apply_assistant', 'basic_keyword_fix', 'cover_letter', 'premium_package', 'graduate_gameplan',
+  'career_snapshot', 'ats_defense', 'interview_coach', 'career_path_simulator',
+];
+
+/**
+ * How many credits a scan purchase bought: the metadata, else the line item's
+ * quantity (create-scan-pack-checkout), else the product's default. Capped at
+ * 500, as the webhook caps it. Read once, so the credit grant and the delivery
+ * row the sweeper re-credits from can never disagree.
+ */
+function creditsBoughtBy(session: {
+  metadata: Record<string, string>;
+  line_items?: { data?: Array<{ quantity?: number | null }> };
+}): number {
+  const productType = session.metadata?.product_type;
+  const fallback = productType === 'career_bundle' ? 75 : 10;
+  let credits = parseInt(session.metadata?.credits || '', 10);
+  if (!(credits > 0) && productType !== 'career_bundle') credits = session.line_items?.data?.[0]?.quantity ?? 0;
+  return Math.min(credits > 0 ? Math.floor(credits) : fallback, 500);
+}
 
 // Maps each content product to its generation endpoint and request body.
 // Mirrors stripe-webhook's switch — this is the recovery path used when the
@@ -76,8 +104,12 @@ serve(async (req) => {
   // hop, which the caller writes itself and could rotate per request.
   const clientIp = clientAddressOr(req.headers);
   const supabaseEarly = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: rlAllowed } = await supabaseEarly.rpc("check_rate_limit", { p_function: "verify-product-purchase", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
-  if (!rlAllowed) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  // Only an explicit "no" refuses (L6-19). A counter that errored (a statement
+  // timeout, a pool hiccup) used to read as "too many requests" on the page a
+  // buyer lands on right after paying.
+  const { data: rlAllowed, error: rlError } = await supabaseEarly.rpc("check_rate_limit", { p_function: "verify-product-purchase", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
+  if (rlError) logStep("Rate limit check failed; continuing", { error: rlError.message });
+  if (rlAllowed === false) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     const { sessionId, generateContent = false } = await req.json();
@@ -106,7 +138,9 @@ serve(async (req) => {
     // logging, generation) runs unchanged.
     let session: {
       payment_status: string;
+      mode?: string | null;
       customer_email: string | null;
+      customer_details?: { email?: string | null } | null;
       amount_total: number | null;
       metadata: Record<string, string>;
       line_items?: { data?: Array<{ quantity?: number | null }> };
@@ -117,48 +151,66 @@ serve(async (req) => {
       // consumed_at is part of the lookup, not a note written afterwards. A
       // replayed grant id — a bookmarked success URL, a re-sent link — finds
       // nothing here rather than minting the product a second time.
-      const { data: grant } = await supabaseGrant
+      const { data: unspent } = await supabaseGrant
         .from("pro_grants")
         .select("*")
         .eq("id", grantId)
         .is("consumed_at", null)
         .maybeSingle();
+      let grant = unspent;
       if (!grant) {
-        return new Response(
-          JSON.stringify({ error: "Invalid session" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      // Re-verify the subscription is still active before honoring the grant.
-      const { data: proRow } = await supabaseGrant
-        .from("pro_subscribers")
-        .select("status, current_period_end")
-        .eq("email", grant.email)
-        .maybeSingle();
-      const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
-        (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
-      if (!proActive) {
-        return new Response(
-          JSON.stringify({ error: "Subscription is not active" }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      // The consume is the claim. Two requests can both pass the SELECT above;
-      // only one can win this UPDATE, because the filter and the write are one
-      // statement. The loser gets nothing rather than a second copy. This runs
-      // after the subscription re-check on purpose: a lapsed subscriber's grant
-      // must survive its 402 rather than being burned by it.
-      const { data: consumed } = await supabaseGrant
-        .from("pro_grants")
-        .update({ consumed_at: new Date().toISOString() })
-        .eq("id", grantId)
-        .is("consumed_at", null)
-        .select("id");
-      if (!consumed || consumed.length === 0) {
-        return new Response(
-          JSON.stringify({ error: "Invalid session" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        // A REFRESH OF A GRANT ALREADY REDEEMED (platform sweep L6-15). The
+        // grant is spent when this page first verifies it, before anything
+        // is generated, so a reload mid-generation found nothing and showed a
+        // verification error, while a Stripe buyer's reload simply continued.
+        // A spent grant whose redemption claim exists is answered the way a
+        // claimed Stripe session is: verified, isFirstUse false. Nothing is
+        // minted again (credits, email and conversion all need a first use,
+        // and the claim insert below loses to the existing one); a replayed
+        // id with no claim is still refused.
+        const { data: spent } = await supabaseGrant
+          .from("pro_grants")
+          .select("*")
+          .eq("id", grantId)
+          .not("consumed_at", "is", null)
+          .maybeSingle();
+        const { data: claim } = spent
+          ? await supabaseGrant.from("used_stripe_sessions").select("session_id").eq("session_id", sessionId).maybeSingle()
+          : { data: null };
+        if (!spent || !claim) {
+          return new Response(
+            JSON.stringify({ error: "Invalid session" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        grant = spent;
+      } else {
+        // Re-verify the subscription is still active before honoring the
+        // grant -- both caches (a $99 or comped agent account includes Pro),
+        // through the one shared reader.
+        if (!(await isProCached(supabaseGrant, grant.email))) {
+          return new Response(
+            JSON.stringify({ error: "Subscription is not active" }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        // The consume is the claim. Two requests can both pass the SELECT above;
+        // only one can win this UPDATE, because the filter and the write are one
+        // statement. The loser gets nothing rather than a second copy. This runs
+        // after the subscription re-check on purpose: a lapsed subscriber's grant
+        // must survive its 402 rather than being burned by it.
+        const { data: consumed } = await supabaseGrant
+          .from("pro_grants")
+          .update({ consumed_at: new Date().toISOString() })
+          .eq("id", grantId)
+          .is("consumed_at", null)
+          .select("id");
+        if (!consumed || consumed.length === 0) {
+          return new Response(
+            JSON.stringify({ error: "Invalid session" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
       session = {
         payment_status: "paid",
@@ -199,11 +251,13 @@ serve(async (req) => {
       productType: session.metadata?.product_type 
     });
 
-    if (session.payment_status !== 'paid') {
+    // 'paid', or a payment-mode session a 100%-off code completed at $0 -- the
+    // same rule the webhook applies (L6-10).
+    if (!checkoutSessionSettled(session)) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Payment not completed",
-          status: session.payment_status 
+          status: session.payment_status
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -211,7 +265,8 @@ serve(async (req) => {
 
     const productType = session.metadata?.product_type;
     const productName = session.metadata?.product_name;
-    const customerEmail = session.customer_email || session.metadata?.customer_email;
+    // customer_details first: an anonymous buyer's address exists only there (L6-25).
+    const customerEmail = buyerEmailOf(session);
     // Looked up by the Stripe session id in checkout_resume_refs: the
     // temporary-store id is no longer written to Stripe (it is a bearer key to
     // the text). A Pro grant's synthetic session, and a session minted before
@@ -252,23 +307,63 @@ serve(async (req) => {
       logStep("Session marked as used");
     }
 
+    const isScanProduct = SCAN_CREDIT_PRODUCT_TYPES.includes(productType ?? '');
+    const purchasedCredits = isScanProduct ? creditsBoughtBy(session) : null;
+
     if (isFirstUse) {
-      // Log delivery step: payment received
-      await supabase.rpc('log_delivery_step', {
+      // Log delivery step: payment received. This is the ONLY delivery record
+      // a sale gets when this page claims it first (every Pro grant, and any
+      // purchase the webhook was late for) -- the webhook then answers
+      // alreadyProcessed. Until 20261005110000 the RPC could not create the
+      // row (its INSERT omitted the NOT NULL product_type) and the error was
+      // never read, so those sales left no trace for the monitors or the
+      // sweeper (L6-26, register 2.04). Read now, and said out loud.
+      //
+      // The rest of p_metadata is what the retry sweeper needs to finish the
+      // sale -- the keys the webhook writes on its own row: the credits
+      // bought (or it re-credits its default of 10), and the résumé and job
+      // to regenerate from. log_delivery_step keeps them in the row's
+      // metadata (20261005110000).
+      const { error: trackError } = await supabase.rpc('log_delivery_step', {
         p_stripe_session_id: sessionId,
         p_step: 'payment_received',
         p_metadata: {
           email: customerEmail,
           product_type: productType,
           product_name: productName,
-          amount_cents: session.amount_total
+          amount_cents: session.amount_total,
+          resume_session_id: resumeSessionId || null,
+          job_title: session.metadata?.job_title || null,
+          job_company: session.metadata?.job_company || null,
+          referral_code: session.metadata?.referral_code || null,
+          language: session.metadata?.language || null,
+          ...(purchasedCredits != null ? { credits: purchasedCredits } : {}),
         }
       });
-      logStep("Delivery tracking started");
+      if (trackError) logStep("Delivery record could not be written", { error: trackError.message });
+      else logStep("Delivery tracking started");
     }
 
     // If content generation is requested and we have resume data
     let generatedContent: any = null;
+    // WHAT THIS REQUEST OWED THE BUYER AND COULD NOT DO: a credit grant or a
+    // generation that failed. While it is set the confirmation mail is not
+    // sent, because its 'email_sent' step closed the row as 'delivered' over
+    // the failure, and the sweeper never looked at it again (2026-10-05
+    // review of L6-13 / L6-26). The row is left generation_failed, with the
+    // reason, for the sweeper to finish: it re-credits what the row says was
+    // bought, or regenerates the product and mails it.
+    let undelivered: string | null = null;
+    const recordUndelivered = async (reason: string) => {
+      undelivered = reason.slice(0, 500);
+      if (!isFirstUse) return;
+      await supabase.rpc('log_delivery_step', {
+        p_stripe_session_id: sessionId,
+        p_step: 'generation_completed',
+        p_success: false,
+        p_error: undelivered
+      });
+    };
     
     // Idempotency for the (expensive, AI-billed) generation path. The Stripe
     // webhook ALSO generates every product's content, gated on the atomic
@@ -384,6 +479,7 @@ serve(async (req) => {
           } else {
             const errorText = await packageResponse.text();
             logStep("Apply package generation failed", { status: packageResponse.status, error: errorText });
+            undelivered = `generate-apply-package ${packageResponse.status}: ${errorText}`.slice(0, 500);
 
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
@@ -411,31 +507,36 @@ serve(async (req) => {
             });
 
             const genDuration = Date.now() - generationStartTime;
+            // Every generator answers {success, data}; a 200 without a payload
+            // is recorded as the failure it is (L6-02), never as success.
+            const genResult = genResponse.ok ? await genResponse.json().catch(() => null) : null;
 
-            if (genResponse.ok) {
-              const genResult = await genResponse.json();
+            if (genResponse.ok && genResult?.data) {
               generatedContent = genResult.data;
               logStep(`${request.endpoint} generated successfully`);
 
               // Save content permanently for customer recovery
-              await supabase.rpc('save_purchased_content', {
+              const { error: saveError } = await supabase.rpc('save_purchased_content', {
                 p_stripe_session_id: sessionId,
                 p_customer_email: customerEmail || '',
                 p_product_type: productType,
                 p_product_name: productName,
                 p_generated_content: generatedContent
               });
-              logStep("Content saved for recovery");
+              if (saveError) logStep("Content could NOT be saved for recovery", { error: saveError.message });
+              else logStep("Content saved for recovery");
 
               await supabase.rpc('log_delivery_step', {
                 p_stripe_session_id: sessionId,
                 p_step: 'generation_completed',
-                p_success: true,
+                p_success: !saveError,
+                p_error: saveError ? `save_purchased_content: ${saveError.message}`.slice(0, 500) : null,
                 p_duration_ms: genDuration
               });
             } else {
-              const errorText = await genResponse.text();
+              const errorText = genResponse.ok ? `${request.endpoint} answered 200 with no content` : await genResponse.text();
               logStep(`${request.endpoint} generation failed`, { status: genResponse.status, error: errorText });
+              undelivered = `${request.endpoint} ${genResponse.status}: ${errorText}`.slice(0, 500);
 
               await supabase.rpc('log_delivery_step', {
                 p_stripe_session_id: sessionId,
@@ -456,28 +557,31 @@ serve(async (req) => {
       logStep("Content generation requested but no resume session ID available");
     }
 
+    // Asked to generate a product this path generates, and nothing came of it
+    // without a failure being recorded above (no résumé linked, or the stored
+    // one gone): that is a failed delivery too, not a sale to confirm.
+    if (generateContent && !generatedContent && !undelivered && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
+      await recordUndelivered(resumeSessionId
+        ? 'The résumé for this purchase could not be read; nothing was generated'
+        : 'No résumé is linked to this purchase; nothing was generated');
+    }
+
     // Handle credits for scan pack (used by both create-product-checkout and create-scan-pack-checkout)
     if ((productType === 'scan_pack' || productType === 'scan_credits') && isFirstUse && customerEmail) {
-      // Get credits from metadata first, fallback to line_items quantity
-      let credits = parseInt(session.metadata?.credits || "0");
-      
-      // If no credits in metadata, check line_items quantity (for create-scan-pack-checkout)
-      if (credits === 0 && session.line_items?.data?.length) {
-        credits = session.line_items.data[0].quantity || 10;
-      }
-      
-      // Default to 10 if still no credits found
-      if (credits === 0) credits = 10;
-      
+      // Metadata first, then line_items quantity, then 10; capped at 500 --
+      // matches stripe-webhook (creditsBoughtBy above).
+      const credits = purchasedCredits ?? creditsBoughtBy(session);
+
       logStep("Adding scan pack credits", { credits, email: customerEmail, productType });
-      
+
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 500) // Cap at 500 — matches stripe-webhook cap
+        p_credits: credits
       });
 
       if (creditError) {
         logStep("Error adding scan pack credits", { error: creditError.message });
+        await recordUndelivered(`add_scan_credits: ${creditError.message}`);
       } else {
         logStep("Scan pack credits added successfully", { credits, email: customerEmail });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
@@ -486,20 +590,43 @@ serve(async (req) => {
 
     // Handle credits for career bundle
     if (productType === 'career_bundle' && isFirstUse && customerEmail) {
-      const credits = parseInt(session.metadata?.credits || "75");
+      const credits = purchasedCredits ?? creditsBoughtBy(session);
       logStep("Adding career bundle credits", { credits, email: customerEmail });
-      
+
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: Math.min(credits, 500) // Cap at 500 — matches stripe-webhook cap
+        p_credits: credits // capped at 500 by creditsBoughtBy -- matches stripe-webhook
       });
 
       if (creditError) {
         logStep("Error adding career bundle credits", { error: creditError.message });
+        await recordUndelivered(`add_scan_credits: ${creditError.message}`);
       } else {
         logStep("Career bundle credits added successfully", { credits, email: customerEmail });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
       }
+    }
+
+    // THE RECEIPT FOR CREDITS THIS PATH ADDED. Since 20261005110000 a sale this
+    // page claims first has a delivery row, and the retry sweeper re-credits a
+    // scan row it finds undelivered unless a receipt shows the credits landed.
+    // Written beside the credit, and the row moved past payment_received, so
+    // a buyer is never credited twice for one purchase.
+    if (isFirstUse && customerEmail && isScanProduct
+        && generatedContent && typeof generatedContent === 'object' && 'credits' in generatedContent) {
+      const { error: receiptError } = await supabase.rpc('save_purchased_content', {
+        p_stripe_session_id: sessionId,
+        p_customer_email: customerEmail,
+        p_product_type: productType,
+        p_product_name: productName || `${generatedContent.credits} Scan Credits`,
+        p_generated_content: generatedContent
+      });
+      if (receiptError) logStep("Credits added but the receipt was not saved", { error: receiptError.message });
+      await supabase.rpc('log_delivery_step', {
+        p_stripe_session_id: sessionId,
+        p_step: 'generation_completed',
+        p_success: true
+      });
     }
 
     // Record affiliate conversion if there was a referral
@@ -572,7 +699,13 @@ serve(async (req) => {
         }
       }
     }
-    if (isFirstUse && customerEmail) {
+    let emailSent = false;
+    if (isFirstUse && customerEmail && undelivered) {
+      // Not mailed: the row stays generation_failed with the reason above
+      // for the retry sweeper, which mails a product when it has made it.
+      logStep("Confirmation mail held back: this delivery failed and is left for the retry sweeper", { reason: undelivered });
+    }
+    if (isFirstUse && customerEmail && !undelivered) {
       try {
         // The service-role key: send-product-email is internal and refuses
         // the publishable key, which every visitor holds.
@@ -591,6 +724,7 @@ serve(async (req) => {
         });
 
         if (emailResponse.ok) {
+          emailSent = true;
           logStep("Confirmation email sent", { email: customerEmail });
           
           // Log email sent successfully
@@ -632,6 +766,11 @@ serve(async (req) => {
         productType,
         productName,
         customerEmail,
+        // Whether THIS call mailed the confirmation. When the webhook claimed
+        // the session first it sends the mail itself, to customerEmail; with
+        // no address on the purchase nobody sends anything, and the page must
+        // not say otherwise.
+        emailSent,
         generatedContent,
         hasResumeData: !!resumeSessionId
       }),

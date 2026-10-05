@@ -1,12 +1,13 @@
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-scan-pack-checkout.2026-09-27.2";
+const FN_BUILD = "create-scan-pack-checkout.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,13 @@ const corsHeaders = {
 // fixed Stripe Price object — CREDIT_PRICE_ID previously pointed at a $1/credit
 // price, 5x what the purchase UI displays and charges the customer for.
 const PRICE_PER_CREDIT_CENTS = 20;
+// THE SMALLEST PACK STRIPE WILL CHARGE (platform sweep L6-11). Stripe's
+// minimum USD charge is $0.50, so 1 credit ($0.20) and 2 ($0.40) were offered
+// by both pickers and refused by Stripe every time, as a generic 500. Three
+// credits ($0.60) is the first amount that clears it; the pickers start
+// there too (src/config/scan-credits.ts mirrors this number).
+export const MIN_CREDITS = 3;
+export const MAX_CREDITS = 100;
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MINUTES = 60;
 
@@ -32,11 +40,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
-  const clientIp = req.headers.get("cf-connecting-ip") ||
-                   req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-                   req.headers.get("x-real-ip") ||
-                   "unknown";
+  // The platform's word for the caller's address, never the first forwarded
+  // hop, which a caller writes itself and could rotate per request.
+  const clientIp = clientAddressOr(req.headers);
 
   try {
     logStep("Function started", { ip: clientIp });
@@ -63,12 +69,13 @@ serve(async (req) => {
       );
     }
 
-    // Validate credit amount (1-100)
+    // Validate credit amount (MIN_CREDITS-MAX_CREDITS): below the minimum is
+    // a clear 400 here, not a Stripe refusal surfacing as a generic 500.
     const credits = parseInt(creditAmount) || 10;
-    if (credits < 1 || credits > 100) {
+    if (credits < MIN_CREDITS || credits > MAX_CREDITS) {
       logStep("Invalid credit amount", { creditAmount });
       return new Response(
-        JSON.stringify({ error: "Credit amount must be between 1 and 100" }),
+        JSON.stringify({ error: `Credit amount must be between ${MIN_CREDITS} and ${MAX_CREDITS}`, minCredits: MIN_CREDITS, maxCredits: MAX_CREDITS }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

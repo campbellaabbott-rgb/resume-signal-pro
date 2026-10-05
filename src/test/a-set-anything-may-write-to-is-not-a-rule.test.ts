@@ -107,98 +107,108 @@ describe("B — the dynamic light set can only ever hold a light-capable vendor'
   it("refuses before it admits: the class asks the catalog ahead of super.add", () => {
     const cls = DECL.exec(CODE)![1];
     const body = blockAfter(CODE, `class ${cls} extends Set<string>`);
-    expect(body).toContain("lightTokenRefusal(");
+    expect(body).toContain("lightBoardRefusal(");
     expect(body).toContain("super.add(");
     expect(
-      body.indexOf("lightTokenRefusal(") < body.indexOf("super.add("),
-      `${cls}.add admits the token before it asks whether the token is safe`,
+      body.indexOf("lightBoardRefusal(") < body.indexOf("super.add("),
+      `${cls}.add admits the board before it asks whether the board is safe`,
     ).toBe(true);
-    // The predicate itself must consult the vendor set — and must NOT stop at
-    // the first catalog hit, which is the whole defect: a token is not a board.
-    const pred = blockAfter(CODE, "const lightTokenRefusal = (token: string)");
+    // The predicate itself must consult the vendor set.
+    const pred = blockAfter(CODE, "const lightBoardRefusal = (key: string)");
     expect(pred).toContain("LIGHT_CAPABLE_VENDORS.has(");
-    expect(
-      /for\s*\(const\s+\w+\s+of\s+JOB_SOURCES\)[^]*?return\s+s\.source/.test(pred),
-      "lightTokenRefusal returns the FIRST matching entry's vendor. The catalog is not " +
-        "token-unique (139 tokens carry two vendors), and isLight is keyed by token, so " +
-        "the first match is not the set of boards the enrolment would turn light.",
-    ).toBe(false);
   });
 
-  it("REFUSES A WORKABLE TOKEN WHEN RUN, not merely when read", () => {
-    // A guard that only pins spellings goes green over dead code. Lift the two
-    // declarations that make up the gate out of the file, strip their type
-    // annotations, and execute them against a stub catalog.
+  /**
+   * Lift the gate (lightKey, lightBoardRefusal, the class) and isLight out of
+   * the file, strip their type annotations, and execute them against a stub
+   * catalog. A guard that only pins spellings goes green over dead code.
+   */
+  function liftGate(catalog: Array<{ token: string; source: string }>, staticLight: string[] = []) {
     const cls = DECL.exec(CODE)![1];
-    const vendorFn = `const lightTokenRefusal = (token) => ${
-      blockAfter(CODE, "const lightTokenRefusal = (token: string)")
-    };`;
+    const keyFn = /const lightKey = \(s: \{ source: string; token: string \}\) => [^\n]+;/.exec(CODE)?.[0] ?? "";
+    expect(keyFn, "lightKey not found: the light set must be keyed by board").not.toBe("");
+    const isLightFn = /const isLight = \(s: \{ source: string; token: string \}\) => [^\n]+;/.exec(CODE)?.[0] ?? "";
+    expect(isLightFn, "isLight not found in its per-board form").not.toBe("");
+    const vendorFn = `const lightBoardRefusal = (key) => ${blockAfter(CODE, "const lightBoardRefusal = (key: string)")};`;
     const classSrc = `class ${cls} extends Set<string> ${blockAfter(CODE, `class ${cls} extends Set<string>`)}`;
-    const js = `${vendorFn}\n${classSrc}\nreturn new ${cls}();`
+    const js = `${keyFn}\n${vendorFn}\n${classSrc}\nconst DYNAMIC_LIGHT = new ${cls}();\n${isLightFn}\nreturn { gate: DYNAMIC_LIGHT, isLight, lightKey };`
       .replace(/\boverride\s+/g, "")
       .replace(/extends Set<string>/g, "extends Set")
+      .replace(/\(s: \{ source: string; token: string \}\)/g, "(s)")
       .replace(/\(([A-Za-z_$][\w$]*)\s*:\s*[^)]+\)/g, "($1)")
       .replace(/\)\s*:\s*[A-Za-z_$][\w$<>|\s.]*?(=>|\{)/g, ") $1");
-
-    let gate: Set<string>;
     try {
-      gate = new Function("JOB_SOURCES", "LIGHT_CAPABLE_VENDORS", "console", js)(
-        [
-          { token: "acme", source: "greenhouse" },
-          { token: "bigwork", source: "workable" },
-          { token: "lev", source: "lever" },
-          // The collision. Two REAL boards, one token, and the greenhouse one
-          // listed first — exactly `antenna`, `mcs` and `lockwood` in the live
-          // catalog. A first-match lookup answers "greenhouse" and admits.
-          { token: "antenna", source: "greenhouse" },
-          { token: "antenna", source: "workable" },
-        ],
-        new Set(["greenhouse"]),
-        { warn: () => {} },
-      ) as Set<string>;
+      return new Function("JOB_SOURCES", "LIGHT_CAPABLE_VENDORS", "LIGHT_DESC_TOKENS", "console", js)(
+        catalog, new Set(["greenhouse"]), new Set(staticLight), { warn: () => {} },
+      ) as { gate: Set<string>; isLight: (s: { source: string; token: string }) => boolean; lightKey: (s: { source: string; token: string }) => string };
     } catch (e) {
       throw new Error(
         `the light-mode gate could not be executed (${e instanceof Error ? e.message : String(e)}).\n` +
-          `If you reshaped it, update this harness — but KEEP THE PROPERTY: a token whose ` +
-          `vendor is not in LIGHT_CAPABLE_VENDORS must not enter the set.\n--- lifted source ---\n${js}`,
+          `If you reshaped it, update this harness — but KEEP THE PROPERTY: a board whose ` +
+          `vendor is not in LIGHT_CAPABLE_VENDORS must never read as light.\n--- lifted source ---\n${js}`,
       );
     }
+  }
 
-    gate.add("acme");
-    expect(gate.has("acme"), "a greenhouse board has a filler and must still be admitted").toBe(true);
+  it("REFUSES A WORKABLE BOARD WHEN RUN, not merely when read", () => {
+    const { gate } = liftGate([
+      { token: "acme", source: "greenhouse" },
+      { token: "bigwork", source: "workable" },
+      { token: "lev", source: "lever" },
+      { token: "antenna", source: "greenhouse" },
+      { token: "antenna", source: "workable" },
+    ]);
 
-    gate.add("bigwork");
+    gate.add("greenhouse:acme");
+    expect(gate.has("greenhouse:acme"), "a greenhouse board has a filler and must still be admitted").toBe(true);
+
+    gate.add("workable:bigwork");
     expect(
-      gate.has("bigwork"),
-      "a WORKABLE token entered light mode. Its light list form drops details=true, so every " +
+      gate.has("workable:bigwork"),
+      "a WORKABLE board entered light mode. Its light list form drops details=true, so every " +
         "new posting stores description NULL and no filler can put it back — the enrolment " +
         "deletes descriptions rather than deferring them.",
     ).toBe(false);
 
-    gate.add("lev");
-    expect(gate.has("lev"), "lever has no light list form at all").toBe(false);
+    gate.add("lever:lev");
+    expect(gate.has("lever:lev"), "lever has no light list form at all").toBe(false);
 
-    gate.add("not-in-the-catalog");
+    gate.add("greenhouse:not-in-the-catalog");
     expect(
-      gate.has("not-in-the-catalog"),
-      "an unresolvable token was admitted. Unknown must be REFUSED, not assumed: light mode " +
+      gate.has("greenhouse:not-in-the-catalog"),
+      "an unresolvable board was admitted. Unknown must be REFUSED, not assumed: light mode " +
         "is a promise that some filler will put the text back, and we cannot promise that for " +
         "a board whose vendor we can no longer name.",
     ).toBe(false);
 
-    // THE CASE A FIRST-MATCH LOOKUP GETS WRONG IN BOTH DIRECTIONS.
-    // isLight() and listUrl() are keyed by TOKEN, so admitting this token turns
-    // the WORKABLE board light too and deletes its descriptions forever — the
-    // defect this whole file exists for, reached through a legitimate greenhouse
-    // enrolment. Safety is a property of every board carrying the token, not of
-    // whichever one the catalog happens to list first.
-    gate.add("antenna");
+    gate.add("greenhouse:bigwork");
+    expect(gate.has("greenhouse:bigwork"), "a key naming a vendor the token is not carried by is not a board").toBe(false);
+
+    gate.add("acme");
+    expect(gate.has("acme"), "a bare token is not a board key and must not enter the set").toBe(false);
+  });
+
+  it("a shared token: the greenhouse board goes light ALONE, its workable twin never does", () => {
+    // `antenna`, `mcs`, `lockwood` (workable), `lush` (personio), `samsara`
+    // (pinpoint), `pulse` (ashby): 52 greenhouse tokens carry a second vendor.
+    // Keyed by token, admitting the greenhouse board flipped the twin to its
+    // light form too and deleted its descriptions forever, so every shared
+    // token was refused and an oversize greenhouse board on one stayed dark.
+    // Keyed by board, the greenhouse enrolment is admitted and the twin's
+    // isLight stays false.
+    const { gate, isLight } = liftGate([
+      { token: "antenna", source: "greenhouse" },
+      { token: "antenna", source: "workable" },
+    ]);
+    gate.add("greenhouse:antenna");
+    expect(gate.has("greenhouse:antenna"), "the greenhouse board of a shared token was refused light mode").toBe(true);
+    expect(isLight({ source: "greenhouse", token: "antenna" })).toBe(true);
     expect(
-      gate.has("antenna"),
-      "a token shared by a greenhouse board and a WORKABLE board was admitted. isLight is " +
-        "keyed by token, so this enrolment flips the workable board to details=false as " +
-        "well: every new posting on it stores description NULL and no filler can put it back.",
+      isLight({ source: "workable", token: "antenna" }),
+      "the WORKABLE twin reads as light: its list form would drop details=true and no filler can put the text back",
     ).toBe(false);
+    gate.add("workable:antenna");
+    expect(gate.has("workable:antenna")).toBe(false);
   });
 
   it("has exactly one door: nothing outside the two admission functions writes the set or its meta row", () => {
@@ -278,7 +288,7 @@ describe("C — the trigger and the filler read the same predicate, and the rung
   });
 
   it("no second, drifting light-board list survives anywhere in the file", () => {
-    const defLine = "JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s.token))";
+    const defLine = "JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s))";
     const strays = positionsOf("JOB_SOURCES.filter(").filter((p) => {
       const stmt = CODE.slice(p, CODE.indexOf("\n", p) + 1);
       return stmt.includes("isLight(") && !stmt.includes(defLine);

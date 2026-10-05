@@ -1,14 +1,15 @@
-// deploy-stamp: 2026-10-04T18:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { isProCached } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-04.resume-ref";
+const FN_BUILD = "create-product-checkout.2026-10-05.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,8 +107,12 @@ serve(async (req) => {
   // hop, which the caller writes itself and could rotate per request.
   const clientIp = clientAddressOr(req.headers);
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: rlAllowed } = await supabase.rpc("check_rate_limit", { p_function: "create-product-checkout", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
-  if (!rlAllowed) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  // Only an explicit "no" refuses (L6-19): a counter that errored used to tell
+  // a buyer "Too many requests" and lose the sale, while every other checkout
+  // carried on. Logged, not fatal.
+  const { data: rlAllowed, error: rlError } = await supabase.rpc("check_rate_limit", { p_function: "create-product-checkout", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
+  if (rlError) console.error("[CREATE-PRODUCT-CHECKOUT] Rate limit check failed; continuing:", rlError.message);
+  if (rlAllowed === false) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
     // Parse body inline without extra try-catch nesting
@@ -194,13 +199,11 @@ serve(async (req) => {
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
           { auth: { persistSession: false } },
         );
-        const { data: proRow } = await supabase
-          .from("pro_subscribers")
-          .select("status, current_period_end")
-          .eq("email", proEmail)
-          .maybeSingle();
-        const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
-          (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+        // The shared reader, so a $99 agent plan or a comped agent account
+        // (which includes Pro) is not sent to Stripe for an included tool:
+        // this copy read only pro_subscribers (L6-08, decision-free half).
+        // Same statuses and grace as before.
+        const proActive = await isProCached(supabase, proEmail);
         if (proActive) {
           const { data: grant, error: grantError } = await supabase
             .from("pro_grants")
@@ -244,17 +247,22 @@ serve(async (req) => {
       // branch mints NOTHING, so it carries none of the entitlement risk: it
       // only tells the page to ask them to sign in.
       //
-      // It does reveal whether an address is a Pro subscriber, but
-      // check-subscription already answers that unauthenticated, so it opens no
-      // door that is not already open.
+      // It does reveal whether an address is a Pro subscriber (one bit, from
+      // the cache, no Stripe call, under this function's per-address limit).
+      // check-subscription no longer answers that for a stranger (2026-10-05),
+      // so this is now the one place that does.
+      //
+      // OWNER DECISION, NOT TAKEN HERE: keep this bit (a signed-out subscriber
+      // is not charged for an included tool) or drop the branch and send every
+      // visitor with a stored address to sign in first (nobody learns anything,
+      // and a signed-out subscriber who skips sign-in pays). Listed as not
+      // fixed in the payments wave's review report and its commit. Until it is
+      // decided the bit is NO WIDER than it was before that wave: it reads
+      // pro_subscribers only, never the agent table, so a $99 plan or a comped
+      // agent account (no Stripe customer, visible nowhere else) is never
+      // revealed by it. The signed-in branch above reads both.
       try {
-        const { data: proRow } = await supabase
-          .from("pro_subscribers")
-          .select("status, current_period_end")
-          .eq("email", normalizedEmail)
-          .maybeSingle();
-        const proActive = !!proRow && ["active", "trialing"].includes(proRow.status) &&
-          (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+        const proActive = await isProCached(supabase, normalizedEmail, { tables: ["pro_subscribers"] });
         if (proActive) {
           return new Response(
             JSON.stringify({ proRequiresSignIn: true }),

@@ -4,7 +4,7 @@
 // Intake questions and formulas come from the launch-kit playbook; the
 // structure decision happens server-side, deterministically.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Briefcase, Plus, Trash2, Loader2, Check, Copy, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -37,6 +37,44 @@ interface BoostResult {
 
 const DRAFT_KEY = "freelanceBoostIntake";
 
+type Situation = "primary" | "alongside" | "returning";
+type WorkMode = "freelance" | "fractional";
+interface IntakeDraft {
+  projects: ProjectIntake[];
+  targetRole: string;
+  jobPosting: string;
+  employmentTimeline: string;
+  situation: Situation;
+  workMode: WorkMode;
+}
+
+/**
+ * The saved intake, read ONCE, before anything can write over it.
+ *
+ * THE BUG THIS REPLACES (platform sweep L3-16). Restore, persist and generate
+ * were three mount effects, run in that order. Restore only SCHEDULED its
+ * setState calls; persist then wrote the initial EMPTY form over the saved
+ * draft; generate read the now-empty draft and said "Your intake answers
+ * weren't found on this device". The form below then showed only the two buy
+ * buttons, so every Freelance Boost buyer paid, got nothing, and was walked
+ * into paying again. Reading the draft in the state initialisers means the
+ * first render already holds it, and nothing ever writes the empty form.
+ * Guarded: localStorage access throws when site data is blocked.
+ */
+function readDraft(): Partial<IntakeDraft> | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return d && typeof d === "object" ? d as Partial<IntakeDraft> : null;
+  } catch {
+    return null;
+  }
+}
+
+const draftIsComplete = (d: Partial<IntakeDraft> | null): d is IntakeDraft =>
+  !!d && Array.isArray(d.projects) && d.projects.some((p) => p?.deliverable?.trim()) && typeof d.targetRole === "string" && d.targetRole.trim().length > 0;
+
 export default function FreelanceBoost() {
   const [params] = useSearchParams();
   const { purchaseProduct, isLoading: checkoutLoading } = useProductCheckout();
@@ -45,15 +83,17 @@ export default function FreelanceBoost() {
   // session; the intake flow itself needs no resume, so this stays hidden then.
   const [sessionResume] = useState(() => getResumeFromSession());
 
-  const [projects, setProjects] = useState<ProjectIntake[]>([emptyProject()]);
-  const [targetRole, setTargetRole] = useState("");
-  const [jobPosting, setJobPosting] = useState("");
-  const [employmentTimeline, setEmploymentTimeline] = useState("");
-  const [situation, setSituation] = useState<"primary" | "alongside" | "returning">("alongside");
+  const [saved] = useState(readDraft);
+  const [projects, setProjects] = useState<ProjectIntake[]>(() =>
+    Array.isArray(saved?.projects) && saved.projects.length ? saved.projects.map((p) => ({ ...emptyProject(), ...p })) : [emptyProject()]);
+  const [targetRole, setTargetRole] = useState(() => saved?.targetRole ?? "");
+  const [jobPosting, setJobPosting] = useState(() => saved?.jobPosting ?? "");
+  const [employmentTimeline, setEmploymentTimeline] = useState(() => saved?.employmentTimeline ?? "");
+  const [situation, setSituation] = useState<Situation>(() => saved?.situation ?? "alongside");
   // 'fractional' switches generation to executive-portfolio rules: umbrella
   // entry, per-engagement scope, P&L/headcount vocabulary — same product,
   // different translation.
-  const [workMode, setWorkMode] = useState<"freelance" | "fractional">("freelance");
+  const [workMode, setWorkMode] = useState<WorkMode>(() => (saved?.workMode === "fractional" ? "fractional" : "freelance"));
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<BoostResult | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
@@ -61,65 +101,58 @@ export default function FreelanceBoost() {
   const [importing, setImporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Restore draft
+  // Persist draft (the first run writes back exactly what was read).
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const d = JSON.parse(raw);
-        if (Array.isArray(d.projects) && d.projects.length) setProjects(d.projects);
-        if (d.targetRole) setTargetRole(d.targetRole);
-        if (d.jobPosting) setJobPosting(d.jobPosting);
-        if (d.employmentTimeline) setEmploymentTimeline(d.employmentTimeline);
-        if (d.situation) setSituation(d.situation);
-        if (d.workMode) setWorkMode(d.workMode);
-      }
-    } catch { /* fresh start */ }
-  }, []);
-  // Persist draft
-  useEffect(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ projects, targetRole, jobPosting, employmentTimeline, situation, workMode }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ projects, targetRole, jobPosting, employmentTimeline, situation, workMode }));
+    } catch { /* storage blocked: the form still works for this visit */ }
   }, [projects, targetRole, jobPosting, employmentTimeline, situation, workMode]);
 
-  // Returned from checkout with a paid session → generate
+  // Returned from checkout with a paid session (or a Pro grant) → generate.
   const sessionId = params.get("session_id");
+  const generate = async (d: IntakeDraft) => {
+    if (!sessionId) return;
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-freelance-boost", {
+        body: {
+          sessionId,
+          projects: d.projects.filter((p: ProjectIntake) => p.deliverable.trim()),
+          targetRole: d.targetRole,
+          jobPosting: d.jobPosting || undefined,
+          employmentTimeline: d.employmentTimeline || undefined,
+          freelanceWasPrimary: d.situation === "primary",
+          overlapsEmployment: d.situation === "alongside",
+          returningToFullTime: d.situation === "returning",
+          totalClientsOverall: d.projects.length,
+          workMode: d.workMode === "fractional" ? "fractional" : "freelance",
+        },
+      });
+      if (error || !data?.success) throw new Error(data?.error || error?.message || "Generation failed");
+      setResult(data.data as BoostResult);
+    } catch (e) {
+      setGenError(`${e instanceof Error ? e.message : "Generation failed"} — your purchase is safe; press "Generate my section" below to try again.`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const autoRunRef = useRef(false);
   useEffect(() => {
-    if (!sessionId || result || generating) return;
-    const run = async () => {
-      setGenerating(true);
-      setGenError(null);
-      try {
-        const raw = localStorage.getItem(DRAFT_KEY);
-        const d = raw ? JSON.parse(raw) : null;
-        if (!d?.projects?.length || !d?.targetRole) {
-          setGenError("Your intake answers weren't found on this device. Fill in the form below — your purchase is saved to this session link.");
-          return;
-        }
-        const { data, error } = await supabase.functions.invoke("generate-freelance-boost", {
-          body: {
-            sessionId,
-            projects: d.projects.filter((p: ProjectIntake) => p.deliverable.trim()),
-            targetRole: d.targetRole,
-            jobPosting: d.jobPosting || undefined,
-            employmentTimeline: d.employmentTimeline || undefined,
-            freelanceWasPrimary: d.situation === "primary",
-            overlapsEmployment: d.situation === "alongside",
-            returningToFullTime: d.situation === "returning",
-            totalClientsOverall: d.projects.length,
-            workMode: d.workMode === "fractional" ? "fractional" : "freelance",
-          },
-        });
-        if (error || !data?.success) throw new Error(data?.error || error?.message || "Generation failed");
-        setResult(data.data as BoostResult);
-      } catch (e) {
-        setGenError(e instanceof Error ? e.message : "Generation failed — your purchase is safe; reload this page to retry.");
-      } finally {
-        setGenerating(false);
-      }
-    };
-    run();
+    if (!sessionId || autoRunRef.current) return;
+    autoRunRef.current = true;
+    if (draftIsComplete(saved)) {
+      void generate(saved);
+    } else {
+      setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  const generateFromForm = () => {
+    void generate({ projects, targetRole, jobPosting, employmentTimeline, situation, workMode });
+  };
 
   const applyImport = (data: { projects: ProjectIntake[]; suggestedTargetRole: string; employmentTimeline: string; sourceGuess: string }) => {
     if (data.projects.length) {
@@ -433,6 +466,24 @@ export default function FreelanceBoost() {
                 </p>
               </div>
 
+              {sessionId ? (
+                // ALREADY PAID: this link carries the purchase, so the only
+                // action offered is generating it -- never the buy buttons,
+                // whose click would charge the buyer a second time.
+                <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
+                  <p className="font-semibold text-foreground mb-1">3. Generate your experience section — already paid</p>
+                  <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto">
+                    Your purchase is saved to this link. Check your answers above, then generate. You won't be charged again.
+                  </p>
+                  <Button onClick={generateFromForm} disabled={generating || !intakeComplete} className="gap-1.5">
+                    {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Generate my section (already paid)
+                  </Button>
+                  {!intakeComplete && (
+                    <p className="text-[11px] text-muted-foreground mt-2">Add your target role and at least one project (who it was for + what you delivered).</p>
+                  )}
+                </div>
+              ) : (
               <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
                 <p className="font-semibold text-foreground mb-1">3. Get your experience section — one-time, no subscription</p>
                 <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto">
@@ -468,6 +519,7 @@ export default function FreelanceBoost() {
                   honest framing is the whole product. Not happy with the output? We'll regenerate it free.
                 </p>
               </div>
+              )}
             </>
           )}
         </div>

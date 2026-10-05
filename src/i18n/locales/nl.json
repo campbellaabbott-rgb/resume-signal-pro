@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",
-    "metaDescription": "Pakketten vanaf ${{keywordFixPrice}} (Keyword Fix) tot ${{snapshotPrice}} (Career Snapshot). Eenmalige betaling — verlengt nooit automatisch. Cv-herschrijvingen op recruiterniveau.",
+    "metaDescription": "Eenmalige tools van ${{lowPrice}} tot ${{highPrice}} die nooit verlengen, of maandplannen vanaf ${{proPrice}} met alle tools inbegrepen. Cv-herschrijvingen op recruiterniveau.",
     "noSubscriptions": "Eenmalige betalingen • Verlengen nooit automatisch",
     "titlePrefix": "Kies je",
     "titleHighlight": "Cv-boost",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Vereist het uploaden van je cv voor analyse",
     "whyResumeBooster": "Waarom Resume Booster?",
     "questions": "Vragen?",
-    "allProductsOneTime": "Alle producten zijn eenmalige aankopen met directe toegang.",
+    "allProductsOneTime": "Elke tool is een eenmalige aankoop met directe toegang en verlengt nooit. Pro en de Apply Agent zijn maandplannen die je altijd kunt opzeggen.",
     "freeScanLink": "gratis scan",
     "seeScoreFirst": "om eerst je score te zien.",
     "tryFreeScanFirst": "Probeer eerst de gratis scan",
@@ -3463,9 +3463,9 @@
     "returnHome": "Terug naar home"
   },
   "paymentFailed": {
-    "title": "Betaling mislukt",
-    "subtitle": "We konden je betaling niet verwerken. Geen zorgen — er zijn geen kosten in rekening gebracht.",
-    "commonReasons": "Veelvoorkomende redenen:",
+    "title": "Afrekenen geannuleerd",
+    "subtitle": "Er is niets afgeschreven. Ga verder waar je gebleven was wanneer je wilt.",
+    "commonReasons": "Als je kaart is geweigerd, zijn dit de gebruikelijke redenen:",
     "fundsTitle": "Onvoldoende saldo",
     "fundsDesc": "Je kaart of bankrekening heeft mogelijk niet genoeg saldo. Probeer een andere betaalmethode.",
     "declinedTitle": "Kaart geweigerd",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "Controleer of je kaartnummer, vervaldatum en CVV correct zijn ingevoerd.",
     "tryAgain": "Opnieuw proberen",
     "returnHome": "Terug naar home",
-    "contactUs": "Nog steeds problemen? Neem contact op via resumeboostersupp@gmail.com"
+    "contactUs": "Nog steeds problemen? Neem contact op via resumeboostersupp@gmail.com",
+    "contactLead": "Nog steeds problemen? Mail ons op"
   },
   "resumeRecovery": {
     "title": "CV niet gevonden",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Altijd opzegbaar. Onbeheerd versturen draait op dit moment niet, dus sollicitaties worden klaargezet om met één klik te versturen.",
     "checkoutFailed": "Afrekenen kon niet worden gestart — probeer het opnieuw",
     "badgeOffline": "Doet het zware werk van solliciteren",
-    "taglineOffline": "Het vindt de functies en vult de sollicitatie in. U drukt op verzenden."
+    "taglineOffline": "Het vindt de functies en vult de sollicitatie in. U drukt op verzenden.",
+    "signInFirst": "Je logt eerst in — de agent werkt vanuit je account.",
+    "alreadySubscribed": "Je hebt de agent al — we brengen je ernaartoe.",
+    "needsPaymentUpdate": "Er staat een betaling open voor je plan. Werk je kaart bij in plaats van een nieuw plan te starten.",
+    "hasPro": "Je hebt Pro, dat bij de agent inbegrepen is. Zeg Pro eerst op via Abonnement beheren en start dan de agent — zo betaal je nooit voor beide."
   },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",

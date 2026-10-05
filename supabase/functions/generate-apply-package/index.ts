@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -7,10 +7,14 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
+import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { isProCached } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-apply-package.2026-10-01.1";
+const FN_BUILD = "generate-apply-package.2026-10-05.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,23 +25,22 @@ const corsHeaders = {
 const RATE_LIMIT = 40; // per IP per day — raised from 15 so the account batch-prep co-pilot has real room (entitlement-gated, so only paying users reach this counter)
 const RATE_WINDOW_MINUTES = 1440;
 
-const getClientIp = (req: Request): string =>
-  req.headers.get('cf-connecting-ip') ||
-  req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-  req.headers.get('x-real-ip') ||
-  'unknown';
+// The platform's word for the caller's address, never the first forwarded
+// hop, which a caller writes itself.
+const getClientIp = (req: Request): string => clientAddressOr(req.headers);
 
-const MAX_RETRIES = 1;
-const REQUEST_TIMEOUT_MS = 55000;
-const RETRY_DELAY_MS = 1000;
-
+// THE SHARED FALLBACK CHAIN, NOT A HAND-COPIED ONE (platform sweep L5-16).
+// The copy that lived here returned only on success or a non-429/402 status
+// under 500, so a 429 or a 402 was retried on every model (six calls) and then
+// thrown, and the caller got a non-retryable 500 naming the model -- the
+// "busy, try again" and "credits" answers below never ran. The shared chain
+// advances past a 429 to the next model, returns the last 429 when every model
+// is busy, and returns a 402 at once. Same models, same order as before.
 const MODEL_FALLBACK_ORDER = [
   'google/gemini-2.5-pro',
   'openai/gpt-5',
   'openai/gpt-5-mini',
 ];
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 interface AIRequestOptions {
   messages: Array<{ role: string; content: string }>;
@@ -45,49 +48,26 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
-async function callAIWithFallback(
+function callAIWithFallback(
   apiKey: string,
   options: AIRequestOptions,
   context: string = 'AI call'
 ): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
-
-  for (const model of MODEL_FALLBACK_ORDER) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ model, ...options }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok || (response.status !== 429 && response.status !== 402 && response.status < 500)) {
-          return { response, modelUsed: model };
-        }
-
-        lastError = new Error(`${context} failed with status ${response.status} on model ${model}`);
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        console.error(`[GENERATE-APPLY-PACKAGE] ${context} error on model ${model}, attempt ${attempt}:`, lastError.message);
-      }
-
-      if (attempt < MAX_RETRIES) {
-        await sleep(RETRY_DELAY_MS);
-      }
-    }
-  }
-
-  throw lastError || new Error('All AI models failed');
+  return callAIWithModelFallback(apiKey, {
+    messages: options.messages,
+    tools: options.tools,
+    toolChoice: options.tool_choice,
+    models: MODEL_FALLBACK_ORDER,
+    context: `GENERATE-APPLY-PACKAGE ${context}`,
+  });
 }
+
+/** The statuses this path counts as Pro (see the JWT branch of the gate). */
+const PRO_ACTIVE_ONLY: ReadonlySet<string> = new Set(["active"]);
+
+/** An aborted or timed-out model call: the one failure a retry may fix. */
+const isTimeout = (error: unknown): boolean =>
+  error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError' || /abort|timed? ?out/i.test(error.message));
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -166,7 +146,8 @@ serve(async (req) => {
           const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
           const session = await stripe.checkout.sessions.retrieve(sessionId);
           const productType = String(session.metadata?.product_type ?? "");
-          entitled = session.payment_status === "paid" && APPLY_KIT_PRODUCT_TYPES.includes(productType);
+          // 'paid', or a $0 session a 100%-off code completed (L6-10).
+          entitled = checkoutSessionSettled(session) && APPLY_KIT_PRODUCT_TYPES.includes(productType);
           if (!entitled) {
             console.warn(`[GENERATE-APPLY-PACKAGE] session ${sessionId} does not include the kit: ${session.payment_status} / ${productType || "no product"}`);
           }
@@ -193,12 +174,13 @@ serve(async (req) => {
           const { data: { user } } = await authed.auth.getUser();
           const admin = user?.email ? getServiceClient() : null;
           if (user?.email && admin) {
-            const { data: sub } = await admin
-              .from("pro_subscribers")
-              .select("status, current_period_end")
-              .eq("email", user.email)
-              .maybeSingle();
-            entitled = sub?.status === "active" && (!sub.current_period_end || new Date(sub.current_period_end).getTime() > Date.now());
+            // BOTH caches, through the shared reader: a $99 agent plan (or a
+            // comped one) includes Pro, and this path read only
+            // pro_subscribers, so an agent subscriber was refused batch prep
+            // (L6-08). The rule this path applies is unchanged -- `active`
+            // only, no grace past the period end; whether a trial counts is
+            // an open owner decision (L6-08 / L6-29).
+            entitled = await isProCached(admin, user.email, { statuses: PRO_ACTIVE_ONLY, graceMs: 0 });
           }
         } catch (e) {
           console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
@@ -452,15 +434,18 @@ Prepare the tailored application package.`;
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[GENERATE-APPLY-PACKAGE] Error:", errorMessage);
 
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    // An aborted call reads "The signal has been aborted", which never
+    // contained "timeout", so this retryable answer never fired (L5-16).
+    if (isTimeout(error)) {
       return new Response(
         JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
         { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // No internal message (a model name, a status) reaches the buyer.
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "Failed to generate application package. Please try again.", retryable: true }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

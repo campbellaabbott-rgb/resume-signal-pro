@@ -141,12 +141,13 @@ const indexDesc = (vendor: "lever" | "ashby", j: any): string => {
 describe("(a) the light set holds the population that needs it", () => {
   const cap = num("AUTO_LIGHT_CAP");
   const vendors = [...CODE.match(/const LIGHT_CAPABLE_VENDORS = new Set\(\[([^\]]*)\]\)/)![1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
-  // The set's own admission rule (lightTokenRefusal): every board carrying the
-  // token must be light-capable, or the token is refused and holds no slot.
-  const refused = (token: string) => {
-    const vs = JOB_SOURCES.filter((s) => s.token === token).map((s) => s.source);
-    return vs.length === 0 || vs.some((v) => !vendors.includes(v));
-  };
+  // The set's own admission rule (lightBoardRefusal, since .89 keyed by
+  // source:token): the census boards are greenhouse boards, so a board is
+  // refused only when the catalog holds no greenhouse board on that token or
+  // greenhouse stops being light-capable. A twin on another vendor no longer
+  // matters: it keeps its own key and stays out of light mode.
+  const refused = (token: string) =>
+    !vendors.includes("greenhouse") || !JOB_SOURCES.some((s) => s.token === token && s.source === "greenhouse");
 
   it("both writers persist the newest AUTO_LIGHT_CAP entries — the shape the replay models", () => {
     const writes = CODE.match(/tokens: \[\.\.\.DYNAMIC_LIGHT\]\.slice\(-AUTO_LIGHT_CAP\)/g) ?? [];
@@ -179,12 +180,13 @@ describe("(a) the light set holds the population that needs it", () => {
     expect(cap, "four times the measured population, so the next census does not refill it").toBeGreaterThanOrEqual(4 * boards.length);
   });
 
-  it("the boards the set refuses are the named shared-token follow-up, and no others", () => {
+  it("the set refuses none of the census boards: the shared-token follow-up is done (.89)", () => {
+    // lush, samsara, pulse and helsing share their token with personio,
+    // pinpoint or ashby. Under a token key going light would have stripped
+    // the twin's descriptions, so they were refused and stayed dark; keyed by
+    // board, the greenhouse board goes light alone.
     const r = population.boards.map((b) => b.token).filter(refused);
-    // greenhouse tokens shared with personio, pinpoint or ashby: light mode is
-    // keyed by token, so going light would strip the other vendor's
-    // descriptions. Out of scope for this fix; listed for its follow-up.
-    for (const t of r) expect(["lush", "samsara", "pulse", "helsing"], `${t} is refused light mode and stays dark`).toContain(t);
+    expect(r, "census boards refused light mode, so they stay over the byte bound").toEqual([]);
   });
 
   it("saturation is visible: slice_stats carries the set's size beside its cap", () => {

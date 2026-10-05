@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-04T15:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -20,7 +20,14 @@ import {
   PASS_SESSION_HOURS,
   PASS_SHELF_LIFE_DAYS,
 } from "../_shared/pass.ts";
-import { passSessionSettled } from "../_shared/pass-settlement.ts";
+// One settlement rule for every one-time product: 'paid', or a $0 payment-mode
+// session a 100%-off code completed (the owner's comps and e2e runs).
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+// The Pro cache, written when a Pro payment lands and on every subscription
+// change -- nothing wrote it before, so a new subscriber read as inactive.
+import { checkProByEmail } from "../_shared/pro.ts";
+// Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
+import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
 // webhook only has to recognise it, by the same constant analyze-resume gates on.
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
@@ -31,7 +38,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-04.no-resume-in-stripe";
+const FN_BUILD = "stripe-webhook.2026-10-05.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -74,6 +81,8 @@ function sendFailureAlertBackground(details: {
   failureMessage?: string | null;
   customerEmail?: string | null;
   paymentIntentId: string;
+  /** Subject line lead; a refund is not a failed payment. */
+  subjectLead?: string;
 }) {
   EdgeRuntime.waitUntil((async () => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -82,21 +91,25 @@ function sendFailureAlertBackground(details: {
 
     const resend = new Resend(resendKey);
     const formattedAmount = (details.amount / 100).toFixed(2);
-    
+    // Every value below is Stripe's copy of something a buyer typed (a billing
+    // address, a decline message), so it is printed as text, never markup.
+    const esc = (v: string | null | undefined) =>
+      String(v ?? "N/A").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]!));
+
     try {
       await resend.emails.send({
         from: "Resume Booster <alerts@resend.dev>",
         to: [adminEmail],
-        subject: `⚠️ Payment Failed - $${formattedAmount} ${details.currency.toUpperCase()}`,
+        subject: `⚠️ ${details.subjectLead ?? "Payment Failed"} - $${formattedAmount} ${details.currency.toUpperCase()}`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #dc2626;">Payment Failure Alert</h2>
-            <p><strong>${details.type}</strong></p>
-            <p>Amount: $${formattedAmount} ${details.currency.toUpperCase()}</p>
-            <p>Customer: ${details.customerEmail || 'N/A'}</p>
-            <p>Code: ${details.failureCode || 'N/A'}</p>
-            <p>Message: ${details.failureMessage || 'N/A'}</p>
-            <a href="https://dashboard.stripe.com/payments/${details.paymentIntentId}">View in Stripe</a>
+            <h2 style="color: #dc2626;">${esc(details.subjectLead ?? "Payment Failure")} Alert</h2>
+            <p><strong>${esc(details.type)}</strong></p>
+            <p>Amount: $${formattedAmount} ${esc(details.currency.toUpperCase())}</p>
+            <p>Customer: ${esc(details.customerEmail || null)}</p>
+            <p>Code: ${esc(details.failureCode || null)}</p>
+            <p>Message: ${esc(details.failureMessage || null)}</p>
+            <a href="https://dashboard.stripe.com/payments/${encodeURIComponent(details.paymentIntentId)}">View in Stripe</a>
           </div>
         `,
       });
@@ -159,6 +172,78 @@ async function refreshAgentEntitlement(
       eventType, error: String(err),
     });
   }
+}
+
+/**
+ * Re-read Stripe and rewrite the PRO cache (pro_subscribers) for one address.
+ *
+ * NOTHING WROTE THIS TABLE ON PAYMENT OR RENEWAL (platform sweep L6-28,
+ * register 1.20). The only writers were check-subscription and the checkout's
+ * own pre-check, which cached a first-time buyer as inactive minutes before
+ * they paid; create-product-checkout reads the table to decide whether a tool
+ * is included, so a new $45 subscriber was charged for included tools until a
+ * page view happened to refresh it. Now the checkout completion and every
+ * subscription lifecycle event refresh it, whatever the plan's price (the
+ * Pro check counts every live subscription, the agent's included, which is
+ * what check-subscription has always answered).
+ *
+ * Non-fatal for the same reason as the agent refresh above.
+ */
+async function refreshProEntitlement(
+  stripe: Stripe,
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  knownEmail: string | null,
+  customerRef: string | { id?: string } | null,
+  eventType: string,
+): Promise<void> {
+  try {
+    let email = knownEmail ?? "";
+    if (!email) {
+      const customerId = typeof customerRef === "string" ? customerRef : customerRef?.id;
+      if (!customerId) return;
+      const customer = await stripe.customers.retrieve(customerId);
+      if ((customer as { deleted?: boolean }).deleted) return;
+      email = (customer as Stripe.Customer).email ?? "";
+    }
+    if (!email) return;
+    const refreshed = await checkProByEmail(stripe, supabase, email);
+    logStep("Pro entitlement refreshed", { eventType, active: refreshed.active, status: refreshed.status });
+  } catch (err) {
+    logStep("Pro entitlement refresh failed (check-subscription will repair)", { eventType, error: String(err) });
+  }
+}
+
+/**
+ * What a delivery row starts as, by product, so the sweeper and the delivery
+ * monitor only ever see rows something can still deliver (platform sweep
+ * L6-27, register 2.16).
+ *
+ *   - Subscriptions are entitlements: the subscription IS the delivery, and
+ *     the row is written delivered. A $45 Pro session used to fall through to
+ *     "No resume session ID" and be stamped generation_failed by the sweeper,
+ *     a guaranteed false failure on every sale.
+ *   - The full analysis (analyze-resume, on the success page) and the two
+ *     Freelance Boost tiers (generate-freelance-boost, against an intake the
+ *     buyer completes after paying) are delivered elsewhere, and their
+ *     deliverer closes the row; nothing the sweeper can do helps them, so the
+ *     row is never scheduled (next_retry_at infinity). Not max_retries 0,
+ *     which product_delivery_health would count as an exhausted failure even
+ *     after the row is closed. Left open past two hours it still reads as a
+ *     stuck delivery there -- the signal a human should see.
+ *   - Scan products record how many credits were bought, so a retry re-credits
+ *     what was paid for, not a hard-coded ten (L6-13).
+ */
+const ENTITLEMENT_PRODUCT_TYPES = ["pro_subscription", "apply_agent"];
+const DELIVERED_ELSEWHERE_PRODUCT_TYPES = [FULL_ANALYSIS_PRODUCT_TYPE, "freelance_boost", "freelance_transition_pro"];
+const SCAN_CREDIT_PRODUCT_TYPES = ["scan_pack", "scan_credits", "career_bundle"];
+
+/** Credits a scan-product session bought, capped at 500 as add_scan_credits always has been here. */
+function creditsBoughtBy(session: Stripe.Checkout.Session): number {
+  const productType = session.metadata?.product_type;
+  const fallback = productType === "career_bundle" ? 75 : 10;
+  const parsed = parseInt(session.metadata?.credits || "", 10);
+  return Math.min(Number.isFinite(parsed) && parsed > 0 ? parsed : fallback, 500);
 }
 
 /**
@@ -239,7 +324,7 @@ async function triggerProductDelivery(
   const sessionId = session.id;
   const productType = session.metadata?.product_type;
   const productName = session.metadata?.product_name;
-  const customerEmail = session.customer_email || session.metadata?.customer_email;
+  const customerEmail = buyerEmailOf(session);
   // Looked up by the Stripe session id in checkout_resume_refs; the
   // temporary-store id is no longer written to Stripe (it is a bearer key to
   // the text). Sessions minted before that change still carry it in metadata.
@@ -267,6 +352,9 @@ async function triggerProductDelivery(
     return { alreadyProcessed: true };
   }
 
+  const isScanProduct = SCAN_CREDIT_PRODUCT_TYPES.includes(productType ?? '');
+  const isEntitlement = ENTITLEMENT_PRODUCT_TYPES.includes(productType ?? '');
+  const deliveredAt = new Date().toISOString();
   const deliveryRecord = await supabase.from('product_deliveries').insert({
     stripe_session_id: sessionId,
     product_type: productType || 'unknown',
@@ -274,21 +362,17 @@ async function triggerProductDelivery(
     customer_email: customerEmail,
     status: 'payment_received',
     amount_cents: session.amount_total,
-    payment_completed_at: new Date().toISOString(),
-    // Nothing the retry sweeper can do helps a full analysis (its résumé never
-    // reaches this webhook), so its row is never scheduled for a retry: the
-    // sweeper selects only rows whose next_retry_at has passed. Not by
-    // max_retries 0, which product_delivery_health would count as an exhausted
-    // failure even after analyze-resume closes the row as delivered. Left open
-    // past two hours it is a stuck delivery there -- the signal a human should
-    // see for a buyer who paid and never got the analysis.
-    ...(productType === FULL_ANALYSIS_PRODUCT_TYPE ? { next_retry_at: 'infinity' } : {}),
+    payment_completed_at: deliveredAt,
+    // See ENTITLEMENT_PRODUCT_TYPES / DELIVERED_ELSEWHERE_PRODUCT_TYPES above.
+    ...(DELIVERED_ELSEWHERE_PRODUCT_TYPES.includes(productType ?? '') ? { next_retry_at: 'infinity' } : {}),
+    ...(isEntitlement ? { status: 'delivered', generation_success: true, content_generation_completed_at: deliveredAt } : {}),
     metadata: {
       resume_session_id: resumeSessionId,
       job_title: session.metadata?.job_title,
       job_company: session.metadata?.job_company,
       referral_code: session.metadata?.referral_code,
-      language: session.metadata?.language
+      language: session.metadata?.language,
+      ...(isScanProduct ? { credits: creditsBoughtBy(session) } : {}),
     }
   }).select().single();
 
@@ -297,26 +381,30 @@ async function triggerProductDelivery(
     // Continue processing — payment was received, delivery tracking failure shouldn't block fulfillment
   }
 
+  // A subscription is its own delivery: the row above is already closed, and
+  // the entitlement caches are refreshed by the handler before this runs.
+  if (isEntitlement) {
+    logStep("Subscription — the plan is the delivery; nothing to generate", { productType });
+    return { success: true, productType, deferred: 'entitlement' };
+  }
+
   // Handle scan packs - just add credits
   if (productType === 'scan_pack' || productType === 'scan_credits' || productType === 'career_bundle') {
     if (customerEmail) {
-      let credits = parseInt(session.metadata?.credits || "10");
-      if (productType === 'career_bundle') credits = parseInt(session.metadata?.credits || "75");
-      
-      const clippedCredits = Math.min(credits, 500);
-      if (clippedCredits !== credits) logStep("Credit cap applied", { intended: credits, applied: clippedCredits });
+      const credits = creditsBoughtBy(session);
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
-        p_credits: clippedCredits
+        p_credits: credits
       });
 
       if (creditError) {
         logStep("Error adding credits", { error: creditError.message });
       } else {
         logStep("Credits added", { credits, email: customerEmail });
-        
-        // Background: save to purchased_content and update delivery
-        EdgeRuntime.waitUntil(Promise.all([
+        // AWAITED, not left in the background: the sweeper re-credits a row
+        // it finds undelivered, so the record that these credits landed must
+        // exist before this returns (L6-13).
+        const [saved, closed] = await Promise.all([
           supabase.rpc('save_purchased_content', {
             p_stripe_session_id: sessionId,
             p_customer_email: customerEmail,
@@ -327,7 +415,10 @@ async function triggerProductDelivery(
           supabase.from('product_deliveries')
             .update({ status: 'delivered', generation_success: true })
             .eq('id', deliveryRecord.data?.id)
-        ]).catch(err => logStep("Scan pack delivery tracking failed", { error: String(err) })));
+        ]);
+        if (saved.error || closed.error) {
+          logStep("Scan pack delivery tracking failed", { error: (saved.error ?? closed.error)?.message ?? 'unknown' });
+        }
       }
     }
     return { success: true, productType };
@@ -525,8 +616,13 @@ async function triggerProductDelivery(
         throw new Error(`Generation failed: ${response.status}`);
       }
 
-      const result = await response.json();
-      generatedContent = result.data;
+      // EVERY GENERATOR ANSWERS {success, data}. generate-ats-defense answered
+      // {report} alone, so this read undefined, saved nothing, emailed nothing
+      // and recorded a failure with no message, on every $15 sale (L6-02). A
+      // 200 with no payload is a failure with a reason, never a silent skip.
+      const result = await response.json().catch(() => null);
+      generatedContent = result?.data ?? null;
+      if (!generatedContent) throw new Error(`${endpoint} answered 200 with no content`);
       logStep("Content generated", { productType });
     }
   } catch (error) {
@@ -541,27 +637,43 @@ async function triggerProductDelivery(
                         generatedContent.modelsUsed?.coverLetter || 
                         generatedContent.modelUsed || null;
 
-    // Save content + update delivery in parallel
-    await Promise.all([
-      supabase.rpc('save_purchased_content', {
-        p_stripe_session_id: sessionId,
-        p_customer_email: customerEmail || '',
-        p_product_type: productType,
-        p_product_name: productName,
-        p_generated_content: generatedContent
-      }),
-      supabase.from('product_deliveries').update({
-        status: 'content_generated',
-        generation_success: true,
-        content_generation_completed_at: new Date().toISOString(),
-        generation_duration_ms: generationDuration,
-        ai_model_used: aiModelUsed
-      }).eq('id', deliveryRecord.data?.id)
-    ]);
+    // The stored copy is what recovery and the email retry read, so it is
+    // written first and its failure is a failed delivery (the sweeper
+    // regenerates and saves again), never a row marked generated with nothing
+    // behind it.
+    const { error: saveError } = await supabase.rpc('save_purchased_content', {
+      p_stripe_session_id: sessionId,
+      p_customer_email: customerEmail || '',
+      p_product_type: productType,
+      p_product_name: productName,
+      p_generated_content: generatedContent
+    });
+    if (saveError) {
+      logStep("Generated content could not be saved", { error: saveError.message });
+      EdgeRuntime.waitUntil(Promise.resolve(supabase.rpc('update_delivery_retry', {
+        p_id: deliveryRecord.data?.id,
+        p_status: 'generation_failed',
+        p_error: `save_purchased_content: ${saveError.message}`.slice(0, 500),
+        p_increment_retry: true
+      })));
+      return { success: false, error: 'content not saved' };
+    }
+    await supabase.from('product_deliveries').update({
+      status: 'content_generated',
+      generation_success: true,
+      content_generation_completed_at: new Date().toISOString(),
+      generation_duration_ms: generationDuration,
+      ai_model_used: aiModelUsed
+    }).eq('id', deliveryRecord.data?.id);
 
-    // Send email (background)
+    // Send email (background). A send that fails is RECORDED as email_failed
+    // with a retry scheduled, so retry-failed-deliveries resends it from the
+    // stored copy. It used to have no else: the row stayed content_generated,
+    // which the sweeper never selects, and the buyer never got the mail that
+    // recover-purchase depends on (L6-14).
     if (customerEmail) {
       EdgeRuntime.waitUntil((async () => {
+        let failure: string | null = null;
         try {
           // The service-role key: send-product-email is internal and refuses
           // the publishable key, which every visitor holds.
@@ -580,9 +692,20 @@ async function triggerProductDelivery(
               email_success: true,
               email_sent_at: new Date().toISOString()
             }).eq('id', deliveryRecord.data?.id);
+          } else {
+            failure = `send-product-email answered ${emailResponse.status}`;
           }
         } catch (e) {
-          console.error("[STRIPE-WEBHOOK] Email send failed:", e);
+          failure = `send-product-email threw: ${String(e).slice(0, 200)}`;
+        }
+        if (failure) {
+          console.error("[STRIPE-WEBHOOK] Email send failed:", failure);
+          await supabase.rpc('update_delivery_retry', {
+            p_id: deliveryRecord.data?.id,
+            p_status: 'email_failed',
+            p_error: failure,
+            p_increment_retry: true
+          });
         }
       })());
     }
@@ -710,10 +833,24 @@ serve(async (req) => {
           logStep("Agent entitlement seeding failed (Account page will repair)", { error: String(err) });
         }
 
-        // The paid gate, widened for exactly one shape: a pass whose whole price
-        // a promotion code covered (payment mode, zero total) — settled with
-        // nothing owed, judged by the shared predicate the success page uses.
-        if (session.payment_status === 'paid' || passSessionSettled(session)) {
+        // THE PRO CACHE, at the event that means "they subscribed" (L6-28).
+        // Before the paid gate for the same reason as the agent seeding: a
+        // subscription's first session may be $0 (a trial, a 100%-off code)
+        // and is a real entitlement either way. Non-fatal.
+        if (session.mode === "subscription") {
+          await refreshProEntitlement(
+            stripe, supabase,
+            buyerEmailOf(session),
+            session.customer as string | { id?: string } | null,
+            event.type,
+          );
+        }
+
+        // The paid gate: 'paid', or a payment-mode session a promotion code
+        // covered in full (zero total, nothing owed) — the owner's comps and
+        // end-to-end runs, for every one-time product, not only the pass
+        // (L6-10). Judged by the shared predicate the success pages use.
+        if (checkoutSessionSettled(session)) {
           // GRANT THE APPLY AGENT ENTITLEMENT HERE, at the event that means
           // "they paid". Nothing else did.
           //
@@ -923,10 +1060,18 @@ serve(async (req) => {
       case "invoice.payment_succeeded":
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
+        // Every subscription's renewal or decline can change the Pro answer
+        // (a past_due Pro plan must read as owing, a renewed one as live).
+        await refreshProEntitlement(
+          stripe, supabase,
+          invoice.customer_email ?? null,
+          invoice.customer as string | { id?: string } | null,
+          event.type,
+        );
         // Filter to agent invoices so an unrelated subscription's renewal does
         // not spend two Stripe calls recomputing an answer that cannot change.
         if (!isAgentPriced(invoice.lines?.data as ReadonlyArray<{ price?: unknown }> | undefined)) {
-          logStep("Invoice ignored (not the agent price)", { type: event.type, invoice: invoice.id });
+          logStep("Invoice ignored for the agent cache (not the agent price)", { type: event.type, invoice: invoice.id });
           break;
         }
         await refreshAgentEntitlement(
@@ -941,17 +1086,54 @@ serve(async (req) => {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
+        // A subscription event carries no email, only a customer reference.
+        await refreshProEntitlement(
+          stripe, supabase,
+          null,
+          sub.customer as string | { id?: string } | null,
+          event.type,
+        );
         if (!isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined)) {
-          logStep("Subscription ignored (not the agent price)", { type: event.type, sub: sub.id });
+          logStep("Subscription ignored for the agent cache (not the agent price)", { type: event.type, sub: sub.id });
           break;
         }
-        // A subscription event carries no email, only a customer reference.
         await refreshAgentEntitlement(
           stripe, supabase,
           null,
           sub.customer as string | { id?: string } | null,
           event.type,
         );
+        break;
+      }
+
+      // REFUNDS AND DISPUTES ARE SEEN, NOT YET ACTED ON (L6-18).
+      //
+      // They used to fall into "Unhandled event" and leave no trace a person
+      // would read. What a refund should revoke (close a pass, claw back
+      // unspent credits, end a grant) is an open owner decision, so this only
+      // tells the owner, with the payment to look at, and changes no
+      // entitlement. Stripe sends these only once the endpoint is subscribed
+      // to charge.refunded and charge.dispute.created (an owner action).
+      case "charge.refunded":
+      case "charge.dispute.created": {
+        const obj = event.data.object as { id: string; amount?: number; amount_refunded?: number; currency?: string; payment_intent?: string | { id?: string } | null; reason?: string | null; billing_details?: { email?: string | null } | null };
+        const intent = typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id ?? obj.id;
+        const isRefund = event.type === "charge.refunded";
+        logStep(isRefund ? "Charge refunded (no entitlement changed)" : "Dispute opened (no entitlement changed)", {
+          id: obj.id, paymentIntent: intent, amount: isRefund ? obj.amount_refunded : obj.amount,
+        });
+        sendFailureAlertBackground({
+          type: isRefund
+            ? "Refund issued: entitlements are NOT revoked automatically; review the purchase"
+            : `Dispute opened${obj.reason ? ` (${obj.reason})` : ""}: entitlements are NOT revoked automatically`,
+          amount: (isRefund ? obj.amount_refunded : obj.amount) ?? 0,
+          currency: obj.currency ?? "usd",
+          failureCode: event.type,
+          failureMessage: null,
+          customerEmail: obj.billing_details?.email ?? null,
+          paymentIntentId: intent,
+          subjectLead: isRefund ? "Refund issued" : "Dispute opened",
+        });
         break;
       }
 

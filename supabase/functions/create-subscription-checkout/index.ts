@@ -1,58 +1,89 @@
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-05T11:00Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
 // all current and future consumer tools included. Uses inline recurring
 // price_data so no Price object needs to exist in the Stripe dashboard.
+//
+// SIGNED-IN CALLERS ONLY, for their own address (2026-10-04 completeness
+// review). It used to take any address from the body and answer
+// {alreadySubscribed: true} when that address paid us -- a subscription
+// oracle for strangers that spent unmetered Stripe calls on every guess. The
+// double-billing guard needs that lookup, and a lookup may only be answered
+// about the caller, so the caller must be known: the page sends a signed-out
+// visitor to sign in first (the success page, /account, needs an account
+// anyway, and so does cancelling). Rate-limited per network address.
+//
+// THE GUARD (platform sweep L6-06): a plan that owes money (past_due,
+// unpaid...) answers needsPaymentUpdate -- the fix is the card, not a second
+// subscription that bills beside the first once Stripe's retry succeeds. A
+// new subscription is billed to the Stripe customer the address already has,
+// so the portal can see everything it pays for (L6-05).
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkProByEmail, PRO_PRICE_CENTS, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
+import { PRO_PRICE_CENTS, PRO_PRODUCT_NAME, subscriptionStandingByEmail } from "../_shared/pro.ts";
+import { manualAgentGrant } from "../_shared/agent.ts";
+import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.ts";
+import { signedInEmail } from "../_shared/signed-in-email.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-09-27.2";
+const FN_BUILD = "create-subscription-checkout.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
 
-    const body = await req.json().catch(() => ({}));
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return new Response(JSON.stringify({ error: "A valid email is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Fail open on a counter error (a checkout is revenue); only an explicit
+    // "no" refuses.
+    const { data: allowed } = await supabase.rpc("check_rate_limit", {
+      p_function: "create-subscription-checkout",
+      p_ip: clientAddressOr(req.headers),
+      p_max_requests: 20,
+      p_window_minutes: 60,
+    });
+    if (allowed === false) return json({ error: "Too many requests. Please try again later." }, 429);
 
-    // Don't double-bill someone who already has an active subscription.
-    const existing = await checkProByEmail(stripe, supabase, email);
-    if (existing.active) {
-      return new Response(JSON.stringify({ alreadySubscribed: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const email = await signedInEmail(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    if (!email) {
+      return json({ error: "Sign in to subscribe, so the plan is attached to your account.", signInRequired: true }, 401);
     }
+    const body = await req.json().catch(() => ({}));
+
+    // An account granted the agent by hand already has Pro (the agent includes it).
+    if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+
+    // Don't double-bill: a live plan, or one that owes money, is answered
+    // before Stripe is asked for anything new.
+    const standing = await subscriptionStandingByEmail(stripe, email);
+    const verdict = checkoutVerdict(standing, "pro");
+    if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 
     const origin = req.headers.get("origin") || "https://resumebooster.work";
     const session = await stripe.checkout.sessions.create({
-      customer_email: email,
+      ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
       mode: "subscription",
       line_items: [
         {
@@ -90,15 +121,10 @@ serve(async (req) => {
       metadata: { planCents: PRO_PRICE_CENTS },
     });
 
-    console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] Session ${session.id} created for ${email}`);
-    return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] Session ${session.id} created`);
+    return json({ url: session.url, sessionId: session.id });
   } catch (error) {
     console.error("[CREATE-SUBSCRIPTION-CHECKOUT] Error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Could not start checkout. Please try again." }, 500);
   }
 });

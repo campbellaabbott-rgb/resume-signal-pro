@@ -1,12 +1,33 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-05T11:00Z
+//
+// The owner's support tool (x-admin-key): regenerate a customer's Premium
+// Package and email it to them. Platform sweep L6-23 found it would quietly
+// deliver the wrong thing: with no job title it targeted "Investment Banking
+// Analyst at Top Investment Bank" whoever the customer was; it saved the copy
+// as product type 'premiumPackage', which recovery (keyed on
+// 'premium_package') never matches; the copy's session id was never returned,
+// so nobody could hand it to the customer; and the email linked the old
+// lovable.app host. A job title is now required, the copy is saved under the
+// type recovery reads, its id is returned to the owner, and the link is
+// resumebooster.work.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { keyMatches } from "../_shared/admin-key.ts";
+
+// Provable from outside without the key: every response, the preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "admin-regenerate-delivery.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
+
+/** The product type recovery and the success page read for this product. */
+const PREMIUM_PACKAGE_PRODUCT_TYPE = "premium_package";
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[ADMIN-REGENERATE] ${step}`, details ? JSON.stringify(details) : '');
@@ -80,7 +101,7 @@ async function fetchWithRetry(
   throw lastError || new Error('Max retries exceeded');
 }
 
-async function processRegeneration(email: string, resumeText: string, jobTitle: string, jobCompany: string, jobDescription?: string) {
+async function processRegeneration(newSessionId: string, email: string, resumeText: string, jobTitle: string, jobCompany: string, jobDescription?: string) {
   try {
     logStep("Background task started", { email, jobTitle, jobCompany });
 
@@ -145,10 +166,10 @@ Respond with valid JSON:
 ORIGINAL RESUME:
 ${resumeText}
 
-TARGET JOB TITLE: ${jobTitle || 'Investment Banking Analyst'}
-TARGET COMPANY: ${jobCompany || 'Top Investment Bank'}
+TARGET JOB TITLE: ${jobTitle}
+TARGET COMPANY: ${jobCompany || 'Not specified'}
 
-${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : 'Target investment banking analyst roles at top-tier financial institutions.'}`;
+${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : 'No job description was provided: tailor to the target job title above, using only what the resume supports.'}`;
 
     const resumeResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -232,8 +253,8 @@ Respond with JSON:
 RESUME:
 ${resumeResult.rewrittenResume}
 
-TARGET ROLE: ${jobTitle || 'Investment Banking Analyst'}
-TARGET COMPANY: ${jobCompany || 'Top Investment Bank'}
+TARGET ROLE: ${jobTitle}
+TARGET COMPANY: ${jobCompany || 'Not specified'}
 
 ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
 
@@ -281,7 +302,7 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
         openingLine: "",
         keySkillsHighlighted: [],
         personalizedElements: [],
-        suggestedSubjectLine: `Application for ${jobTitle || 'Investment Banking Analyst'}`
+        suggestedSubjectLine: `Application for ${jobTitle}`
       };
     }
 
@@ -299,13 +320,11 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
     // Step 3: Save to database
     logStep("Saving to database");
     
-    const newSessionId = `manual_regen_${Date.now()}`;
-    
     const { error: insertError } = await supabase
       .from('purchased_content')
       .insert({
         customer_email: email,
-        product_type: 'premiumPackage',
+        product_type: PREMIUM_PACKAGE_PRODUCT_TYPE,
         product_name: 'Premium Package (GPT-5 Regenerated)',
         stripe_session_id: newSessionId,
         generated_content: generatedContent,
@@ -351,10 +370,9 @@ serve(async (req) => {
   }
 
   try {
-    // Require admin API key for this privileged endpoint
-    const adminKey = Deno.env.get("ADMIN_API_KEY");
-    const provided = req.headers.get("x-admin-key");
-    if (!adminKey || !provided || provided !== adminKey) {
+    // Require admin API key for this privileged endpoint (constant-time; an
+    // unset key opens nothing).
+    if (!keyMatches(req.headers.get("x-admin-key") ?? "", Deno.env.get("ADMIN_API_KEY") ?? "")) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -369,21 +387,36 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // The package is tailored to a role. Without one this used to target an
+    // investment-banking analyst, whoever the customer was.
+    const title = typeof jobTitle === "string" ? jobTitle.trim().slice(0, 200) : "";
+    if (!title) {
+      return new Response(
+        JSON.stringify({ error: "jobTitle is required: the package is tailored to the customer's target role" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const company = typeof jobCompany === "string" ? jobCompany.trim().slice(0, 200) : "";
 
-    logStep("Request received, starting background processing", { email, jobTitle, jobCompany });
+    // The copy's id, decided now and handed back, so the owner can give it to
+    // the customer for the success page's "recover a previous purchase".
+    const newSessionId = `manual_regen_${crypto.randomUUID()}`;
+    logStep("Request received, starting background processing", { email, jobTitle: title, jobCompany: company, sessionId: newSessionId });
 
     // Start background processing
     EdgeRuntime.waitUntil(
-      processRegeneration(email, resumeText, jobTitle || 'Investment Banking Analyst', jobCompany || 'Top Investment Bank', jobDescription)
+      processRegeneration(newSessionId, email, resumeText, title, company, jobDescription)
     );
 
     // Return immediate response
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Your premium package is being regenerated with GPT-5. This takes 2-3 minutes. You'll receive an email when it's ready!",
         estimatedTime: "2-3 minutes",
-        email: email
+        email: email,
+        sessionId: newSessionId,
+        productType: PREMIUM_PACKAGE_PRODUCT_TYPE,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -486,7 +519,7 @@ function generatePremiumPackageEmail(email: string, generatedContent: any): stri
               </div>
 
               <div style="text-align: center; margin-top: 32px;">
-                <a href="https://resumebooster.lovable.app" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 16px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                <a href="https://resumebooster.work" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 16px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Visit Resume Booster →
                 </a>
               </div>

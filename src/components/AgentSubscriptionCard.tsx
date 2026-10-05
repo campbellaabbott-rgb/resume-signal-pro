@@ -1,14 +1,25 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Bot, Check, Loader2, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { AUTO_VENDORS, CLICK_VENDORS } from "@/config/ats-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { checkoutContext } from "@/lib/track-transport";
+
+type AgentCheckoutAnswer = {
+  url?: string;
+  alreadySubscribed?: boolean;
+  needsPaymentUpdate?: boolean;
+  hasProSubscription?: boolean;
+  signInRequired?: boolean;
+  error?: string;
+};
 
 /**
  * The agent tier. Priced from SUBSCRIPTIONS, never a literal — src/test/
@@ -19,24 +30,74 @@ import { checkoutContext } from "@/lib/track-transport";
  * only when a worker is actually live. A page that says "it applies for you"
  * while nothing can send is the one thing a paid product must never do, and
  * copy — unlike the release logic — has no way to refuse with a reason.
+ *
+ * WHO IT IS SOLD TO (platform sweep L3-01). /pricing rendered this card with
+ * no email and the checkout answered 400 to every click, so the agent plan could
+ * not be bought from the page that sells it. The checkout now sells only to a
+ * signed-in account (the agent runs from that account, and a stranger must
+ * never learn whether some address subscribes), so a signed-out visitor is
+ * sent to sign in and brought straight back here; a signed-in one goes to
+ * Stripe. Every answer that is not a checkout url is said in words: already
+ * subscribed (to /agent), a plan that owes money or a Pro plan that would
+ * bill beside the agent (to the billing portal).
  */
-export function AgentSubscriptionCard({ email }: { email?: string }) {
+export function AgentSubscriptionCard() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const { online } = useAgentSender();
   const price = SUBSCRIPTIONS.agent.priceUsd;
   const proPrice = SUBSCRIPTIONS.pro.priceUsd;
 
+  const toSignIn = () => navigate(`/auth?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`);
+
+  const openPortal = async () => {
+    const { data } = await supabase.functions.invoke("create-portal-session", { body: {} });
+    const url = (data as { url?: string } | null)?.url;
+    if (url) window.location.href = url;
+  };
+
   const subscribe = async () => {
+    if (!user) {
+      toSignIn();
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-agent-checkout", {
-        body: { email, ...checkoutContext() },
+        body: { ...checkoutContext() },
       });
+      const status = (error as { context?: { status?: number } } | null)?.context?.status;
+      if (status === 401) {
+        setLoading(false);
+        toSignIn();
+        return;
+      }
       if (error) throw error;
-      const url = (data as { url?: string } | null)?.url;
-      if (!url) throw new Error("no checkout url");
-      window.location.href = url;
+      const answer = (data ?? {}) as AgentCheckoutAnswer;
+      if (answer.url) {
+        window.location.href = answer.url;
+        return;
+      }
+      setLoading(false);
+      if (answer.alreadySubscribed) {
+        toast.success(t("agentPlan.alreadySubscribed", "You already have the agent — taking you to it."));
+        navigate("/agent");
+        return;
+      }
+      if (answer.needsPaymentUpdate) {
+        toast.error(t("agentPlan.needsPaymentUpdate", "Your plan has a payment due. Update your card instead of starting a new plan."));
+        await openPortal();
+        return;
+      }
+      if (answer.hasProSubscription) {
+        toast.error(t("agentPlan.hasPro", "You're on Pro, which the agent includes. Cancel Pro in Manage subscription first, then start the agent — so you're never billed for both."));
+        await openPortal();
+        return;
+      }
+      throw new Error(answer.error || "no checkout url");
     } catch {
       toast.error(t("agentPlan.checkoutFailed", "Could not start checkout — please try again"));
       setLoading(false);
@@ -120,6 +181,11 @@ export function AgentSubscriptionCard({ email }: { email?: string }) {
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
         {t("agentPlan.cta", "Start the agent")}
       </Button>
+      {!user && (
+        <p className="mt-2 text-xs text-muted-foreground text-center">
+          {t("agentPlan.signInFirst", "You'll sign in first — the agent works from your account.")}
+        </p>
+      )}
 
       <p className="mt-3 text-xs text-muted-foreground text-center">
         {online

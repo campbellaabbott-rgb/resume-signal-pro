@@ -522,7 +522,11 @@ describe("the handler, run with only its network faked", () => {
 
   it("the preflight names the deployed build", async () => {
     const res = await handler(new Request("https://h.supabase.co/functions/v1/job-board", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("job-board.2026-09-09.88");
+    // Whatever BUILD_VERSION the bundle carries (build-version-guard pins the
+    // value); .88 introduced the header, and a later bump must not break it.
+    const v = /const BUILD_VERSION = "([^"]+)"/.exec(codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8")))?.[1];
+    expect(v, "BUILD_VERSION not found").toMatch(/^2026-09-09\.(8[89]|9\d|\d{3,})$/);
+    expect(res.headers.get("x-fn-build")).toBe(`job-board.${v}`);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 

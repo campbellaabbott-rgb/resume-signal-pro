@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T18:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
@@ -12,7 +12,7 @@ import {
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-04.no-paid-cache";
+const FN_BUILD = "analyze-resume.2026-10-05.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -1061,8 +1061,21 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
         })
         .select("share_id")
         .single();
-      if (dbError) console.error("[ANALYZE-RESUME] Database error storing the analysis:", dbError);
       const shareId: string | null = savedAnalysis?.share_id ?? null;
+      // NO STORED COPY, NO REDEMPTION (platform sweep L6-16). The redemption
+      // below holds a POINTER to this copy, not the analysis itself; written
+      // with a null pointer it marked the session delivered with nothing to
+      // deliver, so every refresh, second tab or recovery answered 409 "already
+      // used" and the buyer kept only the one view in front of them (the email
+      // was skipped too). Refusing here is "a failure before step 2": nothing
+      // is redeemed, and the buyer's retry runs the analysis again.
+      if (dbError || !shareId) {
+        console.error("[ANALYZE-RESUME] The analysis could not be stored; not redeeming the session:", dbError ?? "no share id returned");
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       const { error: redeemError } = await supabase
         .from('purchased_content')

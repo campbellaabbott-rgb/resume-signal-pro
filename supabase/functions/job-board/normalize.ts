@@ -1328,6 +1328,48 @@ export function isPlacelessLocation(v: string | null | undefined): boolean {
   return /^\d+\s+(?:locations?|sites?|emplacements?|standorte|locaties)$/i.test(s);
 }
 
+/**
+ * Vendors whose LIST payload states no work mode: their normalizers read one
+ * from the list's location and title text only (detectWorkMode), while the
+ * detail sweeps read the vendor's structured field (n419).
+ */
+export const LIST_MODE_UNSTATED: ReadonlySet<string> = new Set(["workday", "jazzhr"]);
+
+/**
+ * Whether the refresh may write the list's work mode over the stored one (n419).
+ *
+ * On a list-silent vendor two readers write the column: the list (text only)
+ * and the detail sweeps (the structured field, and only into an empty
+ * column). The refresh used to let the list overwrite every rotation, undoing
+ * the sweep and logging each undo as an employer edit; .89 first froze any
+ * stored mode, which also froze a mode the list itself had guessed after the
+ * employer changed the text it was guessed from ("Remote - US" to "Austin,
+ * TX" kept the row under the remote filter for good). The rule:
+ *  - an empty stored mode is the list's to fill;
+ *  - list text unchanged (a placeholder over a stored place counts as the
+ *    same location): the list has nothing new, whichever reader wrote the
+ *    stored mode;
+ *  - the employer changed the text: a stored mode the OLD text reads as came
+ *    from the list (or agrees with it) and is re-read from the new text, even
+ *    to null, after which the structured sweep (WHERE work_mode IS NULL)
+ *    re-reads the detail; a stored mode the old text does not explain came
+ *    from the detail page and stays.
+ */
+export function listMayRewriteMode(
+  source: string,
+  prev: { work_mode?: string | null; location?: string | null; title?: string | null },
+  row: { location?: string | null; title?: string | null },
+): boolean {
+  if (!LIST_MODE_UNSTATED.has(source) || prev.work_mode == null) return true;
+  // A placeholder over a stored place says nothing about the place, so it
+  // counts as the same location; the title can still have changed.
+  const sameLocation = (isPlacelessLocation(row.location) && !isPlacelessLocation(prev.location)) ||
+    String(row.location ?? "") === String(prev.location ?? "");
+  const sameTitle = String(row.title ?? "") === String(prev.title ?? "");
+  if (sameLocation && sameTitle) return false;
+  return detectWorkMode(prev.location, prev.title) === prev.work_mode;
+}
+
 /** What a Workday CXS job-detail payload says about where the job is. */
 export interface WorkdayDetailPlace {
   /** ISO 3166-1 alpha-2, or null when the payload does not state one we trust. */

@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",
-    "metaDescription": "Planos desde ${{keywordFixPrice}} (Keyword Fix) até ${{snapshotPrice}} (Career Snapshot). Pague uma vez — nunca renovam automaticamente. Reescritas de currículo ao nível de recrutador.",
+    "metaDescription": "Ferramentas de pagamento único de ${{lowPrice}} a ${{highPrice}} que nunca renovam, ou planos mensais a partir de ${{proPrice}} com todas as ferramentas incluídas. Reescritas de currículo ao nível de recrutador.",
     "noSubscriptions": "Pagamentos únicos • Nunca renovam automaticamente",
     "titlePrefix": "Escolha o seu",
     "titleHighlight": "Impulso de Currículo",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Requer o envio do seu currículo para análise",
     "whyResumeBooster": "Porquê o Resume Booster?",
     "questions": "Dúvidas?",
-    "allProductsOneTime": "Todos os produtos são compras únicas com acesso instantâneo.",
+    "allProductsOneTime": "Cada ferramenta é uma compra única com acesso instantâneo e nunca renova. O Pro e o Apply Agent são planos mensais que pode cancelar a qualquer momento.",
     "freeScanLink": "verificação gratuita",
     "seeScoreFirst": "para ver primeiro a sua pontuação.",
     "tryFreeScanFirst": "Experimentar primeiro a verificação gratuita",
@@ -3463,9 +3463,9 @@
     "returnHome": "Voltar ao Início"
   },
   "paymentFailed": {
-    "title": "Pagamento Malsucedido",
-    "subtitle": "Não conseguimos processar seu pagamento. Não se preocupe — nenhuma cobrança foi feita em sua conta.",
-    "commonReasons": "Razões comuns para isso acontecer:",
+    "title": "Pagamento cancelado",
+    "subtitle": "Você não foi cobrado. Retome de onde parou quando quiser.",
+    "commonReasons": "Se o seu cartão foi recusado, estas são as razões habituais:",
     "fundsTitle": "Saldo insuficiente",
     "fundsDesc": "Seu cartão ou conta bancária pode não ter saldo suficiente. Tente um método de pagamento diferente.",
     "declinedTitle": "Cartão recusado",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "Verifique se o número do cartão, data de validade e CVV foram inseridos corretamente.",
     "tryAgain": "Tentar Novamente",
     "returnHome": "Voltar ao Início",
-    "contactUs": "Ainda com problemas? Entre em contato em resumeboostersupp@gmail.com"
+    "contactUs": "Ainda com problemas? Entre em contato em resumeboostersupp@gmail.com",
+    "contactLead": "Ainda com problemas? Fale conosco em"
   },
   "resumeRecovery": {
     "title": "Currículo não encontrado",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Cancele quando quiser. O envio automático não está a funcionar neste momento, por isso as candidaturas ficam preparadas para enviar com um clique.",
     "checkoutFailed": "Não foi possível iniciar o pagamento — tente novamente",
     "badgeOffline": "Faz a parte difícil da candidatura",
-    "taglineOffline": "Encontra as vagas e preenche a candidatura. Você carrega em enviar."
+    "taglineOffline": "Encontra as vagas e preenche a candidatura. Você carrega em enviar.",
+    "signInFirst": "Vai entrar primeiro — o agente funciona a partir da sua conta.",
+    "alreadySubscribed": "Você já tem o agente — vamos levá-lo até ele.",
+    "needsPaymentUpdate": "O seu plano tem um pagamento pendente. Atualize o cartão em vez de iniciar um novo plano.",
+    "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",

@@ -225,7 +225,8 @@ const DELIVERERS: Record<string, (t: string) => Promise<string[]> | string[]> = 
     const out: string[] = [];
     const abs = fnPath("generate-apply-package");
     const c = codeOf(read(abs));
-    const m = /payment_status === "paid" && (\[[^\]]*\]|[A-Za-z_]\w*)\.includes\(productType\)/.exec(c);
+    // 'paid' spelled out, or the shared settlement rule (2026-10-05, L6-10).
+    const m = /(?:payment_status === "paid"|checkoutSessionSettled\(session\)) && (\[[^\]]*\]|[A-Za-z_]\w*)\.includes\(productType\)/.exec(c);
     const list = m ? listAt(abs, m[1]) : null;
     if (!list) out.push("generate-apply-package's Stripe gate could not be read");
     else if (!list.includes(t)) out.push(`generate-apply-package accepts [${list.join(", ")}] -- none of which any checkout mints -- not ${t}`);
