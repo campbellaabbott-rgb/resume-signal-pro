@@ -542,6 +542,7 @@ export type Database = {
           id: number
           location: string
           pass_id: string | null
+          pass_refunded_at: string | null
           posted_at: string | null
           posting_id: string
           reasons: Json
@@ -563,6 +564,7 @@ export type Database = {
           id?: never
           location?: string
           pass_id?: string | null
+          pass_refunded_at?: string | null
           posted_at?: string | null
           posting_id: string
           reasons?: Json
@@ -584,6 +586,7 @@ export type Database = {
           id?: never
           location?: string
           pass_id?: string | null
+          pass_refunded_at?: string | null
           posted_at?: string | null
           posting_id?: string
           reasons?: Json
@@ -794,6 +797,7 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           current_period_end?: string | null
@@ -801,6 +805,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           current_period_end?: string | null
@@ -808,6 +813,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -892,6 +898,33 @@ export type Database = {
           sent_successfully?: boolean | null
           sent_to?: string | null
           threshold_value?: number | null
+        }
+        Relationships: []
+      }
+      api_key_agent_mints: {
+        Row: {
+          created_at: string
+          id: number
+          mint_net: string | null
+          paying: boolean
+          user_id: string
+          via: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          mint_net?: string | null
+          paying?: boolean
+          user_id: string
+          via?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          mint_net?: string | null
+          paying?: boolean
+          user_id?: string
+          via?: string
         }
         Relationships: []
       }
@@ -3282,6 +3315,24 @@ export type Database = {
         }
         Relationships: []
       }
+      mailbox_proof_settings: {
+        Row: {
+          confirmation_required_since: string | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          confirmation_required_since?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          confirmation_required_since?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       market_pulse_subscribers: {
         Row: {
           confirm_net: string | null
@@ -4591,6 +4642,7 @@ export type Database = {
     }
     Functions: {
       _mig_exec: { Args: { p_sql: string }; Returns: undefined }
+      account_mailbox_proven: { Args: { p_user_id: string }; Returns: boolean }
       acquire_scan_slot: {
         Args: { p_max: number; p_ttl_seconds: number }
         Returns: string
@@ -4775,6 +4827,10 @@ export type Database = {
           queued_row_id: number
         }[]
       }
+      agent_queue_refuse: {
+        Args: { p_reason: string; p_row_id: number }
+        Returns: boolean
+      }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
@@ -4791,6 +4847,18 @@ export type Database = {
         }[]
       }
       agent_sent_today: { Args: { p_user: string }; Returns: number }
+      agent_subscription_live: { Args: { p_user_id: string }; Returns: boolean }
+      agent_subscription_rows: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          bound: boolean
+          current_period_end: string
+          email: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       agent_work_pending: { Args: never; Returns: Json }
       agent_worker_ping: {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
@@ -4834,7 +4902,9 @@ export type Database = {
           p_email: string
           p_key_hash: string
           p_key_prefix: string
+          p_net?: string
           p_user_id: string
+          p_via?: string
         }
         Returns: {
           deny_reason: string
