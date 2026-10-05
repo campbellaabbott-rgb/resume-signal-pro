@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261005120000_a_scan_credit_is_spent_only_by_whoever_proved_the_purchase.sql'));

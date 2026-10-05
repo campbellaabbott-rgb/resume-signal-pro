@@ -694,6 +694,13 @@
       "when": 1791222189586,
       "tag": "0098_20261005113000_the_payment_safety_net_answers_its_cron_and_nobody_else",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1791222203189,
+      "tag": "0099_20261005120000_a_scan_credit_is_spent_only_by_whoever_proved_the_purchase",
+      "breakpoints": true
     }
   ]
 }

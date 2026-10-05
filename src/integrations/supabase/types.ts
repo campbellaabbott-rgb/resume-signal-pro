@@ -3762,6 +3762,39 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_credit_session_grants: {
+        Row: {
+          claimed_by: string | null
+          created_at: string
+          credits_bought: number
+          credits_used: number
+          email: string
+          product_type: string
+          session_hash: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_by?: string | null
+          created_at?: string
+          credits_bought: number
+          credits_used?: number
+          email: string
+          product_type?: string
+          session_hash: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_by?: string | null
+          created_at?: string
+          credits_bought?: number
+          credits_used?: number
+          email?: string
+          product_type?: string
+          session_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scan_feedback: {
         Row: {
           ats_score: number | null
@@ -6559,6 +6592,40 @@ export type Database = {
           p_stripe_session_id: string
         }
         Returns: string
+      }
+      scan_credit_account_grants: { Args: { p_user_id: string }; Returns: Json }
+      scan_credit_balance: {
+        Args: {
+          p_email?: string
+          p_session_hashes?: string[]
+          p_user_id?: string
+        }
+        Returns: number
+      }
+      scan_credit_grant_claim: {
+        Args: { p_session_hashes: string[]; p_user_id: string }
+        Returns: number
+      }
+      scan_credit_grant_record: {
+        Args: {
+          p_credits_bought: number
+          p_email: string
+          p_product_type: string
+          p_session_hash: string
+        }
+        Returns: boolean
+      }
+      scan_credit_grants_bought: {
+        Args: { p_session_hashes: string[] }
+        Returns: number
+      }
+      scan_credit_redeem: {
+        Args: { p_email: string; p_session_hash?: string }
+        Returns: boolean
+      }
+      scan_credit_refund: {
+        Args: { p_email: string; p_session_hash?: string }
+        Returns: boolean
       }
       scrub_emails: { Args: { p_text: string }; Returns: string }
       search_digest_claim_batch: {
