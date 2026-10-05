@@ -659,6 +659,48 @@
       "when": 1791124597372,
       "tag": "0093_20261004010000_every_cron_job_gets_the_time_its_function_asks_for",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1791222144861,
+      "tag": "0094_20261004100000_a_mail_we_send_needs_a_proof_and_a_key_needs_a_mailbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1791222159776,
+      "tag": "0095_20261004110000_every_function_a_stranger_can_call_is_named_with_its_caller",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1791222171392,
+      "tag": "0096_20261004150000_a_resume_never_rides_a_stripe_session_and_every_copy_has_a_clock",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1791222182853,
+      "tag": "0097_20261005110000_a_sale_the_success_page_claims_first_leaves_a_delivery_record",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1791222189586,
+      "tag": "0098_20261005113000_the_payment_safety_net_answers_its_cron_and_nobody_else",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1791222203189,
+      "tag": "0099_20261005120000_a_scan_credit_is_spent_only_by_whoever_proved_the_purchase",
+      "breakpoints": true
     }
   ]
 }

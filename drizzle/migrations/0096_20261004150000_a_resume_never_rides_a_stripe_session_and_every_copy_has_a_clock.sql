@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261004150000_a_resume_never_rides_a_stripe_session_and_every_copy_has_a_clock.sql'));

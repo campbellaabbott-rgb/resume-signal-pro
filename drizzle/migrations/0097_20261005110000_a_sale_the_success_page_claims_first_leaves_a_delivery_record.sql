@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261005110000_a_sale_the_success_page_claims_first_leaves_a_delivery_record.sql'));

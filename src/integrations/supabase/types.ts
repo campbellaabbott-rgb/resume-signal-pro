@@ -895,6 +895,56 @@ export type Database = {
         }
         Relationships: []
       }
+      api_key_requests: {
+        Row: {
+          confirm_net: string | null
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          issued_key_id: string | null
+          key_name: string | null
+          mailbox: string
+          request_net: string | null
+          token_hash: string
+        }
+        Insert: {
+          confirm_net?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          issued_key_id?: string | null
+          key_name?: string | null
+          mailbox: string
+          request_net?: string | null
+          token_hash: string
+        }
+        Update: {
+          confirm_net?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          issued_key_id?: string | null
+          key_name?: string | null
+          mailbox?: string
+          request_net?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_key_requests_issued_key_id_fkey"
+            columns: ["issued_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           created_at: string
@@ -1048,6 +1098,32 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_resume_refs: {
+        Row: {
+          created_at: string
+          resume_session_id: string
+          stripe_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          resume_session_id: string
+          stripe_session_id: string
+        }
+        Update: {
+          created_at?: string
+          resume_session_id?: string
+          stripe_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_resume_refs_resume_session_id_fkey"
+            columns: ["resume_session_id"]
+            isOneToOne: false
+            referencedRelation: "temp_resume_storage"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
       checkout_starts: {
         Row: {
           amount_cents: number | null
@@ -1087,6 +1163,27 @@ export type Database = {
           product_type?: string
           stripe_session_id?: string
           visitor_id?: string | null
+        }
+        Relationships: []
+      }
+      client_write_budget: {
+        Row: {
+          bucket: string
+          n: number
+          scope: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          n: number
+          scope: string
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          n?: number
+          scope?: string
+          window_start?: string
         }
         Relationships: []
       }
@@ -3164,8 +3261,35 @@ export type Database = {
         }
         Relationships: []
       }
+      mail_door_counts: {
+        Row: {
+          bucket: string
+          door: string
+          hits: number
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          door: string
+          hits?: number
+          window_start?: string
+        }
+        Update: {
+          bucket?: string
+          door?: string
+          hits?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       market_pulse_subscribers: {
         Row: {
+          confirm_net: string | null
+          confirm_sends: number
+          confirm_sent_at: string | null
+          confirm_token_hash: string | null
+          confirm_window_start: string | null
+          confirmed_at: string | null
           email: string
           industry: string
           last_score: number | null
@@ -3174,6 +3298,12 @@ export type Database = {
           unsubscribed_at: string | null
         }
         Insert: {
+          confirm_net?: string | null
+          confirm_sends?: number
+          confirm_sent_at?: string | null
+          confirm_token_hash?: string | null
+          confirm_window_start?: string | null
+          confirmed_at?: string | null
           email: string
           industry?: string
           last_score?: number | null
@@ -3182,6 +3312,12 @@ export type Database = {
           unsubscribed_at?: string | null
         }
         Update: {
+          confirm_net?: string | null
+          confirm_sends?: number
+          confirm_sent_at?: string | null
+          confirm_token_hash?: string | null
+          confirm_window_start?: string | null
+          confirmed_at?: string | null
           email?: string
           industry?: string
           last_score?: number | null
@@ -3623,6 +3759,39 @@ export type Database = {
           id?: string
           resume_text?: string | null
           share_id?: string
+        }
+        Relationships: []
+      }
+      scan_credit_session_grants: {
+        Row: {
+          claimed_by: string | null
+          created_at: string
+          credits_bought: number
+          credits_used: number
+          email: string
+          product_type: string
+          session_hash: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_by?: string | null
+          created_at?: string
+          credits_bought: number
+          credits_used?: number
+          email: string
+          product_type?: string
+          session_hash: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_by?: string | null
+          created_at?: string
+          credits_bought?: number
+          credits_used?: number
+          email?: string
+          product_type?: string
+          session_hash?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -4510,6 +4679,14 @@ export type Database = {
           wording: string
         }[]
       }
+      agent_digest_claim_batch: {
+        Args: { p_limit: number }
+        Returns: {
+          ad_email: string
+          ad_prev_sent_at: string
+          ad_user_id: string
+        }[]
+      }
       agent_employer_in_cooldown: {
         Args: { p_company: string; p_days: number; p_user_id: string }
         Returns: boolean
@@ -4613,6 +4790,7 @@ export type Database = {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
         Returns: undefined
       }
+      alerts_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
       api_key_check: {
         Args: { p_endpoint: string; p_key_hash: string }
         Returns: {
@@ -4630,19 +4808,19 @@ export type Database = {
       }
       api_key_issue: {
         Args: {
-          p_email: string
           p_key_hash: string
           p_key_prefix: string
-          p_name: string
+          p_net: string
+          p_token_hash: string
         }
         Returns: {
-          api_key_id: string
-          deny_reason: string
-          had_active: boolean
-          issued: boolean
-          key_tier: string
-          quota_limit: number
-          rate_limit: number
+          ik_issued: boolean
+          ik_key_id: string
+          ik_quota: number
+          ik_rate: number
+          ik_reason: string
+          ik_retired: string[]
+          ik_tier: string
         }[]
       }
       api_key_issue_agent: {
@@ -4659,6 +4837,21 @@ export type Database = {
           rotated_prior: boolean
         }[]
       }
+      api_key_mailbox: { Args: { p_email: string }; Returns: string }
+      api_key_request_open: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_net: string
+          p_token_hash: string
+        }
+        Returns: {
+          rq_live_keys: number
+          rq_reason: string
+          rq_send: boolean
+        }[]
+      }
+      api_key_retire_idle: { Args: never; Returns: number }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
@@ -4723,6 +4916,16 @@ export type Database = {
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
+      client_callable_census: { Args: never; Returns: Json }
+      client_write_allowed: {
+        Args: {
+          p_ceiling: number
+          p_per_address: number
+          p_scope: string
+          p_window_minutes: number
+        }
+        Returns: boolean
+      }
       collect_company_flow: { Args: { p_date?: string }; Returns: number }
       compare_cohorts: {
         Args: {
@@ -4794,6 +4997,7 @@ export type Database = {
           visitor_id: string
         }[]
       }
+      email_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
       email_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
@@ -6151,6 +6355,45 @@ export type Database = {
         Returns: Json
       }
       logout_affiliate: { Args: { p_session_token: string }; Returns: boolean }
+      mail_door_take: {
+        Args: {
+          p_bucket: string
+          p_door: string
+          p_max: number
+          p_window_minutes: number
+        }
+        Returns: boolean
+      }
+      market_pulse_claim_batch: {
+        Args: { p_limit: number }
+        Returns: {
+          cl_confirmed_at: string
+          cl_email: string
+          cl_industry: string
+          cl_last_score: number
+          cl_prev_sent_at: string
+        }[]
+      }
+      market_pulse_confirm: {
+        Args: { p_token_hash: string }
+        Returns: {
+          cf_confirmed: boolean
+          cf_reason: string
+        }[]
+      }
+      market_pulse_request_confirm: {
+        Args: {
+          p_email: string
+          p_industry: string
+          p_net: string
+          p_score: number
+          p_token_hash: string
+        }
+        Returns: {
+          pc_reason: string
+          pc_send: boolean
+        }[]
+      }
       mcp_anon_check: {
         Args: { p_global_cap: number; p_ip_cap: number; p_ip_hash: string }
         Returns: {
@@ -6216,6 +6459,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reconcile_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
       reconcile_stripe_tick: { Args: never; Returns: undefined }
       record_affiliate_conversion: {
         Args: {
@@ -6300,6 +6544,7 @@ export type Database = {
         Args: { p_max_rows?: number; p_restart?: boolean }
         Returns: Json
       }
+      request_client_address: { Args: never; Returns: string }
       revert_category: {
         Args: { p_basis: string; p_key: string; p_target?: string }
         Returns: number
@@ -6348,7 +6593,53 @@ export type Database = {
         }
         Returns: string
       }
+      scan_credit_account_grants: { Args: { p_user_id: string }; Returns: Json }
+      scan_credit_balance: {
+        Args: {
+          p_email?: string
+          p_session_hashes?: string[]
+          p_user_id?: string
+        }
+        Returns: number
+      }
+      scan_credit_grant_claim: {
+        Args: { p_session_hashes: string[]; p_user_id: string }
+        Returns: number
+      }
+      scan_credit_grant_record: {
+        Args: {
+          p_credits_bought: number
+          p_email: string
+          p_product_type: string
+          p_session_hash: string
+        }
+        Returns: boolean
+      }
+      scan_credit_grants_bought: {
+        Args: { p_session_hashes: string[] }
+        Returns: number
+      }
+      scan_credit_redeem: {
+        Args: { p_email: string; p_session_hash?: string }
+        Returns: boolean
+      }
+      scan_credit_refund: {
+        Args: { p_email: string; p_session_hash?: string }
+        Returns: boolean
+      }
       scrub_emails: { Args: { p_text: string }; Returns: string }
+      search_digest_claim_batch: {
+        Args: { p_limit: number }
+        Returns: {
+          sd_cadence: string
+          sd_fit_threshold: number
+          sd_id: string
+          sd_name: string
+          sd_params: Json
+          sd_prev_sent_at: string
+          sd_user_id: string
+        }[]
+      }
       search_jobs: {
         Args: {
           p_category?: string
@@ -6463,6 +6754,7 @@ export type Database = {
             }
             Returns: string
           }
+      strip_resume_keys: { Args: { p: Json }; Returns: Json }
       track_ab_event: {
         Args: {
           p_event_type: string

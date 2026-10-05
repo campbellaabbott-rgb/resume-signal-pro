@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261004100000_a_mail_we_send_needs_a_proof_and_a_key_needs_a_mailbox.sql'));

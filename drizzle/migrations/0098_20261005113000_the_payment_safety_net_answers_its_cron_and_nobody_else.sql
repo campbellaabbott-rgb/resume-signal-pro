@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261005113000_the_payment_safety_net_answers_its_cron_and_nobody_else.sql'));
