@@ -1,11 +1,14 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { buyerEmailOf } from "../_shared/buyer-email.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-scan-pack-purchase.2026-10-01.1";
+const FN_BUILD = "verify-scan-pack-purchase.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,14 +78,14 @@ serve(async (req) => {
       );
     }
     
-    logStep("Session retrieved", { 
-      status: session.payment_status, 
-      email: session.customer_email,
+    logStep("Session retrieved", {
+      status: session.payment_status,
       metadata: session.metadata
     });
 
-    // Verify payment completed
-    if (session.payment_status !== 'paid') {
+    // Verify payment completed: 'paid', or a $0 session a 100%-off code
+    // completed -- the rule every delivery path shares (L6-10).
+    if (!checkoutSessionSettled(session)) {
       return new Response(
         JSON.stringify({ error: "Payment not completed", verified: false }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -99,8 +102,10 @@ serve(async (req) => {
       );
     }
 
-    // Get email from session
-    const customerEmail = session.customer_email || session.metadata?.customer_email;
+    // Get email from session: customer_details first, which is the only copy
+    // when the checkout reused an existing Stripe customer or started without
+    // an address (L6-25).
+    const customerEmail = buyerEmailOf(session);
     if (!customerEmail) {
       return new Response(
         JSON.stringify({ error: "No email associated with purchase", verified: false }),
@@ -131,7 +136,7 @@ serve(async (req) => {
       .from('used_stripe_sessions')
       .insert({
         session_id: sessionId,
-        ip_address: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 'unknown',
+        ip_address: clientAddressOr(req.headers),
         product_type: productType,
       });
 

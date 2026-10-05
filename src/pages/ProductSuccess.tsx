@@ -189,7 +189,9 @@ export default function ProductSuccess() {
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingError, setStreamingError] = useState<string | null>(null);
   const [streamingComplete, setStreamingComplete] = useState(false);
-  
+  // Whether the purchase has an address the confirmation mail goes to.
+  const [buyerEmailOnFile, setBuyerEmailOnFile] = useState(false);
+
   const sessionId = searchParams.get("session_id");
   const productKey = searchParams.get("product") as ProductId | null;
   
@@ -486,37 +488,57 @@ export default function ProductSuccess() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let buffer = '';
+      // THE SERVER'S VERDICT IS READ, NOT SWALLOWED (platform sweep L3-06).
+      // The error event used to be thrown INSIDE the try that guarded
+      // JSON.parse, whose catch ("Ignore JSON parse errors") ate it, so a
+      // failed or cut-off Premium Package or Cover Letter ran on to "Your
+      // Content Is Ready!" and was tracked as a completed purchase. Parsing
+      // has its own try now; the events are handled outside it, and the
+      // content is complete only when the server says so.
+      let streamError: string | null = null;
+      let sawComplete = false;
 
-      while (true) {
+      reading: while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        
+
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonStr = line.slice(6).trim();
-            if (!jsonStr) continue;
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
 
-            try {
-              const event = JSON.parse(jsonStr);
-              
-              if (event.type === 'content' && event.content) {
-                fullContent += event.content;
-                setStreamingContent(fullContent);
-              } else if (event.type === 'complete' || event.type === 'done') {
-                setStreamingComplete(true);
-              } else if (event.type === 'error') {
-                throw new Error(event.message || 'Stream error');
-              }
-            } catch {
-              // Ignore JSON parse errors
-            }
+          let event: { type?: string; content?: string; message?: string } | null = null;
+          try {
+            event = JSON.parse(jsonStr);
+          } catch {
+            // A partial or non-JSON line carries nothing to act on.
+            continue;
+          }
+
+          if (event?.type === 'content' && event.content) {
+            fullContent += event.content;
+            setStreamingContent(fullContent);
+          } else if (event?.type === 'complete' || event?.type === 'done') {
+            sawComplete = true;
+          } else if (event?.type === 'error') {
+            streamError = event.message || 'Generation failed on the server';
+            try { await reader.cancel(); } catch { /* already closed */ }
+            break reading;
           }
         }
+      }
+
+      if (streamError) throw new Error(streamError);
+      if (!sawComplete) {
+        // The stream ended without the server's 'complete': the connection
+        // dropped or the generator stopped mid-way. What arrived stays on the
+        // screen, but it is not called finished and not counted as delivered.
+        throw new Error('Generation was interrupted before it finished. Your purchase is safe — press regenerate to try again.');
       }
 
       // Apply auto-fix to the complete content before marking as complete
@@ -646,7 +668,8 @@ export default function ProductSuccess() {
           setIsVerifying(false);
           return;
         }
-        
+        setBuyerEmailOnFile(Boolean(data?.customerEmail));
+
         // If we already have generated content from the verification, use it
         if (data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
@@ -926,8 +949,23 @@ export default function ProductSuccess() {
     productKey === 'careerPathSimulator'
   );
 
-  // Show streaming UI for real-time generation - keep showing even after complete
-  if (isStreaming || streamingContent) {
+  // A failed or interrupted stream is retried from the résumé this browser
+  // holds; without one, the recovery form asks for it. Nothing here is a new
+  // purchase: the session's claim already proves this one.
+  const retryStreaming = () => {
+    const sessionData = getResumeFromSession();
+    if (sessionData.resumeText) {
+      void startStreamingGeneration(sessionData.resumeText, sessionData.jobDescriptionText);
+    } else {
+      setStreamingError(null);
+      setStreamingContent("");
+      setIsRecoveryMode(true);
+    }
+  };
+
+  // Show streaming UI for real-time generation - keep showing even after
+  // complete, and after a failure, which must stay on screen with its retry.
+  if (isStreaming || streamingContent || streamingError) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -962,6 +1000,14 @@ export default function ProductSuccess() {
               title={streamingComplete ? `Your ${product?.name || 'content'}` : `Generating ${product?.name || 'content'}...`}
               subtitle={streamingComplete ? "Copy or download your content below" : "Watch your personalized content appear word by word"}
             />
+            {streamingError && !isStreaming && (
+              <div className="mt-6 text-center">
+                <Button onClick={retryStreaming} className="gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Regenerate — no extra charge
+                </Button>
+              </div>
+            )}
           </div>
         </main>
         <Footer />
@@ -2112,9 +2158,13 @@ export default function ProductSuccess() {
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
-              <p className="text-sm text-muted-foreground">
-                A confirmation email has been sent to your inbox
-              </p>
+              {/* Only when the purchase carries an address: an anonymous buyer
+                  with none is sent nothing, and was told otherwise (L6-25). */}
+              {buyerEmailOnFile && (
+                <p className="text-sm text-muted-foreground">
+                  A confirmation email has been sent to your inbox
+                </p>
+              )}
             </div>
           </div>
         </section>

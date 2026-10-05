@@ -131,10 +131,16 @@ describe("commerce copy never denies subscriptions, in any language", () => {
       }
 
       // "$1 Keyword Fix" sat in this description while the product cost $3.
+      // Then it named the HIDDEN keyword fix and said nothing renews, beside
+      // two monthly plans (platform sweep L3-18): it now states the visible
+      // catalogue's one-time range and the plans' starting price, all three
+      // derived in Pricing.tsx, none typed.
       it("pricingPage.metaDescription interpolates prices instead of stating them", () => {
         const v = read(file, ["pricingPage", "metaDescription"]);
-        expect(v.split("{{keywordFixPrice}}").length - 1).toBe(1);
-        expect(v.split("{{snapshotPrice}}").length - 1).toBe(1);
+        for (const p of ["{{lowPrice}}", "{{highPrice}}", "{{proPrice}}"]) {
+          expect(v.split(p).length - 1, `${p} must appear exactly once`).toBe(1);
+        }
+        expect(v, "the hidden Keyword Fix is not on sale and must not be advertised").not.toMatch(/keywordFixPrice/);
         expect(v).not.toMatch(/[$£€₹]\s?\d/);
       });
     });

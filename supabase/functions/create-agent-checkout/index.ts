@@ -1,58 +1,89 @@
 // Creates a Stripe Checkout session for the Apply Agent — $99/month Morning
 // Queue subscription (includes everything in Pro). Inline recurring price_data,
 // same pattern as create-subscription-checkout: no dashboard Price needed.
+//
+// SIGNED-IN CALLERS ONLY, for their own address (2026-10-04 completeness
+// review): it used to answer {alreadySubscribed: true} for any address a
+// stranger posted, spending unmetered Stripe calls on each guess. The guard
+// below needs that lookup, and it may only be answered about the caller.
+// Rate-limited per network address.
+//
+// THE GUARD, which now sees every plan the address holds, not only the agent:
+//   - a live agent plan: already subscribed;
+//   - any plan that owes money (past_due, unpaid...): update the card -- the
+//     old guard refused only an ACTIVE agent plan, so a declined card was
+//     offered a second subscription and a fresh seven-day trial (L6-06);
+//   - a live $45 Pro plan not yet cancelled: refused with the way out, since
+//     the agent would bill beside it ($144 a month for $99 of entitlement,
+//     with only the newer plan visible in the portal -- L6-05).
+// A new subscription is billed to the Stripe customer the address already
+// has, so one portal sees everything it pays for.
 
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, checkAgentByEmail } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, manualAgentGrant } from "../_shared/agent.ts";
+import { subscriptionStandingByEmail } from "../_shared/pro.ts";
+import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.ts";
+import { signedInEmail } from "../_shared/signed-in-email.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-09-27.2";
+const FN_BUILD = "create-agent-checkout.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
 
-    const body = await req.json().catch(() => ({}));
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return new Response(JSON.stringify({ error: "A valid email is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Fail open on a counter error (a checkout is revenue); only an explicit
+    // "no" refuses.
+    const { data: allowed } = await supabase.rpc("check_rate_limit", {
+      p_function: "create-agent-checkout",
+      p_ip: clientAddressOr(req.headers),
+      p_max_requests: 20,
+      p_window_minutes: 60,
+    });
+    if (allowed === false) return json({ error: "Too many requests. Please try again later." }, 429);
 
-    // Don't double-bill an existing agent subscriber.
-    const existing = await checkAgentByEmail(stripe, supabase, email);
-    if (existing.active) {
-      return new Response(JSON.stringify({ alreadySubscribed: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const email = await signedInEmail(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    if (!email) {
+      return json({ error: "Sign in to start the agent, so it is attached to your account.", signInRequired: true }, 401);
     }
+    const body = await req.json().catch(() => ({}));
+
+    // An account granted the agent by hand already has it.
+    if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+
+    const standing = await subscriptionStandingByEmail(stripe, email);
+    const verdict = checkoutVerdict(standing, "agent");
+    if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 
     const origin = req.headers.get("origin") || "https://resumebooster.work";
     const session = await stripe.checkout.sessions.create({
-      customer_email: email,
+      ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
       mode: "subscription",
       line_items: [
         {
@@ -73,7 +104,10 @@ serve(async (req) => {
       // The Agent sells an experience ("wake up to a shortlist") that has to
       // be FELT once — 7 free mornings before the first charge.
       // checkAgentByEmail already treats 'trialing' as active, so the
-      // entitlement (and the nightly runner) work from day one.
+      // entitlement (and the nightly runner) work from day one. Whether a
+      // returning subscriber gets another trial is an open owner decision
+      // (platform sweep L6-29); the guard above already refuses a new trial
+      // to anyone whose plan owes money.
       subscription_data: { trial_period_days: 7 },
       // LAND THEM WHERE THE AGENT IS SET UP, NOT ON THE ACCOUNT PAGE.
       //
@@ -124,15 +158,10 @@ serve(async (req) => {
       metadata: { planCents: AGENT_PRICE_CENTS, trial: session.payment_status === "no_payment_required" },
     });
 
-    console.log(`[CREATE-AGENT-CHECKOUT] Session ${session.id} created for ${email}`);
-    return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log(`[CREATE-AGENT-CHECKOUT] Session ${session.id} created`);
+    return json({ url: session.url, sessionId: session.id });
   } catch (error) {
     console.error("[CREATE-AGENT-CHECKOUT] Error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Could not start checkout. Please try again." }, 500);
   }
 });

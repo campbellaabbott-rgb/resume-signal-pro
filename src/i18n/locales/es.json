@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Precios — Resume Booster",
-    "metaDescription": "Planes desde ${{keywordFixPrice}} (corrección de palabras clave) hasta ${{snapshotPrice}} (Career Snapshot). Pago único, nunca se renueva automáticamente. Reescrituras de nivel reclutador.",
+    "metaDescription": "Herramientas de pago único desde ${{lowPrice}} hasta ${{highPrice}} que nunca se renuevan, o planes mensuales desde ${{proPrice}} con todas las herramientas incluidas. Reescrituras de nivel reclutador.",
     "noSubscriptions": "Pagos únicos • Nunca se renuevan automáticamente",
     "titlePrefix": "Elige tu",
     "titleHighlight": "Impulso de Currículum",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Requiere subir tu currículum para analizarlo",
     "whyResumeBooster": "¿Por qué Resume Booster?",
     "questions": "¿Preguntas?",
-    "allProductsOneTime": "Todos los productos son compras únicas con acceso instantáneo.",
+    "allProductsOneTime": "Cada herramienta es una compra única con acceso instantáneo y nunca se renueva. Pro y el Apply Agent son planes mensuales que puedes cancelar cuando quieras.",
     "freeScanLink": "escaneo gratuito",
     "seeScoreFirst": "para ver primero tu puntuación.",
     "tryFreeScanFirst": "Probar el escaneo gratuito primero",
@@ -3463,9 +3463,9 @@
     "returnHome": "Volver al inicio"
   },
   "paymentFailed": {
-    "title": "Pago sin éxito",
-    "subtitle": "No pudimos procesar tu pago. No te preocupes — no se realizaron cargos a tu cuenta.",
-    "commonReasons": "Razones comunes por las que ocurre esto:",
+    "title": "Pago cancelado",
+    "subtitle": "No se te cobró nada. Retoma donde lo dejaste cuando quieras.",
+    "commonReasons": "Si tu tarjeta fue rechazada, estas son las razones habituales:",
     "fundsTitle": "Fondos insuficientes",
     "fundsDesc": "Tu tarjeta o cuenta bancaria puede no tener saldo suficiente. Prueba un método de pago diferente.",
     "declinedTitle": "Tarjeta rechazada",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "Verifica que el número de tarjeta, la fecha de vencimiento y el CVV estén ingresados correctamente.",
     "tryAgain": "Intentar de nuevo",
     "returnHome": "Volver al inicio",
-    "contactUs": "¿Sigues teniendo problemas? Contáctanos en resumeboostersupp@gmail.com"
+    "contactUs": "¿Sigues teniendo problemas? Contáctanos en resumeboostersupp@gmail.com",
+    "contactLead": "¿Sigues con problemas? Escríbenos a"
   },
   "resumeRecovery": {
     "title": "Currículum no encontrado",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Cancela cuando quieras. El envío automático no está funcionando ahora mismo, así que las solicitudes se preparan para que las envíes con un clic.",
     "checkoutFailed": "No se pudo iniciar el pago: inténtalo de nuevo",
     "badgeOffline": "Hace la parte difícil de postularte",
-    "taglineOffline": "Encuentra los puestos y rellena la solicitud. Tú pulsas enviar."
+    "taglineOffline": "Encuentra los puestos y rellena la solicitud. Tú pulsas enviar.",
+    "signInFirst": "Primero iniciarás sesión: el agente funciona desde tu cuenta.",
+    "alreadySubscribed": "Ya tienes el agente; te llevamos a él.",
+    "needsPaymentUpdate": "Tu plan tiene un pago pendiente. Actualiza tu tarjeta en lugar de empezar un plan nuevo.",
+    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos."
   },
   "atsCoverage": {
     "heading": "Hecho para los sistemas que las empresas usan de verdad",

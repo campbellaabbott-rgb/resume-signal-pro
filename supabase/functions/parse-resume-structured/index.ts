@@ -1,11 +1,12 @@
-// deploy-stamp: 2026-10-04T13:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "parse-resume-structured.2026-10-04.1";
+const FN_BUILD = "parse-resume-structured.2026-10-05.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,17 +26,17 @@ const PARSE_LIMITS = { perAddress: 15, windowMinutes: 1440, globalPerHour: 150 }
 // ceiling on the project's key.
 const MAX_OUTPUT_TOKENS = 16000;
 
-const MAX_RETRIES = 1;
-const REQUEST_TIMEOUT_MS = 55000;
-const RETRY_DELAY_MS = 1000;
-
+// THE SHARED FALLBACK CHAIN, NOT A HAND-COPIED ONE (platform sweep L5-16).
+// The copy that lived here retried a 429 or a 402 on every model (six calls)
+// and then threw, so the 429/402 answers below never ran and the caller got a
+// 500 naming the model. The shared chain advances past a 429, returns the last
+// one when every model is busy, and returns a 402 at once. Same models, same
+// order, same output cap (named per provider by the shared chain).
 const MODEL_FALLBACK_ORDER = [
   'openai/gpt-5',
   'google/gemini-2.5-pro',
   'openai/gpt-5-mini',
 ];
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 interface AIRequestOptions {
   messages: Array<{ role: string; content: string }>;
@@ -43,53 +44,24 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
-async function callAIWithFallback(
+function callAIWithFallback(
   apiKey: string,
   options: AIRequestOptions,
   context: string = 'AI call'
 ): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
-
-  for (const model of MODEL_FALLBACK_ORDER) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model, ...options,
-            // OpenAI's gpt-5 family names the cap max_completion_tokens.
-            ...(model.startsWith('openai/') ? { max_completion_tokens: MAX_OUTPUT_TOKENS } : { max_tokens: MAX_OUTPUT_TOKENS }),
-          }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok || (response.status !== 429 && response.status !== 402 && response.status < 500)) {
-          return { response, modelUsed: model };
-        }
-
-        lastError = new Error(`${context} failed with status ${response.status} on model ${model}`);
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        console.error(`[PARSE-RESUME-STRUCTURED] ${context} error on model ${model}, attempt ${attempt}:`, lastError.message);
-      }
-
-      if (attempt < MAX_RETRIES) {
-        await sleep(RETRY_DELAY_MS);
-      }
-    }
-  }
-
-  throw lastError || new Error('All AI models failed');
+  return callAIWithModelFallback(apiKey, {
+    messages: options.messages,
+    tools: options.tools,
+    toolChoice: options.tool_choice,
+    maxTokens: MAX_OUTPUT_TOKENS,
+    models: MODEL_FALLBACK_ORDER,
+    context: `PARSE-RESUME-STRUCTURED ${context}`,
+  });
 }
+
+/** An aborted or timed-out model call: the one failure a retry may fix. */
+const isTimeout = (error: unknown): boolean =>
+  error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError' || /abort|timed? ?out/i.test(error.message));
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -226,7 +198,18 @@ serve(async (req) => {
       );
     }
 
-    const structured = JSON.parse(toolCall.function.arguments);
+    let structured;
+    try {
+      structured = JSON.parse(toolCall.function.arguments);
+    } catch (parseError) {
+      // A response cut off at the output cap is malformed JSON: a retry may
+      // well succeed, so say so rather than throwing to a bare 500.
+      console.error("[PARSE-RESUME-STRUCTURED] tool-call JSON parse failed:", String(parseError).slice(0, 120));
+      return new Response(
+        JSON.stringify({ error: "The parser returned a malformed draft. Please try again.", retryable: true }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log("[PARSE-RESUME-STRUCTURED] Successfully parsed resume, model:", modelUsed);
 
@@ -239,15 +222,18 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[PARSE-RESUME-STRUCTURED] Error:", errorMessage);
 
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    // An aborted call reads "The signal has been aborted", which never
+    // contained "timeout", so this retryable answer never fired (L5-16).
+    if (isTimeout(error)) {
       return new Response(
         JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
         { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // No internal message (a model name, a status) reaches the visitor.
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "Failed to parse resume. Please try again.", retryable: true }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

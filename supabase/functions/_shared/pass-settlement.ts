@@ -1,5 +1,6 @@
 // WHEN A PASS CHECKOUT SESSION COUNTS AS SETTLED — one answer for the webhook
-// and the success-page repair, so the two can never disagree.
+// and the success-page repair, so the two can never disagree. Below it, the
+// same rule for every one-time product (checkoutSessionSettled).
 //
 // A pass is a one-time charge: settled means payment_status 'paid'. One
 // exception, for the pass only: create-pass-checkout allows promotion codes,
@@ -28,4 +29,27 @@ export function passSessionSettled(session: PassSessionShape): boolean {
     && session.mode === "payment"
     && (session.amount_total ?? 0) === 0
     && session.metadata?.product_type === PASS_PRODUCT_TYPE;
+}
+
+/**
+ * THE SAME RULE FOR EVERY ONE-TIME PRODUCT (platform sweep L6-10).
+ *
+ * Every one-time checkout sets allow_promotion_codes, so the owner's 100%-off
+ * codes (create-test-coupon has no applies_to) complete a payment-mode session
+ * at $0 with 'no_payment_required' for ANY product, not only the pass. Every
+ * delivery path tested 'paid' alone, so a comp, a giveaway, or the owner's own
+ * end-to-end run of anything but the pass ended at an error page with the
+ * session completed and nothing delivered.
+ *
+ * Narrow in the same way as the pass rule: payment mode and a zero total.
+ * A non-zero total that is not 'paid' is money still owed and is never
+ * accepted, and a subscription session is not judged here (its $0 is a trial,
+ * which the webhook handles before this gate). The only route to a $0
+ * payment-mode session is a discount the owner created.
+ */
+export function checkoutSessionSettled(session: PassSessionShape): boolean {
+  if (session.payment_status === "paid") return true;
+  return session.payment_status === "no_payment_required"
+    && session.mode === "payment"
+    && (session.amount_total ?? 0) === 0;
 }

@@ -17,10 +17,13 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shared/model-spend-gate.ts";
+import { isProCached } from "../_shared/pro.ts";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { buyerEmailOf } from "../_shared/buyer-email.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-freelance-boost.2026-10-04.1";
+const FN_BUILD = "generate-freelance-boost.2026-10-05.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,20 +143,25 @@ serve(async (req) => {
     const VALID_TYPES = ["freelance_boost", "freelance_transition_pro"];
     let paid = false;
     let productType = "freelance_boost";
+    let buyerEmail: string | null = null;
     if (body.sessionId.startsWith("pro_")) {
       const { data: grant } = await supabase.from("pro_grants").select("email, product_type").eq("id", body.sessionId.slice(4)).maybeSingle();
       if (grant && VALID_TYPES.includes(grant.product_type)) {
-        const { data: sub } = await supabase.from("pro_subscribers").select("status").eq("email", grant.email).maybeSingle();
-        paid = !!sub && ["active", "trialing"].includes(sub.status);
+        // The shared reader: both caches (an agent plan includes Pro) and the
+        // paid-period check this copy lacked (L6-08, decision-free half).
+        paid = await isProCached(supabase, grant.email);
         productType = grant.product_type;
+        buyerEmail = grant.email;
       }
     } else {
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
       const session = await stripe.checkout.sessions.retrieve(body.sessionId);
-      paid = session.payment_status === "paid" && VALID_TYPES.includes(session.metadata?.product_type ?? "");
+      // 'paid', or a $0 session a 100%-off code completed (L6-10).
+      paid = checkoutSessionSettled(session) && VALID_TYPES.includes(session.metadata?.product_type ?? "");
       productType = session.metadata?.product_type ?? "freelance_boost";
+      buyerEmail = buyerEmailOf(session);
     }
     // Transition Pro ($59) adds two career-change deliverables on top of the
     // base resume section — generated in the same call, same grounding rules.
@@ -284,24 +292,47 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
       keywordCoverage = { covered, total: covered.length };
     }
 
+    const data = {
+      structure: structure.structure,
+      structureNote: structure.note,
+      header: out.roleTitle || structure.header,
+      scopeStatement: out.scopeStatement || "",
+      projects: out.projects,
+      transitionParagraph: out.transitionParagraph ?? "",
+      gapHandling: out.gapHandling ?? "",
+      keywordCoverage,
+      ...(isTransitionPro ? {
+        transitionCoverLetter: out.transitionCoverLetter ?? "",
+        linkedinAbout: out.linkedinAbout ?? "",
+      } : {}),
+    };
+
+    // THIS PAGE IS THE DELIVERY, SO IT CLOSES THE RECORD (L6-27). The webhook
+    // writes a Freelance Boost row it never schedules for the sweeper, because
+    // only this function, against the intake the buyer completes after
+    // paying, can deliver it. The copy is kept for recovery and the row closed
+    // as delivered; both best-effort -- the buyer has their section either way.
+    try {
+      const productName = isTransitionPro ? "Freelance Boost — Transition Pro" : "Freelance Boost";
+      const [{ error: saveError }, { error: closeError }] = await Promise.all([
+        supabase.rpc("save_purchased_content", {
+          p_stripe_session_id: body.sessionId,
+          p_customer_email: buyerEmail ?? "",
+          p_product_type: productType,
+          p_product_name: productName,
+          p_generated_content: data,
+        }),
+        supabase.from("product_deliveries")
+          .update({ status: "delivered", generation_success: true, content_generation_completed_at: new Date().toISOString() })
+          .eq("stripe_session_id", body.sessionId),
+      ]);
+      if (saveError || closeError) console.error("[FREELANCE-BOOST] delivery bookkeeping failed:", (saveError ?? closeError)?.message);
+    } catch (bookkeepingError) {
+      console.error("[FREELANCE-BOOST] delivery bookkeeping threw:", bookkeepingError);
+    }
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          structure: structure.structure,
-          structureNote: structure.note,
-          header: out.roleTitle || structure.header,
-          scopeStatement: out.scopeStatement || "",
-          projects: out.projects,
-          transitionParagraph: out.transitionParagraph ?? "",
-          gapHandling: out.gapHandling ?? "",
-          keywordCoverage,
-          ...(isTransitionPro ? {
-            transitionCoverLetter: out.transitionCoverLetter ?? "",
-            linkedinAbout: out.linkedinAbout ?? "",
-          } : {}),
-        },
-      }),
+      JSON.stringify({ success: true, data }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {

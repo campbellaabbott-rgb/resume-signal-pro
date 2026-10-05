@@ -58,6 +58,33 @@ export function isAgentPriced(
   );
 }
 
+/**
+ * The manual grant (a comp, an internal test account, support making someone
+ * whole) for this address, when one is live: a row Stripe does not own
+ * (`stripe_customer_id IS NULL`) that rowIsEntitled accepts. null otherwise,
+ * and null on a failed lookup -- a lookup error must never upgrade anyone.
+ * The same read checkAgentByEmail makes below, for the subscription
+ * checkouts, which must not sell a plan to an account that already holds one
+ * by hand (they no longer call checkAgentByEmail, whose Stripe pass the
+ * standing read in _shared/pro.ts now makes once for both tiers).
+ */
+export async function manualAgentGrant(
+  supabase: { from: (t: string) => any },
+  email: string,
+): Promise<{ current_period_end?: string | null } | null> {
+  try {
+    const { data: manual } = await supabase
+      .from("agent_subscribers")
+      .select(ENTITLEMENT_COLUMNS)
+      .eq("email", normalizeEmail(email))
+      .is("stripe_customer_id", null)
+      .maybeSingle();
+    return rowIsEntitled(manual) ? (manual as { current_period_end?: string | null }) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export async function checkAgentByEmail(
   stripe: Stripe,
   supabase: { from: (t: string) => any },

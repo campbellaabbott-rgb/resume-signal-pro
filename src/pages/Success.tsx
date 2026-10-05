@@ -50,6 +50,7 @@ import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
+import { PRODUCTS } from "@/config/products";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -90,15 +91,17 @@ const Success = () => {
   const sessionId = searchParams.get("session_id");
   const shareIdParam = searchParams.get("share");
 
-  // Simulate progress steps during loading
+  // Simulate progress steps during loading. The timers are CLEARED when the
+  // effect re-runs or the page unmounts (platform sweep L12-06): left pending
+  // they fired after unmount (in CI, after jsdom teardown, failing the run
+  // with "window is not defined"), and a "Try again" restarted the steps on
+  // top of the old timers, so the indicator jumped.
   useEffect(() => {
     if (isLoading && !shareIdParam && sessionId) {
       const stepDurations = [500, 1500, 3000];
-      stepDurations.forEach((duration, index) => {
-        setTimeout(() => {
-          setCurrentStep(index + 2);
-        }, duration);
-      });
+      const timers = stepDurations.map((duration, index) =>
+        setTimeout(() => setCurrentStep(index + 2), duration));
+      return () => timers.forEach(clearTimeout);
     }
   }, [isLoading, shareIdParam, sessionId]);
 
@@ -136,11 +139,14 @@ const Success = () => {
         // Save personalization profile for future content generation
         updateFromAnalysis(analysisResult, resumeText, linkedInText, jobDescriptionText, stripeSessionId);
 
-        // Track A/B test conversion (paid analysis completed)
+        // Track A/B test conversion (paid analysis completed). At the price
+        // the catalogue sells it for: this recorded 25 -- the analysis's
+        // price in its first week -- on every $5 sale, overstating the main
+        // product's funnel revenue five-fold (platform sweep L3-21).
         if (!hasTrackedConversion) {
           trackAllConversions({ type: 'paid_analysis', hasLinkedIn: data.hasLinkedIn });
-          trackPurchaseCompleted('fullAnalysis', 25, sessionId || undefined);
-          trackFunnelPurchase('fullAnalysis', 25, sessionId || undefined);
+          trackPurchaseCompleted('fullAnalysis', PRODUCTS.fullAnalysis.priceUsd, sessionId || undefined);
+          trackFunnelPurchase('fullAnalysis', PRODUCTS.fullAnalysis.priceUsd, sessionId || undefined);
           setHasTrackedConversion(true);
         }
 

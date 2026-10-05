@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useScanCredits } from "@/hooks/use-scan-credits";
+import { clampScanCredits, MAX_SCAN_CREDITS, MIN_SCAN_CREDITS } from "@/config/scan-credits";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useCurrency } from "@/hooks/use-currency";
 
@@ -34,11 +35,11 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
     // Track conversion events
     trackButtonClick('scan_credits_variable', 'rate_limit_upsell');
     
-    await purchaseCredits(email, creditAmount);
+    await purchaseCredits(email, clampScanCredits(creditAmount));
   };
 
   const adjustAmount = (delta: number) => {
-    setCreditAmount(prev => Math.max(1, Math.min(100, prev + delta)));
+    setCreditAmount(prev => clampScanCredits(prev + delta));
   };
 
   const isValidEmail = email.includes('@') && email.includes('.');
@@ -101,16 +102,17 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => adjustAmount(-1)}
-                  disabled={creditAmount <= 1}
+                  disabled={creditAmount <= MIN_SCAN_CREDITS}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
                 <Input
                   type="number"
-                  min={1}
-                  max={100}
+                  min={MIN_SCAN_CREDITS}
+                  max={MAX_SCAN_CREDITS}
                   value={creditAmount}
-                  onChange={(e) => setCreditAmount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => setCreditAmount(Math.min(MAX_SCAN_CREDITS, Math.max(0, parseInt(e.target.value) || 0)))}
+                  onBlur={() => setCreditAmount((c) => clampScanCredits(c))}
                   className="w-16 h-8 text-center"
                 />
                 <Button
@@ -118,7 +120,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => adjustAmount(1)}
-                  disabled={creditAmount >= 100}
+                  disabled={creditAmount >= MAX_SCAN_CREDITS}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -185,7 +187,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
           {/* Purchase button */}
           <Button
             onClick={handlePurchase}
-            disabled={!isValidEmail || isLoading}
+            disabled={!isValidEmail || isLoading || creditAmount < MIN_SCAN_CREDITS}
             className="w-full h-12 text-base font-semibold"
             size="lg"
           >

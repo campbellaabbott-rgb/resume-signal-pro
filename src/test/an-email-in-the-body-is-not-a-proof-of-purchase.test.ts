@@ -49,7 +49,9 @@ describe("an email in the body is not a proof of purchase", () => {
     // The three places that decide or record WHO the grant belongs to.
     const grantBlock = FN_CODE.slice(FN_CODE.indexOf("if (proEmail) {"), FN_CODE.indexOf("// Create Stripe session"));
     expect(grantBlock.length, "grant block not found — the assertions below would be vacuous").toBeGreaterThan(200);
-    expect(grantBlock).toMatch(/\.from\("pro_subscribers"\)[\s\S]*?\.eq\("email", proEmail\)/);
+    // The subscription check is keyed on the verified address: directly, or
+    // through the shared cache reader (which also reads the agent table).
+    expect(grantBlock).toMatch(/\.from\("pro_subscribers"\)[\s\S]*?\.eq\("email", proEmail\)|isProCached\(supabase, proEmail\)/);
     expect(grantBlock).toMatch(/\.insert\(\{\s*\n?\s*email: proEmail,/);
     expect(
       /pro_grants[\s\S]{0,400}email: normalizedEmail/.test(grantBlock),

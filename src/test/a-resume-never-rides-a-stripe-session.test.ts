@@ -141,7 +141,9 @@ describe("create-checkout sends Stripe no résumé text", () => {
 
   it("answers its build on the preflight, so the deploy is provable without minting a session", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/create-checkout", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("create-checkout.2026-10-04.no-resume-metadata");
+    // This build or a later one: a later change to the same function (2026-10-05
+    // payments wave) carries the fix forward under its own build string.
+    expect(res.headers.get("x-fn-build")).toMatch(/^create-checkout\.2026-10-(0[4-9]|[1-3]\d)\.[\w-]+$/);
   });
 });
 
@@ -283,7 +285,7 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
 
   it("answers its build on the preflight", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/create-product-checkout", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("create-product-checkout.2026-10-04.resume-ref");
+    expect(res.headers.get("x-fn-build")).toMatch(/^create-product-checkout\.2026-10-(0[4-9]|[1-3]\d)\.[\w-]+$/);
   });
 });
 
@@ -377,7 +379,7 @@ describe("stripe-webhook stores no résumé text from the events old sessions st
 
   it("answers its build on every response", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/stripe-webhook", { method: "GET" }));
-    expect(res.headers.get("x-fn-build")).toBe("stripe-webhook.2026-10-04.no-resume-in-stripe");
+    expect(res.headers.get("x-fn-build")).toMatch(/^stripe-webhook\.2026-10-(0[4-9]|[1-3]\d)\.[\w-]+$/);
   });
 
   it("a paid product session whose metadata names no résumé is delivered from the résumé kept against its id", async () => {
