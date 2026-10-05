@@ -30,7 +30,7 @@ const VERY_SLOW_THRESHOLD = 60000;
 // own redemption (purchased_content), never re-analysed. The database now
 // refuses an analyze-resume row in that cache (migration 20261004150000).
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
 const alertLastSent: Record<string, number> = {};
 

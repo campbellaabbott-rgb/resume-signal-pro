@@ -15,7 +15,7 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 const SLOW_REQUEST_THRESHOLD = 5000; // 5s for checkout
 const VERY_SLOW_THRESHOLD = 10000;
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
 const alertLastSent: Record<string, number> = {};
 

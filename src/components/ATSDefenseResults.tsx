@@ -351,7 +351,7 @@ export function ATSDefenseResults({ data, resumeText, multiColumnDetected }: ATS
         pdf.setPage(i);
         pdf.setFontSize(8);
         pdf.setTextColor(150, 150, 150);
-        pdf.text(`Page ${i} of ${pageCount} | ATS Defense Complete Report | resumebooster.com`, margin, 290);
+        pdf.text(`Page ${i} of ${pageCount} | ATS Defense Complete Report | resumebooster.work`, margin, 290);
       }
 
       pdf.save('ats-defense-report.pdf');

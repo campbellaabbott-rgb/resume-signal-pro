@@ -113,7 +113,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Free Reports:</strong> A free report quotes lines from your resume, including its first ~600 characters. It is cached for 7 days under a one-way fingerprint of the text, so the same file gets the same report, then deleted automatically. The fingerprint and the industry detected are kept so a rescan reads the same industry; the fingerprint cannot be turned back into your resume.</li>
                 <li><strong className="text-foreground">Cached AI Output:</strong> The AI-written summary at the top of a free report, and a report written by our backup scanner, are cached for up to {AI_CACHE_MAX_HOURS} hours under a one-way fingerprint of the text, then deleted automatically. A paid analysis is never cached.</li>
                 <li><strong className="text-foreground">Analysis Results:</strong> A paid analysis, which quotes your resume, is kept behind its private share link for {SHARED_ANALYSIS_DAYS} days and then deleted automatically, or sooner if you delete it from the results page; that link is its only copy on our servers, apart from any copy emailed to you. Documents generated for other paid products are kept with your purchase record so you can recover them, until you ask us to erase them.</li>
-                <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, and the CV you give the apply agent (the file and its text) are kept until you delete your account. The apply agent sends that CV to the employers it applies to on your behalf. Deleting your account erases the saved text; to have an uploaded CV file erased, email privacy@resumebooster.com.</li>
+                <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, and the CV you give the apply agent (the file and its text) are kept until you delete your account. The apply agent sends that CV to the employers it applies to on your behalf. Deleting your account erases the saved text; to have an uploaded CV file erased, email resumeboostersupp@gmail.com.</li>
                 <li><strong className="text-foreground">Payment Records:</strong> Retained as required by tax and financial regulations (typically 7 years)</li>
                 <li><strong className="text-foreground">Email Address:</strong> If provided, retained only as needed for sending your analysis results</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
@@ -256,7 +256,7 @@ export default function Privacy() {
               <div className="mt-4 p-4 bg-muted/10 rounded-lg border border-border">
                 <p className="text-muted-foreground">
                   <strong className="text-foreground">Resume Booster</strong><br />
-                  Email: <a href="mailto:privacy@resumebooster.com" className="text-primary hover:underline">privacy@resumebooster.com</a>
+                  Email: <a href="mailto:resumeboostersupp@gmail.com" className="text-primary hover:underline">resumeboostersupp@gmail.com</a>
                 </p>
               </div>
             </section>

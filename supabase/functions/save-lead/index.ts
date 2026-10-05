@@ -9,7 +9,7 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 const SLOW_REQUEST_THRESHOLD = 2000;
 const VERY_SLOW_THRESHOLD = 5000;
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000;
 const alertLastSent: Record<string, number> = {};
 

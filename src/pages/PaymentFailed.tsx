@@ -82,8 +82,8 @@ const PaymentFailed = () => {
           {/* Support message */}
           <p className="text-center text-xs text-muted-foreground pt-2">
             Still having issues? Contact us at{" "}
-            <a href="mailto:support@resumebooster.com" className="text-primary hover:underline">
-              support@resumebooster.com
+            <a href="mailto:resumeboostersupp@gmail.com" className="text-primary hover:underline">
+              resumeboostersupp@gmail.com
             </a>
           </p>
         </CardContent>

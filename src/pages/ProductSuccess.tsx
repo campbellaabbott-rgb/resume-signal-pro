@@ -2168,7 +2168,7 @@ export default function ProductSuccess() {
                 {t('productSuccess.needHelpDescription')}
               </p>
               <Button variant="outline" asChild>
-                <a href="mailto:support@resumebooster.com">
+                <a href="mailto:resumeboostersupp@gmail.com">
                   <Mail className="w-4 h-4 mr-2" />
                   {t('productSuccess.contactSupport')}
                 </a>

@@ -29,4 +29,4 @@ export const AI_CACHE_MAX_HOURS = 24;
 export const SHARED_ANALYSIS_DAYS = 90;
 
 /** Where erasure requests go: the address the privacy policy names. */
-export const PRIVACY_EMAIL = "privacy@resumebooster.com";
+export const PRIVACY_EMAIL = "resumeboostersupp@gmail.com";
