@@ -1140,6 +1140,27 @@ export type Database = {
         }
         Relationships: []
       }
+      client_write_budget: {
+        Row: {
+          bucket: string
+          n: number
+          scope: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          n: number
+          scope: string
+          window_start: string
+        }
+        Update: {
+          bucket?: string
+          n?: number
+          scope?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       cohort_weekly_reports: {
         Row: {
           created_at: string
@@ -4710,6 +4731,7 @@ export type Database = {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
         Returns: undefined
       }
+      alerts_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
       api_key_check: {
         Args: { p_endpoint: string; p_key_hash: string }
         Returns: {
@@ -4835,6 +4857,16 @@ export type Database = {
       cleanup_expired_stripe_sessions: { Args: never; Returns: number }
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
+      client_callable_census: { Args: never; Returns: Json }
+      client_write_allowed: {
+        Args: {
+          p_ceiling: number
+          p_per_address: number
+          p_scope: string
+          p_window_minutes: number
+        }
+        Returns: boolean
+      }
       collect_company_flow: { Args: { p_date?: string }; Returns: number }
       compare_cohorts: {
         Args: {
@@ -6452,6 +6484,7 @@ export type Database = {
         Args: { p_max_rows?: number; p_restart?: boolean }
         Returns: Json
       }
+      request_client_address: { Args: never; Returns: string }
       revert_category: {
         Args: { p_basis: string; p_key: string; p_target?: string }
         Returns: number

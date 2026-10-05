@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261004110000_every_function_a_stranger_can_call_is_named_with_its_caller.sql'));

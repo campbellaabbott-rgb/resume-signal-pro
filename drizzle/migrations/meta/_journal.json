@@ -666,6 +666,13 @@
       "when": 1791222144861,
       "tag": "0094_20261004100000_a_mail_we_send_needs_a_proof_and_a_key_needs_a_mailbox",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1791222159776,
+      "tag": "0095_20261004110000_every_function_a_stranger_can_call_is_named_with_its_caller",
+      "breakpoints": true
     }
   ]
 }
