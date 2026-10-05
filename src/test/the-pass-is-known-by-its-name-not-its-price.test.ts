@@ -97,9 +97,10 @@ describe("stripe-webhook recognises the pass by product_type only", () => {
 
   it("the pass branch of the handler keys on PASS_PRODUCT_TYPE, inside the paid gate, before the delivery claim", () => {
     const handler = WEBHOOK.slice(WEBHOOK.indexOf('case "checkout.session.completed":'), WEBHOOK.indexOf('case "payment_intent.payment_failed":'));
-    // The gate is 'paid', widened by the shared settlement predicate for the
-    // one no-cost shape (a 100%-off pass) — never by an amount comparison.
-    const paidGate = handler.indexOf("if (session.payment_status === 'paid' || passSessionSettled(session))");
+    // The gate is the shared settlement predicate: 'paid', or the no-cost
+    // shape a 100%-off code leaves (payment mode, zero total) -- for every
+    // one-time product since 2026-10-05 (L6-10), never by an amount comparison.
+    const paidGate = handler.indexOf("if (checkoutSessionSettled(session))");
     const passBranch = handler.indexOf("if (session.metadata?.product_type === PASS_PRODUCT_TYPE)");
     const grant = handler.indexOf("await grantAgentPass(session, supabase)");
     const delivery = handler.indexOf("await triggerProductDelivery(session, supabase, supabaseUrl, passGrant)");
@@ -153,7 +154,9 @@ describe("stripe-webhook recognises the pass by product_type only", () => {
 
   it("the no-cost acceptance is the shared predicate, imported by both the webhook and the status reader, and narrow", () => {
     const SETTLE = strip(read("supabase/functions/_shared/pass-settlement.ts"));
-    expect(WEBHOOK).toMatch(/import \{ passSessionSettled \} from "\.\.\/_shared\/pass-settlement\.ts"/);
+    // The webhook gates every one-time product on the general rule beside it
+    // in the same module; the status reader keeps the pass-only one.
+    expect(WEBHOOK).toMatch(/import \{ checkoutSessionSettled \} from "\.\.\/_shared\/pass-settlement\.ts"/);
     expect(STATUS).toMatch(/import \{ passSessionSettled \} from "\.\.\/_shared\/pass-settlement\.ts"/);
     // Narrow: payment mode, a zero total, the pass product type — all three.
     expect(SETTLE).toMatch(/session\.mode === "payment"/);

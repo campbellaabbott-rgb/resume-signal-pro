@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Tarifs — Resume Booster",
-    "metaDescription": "Formules de ${{keywordFixPrice}} (correction de mots-clés) à ${{snapshotPrice}} (Career Snapshot). Paiement unique, ne se renouvelle jamais automatiquement. Réécritures niveau recruteur.",
+    "metaDescription": "Outils à paiement unique de ${{lowPrice}} à ${{highPrice}}, jamais renouvelés, ou formules mensuelles dès ${{proPrice}} avec tous les outils inclus. Réécritures niveau recruteur.",
     "noSubscriptions": "Paiements uniques • Ne se renouvellent jamais automatiquement",
     "titlePrefix": "Choisissez votre",
     "titleHighlight": "Boost de CV",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Nécessite de téléverser votre CV pour l'analyser",
     "whyResumeBooster": "Pourquoi Resume Booster ?",
     "questions": "Des questions ?",
-    "allProductsOneTime": "Tous les produits sont des achats uniques avec accès instantané.",
+    "allProductsOneTime": "Chaque outil est un achat unique avec accès instantané, jamais renouvelé. Pro et l'Apply Agent sont des formules mensuelles résiliables à tout moment.",
     "freeScanLink": "scan gratuit",
     "seeScoreFirst": "pour voir d'abord votre score.",
     "tryFreeScanFirst": "Essayer le scan gratuit d'abord",
@@ -3463,9 +3463,9 @@
     "returnHome": "Retour à l'accueil"
   },
   "paymentFailed": {
-    "title": "Paiement échoué",
-    "subtitle": "Nous n'avons pas pu traiter votre paiement. Ne vous inquiétez pas — aucun frais n'a été débité de votre compte.",
-    "commonReasons": "Raisons courantes :",
+    "title": "Paiement annulé",
+    "subtitle": "Vous n'avez pas été débité. Reprenez là où vous vous êtes arrêté quand vous voulez.",
+    "commonReasons": "Si votre carte a été refusée, voici les raisons habituelles :",
     "fundsTitle": "Fonds insuffisants",
     "fundsDesc": "Votre carte ou compte bancaire n'a peut-être pas assez de solde. Essayez un autre mode de paiement.",
     "declinedTitle": "Carte refusée",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "Vérifiez que votre numéro de carte, date d'expiration et CVV sont correctement saisis.",
     "tryAgain": "Réessayer",
     "returnHome": "Retour à l'accueil",
-    "contactUs": "Toujours des problèmes ? Contactez-nous à resumeboostersupp@gmail.com"
+    "contactUs": "Toujours des problèmes ? Contactez-nous à resumeboostersupp@gmail.com",
+    "contactLead": "Toujours un problème ? Écrivez-nous à"
   },
   "resumeRecovery": {
     "title": "CV introuvable",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Annulable à tout moment. L'envoi automatique ne fonctionne pas actuellement : les candidatures sont donc préparées pour que vous les envoyiez en un clic.",
     "checkoutFailed": "Impossible de lancer le paiement — réessayez",
     "badgeOffline": "Fait le plus dur de la candidature",
-    "taglineOffline": "Il trouve les postes et remplit la candidature. Vous appuyez sur envoyer."
+    "taglineOffline": "Il trouve les postes et remplit la candidature. Vous appuyez sur envoyer.",
+    "signInFirst": "Vous vous connecterez d'abord : l'agent fonctionne depuis votre compte.",
+    "alreadySubscribed": "Vous avez déjà l'agent — on vous y emmène.",
+    "needsPaymentUpdate": "Votre formule a un paiement en attente. Mettez à jour votre carte plutôt que de souscrire une nouvelle formule.",
+    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux."
   },
   "atsCoverage": {
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",

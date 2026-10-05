@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
-    "metaDescription": "Mga plano mula ${{keywordFixPrice}} (Keyword Fix) hanggang ${{snapshotPrice}} (Career Snapshot). Isang beses lang, hindi awtomatikong nagre-renew. Mga resume rewrite sa antas ng recruiter.",
+    "metaDescription": "Mga isang-beses na tool mula ${{lowPrice}} hanggang ${{highPrice}} na hindi nagre-renew, o buwanang plano mula ${{proPrice}} kasama ang lahat ng tool. Mga resume rewrite sa antas ng recruiter.",
     "noSubscriptions": "Isang-pagkakataong bayad • Hindi awtomatikong nagre-renew",
     "titlePrefix": "Piliin ang Iyong",
     "titleHighlight": "Resume Boost",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Kailangang i-upload ang iyong resume para masuri",
     "whyResumeBooster": "Bakit Resume Booster?",
     "questions": "Mga Tanong?",
-    "allProductsOneTime": "Lahat ng produkto ay isang-pagkakataong bili na may instant na access.",
+    "allProductsOneTime": "Bawat tool ay isang-beses na bili na may instant na access at hindi nagre-renew. Ang Pro at ang Apply Agent ay buwanang plano na puwede mong kanselahin anumang oras.",
     "freeScanLink": "libreng scan",
     "seeScoreFirst": "para makita muna ang iyong score.",
     "tryFreeScanFirst": "Subukan Muna ang Libreng Scan",
@@ -3463,9 +3463,9 @@
     "returnHome": "Bumalik sa Home"
   },
   "paymentFailed": {
-    "title": "Hindi Matagumpay ang Bayad",
-    "subtitle": "Hindi namin ma-proseso ang iyong bayad. Huwag mag-alala — walang singil na ginawa sa iyong account.",
-    "commonReasons": "Mga karaniwang dahilan kung bakit ito nangyayari:",
+    "title": "Kinansela ang checkout",
+    "subtitle": "Hindi ka siningil. Ituloy kung saan ka huminto kahit kailan mo gusto.",
+    "commonReasons": "Kung na-decline ang iyong card, ito ang mga karaniwang dahilan:",
     "fundsTitle": "Hindi sapat na pondo",
     "fundsDesc": "Ang iyong card o bank account ay maaaring walang sapat na balanse. Subukan ang ibang paraan ng pagbabayad.",
     "declinedTitle": "Na-decline ang card",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "I-double-check na ang iyong card number, expiration date, at CVV ay tama ang pagkakasulat.",
     "tryAgain": "Subukan Muli",
     "returnHome": "Bumalik sa Home",
-    "contactUs": "May problema pa rin? Makipag-ugnayan sa amin sa resumeboostersupp@gmail.com"
+    "contactUs": "May problema pa rin? Makipag-ugnayan sa amin sa resumeboostersupp@gmail.com",
+    "contactLead": "May problema pa rin? Makipag-ugnayan sa amin sa"
   },
   "resumeRecovery": {
     "title": "Hindi Nahanap ang Resume",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Puwedeng kanselahin anumang oras. Hindi tumatakbo ngayon ang awtomatikong pagpapadala, kaya inihahanda ang mga aplikasyon para maipadala mo sa isang pindot.",
     "checkoutFailed": "Hindi masimulan ang checkout — pakisubukang muli",
     "badgeOffline": "Ginagawa ang mahirap na bahagi ng pag-apply",
-    "taglineOffline": "Hinahanap nito ang mga trabaho at pinupunan ang application. Ikaw ang pipindot ng send."
+    "taglineOffline": "Hinahanap nito ang mga trabaho at pinupunan ang application. Ikaw ang pipindot ng send.",
+    "signInFirst": "Magsa-sign in ka muna — gumagana ang agent mula sa iyong account.",
+    "alreadySubscribed": "Mayroon ka nang agent — dadalhin ka namin doon.",
+    "needsPaymentUpdate": "May nakabinbing bayad ang iyong plano. I-update ang iyong card sa halip na magsimula ng bagong plano.",
+    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",

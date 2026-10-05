@@ -78,6 +78,17 @@ export default function Pricing() {
     ...Object.values(SUBSCRIPTIONS).map((s) => s.priceUsd),
     PASS.priceUsd,
   ];
+  // THE DESCRIPTION'S RANGE IS THE CATALOGUE'S, by the same derivation
+  // (platform sweep L3-18). It used to interpolate the HIDDEN $3 Keyword Fix
+  // and say every product was pay-once, beside two monthly plans; the
+  // crawler's copy (scripts/prerender-seo.mjs) already said "$2–$59; Pro
+  // $45/month", so the bot and the page disagreed.
+  const oneTimePrices = visibleProducts.map((k) => PRODUCTS[k].priceUsd);
+  const metaPrices = {
+    lowPrice: Math.min(...oneTimePrices),
+    highPrice: Math.max(...oneTimePrices),
+    proPrice: SUBSCRIPTIONS.pro.priceUsd,
+  };
   const passCopy = { passPrice: PASS.priceUsd, passHours: PASS.sessionHours, passApplications: PASS.applications };
 
   const handlePurchase = async (productId: ProductId) => {
@@ -98,10 +109,7 @@ export default function Pricing() {
           Google shows for /pricing. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={t('pricingPage.metaDescription', {
-          keywordFixPrice: PRODUCTS.basicKeywordFix.priceUsd,
-          snapshotPrice: PRODUCTS.careerSnapshot.priceUsd,
-        })}
+        description={t('pricingPage.metaDescription', metaPrices)}
         path="/pricing"
       />
       {/* SoftwareApplication + AggregateOffer — eligible for price rich results

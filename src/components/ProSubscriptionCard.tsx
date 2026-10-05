@@ -1,16 +1,21 @@
-import { useState } from "react";
-import { Crown, Check, Loader2, Sparkles, Settings2 } from "lucide-react";
+import { Crown, Check, Loader2, Sparkles, Settings2, CreditCard } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
+import { SUBSCRIPTIONS } from "@/config/products";
+import { isOwingStatus } from "@/config/subscription-status";
 
-// Scanner-era list predated the job board entirely — the Morning Queue and
-// Apply Agent (the subscription's two biggest features) were absent from the
-// one surface that sells it. Every line is a shipped, factual capability.
+// Every line is a shipped, factual capability OF THIS PLAN. The Morning Queue
+// line that used to lead this list is the agent plan's (its entitlement is
+// price-specific: _shared/agent.ts refuses the Pro price), so a Pro buyer met the
+// agent's paywall on /agent after being sold it here (platform sweep L3-04).
+// It is described on the agent card beside this one. Whether the Full
+// Analysis belongs in Pro is an open owner decision (the $5 checkout still
+// charges a Pro member), recorded in the payments wave report.
 const PRO_PERKS = [
-  "Morning Queue — the Apply Agent triages the live job board overnight and hands you ready-to-review picks with reasons",
   "Batch application prep — tailored answers drafted for every saved job at once (you always hit send yourself)",
   "Unlimited scans — tailor a resume version to every job you apply to",
   "Track every application against the exact resume version you sent",
@@ -20,15 +25,33 @@ const PRO_PERKS = [
 ];
 
 /**
- * Resume Booster Pro card — $45/month all-access. Shown on /pricing and
- * /account. Renders subscribe CTA (with email input when we don't know the
- * visitor) or active-member state with a manage button.
+ * Resume Booster Pro card — the monthly all-access plan. Shown on /pricing and
+ * /account.
+ *
+ * - A signed-out visitor is sent to sign in first and brought back: the
+ *   checkout sells only to a signed-in account (2026-10-04 completeness
+ *   review: it used to answer, for any address in the request, whether that
+ *   address subscribed), and the plan lives on the account anyway.
+ * - A plan that owes money (past_due and friends) shows "Update payment
+ *   method", which opens the billing portal. It used to show "Go Pro", and the
+ *   checkout then sold a second subscription that billed beside the first once
+ *   Stripe's retry succeeded (platform sweep L6-06).
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
-  const { pro, subscribe, manage, actionLoading, knownEmail } = useProSubscription();
-  const [email, setEmail] = useState("");
+  const { pro, subscribe, manage, actionLoading } = useProSubscription();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const price = SUBSCRIPTIONS.pro.priceUsd;
+  const owing = isOwingStatus(pro.status);
 
-  const needsEmail = !knownEmail;
+  const goPro = () => {
+    if (!user) {
+      navigate(`/auth?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`);
+      return;
+    }
+    void subscribe(user.email ?? undefined);
+  };
 
   return (
     <div
@@ -55,7 +78,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
       </div>
 
       <div className="mb-4 flex items-baseline gap-2">
-        <span className="text-4xl font-bold">$45</span>
+        <span className="text-4xl font-bold">${price}</span>
         <span className="text-muted-foreground">/month</span>
       </div>
 
@@ -86,27 +109,30 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
             Manage subscription
           </Button>
         </div>
+      ) : owing ? (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-destructive">
+            Your last payment didn't go through. Update your card to keep your plan — no new subscription needed.
+          </p>
+          <Button className="w-full gap-2" onClick={manage} disabled={actionLoading}>
+            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+            Update payment method
+          </Button>
+        </div>
       ) : (
         <div className="space-y-3">
-          {needsEmail && (
-            <Input
-              type="email"
-              placeholder="you@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-label="Email for your Pro subscription"
-            />
-          )}
           <Button
             className="w-full gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
-            onClick={() => subscribe(needsEmail ? email : undefined)}
-            disabled={actionLoading || pro.loading}
+            onClick={goPro}
+            disabled={actionLoading || (Boolean(user) && pro.loading)}
           >
             {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
-            Go Pro — $45/month
+            Go Pro — ${price}/month
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            Secure checkout via Stripe. Cancel anytime — no lock-in.
+            {user
+              ? "Secure checkout via Stripe. Cancel anytime — no lock-in."
+              : "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime."}
           </p>
         </div>
       )}

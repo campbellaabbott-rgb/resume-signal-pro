@@ -1,16 +1,22 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
+import { assertPaidSession } from "../_shared/paid-session.ts";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-ats-defense.2026-10-01.1";
+const FN_BUILD = "generate-ats-defense.2026-10-05.1";
 
 // The product_type create-product-checkout writes for this product; the
 // session's metadata must carry it, and the claim records it.
 const ATS_DEFENSE_PRODUCT_TYPE = 'ats_defense';
+// What a Pro grant's claim must name to be accepted here.
+const ATS_DEFENSE_PRODUCT_TYPES = ['ats_defense'];
+const ATS_DEFENSE_PRODUCT_NAME = 'ATS Defense Complete';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,13 +36,9 @@ const ERROR_MESSAGES = {
   SESSION_USED: 'This session has already been used.',
 };
 
-// Helper to get client IP from request (prioritize Cloudflare's trusted header)
-const getClientIp = (req: Request): string => {
-  return req.headers.get('cf-connecting-ip') ||
-         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-         req.headers.get('x-real-ip') || 
-         'unknown';
-};
+// The platform's word for the caller's address (cf-connecting-ip, else the
+// last forwarded hop), never the first hop, which a caller writes itself.
+const getClientIp = (req: Request): string => clientAddressOr(req.headers);
 
 const escapeXml = (str: string): string => {
   if (!str) return '';
@@ -343,50 +345,78 @@ serve(async (req) => {
       );
     }
 
-    // Verify Stripe payment
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) {
-      console.error("[ATS-DEFENSE] STRIPE_SECRET_KEY not set");
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-    
-    let session;
     let customerEmail: string | null = null;
-    try {
-      session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['customer_details', 'line_items']
-      });
-      customerEmail = session.customer_details?.email || session.customer_email || null;
-      console.log("[ATS-DEFENSE] Stripe session verified", { email: customerEmail ? 'found' : 'not found' });
-    } catch (stripeError) {
-      console.error("[ATS-DEFENSE] Invalid Stripe session:", stripeError);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const isProGrant = sessionId.startsWith('pro_');
 
-    if (session.payment_status !== 'paid') {
-      console.log("[ATS-DEFENSE] Unpaid session");
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (isProGrant) {
+      // A PRO SUBSCRIBER'S GRANT HAS NO STRIPE SESSION (platform sweep L6-03,
+      // register 1.14). create-product-checkout mints `pro_<grant>` for a
+      // subscriber and verify-product-purchase consumes it and writes its
+      // claim, naming the product, before this page ever calls here. This
+      // used to send that id to stripe.checkout.sessions.retrieve, which
+      // threw, so every $45 subscriber got a 401 for a tool the plan includes,
+      // after their grant was already spent. The claim is the proof, exactly
+      // as for every other paid generator.
+      const refusal = await assertPaidSession(supabase, sessionId, ATS_DEFENSE_PRODUCT_TYPES);
+      if (refusal) {
+        console.log("[ATS-DEFENSE] Pro grant refused:", refusal);
+        return new Response(
+          JSON.stringify({ error: refusal }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: grant } = await supabase
+        .from('pro_grants')
+        .select('email')
+        .eq('id', sessionId.slice(4))
+        .maybeSingle();
+      customerEmail = (grant as { email?: string | null } | null)?.email ?? null;
+    } else {
+      // Verify Stripe payment
+      const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeKey) {
+        console.error("[ATS-DEFENSE] STRIPE_SECRET_KEY not set");
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    // Verify it's an ATS Defense purchase
-    const metadata = session.metadata || {};
-    if (metadata.product_type !== ATS_DEFENSE_PRODUCT_TYPE) {
-      console.log("[ATS-DEFENSE] Wrong product type:", metadata.product_type);
-      return new Response(
-        JSON.stringify({ error: "This session is not for ATS Defense" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+
+      let session;
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ['customer_details', 'line_items']
+        });
+        customerEmail = session.customer_details?.email || session.customer_email || null;
+        console.log("[ATS-DEFENSE] Stripe session verified", { email: customerEmail ? 'found' : 'not found' });
+      } catch (stripeError) {
+        console.error("[ATS-DEFENSE] Invalid Stripe session:", stripeError);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // 'paid', or a $0 session a 100%-off code completed (L6-10).
+      if (!checkoutSessionSettled(session)) {
+        console.log("[ATS-DEFENSE] Unpaid session");
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify it's an ATS Defense purchase
+      const metadata = session.metadata || {};
+      if (metadata.product_type !== ATS_DEFENSE_PRODUCT_TYPE) {
+        console.log("[ATS-DEFENSE] Wrong product type:", metadata.product_type);
+        return new Response(
+          JSON.stringify({ error: "This session is not for ATS Defense" }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // THE SESSION IS ALREADY CLAIMED BY THE TIME THIS RUNS, AND THAT IS PROOF,
@@ -408,9 +438,12 @@ serve(async (req) => {
     // accepted by every paid generator as a purchase of anything. An existing
     // claim is the expected case and the request proceeds; any other database
     // error still fails closed.
-    const { error: claimError } = await supabase
-      .from('used_stripe_sessions')
-      .insert({ session_id: sessionId, ip_address: clientIp, product_type: ATS_DEFENSE_PRODUCT_TYPE });
+    // (A Pro grant was proven BY its claim above, so there is nothing to write.)
+    const { error: claimError } = isProGrant
+      ? { error: null }
+      : await supabase
+        .from('used_stripe_sessions')
+        .insert({ session_id: sessionId, ip_address: clientIp, product_type: ATS_DEFENSE_PRODUCT_TYPE });
 
     if (claimError && claimError.code !== '23505') {
       console.error("[ATS-DEFENSE] Error claiming session:", claimError.message);
@@ -595,9 +628,28 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
     const duration = Date.now() - startTime;
     console.log(`[ATS-DEFENSE] Complete | ${duration}ms | success`);
 
+    // KEPT, so the buyer can get it back (L6-03). The success page calls this
+    // directly and used to be the only holder of the report it rendered; a
+    // closed tab lost a $15 purchase. Upserted per session, best-effort: the
+    // server-side callers save the same report themselves.
+    const { error: saveError } = await supabase.rpc('save_purchased_content', {
+      p_stripe_session_id: sessionId,
+      p_customer_email: customerEmail ?? '',
+      p_product_type: ATS_DEFENSE_PRODUCT_TYPE,
+      p_product_name: ATS_DEFENSE_PRODUCT_NAME,
+      p_generated_content: analysis,
+    });
+    if (saveError) console.error("[ATS-DEFENSE] Report generated but not saved:", saveError.message);
+
+    // `data` is the field every generator answers with and every server-side
+    // caller (the webhook, verify-product-purchase, retry-failed-deliveries)
+    // reads. Answering {report} alone made each of them read undefined and
+    // throw the report away on every sale (L6-02). `report` stays for the
+    // success page, which reads it.
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
+        data: analysis,
         report: analysis,
         customerEmail
       }),

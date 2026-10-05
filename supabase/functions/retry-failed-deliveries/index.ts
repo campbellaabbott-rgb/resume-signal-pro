@@ -1,11 +1,24 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-04.1";
+const FN_BUILD = "retry-failed-deliveries.2026-10-05.1";
+
+// WHAT THIS SWEEP CAN DELIVER. A row for anything else (a subscription, the
+// six-hour pass, the Freelance Boost tiers, an unknown type) is taken off the
+// schedule with the reason written down, instead of being stamped
+// generation_failed and retried until exhausted: those were guaranteed false
+// failures that buried real ones on the delivery monitor (platform sweep
+// L6-27, register 2.16). The full analysis keeps its own branch below.
+const SCAN_CREDIT_PRODUCT_TYPES = ["scan_pack", "scan_credits", "career_bundle"];
+const GENERATED_PRODUCT_TYPES = [
+  "apply_assistant", "basic_keyword_fix", "cover_letter", "premium_package", "graduate_gameplan",
+  "career_snapshot", "ats_defense", "interview_coach", "career_path_simulator",
+];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +50,9 @@ serve(async (req) => {
     // paying customers is a worse outcome than the abuse. A limit the cron
     // cannot hit (it runs every four hours) bounds the blast radius without
     // touching that chain.
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    // The platform's word for the caller's address, never the first forwarded
+    // hop, which a caller writes itself and could rotate per request.
+    const ip = clientAddressOr(req.headers);
     const { data: rlAllowed } = await supabase.rpc("check_rate_limit", {
       p_function: "retry-failed-deliveries", p_ip: ip, p_max_requests: 6, p_window_minutes: 60,
     });
@@ -94,27 +109,42 @@ serve(async (req) => {
           // Need to generate content
           
           // For scan packs, just add credits
-          if (delivery.product_type === 'scan_pack' || delivery.product_type === 'scan_credits' || delivery.product_type === 'career_bundle') {
-            const credits = delivery.product_type === 'career_bundle' ? 75 : 10;
-            
+          if (SCAN_CREDIT_PRODUCT_TYPES.includes(delivery.product_type)) {
+            // WHAT WAS BOUGHT, not a hard-coded 10 (or 75): the webhook writes
+            // the count into the row's metadata at payment (L6-13). A row from
+            // before that falls back to the old defaults.
+            const recorded = Number((metadata as { credits?: unknown }).credits);
+            const credits = Number.isFinite(recorded) && recorded > 0
+              ? Math.min(Math.floor(recorded), 500)
+              : delivery.product_type === 'career_bundle' ? 75 : 10;
+
             if (delivery.customer_email) {
-              const { error: creditError } = await supabase.rpc('add_scan_credits', {
-                p_email: delivery.customer_email,
-                p_credits: credits
-              });
+              // ALREADY CREDITED? The webhook writes the receipt beside the
+              // credit; when only its 'delivered' update failed, adding again
+              // would pay the buyer twice. The receipt is the evidence.
+              const { data: receipt } = await supabase
+                .rpc('get_purchased_content_by_session', { p_session_id: delivery.stripe_session_id });
+              const alreadyCredited = Array.isArray(receipt) && receipt.some(
+                (r: { generated_content?: { credits?: unknown } | null }) => r?.generated_content && typeof r.generated_content === 'object' && 'credits' in r.generated_content,
+              );
 
-              if (creditError) {
-                throw new Error(`Credit add failed: ${creditError.message}`);
+              if (!alreadyCredited) {
+                const { error: creditError } = await supabase.rpc('add_scan_credits', {
+                  p_email: delivery.customer_email,
+                  p_credits: credits
+                });
+                if (creditError) {
+                  throw new Error(`Credit add failed: ${creditError.message}`);
+                }
+                const { error: saveError } = await supabase.rpc('save_purchased_content', {
+                  p_stripe_session_id: delivery.stripe_session_id,
+                  p_customer_email: delivery.customer_email,
+                  p_product_type: delivery.product_type,
+                  p_product_name: delivery.product_name || `${credits} Scan Credits`,
+                  p_generated_content: { credits, message: `${credits} scan credits added` }
+                });
+                if (saveError) logStep("Credits added but the receipt was not saved", { id: delivery.id, error: saveError.message });
               }
-
-              // Save content
-              await supabase.rpc('save_purchased_content', {
-                p_stripe_session_id: delivery.stripe_session_id,
-                p_customer_email: delivery.customer_email,
-                p_product_type: delivery.product_type,
-                p_product_name: delivery.product_name || `${credits} Scan Credits`,
-                p_generated_content: { credits, message: `${credits} scan credits added` }
-              });
 
               await supabase
                 .from('product_deliveries')
@@ -122,7 +152,7 @@ serve(async (req) => {
                 .eq('id', delivery.id);
 
               results.push({ id: delivery.id, status: 'delivered', success: true });
-              logStep("Credits retry successful", { id: delivery.id, credits });
+              logStep(alreadyCredited ? "Credits were already added; row closed" : "Credits retry successful", { id: delivery.id, credits });
               continue;
             }
           }
@@ -144,6 +174,22 @@ serve(async (req) => {
               .update({ next_retry_at: 'infinity', generation_error: 'Full Resume Analysis is delivered on the buyer\'s success page by analyze-resume; there is nothing to regenerate server-side' })
               .eq('id', delivery.id);
             results.push({ id: delivery.id, status: delivery.status, success: false, error: 'full_analysis: delivered on the success page, not by this sweep' });
+            continue;
+          }
+
+          // Nothing here can generate it: unscheduled with the reason, not
+          // stamped as a failure and retried until exhausted (see the list at
+          // the top). Left open, it still reads as stuck on the delivery
+          // monitor after two hours, which is the signal a human should see.
+          if (!GENERATED_PRODUCT_TYPES.includes(delivery.product_type)) {
+            const reason = SCAN_CREDIT_PRODUCT_TYPES.includes(delivery.product_type)
+              ? 'Scan credits with no buyer email on the row: nothing to credit; recover by hand'
+              : `${delivery.product_type || 'unknown'} is not delivered by this sweep (a subscription, the pass or Freelance Boost is closed by its own path)`;
+            await supabase
+              .from('product_deliveries')
+              .update({ next_retry_at: 'infinity', generation_error: reason })
+              .eq('id', delivery.id);
+            results.push({ id: delivery.id, status: delivery.status, success: false, error: `${delivery.product_type}: not this sweep's to deliver` });
             continue;
           }
 
@@ -289,18 +335,25 @@ serve(async (req) => {
               throw new Error(`Generation failed: ${genResponse.status} - ${errorText}`);
             }
 
-            const genResult = await genResponse.json();
-            generatedContent = genResult.data;
+            // Every generator answers {success, data}; a 200 without a payload
+            // is a failure with a reason (generate-ats-defense answered
+            // {report} alone, and this read undefined -- L6-02).
+            const genResult = await genResponse.json().catch(() => null);
+            generatedContent = genResult?.data ?? null;
+            if (!generatedContent) throw new Error(`${endpoint} answered 200 with no content`);
           }
 
-          // Save content
-          await supabase.rpc('save_purchased_content', {
+          // Save content. Checked BEFORE the row is marked generated: a copy
+          // that never landed is a failed delivery, not a "delivered" one with
+          // nothing behind it for recovery or the email retry to read.
+          const { error: saveError } = await supabase.rpc('save_purchased_content', {
             p_stripe_session_id: delivery.stripe_session_id,
             p_customer_email: delivery.customer_email || '',
             p_product_type: delivery.product_type,
             p_product_name: delivery.product_name,
             p_generated_content: generatedContent
           });
+          if (saveError) throw new Error(`save_purchased_content: ${saveError.message}`);
 
           // Update delivery status
           await supabase
@@ -345,7 +398,18 @@ serve(async (req) => {
               results.push({ id: delivery.id, status: 'delivered', success: true });
               logStep("Full retry successful", { id: delivery.id });
             } else {
-              throw new Error(`Email failed: ${emailResponse.status}`);
+              // The content exists and is saved: what failed is only the
+              // mail, so the row moves to email_failed and the next sweep
+              // resends it from the stored copy. Thrown, it kept its old
+              // status and the next sweep paid for the generation again.
+              const failure = `Email failed: ${emailResponse.status}`;
+              await supabase.rpc('update_delivery_retry', {
+                p_id: delivery.id,
+                p_status: 'email_failed',
+                p_error: failure,
+                p_increment_retry: true
+              });
+              results.push({ id: delivery.id, status: 'email_failed', success: false, error: failure });
             }
           } else {
             results.push({ id: delivery.id, status: 'content_generated', success: true });
@@ -355,14 +419,18 @@ serve(async (req) => {
           // Content was generated, just retry email
           
           // Get the saved content
-          const { data: contentData } = await supabase
+          const { data: contentData, error: contentError } = await supabase
             .rpc('get_purchased_content_by_session', { p_session_id: delivery.stripe_session_id });
+          if (contentError) throw new Error(`Content lookup failed: ${contentError.message}`);
 
-          if (!contentData || contentData.length === 0) {
-            throw new Error('Content not found for email retry');
-          }
-
-          const generatedContent = contentData[0].generated_content;
+          // A row whose failed mail was the success page's confirmation
+          // (verify-product-purchase, for a product the browser generated)
+          // has no stored copy, and never had one: the mail it failed to send
+          // carried none. Resend that confirmation rather than failing the
+          // row until its retries run out.
+          const generatedContent = Array.isArray(contentData) && contentData.length > 0
+            ? contentData[0].generated_content ?? null
+            : null;
 
           if (delivery.customer_email) {
             // The service-role key: send-product-email is internal and

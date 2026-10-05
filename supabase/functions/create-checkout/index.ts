@@ -1,12 +1,13 @@
-// deploy-stamp: 2026-10-04T15:00Z
+// deploy-stamp: 2026-10-05T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-10-04.no-resume-metadata";
+const FN_BUILD = "create-checkout.2026-10-05.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -200,10 +201,18 @@ export function calculateAmount(currency: string): { amount: number; currency: s
   return { amount: amountInSmallestUnit, currency: lowerCurrency };
 }
 
-// Generate idempotency key from client IP and timestamp (5-second window)
-function generateIdempotencyKey(clientIp: string): string {
-  const timeWindow = Math.floor(Date.now() / 5000); // 5-second window
-  return `checkout_${clientIp}_${timeWindow}`;
+// ONE KEY PER LOGICAL REQUEST (platform sweep L6-17). It used to be the
+// caller's address and a 5-second bucket, which was wrong both ways: this
+// function's own retry after a Stripe 500 replayed Stripe's stored 500 (Stripe
+// saves the first result for a key, errors included), and a second request
+// from the same address in the same bucket -- a double-click, a retry, a
+// shared office NAT -- sent different params (expires_at is per request), got
+// idempotency_error and a failed $5 checkout. Each ATTEMPT of a request gets
+// its own suffix (see createStripeSessionWithRetry), so a retry is a real
+// retry; the cost of a duplicate is an unused checkout session that expires
+// on its own, never a second charge.
+export function generateIdempotencyKey(): string {
+  return `checkout_${crypto.randomUUID()}`;
 }
 
 // Sleep helper for retry delays
@@ -223,7 +232,7 @@ async function createStripeSessionWithRetry(
       logStep(`Stripe API attempt ${attempt}/${maxRetries}`);
       
       const session = await stripe.checkout.sessions.create(sessionParams, {
-        idempotencyKey: idempotencyKey,
+        idempotencyKey: `${idempotencyKey}_${attempt}`,
       });
       
       logStep(`Stripe session created successfully on attempt ${attempt}`);
@@ -277,11 +286,10 @@ serve(async (req) => {
     );
   }
 
-  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
-  const clientIp = req.headers.get("cf-connecting-ip") ||
-                   req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-                   req.headers.get("x-real-ip") ||
-                   "unknown";
+  // The platform's word for the caller's address (cf-connecting-ip, else the
+  // last forwarded hop), never the first hop, which a caller writes itself
+  // and could rotate per request to dodge the limit below.
+  const clientIp = clientAddressOr(req.headers);
 
   try {
     logStep("Function started", { ip: clientIp });
@@ -429,9 +437,8 @@ serve(async (req) => {
       );
     }
 
-    // Generate idempotency key to prevent duplicate sessions
-    const idempotencyKey = generateIdempotencyKey(clientIp);
-    logStep("Generated idempotency key", { key: idempotencyKey });
+    // One key for this request and its retries (see generateIdempotencyKey).
+    const idempotencyKey = generateIdempotencyKey();
 
     // Create session params
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -450,7 +457,9 @@ serve(async (req) => {
       ],
       mode: "payment",
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/payment-failed`,
+      // Backing out of Stripe lands here, and the page offers the way back to
+      // what they were buying (L3-15), so it is told which product.
+      cancel_url: `${origin}/payment-failed?product=fullAnalysis`,
       allow_promotion_codes: true, // Enable coupon/promo code input field
       // Every value here is kept by Stripe for the life of the account, so
       // only what Stripe itself needs and nothing a person wrote.

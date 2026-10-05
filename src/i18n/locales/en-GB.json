@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",
-    "metaDescription": "Plans from the ${{keywordFixPrice}} Keyword Fix to the ${{snapshotPrice}} Career Snapshot. Pay once — these never auto-renew. Recruiter-grade CV rewrites.",
+    "metaDescription": "One-off tools from ${{lowPrice}} to ${{highPrice}} that never renew, or monthly plans from ${{proPrice}} with every tool included. Recruiter-grade CV rewrites.",
     "noSubscriptions": "One-time payments • Never auto-renew",
     "titlePrefix": "Choose Your",
     "titleHighlight": "CV Boost",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Requires uploading your CV to analyse",
     "whyResumeBooster": "Why Resume Booster?",
     "questions": "Questions?",
-    "allProductsOneTime": "All products are one-time purchases with instant access.",
+    "allProductsOneTime": "Every tool is a one-off purchase with instant access, and never renews. Pro and the Apply Agent are monthly plans you can cancel at any time.",
     "freeScanLink": "free scan",
     "seeScoreFirst": "to see your score first.",
     "tryFreeScanFirst": "Try Free Scan First",
@@ -3463,9 +3463,9 @@
     "returnHome": "Return to Home"
   },
   "paymentFailed": {
-    "title": "Payment Unsuccessful",
-    "subtitle": "We couldn't process your payment. Don't worry — no charges were made to your account.",
-    "commonReasons": "Common reasons this happens:",
+    "title": "Checkout cancelled",
+    "subtitle": "You weren't charged. Pick up where you left off whenever you're ready.",
+    "commonReasons": "If your card was declined, the usual reasons are:",
     "fundsTitle": "Insufficient funds",
     "fundsDesc": "Your card or bank account may not have enough balance. Try a different payment method.",
     "declinedTitle": "Card declined",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "Double-check your card number, expiration date, and CVV are entered correctly.",
     "tryAgain": "Try Again",
     "returnHome": "Return to Home",
-    "contactUs": "Still having issues? Contact us at resumeboostersupp@gmail.com"
+    "contactUs": "Still having issues? Contact us at resumeboostersupp@gmail.com",
+    "contactLead": "Still having issues? Contact us at"
   },
   "resumeRecovery": {
     "title": "CV Not Found",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Cancel any time. Unattended sending isn't running right now, so applications are prepared for you to send in one click.",
     "checkoutFailed": "Couldn't start checkout — please try again",
     "badgeOffline": "Does the hard part of applying",
-    "taglineOffline": "It finds the roles and fills in the application. You press send."
+    "taglineOffline": "It finds the roles and fills in the application. You press send.",
+    "signInFirst": "You'll sign in first — the agent works from your account.",
+    "alreadySubscribed": "You already have the agent — taking you to it.",
+    "needsPaymentUpdate": "Your plan has a payment due. Update your card instead of starting a new plan.",
+    "hasPro": "You're on Pro, which the agent includes. Cancel Pro in Manage subscription first, then start the agent — so you're never billed for both."
   },
   "atsCoverage": {
     "heading": "Built for the systems employers actually use",

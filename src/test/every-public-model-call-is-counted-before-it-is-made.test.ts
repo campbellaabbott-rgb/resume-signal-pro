@@ -247,7 +247,10 @@ describe("the gate is in front of every public model endpoint", () => {
 
       it("answers its build on the preflight, so a deploy is provable without a model call", async () => {
         const res = await handlers.get(c.fn)!(new Request(`https://harness.supabase.co/functions/v1/${c.fn}`, { method: "OPTIONS" }));
-        expect(res.headers.get("x-fn-build")).toBe(`${c.fn}.2026-10-04.1`);
+        // That build or a later one: a later change to the same function
+        // (the 2026-10-05 payments wave rebuilt two of these) carries the
+        // gate forward under its own build string.
+        expect(res.headers.get("x-fn-build")).toMatch(new RegExp(`^${c.fn}\\.2026-10-(0[4-9]|[1-3]\\d)\\.\\d+$`));
       });
     });
   }

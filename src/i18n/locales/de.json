@@ -2772,7 +2772,7 @@
   },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",
-    "metaDescription": "Pläne vom Keyword-Fix (${{keywordFixPrice}}) bis zum Career Snapshot (${{snapshotPrice}}). Einmalzahlung, verlängert sich nie automatisch. Lebenslauf auf Recruiter-Niveau.",
+    "metaDescription": "Einmal-Tools von ${{lowPrice}} bis ${{highPrice}}, die sich nie verlängern, oder Monatspläne ab ${{proPrice}} mit allen Tools inklusive. Lebenslauf auf Recruiter-Niveau.",
     "noSubscriptions": "Einmalzahlungen • Verlängern sich nie automatisch",
     "titlePrefix": "Wähle deinen",
     "titleHighlight": "Lebenslauf-Boost",
@@ -2789,7 +2789,7 @@
     "requiresUpload": "Erfordert das Hochladen deines Lebenslaufs zur Analyse",
     "whyResumeBooster": "Warum Resume Booster?",
     "questions": "Fragen?",
-    "allProductsOneTime": "Alle Produkte sind Einmalkäufe mit sofortigem Zugang.",
+    "allProductsOneTime": "Jedes Tool ist ein Einmalkauf mit sofortigem Zugang und verlängert sich nie. Pro und der Apply Agent sind Monatspläne, jederzeit kündbar.",
     "freeScanLink": "kostenlosen Scan",
     "seeScoreFirst": "um zuerst deine Punktzahl zu sehen.",
     "tryFreeScanFirst": "Zuerst kostenlosen Scan ausprobieren",
@@ -3463,9 +3463,9 @@
     "returnHome": "Zur Startseite"
   },
   "paymentFailed": {
-    "title": "Zahlung fehlgeschlagen",
-    "subtitle": "Wir konnten deine Zahlung nicht verarbeiten. Keine Sorge — es wurden keine Gebühren von deinem Konto abgebucht.",
-    "commonReasons": "Häufige Gründe dafür:",
+    "title": "Bezahlvorgang abgebrochen",
+    "subtitle": "Dir wurde nichts berechnet. Mach jederzeit dort weiter, wo du aufgehört hast.",
+    "commonReasons": "Falls deine Karte abgelehnt wurde, sind das die üblichen Gründe:",
     "fundsTitle": "Unzureichende Deckung",
     "fundsDesc": "Deine Karte oder dein Bankkonto hat möglicherweise nicht genug Guthaben. Versuche eine andere Zahlungsmethode.",
     "declinedTitle": "Karte abgelehnt",
@@ -3474,7 +3474,8 @@
     "incorrectDesc": "Überprüfe, ob Kartennummer, Ablaufdatum und CVV korrekt eingegeben wurden.",
     "tryAgain": "Erneut versuchen",
     "returnHome": "Zur Startseite",
-    "contactUs": "Noch Probleme? Kontaktiere uns unter resumeboostersupp@gmail.com"
+    "contactUs": "Noch Probleme? Kontaktiere uns unter resumeboostersupp@gmail.com",
+    "contactLead": "Immer noch Probleme? Schreib uns an"
   },
   "resumeRecovery": {
     "title": "Lebenslauf nicht gefunden",
@@ -4877,7 +4878,11 @@
     "footnoteOffline": "Jederzeit kündbar. Der unbeaufsichtigte Versand läuft gerade nicht, daher werden Bewerbungen vorbereitet, damit Sie sie mit einem Klick senden.",
     "checkoutFailed": "Bezahlvorgang konnte nicht gestartet werden – bitte erneut versuchen",
     "badgeOffline": "Übernimmt den mühsamen Teil der Bewerbung",
-    "taglineOffline": "Es findet die Stellen und füllt die Bewerbung aus. Sie drücken auf Senden."
+    "taglineOffline": "Es findet die Stellen und füllt die Bewerbung aus. Sie drücken auf Senden.",
+    "signInFirst": "Du meldest dich zuerst an – der Agent arbeitet über dein Konto.",
+    "alreadySubscribed": "Du hast den Agenten bereits – wir bringen dich hin.",
+    "needsPaymentUpdate": "Für deinen Plan ist eine Zahlung offen. Aktualisiere deine Karte, statt einen neuen Plan zu starten.",
+    "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides."
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
