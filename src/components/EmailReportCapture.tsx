@@ -52,8 +52,11 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   // already due), or the pulse does not cover this field (422).
   const [pulseOutcome, setPulseOutcome] = useState<"pending" | "not_covered" | null>(null);
   // Off by default — the drip is a commitment; defaulting it on would be the
-  // dark pattern the rest of the product refuses to be.
+  // dark pattern the rest of the product refuses to be. And a ticked box only
+  // ASKS, like the pulse: the report mail carries a button that starts the
+  // sequence, and nothing is queued until the inbox's owner presses it.
   const [dripOptIn, setDripOptIn] = useState(false);
+  const [dripAsked, setDripAsked] = useState(false);
 
   const send = async () => {
     const trimmed = email.trim();
@@ -79,6 +82,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
         throw new Error(refusal || error?.message || "send failed");
       }
       localStorage.setItem("rb_last_email", trimmed);
+      setDripAsked(dripOptIn);
       if (subscribePulse) {
         // Best effort: the report already went, and a failed pulse request
         // must not turn that into an error. Success means a link was mailed
@@ -118,6 +122,11 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           {pulseOutcome === "pending" && (
             <p className="text-xs text-muted-foreground mt-1">
               {t('freeResults.enterprise.pulseConfirmSent', "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.")}
+            </p>
+          )}
+          {dripAsked && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('freeResults.enterprise.dripConfirmSent', "Your report email has a button to start the fix-plan emails. Nothing more is sent until you press it.")}
             </p>
           )}
           {pulseOutcome === "not_covered" && (

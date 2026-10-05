@@ -105,3 +105,23 @@ describe("the market pulse is opt-in, and opting in sends a confirmation, not a 
     expect(screen.queryByText(/emailed it a confirmation link/i)).toBeNull();
   });
 });
+
+describe("the fix-plan box only asks too", () => {
+  it("starts unticked; ticked, the report request carries the choice and the page says a button in the mail starts it", async () => {
+    render(<EmailReportCapture payload={payload} />);
+    const drip = screen.getByRole("checkbox", { name: /short email sequence/i }) as HTMLInputElement;
+    expect(drip.checked).toBe(false);
+    fireEvent.click(drip);
+    send();
+    await waitFor(() => expect(screen.getByText(/has a button to start the fix-plan emails/)).toBeInTheDocument());
+    const report = invoke.mock.calls.find((c) => c[0] === "send-scan-report") as [string, { body: Record<string, unknown> }];
+    expect(report[1].body.dripOptIn).toBe(true);
+  });
+
+  it("unticked, nothing about the sequence is said", async () => {
+    render(<EmailReportCapture payload={payload} />);
+    send();
+    await waitFor(() => expect(screen.getByText(/Sent!/)).toBeInTheDocument());
+    expect(screen.queryByText(/start the fix-plan emails/)).toBeNull();
+  });
+});

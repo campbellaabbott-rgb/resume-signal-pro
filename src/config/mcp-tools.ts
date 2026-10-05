@@ -844,8 +844,8 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   {
     id: "key-revoked",
     see: "\"This key has been revoked.\"",
-    why: "A newer key was made for the same account or email; only the newest works.",
-    fix: "Use the newest key, or make one more and update every app that holds the old one.",
+    why: "A newer key replaced it, it went unused for 30 days, or it was a free key issued before keys needed a confirmed email (4 October 2026).",
+    fix: "Use your newest key, or get one at /data-api (we email you a link) and update every app that holds the old one.",
     source: { kind: "server", pin: "This key has been revoked.", file: "index.ts" },
   },
   {

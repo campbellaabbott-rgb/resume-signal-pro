@@ -198,9 +198,13 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
     return (
       <div className="p-6 rounded-2xl bg-card border border-border">
         <h3 className="font-semibold mb-2 flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Check your inbox</h3>
+        {/* The server answers the same whether or not it mailed (an address
+            that bounced, complained, or already had two links today gets no
+            mail), so this says only what is true in every case. */}
         <p className="text-sm text-muted-foreground">
-          We sent a link to <span className="text-foreground">{requestedFor}</span>. Open it within 24 hours and your key is
-          shown on the page it opens. No key exists until then.
+          If <span className="text-foreground">{requestedFor}</span> can receive mail from us, a link is on its way. Open it
+          within 24 hours and your key is shown on the page it opens. No key exists until then. An address gets at most two
+          links a day, so if nothing arrives, use the newest one in its inbox or try again tomorrow.
         </p>
       </div>
     );
@@ -232,7 +236,8 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
         {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <>Email me a link</>}
       </button>
       <p className="text-xs text-muted-foreground mt-3">
-        An address can hold three live keys; a fourth retires the one used least recently.
+        An address can hold three live keys; a fourth retires the one used least recently. A free key nobody uses for 30
+        days retires on its own.
       </p>
     </form>
   );

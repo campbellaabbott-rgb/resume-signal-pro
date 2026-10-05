@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T12:00Z
+// deploy-stamp: 2026-10-04T22:00Z
 // Self-serve issuance for the public data API -- behind a mailbox.
 //
 // THE KEY USED TO BE HANDED TO WHOEVER TYPED AN ADDRESS (defect sweep 1.43).
@@ -22,21 +22,30 @@
 //
 // The bounds live in SQL (api_key_request_open, api_key_issue) so they are
 // atomic: two confirmation mails per mailbox a day (+tags and Gmail dots are
-// one mailbox), five requests an hour per network, 300 confirmation mails a
-// day overall; five keys a day per network, five per domain outside the big
-// shared providers, forty account-less keys a day overall; three live keys
-// per mailbox, and a fourth that its owner confirms retires the one used least
-// recently.
+// one mailbox), five requests an hour and twenty a day per network; five keys
+// a day per network, five per domain outside the big shared providers; three
+// live keys per mailbox, and a fourth that its owner confirms retires the one
+// used least recently. Each daily total has a soft ceiling, past which only
+// networks that have not yet used the door today are served, and a hard one
+// that stops it for everyone; reaching either tells the owner, once a day.
+// A free key that goes unused for 30 days is retired by a daily job.
+//
+// THE ANSWER TO A REQUEST DOES NOT DESCRIBE THE ADDRESS. Whether an address
+// bounced, complained, or was already sent two links today is its owner's
+// business: all three get the same "if that address can receive mail from us,
+// a link is on its way" as a request that was mailed, and the real reason is
+// logged here only.
 //
 // The network is the caller's /24 (IPv4) or /48 (IPv6) from the platform's
 // address -- never a header the caller writes -- and only a keyed hash of it
 // reaches the database.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
+import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 
 // Provable from outside without minting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "api-key-request.2026-10-04.1";
+const FN_BUILD = "api-key-request.2026-10-04.2";
 
 const SITE = "https://resumebooster.work";
 
@@ -56,6 +65,26 @@ async function sha256Hex(s: string): Promise<string> {
 }
 
 const hex = (bytes: Uint8Array) => [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+/** Mail to the fixed owner address through Resend; used only for ceiling alerts. */
+function ownerMailer(resendKey: string | undefined) {
+  return async (m: { to: string[]; subject: string; html: string }) => {
+    if (!resendKey) return;
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: "Resume Booster <reports@resumebooster.work>", ...m }),
+    });
+  };
+}
+
+/** The one answer every accepted-looking request gets, mailed or not. */
+const REQUESTED = {
+  requested: true,
+  expiresInHours: 24,
+  message: "If that address can receive mail from us, a link is on its way. Open it within 24 hours and your key is shown on the page it opens.",
+  docs: `${SITE}/data-api`,
+};
 
 function confirmationHtml(link: string, liveKeys: number): string {
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;line-height:1.5">
@@ -110,10 +139,14 @@ Deno.serve(async (req) => {
           return refuse("expired", "This link has expired (they last 24 hours). Request a new one.", 410);
         case "network_limit":
           return refuse("network_limit", "Several keys were created from your network today. Open the link again tomorrow; it stays valid for 24 hours.", 429);
+        case "shed":
+          await alertOwnerOnce(client, "api-key-request:mint", "passed its soft ceiling and is serving only new networks", ownerMailer(Deno.env.get("RESEND_API_KEY")));
+          return refuse("network_limit", "Free key creation is busy today, and a key was already created from your network. Open the link again tomorrow; it stays valid for 24 hours.", 429);
         case "domain_limit":
           return refuse("domain_limit", "Several keys were created for addresses at this domain today. Open the link again tomorrow, or email us.", 429);
         case "paused":
           console.error("[API-KEY-REQUEST] the daily ceiling on new free keys was reached");
+          await alertOwnerOnce(client, "api-key-request:mint", "reached its daily ceiling", ownerMailer(Deno.env.get("RESEND_API_KEY")));
           return refuse("paused", "Free key creation has reached today's limit. Open the link again tomorrow, or email us.", 503);
         default:
           return refuse("invalid_link", "That link is not valid. Request a new one.", 400);
@@ -153,15 +186,22 @@ Deno.serve(async (req) => {
   const d = (data ?? null) as { rq_send: boolean; rq_reason: string; rq_live_keys: number } | null;
   if (!d?.rq_send) {
     switch (d?.rq_reason) {
+      // About the ADDRESS: the same answer as a mailed request (see the head
+      // of this file). Nothing is sent, and only this log says why.
       case "too_many_requests":
-        return refuse("too_many_requests", "We already sent that address two links today. Use the newest one in its inbox, or try again tomorrow.", 429);
+      case "undeliverable":
+        console.log(`[API-KEY-REQUEST] not mailed: ${d.rq_reason}`);
+        return json(REQUESTED);
+      // About the caller's NETWORK or the day: saying so describes no address.
       case "network_busy":
         return refuse("network_busy", "Too many key requests from your network. Try again in an hour.", 429);
+      case "shed":
+        await alertOwnerOnce(client, "api-key-request:request", "passed its soft ceiling and is serving only new networks", ownerMailer(resendKey));
+        return refuse("network_busy", "Key requests are busy today, and your network has already made one. Try again tomorrow.", 429);
       case "paused":
         console.error("[API-KEY-REQUEST] the daily ceiling on confirmation mail was reached");
+        await alertOwnerOnce(client, "api-key-request:request", "reached its daily ceiling", ownerMailer(resendKey));
         return refuse("paused", "Key requests are paused for today. Try again tomorrow, or email us.", 503);
-      case "undeliverable":
-        return refuse("undeliverable", "Mail to that address bounced or was reported before, so we will not send to it. Use another address.", 400);
       default:
         return refuse("invalid_email", "Enter a valid email address.", 400);
     }
@@ -191,11 +231,5 @@ Deno.serve(async (req) => {
     return refuse("email_failed", "We could not send the confirmation email. Try again shortly.", 502);
   }
 
-  return json({
-    requested: true,
-    emailed: true,
-    expiresInHours: 24,
-    message: "Check your inbox: we sent a link to that address. Open it within 24 hours and your key is shown on the page it opens.",
-    docs: `${SITE}/data-api`,
-  });
+  return json(REQUESTED);
 });

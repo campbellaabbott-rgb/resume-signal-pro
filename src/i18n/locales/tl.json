@@ -1630,6 +1630,7 @@
       "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga tumataas na keyword sa aking industriya, may libreng rescan link. Mag-unsubscribe anumang oras.",
       "pulseConfirmSent": "Kung hindi pa nakukumpirma ng address na ito ang buwanang market pulse, pinadalhan namin ito ng confirmation link. Magsisimula lang ang pulse kapag na-click na ang link na iyon.",
       "pulseNotCovered": "Hindi pa sakop ng buwanang market pulse ang iyong larangan, kaya walang ipinadalang kumpirmasyon.",
+      "dripConfirmSent": "May button ang email ng iyong report para simulan ang mga email ng fix plan. Walang ibang ipapadala hangga't hindi mo ito pinipindot.",
       "placementTopQuartile": "Nangungunang quartile ng {{n}} tunay na {{industry}} scan",
       "placementAboveMedian": "Lampas sa median ng {{n}} tunay na {{industry}} scan",
       "placementBelowMedian": "Mababa sa median ng {{n}} tunay na {{industry}} scan",
@@ -5102,6 +5103,18 @@
     "invalid": "Nag-expire na o nagamit na ang link na ito. I-tick ang kahon sa ilalim ng susunod mong scan report para makakuha ng bago.",
     "missing": "Kailangan ng page na ito ang link mula sa iyong confirmation email.",
     "error": "Hindi makumpirma ngayon. Subukang muli ang link maya-maya.",
+    "home": "Bumalik sa Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Simulan ang mga email ng iyong fix plan",
+    "body": "Apat na maikling email sa loob ng dalawang linggo: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6, at isang tanong sa araw 14. May one-click na unsubscribe ang bawat email.",
+    "button": "Oo, simulan ang mga email",
+    "done": "Tapos na. Darating ang unang email sa loob ng dalawang araw.",
+    "already": "May fix plan sequence nang nasimulan para sa address na ito ngayong buwan, kaya walang naidagdag.",
+    "optedOut": "Nag-unsubscribe na dati ang address na ito sa aming mga email, kaya walang naidagdag.",
+    "invalid": "Expired na o hindi valid ang link na ito. I-email ang bagong report sa iyong susunod na scan para makakuha ng bago.",
+    "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
+    "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
     "home": "Bumalik sa Resume Booster"
   }
 }

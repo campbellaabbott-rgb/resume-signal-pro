@@ -6,7 +6,8 @@
 --
 --   send-market-pulse {action:'send'} was unauthenticated, ignored
 --     suppressed_emails, and throttled with a read-then-write, so N concurrent
---     triggers mailed every due subscriber N times (2.23).
+--     triggers mailed every due subscriber N times (2.23). send-search-digest
+--     and send-agent-digest had the same shape.
 --   The pulse enrolled people who never opted in: the box was pre-ticked, any
 --     third party could subscribe any address, and the mail then told them they
 --     had asked for it (1.59).
@@ -17,9 +18,12 @@
 --
 -- WHAT THIS FILE BUILDS (the edge functions that use it ship with it):
 --
---   1. email_cron_key -- a vault secret the pulse cron sends as x-email-cron,
---      checked by email_cron_key_matches (a boolean, never the secret). The
---      batch send now refuses any caller without it or the service-role key.
+--   1. email_cron_key -- a vault secret the three email crons (the pulse and
+--      both digests) send as x-email-cron, checked by email_cron_key_matches
+--      (a boolean, never the secret). Each batch send now refuses any caller
+--      without it or the service-role key. search_digest_claim_batch and
+--      agent_digest_claim_batch claim the digests' rows the way the pulse's
+--      claim does: chosen and stamped in one statement, FOR UPDATE SKIP LOCKED.
 --
 --   2. Double opt-in for the market pulse. market_pulse_subscribers gains
 --      confirmed_at, and the send selects ONLY confirmed rows. Every row that
@@ -28,8 +32,11 @@
 --      consent, so the pulse stops for them until they confirm.
 --      market_pulse_request_confirm records a request atomically and says
 --      whether a confirmation mail is due (at most one per address per 7
---      days, at most 3 ever while unconfirmed, at most 200 a day overall, and
---      never to a suppressed address). market_pulse_confirm turns a single-use
+--      days, at most 3 in any 90 days while unconfirmed -- a window, so a
+--      stranger's requests can never shut an address out for good -- and
+--      never to a suppressed address). Past 100 mails in a day only networks
+--      that have not asked today are served ('shed'), and 400 stops it for
+--      everyone ('paused'); the function tells the owner. market_pulse_confirm turns a single-use
 --      token into confirmed_at. market_pulse_claim_batch claims due rows with
 --      FOR UPDATE SKIP LOCKED and stamps them in the same statement, so two
 --      triggers can never both mail one subscriber, and it skips every
@@ -42,14 +49,24 @@
 --      address clicked its link, and the key is shown once to whoever did.
 --      Bounds: two confirmation mails per mailbox a day (plus-tags and Gmail
 --      dots are one mailbox), five requests an hour and twenty a day per
---      network, 300 confirmation mails a day overall; five keys a day per
---      network, five a day per domain outside the big shared providers, forty
---      account-less keys a day overall; three live keys per mailbox, and a
---      fourth confirmed by the mailbox's owner retires the one used least
---      recently -- never a key bound to an account (user_id).
+--      network; five keys a day per network, five a day per domain outside
+--      the big shared providers; three live keys per mailbox, and a fourth
+--      confirmed by the mailbox's owner retires the one used least recently --
+--      never a key bound to an account (user_id). The daily totals have a soft
+--      ceiling past which only networks that have not used the door today are
+--      served (150 requests, 20 keys) and a hard one (600 requests, 60 keys);
+--      a cheap actor can no longer turn the door off for everyone by filling
+--      it, and reaching either tells the owner.
 --      The old api_key_issue(p_email, p_name, ...) is dropped by catalogue
 --      lookup, so an edge function still deployed from before this file gets
 --      PGRST202 and mints nothing.
+--      THE POOL THAT DOOR FILLED IS RETIRED. Every account-less free key
+--      minted before this file (none has a confirmed request behind it) is
+--      revoked here: each was handed to whoever typed an address, so a script
+--      may hold any number of them. Their owners get a new key from the page,
+--      behind their mailbox. And api_key_retire_idle, daily, retires a free
+--      account-less key nobody has used for 30 days, so a pool cannot be
+--      gathered again at the daily ceiling and kept.
 --
 --   4. mail_door_take -- an atomic fixed-window counter for the doors anyone
 --      can knock on (send-scan-report: per network, per recipient, per day,
@@ -113,7 +130,12 @@ ALTER TABLE public.market_pulse_subscribers
   ADD COLUMN IF NOT EXISTS confirmed_at timestamptz,
   ADD COLUMN IF NOT EXISTS confirm_token_hash text,
   ADD COLUMN IF NOT EXISTS confirm_sent_at timestamptz,
-  ADD COLUMN IF NOT EXISTS confirm_sends integer NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS confirm_sends integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS confirm_window_start timestamptz,
+  ADD COLUMN IF NOT EXISTS confirm_net text;
+
+COMMENT ON COLUMN public.market_pulse_subscribers.confirm_net IS
+  'Keyed hash of the network that last asked for a confirmation for this address (never the address of the network). Counts a network''s requests per day.';
 
 CREATE UNIQUE INDEX IF NOT EXISTS market_pulse_subscribers_confirm_token_idx
   ON public.market_pulse_subscribers (confirm_token_hash)
@@ -124,11 +146,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS market_pulse_subscribers_confirm_token_idx
 REVOKE ALL ON TABLE public.market_pulse_subscribers FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE public.market_pulse_subscribers TO service_role;
 
+-- The four-argument form never shipped from main; a database that ran an
+-- earlier copy of this file loses it here, so only one form can be called.
+DROP FUNCTION IF EXISTS public.market_pulse_request_confirm(text, text, integer, text);
+
 CREATE OR REPLACE FUNCTION public.market_pulse_request_confirm(
   p_email text,
   p_industry text,
   p_score integer,
-  p_token_hash text
+  p_token_hash text,
+  p_net text
 )
 RETURNS TABLE (
   pc_send boolean,
@@ -144,9 +171,18 @@ DECLARE
   v_email text := lower(btrim(coalesce(p_email, '')));
   v_hit text;
   v_today integer;
+  v_net_today integer;
   c_resend_after interval := interval '7 days';
+  -- Three unconfirmed mails in any 90 days. A WINDOW, not a lifetime: a
+  -- lifetime count let three requests from a stranger, a week apart, stop an
+  -- address from ever being sent its own confirmation.
   c_max_unconfirmed_sends integer := 3;
-  c_global_day integer := 200;
+  c_unconfirmed_window interval := interval '90 days';
+  -- Past the soft ceiling only a network that has not asked today is served;
+  -- the hard ceiling stops everyone. The edge function tells the owner.
+  c_global_soft integer := 100;
+  c_global_day integer := 400;
+  c_net_share integer := 1;
 BEGIN
   IF length(v_email) > 254 OR v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]{2,}$' THEN
     RETURN QUERY SELECT false, 'invalid_email'::text; RETURN;
@@ -154,30 +190,53 @@ BEGIN
   IF coalesce(length(p_token_hash), 0) <> 64 THEN
     RETURN QUERY SELECT false, 'bad_request'::text; RETURN;
   END IF;
-  IF EXISTS (SELECT 1 FROM public.suppressed_emails se WHERE lower(se.email) = v_email) THEN
-    RETURN QUERY SELECT false, 'suppressed'::text; RETURN;
-  END IF;
+
+  -- The day's counts and the write below are one decision. The day and the
+  -- caller's network are judged BEFORE anything about the address: the edge
+  -- function refuses 'shed' and 'paused' out loud and answers every address
+  -- state alike, so this order keeps the refusal from telling anyone whether
+  -- the address is suppressed.
+  PERFORM pg_advisory_xact_lock(hashtext('market_pulse_request_confirm'));
+
   SELECT count(*) INTO v_today
     FROM public.market_pulse_subscribers s
    WHERE s.confirm_sent_at > now() - interval '24 hours';
   IF v_today >= c_global_day THEN
     RETURN QUERY SELECT false, 'paused'::text; RETURN;
   END IF;
+  IF v_today >= c_global_soft THEN
+    SELECT count(*) INTO v_net_today
+      FROM public.market_pulse_subscribers s
+     WHERE s.confirm_net = p_net AND s.confirm_sent_at > now() - interval '24 hours';
+    IF p_net IS NULL OR v_net_today >= c_net_share THEN
+      RETURN QUERY SELECT false, 'shed'::text; RETURN;
+    END IF;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.suppressed_emails se WHERE lower(se.email) = v_email) THEN
+    RETURN QUERY SELECT false, 'suppressed'::text; RETURN;
+  END IF;
 
   -- One statement decides and records: a concurrent request for the same
   -- address meets the row this one wrote and is refused by the WHERE.
   INSERT INTO public.market_pulse_subscribers AS m
-         (email, industry, last_score, confirm_token_hash, confirm_sent_at, confirm_sends)
-  VALUES (v_email, left(coalesce(nullif(btrim(p_industry), ''), 'general'), 64), p_score, p_token_hash, now(), 1)
+         (email, industry, last_score, confirm_token_hash, confirm_sent_at, confirm_sends, confirm_window_start, confirm_net)
+  VALUES (v_email, left(coalesce(nullif(btrim(p_industry), ''), 'general'), 64), p_score, p_token_hash, now(), 1, now(), p_net)
   ON CONFLICT (email) DO UPDATE
      SET industry = EXCLUDED.industry,
          last_score = coalesce(EXCLUDED.last_score, m.last_score),
          confirm_token_hash = EXCLUDED.confirm_token_hash,
          confirm_sent_at = now(),
-         confirm_sends = m.confirm_sends + 1
+         confirm_sends = CASE WHEN m.confirm_window_start IS NULL OR m.confirm_window_start < now() - c_unconfirmed_window
+                              THEN 1 ELSE m.confirm_sends + 1 END,
+         confirm_window_start = CASE WHEN m.confirm_window_start IS NULL OR m.confirm_window_start < now() - c_unconfirmed_window
+                                     THEN now() ELSE m.confirm_window_start END,
+         confirm_net = EXCLUDED.confirm_net
    WHERE (m.confirmed_at IS NULL OR m.unsubscribed_at IS NOT NULL)
      AND (m.confirm_sent_at IS NULL OR m.confirm_sent_at < now() - c_resend_after)
-     AND m.confirm_sends < c_max_unconfirmed_sends
+     AND (m.confirm_sends < c_max_unconfirmed_sends
+          OR m.confirm_window_start IS NULL
+          OR m.confirm_window_start < now() - c_unconfirmed_window)
   RETURNING m.email INTO v_hit;
 
   IF v_hit IS NULL THEN
@@ -215,7 +274,8 @@ BEGIN
      SET confirmed_at = now(),
          unsubscribed_at = NULL,
          confirm_token_hash = NULL,
-         confirm_sends = 0
+         confirm_sends = 0,
+         confirm_window_start = NULL
    WHERE m.confirm_token_hash = p_token_hash
      AND m.confirm_sent_at > now() - interval '7 days'
   RETURNING m.email INTO v_hit;
@@ -261,30 +321,119 @@ AS $$
   RETURNING m.email, m.industry, m.last_score, m.confirmed_at, due.d_prev;
 $$;
 
-REVOKE ALL ON FUNCTION public.market_pulse_request_confirm(text, text, integer, text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.market_pulse_request_confirm(text, text, integer, text) TO service_role;
+REVOKE ALL ON FUNCTION public.market_pulse_request_confirm(text, text, integer, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.market_pulse_request_confirm(text, text, integer, text, text) TO service_role;
 REVOKE ALL ON FUNCTION public.market_pulse_confirm(text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.market_pulse_confirm(text) TO service_role;
 REVOKE ALL ON FUNCTION public.market_pulse_claim_batch(integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.market_pulse_claim_batch(integer) TO service_role;
 
--- The schedule: the same minute it always ran, now carrying the key. A
--- database without the vault secret fires nothing rather than a refused call.
+-- ── 2b. The digests: claimed, not read-then-written ─────────────────────────
+-- send-search-digest and send-agent-digest selected their due rows and
+-- stamped each only after its awaited send, so two runs in flight mailed the
+-- same people twice. These claims choose and stamp in one statement, each row
+-- coming back with the stamp it had before (the "new since" window, and what
+-- the function writes back when it skips a row for a passing reason).
+-- Cadence floors: a saved search on 'daily' waits 20 hours, any other 6 days;
+-- the morning shortlist waits 20 hours.
+CREATE OR REPLACE FUNCTION public.search_digest_claim_batch(p_limit integer)
+RETURNS TABLE (
+  sd_id uuid,
+  sd_user_id uuid,
+  sd_name text,
+  sd_params jsonb,
+  sd_prev_sent_at timestamptz,
+  sd_fit_threshold integer,
+  sd_cadence text
+)
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
+SET statement_timeout = '30s'
+AS $$
+  WITH due AS (
+    SELECT s.id AS d_id, s.digest_last_sent_at AS d_prev
+      FROM public.user_job_searches s
+     WHERE s.digest_opt_in = true
+       AND (s.digest_last_sent_at IS NULL
+            OR s.digest_last_sent_at < now() - CASE WHEN s.digest_cadence = 'daily'
+                                                    THEN interval '20 hours' ELSE interval '6 days' END)
+     ORDER BY s.digest_last_sent_at ASC NULLS FIRST, s.id
+     LIMIT least(greatest(coalesce(p_limit, 0), 1), 400)
+     FOR UPDATE OF s SKIP LOCKED
+  )
+  UPDATE public.user_job_searches m
+     SET digest_last_sent_at = now()
+    FROM due
+   WHERE m.id = due.d_id
+  RETURNING m.id, m.user_id, m.name, m.params, due.d_prev, m.fit_threshold, m.digest_cadence;
+$$;
+
+CREATE OR REPLACE FUNCTION public.agent_digest_claim_batch(p_limit integer)
+RETURNS TABLE (
+  ad_user_id uuid,
+  ad_email text,
+  ad_prev_sent_at timestamptz
+)
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
+SET statement_timeout = '30s'
+AS $$
+  WITH due AS (
+    SELECT a.user_id AS d_user, a.email_last_sent_at AS d_prev
+      FROM public.agent_mandates a
+     WHERE a.email_opt_in = true
+       AND (a.email_last_sent_at IS NULL OR a.email_last_sent_at < now() - interval '20 hours')
+     ORDER BY a.email_last_sent_at ASC NULLS FIRST, a.user_id
+     LIMIT least(greatest(coalesce(p_limit, 0), 1), 500)
+     FOR UPDATE OF a SKIP LOCKED
+  )
+  UPDATE public.agent_mandates m
+     SET email_last_sent_at = now()
+    FROM due
+   WHERE m.user_id = due.d_user
+  RETURNING m.user_id, m.email, due.d_prev;
+$$;
+
+REVOKE ALL ON FUNCTION public.search_digest_claim_batch(integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.search_digest_claim_batch(integer) TO service_role;
+REVOKE ALL ON FUNCTION public.agent_digest_claim_batch(integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.agent_digest_claim_batch(integer) TO service_role;
+
+-- The schedules, now carrying the key. The pulse keeps the minute it always
+-- ran. A digest job keeps whatever schedule it has today, and a digest job
+-- that does not exist is left absent (its absence is someone's decision, and
+-- creating it would start mail nobody scheduled). A database without the
+-- vault secret fires nothing rather than a refused call.
 DO $$
+DECLARE
+  r record;
+  v_sched text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
-    RAISE NOTICE 'pg_cron is not installed here; send-market-pulse was not rescheduled';
+    RAISE NOTICE 'pg_cron is not installed here; the email crons were not rescheduled';
     RETURN;
   END IF;
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'send-market-pulse') THEN
-    PERFORM cron.unschedule('send-market-pulse');
-  END IF;
-  PERFORM cron.schedule(
-    'send-market-pulse',
-    '47 15 * * *',
-    $job$
+  FOR r IN
+    SELECT * FROM (VALUES ('send-market-pulse', '47 15 * * *', true),
+                          ('send-search-digest', '23 14 * * *', false),
+                          ('send-agent-digest', '40 6 * * *', false)) v(job, default_schedule, always)
+  LOOP
+    SELECT j.schedule INTO v_sched FROM cron.job j WHERE j.jobname = r.job;
+    IF v_sched IS NULL AND NOT r.always THEN
+      RAISE NOTICE 'no % cron job here; left absent', r.job;
+      CONTINUE;
+    END IF;
+    IF r.always THEN v_sched := r.default_schedule; END IF;
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = r.job) THEN
+      PERFORM cron.unschedule(r.job);
+    END IF;
+    PERFORM cron.schedule(r.job, v_sched, format($job$
     SELECT net.http_post(
-      url := 'https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/send-market-pulse',
+      url := %L,
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
         'x-email-cron', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'email_cron_key' LIMIT 1)
@@ -292,8 +441,8 @@ BEGIN
       body := '{"action":"send"}'::jsonb
     )
     WHERE EXISTS (SELECT 1 FROM vault.decrypted_secrets WHERE name = 'email_cron_key');
-    $job$
-  );
+    $job$, 'https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/' || r.job));
+  END LOOP;
 END $$;
 
 -- ── 3. A key requires a mailbox ─────────────────────────────────────────────
@@ -369,11 +518,18 @@ DECLARE
   v_email text := lower(btrim(coalesce(p_email, '')));
   v_mailbox text;
   v_n integer;
+  v_net_day integer := 0;
   v_live integer;
   c_per_mailbox_day integer := 2;
   c_per_net_hour integer := 5;
   c_per_net_day integer := 20;
-  c_global_day integer := 300;
+  -- Past the soft ceiling only a network with no request today is served
+  -- ('shed'); the hard ceiling stops everyone ('paused'). Either one is a
+  -- day a real visitor may be turned away, and the edge function tells the
+  -- owner. Fifteen networks used to be enough to fill a hard 300.
+  c_global_soft integer := 150;
+  c_global_day integer := 600;
+  c_net_share integer := 1;
 BEGIN
   IF length(v_email) > 254 OR v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]{2,}$' THEN
     RETURN QUERY SELECT false, 'invalid_email'::text, 0; RETURN;
@@ -385,8 +541,36 @@ BEGIN
   -- Every count below and the insert after them are one decision: requests
   -- and mints share this lock, so no two can both read the last free slot.
   PERFORM pg_advisory_xact_lock(hashtext('api_key_issuance'));
-
   v_mailbox := public.api_key_mailbox(v_email);
+
+  -- THE CALLER'S NETWORK AND THE DAY FIRST, THE ADDRESS LAST. The edge
+  -- function answers an address-specific refusal (bounced, complained, two
+  -- links already today) exactly as it answers a mailed request, and refuses
+  -- a busy network or day out loud. Were the address checked first, a busy
+  -- network would hear 'network busy' for an ordinary address and 'check your
+  -- inbox' for a suppressed one: the order itself would be the oracle.
+  IF p_net IS NOT NULL THEN
+    SELECT count(*) INTO v_n FROM public.api_key_requests kr
+     WHERE kr.request_net = p_net AND kr.created_at > now() - interval '1 hour';
+    IF v_n >= c_per_net_hour THEN
+      RETURN QUERY SELECT false, 'network_busy'::text, 0; RETURN;
+    END IF;
+    SELECT count(*) INTO v_net_day FROM public.api_key_requests kr
+     WHERE kr.request_net = p_net AND kr.created_at > now() - interval '24 hours';
+    IF v_net_day >= c_per_net_day THEN
+      RETURN QUERY SELECT false, 'network_busy'::text, 0; RETURN;
+    END IF;
+  END IF;
+
+  SELECT count(*) INTO v_n FROM public.api_key_requests kr
+   WHERE kr.created_at > now() - interval '24 hours';
+  IF v_n >= c_global_day THEN
+    RETURN QUERY SELECT false, 'paused'::text, 0; RETURN;
+  END IF;
+  IF v_n >= c_global_soft AND (p_net IS NULL OR v_net_day >= c_net_share) THEN
+    RETURN QUERY SELECT false, 'shed'::text, 0; RETURN;
+  END IF;
+
   IF EXISTS (SELECT 1 FROM public.suppressed_emails se
               WHERE lower(se.email) = v_email AND se.reason IN ('bounce', 'complaint')) THEN
     RETURN QUERY SELECT false, 'undeliverable'::text, 0; RETURN;
@@ -396,25 +580,6 @@ BEGIN
    WHERE kr.mailbox = v_mailbox AND kr.created_at > now() - interval '24 hours';
   IF v_n >= c_per_mailbox_day THEN
     RETURN QUERY SELECT false, 'too_many_requests'::text, 0; RETURN;
-  END IF;
-
-  IF p_net IS NOT NULL THEN
-    SELECT count(*) INTO v_n FROM public.api_key_requests kr
-     WHERE kr.request_net = p_net AND kr.created_at > now() - interval '1 hour';
-    IF v_n >= c_per_net_hour THEN
-      RETURN QUERY SELECT false, 'network_busy'::text, 0; RETURN;
-    END IF;
-    SELECT count(*) INTO v_n FROM public.api_key_requests kr
-     WHERE kr.request_net = p_net AND kr.created_at > now() - interval '24 hours';
-    IF v_n >= c_per_net_day THEN
-      RETURN QUERY SELECT false, 'network_busy'::text, 0; RETURN;
-    END IF;
-  END IF;
-
-  SELECT count(*) INTO v_n FROM public.api_key_requests kr
-   WHERE kr.created_at > now() - interval '24 hours';
-  IF v_n >= c_global_day THEN
-    RETURN QUERY SELECT false, 'paused'::text, 0; RETURN;
   END IF;
 
   INSERT INTO public.api_key_requests (email, mailbox, key_name, token_hash, request_net, expires_at)
@@ -480,10 +645,16 @@ DECLARE
   c_rate integer := 60;
   c_quota integer := 1000;
   c_tier text := 'free';
+  v_net_day integer := 0;
   c_max_active integer := 3;
   c_per_net_day integer := 5;
   c_per_domain_day integer := 5;
-  c_global_day integer := 40;
+  -- Past the soft ceiling only a network that has created no key today is
+  -- served ('shed'); the hard ceiling stops everyone ('paused'). Eight
+  -- networks used to be enough to fill a hard 40.
+  c_global_soft integer := 20;
+  c_global_day integer := 60;
+  c_net_share integer := 1;
   c_shared_domains text[] := ARRAY[
     'gmail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'ymail.com',
     'icloud.com', 'me.com', 'mac.com', 'proton.me', 'protonmail.com', 'aol.com', 'gmx.com',
@@ -523,9 +694,9 @@ BEGIN
   -- The refusals below leave the token unspent, so the owner can retry it
   -- from another network or tomorrow while it is still inside its 24 hours.
   IF p_net IS NOT NULL THEN
-    SELECT count(*) INTO v_n FROM public.api_key_requests kr
+    SELECT count(*) INTO v_net_day FROM public.api_key_requests kr
      WHERE kr.confirm_net = p_net AND kr.confirmed_at > now() - interval '24 hours';
-    IF v_n >= c_per_net_day THEN
+    IF v_net_day >= c_per_net_day THEN
       RETURN QUERY SELECT false, 'network_limit'::text, NULL::uuid, NULL::text, 0, 0, '{}'::text[]; RETURN;
     END IF;
   END IF;
@@ -534,6 +705,9 @@ BEGIN
    WHERE ak.user_id IS NULL AND ak.created_at > now() - interval '24 hours';
   IF v_n >= c_global_day THEN
     RETURN QUERY SELECT false, 'paused'::text, NULL::uuid, NULL::text, 0, 0, '{}'::text[]; RETURN;
+  END IF;
+  IF v_n >= c_global_soft AND (p_net IS NULL OR v_net_day >= c_net_share) THEN
+    RETURN QUERY SELECT false, 'shed'::text, NULL::uuid, NULL::text, 0, 0, '{}'::text[]; RETURN;
   END IF;
 
   v_domain := split_part(r.req_mailbox, '@', 2);
@@ -581,7 +755,64 @@ GRANT EXECUTE ON FUNCTION public.api_key_issue(text, text, text, text) TO servic
 
 COMMENT ON FUNCTION public.api_key_issue(text, text, text, text) IS
   'Mints a free data-API key against a confirmed request: the argument is the sha256 of the single-use token mailed to the address that asked. '
-  'Bounded per network, per domain and overall per day; three live keys per mailbox. service_role only.';
+  'Bounded per network, per domain and overall per day (a soft ceiling sheds networks that already minted today); three live keys per mailbox. service_role only.';
+
+-- THE POOL THE OLD DOOR FILLED. Until this file, api_key_issue handed a
+-- working free key to whoever typed an address, so a script may hold any
+-- number of them, each with its own minute rate and daily quota. Every free
+-- account-less key that no confirmed request stands behind is revoked. A key
+-- minted through the confirmation flow always has one (issued_key_id), so if
+-- the staged runner re-runs this file later, those keys are untouched. A key
+-- bound to an account (user_id), and any key provisioned by hand in another
+-- tier, is never touched. Holders get a new key from /data-api, behind their
+-- mailbox, and the refusal they meet says so.
+UPDATE public.api_keys ak
+   SET revoked_at = now(),
+       notes = 'revoked 20261004100000: a free key issued before keys needed a confirmed mailbox'
+ WHERE ak.user_id IS NULL
+   AND ak.tier = 'free'
+   AND ak.revoked_at IS NULL
+   AND NOT EXISTS (SELECT 1 FROM public.api_key_requests kr WHERE kr.issued_key_id = ak.id);
+
+-- AND IT CANNOT BE GATHERED AGAIN AND KEPT. A free account-less key nobody
+-- has used for 30 days retires (last_used_at is stamped by api_key_check on
+-- every allowed call), so the most a patient script can hold is what it
+-- minted, through real mailboxes, in the last month and keeps using.
+CREATE OR REPLACE FUNCTION public.api_key_retire_idle()
+RETURNS integer
+LANGUAGE sql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
+SET statement_timeout = '30s'
+AS $$
+  WITH gone AS (
+    UPDATE public.api_keys ak
+       SET revoked_at = now(),
+           notes = 'retired: a free key unused for 30 days'
+     WHERE ak.user_id IS NULL
+       AND ak.tier = 'free'
+       AND ak.revoked_at IS NULL
+       AND coalesce(ak.last_used_at, ak.created_at) < now() - interval '30 days'
+    RETURNING 1
+  )
+  SELECT count(*)::integer FROM gone;
+$$;
+
+REVOKE ALL ON FUNCTION public.api_key_retire_idle() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.api_key_retire_idle() TO service_role;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    RAISE NOTICE 'pg_cron is not installed here; api-key-retire-idle was not scheduled';
+    RETURN;
+  END IF;
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'api-key-retire-idle') THEN
+    PERFORM cron.unschedule('api-key-retire-idle');
+  END IF;
+  PERFORM cron.schedule('api-key-retire-idle', '17 3 * * *', 'SELECT public.api_key_retire_idle()');
+END $$;
 
 -- ── 4. A count that lasts as long as it says ────────────────────────────────
 -- The doors anyone can knock on (send-scan-report, the pulse sign-up and its
@@ -656,23 +887,35 @@ GRANT EXECUTE ON FUNCTION public.mail_door_take(text, text, integer, integer) TO
 -- ── 5. Self-verifying ────────────────────────────────────────────────────────
 -- A copy the staged runner edited must not be able to report success: every
 -- function is here, a definer with its search_path, closed to anon and
--- authenticated BY NAME and open to service_role; the old mint is gone; the
--- request and counter tables are locked; a door's count refuses the knock
--- past its limit; the pulse cron carries its key.
+-- authenticated BY NAME and open to service_role; the old mint and the old
+-- four-argument pulse request are gone; the request, subscriber and counter
+-- tables are closed to client roles for every verb; the old door's free keys
+-- are revoked; a door's count refuses the knock past its limit; the pulse
+-- claim hands back ONLY a confirmed, unsuppressed, due row (run and rolled
+-- back, so no real subscriber is touched); every email cron carries its key.
 DO $$
 DECLARE
   v_sig text;
   v_oid oid;
   v_n integer;
   v_cmd text;
+  v_job text;
+  v_tbl text;
+  v_role text;
+  v_priv text;
+  v_claimed text[];
+  v_probe_bad text;
 BEGIN
   FOREACH v_sig IN ARRAY ARRAY[
     'public.email_cron_key_matches(text)',
-    'public.market_pulse_request_confirm(text,text,integer,text)',
+    'public.market_pulse_request_confirm(text,text,integer,text,text)',
     'public.market_pulse_confirm(text)',
     'public.market_pulse_claim_batch(integer)',
+    'public.search_digest_claim_batch(integer)',
+    'public.agent_digest_claim_batch(integer)',
     'public.api_key_request_open(text,text,text,text)',
     'public.api_key_issue(text,text,text,text)',
+    'public.api_key_retire_idle()',
     'public.api_key_mailbox(text)',
     'public.mail_door_take(text,text,integer,integer)'
   ] LOOP
@@ -706,6 +949,12 @@ BEGIN
      IS DISTINCT FROM 'p_token_hash' THEN
     RAISE EXCEPTION 'self-check: api_key_issue does not take a confirmation token first; the address-taking mint survived';
   END IF;
+  SELECT count(*)::integer INTO v_n
+    FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+   WHERE ns.nspname = 'public' AND p.proname = 'market_pulse_request_confirm';
+  IF v_n <> 1 THEN
+    RAISE EXCEPTION 'self-check: market_pulse_request_confirm has % overloads, want exactly 1 (the one that takes the network)', v_n;
+  END IF;
 
   IF public.api_key_mailbox(' Jane.Doe+news@GoogleMail.com ') <> 'janedoe@gmail.com'
      OR public.api_key_mailbox('dev+a@example.org') <> 'dev@example.org'
@@ -719,14 +968,17 @@ BEGIN
   IF v_n <> 2 THEN
     RAISE EXCEPTION 'self-check: api_key_requests or mail_door_counts is missing or has row level security off';
   END IF;
-  IF has_table_privilege('anon', 'public.api_key_requests', 'SELECT')
-     OR has_table_privilege('authenticated', 'public.api_key_requests', 'SELECT')
-     OR has_table_privilege('anon', 'public.market_pulse_subscribers', 'SELECT')
-     OR has_table_privilege('authenticated', 'public.market_pulse_subscribers', 'SELECT')
-     OR has_table_privilege('anon', 'public.mail_door_counts', 'SELECT')
-     OR has_table_privilege('authenticated', 'public.mail_door_counts', 'SELECT') THEN
-    RAISE EXCEPTION 'self-check: a request, subscriber or counter table is selectable by a client role';
-  END IF;
+  -- Every verb, not only SELECT: a write grant a later edit added would be a
+  -- grant nobody needs, whatever RLS does with it today.
+  FOREACH v_tbl IN ARRAY ARRAY['public.api_key_requests', 'public.market_pulse_subscribers', 'public.mail_door_counts'] LOOP
+    FOREACH v_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
+      FOREACH v_priv IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
+        IF has_table_privilege(v_role, v_tbl, v_priv) THEN
+          RAISE EXCEPTION 'self-check: % holds % on %', v_role, v_priv, v_tbl;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
 
   -- The counter counts: the first knock at a one-knock door is let in, the
   -- second is not, and the probe leaves no row behind.
@@ -739,9 +991,45 @@ BEGIN
   SELECT count(*)::integer INTO v_n
     FROM information_schema.columns
    WHERE table_schema = 'public' AND table_name = 'market_pulse_subscribers'
-     AND column_name IN ('confirmed_at', 'confirm_token_hash', 'confirm_sent_at', 'confirm_sends');
-  IF v_n <> 4 THEN
-    RAISE EXCEPTION 'self-check: market_pulse_subscribers has % of the 4 opt-in columns', v_n;
+     AND column_name IN ('confirmed_at', 'confirm_token_hash', 'confirm_sent_at', 'confirm_sends', 'confirm_window_start', 'confirm_net');
+  IF v_n <> 6 THEN
+    RAISE EXCEPTION 'self-check: market_pulse_subscribers has % of the 6 opt-in columns', v_n;
+  END IF;
+
+  -- THE CLAIM'S CONSENT FILTER, BY BEHAVIOUR. Three probe rows (one never
+  -- confirmed, one confirmed but suppressed, one confirmed and due) and one
+  -- claim: exactly the third must come back. Inside a block that always ends
+  -- in an exception, so the probe rows, the suppression and any real row the
+  -- claim stamped are all rolled back; only v_probe_bad survives.
+  BEGIN
+    INSERT INTO public.market_pulse_subscribers (email, industry, confirmed_at)
+    VALUES ('0000000000-self-check-unconfirmed@probe.invalid', 'technology', NULL),
+           ('0000000000-self-check-suppressed@probe.invalid', 'technology', now()),
+           ('0000000000-self-check-due@probe.invalid', 'technology', now());
+    INSERT INTO public.suppressed_emails (email, reason)
+    VALUES ('0000000000-self-check-suppressed@probe.invalid', 'complaint');
+    SELECT coalesce(array_agg(c.cl_email ORDER BY c.cl_email), '{}'::text[]) INTO v_claimed
+      FROM public.market_pulse_claim_batch(200) c
+     WHERE c.cl_email LIKE '0000000000-self-check-%';
+    IF v_claimed IS DISTINCT FROM ARRAY['0000000000-self-check-due@probe.invalid'] THEN
+      v_probe_bad := array_to_string(v_claimed, ', ');
+    END IF;
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'self-check-rollback';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'self-check-rollback' THEN RAISE; END IF;
+  END;
+  IF v_probe_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'self-check: market_pulse_claim_batch claimed [%]; it must claim only the confirmed, unsuppressed, due row', v_probe_bad;
+  END IF;
+
+  -- The old door's pool: no free account-less key is live without a
+  -- confirmed request behind it.
+  SELECT count(*)::integer INTO v_n
+    FROM public.api_keys ak
+   WHERE ak.user_id IS NULL AND ak.tier = 'free' AND ak.revoked_at IS NULL
+     AND NOT EXISTS (SELECT 1 FROM public.api_key_requests kr WHERE kr.issued_key_id = ak.id);
+  IF v_n <> 0 THEN
+    RAISE EXCEPTION 'self-check: % free keys minted without a confirmed mailbox are still live', v_n;
   END IF;
 
   -- Nested, not AND-ed: a condition naming vault.secrets is planned whole,
@@ -756,6 +1044,19 @@ BEGIN
     SELECT j.command INTO v_cmd FROM cron.job j WHERE j.jobname = 'send-market-pulse';
     IF v_cmd IS NULL OR position('x-email-cron' IN v_cmd) = 0 OR position('email_cron_key' IN v_cmd) = 0 THEN
       RAISE EXCEPTION 'self-check: the send-market-pulse cron does not carry the email cron key: %', coalesce(v_cmd, '(no job)');
+    END IF;
+    -- A digest job may be absent (left so on purpose); one that exists
+    -- carries the key, or its every run is refused.
+    FOREACH v_job IN ARRAY ARRAY['send-search-digest', 'send-agent-digest'] LOOP
+      v_cmd := NULL;
+      SELECT j.command INTO v_cmd FROM cron.job j WHERE j.jobname = v_job;
+      IF v_cmd IS NOT NULL AND (position('x-email-cron' IN v_cmd) = 0 OR position('email_cron_key' IN v_cmd) = 0) THEN
+        RAISE EXCEPTION 'self-check: the % cron does not carry the email cron key: %', v_job, v_cmd;
+      END IF;
+    END LOOP;
+    IF NOT EXISTS (SELECT 1 FROM cron.job j WHERE j.jobname = 'api-key-retire-idle'
+                    AND position('api_key_retire_idle' IN j.command) > 0) THEN
+      RAISE EXCEPTION 'self-check: the api-key-retire-idle cron is missing';
     END IF;
   END IF;
 END $$;

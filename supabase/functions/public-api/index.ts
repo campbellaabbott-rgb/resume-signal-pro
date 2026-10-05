@@ -397,7 +397,10 @@ Deno.serve(async (req) => {
       : {};
     if (reason === "rate_limited") return fail(429, "rate_limited", `Over ${d!.rate_limit} requests/minute.`, { ...headers, "Retry-After": "60" });
     if (reason === "quota_exceeded") return fail(429, "quota_exceeded", `Daily quota of ${d!.quota_limit} requests used.`, { ...headers, "Retry-After": "3600" });
-    if (reason === "revoked") return fail(403, "key_revoked", "This key has been revoked.", headers);
+    // A free key is revoked when a newer one replaced it, when it went unused
+    // for 30 days, or when it was issued before keys needed a confirmed
+    // mailbox (2026-10-04); in every case the fix is a new key from the page.
+    if (reason === "revoked") return fail(403, "key_revoked", "This key has been revoked. Get a new one at https://resumebooster.work/data-api (we email you a link).", headers);
     return fail(401, "invalid_key", "That key is not recognised.");
   }
 

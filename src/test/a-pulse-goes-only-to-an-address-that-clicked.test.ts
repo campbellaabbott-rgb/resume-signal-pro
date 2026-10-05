@@ -14,11 +14,16 @@
  * WHAT HOLDS NOW, proved two ways:
  *   1. The SQL (migration 20261004100000) is APPLIED to pglite over the tables
  *      it meets in production, and its functions are called: a request records
- *      at most one confirmation mail per address per week and three ever, a
- *      suppressed address gets none, confirmation is single-use, and the claim
- *      returns confirmed, unsuppressed, due rows only -- stamped in the same
- *      statement, so a second claim gets nothing. Rows from before the file
- *      stay unconfirmed and are never claimed.
+ *      at most one confirmation mail per address per week and three in any 90
+ *      days (a window, so a stranger's three requests cannot shut the address
+ *      out for good), a suppressed address gets none, a busy day serves only
+ *      networks that have not asked yet and a full one serves nobody,
+ *      confirmation is single-use, and the claim returns confirmed,
+ *      unsuppressed, due rows only -- stamped in the same statement, so a
+ *      second claim gets nothing. Rows from before the file stay unconfirmed
+ *      and are never claimed. The file's self-check refuses a copy whose claim
+ *      would mail an unconfirmed or suppressed row, or whose tables a client
+ *      role could write.
  *   2. The shipped send-market-pulse handler is RUN with Resend and the
  *      database faked: the batch refuses every caller without the cron key or
  *      the service role, the confirmation goes only to the address given with
@@ -36,8 +41,8 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 // ── 1. the SQL ───────────────────────────────────────────────────────────────
 
 type Db = PGlite;
-const request = (db: Db, email: string, token: string) =>
-  rows<{ pc_send: boolean; pc_reason: string }>(db, "SELECT * FROM public.market_pulse_request_confirm($1, 'technology', 70, $2)", [email, token]).then((r) => r[0]);
+const request = (db: Db, email: string, token: string, net: string | null = "net-a") =>
+  rows<{ pc_send: boolean; pc_reason: string }>(db, "SELECT * FROM public.market_pulse_request_confirm($1, 'technology', 70, $2, $3)", [email, token, net]).then((r) => r[0]);
 const confirm = (db: Db, token: string) =>
   rows<{ cf_confirmed: boolean; cf_reason: string }>(db, "SELECT * FROM public.market_pulse_confirm($1)", [token]).then((r) => r[0]);
 const claim = (db: Db) =>
@@ -64,7 +69,7 @@ describe("the pulse list holds only people who confirmed", () => {
     expect(await claim(db)).toEqual([]);
   });
 
-  it("a request records a confirmation mail at most once a week, and three times ever while unconfirmed", async () => {
+  it("a request records a confirmation mail at most once a week, and three times in 90 days while unconfirmed", async () => {
     const db = pg;
     expect(await request(db, " Jane@Example.com ", h64("a"))).toEqual({ pc_send: true, pc_reason: "sent" });
     expect(await request(db, "jane@example.com", h64("b"))).toEqual({ pc_send: false, pc_reason: "recently_sent" });
@@ -76,6 +81,18 @@ describe("the pulse list holds only people who confirmed", () => {
     expect(await request(db, "jane@example.com", h64("e")), "a fourth unconfirmed mail to the same address").toEqual({ pc_send: false, pc_reason: "recently_sent" });
     // Requests never subscribe anyone.
     expect(await claim(db)).toEqual([]);
+  });
+
+  it("three requests from a stranger cannot stop the address's owner from ever subscribing: the cap is a 90-day window", async () => {
+    const db = pg;
+    for (const t of ["a", "b", "c"]) {
+      expect((await request(db, "owner@example.com", h64(t), "net-stranger")).pc_send, t).toBe(true);
+      await age(db, "owner@example.com", "confirm_sent_at", 8);
+    }
+    expect((await request(db, "owner@example.com", h64("d"), "net-owner")).pc_send, "inside the window the cap holds").toBe(false);
+    await age(db, "owner@example.com", "confirm_window_start", 91);
+    expect(await request(db, "owner@example.com", h64("e"), "net-owner"), "once the window has passed, the owner's own request is mailed").toEqual({ pc_send: true, pc_reason: "sent" });
+    expect((await confirm(db, h64("e"))).cf_confirmed).toBe(true);
   });
 
   it("a suppressed address (bounce, complaint, or an unsubscribe) is never sent a confirmation", async () => {
@@ -135,11 +152,19 @@ describe("the pulse list holds only people who confirmed", () => {
     expect(await claim(db), "a second trigger in the same window mailed the same subscriber").toEqual([]);
   });
 
-  it("at most 200 confirmation mails a day overall, whoever is typing", async () => {
+  it("past 100 a day only a network that has not asked today is served; at 400 nobody is", async () => {
     const db = pg;
-    await db.query(`INSERT INTO public.market_pulse_subscribers (email, confirm_sent_at, confirm_sends)
-                    SELECT 'bulk' || g || '@example.com', now(), 1 FROM generate_series(1, 200) g`);
-    expect(await request(db, "one-more@example.com", h64("a"))).toEqual({ pc_send: false, pc_reason: "paused" });
+    await db.query(`INSERT INTO public.market_pulse_subscribers (email, confirm_sent_at, confirm_sends, confirm_window_start, confirm_net)
+                    SELECT 'bulk' || g || '@example.com', now(), 1, now(), 'net-flood-' || (g % 20) FROM generate_series(1, 100) g`);
+    expect(await request(db, "next@example.com", h64("a"), "net-flood-3"), "a network that already asked today").toEqual({ pc_send: false, pc_reason: "shed" });
+    expect(await request(db, "real@example.com", h64("b"), "net-fresh"), "a network that has not").toEqual({ pc_send: true, pc_reason: "sent" });
+    expect(await request(db, "again@example.com", h64("c"), "net-fresh"), "and only its first request").toEqual({ pc_send: false, pc_reason: "shed" });
+    expect((await request(db, "nonet@example.com", h64("d"), null)).pc_reason, "an unnamed network is not a fresh one").toBe("shed");
+    await db.query("INSERT INTO public.suppressed_emails (email, reason) VALUES ('quiet@example.com', 'unsubscribe')");
+    expect((await request(db, "quiet@example.com", h64("f"), "net-flood-3")).pc_reason, "a suppressed address from a shed network is shed like any other").toBe("shed");
+    await db.query(`INSERT INTO public.market_pulse_subscribers (email, confirm_sent_at, confirm_sends, confirm_window_start, confirm_net)
+                    SELECT 'more' || g || '@example.com', now(), 1, now(), 'net-wide-' || g FROM generate_series(1, 300) g`);
+    expect(await request(db, "late@example.com", h64("e"), "net-another-fresh")).toEqual({ pc_send: false, pc_reason: "paused" });
   });
 
   it("no client role can execute any of it, and the tables are closed to them by name", async () => {
@@ -148,7 +173,7 @@ describe("the pulse list holds only people who confirmed", () => {
       SELECT f AS fn, has_function_privilege('anon', f, 'EXECUTE') AS anon,
              has_function_privilege('authenticated', f, 'EXECUTE') AS auth,
              has_function_privilege('service_role', f, 'EXECUTE') AS svc
-        FROM unnest(ARRAY['public.market_pulse_request_confirm(text,text,integer,text)', 'public.market_pulse_confirm(text)',
+        FROM unnest(ARRAY['public.market_pulse_request_confirm(text,text,integer,text,text)', 'public.market_pulse_confirm(text)',
                           'public.market_pulse_claim_batch(integer)', 'public.email_cron_key_matches(text)']) f`);
     for (const x of r) expect(x, x.fn).toMatchObject({ anon: false, auth: false, svc: true });
     const t = await rows<{ sel: boolean }>(db, "SELECT has_table_privilege('anon', 'public.market_pulse_subscribers', 'SELECT') AS sel");
@@ -170,6 +195,49 @@ describe("the schedule carries the cron key, and the self-check refuses a copy t
     const db = pg;
     await db.query("UPDATE cron.job SET command = 'SELECT net.http_post(url := ''x'')' WHERE jobname = 'send-market-pulse'");
     await expect(db.exec(MAIL_DOOR_VERIFY)).rejects.toThrow(/does not carry the email cron key/);
+  });
+
+  it("a claim rewritten to mail unconfirmed rows fails the self-check, by behaviour rather than by catalogue", async () => {
+    const db = pg;
+    await db.exec(`CREATE OR REPLACE FUNCTION public.market_pulse_claim_batch(p_limit integer)
+      RETURNS TABLE (cl_email text, cl_industry text, cl_last_score integer, cl_confirmed_at timestamptz, cl_prev_sent_at timestamptz)
+      LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = public AS $f$
+        UPDATE public.market_pulse_subscribers m SET last_sent_at = now()
+         WHERE m.unsubscribed_at IS NULL
+        RETURNING m.email, m.industry, m.last_score, m.confirmed_at, NULL::timestamptz $f$;
+      REVOKE ALL ON FUNCTION public.market_pulse_claim_batch(integer) FROM PUBLIC, anon, authenticated;
+      GRANT EXECUTE ON FUNCTION public.market_pulse_claim_batch(integer) TO service_role;`);
+    await expect(db.exec(MAIL_DOOR_VERIFY)).rejects.toThrow(/market_pulse_claim_batch claimed \[.*unconfirmed/);
+  });
+
+  it("so does a claim that forgot suppressed_emails", async () => {
+    const db = pg;
+    await db.exec(`CREATE OR REPLACE FUNCTION public.market_pulse_claim_batch(p_limit integer)
+      RETURNS TABLE (cl_email text, cl_industry text, cl_last_score integer, cl_confirmed_at timestamptz, cl_prev_sent_at timestamptz)
+      LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path = public AS $f$
+        UPDATE public.market_pulse_subscribers m SET last_sent_at = now()
+         WHERE m.confirmed_at IS NOT NULL AND m.unsubscribed_at IS NULL
+        RETURNING m.email, m.industry, m.last_score, m.confirmed_at, NULL::timestamptz $f$;`);
+    await expect(db.exec(MAIL_DOOR_VERIFY)).rejects.toThrow(/claimed \[.*suppressed/);
+  });
+
+  it("the behavioural probe leaves nothing behind: no probe row, no suppression, no real row stamped", async () => {
+    const db = pg;
+    await request(db, "real-due@example.com", h64("a"));
+    await confirm(db, h64("a"));
+    await expect(db.exec(MAIL_DOOR_VERIFY)).resolves.toBeTruthy();
+    expect(await rows(db, "SELECT email FROM public.market_pulse_subscribers WHERE email LIKE '%self-check%'")).toEqual([]);
+    expect(await rows(db, "SELECT email FROM public.suppressed_emails WHERE email LIKE '%self-check%'")).toEqual([]);
+    expect(await rows(db, "SELECT last_sent_at FROM public.market_pulse_subscribers WHERE email = 'real-due@example.com'"), "the probe's claim stamped a real subscriber").toEqual([{ last_sent_at: null }]);
+  });
+
+  it("a write grant a later edit gave a client role fails the self-check, not only a read grant", async () => {
+    for (const [tbl, verb] of [["market_pulse_subscribers", "INSERT"], ["api_key_requests", "UPDATE"], ["mail_door_counts", "DELETE"]]) {
+      await pg.exec("SAVEPOINT g");
+      await pg.exec(`GRANT ${verb} ON public.${tbl} TO anon`);
+      await expect(pg.exec(MAIL_DOOR_VERIFY), `${verb} on ${tbl}`).rejects.toThrow(new RegExp(`anon holds ${verb} on public\\.${tbl}`));
+      await pg.exec("ROLLBACK TO SAVEPOINT g");
+    }
   });
 
   it("and the untouched file passes its own self-check", async () => {
@@ -289,6 +357,9 @@ describe("subscribe sends only a confirmation, only to the address given, and sa
     expect(await res.json()).toEqual({ success: true, pending: true });
     const req = calls.find((c) => c.name === "market_pulse_request_confirm")!;
     expect(req.args).toMatchObject({ p_email: "jane@example.com", p_industry: "data_science", p_score: 74 });
+    const door = calls.find((c) => c.name === "mail_door_take")!;
+    expect(req.args.p_net, "the request carries the same network bucket the door counted").toBe(door.args.p_bucket);
+    expect(String(req.args.p_net)).toMatch(/^[0-9a-f]{32}$/);
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toEqual(["jane@example.com"]);
     expect(sent[0].subject).toBe("Confirm your monthly market pulse");
@@ -307,6 +378,25 @@ describe("subscribe sends only a confirmation, only to the address given, and sa
       expect(await res.json(), reason).toEqual({ success: true, pending: true });
     }
     expect(sent).toEqual([]);
+  });
+
+  it("a busy day refuses only networks that already asked (429) and a full day everyone (503); the owner hears once, the address is never mailed", async () => {
+    const owner: string[] = [];
+    let alertDue = true;
+    rpc("mail_door_take", (a) => {
+      if (a.p_door !== "owner-alert") return true;
+      const due = alertDue; alertDue = false; owner.push(String(a.p_bucket)); return due;
+    });
+    rpc("market_pulse_request_confirm", () => ({ pc_send: false, pc_reason: "shed" }));
+    const shed = await post({ action: "subscribe", email: "a@example.com", industry: "sales" });
+    expect(shed.status).toBe(429);
+    expect((await shed.json()).error).toMatch(/your network today/);
+    rpc("market_pulse_request_confirm", () => ({ pc_send: false, pc_reason: "paused" }));
+    const paused = await post({ action: "subscribe", email: "b@example.com", industry: "sales" });
+    expect(paused.status).toBe(503);
+    expect(owner).toEqual(["send-market-pulse:subscribe", "send-market-pulse:subscribe"]);
+    expect(sent.map((m) => m.to[0]), "only the owner's one alert went out").toEqual(["resumeboostersupp@gmail.com"]);
+    expect(sent[0].subject).toMatch(/passed its soft ceiling/);
   });
 
   it("is limited per NETWORK, keyed on the platform's address, never on a hop the caller writes", async () => {

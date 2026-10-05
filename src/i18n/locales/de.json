@@ -1630,6 +1630,7 @@
       "pulseOptIn": "Senden Sie mir auch einen monatlichen Markt-Puls: die aufsteigenden Keywords meiner Branche, mit kostenlosem Rescan-Link. Jederzeit abbestellbar.",
       "pulseConfirmSent": "Falls diese Adresse den monatlichen Markt-Puls noch nicht bestätigt hat, haben wir ihr einen Bestätigungslink gesendet. Der Puls startet erst, wenn dieser Link angeklickt wird.",
       "pulseNotCovered": "Der monatliche Markt-Puls deckt Ihr Fachgebiet noch nicht ab, daher wurde keine Bestätigung gesendet.",
+      "dripConfirmSent": "Ihre Bericht-E-Mail enthält einen Button, mit dem Sie die Fix-Plan-E-Mails starten. Bis Sie ihn drücken, senden wir nichts weiter.",
       "placementTopQuartile": "Oberstes Quartil von {{n}} echten {{industry}}-Scans",
       "placementAboveMedian": "Über dem Median von {{n}} echten {{industry}}-Scans",
       "placementBelowMedian": "Unter dem Median von {{n}} echten {{industry}}-Scans",
@@ -5102,6 +5103,18 @@
     "invalid": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Setzen Sie beim nächsten Scan-Bericht das Häkchen, um einen neuen zu erhalten.",
     "missing": "Diese Seite benötigt den Link aus Ihrer Bestätigungs-E-Mail.",
     "error": "Bestätigung gerade nicht möglich. Versuchen Sie den Link gleich noch einmal.",
+    "home": "Zurück zu Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Starten Sie Ihre Fix-Plan-E-Mails",
+    "body": "Vier kurze E-Mails über zwei Wochen: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 und eine Frage an Tag 14. Jede E-Mail lässt sich mit einem Klick abbestellen.",
+    "button": "Ja, E-Mails starten",
+    "done": "Erledigt. Die erste E-Mail kommt in zwei Tagen.",
+    "already": "Für diese Adresse wurde diesen Monat bereits eine Fix-Plan-Sequenz gestartet, daher wurde nichts weiter eingeplant.",
+    "optedOut": "Diese Adresse hat sich früher von unseren E-Mails abgemeldet, daher wurde nichts eingeplant.",
+    "invalid": "Dieser Link ist abgelaufen oder ungültig. Senden Sie sich beim nächsten Scan einen neuen Bericht, um einen neuen zu erhalten.",
+    "missing": "Diese Seite benötigt den Button aus Ihrer Bericht-E-Mail.",
+    "error": "Start gerade nicht möglich. Versuchen Sie den Button gleich noch einmal.",
     "home": "Zurück zu Resume Booster"
   }
 }

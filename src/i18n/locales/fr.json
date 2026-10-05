@@ -1630,6 +1630,7 @@
       "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés en hausse dans mon secteur, avec un lien de réanalyse gratuite. Désabonnement à tout moment.",
       "pulseConfirmSent": "Si cette adresse n'a pas encore confirmé le pouls mensuel du marché, nous lui avons envoyé un lien de confirmation. Le pouls ne commence qu'une fois ce lien cliqué.",
       "pulseNotCovered": "Le pouls mensuel du marché ne couvre pas encore votre domaine, donc aucune confirmation n'a été envoyée.",
+      "dripConfirmSent": "L'e-mail de votre rapport contient un bouton pour lancer les e-mails du plan de correction. Rien d'autre n'est envoyé tant que vous ne l'avez pas cliqué.",
       "placementTopQuartile": "Quartile supérieur de {{n}} vrais scans {{industry}}",
       "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
       "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
@@ -5102,6 +5103,18 @@
     "invalid": "Ce lien a expiré ou a déjà été utilisé. Cochez la case sous votre prochain rapport de scan pour en recevoir un nouveau.",
     "missing": "Cette page a besoin du lien de votre e-mail de confirmation.",
     "error": "Confirmation impossible pour le moment. Réessayez le lien dans un instant.",
+    "home": "Retour à Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Lancez les e-mails de votre plan de correction",
+    "body": "Quatre courts e-mails sur deux semaines : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 et une question au jour 14. Chaque e-mail permet de se désabonner en un clic.",
+    "button": "Oui, lancer les e-mails",
+    "done": "C'est fait. Le premier e-mail arrive dans deux jours.",
+    "already": "Une séquence du plan a déjà été lancée pour cette adresse ce mois-ci, donc rien de plus n'a été programmé.",
+    "optedOut": "Cette adresse s'est désabonnée de nos e-mails auparavant, donc rien n'a été programmé.",
+    "invalid": "Ce lien a expiré ou n'est pas valide. Envoyez-vous un nouveau rapport lors de votre prochain scan pour en obtenir un autre.",
+    "missing": "Cette page a besoin du bouton de l'e-mail de votre rapport.",
+    "error": "Impossible de lancer pour le moment. Réessayez le bouton dans un instant.",
     "home": "Retour à Resume Booster"
   }
 }

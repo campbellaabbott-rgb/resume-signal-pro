@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
-import { MAIL_DOOR_VERIFY, bootMailDoorDb, h64, rows } from "./helpers/mail-door-db";
+import { MAIL_DOOR_SQL, MAIL_DOOR_VERIFY, bootMailDoorDb, h64, rows } from "./helpers/mail-door-db";
 
 /**
  * AN API NOBODY CAN TRY IS AN API NOBODY BECOMES A CUSTOMER OF -- AND A KEY
@@ -28,7 +28,13 @@ import { MAIL_DOOR_VERIFY, bootMailDoorDb, h64, rows } from "./helpers/mail-door
  *      overall -- are enforced where they are atomic;
  *   3. a request never revokes anything; only a mailbox's confirmed owner
  *      retires that mailbox's own account-less keys, never an account's key;
- *   4. the page says what the code does (claim drift).
+ *   4. the page says what the code does (claim drift);
+ *   5. (review of 2026-10-04) the pool the old door filled is revoked by the
+ *      file, a free key unused for 30 days retires, a full day cannot be used
+ *      to turn the door off for everyone (past a soft ceiling only networks
+ *      that have not used it today are served, and reaching either ceiling
+ *      tells the owner), and the answer to a request never says whether the
+ *      address bounced, complained or already had its two links today.
  */
 const ROOT = resolve(__dirname, "../..");
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -114,11 +120,30 @@ describe("the SQL, applied to the tables it meets", () => {
       expect((await open(pg, "dev9@example9.org", fresh(), "net-y")).rq_send, "another network is not this one's bucket").toBe(true);
     });
 
-    it("300 confirmation mails a day overall", async () => {
-      await pg.query(`INSERT INTO public.api_key_requests (email, mailbox, token_hash, expires_at)
-                      SELECT 'b' || g || '@example.org', 'b' || g || '@example.org', md5(g::text) || md5((g + 1)::text), now() + interval '1 day'
-                        FROM generate_series(1, 300) g`);
+    it("past 150 a day only a network with no request today is served; at 600 nobody is", async () => {
+      // Three apiece from fifty networks, two hours ago: inside the day,
+      // outside each network's own hourly five.
+      await pg.query(`INSERT INTO public.api_key_requests (email, mailbox, token_hash, request_net, created_at, expires_at)
+                      SELECT 'b' || g || '@example.org', 'b' || g || '@example.org', md5(g::text) || md5((g + 1)::text),
+                             'flood-' || (g % 50), now() - interval '2 hours', now() + interval '1 day'
+                        FROM generate_series(1, 150) g`);
+      expect(await open(pg, "next@example.org", fresh(), "flood-4"), "a network that already asked today").toMatchObject({ rq_send: false, rq_reason: "shed" });
+      expect(await open(pg, "real-dev@example.org", fresh(), "net-fresh"), "a network that has not").toMatchObject({ rq_send: true, rq_reason: "sent" });
+      expect(await open(pg, "second@example.org", fresh(), "net-fresh")).toMatchObject({ rq_send: false, rq_reason: "shed" });
+      await pg.query(`INSERT INTO public.api_key_requests (email, mailbox, token_hash, request_net, expires_at)
+                      SELECT 'c' || g || '@example.org', 'c' || g || '@example.org', md5('c' || g) || md5('d' || g),
+                             'wide-' || g, now() + interval '1 day'
+                        FROM generate_series(1, 450) g`);
       expect(await open(pg, "late@example.org", fresh(), "net-z")).toMatchObject({ rq_send: false, rq_reason: "paused" });
+    });
+
+    it("a busy network hears 'network busy' for every address alike: the address is judged last, so the order is no oracle", async () => {
+      await pg.query("INSERT INTO public.suppressed_emails (email, reason) VALUES ('bounced@example.org', 'bounce')");
+      for (let i = 0; i < 2; i++) await open(pg, "capped@example.org", fresh(), `other-${i}`);
+      for (let i = 0; i < 5; i++) await open(pg, `x${i}@site${i}.org`, fresh(), "busy-net");
+      for (const email of ["bounced@example.org", "capped@example.org", "ordinary@example.org"]) {
+        expect(await open(pg, email, fresh(), "busy-net"), email).toMatchObject({ rq_send: false, rq_reason: "network_busy" });
+      }
     });
 
     it("never mails an address that bounced or complained (an unsubscribe from marketing is not that)", async () => {
@@ -161,12 +186,30 @@ describe("the SQL, applied to the tables it meets", () => {
       for (let i = 0; i < 6; i++) expect((await at(`person${i}@gmail.com`)).ik_issued, `gmail #${i}`).toBe(true);
     });
 
-    it("forty account-less keys a day overall", async () => {
+    it("past twenty account-less keys a day only a network that has made none today is served; at sixty nobody is", async () => {
       await pg.query(`INSERT INTO public.api_keys (key_hash, key_prefix, name, owner_email, tier)
-                      SELECT md5(g::text), 'rb_live_x', 'k', 'k' || g || '@gmail.com', 'free' FROM generate_series(1, 40) g`);
-      const t = fresh();
-      await open(pg, "one-more@example.org", t);
-      expect(await issue(pg, t, fresh())).toMatchObject({ ik_issued: false, ik_reason: "paused" });
+                      SELECT md5(g::text), 'rb_live_x', 'k', 'k' || g || '@gmail.com', 'free' FROM generate_series(1, 19) g`);
+      const t1 = fresh(); await open(pg, "first@example.org", t1, "r1");
+      expect((await issue(pg, t1, fresh(), "mint-net")).ik_issued, "the twentieth key, below the soft ceiling").toBe(true);
+      const t2 = fresh(); await open(pg, "second@example.org", t2, "r2");
+      expect(await issue(pg, t2, fresh(), "mint-net"), "the same network again, past it").toMatchObject({ ik_issued: false, ik_reason: "shed" });
+      expect((await issue(pg, t2, fresh(), "mint-fresh")).ik_issued, "a fresh network, and the refused link was not spent").toBe(true);
+      await pg.query(`INSERT INTO public.api_keys (key_hash, key_prefix, name, owner_email, tier)
+                      SELECT md5('m' || g), 'rb_live_x', 'k', 'm' || g || '@gmail.com', 'free' FROM generate_series(1, 40) g`);
+      const t3 = fresh(); await open(pg, "third@example.org", t3, "r3");
+      expect(await issue(pg, t3, fresh(), "mint-brand-new")).toMatchObject({ ik_issued: false, ik_reason: "paused" });
+    });
+
+    it("a free key nobody used for 30 days retires; a used one, an account's key and a hand-made tier never do", async () => {
+      await pg.query(`INSERT INTO public.api_keys (key_hash, key_prefix, name, owner_email, tier, created_at, last_used_at, user_id) VALUES
+        ('i1', 'rb_live_idle', 'k', 'a@example.org', 'free', now() - interval '60 days', now() - interval '31 days', NULL),
+        ('i2', 'rb_live_never', 'k', 'b@example.org', 'free', now() - interval '31 days', NULL, NULL),
+        ('i3', 'rb_live_used', 'k', 'c@example.org', 'free', now() - interval '90 days', now() - interval '2 days', NULL),
+        ('i4', 'rb_live_acct', 'agent-mcp', 'd@example.org', 'free', now() - interval '90 days', NULL, gen_random_uuid()),
+        ('i5', 'rb_live_trial', 'k', 'e@example.org', 'trial', now() - interval '90 days', NULL, NULL)`);
+      expect((await rows<{ n: number }>(pg, "SELECT public.api_key_retire_idle() AS n"))[0].n).toBe(2);
+      const live = (await rows<{ key_prefix: string }>(pg, "SELECT key_prefix FROM public.api_keys WHERE revoked_at IS NULL ORDER BY key_prefix")).map((x) => x.key_prefix);
+      expect(live).toEqual(["rb_live_acct", "rb_live_trial", "rb_live_used"]);
     });
 
     it("a fourth key retires the mailbox's least recently used, never an account's key or another mailbox's", async () => {
@@ -200,11 +243,61 @@ describe("the SQL, applied to the tables it meets", () => {
     it("no client role can execute any of it, or read the request table", async () => {
       const r = await rows<{ f: string; anon: boolean; auth: boolean }>(pg, `
         SELECT f, has_function_privilege('anon', f, 'EXECUTE') AS anon, has_function_privilege('authenticated', f, 'EXECUTE') AS auth
-          FROM unnest(ARRAY['public.api_key_issue(text,text,text,text)', 'public.api_key_request_open(text,text,text,text)', 'public.api_key_mailbox(text)']) f`);
+          FROM unnest(ARRAY['public.api_key_issue(text,text,text,text)', 'public.api_key_request_open(text,text,text,text)', 'public.api_key_mailbox(text)', 'public.api_key_retire_idle()']) f`);
       for (const x of r) expect(x, x.f).toMatchObject({ anon: false, auth: false });
       const t = await rows<{ sel: boolean }>(pg, "SELECT has_table_privilege('anon', 'public.api_key_requests', 'SELECT') AS sel");
       expect(t[0].sel).toBe(false);
     });
+  });
+});
+
+// ── the pool the old door filled ─────────────────────────────────────────────
+
+describe("the keys the old door handed out are revoked by the file, and only those", () => {
+  // Its own boot: the rows must exist BEFORE the migration runs, as today's do.
+  const LEGACY = `INSERT INTO public.api_keys (key_hash, key_prefix, name, owner_email, tier, user_id, last_used_at) VALUES
+    ('L1', 'rb_live_scrpt', 'k', 'made-up-1@example.org', 'free', NULL, now()),
+    ('L2', 'rb_live_strgr', 'k', 'someone-else@example.org', 'free', NULL, NULL),
+    ('L3', 'rb_live_agent', 'agent-mcp', 'dev@example.org', 'free', gen_random_uuid(), now()),
+    ('L4', 'rb_live_hand', 'partner', 'partner@example.org', 'trial', NULL, now()),
+    ('L5', 'rb_live_gone', 'k', 'old@example.org', 'free', NULL, NULL);
+    UPDATE public.api_keys SET revoked_at = now() - interval '9 days', notes = 'rotated' WHERE key_hash = 'L5';`;
+  let lg: Db;
+  beforeAll(async () => { lg = await bootMailDoorDb({ seed: LEGACY }); }, 120_000);
+  const state = async () => rows<{ key_prefix: string; revoked: boolean; notes: string | null }>(lg,
+    "SELECT key_prefix, revoked_at IS NOT NULL AS revoked, notes FROM public.api_keys ORDER BY key_hash");
+
+  it("every free account-less key minted before the file is revoked, with the reason; an account's key and a hand-made tier are not", async () => {
+    expect(await state()).toEqual([
+      { key_prefix: "rb_live_scrpt", revoked: true, notes: "revoked 20261004100000: a free key issued before keys needed a confirmed mailbox" },
+      { key_prefix: "rb_live_strgr", revoked: true, notes: "revoked 20261004100000: a free key issued before keys needed a confirmed mailbox" },
+      { key_prefix: "rb_live_agent", revoked: false, notes: null },
+      { key_prefix: "rb_live_hand", revoked: false, notes: null },
+      { key_prefix: "rb_live_gone", revoked: true, notes: "rotated" },
+    ]);
+  });
+
+  it("a key confirmed through the mailbox survives the file being run again (the staged runner re-stamps files)", async () => {
+    const t = fresh();
+    await open(lg, "dev@example.org", t);
+    expect((await issue(lg, t, fresh())).ik_issued).toBe(true);
+    await lg.exec(MAIL_DOOR_SQL);
+    const live = (await rows<{ owner_email: string }>(lg, "SELECT owner_email FROM public.api_keys WHERE revoked_at IS NULL AND tier = 'free' AND user_id IS NULL")).map((r) => r.owner_email);
+    expect(live).toEqual(["dev@example.org"]);
+  });
+
+  it("the self-check refuses a database where an old-door key is still live", async () => {
+    await lg.exec("BEGIN");
+    await lg.query("INSERT INTO public.api_keys (key_hash, key_prefix, name, owner_email, tier) VALUES ('L9', 'rb_live_late', 'k', 'late@example.org', 'free')");
+    await expect(lg.exec(MAIL_DOOR_VERIFY)).rejects.toThrow(/1 free keys minted without a confirmed mailbox are still live/);
+    await lg.exec("ROLLBACK");
+  });
+
+  it("what a revoked key's holder is told names the way back", () => {
+    const api = readFileSync(resolve(ROOT, "supabase/functions/public-api/index.ts"), "utf8");
+    expect(api).toMatch(/"key_revoked", "This key has been revoked\. Get a new one at https:\/\/resumebooster\.work\/data-api/);
+    const mcp = readFileSync(resolve(ROOT, "supabase/functions/agent-mcp/index.ts"), "utf8");
+    expect(mcp).toMatch(/issued before keys needed a confirmed email/);
   });
 });
 
@@ -247,7 +340,7 @@ describe("a request returns no key and mails only the address that asked", () =>
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text, "a request response carried a key").not.toMatch(/rb_live_|"key"/);
-    expect(JSON.parse(text)).toMatchObject({ requested: true, emailed: true });
+    expect(JSON.parse(text)).toMatchObject({ requested: true });
     const req = calls.find((c) => c.name === "api_key_request_open")!;
     expect(req.args.p_email).toBe("dev@example.org");
     expect(req.args.p_net).toMatch(/^[0-9a-f]{32}$/);
@@ -260,17 +353,36 @@ describe("a request returns no key and mails only the address that asked", () =>
     expect(sha(token!)).toBe(req.args.p_token_hash);
   });
 
-  it("every refusal sends nothing and says why, in the body the page reads", async () => {
-    const cases: Array<[string, number]> = [["too_many_requests", 429], ["network_busy", 429], ["paused", 503], ["undeliverable", 400]];
-    for (const [reason, status] of cases) {
+  it("an address that bounced, complained or already had two links today gets the SAME answer as one that was mailed, and no mail", async () => {
+    rpc("api_key_request_open", () => ({ rq_send: true, rq_reason: "sent", rq_live_keys: 0 }));
+    const mailed = await post({ email: "dev@example.org" });
+    const mailedBody = await mailed.text();
+    mails.length = 0;
+    for (const reason of ["undeliverable", "too_many_requests"]) {
+      rpc("api_key_request_open", () => ({ rq_send: false, rq_reason: reason, rq_live_keys: 0 }));
+      const res = await post({ email: "target@corp.example" });
+      expect(res.status, reason).toBe(mailed.status);
+      expect(await res.text(), `${reason} is told apart from a mailed request`).toBe(mailedBody);
+    }
+    expect(mails).toEqual([]);
+    expect(JSON.parse(mailedBody).message).toMatch(/^If that address can receive mail from us/);
+  });
+
+  it("a refusal about the caller's network or the day says so, sends nothing, and a ceiling tells the owner once", async () => {
+    const cases: Array<[string, number, string]> = [["network_busy", 429, "network_busy"], ["shed", 429, "network_busy"], ["paused", 503, "paused"]];
+    const alerts: string[] = [];
+    let first = true;
+    rpc("mail_door_take", (a) => { alerts.push(String(a.p_bucket)); const due = first; first = false; return due; });
+    for (const [reason, status, code] of cases) {
       rpc("api_key_request_open", () => ({ rq_send: false, rq_reason: reason, rq_live_keys: 0 }));
       const res = await post({ email: "dev@example.org" });
       expect(res.status, reason).toBe(status);
       const b = await res.json();
-      expect(b.error.code).toBe(reason);
+      expect(b.error.code).toBe(code);
       expect(b.error.message.length).toBeGreaterThan(20);
     }
-    expect(mails).toEqual([]);
+    expect(alerts, "shed and paused each ask whether today's alert is due").toEqual(["api-key-request:request", "api-key-request:request"]);
+    expect(mails.map((m) => m.to[0]), "nothing to the address; one alert to the owner").toEqual(["resumeboostersupp@gmail.com"]);
   });
 
   it("two callers in one /24 share a network, whatever first hop each forges", async () => {
@@ -300,6 +412,17 @@ describe("the link mints the key and shows it once", () => {
     expect(c.args).toMatchObject({ p_token_hash: sha(token), p_key_hash: sha(b.key), p_key_prefix: b.key.slice(0, 16) });
     expect(c.args.p_net).toMatch(/^[0-9a-f]{32}$/);
     expect(mails, "the key was emailed").toEqual([]);
+  });
+
+  it("a busy day's mint refuses a network that already minted (429), a full day everyone (503), and tells the owner", async () => {
+    rpc("mail_door_take", () => true);
+    rpc("api_key_issue", () => ({ ik_issued: false, ik_reason: "shed" }));
+    const shed = await post({ action: "confirm", token: "c".repeat(64) });
+    expect(shed.status).toBe(429);
+    expect((await shed.json()).error.code).toBe("network_limit");
+    rpc("api_key_issue", () => ({ ik_issued: false, ik_reason: "paused" }));
+    expect((await post({ action: "confirm", token: "c".repeat(64) })).status).toBe(503);
+    expect(calls.filter((c) => c.name === "mail_door_take").map((c) => c.args.p_bucket)).toEqual(["api-key-request:mint", "api-key-request:mint"]);
   });
 
   it("a malformed token never reaches the mint; a spent one is a 410 with its reason", async () => {

@@ -69,6 +69,7 @@ const ScoreStudy = lazy(() => import("./pages/ScoreStudy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Companies = lazy(() => import("./pages/Companies"));
 const MarketPulseConfirm = lazy(() => import("./pages/MarketPulseConfirm"));
+const FixPlanConfirm = lazy(() => import("./pages/FixPlanConfirm"));
 
 const queryClient = new QueryClient();
 
@@ -132,6 +133,7 @@ const App = () => (
           <Route path="/companies" element={<Companies />} />
           <Route path="/affiliates" element={<Affiliates />} />
           <Route path="/market-pulse/confirm" element={<MarketPulseConfirm />} />
+          <Route path="/fix-plan/confirm" element={<FixPlanConfirm />} />
           <Route path="/r/:code" element={<AffiliateRedirect />} />
           <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />
           <Route path="/analytics" element={<AnalyticsDashboard />} />

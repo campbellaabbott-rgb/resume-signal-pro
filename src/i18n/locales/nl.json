@@ -1630,6 +1630,7 @@
       "pulseOptIn": "Stuur mij ook een maandelijkse marktpuls: de opkomende trefwoorden in mijn sector, met een gratis rescan-link. Altijd uitschrijfbaar.",
       "pulseConfirmSent": "Als dit adres de maandelijkse marktpuls nog niet heeft bevestigd, hebben we het een bevestigingslink gemaild. De puls start pas nadat op die link is geklikt.",
       "pulseNotCovered": "De maandelijkse marktpuls dekt jouw vakgebied nog niet, dus er is geen bevestiging verstuurd.",
+      "dripConfirmSent": "In je rapportmail staat een knop om de fix-plan-mails te starten. Tot je erop drukt, sturen we niets meer.",
       "placementTopQuartile": "Bovenste kwartiel van {{n}} echte {{industry}}-scans",
       "placementAboveMedian": "Boven de mediaan van {{n}} echte {{industry}}-scans",
       "placementBelowMedian": "Onder de mediaan van {{n}} echte {{industry}}-scans",
@@ -5102,6 +5103,18 @@
     "invalid": "Deze link is verlopen of al gebruikt. Vink het vakje aan onder je volgende scanrapport om een nieuwe te krijgen.",
     "missing": "Deze pagina heeft de link uit je bevestigingsmail nodig.",
     "error": "Bevestigen lukt nu niet. Probeer de link zo opnieuw.",
+    "home": "Terug naar Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Start je fix-plan-mails",
+    "body": "Vier korte e-mails in twee weken: de belangrijkste fixes op dag 2, de rest op dag 4, een rescan-herinnering op dag 6 en één vraag op dag 14. Elke e-mail heeft een afmeldlink met één klik.",
+    "button": "Ja, start de e-mails",
+    "done": "Klaar. De eerste e-mail komt over twee dagen.",
+    "already": "Voor dit adres is deze maand al een fix-plan-reeks gestart, dus er is niets meer ingepland.",
+    "optedOut": "Dit adres heeft zich eerder afgemeld voor onze e-mails, dus er is niets ingepland.",
+    "invalid": "Deze link is verlopen of ongeldig. Mail jezelf een nieuw rapport bij je volgende scan om een nieuwe te krijgen.",
+    "missing": "Deze pagina heeft de knop uit je rapportmail nodig.",
+    "error": "Starten lukt nu niet. Probeer de knop zo meteen opnieuw.",
     "home": "Terug naar Resume Booster"
   }
 }

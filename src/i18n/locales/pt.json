@@ -1630,6 +1630,7 @@
       "pulseOptIn": "Envie-me também um pulso de mercado mensal: as palavras-chave em alta no meu setor, com um link de reescaneamento grátis. Cancele quando quiser.",
       "pulseConfirmSent": "Se este endereço ainda não confirmou o pulso mensal do mercado, enviamos a ele um link de confirmação. O pulso só começa depois que esse link for clicado.",
       "pulseNotCovered": "O pulso mensal do mercado ainda não cobre sua área, então nenhuma confirmação foi enviada.",
+      "dripConfirmSent": "O e-mail do seu relatório tem um botão para iniciar os e-mails do plano de ajustes. Nada mais é enviado até você clicar nele.",
       "placementTopQuartile": "Quartil superior de {{n}} escaneamentos reais de {{industry}}",
       "placementAboveMedian": "Acima da mediana de {{n}} escaneamentos reais de {{industry}}",
       "placementBelowMedian": "Abaixo da mediana de {{n}} escaneamentos reais de {{industry}}",
@@ -5102,6 +5103,18 @@
     "invalid": "Este link expirou ou já foi usado. Marque a caixa no seu próximo relatório de escaneamento para receber um novo.",
     "missing": "Esta página precisa do link do seu e-mail de confirmação.",
     "error": "Não foi possível confirmar agora. Tente o link novamente em instantes.",
+    "home": "Voltar para o Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Inicie os e-mails do seu plano de ajustes",
+    "body": "Quatro e-mails curtos em duas semanas: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 e uma pergunta no dia 14. Cada e-mail tem cancelamento com um clique.",
+    "button": "Sim, iniciar os e-mails",
+    "done": "Pronto. O primeiro e-mail chega em dois dias.",
+    "already": "Uma sequência do plano já foi iniciada para este endereço este mês, então nada mais foi agendado.",
+    "optedOut": "Este endereço cancelou nossos e-mails antes, então nada foi agendado.",
+    "invalid": "Este link expirou ou não é válido. Envie para você um novo relatório na próxima análise para receber outro.",
+    "missing": "Esta página precisa do botão do e-mail do seu relatório.",
+    "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
     "home": "Voltar para o Resume Booster"
   }
 }

@@ -4446,10 +4446,13 @@ ${resumeText.substring(0, 20000)}
       );
     }
 
-    // THE MAIL SEAL. send-scan-report prints this report's sentences (verdict,
-    // issues, fix steps, occupation, report id) in an email only when this
-    // seal matches them, so nobody can put their own words in a mail from our
-    // domain (2026-10-04). Sealed last, over exactly what the browser receives.
+    // THE MAIL SEAL. send-scan-report prints this report's sentences (issues,
+    // fix steps, occupation, report id) in an email only when this seal
+    // matches them, so nobody can put their own words in a mail from our
+    // domain (2026-10-04). The seal carries its issue time and is good for a
+    // week; the mailer counts sends per report id, so one sealed payload
+    // cannot be replayed to a list of strangers. Sealed last, over exactly
+    // what the browser receives.
     await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
     return new Response(

@@ -1630,6 +1630,7 @@
       "pulseOptIn": "Envíame también un pulso de mercado mensual: las palabras clave en alza en mi industria, con un enlace de reescaneo gratis. Cancela cuando quieras.",
       "pulseConfirmSent": "Si esta dirección aún no ha confirmado el pulso mensual del mercado, le hemos enviado un enlace de confirmación. El pulso solo empieza cuando se hace clic en ese enlace.",
       "pulseNotCovered": "El pulso mensual del mercado aún no cubre tu sector, así que no se envió ninguna confirmación.",
+      "dripConfirmSent": "El correo de tu informe tiene un botón para iniciar los correos del plan de arreglos. No enviamos nada más hasta que lo pulses.",
       "placementTopQuartile": "Cuartil superior de {{n}} escaneos reales de {{industry}}",
       "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
       "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
@@ -5102,6 +5103,18 @@
     "invalid": "Este enlace ha caducado o ya se usó. Marca la casilla en tu próximo informe de escaneo para recibir uno nuevo.",
     "missing": "Esta página necesita el enlace de tu correo de confirmación.",
     "error": "No se pudo confirmar ahora. Vuelve a abrir el enlace en un momento.",
+    "home": "Volver a Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Inicia los correos de tu plan de arreglos",
+    "body": "Cuatro correos breves en dos semanas: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 y una pregunta el día 14. Cada correo permite darse de baja con un clic.",
+    "button": "Sí, iniciar los correos",
+    "done": "Listo. El primer correo llega en dos días.",
+    "already": "Ya se inició una secuencia del plan para esta dirección este mes, así que no se programó nada más.",
+    "optedOut": "Esta dirección se dio de baja de nuestros correos antes, así que no se programó nada.",
+    "invalid": "Este enlace caducó o no es válido. Envíate un informe nuevo desde tu próximo escaneo para obtener otro.",
+    "missing": "Esta página necesita el botón de tu correo del informe.",
+    "error": "No se pudo iniciar ahora. Vuelve a pulsar el botón en un momento.",
     "home": "Volver a Resume Booster"
   }
 }

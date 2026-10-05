@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T12:00Z
+// deploy-stamp: 2026-10-04T22:00Z
 // Market pulse -- the product's retention loop. Sends each CONFIRMED
 // subscriber a short email with the current must-have keywords for their
 // industry and a free-rescan nudge.
@@ -6,10 +6,12 @@
 // Four actions, and who may use each:
 //   POST {action:"subscribe", email, industry?, score?}  anyone (the report
 //     page). Records a request and mails a single-use confirmation link to that
-//     address -- at most one per address per 7 days, three ever while
-//     unconfirmed, 200 a day overall, never to a suppressed address, and five
-//     requests an hour per network (mail_door_take). Nothing else is ever sent to an address
-//     that has not clicked its link.
+//     address -- at most one per address per 7 days, three in any 90 days while
+//     unconfirmed, never to a suppressed address, and five requests an hour per
+//     network (mail_door_take). Past 100 confirmation mails in a day only
+//     networks that have not asked today are served, and 400 stops it for
+//     everyone; either one tells the owner. Nothing else is ever sent to an
+//     address that has not clicked its link.
 //   POST {action:"confirm", token}  anyone holding a link from that mail.
 //   POST {action:"send"}  the daily cron (x-email-cron, a vault key) or our own
 //     service role. Nobody else: this used to answer any caller, so N
@@ -24,12 +26,14 @@
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { KEYWORD_FREQUENCY } from "../_shared/market-intelligence.ts";
-import { isServiceRoleCaller, sameSecret } from "../_shared/service-caller.ts";
+import { sameSecret } from "../_shared/service-caller.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
+import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-market-pulse.2026-10-04.1";
+const FN_BUILD = "send-market-pulse.2026-10-04.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,15 +163,27 @@ Deno.serve(async (req) => {
 
       const token = randomToken();
       const { data, error } = await supabase.rpc("market_pulse_request_confirm", {
-        p_email: email, p_industry: industry, p_score: score, p_token_hash: await sha256Hex(token),
+        p_email: email, p_industry: industry, p_score: score, p_token_hash: await sha256Hex(token), p_net: net,
       }).maybeSingle();
       if (error) {
         console.error("[MARKET-PULSE] request_confirm failed:", error.message?.slice(0, 160));
         return json({ success: false, error: "Could not record that right now." }, 503);
       }
       const d = data as { pc_send?: boolean; pc_reason?: string } | null;
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (d?.pc_reason === "shed" || d?.pc_reason === "paused") {
+        // The day is busy enough that real visitors may be turned away: the
+        // owner hears once a day.
+        await alertOwnerOnce(supabase, "send-market-pulse:subscribe",
+          d.pc_reason === "paused" ? "reached its daily ceiling" : "passed its soft ceiling and is serving only new networks",
+          async (m) => { if (RESEND_API_KEY) await new Resend(RESEND_API_KEY).emails.send({ from: "Resume Booster <reports@resumebooster.work>", ...m }); });
+        // These two are about the caller's network and the day, never about
+        // the address, so saying so tells nobody anything about that address.
+        return d.pc_reason === "paused"
+          ? json({ success: false, error: "Sign-ups are paused for today. Please try again tomorrow." }, 503)
+          : json({ success: false, error: "Too many sign-ups from your network today. Please try again tomorrow." }, 429);
+      }
       if (d?.pc_send) {
-        const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
         if (!RESEND_API_KEY) return json({ success: false, error: "Email service not configured" }, 503);
         const link = `${SITE_URL}${CONFIRM_PATH}#t=${token}`;
         const { error: sendErr } = await new Resend(RESEND_API_KEY).emails.send({
@@ -206,15 +222,9 @@ Deno.serve(async (req) => {
 
     // ── Batch send: the cron, or our own service role, and nobody else ───
     if (body.action === "send") {
-      let authorized = isServiceRoleCaller(req.headers, serviceKey);
-      if (!authorized) {
-        const offered = req.headers.get("x-email-cron") ?? "";
-        if (offered.length >= 32) {
-          const { data: ok } = await supabase.rpc("email_cron_key_matches", { p_key: offered });
-          authorized = ok === true;
-        }
+      if (!(await isScheduledCaller(req.headers, supabase, serviceKey))) {
+        return json({ error: "The batch send is for the scheduler only." }, 401);
       }
-      if (!authorized) return json({ error: "The batch send is for the scheduler only." }, 401);
 
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (!RESEND_API_KEY) return json({ error: "RESEND_API_KEY not configured" }, 503);
