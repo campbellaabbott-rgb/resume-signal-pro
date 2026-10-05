@@ -5,7 +5,7 @@
  * Since .85 job-board counts anonymous reads per address (anon-budget.ts). A
  * caller of ours that reads it with the publishable key and says nothing is
  * counted as a browser -- and several of ours are one address making hundreds
- * of calls: the prerender bake (~709 per bake from Lovable's build server),
+ * of calls: the prerender bake (~721 per bake from Lovable's build server),
  * verify-deploy (~200 a run), the probe scripts, the botwall sweep and the
  * board-health monitor on GitHub runners. So:
  *
@@ -113,7 +113,10 @@ describe("every caller that reads the board names its budget", () => {
       return Math.max(...all);
     };
     const perBake = 1 + num("POSTING_LIST_PAGES") + num("POSTING_PAGE_CARRY_MAX") + num("POSTING_PAGE_CAP");
-    expect(perBake, "the bake's own call ceiling (facets head + list pages + carried + fresh details)").toBe(709);
+    // 721 since job-board .88: the board gives no caller without a secret more
+    // than 60 rows a call, so the bake's posting pool is twenty pages of 60
+    // where it was eight of 200 (it stops at 1,200 rows either way).
+    expect(perBake, "the bake's own call ceiling (facets head + list pages + carried + fresh details)").toBe(721);
     // Pushes to main per UTC day since the frontend began publishing from
     // main (2026-09-16): the busiest was 10, on 2026-09-27. The command is in
     // the .85 deploy note; the live answer is kind build in the telemetry.

@@ -569,7 +569,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                       </div>
                       <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                         <Check className="w-4 h-4 text-success flex-shrink-0" />
-                        <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
+                        <span>{t('hero.benefits.private', 'Free scan: your resume is deleted within 7 days and never sold')}</span>
                       </div>
                     </div>
                     {/* Mobile: Show only 2 key benefits inline */}
@@ -601,7 +601,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                     </div>
                     <div className="flex items-center gap-2.5 text-sm sm:text-base text-foreground">
                       <Check className="w-4 h-4 text-success flex-shrink-0" />
-                      <span>{t('hero.benefits.private', 'Resumes are never stored or shared')}</span>
+                      <span>{t('hero.benefits.private', 'Free scan: your resume is deleted within 7 days and never sold')}</span>
                     </div>
                   </div>
                 )}
@@ -684,11 +684,11 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-success/70" />
-                {t('hero.factAutoDelete', 'Resumes auto-deleted within 24h')}
+                {t('hero.factAutoDelete', 'Resume deleted within 7 days')}
               </span>
               <span className="flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-success/70" />
-                {t('hero.factNoStorage', 'Never stored, never shared')}
+                {t('hero.factNoStorage', 'Never sold')}
               </span>
               <Link to="/methodology" className="flex items-center gap-1.5 text-primary/80 hover:text-primary transition-colors">
                 <Info className="w-3.5 h-3.5" />

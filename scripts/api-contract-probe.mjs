@@ -50,7 +50,7 @@ const ANON = env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const KEY = process.env.RB_API_KEY || env.RB_API_KEY;
 if (!KEY) {
   console.error("No RB_API_KEY. Put it in .env.local (gitignored) or the environment.");
-  console.error("Get one: POST {email} to /functions/v1/api-key-request");
+  console.error("Get one at https://resumebooster.work/data-api: it emails a single-use link, and the key is shown once on the page that link opens.");
   process.exit(2);
 }
 

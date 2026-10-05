@@ -18,6 +18,11 @@ interface InterviewCoachProps {
   // downloadable prep-guide PDF — distinct from the free version on the scan
   // results page (6 questions, tips only, interactive practice only).
   isPremium?: boolean;
+  // The purchase this page delivers (the success page's session_id). Sent
+  // with every call so the server counts it against that purchase's own daily
+  // allowance instead of the free tool's shared hourly one, which strangers
+  // can spend: a buyer must not be told the tool is busy.
+  sessionId?: string | null;
 }
 
 interface Question {
@@ -69,7 +74,7 @@ const categoryColors: Record<string, string> = {
   "Culture Fit": "bg-green-500/10 text-green-700",
 };
 
-export function InterviewCoach({ resumeText, industry, currentRole, isPremium }: InterviewCoachProps) {
+export function InterviewCoach({ resumeText, industry, currentRole, isPremium, sessionId }: InterviewCoachProps) {
   const { t } = useTranslation();
   const [data, setData] = useState<InterviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -85,7 +90,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
     setIsLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
-        body: { resumeText, industry, currentRole, targetRole: currentRole, isPremium, language: localStorage.getItem('i18nextLng') },
+        body: { resumeText, industry, currentRole, targetRole: currentRole, isPremium, sessionId: sessionId || undefined, language: localStorage.getItem('i18nextLng') },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Generation failed");
@@ -122,7 +127,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium }:
     setEvaluatingId(q.id);
     try {
       const { data: result, error } = await supabase.functions.invoke("generate-interview-coach", {
-        body: { resumeText, question: q.question, answer, category: q.category, mode: "evaluate", language: localStorage.getItem('i18nextLng') },
+        body: { resumeText, question: q.question, answer, category: q.category, mode: "evaluate", sessionId: sessionId || undefined, language: localStorage.getItem('i18nextLng') },
       });
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Evaluation failed");

@@ -1,20 +1,28 @@
-// deploy-stamp: 2026-07-09
+// deploy-stamp: 2026-10-04T13:00Z
 // Preview-before-pay: generates a genuine, small slice of a paid product's
 // deliverable from the user's real resume — free — so buyers see the quality
 // before checkout. One config-driven function covers every previewable product;
 // add a product by adding a PREVIEW_SPECS entry. The full deliverable stays
 // payment-gated in its own generate-* function. Cheap by design: flash model,
-// short output, on-click only, per-IP rate limited.
+// short output, on-click only, per-address limited with a function-wide ceiling.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
+import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-product-preview.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+const PREVIEW_LIMITS = { perAddress: 20, globalPerHour: 200 };
 
 // Per-product preview spec. `instruction` tells the model exactly what single
 // slice to produce; `kind` drives light frontend styling. Every slice must be
@@ -103,30 +111,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-  );
-  const { data: allowed } = await supabase.rpc("check_rate_limit", {
-    p_function: "generate-product-preview",
-    p_ip: clientIp,
-    p_max_requests: 20,
-    p_window_minutes: 60,
-  });
-  if (!allowed) {
-    return new Response(
-      JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }),
-      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-
   try {
-    const { productId, resumeText, industry, jobDescription, language, honeypot } =
+    const { productId, resumeText, jobDescription, language, honeypot, ...rest } =
       await req.json();
+    const industry = clipField(rest.industry, 120);
 
     // Silent bot rejection — a filled honeypot is never a real user.
     if (honeypot) {
@@ -136,7 +124,8 @@ serve(async (req) => {
       });
     }
 
-    const spec = productId ? PREVIEW_SPECS[productId as string] : undefined;
+    // Own keys only: "constructor" is not a product.
+    const spec = typeof productId === "string" && Object.hasOwn(PREVIEW_SPECS, productId) ? PREVIEW_SPECS[productId] : undefined;
     if (!spec) {
       return new Response(
         JSON.stringify({ error: "No preview available for this product" }),
@@ -150,6 +139,13 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const refused = await modelSpendGate(supabase, req, "generate-product-preview", PREVIEW_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");

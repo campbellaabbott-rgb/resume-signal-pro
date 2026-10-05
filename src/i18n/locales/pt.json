@@ -65,7 +65,7 @@
       "seniorRoles": "Criado para perfis sénior, gestores e cargos competitivos",
       "atsCompatible": "Funciona em todos os ATS (Workday, Greenhouse, Lever e 50+ mais)",
       "oneTime": "Pagamento único (nunca renova automaticamente)",
-      "private": "Currículos nunca são guardados nem partilhados"
+      "private": "Análise gratuita: o seu currículo é apagado no prazo de 7 dias e nunca é vendido"
     },
     "stats": {
       "scannedToday": "Analisados hoje",
@@ -145,8 +145,8 @@
     "testimonialAuthorName": "— Sarah K., Engenheira de Software",
     "transparentScoring": "pontuação de IA transparente, sem caixa preta",
     "factGdpr": "Compatível com GDPR",
-    "factAutoDelete": "Currículos excluídos automaticamente em 24 h",
-    "factNoStorage": "Nunca armazenados, nunca compartilhados",
+    "factAutoDelete": "Currículo apagado no prazo de 7 dias",
+    "factNoStorage": "Nunca vendido",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
     "browseJobs": "Ver mais de 550.000 vagas verificadas",
@@ -170,7 +170,7 @@
     "title": "Scan Profundo de 24 Pontos",
     "subtitle": "A nossa IA simula como os sistemas ATS modernos analisam o seu currículo, verificando cada palavra segundo padrões reais de recrutadores.",
     "whatWeAnalyze": "O Que Analisamos",
-    "dataNotStored": "Os seus dados nunca são armazenados",
+    "dataNotStored": "O seu currículo é apagado no prazo de 7 dias",
     "steps": {
       "upload": {
         "title": "1. Carregue o Currículo",
@@ -408,11 +408,11 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Não. Não armazenamos nem recolhemos o conteúdo do seu currículo. O seu currículo é processado em tempo real para gerar a análise e depois imediatamente descartado. Nunca retemos as suas informações pessoais."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que o mesmo ficheiro receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
-        "answer": "O Resume Booster é construído especificamente para otimização ATS com um sistema de pontuação ponderado de 5 categorias, 14 modelos específicos por indústria e feedback calibrado por recrutadores. Ao contrário do ChatGPT, obtém uma saída estruturada consistente de 10 secções sem engenharia de prompts. Ao contrário dos modelos, fornecemos reescritas personalizadas, análise do LinkedIn e alinhamento com descrições de emprego. Os seus dados são imediatamente descartados — nunca usados para treino."
+        "answer": "O Resume Booster é construído especificamente para otimização ATS com um sistema de pontuação ponderado de 5 categorias, 14 modelos específicos por indústria e feedback calibrado por recrutadores. Ao contrário do ChatGPT, obtém uma saída estruturada consistente de 10 secções sem engenharia de prompts. Ao contrário dos modelos, fornecemos reescritas personalizadas, análise do LinkedIn e alinhamento com descrições de emprego. O seu currículo nunca é usado para treino, e a análise gratuita apaga-o no prazo de 7 dias."
       },
       "bringYourAgent": {
         "question": "O meu próprio agente de IA pode usar isto?",
@@ -476,7 +476,7 @@
         "description": "Criptografia nível bancário"
       },
       "autoDelete": {
-        "label": "Auto-exclusão 24h",
+        "label": "Apagado em 7 dias",
         "description": "Seus dados, seu controle"
       },
       "gdpr": {
@@ -484,8 +484,8 @@
         "description": "Privacidade primeiro"
       },
       "zeroStorage": {
-        "label": "Zero Armazenamento",
-        "description": "Processado e descartado"
+        "label": "Nunca vendido",
+        "description": "Nem a recrutadores, nem a ninguém"
       },
       "instant": {
         "label": "Entrega Instantânea",
@@ -742,7 +742,7 @@
     "subtitle": "Usando Gemini Pro para máxima precisão",
     "complete": "{{percent}}% completo",
     "live": "Ao vivo",
-    "securityNote": "O seu currículo é analisado com segurança e nunca armazenado",
+    "securityNote": "O seu currículo é apagado no prazo de 7 dias e nunca é vendido",
     "stages": {
       "parsing": {
         "label": "A processar currículo",
@@ -1628,6 +1628,9 @@
       "emailSent": "Enviado! Verifique sua caixa de entrada.",
       "emailPrivacy": "Apenas os resultados da análise são enviados — nunca seu currículo. Sem spam.",
       "pulseOptIn": "Envie-me também um pulso de mercado mensal: as palavras-chave em alta no meu setor, com um link de reescaneamento grátis. Cancele quando quiser.",
+      "pulseConfirmSent": "Se este endereço ainda não confirmou o pulso mensal do mercado, enviamos a ele um link de confirmação. O pulso só começa depois que esse link for clicado.",
+      "pulseNotCovered": "O pulso mensal do mercado ainda não cobre sua área, então nenhuma confirmação foi enviada.",
+      "dripConfirmSent": "O e-mail do seu relatório tem um botão para iniciar os e-mails do plano de ajustes. Nada mais é enviado até você clicar nele.",
       "placementTopQuartile": "Quartil superior de {{n}} escaneamentos reais de {{industry}}",
       "placementAboveMedian": "Acima da mediana de {{n}} escaneamentos reais de {{industry}}",
       "placementBelowMedian": "Abaixo da mediana de {{n}} escaneamentos reais de {{industry}}",
@@ -2360,7 +2363,7 @@
     "analysisProcessingDescription": "Não foi possível extrair recomendações detalhadas do seu currículo. Isto pode acontecer se o formato do currículo for inusual ou se tiver ocorrido um problema durante o processamento.",
     "bottomCta": "Aplique estas alterações ao seu currículo e veja a sua taxa de entrevistas melhorar!",
     "bottomCtaWithLinkedIn": "Aplique estas alterações ao seu currículo e perfil LinkedIn e veja a sua taxa de entrevistas melhorar!",
-    "analysisSaved": "Esta análise foi guardada. Use o link de partilha acima para acedê-la em qualquer momento."
+    "analysisSaved": "Esta análise fica guardada {{analysisDays}} dias através do link de partilha acima e depois é apagada. Descarregue-a em PDF para guardar a sua própria cópia."
   },
   "personalization": {
     "experience": {
@@ -2501,14 +2504,14 @@
   },
   "trustPage": {
     "metaTitle": "Confiança e Segurança — Resume Booster",
-    "metaDescription": "Encriptação de 256 bits, sem armazenamento permanente do currículo, tratamento de dados alinhado com o RGPD. Veja como mantemos os seus dados seguros.",
+    "metaDescription": "Exatamente o que guardamos do seu currículo, onde e durante quanto tempo — mais encriptação de 256 bits e o seu direito ao apagamento.",
     "privacyMatters": "A sua privacidade importa",
     "titlePrefix": "O seu currículo está",
     "titleHighlight": "seguro connosco",
     "heroSubtitle": "Construímos o Resume Booster com princípios de segurança em primeiro lugar. Os seus documentos de carreira merecem proteção ao nível bancário, e é exatamente isso que oferecemos.",
     "badges": {
       "ssl": "SSL de 256 bits",
-      "zeroStorage": "Sem armazenamento",
+      "retention": "Prazos publicados",
       "gdpr": "Conforme com o RGPD"
     },
     "stats": {
@@ -2522,21 +2525,21 @@
         "title": "Encriptação SSL de 256 bits",
         "description": "O seu currículo é protegido com encriptação ao nível bancário durante o carregamento e processamento. Usamos o mesmo padrão de segurança das principais instituições financeiras."
       },
-      "zeroStorage": {
-        "title": "Política de armazenamento zero",
-        "description": "Nunca armazenamos o seu currículo nos nossos servidores. O seu documento é processado em memória e imediatamente descartado após a análise."
+      "freeScan": {
+        "title": "O que a análise gratuita guarda",
+        "description": "O texto do seu currículo durante {{tempHours}} horas, para que um pagamento o possa usar, e o seu relatório, que cita o seu currículo, durante {{reportDays}} dias. Depois, ambos são apagados automaticamente."
       },
       "autoDelete": {
-        "title": "Eliminação automática em 24 horas",
-        "description": "Quaisquer dados temporários criados durante o processamento são automaticamente eliminados dentro de 24 horas. Os seus dados, o seu controlo."
+        "title": "Apagado de forma programada",
+        "description": "As tarefas de eliminação correm a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas, por isso nenhum deles ultrapassa o prazo indicado em mais de uma hora."
       },
       "gdpr": {
         "title": "Conforme com o RGPD",
         "description": "Seguimos padrões europeus rigorosos de proteção de dados. Pode solicitar a eliminação de quaisquer dados em qualquer momento."
       },
-      "noSharing": {
-        "title": "Sem partilha com terceiros",
-        "description": "O conteúdo do seu currículo nunca é partilhado com recrutadores, empregadores ou terceiros. É analisado exclusivamente para o ajudar."
+      "neverSold": {
+        "title": "Nunca vendido",
+        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório, o fornecedor de e-mail que entrega o relatório que enviar para si e a análise paga que lhe enviamos e, se ativar o agente de candidaturas, os empregadores a que se candidata por si. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
       },
       "transparent": {
         "title": "Processamento transparente",
@@ -2545,6 +2548,86 @@
     },
     "protectDataTitle": "Como protegemos os seus dados",
     "protectDataSubtitle": "Todos os aspetos do Resume Booster são concebidos com a sua privacidade e segurança em mente.",
+    "retention": {
+      "title": "O que guardamos, onde e durante quanto tempo",
+      "subtitle": "Cada sítio onde pode ficar uma cópia do seu currículo, ou texto citado dele — e o prazo de cada um.",
+      "colWhat": "O quê",
+      "colWhere": "Onde",
+      "colHowLong": "Durante quanto tempo",
+      "rows": {
+        "upload": {
+          "what": "O texto de um currículo que carrega ou cola, com o texto do LinkedIn ou a descrição de vaga que adicionar",
+          "where": "Um armazenamento temporário privado nos nossos servidores",
+          "howLong": "{{tempHours}} horas, depois apagado"
+        },
+        "report": {
+          "what": "O seu relatório gratuito, que cita linhas do seu currículo, incluindo os primeiros ~600 caracteres",
+          "where": "Uma cache de relatórios, arquivada sob uma impressão digital unidirecional do texto",
+          "howLong": "{{reportDays}} dias, depois apagado"
+        },
+        "fingerprint": {
+          "what": "Essa impressão digital unidirecional, com o setor que detetámos",
+          "where": "A nossa base de dados",
+          "howLong": "Guardada para que uma nova análise do mesmo ficheiro leia o mesmo setor. Não permite reconstruir o seu currículo."
+        },
+        "aiCache": {
+          "what": "O resumo escrito pela IA no topo do seu relatório gratuito, que pode usar o seu nome, e o relatório inteiro quando é o nosso analisador de reserva a escrevê-lo",
+          "where": "Uma cache de respostas de IA, arquivada sob uma impressão digital unidirecional do texto",
+          "howLong": "Até {{aiCacheHours}} horas, depois apagado"
+        },
+        "browser": {
+          "what": "O texto do seu currículo",
+          "where": "O seu próprio separador do navegador (armazenamento de sessão)",
+          "howLong": "Até fechar o separador"
+        },
+        "browserLocal": {
+          "what": "Um currículo que cria no site (no criador ou no Freelance Boost), um histórico das suas análises recentes (nome, função e pontuações) e os seus relatórios recentes",
+          "where": "O armazenamento local deste navegador, no seu dispositivo",
+          "howLong": "Até ser limpo: o botão para limpar os dados do navegador numa página de resultados paga limpa tudo, tal como limpar os dados deste site no seu navegador"
+        },
+        "ai": {
+          "what": "O texto do seu currículo, enquanto um relatório é escrito",
+          "where": "O nosso fornecedor de modelos de IA",
+          "howLong": "Enviado apenas para produzir o seu relatório, nos termos desse fornecedor"
+        },
+        "email": {
+          "what": "Um relatório que envia para si por e-mail, a análise paga que lhe enviamos e os e-mails do plano de correções que aceitar",
+          "where": "A sua caixa de entrada, através do nosso fornecedor de e-mail; os e-mails agendados do plano aguardam na nossa fila de envio",
+          "howLong": "Os e-mails agendados saem ao longo de 14 dias; cancelar a subscrição cancela os restantes"
+        },
+        "paid": {
+          "what": "Uma análise paga, que cita o seu currículo",
+          "where": "Atrás da sua ligação privada de partilha",
+          "howLong": "{{analysisDays}} dias, ou até carregar em «{{deleteLabel}}» na página de resultados"
+        },
+        "products": {
+          "what": "Documentos criados para outro produto pago, como uma carta de apresentação ou uma reescrita",
+          "where": "Com o seu registo de compra, sob o seu e-mail",
+          "howLong": "Guardados para que os possa recuperar; envie um e-mail para {{email}} para os apagar"
+        },
+        "account": {
+          "what": "Uma versão do currículo que guarda, e o currículo que define para a correspondência de vagas",
+          "where": "A sua conta",
+          "howLong": "Até eliminar a sua conta"
+        },
+        "agent": {
+          "what": "O CV que entrega ao agente de candidaturas: o ficheiro e o seu texto",
+          "where": "Armazenamento privado que só você e o agente podem ler",
+          "howLong": "Enquanto usar o agente, que o envia aos empregadores a que se candidata por si. Eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
+        },
+        "payment": {
+          "what": "O seu pagamento",
+          "where": "Stripe",
+          "howLong": "A Stripe não recebe qualquer texto do currículo, nem qualquer referência a ele"
+        },
+        "shortlist": {
+          "what": "Currículos de candidatos que um empregador avalia com o Shortlist",
+          "where": "A conta desse empregador, como texto anonimizado",
+          "howLong": "Até o empregador os eliminar"
+        }
+      },
+      "footnote": "A eliminação corre a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas. Para apagar algo mais cedo, envie um e-mail para {{email}}."
+    },
     "transparentScoringTitle": "Pontuação de IA transparente",
     "transparentScoringSubtitle": "Acreditamos em total transparência. Veja exatamente como a nossa IA analisa currículos, que fatores consideramos e como as pontuações são calculadas.",
     "viewMethodology": "Ver a nossa metodologia",
@@ -3391,7 +3474,7 @@
     "incorrectDesc": "Verifique se o número do cartão, data de validade e CVV foram inseridos corretamente.",
     "tryAgain": "Tentar Novamente",
     "returnHome": "Voltar ao Início",
-    "contactUs": "Ainda com problemas? Entre em contato em support@resumebooster.com"
+    "contactUs": "Ainda com problemas? Entre em contato em resumeboostersupp@gmail.com"
   },
   "resumeRecovery": {
     "title": "Currículo não encontrado",
@@ -5091,5 +5174,27 @@
     "descHeading": "A descrição do próprio empregador",
     "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
     "theEmployer": "o empregador"
+  },
+  "pulseConfirm": {
+    "title": "Confirme seu pulso mensal do mercado",
+    "body": "Um e-mail por mês com as palavras-chave que as vagas da sua área estão filtrando e um link para escanear de novo grátis. Todo e-mail tem cancelamento com um clique.",
+    "button": "Sim, quero o pulso",
+    "done": "Inscrição confirmada. O primeiro pulso chega em até um dia.",
+    "invalid": "Este link expirou ou já foi usado. Marque a caixa no seu próximo relatório de escaneamento para receber um novo.",
+    "missing": "Esta página precisa do link do seu e-mail de confirmação.",
+    "error": "Não foi possível confirmar agora. Tente o link novamente em instantes.",
+    "home": "Voltar para o Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Inicie os e-mails do seu plano de ajustes",
+    "body": "Quatro e-mails curtos em duas semanas: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 e uma pergunta no dia 14. Cada e-mail tem cancelamento com um clique.",
+    "button": "Sim, iniciar os e-mails",
+    "done": "Pronto. O primeiro e-mail chega em dois dias.",
+    "already": "Uma sequência do plano já foi iniciada para este endereço este mês, então nada mais foi agendado.",
+    "optedOut": "Este endereço cancelou nossos e-mails antes, então nada foi agendado.",
+    "invalid": "Este link expirou ou não é válido. Envie para você um novo relatório na próxima análise para receber outro.",
+    "missing": "Esta página precisa do botão do e-mail do seu relatório.",
+    "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
+    "home": "Voltar para o Resume Booster"
   }
 }

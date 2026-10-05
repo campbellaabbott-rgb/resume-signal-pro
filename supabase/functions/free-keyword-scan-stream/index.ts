@@ -6458,7 +6458,7 @@ const MAX_JOB_DESCRIPTION_LENGTH = 15000;
 const FREE_SCANS_PER_DAY = 7;
 const FUNCTION_NAME = 'free-keyword-scan';
 
-const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'admin@resumebooster.com';
+const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'resumeboostersupp@gmail.com';
 
 const getCountryFromHeaders = (req: Request): string | null => {
   // Sanitized (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX

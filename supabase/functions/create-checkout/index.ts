@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-04T15:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
@@ -6,7 +6,7 @@ import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-star
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-09-27.2";
+const FN_BUILD = "create-checkout.2026-10-04.no-resume-metadata";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -15,7 +15,7 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 const SLOW_REQUEST_THRESHOLD = 5000; // 5s for checkout
 const VERY_SLOW_THRESHOLD = 10000;
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
 const alertLastSent: Record<string, number> = {};
 
@@ -365,8 +365,15 @@ serve(async (req) => {
     }
     logStep("Stripe key verified");
 
-    const { resumeData, currency: requestedCurrency, promoCode } = requestBody;
-    logStep("Received request", { hasResumeData: !!resumeData, currency: requestedCurrency });
+    // NO RÉSUMÉ TEXT IS READ FROM THIS BODY. Until 2026-10-04 the first 500
+    // characters of it (the name, email, phone and address header, in
+    // practice) were copied into the Stripe session's metadata, where Stripe
+    // kept them and stripe-webhook stored them again in webhook_events. Nothing
+    // ever read them: the analysis is fulfilled on the success page from the
+    // temporary store, whose id the browser already holds. A body that still
+    // carries the text (an old cached bundle) is simply not looked at.
+    const { currency: requestedCurrency, promoCode } = requestBody;
+    logStep("Received request", { currency: requestedCurrency });
 
     // Validate currency format if provided
     if (requestedCurrency && typeof requestedCurrency !== 'string') {
@@ -445,8 +452,9 @@ serve(async (req) => {
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/payment-failed`,
       allow_promotion_codes: true, // Enable coupon/promo code input field
+      // Every value here is kept by Stripe for the life of the account, so
+      // only what Stripe itself needs and nothing a person wrote.
       metadata: {
-        resumeData: resumeData ? JSON.stringify(resumeData).slice(0, 500) : "",
         originalCurrency: currency,
         baseAmountUSD: BASE_PRICE_USD.toString(),
         product_type: 'full_analysis',

@@ -1,41 +1,91 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
+import { checkInputLimits } from "../_shared/input-limits.ts";
+import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-interview-coach.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+// Free on the results page and the job board, so a stranger reaches the model
+// without paying: an address allowance plus a function-wide ceiling. An
+// Interview Coach purchase (and only that) is off the ceiling for its own
+// daily allowance, which is larger here because a buyer has every answer they
+// practise scored: fourteen questions, some answered twice.
+const COACH_LIMITS = { perAddress: 20, globalPerHour: 200, perSessionPerDay: 30 };
+const COACH_PRODUCTS = ["interview_coach"] as const;
+// A spoken two-minute answer is about 300 words; the bounds leave room for
+// a long one without letting a request carry a document.
+const MAX_QUESTION_LENGTH = 1_000;
+const MAX_ANSWER_LENGTH = 6_000;
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-interview-coach", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
   try {
-    const { resumeText, industry, currentRole, targetRole, mode, isPremium, language } = await req.json();
-
-    if (!resumeText) {
-      return new Response(
-        JSON.stringify({ error: "Resume text is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // THE BODY IS READ ONCE. Evaluate mode used to hand the Request on to a
+    // second req.json(), which threw "Body already consumed" -- every answer a
+    // candidate submitted for scoring came back a 500 (defect sweep 1.24).
+    let body: Record<string, unknown>;
+    try {
+      const parsed = await req.json();
+      body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : {};
+    } catch {
+      return json({ error: "Invalid request body" }, 400);
     }
+    const { resumeText, mode, isPremium, language, sessionId } = body as {
+      resumeText?: unknown; mode?: unknown; isPremium?: unknown; language?: string; sessionId?: unknown;
+    };
+    const industry = clipField(body.industry, 120);
+    const currentRole = clipField(body.currentRole, 120);
+    const targetRole = clipField(body.targetRole, 120);
+
+    if (typeof resumeText !== "string" || !resumeText.trim()) {
+      return json({ error: "Resume text is required" }, 400);
+    }
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) return json({ error: limitError }, 400);
+
+    // mode: "generate" = generate questions, "evaluate" = score an answer
+    const evaluate = mode === "evaluate";
+    const question = clipText(body.question, MAX_QUESTION_LENGTH + 1)?.trim();
+    const answer = clipText(body.answer, MAX_ANSWER_LENGTH + 1)?.trim();
+    if (evaluate) {
+      if (!question || !answer) return json({ error: "Question and answer are required" }, 400);
+      if (question.length > MAX_QUESTION_LENGTH) return json({ error: `Question is too long. Please limit to ${MAX_QUESTION_LENGTH.toLocaleString()} characters.` }, 400);
+      if (answer.length > MAX_ANSWER_LENGTH) return json({ error: `Answer is too long. Please limit to ${MAX_ANSWER_LENGTH.toLocaleString()} characters.` }, 400);
+    }
+
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const refused = await modelSpendGate(supabase, req, "generate-interview-coach", COACH_LIMITS, corsHeaders, {
+      session: sessionId,
+      products: COACH_PRODUCTS,
+      boardPass: body.boardPass,
+    });
+    if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    // mode: "generate" = generate questions, "evaluate" = score an answer
-    if (mode === "evaluate") {
-      return await handleEvaluate(req, apiKey, resumeText);
+    if (evaluate) {
+      return await handleEvaluate(apiKey, {
+        resumeText, question: question!, answer: answer!, category: clipField(body.category, 40) ?? "General", language,
+      });
     }
 
     const role = targetRole || currentRole || "the role matching their background";
@@ -147,16 +197,12 @@ Create questions that reference their ACTUAL experience from the resume.`;
   }
 });
 
-async function handleEvaluate(req: Request, apiKey: string, resumeText: string) {
-  const { question, answer, category, language } = await req.json();
-
-  if (!question || !answer) {
-    return new Response(
-      JSON.stringify({ error: "Question and answer are required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
+async function handleEvaluate(
+  apiKey: string,
+  { resumeText, question, answer, category, language }: {
+    resumeText: string; question: string; answer: string; category: string; language?: string;
+  },
+) {
   const systemPrompt = `You are an expert interview coach evaluating a candidate's answer. Be direct and specific. Output JSON:
 {
   "score": 1-10,

@@ -27,13 +27,13 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     alternates: { en: "/resume-checker", es: "/es/revisar-curriculum" },
     title: "Revisar Currículum Gratis — Análisis ATS Completo en Español",
     description:
-      "Revisa tu currículum gratis en unos 20 segundos: puntaje ATS con auditoría detallada, palabras clave faltantes, viñetas débiles reescritas. Detección nativa en español. Sin registro; tu currículum nunca se guarda.",
+      "Revisa tu currículum gratis en unos 20 segundos: puntaje ATS con auditoría detallada, palabras clave faltantes, viñetas débiles reescritas. Detección nativa en español. Sin registro; tu currículum se borra en un máximo de 7 días.",
     heading: "Un revisor de currículum que muestra su trabajo — también en español",
     intro:
       "Sube o pega tu currículum arriba y recibe el diagnóstico completo, no un adelanto. Nuestro motor detecta currículums en español de forma nativa — términos, títulos profesionales y certificaciones en tu idioma — algo que casi ningún otro escáner ATS ofrece.",
     bullets: [
       "Sin registro y sin correo electrónico para el informe completo",
-      "Tu currículum se analiza en memoria y nunca se guarda",
+      "Tu currículum se borra en un máximo de 7 días y nunca se vende",
       "Puntaje con auditoría detallada: cada punto rastreable a un hallazgo",
       "Detección nativa en español en 15 industrias, además de 10 idiomas",
       "Funciona con o sin oferta de trabajo (expectativas por ocupación del Departamento de Trabajo de EE. UU.)",
@@ -49,7 +49,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "¿Guardan mi currículum?",
-        a: "No. Tu currículum se procesa en memoria para generar el informe y no se almacena. El informe lleva un identificador reproducible para que verifiques que un re-escaneo del mismo archivo produce resultados consistentes.",
+        a: "Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda 7 días para que un nuevo escaneo del mismo archivo dé el mismo informe; después ambos se borran automáticamente. El informe lleva un identificador reproducible para que compruebes esa coherencia tú mismo.",
       },
       {
         q: "¿Cómo se calcula el puntaje?",
@@ -63,13 +63,13 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     alternates: { en: "/resume-checker", es: "/es/revisar-curriculum" },
     title: "Free Resume Checker — No Sign-Up, Full Report",
     description:
-      "Check your resume free in about 20 seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up, resume never stored.",
+      "Check your resume free in about 20 seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up; your resume is deleted within 7 days.",
     heading: "A resume checker that shows its work",
     intro:
       "Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and the report carries a reproducible ID.",
     bullets: [
       "No sign-up and no email required for the full report",
-      "Your resume is analyzed in memory and never stored",
+      "Your resume is deleted within 7 days and never sold",
       "Score shown with an audit trail — every point traceable to a finding",
       "Works with or without a job description (expectations sourced from the U.S. Department of Labor's O*NET when you don't have one)",
       "58 industries detected, including Spanish-language resumes",
@@ -81,7 +81,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "Do you store my resume?",
-        a: "No. Your resume is processed in memory to generate the report and is not saved. The report itself carries a reproducible ID so you can verify a rescan of the same file produces consistent results.",
+        a: "Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for 7 days so a rescan of the same file returns the same report; both are then deleted automatically. The report carries a reproducible ID so you can verify that consistency yourself.",
       },
       {
         q: "How is the score calculated?",
@@ -107,7 +107,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       "Per-vendor checks for Workday, Greenhouse, Lever, and iCIMS",
       "Formatting red flags that break parsers (tables, columns, headers)",
       "Keyword gaps against your target job or your occupation's O*NET profile",
-      "Free, no sign-up, resume never stored",
+      "Free, no sign-up, resume deleted within 7 days",
     ],
     faqs: [
       {
@@ -124,7 +124,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "Is the ATS test free?",
-        a: "Yes — the extraction view, vendor checks, keyword analysis, and the full diagnostic report are free with no sign-up. Your resume is never stored.",
+        a: "Yes — the extraction view, vendor checks, keyword analysis, and the full diagnostic report are free with no sign-up. Your resume is deleted within 7 days.",
       },
     ],
   },
@@ -133,7 +133,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     path: "/resume-score",
     title: "Resume Score — Free Score With a Full Audit Trail",
     description:
-      "Get your resume score free in about 20 seconds — shown with its modeling band and a point-by-point audit trail, benchmarked against real scans. No sign-up, resume never stored.",
+      "Get your resume score free in about 20 seconds — shown with its modeling band and a point-by-point audit trail, benchmarked against real scans. No sign-up; your resume is deleted within 7 days.",
     heading: "A resume score you can actually interrogate",
     intro:
       "Most tools hand you a single number and no way to check it. The scan above shows your score with its modeling band, a findings index explaining every deduction, and where you sit against other resumes scanned here.",
@@ -142,7 +142,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       "Point-by-point audit trail: every deduction tied to a quoted finding",
       "Benchmarked against real scans in your industry where we have enough data",
       "Reproducible report ID — rescan the same file, verify consistency",
-      "Free, no sign-up, resume never stored",
+      "Free, no sign-up, resume deleted within 7 days",
     ],
     faqs: [
       {
@@ -159,7 +159,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "Is it free?",
-        a: "Yes — the score, band, audit trail, and full diagnostic report are free with no sign-up. Your resume is never stored.",
+        a: "Yes — the score, band, audit trail, and full diagnostic report are free with no sign-up. Your resume is deleted within 7 days.",
       },
     ],
   },

@@ -65,7 +65,7 @@
       "seniorRoles": "Conçu pour les profils seniors, managers et postes compétitifs",
       "atsCompatible": "Fonctionne avec tous les ATS (Workday, Greenhouse, Lever et 50+ autres)",
       "oneTime": "Paiement unique (ne se renouvelle jamais automatiquement)",
-      "private": "Les CV ne sont jamais stockés ni partagés"
+      "private": "Analyse gratuite : votre CV est supprimé sous 7 jours et jamais vendu"
     },
     "stats": {
       "scannedToday": "Scannés aujourd'hui",
@@ -145,8 +145,8 @@
     "testimonialAuthorName": "— Sarah K., Ingénieure logiciel",
     "transparentScoring": "notation IA transparente, sans boîte noire",
     "factGdpr": "Conforme au RGPD",
-    "factAutoDelete": "CV supprimés automatiquement sous 24 h",
-    "factNoStorage": "Jamais stockés, jamais partagés",
+    "factAutoDelete": "CV supprimé sous 7 jours",
+    "factNoStorage": "Jamais vendu",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
     "browseJobs": "Parcourir 550 000+ offres vérifiées",
@@ -170,7 +170,7 @@
     "title": "Scan Approfondi en 24 Points",
     "subtitle": "Notre IA simule comment les systèmes ATS modernes analysent votre CV, vérifiant chaque mot selon les standards des recruteurs.",
     "whatWeAnalyze": "Ce Que Nous Analysons",
-    "dataNotStored": "Vos données ne sont jamais stockées",
+    "dataNotStored": "Votre CV est supprimé sous 7 jours",
     "steps": {
       "upload": {
         "title": "1. Téléchargez votre CV",
@@ -407,7 +407,7 @@
       },
       "dataStorage": {
         "question": "Stockez-vous mes données de CV ?",
-        "answer": "Non. Nous ne stockons pas le contenu de votre CV. Votre CV est traité en temps réel puis immédiatement supprimé."
+        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour que le même fichier obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature, qui l'envoie aux employeurs auxquels il postule pour vous. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
       },
       "vsChatGPT": {
         "question": "Pourquoi est-ce mieux que ChatGPT ?",
@@ -476,7 +476,7 @@
         "description": "Chiffrement niveau bancaire"
       },
       "autoDelete": {
-        "label": "Suppression auto 24h",
+        "label": "Supprimé sous 7 jours",
         "description": "Vos données, votre contrôle"
       },
       "gdpr": {
@@ -484,8 +484,8 @@
         "description": "Confidentialité d'abord"
       },
       "zeroStorage": {
-        "label": "Aucun Stockage",
-        "description": "Traité et supprimé"
+        "label": "Jamais vendu",
+        "description": "Ni aux recruteurs, ni à personne"
       },
       "instant": {
         "label": "Livraison Instantanée",
@@ -742,7 +742,7 @@
     "subtitle": "Gemini Pro pour une précision maximale",
     "complete": "{{percent}}% terminé",
     "live": "En direct",
-    "securityNote": "Votre CV est analysé en toute sécurité et jamais stocké",
+    "securityNote": "Votre CV est supprimé sous 7 jours et jamais vendu",
     "stages": {
       "parsing": {
         "label": "Analyse du CV",
@@ -1628,6 +1628,9 @@
       "emailSent": "Envoyé ! Vérifiez votre boîte de réception.",
       "emailPrivacy": "Seuls les résultats de l’analyse sont envoyés — jamais votre CV. Pas de spam.",
       "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés en hausse dans mon secteur, avec un lien de réanalyse gratuite. Désabonnement à tout moment.",
+      "pulseConfirmSent": "Si cette adresse n'a pas encore confirmé le pouls mensuel du marché, nous lui avons envoyé un lien de confirmation. Le pouls ne commence qu'une fois ce lien cliqué.",
+      "pulseNotCovered": "Le pouls mensuel du marché ne couvre pas encore votre domaine, donc aucune confirmation n'a été envoyée.",
+      "dripConfirmSent": "L'e-mail de votre rapport contient un bouton pour lancer les e-mails du plan de correction. Rien d'autre n'est envoyé tant que vous ne l'avez pas cliqué.",
       "placementTopQuartile": "Quartile supérieur de {{n}} vrais scans {{industry}}",
       "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
       "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
@@ -2360,7 +2363,7 @@
     "analysisProcessingDescription": "Nous n'avons pas pu extraire de recommandations détaillées de votre CV. Cela peut arriver si le format du CV est inhabituel ou si un problème est survenu lors du traitement.",
     "bottomCta": "Appliquez ces changements à votre CV et observez votre taux d'entretien s'améliorer !",
     "bottomCtaWithLinkedIn": "Appliquez ces changements à votre CV et votre profil LinkedIn et observez votre taux d'entretien s'améliorer !",
-    "analysisSaved": "Cette analyse a été enregistrée. Utilisez le lien de partage ci-dessus pour y accéder à tout moment."
+    "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours derrière le lien de partage ci-dessus, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie."
   },
   "personalization": {
     "experience": {
@@ -2501,14 +2504,14 @@
   },
   "trustPage": {
     "metaTitle": "Confiance et sécurité — Resume Booster",
-    "metaDescription": "Chiffrement 256 bits, aucun stockage permanent du CV, traitement des données conforme au RGPD. Découvrez comment nous protégeons vos données.",
+    "metaDescription": "Exactement ce que nous conservons de votre CV, où et pendant combien de temps — plus le chiffrement 256 bits et votre droit à l'effacement.",
     "privacyMatters": "Votre vie privée compte",
     "titlePrefix": "Votre CV est",
     "titleHighlight": "en sécurité avec nous",
     "heroSubtitle": "Nous avons conçu Resume Booster selon des principes de sécurité avant tout. Vos documents de carrière méritent une protection de niveau bancaire, et c'est exactement ce que nous offrons.",
     "badges": {
       "ssl": "SSL 256 bits",
-      "zeroStorage": "Aucun stockage",
+      "retention": "Délais publiés",
       "gdpr": "Conforme RGPD"
     },
     "stats": {
@@ -2522,21 +2525,21 @@
         "title": "Chiffrement SSL 256 bits",
         "description": "Votre CV est protégé par un chiffrement de niveau bancaire pendant le téléversement et le traitement. Nous utilisons la même norme de sécurité que les grandes institutions financières."
       },
-      "zeroStorage": {
-        "title": "Politique de zéro stockage",
-        "description": "Nous ne stockons jamais votre CV sur nos serveurs. Votre document est traité en mémoire et immédiatement supprimé après l'analyse."
+      "freeScan": {
+        "title": "Ce que conserve l'analyse gratuite",
+        "description": "Le texte de votre CV pendant {{tempHours}} heures, pour qu'un paiement puisse l'utiliser, et votre rapport, qui cite votre CV, pendant {{reportDays}} jours. Ensuite, les deux sont supprimés automatiquement."
       },
       "autoDelete": {
-        "title": "Suppression automatique en 24 heures",
-        "description": "Toute donnée temporaire créée pendant le traitement est automatiquement supprimée dans les 24 heures. Vos données, votre contrôle."
+        "title": "Suppression planifiée",
+        "description": "Les tâches de suppression tournent toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes : aucun ne dépasse son délai annoncé de plus d'une heure."
       },
       "gdpr": {
         "title": "Conforme au RGPD",
         "description": "Nous respectons des normes européennes strictes de protection des données. Vous pouvez demander la suppression de toute donnée à tout moment."
       },
-      "noSharing": {
-        "title": "Aucun partage avec des tiers",
-        "description": "Le contenu de votre CV n'est jamais partagé avec des recruteurs, des employeurs ou des tiers. Il est analysé uniquement pour vous aider."
+      "neverSold": {
+        "title": "Jamais vendu",
+        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport, le prestataire d'e-mail qui livre le rapport que vous vous envoyez et l'analyse payante que nous vous envoyons et, si vous activez l'agent de candidature, les employeurs auxquels il postule pour vous. Stripe gère le paiement et ne reçoit aucun texte de CV."
       },
       "transparent": {
         "title": "Traitement transparent",
@@ -2545,6 +2548,86 @@
     },
     "protectDataTitle": "Comment nous protégeons vos données",
     "protectDataSubtitle": "Chaque aspect de Resume Booster est conçu en pensant à votre vie privée et à votre sécurité.",
+    "retention": {
+      "title": "Ce que nous conservons, où et combien de temps",
+      "subtitle": "Chaque endroit où une copie de votre CV, ou un texte qui en est cité, peut être conservé — et le délai de chacun.",
+      "colWhat": "Quoi",
+      "colWhere": "Où",
+      "colHowLong": "Combien de temps",
+      "rows": {
+        "upload": {
+          "what": "Le texte d'un CV que vous téléversez ou collez, avec le texte LinkedIn ou l'offre d'emploi que vous ajoutez",
+          "where": "Un stockage temporaire privé sur nos serveurs",
+          "howLong": "{{tempHours}} heures, puis supprimé"
+        },
+        "report": {
+          "what": "Votre rapport gratuit, qui cite des lignes de votre CV, y compris ses ~600 premiers caractères",
+          "where": "Un cache de rapports, classé sous une empreinte à sens unique du texte",
+          "howLong": "{{reportDays}} jours, puis supprimé"
+        },
+        "fingerprint": {
+          "what": "Cette empreinte à sens unique, avec le secteur détecté",
+          "where": "Notre base de données",
+          "howLong": "Conservée pour qu'une nouvelle analyse du même fichier détecte le même secteur. Elle ne permet pas de reconstituer votre CV."
+        },
+        "aiCache": {
+          "what": "Le résumé rédigé par l'IA en haut de votre rapport gratuit, qui peut utiliser votre nom, et le rapport entier quand notre scanner de secours le rédige",
+          "where": "Un cache de réponses d'IA, classé sous une empreinte à sens unique du texte",
+          "howLong": "Jusqu'à {{aiCacheHours}} heures, puis supprimé"
+        },
+        "browser": {
+          "what": "Le texte de votre CV",
+          "where": "Votre propre onglet de navigateur (stockage de session)",
+          "howLong": "Jusqu'à la fermeture de l'onglet"
+        },
+        "browserLocal": {
+          "what": "Un CV que vous créez sur le site (dans le créateur ou dans Freelance Boost), un historique de vos derniers scans (nom, poste et scores) et vos derniers rapports",
+          "where": "Le stockage local de ce navigateur, sur votre appareil",
+          "howLong": "Jusqu'à ce qu'il soit vidé : le bouton d'effacement des données du navigateur sur une page de résultats payante efface tout, tout comme l'effacement des données de ce site dans votre navigateur"
+        },
+        "ai": {
+          "what": "Le texte de votre CV, pendant la rédaction d'un rapport",
+          "where": "Notre fournisseur de modèles d'IA",
+          "howLong": "Envoyé uniquement pour produire votre rapport, selon les conditions de ce fournisseur"
+        },
+        "email": {
+          "what": "Un rapport que vous vous envoyez par e-mail, l'analyse payante que nous vous envoyons, et les e-mails du plan de correction auxquels vous vous inscrivez",
+          "where": "Votre boîte de réception, via notre prestataire d'e-mail ; les e-mails programmés du plan attendent dans notre file d'envoi",
+          "howLong": "Les e-mails programmés partent sur 14 jours ; vous désinscrire annule le reste"
+        },
+        "paid": {
+          "what": "Une analyse payante, qui cite votre CV",
+          "where": "Derrière son lien de partage privé",
+          "howLong": "{{analysisDays}} jours, ou jusqu'à ce que vous cliquiez sur « {{deleteLabel}} » sur la page de résultats"
+        },
+        "products": {
+          "what": "Les documents créés pour un autre produit payant, comme une lettre de motivation ou une réécriture",
+          "where": "Avec votre dossier d'achat, sous votre adresse e-mail",
+          "howLong": "Conservés pour que vous puissiez les récupérer ; écrivez à {{email}} pour les faire effacer"
+        },
+        "account": {
+          "what": "Une version de CV que vous enregistrez, et le CV choisi pour la correspondance d'offres",
+          "where": "Votre compte",
+          "howLong": "Jusqu'à la suppression de votre compte"
+        },
+        "agent": {
+          "what": "Le CV confié à l'agent de candidature : le fichier et son texte",
+          "where": "Un stockage privé que seuls vous et l'agent pouvez lire",
+          "howLong": "Tant que vous utilisez l'agent, qui l'envoie aux employeurs auxquels il postule pour vous. Supprimer votre compte efface le texte ; écrivez à {{email}} pour faire effacer le fichier."
+        },
+        "payment": {
+          "what": "Votre paiement",
+          "where": "Stripe",
+          "howLong": "Stripe ne reçoit aucun texte de CV, ni aucune référence à celui-ci"
+        },
+        "shortlist": {
+          "what": "Les CV de candidats qu'un employeur évalue avec Shortlist",
+          "where": "Le compte de cet employeur, sous forme de texte caviardé",
+          "howLong": "Jusqu'à ce que l'employeur les supprime"
+        }
+      },
+      "footnote": "La suppression tourne toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes. Pour faire effacer quoi que ce soit plus tôt, écrivez à {{email}}."
+    },
     "transparentScoringTitle": "Notation IA transparente",
     "transparentScoringSubtitle": "Nous croyons en une transparence totale. Découvrez exactement comment notre IA analyse les CV, quels facteurs nous prenons en compte et comment les scores sont calculés.",
     "viewMethodology": "Voir notre méthodologie",
@@ -3391,7 +3474,7 @@
     "incorrectDesc": "Vérifiez que votre numéro de carte, date d'expiration et CVV sont correctement saisis.",
     "tryAgain": "Réessayer",
     "returnHome": "Retour à l'accueil",
-    "contactUs": "Toujours des problèmes ? Contactez-nous à support@resumebooster.com"
+    "contactUs": "Toujours des problèmes ? Contactez-nous à resumeboostersupp@gmail.com"
   },
   "resumeRecovery": {
     "title": "CV introuvable",
@@ -5091,5 +5174,27 @@
     "descHeading": "La description de l'employeur",
     "sourceNote": "Directement issue du système de recrutement de {{company}} — jamais un agrégateur, jamais une republication. Une offre datée est diffusée au maximum {{days}} jours et disparaît dès que le flux de l'employeur cesse de la contenir.",
     "theEmployer": "l'employeur"
+  },
+  "pulseConfirm": {
+    "title": "Confirmez votre pouls mensuel du marché",
+    "body": "Un e-mail par mois avec les mots-clés que recherchent les offres d'emploi de votre domaine, et un lien pour un nouveau scan gratuit. Chaque e-mail permet de se désabonner en un clic.",
+    "button": "Oui, envoyez-moi le pouls",
+    "done": "Vous êtes inscrit. Le premier pouls arrive sous un jour.",
+    "invalid": "Ce lien a expiré ou a déjà été utilisé. Cochez la case sous votre prochain rapport de scan pour en recevoir un nouveau.",
+    "missing": "Cette page a besoin du lien de votre e-mail de confirmation.",
+    "error": "Confirmation impossible pour le moment. Réessayez le lien dans un instant.",
+    "home": "Retour à Resume Booster"
+  },
+  "fixPlanConfirm": {
+    "title": "Lancez les e-mails de votre plan de correction",
+    "body": "Quatre courts e-mails sur deux semaines : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 et une question au jour 14. Chaque e-mail permet de se désabonner en un clic.",
+    "button": "Oui, lancer les e-mails",
+    "done": "C'est fait. Le premier e-mail arrive dans deux jours.",
+    "already": "Une séquence du plan a déjà été lancée pour cette adresse ce mois-ci, donc rien de plus n'a été programmé.",
+    "optedOut": "Cette adresse s'est désabonnée de nos e-mails auparavant, donc rien n'a été programmé.",
+    "invalid": "Ce lien a expiré ou n'est pas valide. Envoyez-vous un nouveau rapport lors de votre prochain scan pour en obtenir un autre.",
+    "missing": "Cette page a besoin du bouton de l'e-mail de votre rapport.",
+    "error": "Impossible de lancer pour le moment. Réessayez le bouton dans un instant.",
+    "home": "Retour à Resume Booster"
   }
 }

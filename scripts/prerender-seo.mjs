@@ -184,6 +184,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
 export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
+export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
@@ -282,7 +283,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     if (!boardFacets && supaUrl2 && supaKey2) {
       const fr = await fetch(`${supaUrl2}/functions/v1/job-board`, {
         method: "POST",
-        // The bake is one build-server address making ~709 board calls: it
+        // The bake is one build-server address making ~721 board calls: it
         // declares itself so the board judges that address's one day row
         // against the build cap, not a browser's (job-board/anon-budget.ts).
         headers: { apikey: supaKey2, Authorization: `Bearer ${supaKey2}`, "Content-Type": "application/json", "x-rb-budget": "build" },
@@ -1148,7 +1149,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <h1 class="text-3xl font-bold mb-3">Resume keywords, by industry</h1>
         <p class="text-muted-foreground mb-8">Every page below is generated from the live data our scanner uses — the keywords it weights, the titles it recognizes, the certifications it anchors on, and (where available) skills sourced from the U.S. Department of Labor's O*NET database. ${slugs.length} industries, updated whenever the engine improves.</p>
         <div class="grid sm:grid-cols-2 gap-2.5">${slugs.map((s) => `<a href="/industries/${s}" class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground"><span class="capitalize">${esc(label(s))}</span></a>`).join("")}</div>
-        <div class="mt-8">${cta("See how your resume scores — free", "Full diagnostic report in seconds. No signup, resume never stored.", "Scan my resume free")}</div>`,
+        <div class="mt-8">${cta("See how your resume scores — free", "Full diagnostic report in seconds. No signup; your resume is deleted within 7 days.", "Scan my resume free")}</div>`,
     });
   }
 
@@ -1186,7 +1187,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(name.toLowerCase())}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
         ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(name.toLowerCase())}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
         ${industryFaqs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-3">Common questions</h2><div class="space-y-3">${industryFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground leading-relaxed">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
-        ${cta(`See how your resume scores against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup, resume never stored.", "Scan my resume free")}
+        ${cta(`See how your resume scores against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         ${D.ES_INDUSTRIES[slug] ? `<p class="text-xs text-muted-foreground mb-4"><a href="/es/industrias/${slug}" class="text-primary">Versión en español →</a></p>` : ""}
         ${roles.length ? `<section class="mt-8"><h2 class="text-xl font-bold mb-2">Role-specific keyword guides</h2><div class="flex flex-wrap gap-1.5">${roles.map((r) => `<a href="/roles/${r.slug}" class="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm">${esc(r.title)} resume keywords →</a>`).join("")}</div></section>` : ""}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${related.map((s) => pill(`/industries/${s}`, `${label(s)} keywords →`)).join("")}${pill("/industries", "All industries")}</nav>
@@ -1217,7 +1218,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on a ${esc(role.title.toLowerCase())} resume</h2>${kwChips(keywords)}</section>
         ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(role.title.toLowerCase())} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
         ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
-        ${cta(`Scan your ${role.title.toLowerCase()} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup, resume never stored.", "Scan my resume free")}
+        ${cta(`Scan your ${role.title.toLowerCase()} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${siblings.map((r) => pill(`/roles/${r.slug}`, `${r.title} keywords →`)).join("")}${pill(`/industries/${role.industry}`, `All ${indName} keywords →`)}</nav>
         <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(indName.toLowerCase())} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
     });
@@ -1250,7 +1251,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
             </div>
           </div>`).join("")}</div>
         <section class="mb-10"><h2 class="text-2xl font-bold mb-4">Common questions</h2><div class="space-y-3">${faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
-        ${cta("The comparison that matters: run both, free", "Our free scan gives you the full diagnostic — no signup, no gating, resume never stored. Compare the reports yourself; that's the honest test.", "Run the free scan")}
+        ${cta("The comparison that matters: run both, free", "Our free scan gives you the full diagnostic — no signup, no gating, and your resume is deleted within 7 days. Compare the reports yourself; that's the honest test.", "Run the free scan")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${Object.values(D.COMPETITORS).filter((o) => o.slug !== c.slug).map((o) => pill(`/vs/${o.slug}`, `vs ${o.name} →`)).join("")}</nav>`,
     });
   }
@@ -1267,7 +1268,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <h1 class="text-3xl font-bold mb-3">${esc(data.headline)}</h1>
         <p class="text-muted-foreground mb-8">These are the documented parsing behaviors our scanner tests every resume against — not speculation. The free scan runs these exact checks on your file.</p>
         <div class="space-y-5 mb-10">${data.behaviors.map((b) => `<section class="rounded-2xl border border-border bg-card p-5"><h2 class="font-semibold text-foreground mb-2">${esc(b.q)}</h2><p class="text-sm text-muted-foreground">${esc(b.a)}</p></section>`).join("")}</div>
-        ${cta(`Test your resume against ${data.name} — free`, `Our free scan checks your actual file against ${data.name}'s parsing behaviors plus 24+ other checks. No signup, resume never stored.`, "Run the free check")}
+        ${cta(`Test your resume against ${data.name} — free`, `Our free scan checks your actual file against ${data.name}'s parsing behaviors plus 24+ other checks. No signup; your resume is deleted within 7 days.`, "Run the free check")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${Object.keys(D.VENDORS).filter((v) => v !== vendor).map((v) => pill(`/ats/${v}`, `${D.VENDORS[v].name} guide →`)).join("")}</nav>`,
     });
   }
@@ -1292,7 +1293,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en español que nuestro motor reconoce</h2>${chips(esKeywords)}</section>
         ${esTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Títulos profesionales reconocidos</h2>${chips(esTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en inglés que los ATS también esperan</h2>${chips(enKeywords)}</section>
-        ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum nunca se guarda.", "Escanear mi currículum gratis")}
+        ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum se borra en un máximo de 7 días.", "Escanear mi currículum gratis")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
     });
   }
@@ -1310,7 +1311,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <h1 class="text-3xl font-bold mb-3">${esc(cfg.heading)}</h1>
         <p class="text-muted-foreground mb-6">${esc(cfg.intro)}</p>
         <ul class="space-y-1.5 mb-8">${cfg.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>
-        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? "Informe completo en unos 20 segundos. Sin registro; tu currículum nunca se guarda." : "Full diagnostic report in about 20 seconds. No sign-up, resume never stored.", cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
+        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? "Informe completo en unos 20 segundos. Sin registro; tu currículum se borra en un máximo de 7 días." : "Full diagnostic report in about 20 seconds. No sign-up; your resume is deleted within 7 days.", cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
         <section class="mt-10"><h2 class="text-2xl font-bold mb-4">${cfg.lang === "es" ? "Preguntas frecuentes" : "Common questions"}</h2><div class="space-y-4">${cfg.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>`,
     });
   }
@@ -1364,7 +1365,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
               ${s.bullets ? `<ul class="space-y-1.5 mt-1">${s.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>` : ""}
             </section>`).join("")}
           ${g.faqs?.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${g.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
-          ${cta("See where your resume actually stands — free", "The full diagnostic in about 20 seconds: parsing, keywords, structure, and red flags — with every finding quoted from your actual document. No signup, resume never stored.", "Run the free scan")}
+          ${cta("See where your resume actually stands — free", "The full diagnostic in about 20 seconds: parsing, keywords, structure, and red flags — with every finding quoted from your actual document. No signup; your resume is deleted within 7 days.", "Run the free scan")}
           <nav class="mt-6 flex flex-wrap gap-2 text-xs">${g.related.map((r) => pill(r.href, `${r.label} →`)).join("")}</nav>
           </article>`,
       });
@@ -1467,7 +1468,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           <p class="text-sm text-muted-foreground leading-relaxed mb-3">Two caveats we insist on. First, this sample self-selects: people scan resumes when they suspect a problem, so the distribution likely sits below the true population of working professionals. Second, any resume score — ours included — is a model with error bars, not a measurement; <a href="/guides/what-resume-score-means" class="text-primary">what a resume score actually means</a> explains how to read one without being fooled by false precision.</p>
           <p class="text-sm text-muted-foreground leading-relaxed">What the data is good for: ranking yourself against real peers instead of a made-up "75 is passing" threshold, and seeing that industry context matters — the same resume quality scores differently against different keyword expectations. Our <a href="/methodology" class="text-primary">methodology</a> covers how the score itself is computed.</p></section>
         <section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${studyFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
-        ${cta("See where your resume lands in this distribution — free", "The full diagnostic in about 20 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup, resume never stored.", "Run the free scan")}
+        ${cta("See where your resume lands in this distribution — free", "The full diagnostic in about 20 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup; your resume is deleted within 7 days.", "Run the free scan")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${pill("/guides/what-resume-score-means", "What a resume score actually means →")}${pill("/guides/why-resumes-get-rejected", "Why resumes get rejected →")}${pill("/industries", "Keywords by industry →")}</nav>
         </article>`,
     });
@@ -1548,7 +1549,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} ${esc(AGENT_OFFER.pass)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
       </section>
       <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
-      <p class="text-muted-foreground mb-6">Same document, same score, every time — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reproducible reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is never stored. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
+      <p class="text-muted-foreground mb-6">Same document, same score, every time — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reproducible reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is deleted within 7 days. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
       ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
       <section class="mt-10 mb-8">
         <h2 class="text-xl font-bold mb-3">What the free scan covers</h2>
@@ -1716,7 +1717,11 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   const POSTING_PAGE_CAP = 400;
   const POSTING_PAGE_CARRY_MAX = 300;
   const POSTING_FETCH_CONCURRENCY = 8;
-  const POSTING_LIST_PAGES = 8;
+  // Twenty pages of 60: the board gives no caller without a secret more than
+  // a page's 60 rows a call (job-board .88, anon-budget.ts pageCeiling), and
+  // the pool below stops at three times the page cap, 1,200 rows.
+  const POSTING_LIST_PAGES = 20;
+  const POSTING_LIST_PAGE_ROWS = 60;
   const POSTING_MIN_DESCRIPTION = 100;
   /** Rendered into /jobs so the selection is visible from the board itself. */
   let postingIndexSection = "";
@@ -1860,7 +1865,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       let offset = 0;
       let poolDuplicates = 0;
       for (let p = 0; p < POSTING_LIST_PAGES; p++) {
-        const j = await boardRead({ action: "list", sort: "newest", limit: 200, includeFacets: false, offset });
+        const j = await boardRead({ action: "list", sort: "newest", limit: POSTING_LIST_PAGE_ROWS, includeFacets: false, offset });
         if (!j || !Array.isArray(j.jobs) || j.jobs.length === 0) break;
         for (const row of j.jobs) {
           if (!row || typeof row.id !== "string") continue;
@@ -2350,9 +2355,9 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         content: `
           <h1>Hiring Data &amp; API</h1>
           <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is collected from companies' own official career sites — never aggregators — and audited against them daily.</p>
-          <p>The dataset contains zero jobseeker data: resumes are never stored on Resume Booster, so there is nothing about job seekers to license. And no license, at any price, changes what the data says about any company — including the licensee.</p>
+          <p>The dataset contains zero jobseeker data: no job seeker's résumé or profile is in it, at any tier, and that data is not for sale. And no license, at any price, changes what the data says about any company — including the licensee.</p>
           <h2>Query it yourself</h2>
-          <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address; it is shown once and only its hash is stored. A free key meters at ${FREE_KEY_RATE_SENTENCE}. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
+          <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address: we email that address a single-use link, and the key is shown once, on the page the link opens. Only its hash is stored. A free key meters at ${FREE_KEY_RATE_SENTENCE}. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
@@ -2411,6 +2416,20 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const T = (D.EN_LOCALE && D.EN_LOCALE.trustPage) || {};
     const steps = M.steps || {};
     const sec = T.security || {};
+    // The /trust strings name their clocks as {{tempHours}}-style values, the
+    // same ones the SPA interpolates from src/lib/resume-retention.ts, so a
+    // crawler reads the numbers and never a placeholder.
+    const clocks = {
+      tempHours: D.TEMP_RESUME_HOURS,
+      reportDays: D.REPORT_CACHE_DAYS,
+      aiCacheHours: D.AI_CACHE_MAX_HOURS,
+      analysisDays: D.SHARED_ANALYSIS_DAYS,
+      email: D.PRIVACY_EMAIL,
+      deleteLabel: D.EN_LOCALE?.success?.actions?.deleteData || "Delete My Data",
+    };
+    const fillClocks = (s) => String(s ?? "").replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => (clocks[k] ?? m));
+    const retention = T.retention || {};
+    const retentionRows = Object.values(retention.rows || {});
 
     write({
       path: "/methodology",
@@ -2457,13 +2476,21 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <h1 class="text-3xl font-bold mb-3">${esc(`${T.titlePrefix || "Your Resume Is"} ${T.titleHighlight || "Safe With Us"}`)}</h1>
         <p class="text-muted-foreground mb-8">${esc(T.heroSubtitle || "")}</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">${esc(T.protectDataTitle || "How we protect your data")}</h2>
-          <div class="space-y-2">${Object.values(sec).map((s) => `<div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">${esc(s.title)}</p><p class="text-xs text-muted-foreground">${esc(s.description)}</p></div>`).join("")}</div>
+          <div class="space-y-2">${Object.values(sec).map((s) => `<div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">${esc(fillClocks(s.title))}</p><p class="text-xs text-muted-foreground">${esc(fillClocks(s.description))}</p></div>`).join("")}</div>
+        </section>
+        <section id="retention" class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(retention.title || "What we keep, where, and for how long")}</h2>
+          <p class="text-sm text-muted-foreground mb-3">${esc(retention.subtitle || "")}</p>
+          <table class="w-full text-xs border border-border">
+            <thead><tr><th class="text-left p-2">${esc(retention.colWhat || "What")}</th><th class="text-left p-2">${esc(retention.colWhere || "Where")}</th><th class="text-left p-2">${esc(retention.colHowLong || "How long")}</th></tr></thead>
+            <tbody>${retentionRows.map((r) => `<tr class="border-t border-border"><th scope="row" class="text-left p-2 font-medium">${esc(fillClocks(r.what))}</th><td class="p-2 text-muted-foreground">${esc(fillClocks(r.where))}</td><td class="p-2 text-muted-foreground">${esc(fillClocks(r.howLong))}</td></tr>`).join("")}</tbody>
+          </table>
+          <p class="text-xs text-muted-foreground mt-2">${esc(fillClocks(retention.footnote || ""))}</p>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(T.transparentScoringTitle || "Transparent scoring")}</h2>
           <p class="text-sm text-muted-foreground mb-3">${esc(T.transparentScoringSubtitle || "")}</p>
           <a href="/methodology" class="text-sm font-medium text-primary underline">${esc(T.viewMethodology || "View the methodology")}</a>
         </section>
-        ${cta("Scan without an account", "No signup, no card, and nothing kept — 7 free scans a day.", "Scan my resume free")}`,
+        ${cta("Scan without an account", `No signup and no card — 7 free scans a day. The text is deleted after ${clocks.tempHours} hours, the report after ${clocks.reportDays} days.`, "Scan my resume free")}`,
     });
 
     // ---- /agent ----
@@ -2969,7 +2996,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const lines = [];
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
-    lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup, resumes never stored. See /llms.txt for the short overview.`);
+    lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup; the résumé text is deleted after 24 hours and the report that quotes it after 7 days. See /llms.txt for the short overview.`);
     if (BOARD_TOTAL) {
       lines.push("");
       lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);

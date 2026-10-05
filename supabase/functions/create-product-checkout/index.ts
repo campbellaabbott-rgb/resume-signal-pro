@@ -1,12 +1,14 @@
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-04T18:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-09-27.2";
+const FN_BUILD = "create-product-checkout.2026-10-04.resume-ref";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,7 +102,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  // The platform's word for the caller's address, never the first forwarded
+  // hop, which the caller writes itself and could rotate per request.
+  const clientIp = clientAddressOr(req.headers);
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   const { data: rlAllowed } = await supabase.rpc("check_rate_limit", { p_function: "create-product-checkout", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
   if (!rlAllowed) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -291,7 +295,6 @@ serve(async (req) => {
         product_type: product.productType,
         product_name: product.name,
         customer_email: normalizedEmail || "",
-        session_id: sessionId || "",
         credits: product.credits?.toString() || "",
         job_title: sanitizedJobTitle,
         job_company: sanitizedJobCompany,
@@ -299,6 +302,34 @@ serve(async (req) => {
         language: sanitizedLanguage,
       },
     });
+
+    // WHICH RÉSUMÉ THIS PURCHASE IS DELIVERED FROM STAYS ON OUR SIDE. The
+    // temporary-store id is a bearer key to the whole text for its 24 hours,
+    // so it is not in the metadata above; it is kept against the Stripe
+    // session id in a table only service_role reads, before the browser has
+    // the url, so no payment can arrive ahead of it. If it cannot be kept the
+    // session is expired and the buyer asked to try again: a paid delivery
+    // that cannot find its résumé is worse than a retry. A résumé already
+    // gone ("gone") is what delivery would have found anyway, so the checkout
+    // goes ahead as it always has.
+    const tempResumeId = tempResumeIdOf(sessionId);
+    if (tempResumeId) {
+      const kept = await rememberCheckoutResume(supabase, session.id, tempResumeId);
+      if (kept === "failed") {
+        try {
+          await stripe.checkout.sessions.expire(session.id);
+        } catch (expireErr) {
+          console.error("[CREATE-PRODUCT-CHECKOUT] Could not expire the session whose résumé reference failed:", expireErr instanceof Error ? expireErr.message : expireErr);
+        }
+        return new Response(
+          JSON.stringify({ error: "Failed to create checkout. Please try again." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 }
+        );
+      }
+      if (kept === "gone") {
+        console.log(`[CREATE-PRODUCT-CHECKOUT] Session ${session.id}: the résumé it names is no longer stored`);
+      }
+    }
 
     // The start is on record before the browser has the url, so no
     // navigation can race it; keyed on the session id, so a second checkout

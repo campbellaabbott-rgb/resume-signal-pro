@@ -1,14 +1,21 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
+import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-graduate-gameplan.2026-10-04.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -20,13 +27,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "generate-graduate-gameplan", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 });
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
   try {
-    const { resumeText, jobDescription, jobTitle, jobCompany, language, sessionId } = await req.json();
+    const { resumeText, jobDescription: rawJobDescription, jobTitle: rawJobTitle, jobCompany: rawJobCompany, language, sessionId } = await req.json();
+    // Short fields reach the prompt cut to a line (defect sweep 1.64).
+    const jobTitle = clipField(rawJobTitle, 200);
+    const jobCompany = clipField(rawJobCompany, 200);
 
     // PAID CONTENT — see paid-session.ts. Gated before input validation so an
     // unpaid caller cannot probe the endpoint's behaviour or spend a token.
@@ -46,6 +52,24 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Bounded like every other model input: a résumé past the shared cap is
+    // refused, and a posting is cut to its cap rather than refused, because a
+    // stored posting may be longer (store_temp_resume accepts 50,000) and a
+    // buyer is never refused for the length of the job they applied to.
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) {
+      return new Response(JSON.stringify({ error: limitError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const jobDescription = clipText(rawJobDescription, MAX_JOB_DESCRIPTION_LENGTH);
+
+    // COUNTED ONLY NOW, when the call is about to reach the model. A warm-up
+    // ping, an unpaid stranger and a malformed body are refused above without
+    // spending a slot -- warm-up posts from our own egress address, and anyone
+    // can make it -- and one purchase spends a daily allowance of its own, so
+    // a single session cannot feed an address pool. See _shared/model-spend-gate.ts.
+    const refused = await modelSpendGate(supabase, req, "generate-graduate-gameplan", { perAddress: 20 }, corsHeaders, { session: sessionId });
+    if (refused) return refused;
 
     logStep("Starting Graduate Game Plan generation", { 
       jobTitle,

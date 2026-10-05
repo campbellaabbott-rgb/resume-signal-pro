@@ -21,10 +21,16 @@
  *   - the self-verify refuses a command the staged runner edited;
  *   - a host without pg_cron applies the file as a no-op.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+// Every test here boots its own pglite. Under the pre-push gate's parallel
+// workers a boot alone can pass the default 5s, and these were the two
+// pglite suites without a budget of their own: they failed the gate twice on
+// 2026-10-04 by timeout while passing in isolation.
+vi.setConfig({ testTimeout: 60_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const FILE = "supabase/migrations/20261003220000_a_cron_statement_is_timed_by_the_session_that_starts_it.sql";
@@ -62,7 +68,10 @@ const jobs = async (db: PGlite) =>
   Object.fromEntries((await db.query<{ jobname: string; schedule: string; command: string }>(
     "SELECT jobname, schedule, command FROM cron.job ORDER BY jobname")).rows.map((r) => [r.jobname, r]));
 
-describe("the cron command sets the function's own header before the statement starts", () => {
+// Each case boots its own pglite; under a loaded machine that alone passes the
+// 5-second default (measured 5.5-9.4 s at load ~12-27 on 2026-10-04), so the
+// cases carry the suite's 30-second working range (helpers/mount-budget.ts).
+describe("the cron command sets the function's own header before the statement starts", { timeout: 30_000 }, () => {
   it("both jobs: the header first, then the call, on the minutes they had", async () => {
     const db = await boot();
     await db.exec(SQL);

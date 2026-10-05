@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-04T15:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,10 +24,14 @@ import { passSessionSettled } from "../_shared/pass-settlement.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
 // webhook only has to recognise it, by the same constant analyze-resume gates on.
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
+// What of an event is stored: never the résumé text old sessions carry.
+import { withoutResumeText } from "../_shared/webhook-payload.ts";
+// Which résumé a product is delivered from: kept on our side, never in Stripe.
+import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-01.1";
+const FN_BUILD = "stripe-webhook.2026-10-04.no-resume-in-stripe";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -236,7 +240,10 @@ async function triggerProductDelivery(
   const productType = session.metadata?.product_type;
   const productName = session.metadata?.product_name;
   const customerEmail = session.customer_email || session.metadata?.customer_email;
-  const resumeSessionId = session.metadata?.session_id;
+  // Looked up by the Stripe session id in checkout_resume_refs; the
+  // temporary-store id is no longer written to Stripe (it is a bearer key to
+  // the text). Sessions minted before that change still carry it in metadata.
+  const resumeSessionId = await resumeSessionForCheckout(supabase, sessionId, session.metadata);
 
   logStep("Triggering product delivery", { sessionId, productType });
 
@@ -437,10 +444,14 @@ async function triggerProductDelivery(
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
           body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId })
         }),
+        // The service-role key: the generator's spend gate never counts our
+        // own servers by address or against its free ceiling, so strangers
+        // spending the free allowance cannot drop a paid letter. The session
+        // names the purchase, whose daily allowance still counts.
         fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+          body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language, sessionId })
         })
       ]);
 
@@ -498,11 +509,14 @@ async function triggerProductDelivery(
         default: throw new Error(`Unknown product type: ${productType}`);
       }
 
+      // The service-role key, for the same reason as the Apply Assistant's
+      // letter above: a delivery is never counted against a free ceiling or
+      // our egress address (_shared/model-spend-gate.ts).
       const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+          'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
         },
         body: JSON.stringify(body)
       });
@@ -549,11 +563,13 @@ async function triggerProductDelivery(
     if (customerEmail) {
       EdgeRuntime.waitUntil((async () => {
         try {
+          // The service-role key: send-product-email is internal and refuses
+          // the publishable key, which every visitor holds.
           const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
             },
             body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
           });
@@ -621,13 +637,17 @@ serve(async (req) => {
     const supabase = getSupabase();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     
-    // OPTIMIZATION: Log webhook received in background
+    // OPTIMIZATION: Log webhook received in background. The stored payload
+    // drops any résumé-bearing metadata key: full-analysis sessions minted
+    // before 2026-10-04 carry the top of the buyer's résumé, and their events
+    // keep arriving. Only the copy written down is changed; the handler below
+    // reads the event exactly as Stripe sent it.
     EdgeRuntime.waitUntil(
       Promise.resolve(
         supabase.rpc('log_webhook_event', {
           p_event_type: event.type,
           p_event_id: event.id,
-          p_payload: event.data.object,
+          p_payload: withoutResumeText(event.data.object),
           p_processed: false
         })
       )

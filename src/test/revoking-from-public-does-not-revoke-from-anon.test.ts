@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { anonCan, authenticatedCan, migrationReplay, parseSigRef, sigOf } from "./helpers/function-acl";
+import { CLIENT_CALLABLE, CLOSED_BY_CENSUS } from "./helpers/client-callable-allowlist";
 
 /**
  * PUBLIC AND anon ARE NOT THE SAME GRANTEE.
@@ -74,47 +76,48 @@ const PROBED_PROTECTED = new Set([
 ]);
 
 /**
- * PRE-EXISTING, FROZEN — a ratchet, not an amnesty.
+ * PRE-EXISTING, FROZEN -- and now EMPTY. The ratchet reached zero on 2026-10-04.
  *
- * Eighteen functions already carried the PUBLIC-only revoke when this guard was
- * written. Seventeen remain: the delayed email enqueue left on 2026-10-01, the
- * day it was found anon-executable (it was never in the 07-30 exact-name
- * lockdown) and closed by name and by a pgmq property loop -- see
- * a-queue-wrapper-is-closed-by-what-it-touches-not-by-its-name.test.ts. They are NOT all wrong: probing on 2026-08-21 found the population
- * genuinely mixed, which is why none of them can be revoked as a batch —
+ * Seventeen functions carried the PUBLIC-only revoke when this guard was
+ * written, and the population was genuinely mixed, so none could be revoked
+ * as a batch. The client-callable census (migration 20261004110000,
+ * every-function-a-stranger-can-call-is-named-with-its-caller.test.ts) traced
+ * every caller of each and triaged all seventeen:
  *
- *   get_scan_health_status      OPEN and intentional (the heartbeat reads it)
- *   get_public_scan_insights    OPEN and intentional (public stats page)
- *   agent_sender_public_status  OPEN and intentional
- *   get_db_size_stats           OPEN and probably should not be — it returns
- *                               db_bytes 6,237,547,667 and postings_rows
- *                               612,325 to any anonymous caller
- *   get_user_score_trend        could not be probed (PGRST202 on the param
- *                               name); unknown, not assumed safe
+ *   CLOSED to anon and authenticated, by exact signature --
+ *     agent_confirmation_gaps, agent_fill_gaps   only scan-heartbeat reads them,
+ *                                                with the service key
+ *     email_delivery_health, product_delivery_health
+ *                                                the same: the heartbeat, the
+ *                                                webhook and the retry job
+ *     get_db_size_stats                          the heartbeat only
+ *     get_scan_metrics_hourly                    the scan dashboards, which now
+ *                                                read it through admin-ops
+ *     get_user_score_trend                       already closed; now by name
+ *   GONE -- agent_reach, dropped by 20260805210811.
+ *   PROMOTED to INTENTIONALLY_PUBLIC below (each one is also a row in
+ *   helpers/client-callable-allowlist.ts naming the caller that needs it).
  *
- * Blanket-revoking would take down the heartbeat and the public stats page, so
- * the honest move is to freeze the list and stop it growing. Each entry needs
- * an anon-key probe and then either a revoke or promotion to a documented
- * intentionally-public list. Removing a name from here without doing that is
- * how the leak this file was written for happened in the first place.
+ * A name added here is a function somebody typed to make this test pass,
+ * which is the opposite of what the list was for. It stays empty.
  */
-const UNTRIAGED_PRE_EXISTING = new Set([
-  "public.agent_confirmation_gaps(integer)",
-  "public.agent_fill_gaps(integer)",
-  "public.agent_reach(integer)",
+const UNTRIAGED_PRE_EXISTING = new Set<string>([]);
+
+/**
+ * PUBLIC on purpose: revoked from PUBLIC, granted to anon by name, and each
+ * one a row in the census allowlist with the client-role file that calls it.
+ * The last test below holds that cross-reference, so a name cannot sit here
+ * without a caller on record.
+ */
+const INTENTIONALLY_PUBLIC = new Set([
   "public.agent_sender_public_status()",
-  "public.email_delivery_health(integer)",
-  "public.get_db_size_stats()",
   "public.get_industry_correction_stats(integer)",
   "public.get_public_scan_insights()",
   "public.get_real_score_distribution(text)",
   "public.get_scan_geo_stats(integer)",
   "public.get_scan_health_status()",
-  "public.get_scan_metrics_hourly(integer)",
   "public.get_scan_success_rate(integer,text)",
   "public.get_scan_totals()",
-  "public.get_user_score_trend(text)",
-  "public.product_delivery_health(integer)",
   "public.record_scan_outcome(text,text,text)",
 ]);
 
@@ -142,9 +145,23 @@ describe("revoking from PUBLIC does not revoke from anon", () => {
       }
     }
 
+    // The census closes 56 functions with a catalogue-driven signature loop
+    // (a static REVOKE per function would make that file the "newest
+    // definition" every per-function guard reads). The replay interprets that
+    // loop, so a function the replay shows anon cannot execute is closed, by
+    // whatever statement did it.
+    const { fns } = migrationReplay();
+    const closedInReplay = (fn: string) => {
+      const ref = parseSigRef(fn);
+      if (!ref || ref.args === null) return false;
+      const f = fns.get(sigOf(ref.name, ref.args));
+      return !f || !anonCan(f);
+    };
+
     const violations: string[] = [];
     for (const [fn, file] of fromPublic) {
       if (PROBED_PROTECTED.has(fn) || UNTRIAGED_PRE_EXISTING.has(fn) || fromAnon.has(fn)) continue;
+      if (INTENTIONALLY_PUBLIC.has(fn) || closedInReplay(fn)) continue;
       violations.push(
         `${fn} (opened in ${file}) is revoked FROM PUBLIC but never FROM anon anywhere in the ` +
           `tree. PUBLIC and anon are different grantees, so this may still be callable — and if ` +
@@ -178,15 +195,46 @@ describe("revoking from PUBLIC does not revoke from anon", () => {
     expect(fixed! > created!, `${fixed} must sort after ${created}`).toBe(true);
   });
 
-  it("the frozen list does not grow", () => {
-    // The ratchet. New debt is blocked even though the old debt stands: a
-    // function added to UNTRIAGED_PRE_EXISTING is a name someone typed to make
-    // this test pass, which is the opposite of what it is for.
+  it("the frozen list is empty and stays empty", () => {
+    // The ratchet, run to the end. Every one of the seventeen was triaged by
+    // the 2026-10-04 census; a name added back is a name typed to make this
+    // test pass.
     expect(
       UNTRIAGED_PRE_EXISTING.size,
-      "this list is frozen at the 17 that pre-dated the guard and are still untriaged. If a new function needs to be " +
-        "here, it does not — probe it with the anon key and either revoke it or document it as " +
-        "intentionally public.",
-    ).toBe(17);
+      "this list reached zero when the census triaged all seventeen. A function that needs to be here does " +
+        "not: close it by name, or add it to INTENTIONALLY_PUBLIC AND to the census allowlist with its caller.",
+    ).toBe(0);
+  });
+
+  it("every intentionally public function is on the census allowlist with its caller, and still open", () => {
+    const allow = new Map(CLIENT_CALLABLE.map((a) => [a.sig, a]));
+    const { fns } = migrationReplay();
+    for (const fn of INTENTIONALLY_PUBLIC) {
+      const ref = parseSigRef(fn)!;
+      const key = sigOf(ref.name, ref.args!);
+      expect(allow.get(key)?.roles, `${fn} is public on purpose but has no census allowlist row naming its caller`).toBe("anon");
+      expect(anonCan(fns.get(key)!), `${fn} is listed public and anon cannot execute it`).toBe(true);
+    }
+  });
+
+  it("the seventeen it froze are each closed, gone, or public with a caller", () => {
+    // The original seventeen, kept verbatim so the triage stays checkable.
+    const seventeen = [
+      "public.agent_confirmation_gaps(integer)", "public.agent_fill_gaps(integer)", "public.agent_reach(integer)",
+      "public.agent_sender_public_status()", "public.email_delivery_health(integer)", "public.get_db_size_stats()",
+      "public.get_industry_correction_stats(integer)", "public.get_public_scan_insights()",
+      "public.get_real_score_distribution(text)", "public.get_scan_geo_stats(integer)", "public.get_scan_health_status()",
+      "public.get_scan_metrics_hourly(integer)", "public.get_scan_success_rate(integer,text)", "public.get_scan_totals()",
+      "public.get_user_score_trend(text)", "public.product_delivery_health(integer)", "public.record_scan_outcome(text,text,text)",
+    ];
+    const { fns } = migrationReplay();
+    const closed = new Set(CLOSED_BY_CENSUS.map((c) => c.sig));
+    for (const fn of seventeen) {
+      const f = fns.get(fn);
+      if (!f) { expect(fn, "only agent_reach was dropped").toBe("public.agent_reach(integer)"); continue; }
+      if (INTENTIONALLY_PUBLIC.has(fn)) continue;
+      expect(closed.has(fn), `${fn} is neither public on purpose nor on the census closed list`).toBe(true);
+      expect(anonCan(f) || authenticatedCan(f), `${fn} is still client-callable`).toBe(false);
+    }
   });
 });

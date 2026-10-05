@@ -1,10 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T12:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+
+// Provable from outside without sending anything: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "send-affiliate-commission-email.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -30,6 +36,18 @@ function escapeHtml(text: string | number | undefined | null): string {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // INTERNAL ONLY. verify-product-purchase is the one caller, and it reads the
+  // affiliate's address from the affiliates table itself. Without this check
+  // the publishable key -- which the gateway accepts as a valid JWT -- was
+  // enough to send a "You earned a commission" mail from our verified domain
+  // to any address, with any figures in it (defect sweep 2.08).
+  if (!isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+    return new Response(
+      JSON.stringify({ success: false, error: "This endpoint is internal." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+    );
   }
 
   try {
@@ -107,7 +125,7 @@ serve(async (req) => {
           </div>
           
           <div style="text-align: center; margin-bottom: 24px;">
-            <a href="https://atsresumescanner.com/affiliates" 
+            <a href="https://resumebooster.work/affiliates"
                style="display: inline-block; background: #10b981; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
               View Your Dashboard →
             </a>

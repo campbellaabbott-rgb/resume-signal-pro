@@ -1,10 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T12:00Z
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+
+// Provable from outside without sending anything: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "send-analysis-email.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 // HTML escape function to prevent XSS attacks
@@ -48,7 +54,10 @@ interface AnalysisEmailRequest {
 
 function generateEmailHtml(data: AnalysisEmailRequest): string {
   const { analysisData, shareId } = data;
-  const atsScore = analysisData.atsScore?.score || 0;
+  // A NUMBER, NEVER MARKUP: this used to reach the HTML raw, so a caller
+  // could put a link where the score goes. Coerced and clamped to 0-100.
+  const rawScore = Math.round(Number(analysisData.atsScore?.score));
+  const atsScore = Number.isFinite(rawScore) ? Math.min(100, Math.max(0, rawScore)) : 0;
   const scoreColor = atsScore >= 80 ? '#22c55e' : atsScore >= 60 ? '#eab308' : '#ef4444';
   
   // Escape all user-provided content to prevent XSS
@@ -178,7 +187,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
                   View Full Analysis →
                 </a>
                 <p style="margin: 16px 0 0; color: #9ca3af; font-size: 12px;">
-                  Your results are saved and available anytime
+                  This link works for 90 days from the day your analysis was made. Open it and choose Save as PDF to keep your own copy.
                 </p>
               </div>
             </td>
@@ -209,6 +218,17 @@ Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // INTERNAL ONLY. The one caller is analyze-resume, which sends a paid
+  // analysis to the address on the Stripe session, with the service-role key.
+  // Nothing in the browser calls this, yet it was open to anyone and mailed
+  // whatever address the body named (defect sweep 1.15).
+  if (!isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+    return new Response(
+      JSON.stringify({ success: false, error: "This endpoint is internal." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {

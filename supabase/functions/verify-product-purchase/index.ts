@@ -1,11 +1,13 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-04T18:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-01.1";
+const FN_BUILD = "verify-product-purchase.2026-10-04.resume-ref";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,8 +39,10 @@ function buildGenerationRequest(
     // session it was a 402 every time, rescued only by the browser's own retry.
     case 'basic_keyword_fix':
       return { endpoint: 'generate-keyword-fix', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle, jobCompany, language } };
+    // The free generators (cover letter, coach, career path) read the session
+    // to count this purchase's daily allowance -- see generate-cover-letter.
     case 'cover_letter':
-      return { endpoint: 'generate-cover-letter', body: { resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
+      return { endpoint: 'generate-cover-letter', body: { sessionId, resumeText, jobDescription: jobDescriptionText, jobTitle: jobTitle || 'Professional Position', jobCompany, tone: 'professional', language } };
     // These three now gate on assertPaidSession (they are paid-only endpoints —
     // unlike cover_letter, whose generator the public board also calls free).
     // The sessionId is their proof of purchase; omit it and a real buyer 402s.
@@ -55,9 +59,9 @@ function buildGenerationRequest(
       // implicitly. Without it, this call always 401s.
       return { endpoint: 'generate-ats-defense', body: { sessionId, resumeText, jobDescription: jobDescriptionText, targetRoles: [], language } };
     case 'interview_coach':
-      return { endpoint: 'generate-interview-coach', body: { resumeText, isPremium: true, language } };
+      return { endpoint: 'generate-interview-coach', body: { sessionId, resumeText, isPremium: true, language } };
     case 'career_path_simulator':
-      return { endpoint: 'generate-career-path', body: { resumeText, isPremium: true, language } };
+      return { endpoint: 'generate-career-path', body: { sessionId, resumeText, isPremium: true, language } };
     default:
       return null;
   }
@@ -68,7 +72,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  // The platform's word for the caller's address, never the first forwarded
+  // hop, which the caller writes itself and could rotate per request.
+  const clientIp = clientAddressOr(req.headers);
   const supabaseEarly = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   const { data: rlAllowed } = await supabaseEarly.rpc("check_rate_limit", { p_function: "verify-product-purchase", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
   if (!rlAllowed) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -206,7 +212,11 @@ serve(async (req) => {
     const productType = session.metadata?.product_type;
     const productName = session.metadata?.product_name;
     const customerEmail = session.customer_email || session.metadata?.customer_email;
-    const resumeSessionId = session.metadata?.session_id;
+    // Looked up by the Stripe session id in checkout_resume_refs: the
+    // temporary-store id is no longer written to Stripe (it is a bearer key to
+    // the text). A Pro grant's synthetic session, and a session minted before
+    // that change, still name it in metadata.
+    const resumeSessionId = await resumeSessionForCheckout(supabaseEarly, sessionId, session.metadata);
 
     // Initialize Supabase to check for duplicate processing
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -330,10 +340,14 @@ serve(async (req) => {
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
               body: JSON.stringify({ resumeText: resume_text, jobPostingText: job_description_text, language, sessionId })
             }),
+            // The service-role key: the generator's spend gate never counts
+            // our own servers by address or against its free ceiling; the
+            // session still counts against this purchase's daily allowance,
+            // which bounds the regeneration every refresh can trigger here.
             fetch(`${supabaseUrl}/functions/v1/generate-cover-letter`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language })
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+              body: JSON.stringify({ resumeText: resume_text, jobDescription: job_description_text, jobTitle, jobCompany, tone: 'professional', language, sessionId })
             })
           ]);
 
@@ -386,11 +400,12 @@ serve(async (req) => {
 
           if (request) {
             logStep(`Calling ${request.endpoint}`);
+            // The service-role key, as for the Apply Assistant's letter above.
             const genResponse = await fetch(`${supabaseUrl}/functions/v1/${request.endpoint}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
               },
               body: JSON.stringify(request.body)
             });
@@ -526,11 +541,13 @@ serve(async (req) => {
           
           if (affiliateData?.email) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            // The service-role key: the commission mailer is internal and
+            // refuses the publishable key, which every visitor holds.
             const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-affiliate-commission-email`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
               },
               body: JSON.stringify({
                 affiliateEmail: affiliateData.email,
@@ -557,11 +574,13 @@ serve(async (req) => {
     }
     if (isFirstUse && customerEmail) {
       try {
+        // The service-role key: send-product-email is internal and refuses
+        // the publishable key, which every visitor holds.
         const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
           },
           body: JSON.stringify({
             email: customerEmail,

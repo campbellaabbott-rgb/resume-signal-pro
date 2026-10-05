@@ -402,6 +402,35 @@ const asBands = (v: unknown): string[] =>
 const sent = (v: unknown): boolean =>
   Array.isArray(v) ? v.length > 0 : String(v ?? "").trim() !== "";
 
+/** A company token as the catalogue spells them: nothing PostgREST would read as list syntax. */
+export const COMPANY_TOKEN_SHAPE = /^[A-Za-z0-9~_.:-]{1,128}$/;
+
+/** An ISO-8601 date, or date and time with an optional Z or +hh:mm / +hhmm zone. Group 1 is the zone. */
+export const POSTED_AFTER_SHAPE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+
+/**
+ * postedAfter AS ONE INSTANT BOTH READERS AGREE ON (.88). It used to accept
+ * any string Date.parse could read and bind that string raw, while the
+ * filter-integrity sensor checked rows against Date.parse of it. The two do
+ * not always read the same instant: '2026-10-04 12:00 GMT-12' is 10-05T00:00Z
+ * to V8 and 10-04T00:00Z to Postgres (they read a POSIX offset with opposite
+ * signs), so the database served a day of rows the sensor then flagged, and
+ * any anonymous caller could write a filter-integrity incident on demand. Now
+ * only an ISO shape is accepted, a time with no zone is UTC (how both runtimes
+ * read it in production, said here so a machine's zone cannot change it), and
+ * what is bound is `toISOString()` of the instant the sensor checks against.
+ * null for anything else, which the caller names in ignoredFilters.
+ */
+export function canonicalInstant(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const t = raw.trim();
+  const m = POSTED_AFTER_SHAPE.exec(t);
+  if (!m) return null;
+  const iso = t.replace(" ", "T");
+  const ms = Date.parse(/T\d/.test(iso) && !m[1] ? `${iso}Z` : iso);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
 /**
  * A pay figure typed into the search box, as a salary FLOOR.
  *
@@ -760,10 +789,16 @@ export function normalizeFilters(
 
   // An unknown company token is not invalid — it matches nothing, and a truthful
   // empty result is the correct answer to "jobs at a company we don't carry".
-  // A non-string member IS invalid and gets named.
+  // A non-string member IS invalid and gets named, and so (.88) is a token
+  // outside the catalogue's alphabet: every one of the 44,519 catalogued tokens
+  // is letters, digits and ~ _ . - (measured 2026-10-04). supabase-js quotes an
+  // .in() member only when it holds , ( or ) and never escapes a quote inside
+  // it, so `"dominos"` reached the list as in.("dominos") -- Domino's rows --
+  // while the count's text[] matched nothing: total 0, and a forged
+  // filter-integrity incident (defect-sweep 2.24).
   const compAsked = Array.isArray(body.companies) ? body.companies : [];
   const companies = compAsked
-    .filter((c): c is string => typeof c === "string")
+    .filter((c): c is string => typeof c === "string" && COMPANY_TOKEN_SHAPE.test(c))
     .slice(0, companyTokenLimit);
   if (compAsked.length && companies.length !== Math.min(compAsked.length, companyTokenLimit)) {
     ignored.push("companies");
@@ -853,8 +888,10 @@ export function normalizeFilters(
     ignored.push("excludeAgencies");
   }
 
+  // One instant, in one spelling, for the database AND the sensor (.88): see
+  // canonicalInstant. The caller's own string is never bound.
   const paRaw = body.postedAfter;
-  const postedAfter = typeof paRaw === "string" && !Number.isNaN(Date.parse(paRaw)) ? paRaw : null;
+  const postedAfter = canonicalInstant(paRaw);
   if (sent(paRaw) && !postedAfter) ignored.push("postedAfter");
 
   return {

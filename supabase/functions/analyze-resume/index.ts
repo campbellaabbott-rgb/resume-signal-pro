@@ -1,8 +1,7 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-04T18:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import {
   FULL_ANALYSIS_PRODUCT_NAME,
@@ -13,7 +12,7 @@ import {
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-01.1";
+const FN_BUILD = "analyze-resume.2026-10-04.no-paid-cache";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -22,70 +21,16 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 const SLOW_REQUEST_THRESHOLD = 30000; // 30s for AI analysis is expected to be slow
 const VERY_SLOW_THRESHOLD = 60000;
 
-// Cache configuration
-const CACHE_TTL_HOURS = 48; // Cache paid analysis for 48 hours (longer than free)
-const FUNCTION_NAME = 'analyze-resume';
+// NO CACHE FOR A PAID ANALYSIS. Until 2026-10-04 every analysis was also
+// written to ai_response_cache for 48 hours, keyed by a hash of the résumé,
+// LinkedIn text and job description. That was a second copy of a document
+// that quotes the résumé, and "Delete My Data" (which removes the
+// resume_analyses row behind the share link) could not reach it. It bought
+// nothing the buyer needs: a session that is asked again is answered from its
+// own redemption (purchased_content), never re-analysed. The database now
+// refuses an analyze-resume row in that cache (migration 20261004150000).
 
-// Generate a hash for cache key from resume + linkedin + job description
-async function generateCacheKey(resumeText: string, linkedInText?: string, jobDescriptionText?: string): Promise<string> {
-  // Normalize text: lowercase, remove extra whitespace, take first portion
-  const normalizedResume = resumeText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 15000);
-  const normalizedLinkedIn = linkedInText ? linkedInText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 10000) : '';
-  const normalizedJob = jobDescriptionText ? jobDescriptionText.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 5000) : '';
-  const combined = `${normalizedResume}|||${normalizedLinkedIn}|||${normalizedJob}`;
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(combined);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Check cache for existing response
-async function getCachedResponse(supabase: any, cacheKey: string): Promise<any | null> {
-  try {
-    const { data, error } = await supabase.rpc('get_cached_response', {
-      p_cache_key: cacheKey,
-      p_function_name: FUNCTION_NAME
-    });
-    
-    if (error) {
-      console.log(`[ANALYZE-RESUME] Cache lookup error:`, error.message);
-      return null;
-    }
-    
-    if (data) {
-      console.log(`[ANALYZE-RESUME] Cache HIT for key: ${cacheKey.substring(0, 16)}...`);
-      return data;
-    }
-    
-    console.log(`[ANALYZE-RESUME] Cache MISS for key: ${cacheKey.substring(0, 16)}...`);
-    return null;
-  } catch (e) {
-    console.error(`[ANALYZE-RESUME] Cache error:`, e);
-    return null;
-  }
-}
-
-// Store response in cache (non-blocking)
-function storeCachedResponse(supabase: any, cacheKey: string, response: any): void {
-  EdgeRuntime.waitUntil(
-    supabase.rpc('store_cached_response', {
-      p_cache_key: cacheKey,
-      p_function_name: FUNCTION_NAME,
-      p_response: response,
-      p_ttl_hours: CACHE_TTL_HOURS
-    }).then(({ error }: any) => {
-      if (error) {
-        console.error(`[ANALYZE-RESUME] Cache store error:`, error.message);
-      } else {
-        console.log(`[ANALYZE-RESUME] Cached response for key: ${cacheKey.substring(0, 16)}...`);
-      }
-    })
-  );
-}
-
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "admin@resumebooster.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
 const ALERT_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between alerts per type
 const alertLastSent: Record<string, number> = {};
 
@@ -1084,11 +1029,7 @@ ACHIEVEMENT QUANTIFICATION (always include):
 
 Use their actual resume content in examples. Prioritize highest-impact fixes first.`;
 
-    // Computed before deliver() is defined, so nothing it reads is ever
-    // declared below it (the ranked-search TDZ lesson).
-    const cacheKey = await generateCacheKey(resumeText, linkedInText, jobDescriptionText);
-
-    // ONE WAY OUT FOR A FINISHED ANALYSIS, cached or fresh, and the only
+    // ONE WAY OUT FOR A FINISHED ANALYSIS, and the only
     // place a session is redeemed. The order is the whole design:
     //
     //   1. Store the analysis for its share link (resume_analyses).
@@ -1105,17 +1046,17 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     //      used_stripe_sessions claim (with its product, so the row can never
     //      be presented as a purchase of anything else -- the purchase gate
     //      accepts a claim with no product as a purchase of everything), the
-    //      delivery record, the email, the cache.
+    //      delivery record, the email.
     //
     // A failure anywhere BEFORE step 2 -- the AI call, its parse, its
     // validation -- returns without having written a redemption, which is
     // what makes a retry with the same session work.
-    const deliver = async (analysis: Record<string, unknown>, cached: boolean): Promise<Response> => {
+    const deliver = async (analysis: Record<string, unknown>): Promise<Response> => {
       const { data: savedAnalysis, error: dbError } = await supabase
         .from("resume_analyses")
         .insert({
           // Privacy: Store placeholder instead of actual PII (GDPR/CCPA compliance)
-          resume_text: cached ? '[REDACTED - Cached analysis]' : '[REDACTED - Analysis completed]',
+          resume_text: '[REDACTED - Analysis completed]',
           analysis_result: analysis,
         })
         .select("share_id")
@@ -1211,10 +1152,12 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       if (customerEmail && shareId) {
         console.log(`[ANALYZE-RESUME] Sending analysis email to: ${customerEmail}`);
         EdgeRuntime.waitUntil(
+          // The service-role key: send-analysis-email is internal and refuses
+          // the publishable key, which every visitor holds.
           fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
             method: "POST",
             headers: {
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -1236,23 +1179,12 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
         console.log("[ANALYZE-RESUME] No customer email (or no stored copy), skipping email send");
       }
 
-      // Cache the successful analysis (non-blocking) - cache the full analysis object
-      if (!cached) storeCachedResponse(supabase, cacheKey, analysis);
-
-      trackPerformance(requestStartTime, cached ? 'analyze-resume-cached' : 'analyze-resume', true, { cached, hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!(customerEmail && shareId) }, clientIp);
+      trackPerformance(requestStartTime, 'analyze-resume', true, { hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText, emailSent: !!(customerEmail && shareId) }, clientIp);
       return new Response(
-        JSON.stringify({ ...analysis, shareId, emailSent: !!(customerEmail && shareId), ...(cached ? { cached: true } : {}) }),
+        JSON.stringify({ ...analysis, shareId, emailSent: !!(customerEmail && shareId) }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     };
-
-    // Check cache before calling AI (paid analysis can also benefit from caching)
-    const cachedAnalysis = await getCachedResponse(supabase, cacheKey);
-    
-    if (cachedAnalysis) {
-      console.log("[ANALYZE-RESUME] Cache HIT - delivering the cached analysis through the same redemption");
-      return await deliver(cachedAnalysis, true);
-    }
 
     console.log(`[ANALYZE-RESUME] Calling AI with enhanced model for analysis... (hasLinkedIn: ${hasLinkedIn}, hasJobDescription: ${hasJobDescription})`);
     
@@ -1372,7 +1304,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     analysis.hasJobDescription = hasJobDescription;
 
     console.log("[ANALYZE-RESUME] Analysis complete; redeeming the session...");
-    return await deliver(analysis, false);
+    return await deliver(analysis);
 
   } catch (error) {
     trackPerformance(requestStartTime, 'analyze-resume', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);

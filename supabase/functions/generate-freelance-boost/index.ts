@@ -16,11 +16,23 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-freelance-boost.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+// Payment-verified, so a stranger never reaches the model; but every request
+// with a session id used to cost a Stripe lookup and there was no limiter at
+// all. The address allowance runs before the Stripe call.
+const BOOST_LIMITS = { perAddress: 20 };
+const BOOST_PER_SESSION_PER_DAY = 10;
 
 interface ProjectIntake {
   clientType: string;        // "a 10-person dental practice"
@@ -103,9 +115,26 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const projects = body.projects.slice(0, 8); // Boost tier caps at 5 client-side; hard server cap 8
+    // Every field the prompt reads is bounded (defect sweep 1.64): eight
+    // projects at most (the page caps five), each answer a paragraph, the
+    // role and the labels a line.
+    const projects: ProjectIntake[] = body.projects.slice(0, 8).map((p) => ({
+      clientType: clipField(p?.clientType, 300) ?? "",
+      problem: clipText(p?.problem, 1_500) ?? "",
+      deliverable: clipText(p?.deliverable, 1_500) ?? "",
+      toolsSkills: clipText(p?.toolsSkills, 600) ?? "",
+      outcome: clipText(p?.outcome, 1_500) ?? "",
+      duration: clipField(p?.duration, 120) ?? "",
+      paymentBand: clipField(p?.paymentBand, 120),
+      repeatOrReferral: clipText(p?.repeatOrReferral, 600),
+    }));
+    body.targetRole = clipField(body.targetRole, 200) ?? "";
+    body.employmentTimeline = clipText(body.employmentTimeline, 2_000);
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+
+    const refused = await modelSpendGate(supabase, req, "generate-freelance-boost", BOOST_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     // ── Payment verification ────────────────────────────────────────────────
     const VALID_TYPES = ["freelance_boost", "freelance_transition_pro"];
@@ -134,6 +163,10 @@ serve(async (req) => {
         status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // One purchase, one daily allowance: a single session must not feed an
+    // address pool. Counted only now that Stripe (or the grant) confirmed it.
+    const overSpent = await purchaseSpendGate(supabase, "generate-freelance-boost", body.sessionId, BOOST_PER_SESSION_PER_DAY, corsHeaders);
+    if (overSpent) return overSpent;
 
     // ── Deterministic structure decision ───────────────────────────────────
     const structure = decideStructure({ ...body, projects });

@@ -105,11 +105,19 @@ export class FakeDb {
     return new FakeQuery(this, table);
   }
 
-  async rpc(name: string, args: Record<string, unknown> = {}): Promise<DbResult> {
-    await Promise.resolve();
-    const f = this.rpcs[name];
-    if (!f) return { data: null, error: { code: "PGRST202", message: `fake: no rpc ${name}` } };
-    return f(args);
+  /**
+   * Awaitable directly, or through .maybeSingle() / .single() as supabase-js
+   * allows for a set-returning RPC: those take the first row of an array.
+   */
+  rpc(name: string, args: Record<string, unknown> = {}): Promise<DbResult> & { maybeSingle(): Promise<DbResult>; single(): Promise<DbResult> } {
+    const run = (async (): Promise<DbResult> => {
+      await Promise.resolve();
+      const f = this.rpcs[name];
+      if (!f) return { data: null, error: { code: "PGRST202", message: `fake: no rpc ${name}` } };
+      return f(args);
+    })();
+    const first = (r: DbResult): DbResult => ({ data: Array.isArray(r.data) ? (r.data[0] ?? null) : r.data, error: r.error });
+    return Object.assign(run, { maybeSingle: () => run.then(first), single: () => run.then(first) });
   }
 
   takeFault(table: string, op: string): DbError | null {
@@ -126,6 +134,8 @@ class FakeQuery implements PromiseLike<DbResult> {
   private op: "select" | "insert" | "update" | "delete" = "select";
   private payload: unknown = null;
   private filters: Array<[string, unknown]> = [];
+  /** Filters other than equality (.in, .gt), as predicates over a row. */
+  private preds: Array<(r: Row) => boolean> = [];
   private returning = false;
 
   constructor(private db: FakeDb, private table: string) {}
@@ -136,6 +146,8 @@ class FakeQuery implements PromiseLike<DbResult> {
   delete() { this.op = "delete"; return this; }
   eq(col: string, val: unknown) { this.filters.push([col, val]); return this; }
   is(col: string, val: unknown) { this.filters.push([col, val]); return this; }
+  in(col: string, vals: unknown[]) { this.preds.push((r) => vals.includes(r[col] ?? null)); return this; }
+  gt(col: string, val: unknown) { this.preds.push((r) => r[col] != null && String(r[col]) > String(val)); return this; }
   order() { return this; }
   limit() { return this; }
 
@@ -149,7 +161,7 @@ class FakeQuery implements PromiseLike<DbResult> {
   }
 
   private matches(r: Row): boolean {
-    return this.filters.every(([c, v]) => (r[c] ?? null) === (v ?? null));
+    return this.filters.every(([c, v]) => (r[c] ?? null) === (v ?? null)) && this.preds.every((p) => p(r));
   }
 
   private finish(list: Row[], mode: "many" | "maybe" | "single"): DbResult {
@@ -216,6 +228,8 @@ function defaultsFor(table: string): Row {
       return { id: `pc-${seq}`, created_at: now };
     case "used_stripe_sessions":
       return { used_at: now, product_type: null, ip_address: null };
+    case "company_claims":
+      return { id: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, verify_token: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, status: "pending", created_at: now, verified_at: null };
     default:
       return {};
   }

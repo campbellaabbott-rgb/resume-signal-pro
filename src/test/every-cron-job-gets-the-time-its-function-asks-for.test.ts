@@ -21,10 +21,16 @@
  *   - the reader returns per-job counts and timings, the timeout each command
  *     sets, never the command or a message, and anon may call it.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+// Every test here boots its own pglite. Under the pre-push gate's parallel
+// workers a boot alone can pass the default 5s, and these were the two
+// pglite suites without a budget of their own: they failed the gate twice on
+// 2026-10-04 by timeout while passing in isolation.
+vi.setConfig({ testTimeout: 60_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const SQL = readFileSync(resolve(ROOT, "supabase/migrations/20261004010000_every_cron_job_gets_the_time_its_function_asks_for.sql"), "utf8");
@@ -106,7 +112,10 @@ type Job = { jobname: string; schedule: string; command: string; active: boolean
 const jobs = async (db: PGlite) =>
   Object.fromEntries((await db.query<Job>("SELECT jobname, schedule, command, active, username FROM cron.job")).rows.map((r) => [r.jobname, r]));
 
-describe("a job whose function asks for more than two minutes gets it in its command", () => {
+// Each case boots its own pglite; under a loaded machine that alone passes the
+// 5-second default (measured 5.5-9.9 s at load ~12-27 on 2026-10-04), so the
+// cases carry the suite's 30-second working range (helpers/mount-budget.ts).
+describe("a job whose function asks for more than two minutes gets it in its command", { timeout: 30_000 }, () => {
   it("wraps exactly those, byte for byte, and keeps schedule, owner and active flag", async () => {
     const db = await boot();
     await db.exec(SQL);
@@ -154,7 +163,7 @@ describe("a job whose function asks for more than two minutes gets it in its com
   });
 });
 
-describe("the cron health reader", () => {
+describe("the cron health reader", { timeout: 30_000 }, () => {
   it("reports runs, failures, timeout cancels and timings per job, and the timeout each command sets", async () => {
     const db = await boot();
     await db.exec(SQL);

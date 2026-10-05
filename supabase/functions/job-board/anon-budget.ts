@@ -24,10 +24,11 @@ export const BUDGETED_ACTIONS: ReadonlySet<string> = new Set([
 /** Jobs.tsx mounted under vitest: an extreme human day is ~6,400 counted calls. */
 export const ADDRESS_DAILY_CAP = 10_000;
 /**
- * x-rb-budget: build. 21 bakes of at most 709 calls from one address: twice
- * the busiest UTC day of pushes to main since the frontend began publishing
- * from main (10), and about half the measured harvest (~29,000 a day), so the
- * public header cannot buy a harvester's day.
+ * x-rb-budget: build. 20 bakes of at most 721 calls from one address (its list
+ * pages are 60 rows since .88): twice the busiest UTC day of pushes to main
+ * since the frontend began publishing from main (10), and about half the
+ * measured harvest (~29,000 a day), so the public header cannot buy a
+ * harvester's day.
  */
 export const BUILD_DAILY_CAP = 15_000;
 /** x-rb-budget: probe. A label at the browser's cap: lower would refuse our own verify run on the owner's address after a heavy browsing day. */
@@ -177,6 +178,29 @@ function sameSecret(a: string, b: string): boolean {
 
 const DECLARED = new Map<string, BudgetKind>([["api", "unproven_api"], ["mcp", "unproven_mcp"], ["digest", "unproven_digest"]]);
 
+/** The service key, or our servers' reader proof derived from it; null for everyone else. An empty key matches nothing. */
+export async function exemptKind(h: Headers, serviceKey: string): Promise<"service" | "reader" | null> {
+  if (serviceKey && (h.get("authorization") === `Bearer ${serviceKey}` || h.get("apikey") === serviceKey)) return "service";
+  const offered = h.get(BOARD_READER_HEADER) ?? "";
+  return offered && sameSecret(offered, await boardReaderKey(serviceKey)) ? "reader" : null;
+}
+
+/**
+ * THE MOST ROWS ONE CALL MAY CARRY (.88). The page's own size: /jobs asks for
+ * 60 (Jobs.tsx PAGE), and nothing a person can do there asks for more, so
+ * limit=1000 from a crafted client is answered with 60 rows, not the 200 every
+ * caller used to get. Only a SECRET lifts it -- the service key, or our
+ * servers' reader proof derived from it (the public API, MCP and the digest
+ * page 200 at a time). Our tooling's x-rb-budget header lifts nothing here:
+ * its value is in this public repository, and a ceiling any reader can claim
+ * is not a ceiling. The bake and the probes page 60 at a time like the page.
+ */
+export const BROWSER_PAGE_ROWS = 60;
+export const SERVER_PAGE_ROWS = 200;
+export async function pageCeiling(h: Headers, serviceKey: string): Promise<number> {
+  return (await exemptKind(h, serviceKey)) ? SERVER_PAGE_ROWS : BROWSER_PAGE_ROWS;
+}
+
 /**
  * In order: the service key (exempt), our servers' reader proof (exempt), then
  * a counted address. A declared api/mcp/digest caller WITHOUT the proof is
@@ -187,11 +211,8 @@ const DECLARED = new Map<string, BudgetKind>([["api", "unproven_api"], ["mcp", "
  * build/probe in one shared row per kind (migration 20261003180000).
  */
 export async function classifyCaller(h: Headers, serviceKey: string, passSecret = ""): Promise<Caller> {
-  if (serviceKey && (h.get("authorization") === `Bearer ${serviceKey}` || h.get("apikey") === serviceKey)) {
-    return { exempt: true, kind: "service" };
-  }
-  const offered = h.get(BOARD_READER_HEADER) ?? "";
-  if (offered && sameSecret(offered, await boardReaderKey(serviceKey))) return { exempt: true, kind: "reader" };
+  const exempt = await exemptKind(h, serviceKey);
+  if (exempt) return { exempt: true, kind: exempt };
   const { address, source } = callerAddress(h);
   const key = address ? addressKey(address) : null;
   const pass = await readBoardPass(h, serviceKey, passSecret);

@@ -1,12 +1,35 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T20:00Z
+//
+// WHO MAY RUN THIS. check-alerts is verify_jwt = false and used to answer
+// anyone: a POST ran the alert evaluation and handed back the delivery, AI,
+// email, webhook and parse rates it had just computed with the service role
+// -- from the very readers migration 20261004110000 moved behind the admin
+// key. It now answers only the owner's ADMIN_API_KEY (x-admin-key) or the
+// pg_cron job's x-alerts-cron key, which that migration generated in the
+// vault and alerts_cron_key_matches checks without ever returning it. A
+// caller with neither is a 401 before any client is built. And it returns a
+// count, never the metrics: the owner reads those on /health-check.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { keyMatches } from "../_shared/admin-key.ts";
 
-const corsHeaders = {
+// Provable from outside without a key: every response, the preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "check-alerts.2026-10-04.1";
+
+const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key, x-alerts-cron",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
+
+const unauthorized = () =>
+  new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 interface AlertConfig {
   name: string;
@@ -34,14 +57,29 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Starting alert check");
-    
+    // The owner's key opens it outright. Without it, only a cron key long
+    // enough to be the vault's is even asked about; anything else is refused
+    // before a client exists, so a stranger's POST costs no database call.
+    const adminKey = Deno.env.get("ADMIN_API_KEY") ?? "";
+    const byOwner = keyMatches(req.headers.get("x-admin-key") ?? "", adminKey);
+    const cronKey = req.headers.get("x-alerts-cron") ?? "";
+    if (!byOwner && cronKey.length < 32) return unauthorized();
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const adminEmail = Deno.env.get("ADMIN_EMAIL");
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    if (!byOwner) {
+      const { data: matches, error: keyError } = await supabase.rpc("alerts_cron_key_matches", { p_key: cronKey });
+      if (keyError || matches !== true) {
+        if (keyError) logStep("Cron key check failed", { error: keyError.message?.slice(0, 160) });
+        return unauthorized();
+      }
+    }
+
+    logStep("Starting alert check", { by: byOwner ? "owner" : "cron" });
     
     if (!resendKey || !adminEmail) {
       logStep("Skipping - missing RESEND_API_KEY or ADMIN_EMAIL");
@@ -219,11 +257,12 @@ serve(async (req) => {
       logStep("No alerts triggered");
     }
     
-    return new Response(JSON.stringify({ 
-      success: true, 
-      metrics,
+    // A count, never the metrics or the alert values: those are the readers
+    // the census closed, and /health-check shows them to the owner.
+    return new Response(JSON.stringify({
+      success: true,
       alertsTriggered: triggeredAlerts.length,
-      alerts: triggeredAlerts
+      unavailable: unavailable.length,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });

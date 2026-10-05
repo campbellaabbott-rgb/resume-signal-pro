@@ -44,6 +44,7 @@ import {
   cleanupExpiredResumeData,
   clearAllResumeData
 } from "@/hooks/use-resume-storage";
+import { clearLocalResumeCopies } from "@/lib/local-resume-copies";
 import { useABConversion } from "@/hooks/use-ab-test";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
@@ -412,6 +413,9 @@ const Success = () => {
 
   const handleClearLocalData = () => {
     clearAllResumeData();
+    // Every other copy of a résumé this browser keeps (a builder draft, scan
+    // history, cached reports) -- /trust promises this button clears them.
+    clearLocalResumeCopies();
     // Also clear sessionStorage
     sessionStorage.clear();
     setLocalDataCleared(true);

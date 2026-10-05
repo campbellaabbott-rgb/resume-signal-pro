@@ -14,25 +14,28 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "import-freelance-profile.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
+
+// Ten imports a day per address (the allowance it always had), plus a
+// function-wide hourly ceiling. The limiter used to read `allowed === false`,
+// so a limiter error -- or a first forwarded hop over 45 characters, which
+// makes check_rate_limit raise -- skipped the limit; the gate fails closed.
+const IMPORT_LIMITS = { perAddress: 10, windowMinutes: 1440, globalPerHour: 100 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
-    const { data: allowed } = await supabase.rpc("check_rate_limit", { p_function: "import-freelance-profile", p_ip: clientIp, p_max_requests: 10, p_window_minutes: 1440 });
-    if (allowed === false) {
-      return new Response(JSON.stringify({ error: "Daily import limit reached — you can still fill the form manually." }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const { profileText } = await req.json();
     if (typeof profileText !== "string" || profileText.trim().length < 80) {
       return new Response(JSON.stringify({ error: "Paste your full profile text (at least a few lines)." }), {
@@ -40,6 +43,10 @@ serve(async (req) => {
       });
     }
     const text = profileText.slice(0, 20000);
+
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
+    const refused = await modelSpendGate(supabase, req, "import-freelance-profile", IMPORT_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");

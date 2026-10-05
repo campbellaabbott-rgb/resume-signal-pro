@@ -310,7 +310,7 @@ const KEY_REFUSALS = {
   ],
   revoked: [
     "This key has been revoked.",
-    `A newer key was minted for the same account or email, and only the newest works — use it, or mint one more at ${MINT_URL} and update every app that holds the old one.`,
+    `A newer key replaced it, it went unused for 30 days, or it was a free key issued before keys needed a confirmed email (2026-10-04). Use your newest key, or get one at ${MINT_URL} (we email you a link) and update every app that holds the old one.`,
   ] as [string, string],
   unknown_key: [
     "That key is not recognised.",

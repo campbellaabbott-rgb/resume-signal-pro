@@ -2,7 +2,8 @@
 // score→interview correlation. Anonymous, keyed to the reproducible report ID
 // (no resume content, no PII); one answer per report per visitor, answers can
 // be updated (people hear back later). Server side is rate-limited
-// (record_scan_outcome RPC, 5/day/visitor).
+// (record_scan_outcome RPC: 5 a day per network address, as the platform
+// states it -- the visitor id sent as p_ip names the answer, not the budget).
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";

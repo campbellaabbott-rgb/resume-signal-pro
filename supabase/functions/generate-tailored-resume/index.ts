@@ -1,11 +1,29 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { clipField, clipList, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "generate-tailored-resume.2026-10-04.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
+
+// Free from the job board: an address allowance plus a function-wide ceiling.
+// No purchase is delivered through this function (the Apply Assistant's
+// résumé comes from generate-apply-package), so no session is ever off the
+// ceiling here: a session id in the body is ignored.
+const TAILORED_LIMITS = { perAddress: 20, globalPerHour: 200 };
+
+// The output cap. The tool call is a summary, 5-7 bullet rewrites and tips
+// (about 2,500 tokens); the rest is headroom for the reasoning the pro and
+// gpt-5 legs spend against the same cap. Unset, a model could run to its own
+// ceiling (65k on pro) on the project's key.
+const MAX_OUTPUT_TOKENS = 8000;
 
 // Retry and fallback configuration
 const MAX_RETRIES = 1;
@@ -45,6 +63,8 @@ async function callAIWithFallback(
         const requestBody: Record<string, unknown> = {
           model,
           messages: options.messages,
+          // OpenAI's gpt-5 family names the cap max_completion_tokens.
+          ...(model.startsWith('openai/') ? { max_completion_tokens: MAX_OUTPUT_TOKENS } : { max_tokens: MAX_OUTPUT_TOKENS }),
         };
         if (options.tools) requestBody.tools = options.tools;
         if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
@@ -107,16 +127,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-  const [{ data: allowed }, body] = await Promise.all([
-    supabase.rpc("check_rate_limit", { p_function: "generate-tailored-resume", p_ip: clientIp, p_max_requests: 20, p_window_minutes: 60 }),
-    req.json()
-  ]);
-  if (!allowed) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
   try {
-    const { resumeText, jobTitle, jobCompany, jobDescription, matchingSkills, missingSkills, personalizationContext } = body;
+    const body = await req.json();
+    // The résumé and posting are sliced where the prompt reads them (15,000 and
+    // 5,000); every other field is bounded here (defect sweep 1.64).
+    const resumeText = typeof body?.resumeText === "string" ? body.resumeText : undefined;
+    const jobDescription = typeof body?.jobDescription === "string" ? body.jobDescription : undefined;
+    const jobTitle = clipField(body?.jobTitle, 200);
+    const jobCompany = clipField(body?.jobCompany, 200);
+    const matchingSkills = clipList(body?.matchingSkills, 40, 80);
+    const missingSkills = clipList(body?.missingSkills, 40, 80);
+    const personalizationContext = clipText(body?.personalizationContext, 2_000);
 
     if (!resumeText || !jobTitle) {
       return new Response(
@@ -124,6 +145,12 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const refused = await modelSpendGate(supabase, req, "generate-tailored-resume", TAILORED_LIMITS, corsHeaders, {
+      boardPass: body?.boardPass,
+    });
+    if (refused) return refused;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

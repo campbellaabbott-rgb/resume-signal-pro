@@ -1,8 +1,20 @@
+// deploy-stamp: 2026-10-04T22:00Z
 // Feature 4 — weekly saved-search digest. Each opted-in saved search gets an
 // email counting how many NEW postings match it since the search's last
 // digest, with the freshest handful listed and a link back to the live board.
 // Opt-in only (user_job_searches.digest_opt_in); HMAC unsubscribe like the
 // market pulse. Trigger on a schedule: POST /send-search-digest {"action":"send"}.
+//
+// THE BATCH ANSWERS THE SCHEDULER AND OUR SERVICE ROLE, NOBODY ELSE
+// (2026-10-04). It answered any POST, selected the due searches, and stamped
+// each one only after its awaited send, so N concurrent posts mailed every
+// opted-in user N times (and ran N board searches per saved search). The cron
+// now sends x-email-cron (_shared/email-cron.ts), and the searches are CLAIMED
+// by search_digest_claim_batch, which stamps them in the statement that
+// chooses them (FOR UPDATE SKIP LOCKED): a second run in flight gets a
+// disjoint set or nothing. A search that is skipped for a passing reason (no
+// address, a transient empty list, a failed send) gives its claim back, so it
+// is retried next run exactly as before.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { computeFit } from "../_shared/fit-score.ts";
 // A saved search replayed on a cadence is OUR call on a REAL user's query —
@@ -12,22 +24,27 @@ import { searchCallerHeader } from "../_shared/search-caller.ts";
 // The board counts anonymous reads per address; this proves the digest's
 // read is ours, not a browser's, and grants nothing else.
 import { boardReaderHeader } from "../_shared/board-reader-key.ts";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
+import { sameSecret } from "../_shared/service-caller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// Provable from outside without sending anything: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "send-search-digest.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 const SITE_URL = "https://resumebooster.work";
 // Per-search cadence floors. The old single 6-day gate meant "watch this
 // company" and threshold alerts couldn't email faster than weekly on a board
 // that re-verifies feeds every 10-15 minutes. daily = a 20-hour floor (one
 // email a day, drift-proof against cron jitter); weekly keeps the old rhythm.
-// A search with no cadence column yet (migration not applied) behaves weekly.
-const CADENCE_FLOOR_MS: Record<string, number> = {
-  daily: 20 * 3600 * 1000,
-  weekly: 6 * 24 * 3600 * 1000,
-};
+// These floors live in search_digest_claim_batch (20261004100000), where the
+// claim is atomic: daily = 20 hours, anything else = 6 days.
+const CLAIM_BATCH = 400;
 
 function escapeHtml(text: string | number | undefined | null): string {
   if (text === undefined || text === null) return "";
@@ -86,14 +103,15 @@ function boardUrl(p: SearchParams): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
 
   // ── Unsubscribe (GET link from the email) — turns digest_opt_in off ──
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("action") === "unsubscribe") {
     const id = url.searchParams.get("id") ?? "";
     const token = url.searchParams.get("token") ?? "";
-    if (!id || token !== (await hmacToken(id))) {
+    if (!id || !sameSecret(token, await hmacToken(id))) {
       return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
     }
     await supabase.from("user_job_searches").update({ digest_opt_in: false }).eq("id", id);
@@ -108,6 +126,9 @@ Deno.serve(async (req) => {
     if (body.action !== "send") {
       return new Response(JSON.stringify({ error: "POST { action: 'send' }" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    if (!(await isScheduledCaller(req.headers, supabase, serviceKey))) {
+      return new Response(JSON.stringify({ error: "The batch send is for the scheduler only." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const resend = new Resend(RESEND_API_KEY);
@@ -115,23 +136,21 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const readerProof = await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // Fetch with the LOOSEST gate (the daily floor), then enforce each
-    // search's own cadence in code — one query, per-search rhythm.
-    const cutoff = new Date(Date.now() - CADENCE_FLOOR_MS.daily).toISOString();
-    const { data: fetched, error } = await supabase
-      .from("user_job_searches")
-      .select("id, user_id, name, params, digest_last_sent_at, fit_threshold, digest_cadence")
-      .eq("digest_opt_in", true)
-      .or(`digest_last_sent_at.is.null,digest_last_sent_at.lt.${cutoff}`)
-      .limit(400);
-    const searches = (fetched ?? []).filter((s) => {
-      const last = (s as { digest_last_sent_at?: string | null }).digest_last_sent_at;
-      if (!last) return true;
-      const cad = String((s as { digest_cadence?: string }).digest_cadence ?? "weekly");
-      const floor = CADENCE_FLOOR_MS[cad] ?? CADENCE_FLOOR_MS.weekly;
-      return Date.now() - Date.parse(last) >= floor;
-    });
+    // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
+    // own cadence decided in SQL), with the stamp it had before, which is the
+    // "new since" window and what a give-back restores.
+    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: CLAIM_BATCH });
     if (error) throw error;
+    const searches = ((claimed ?? []) as Array<{
+      sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
+      sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
+    }>).map((r) => ({
+      id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
+      digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
+    }));
+    /** Hand a claim back: the search is due again next run, as if never claimed. */
+    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) =>
+      supabase.from("user_job_searches").update({ digest_last_sent_at: s.digest_last_sent_at }).eq("id", s.id);
 
     // Suppressed addresses (global unsubscribes) are honored too.
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
@@ -145,7 +164,7 @@ Deno.serve(async (req) => {
       // Resolve the recipient email (service-role admin lookup by user_id).
       const { data: userRes } = await supabase.auth.admin.getUserById(s.user_id as string);
       const email = userRes?.user?.email?.toLowerCase();
-      if (!email || suppressed.has(email)) { skipped++; continue; }
+      if (!email || suppressed.has(email)) { await giveBack(s); skipped++; continue; }
 
       // Count NEW matches since last digest, and pull the freshest few.
       const callBoard = (extra: Record<string, unknown>) =>
@@ -196,7 +215,8 @@ Deno.serve(async (req) => {
       // exact when the real figure is higher — so the copy says "10,000+".
       const rawCapped = (countRes as { countCapped?: boolean } | null)?.countCapped === true;
       if (rawNew === 0) {
-        await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
+        // Nothing new: the claim's stamp advances the window, as the old
+        // explicit stamp here did.
         skipped++;
         continue;
       }
@@ -253,8 +273,8 @@ Deno.serve(async (req) => {
           .filter((x): x is { id: string; company: string; title: string; location: string; applyUrl: string; fit: number } => x !== null)
           .sort((a, b) => b.fit - a.fit);
         if (passing.length === 0) {
-          // Nothing cleared the bar this window — don't email; advance the window.
-          await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
+          // Nothing cleared the bar this window — don't email; the claim's
+          // stamp advances the window.
           skipped++;
           continue;
         }
@@ -268,7 +288,7 @@ Deno.serve(async (req) => {
         // (they were fetched unwindowed: newest overall, not newest-since).
         const listRes = await callBoard({ limit: 5, offset: 0, postedAfter: since });
         jobs = ((listRes as { jobs?: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }> } | null)?.jobs) ?? [];
-        if (jobs.length === 0) { skipped++; continue; } // count said new but list empty (transient) — retry next run, don't stamp
+        if (jobs.length === 0) { await giveBack(s); skipped++; continue; } // count said new but list empty (transient) — retry next run, claim handed back
       }
 
       const token = await hmacToken(s.id as string);
@@ -339,11 +359,13 @@ Deno.serve(async (req) => {
           : strongMode
             ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
             : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
-        await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html });
-        await supabase.from("user_job_searches").update({ digest_last_sent_at: new Date().toISOString() }).eq("id", s.id);
+        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html });
+        if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         sent++;
       } catch (e) {
+        // A failed send gives its claim back, so the next run retries it.
         console.error("[SEARCH-DIGEST] send failed:", e instanceof Error ? e.message : e);
+        await giveBack(s);
         skipped++;
       }
     }

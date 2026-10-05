@@ -1,20 +1,29 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { modelSpendGate } from "../_shared/model-spend-gate.ts";
+
+// Provable from outside without a model call: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "parse-resume-structured.2026-10-04.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
-const RATE_LIMIT = 15; // per IP per day — this is an AI call, same order as other generation endpoints
-const RATE_WINDOW_MINUTES = 1440;
+// Fifteen a day per address (this is an AI call, same order as the other
+// generation endpoints), plus a function-wide hourly ceiling. The limiter
+// used to log a counting error and carry on, and ran nothing at all without a
+// database client; the shared gate fails closed in both cases.
+const PARSE_LIMITS = { perAddress: 15, windowMinutes: 1440, globalPerHour: 150 };
 
-const getClientIp = (req: Request): string =>
-  req.headers.get('cf-connecting-ip') ||
-  req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-  req.headers.get('x-real-ip') ||
-  'unknown';
+// The output cap. Extraction re-emits the résumé as sections (a 20,000
+// character résumé is ~5,000 tokens); the rest is headroom for the reasoning
+// gpt-5 spends against the same cap. Unset, a model could run to its own
+// ceiling on the project's key.
+const MAX_OUTPUT_TOKENS = 16000;
 
 const MAX_RETRIES = 1;
 const REQUEST_TIMEOUT_MS = 55000;
@@ -53,7 +62,11 @@ async function callAIWithFallback(
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ model, ...options }),
+          body: JSON.stringify({
+            model, ...options,
+            // OpenAI's gpt-5 family names the cap max_completion_tokens.
+            ...(model.startsWith('openai/') ? { max_completion_tokens: MAX_OUTPUT_TOKENS } : { max_tokens: MAX_OUTPUT_TOKENS }),
+          }),
           signal: controller.signal,
         });
 
@@ -83,28 +96,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = getClientIp(req);
-
   try {
-    const supabase = getServiceClient();
-    if (supabase) {
-      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-        p_ip: clientIp,
-        p_function: 'parse-resume-structured',
-        p_max_requests: RATE_LIMIT,
-        p_window_minutes: RATE_WINDOW_MINUTES
-      });
-
-      if (rlError) {
-        console.error("[PARSE-RESUME-STRUCTURED] Rate limit check error:", rlError);
-      } else if (!allowed) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
     const { resumeText } = await req.json();
 
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length < 50) {
@@ -113,6 +105,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const refused = await modelSpendGate(getServiceClient(), req, "parse-resume-structured", PARSE_LIMITS, corsHeaders);
+    if (refused) return refused;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {

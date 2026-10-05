@@ -56,7 +56,7 @@ export default function AtsVendorGuide() {
             <h2 className="text-xl font-bold mb-2">Test your resume against {data.name} — free</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Our free scan checks your actual file against {data.name}'s parsing behaviors (and Workday, Greenhouse,
-              Lever, and iCIMS) plus 24+ other checks. No signup, resume never stored.
+              Lever, and iCIMS) plus 24+ other checks. No signup; your resume is deleted within 7 days.
             </p>
             <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
               Run the free check <ArrowRight className="w-4 h-4" />
