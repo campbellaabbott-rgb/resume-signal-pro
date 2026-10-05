@@ -39,10 +39,9 @@ const verify = F("verify-product-purchase/index.ts");
 const DUAL_USE: Record<string, string> = {
   "generate-cover-letter":
     "the public job board calls this free from Jobs.tsx with an identical body shape, so the function cannot tell a buyer from a board user",
-  "generate-interview-coach":
-    "Jobs.tsx calls it free for likely-interview-questions; only isPremium:true is the paid tier",
-  "generate-career-path":
-    "has a free tier via isPremium:false; only the premium path is sold",
+  // generate-interview-coach and generate-career-path were listed here until
+  // 2026-10-05 (defect sweep 1.60): each tells its paid tier apart by
+  // isPremium, and now gates exactly that tier on a purchase.
 };
 
 /** product_type -> generator endpoint, read from the webhook's own switch. */

@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "Foram adicionados 10 créditos de verificação à sua conta",
+          "Seus créditos de verificação foram adicionados",
           "Cada verificação analisa o seu currículo em relação a uma vaga específica",
           "Compare descrições de vagas ilimitadas com os seus créditos",
           "Os créditos nunca expiram"
@@ -3518,15 +3518,13 @@
     "neverExpire": "Créditos nunca expiram",
     "perCredit": "{{price}} por crédito",
     "topUpCredits": "Recarregar créditos",
-    "useDifferentEmail": "Usar outro e-mail",
-    "checkYourCredits": "Verificar créditos de escaneamento",
-    "enterEmail": "Insira o e-mail usado para comprar escaneamentos.",
-    "checking": "Verificando...",
-    "checkCredits": "Verificar créditos",
-    "noCredits": "Nenhum crédito encontrado para este e-mail.",
     "freeTier": "Nível gratuito: até 7 escaneamentos por dia, gratuito para sempre.",
     "buyCredits": "Comprar créditos — {{price}} cada",
-    "myCredits": "Meus créditos"
+    "myCredits": "Meus créditos",
+    "provenHint": "Os créditos comprados neste navegador aparecem aqui automaticamente.",
+    "signInHint": "Comprou em outro dispositivo? Entre com o e-mail usado no pagamento.",
+    "signIn": "Entrar",
+    "noCreditsHere": "Ainda não há créditos de escaneamento neste navegador ou conta."
   },
   "industryConfidence": {
     "industry": "Setor:",

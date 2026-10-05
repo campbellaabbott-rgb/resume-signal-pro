@@ -2028,7 +2028,7 @@
       },
       "scanPack": {
         "howItWorks": [
-          "10 scancredits zijn toegevoegd aan je account",
+          "Je scancredits zijn toegevoegd",
           "Elke scan analyseert je cv tegen een specifieke functie",
           "Vergelijk onbeperkt functiebeschrijvingen met je credits",
           "Credits verlopen nooit"
@@ -3518,15 +3518,13 @@
     "neverExpire": "Credits verlopen nooit",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Credits bijvullen",
-    "useDifferentEmail": "Ander e-mailadres gebruiken",
-    "checkYourCredits": "Scan-credits controleren",
-    "enterEmail": "Voer het e-mailadres in dat u hebt gebruikt voor aankopen.",
-    "checking": "Controleren...",
-    "checkCredits": "Credits controleren",
-    "noCredits": "Geen credits gevonden voor dit e-mailadres.",
     "freeTier": "Gratis laag: tot 7 scans per dag, voor altijd gratis.",
     "buyCredits": "Credits kopen — {{price}} per stuk",
-    "myCredits": "Mijn credits"
+    "myCredits": "Mijn credits",
+    "provenHint": "Credits die je in deze browser hebt gekocht, verschijnen hier automatisch.",
+    "signInHint": "Op een ander apparaat gekocht? Log in met het e-mailadres dat je bij het afrekenen gebruikte.",
+    "signIn": "Inloggen",
+    "noCreditsHere": "Nog geen scancredits in deze browser of dit account."
   },
   "industryConfidence": {
     "industry": "Industrie:",

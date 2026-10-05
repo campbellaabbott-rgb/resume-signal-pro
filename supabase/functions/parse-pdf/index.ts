@@ -3,6 +3,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
 import { looksGarbled } from "../_shared/text-validation.ts";
+import { pageTextFromItems } from "./page-text.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
+
+// Provable from outside without an upload: every response, the CORS preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "parse-pdf.2026-10-05.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -55,6 +61,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
@@ -97,11 +104,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
-  const clientIp = req.headers.get('cf-connecting-ip') ||
-                   req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
-                   req.headers.get('x-real-ip') || 
-                   'unknown';
+  // The platform's address (cf-connecting-ip, else the LAST forwarded hop),
+  // never the first hop, which the caller writes (_shared/client-address.ts).
+  const clientIp = clientAddressOr(req.headers, 'unknown');
 
   try {
     console.log(`[PARSE-PDF] Request from IP: ${clientIp}`);
@@ -287,9 +292,8 @@ serve(async (req) => {
       const page = await doc.getPage(i);
       const textContent = await page.getTextContent();
       const items = textContent.items as PdfTextItem[];
-      const pageText = items
-        .map((item) => item.str ?? "")
-        .join(" ");
+      // Lines kept (register L5-01): the scanner reads a résumé line by line.
+      const pageText = pageTextFromItems(items);
       fullText += pageText + "\n\n";
 
       if (!multiColumnDetected && detectMultiColumnRisk(items)) {

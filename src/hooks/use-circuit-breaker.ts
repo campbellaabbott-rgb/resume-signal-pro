@@ -307,6 +307,18 @@ export function recordServiceSuccess(serviceName: string): void {
   }
 }
 
+/**
+ * Whether a failed call says anything about the service's health. A 4xx is
+ * the service working as designed: a daily limit reached (429), a region
+ * refused (403), a résumé too short (400). Counting those opened the scanner's
+ * circuit after a user's second over-limit click, showed everyone a false
+ * "Resume Scanner Unavailable" toast and logged an outage (defect sweep 2.05).
+ * Only a server error, a timeout or no answer at all (no status) counts.
+ */
+export function countsAsServiceFailure(httpStatus: number | undefined): boolean {
+  return httpStatus === undefined || httpStatus === 408 || httpStatus >= 500;
+}
+
 export function recordServiceFailure(serviceName: string, errorMessage?: string): void {
   const state = getServiceCircuitState(serviceName);
   const wasOpen = state.state === "open";

@@ -6,8 +6,18 @@ import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
+import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
+import {
+  parseCreditSessions,
+  refundScanCredit,
+  reserveScanCredit,
+  scanCreditBalance,
+  sessionHash,
+  type CreditHold,
+} from "../_shared/scan-credits.ts";
 import {
   detectCountryFromResume,
   getMarketInsight,
@@ -397,12 +407,6 @@ async function sendAlertEmail(alertType: string, subject: string, details: Recor
       console.log(`[ALERT] Sent ${alertType} alert`);
     }
   } catch (error) {
-    if (((error) as { badJson?: boolean })?.badJson) {
-      return new Response(
-        JSON.stringify({ error: 'Request body must be valid JSON.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
     console.error("[ALERT] Error sending alert:", error);
   }
 }
@@ -435,9 +439,14 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Note: Customer notification email is sent by save-lead function which has the customer email
 
+// Provable from outside without a scan: every response, the CORS preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "free-keyword-scan.2026-10-05.1";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
 const MAX_RESUME_LENGTH = 50000;
@@ -455,13 +464,10 @@ const ERROR_MESSAGES = {
   GEO_BLOCKED: 'Service not available in your region.',
 };
 
-// Helper to get client IP from request (prioritize Cloudflare's trusted header)
-const getClientIp = (req: Request): string => {
-  return req.headers.get('cf-connecting-ip') ||
-         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-         req.headers.get('x-real-ip') || 
-         'unknown';
-};
+// The caller's address for the per-address limits: the platform's word
+// (cf-connecting-ip, else the LAST forwarded hop), never the first hop, which
+// is whatever the caller wrote. One rule, in _shared/client-address.ts.
+const getClientIp = (req: Request): string => clientAddressOr(req.headers, 'unknown');
 
 /**
  * Parse resume text into labeled sections so the AI gets structured context
@@ -711,11 +717,14 @@ function validateContactInfo(resumeText: string): ContactValidation {
 function formatContactHintForPrompt(contact: ContactValidation): string {
   if (contact.missingItems.length === 0) return '';
   const lines = ['\n\n<contact_validation>'];
-  lines.push('RULE-BASED PRE-CHECK — the following contact info is CONFIRMED missing from the resume text:');
+  lines.push('RULE-BASED PRE-CHECK — the following contact info was not detected in the text extracted from the resume:');
   for (const item of contact.missingItems) {
     lines.push(`  ✗ ${item} — not detected`);
   }
-  lines.push('INSTRUCTION: Include each missing contact item as a red flag or quick win. Do NOT say "we couldn\'t find" — say it is absent. This is high-confidence, not inferential.');
+  // Not "absent": text in a Word header/footer, an image or a text box can be
+  // invisible to extraction, and many ATS skip page headers too (register
+  // L5-07). The advice is the same either way: put it in the body.
+  lines.push('INSTRUCTION: Include each missing contact item as a red flag or quick win, worded as "not detected in the document text (if it sits in a page header, image or text box, many ATS skip it too — put it in the body)". Do NOT claim with certainty that the candidate omitted it.');
   lines.push('</contact_validation>');
   return lines.join('\n');
 }
@@ -1151,16 +1160,41 @@ const MODEL_FALLBACK_ORDER = [
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// THE SCAN'S OWN CLOCK (register L5-11). Two attempts x 55 s x three models
+// could keep a stalled gateway busy for five minutes, far past the platform's
+// 150-second limit, so the rule-based report that exists precisely for a
+// gateway outage never arrived: the caller saw a 504 instead. Every model
+// attempt now gets at most what is left of this budget, counted from the
+// request's start, and once it is spent the rule-based report is served.
+// The client waits longer than this (src/lib/resilient-edge-function.ts).
+const AI_DEADLINE_MS = 85_000;
+const PER_ATTEMPT_TIMEOUT_MS = 55_000;
+/** Below this much time left, a model attempt is not worth starting. */
+const MIN_ATTEMPT_MS = 8_000;
+
+/** Milliseconds a model attempt may take now, or 0 when the scan's clock has run out. */
+function attemptBudgetMs(deadlineAt: number, now: number = Date.now()): number {
+  const left = deadlineAt - now;
+  if (left < MIN_ATTEMPT_MS) return 0;
+  return Math.min(PER_ATTEMPT_TIMEOUT_MS, left);
+}
+
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries: number = MAX_AI_RETRIES
+  maxRetries: number = MAX_AI_RETRIES,
+  deadlineAt: number = Date.now() + AI_DEADLINE_MS,
 ): Promise<Response> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const budget = attemptBudgetMs(deadlineAt);
+    if (budget === 0) {
+      lastError = lastError ?? new Error('scan deadline reached before the model answered');
+      break;
+    }
     try {
-      const response = await fetch(url, { ...options, signal: AbortSignal.timeout(55000) });
+      const response = await fetch(url, { ...options, signal: AbortSignal.timeout(budget) });
       
       // Don't retry client errors (4xx) except rate limits
       if (response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
@@ -1276,6 +1310,14 @@ serve(async (req) => {
   // this — declaring it inside the try made every error path throw a
   // ReferenceError while logging, masking the real failure.
   let usedModel: string = MODEL_FALLBACK_ORDER[0];
+  // A purchased credit RESERVED for this scan, and whether a full report was
+  // delivered against it. Hoisted for the same reason as usedModel: the
+  // finally below gives the credit back on every path that delivered less
+  // (cache hit, rule-based or load-shed report, busy gateway, any error).
+  let creditHold: CreditHold | null = null;
+  let creditDelivered = false;
+  // The model calls' clock, counted from the request's start.
+  const aiDeadlineAt = requestStartTime + AI_DEADLINE_MS;
 
   try {
     // Resolve country and parse the request body in parallel — getCountryCode can
@@ -1376,8 +1418,9 @@ serve(async (req) => {
     // Signed-in users get a higher daily limit — the concrete reason to register.
     // The frontend client attaches the session JWT automatically when logged in.
     let isAuthedUser = false;
+    // The address the platform verified on the session JWT: the ONLY address
+    // this function honours for Pro or for a credit. Never one from the body.
     let authedUserEmail: string | null = null;
-    let creditUsedEmail: string | null = null;
     let proBypass = false; // active Pro subscriber past the daily limit
     try {
       const authHeader = req.headers.get('Authorization') ?? '';
@@ -1468,46 +1511,45 @@ serve(async (req) => {
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } else if (!functionRateLimitResult.data && !isHeartbeatProbe) {
-      // Purchased scan credits buy scans PAST the daily limit — redeem before
-      // rejecting. Email comes from the session (signed-in) or from the
-      // browser-remembered purchase email sent by the client.
-      const creditEmail = authedUserEmail
-        ?? ((typeof body.creditEmail === 'string' && body.creditEmail.includes('@'))
-          ? body.creditEmail.toLowerCase().trim().slice(0, 200)
-          : null);
-      // Pro subscribers ($45/mo) get unlimited scans — check the cache before
-      // burning purchased credits.
-      if (creditEmail) {
+      // PAST THE DAILY LIMIT, two things can still pay for a scan, and each
+      // needs PROOF of whose it is (defect sweep 2.07). An address typed into
+      // the request proves nothing: it used to be enough to spend a stranger's
+      // purchased credits, or to scan without limit as a Pro subscriber.
+      //
+      // 1. Pro, for the signed-in account's own verified address.
+      if (authedUserEmail) {
         try {
           const { data: proRow } = await supabase
             .from('pro_subscribers')
             .select('status, current_period_end')
-            .eq('email', creditEmail)
+            .eq('email', authedUserEmail)
             .maybeSingle();
           const proActive = !!proRow && ['active', 'trialing'].includes(proRow.status) &&
             (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
           if (proActive) {
-            creditUsedEmail = null; // no credit consumed
-            console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — Pro subscriber ${creditEmail}, scan allowed`);
+            console.log('[FREE-KEYWORD-SCAN] Rate limit reached — signed-in Pro subscriber, scan allowed');
             proBypass = true;
           }
         } catch (e) {
           console.warn('[FREE-KEYWORD-SCAN] Pro check failed:', e);
         }
       }
-      if (creditEmail && !proBypass) {
-        try {
-          const { data: used } = await supabase.rpc('use_scan_credit', { p_email: creditEmail });
-          if (used === true) {
-            creditUsedEmail = creditEmail;
-            console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — redeemed 1 purchased credit for ${creditEmail}`);
-          }
-        } catch (e) {
-          console.warn('[FREE-KEYWORD-SCAN] Credit redemption failed:', e);
-        }
+      // 2. A purchased credit: the signed-in account's own, or one from a
+      //    purchase this browser holds the Stripe Checkout session of (capped
+      //    at what that purchase bought). RESERVED here, before the cache
+      //    lookup and the model call, so concurrent requests cannot share one
+      //    credit; given back in the finally below unless a full report is
+      //    delivered (defect sweep 2.06).
+      if (!proBypass) {
+        creditHold = await reserveScanCredit(
+          supabase,
+          { accountEmail: authedUserEmail, sessionIds: parseCreditSessions(body.creditSessions) },
+          { stripeKey: Deno.env.get('STRIPE_SECRET_KEY') ?? '' },
+        );
+        if (creditHold) console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — 1 ${creditHold.via} credit reserved`);
       }
-      if (creditUsedEmail || proBypass) {
-        // Credit redeemed or Pro subscriber — fall through and run the scan.
+      if (creditHold || proBypass) {
+        // Credit reserved or Pro subscriber — fall through and run the scan.
       } else {
       // Get current usage for helpful error message (non-blocking detail fetch)
       const { data: usageData } = await supabase
@@ -1596,7 +1638,13 @@ serve(async (req) => {
     // Bumped 2026-07-25: country-detection fix — without the bump, resumes
     // scanned in the prior 7 days (including the wrong-country incident
     // hashes) would keep hitting their cached pre-fix reports.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-07-25';
+    // Bumped 2026-10-05: PDFs now reach the scanner with their line breaks
+    // (parse-pdf flattened every page to one line, so every cached PDF report
+    // was computed on 0 bullets and 0 sections), job changes across a year
+    // boundary no longer read as a 7-month gap, and non-Latin quotes are
+    // grounded. resumeHash collapses whitespace, so without the bump the
+    // flattened reports would replay for 7 days.
+    const REPORT_ENGINE_VERSION = 'scan-v2026-10-05';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
@@ -1618,7 +1666,14 @@ serve(async (req) => {
         .maybeSingle();
       if (cached?.report && new Date(cached.created_at).getTime() > Date.now() - 7 * 24 * 3600 * 1000) {
         console.log(`[FREE-KEYWORD-SCAN] Report cache HIT (${reportCacheKey.slice(0, 12)}…) — served instantly`);
-        const cachedReport: Record<string, unknown> = { ...(cached.report as Record<string, unknown>), cachedReport: true };
+        // A cache hit is free: a reserved credit is refunded in the finally.
+        // And the cached copy never carries a credit receipt: entries written
+        // before 2026-10-05 hold the FIRST scanner's receipt and balance
+        // (defect sweep 2.18), which would print "1 credit used, N remaining"
+        // to someone who spent nothing.
+        const { creditUsed: _staleReceipt, creditsRemaining: _staleBalance, ...storedReport } =
+          cached.report as Record<string, unknown>;
+        const cachedReport: Record<string, unknown> = { ...storedReport, cachedReport: true };
         // Sealed on the way out, so a report cached before the mail seal
         // existed can still be emailed in full (see the seal at the end).
         await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
@@ -2933,6 +2988,12 @@ ${resumeText.substring(0, 20000)}
       let resp: Response | null = null;
       let model = MODEL_FALLBACK_ORDER[0];
       for (const modelId of MODEL_FALLBACK_ORDER) {
+        // The next model is not tried once the scan's clock has run out: the
+        // rule-based report is served instead of a gateway timeout.
+        if (attemptBudgetMs(aiDeadlineAt) === 0) {
+          console.warn(`[FREE-KEYWORD-SCAN] (${label}) scan deadline reached before ${modelId}; no further models tried`);
+          break;
+        }
         model = modelId;
         try {
           const candidate = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -2953,7 +3014,7 @@ ${resumeText.substring(0, 20000)}
               }],
               tool_choice: { type: "function", function: { name: "submit_analysis" } }
             }),
-          });
+          }, MAX_AI_RETRIES, aiDeadlineAt);
           if (candidate.ok || candidate.status === 400 || candidate.status === 429) {
             resp = candidate;
             break;
@@ -3532,26 +3593,17 @@ ${resumeText.substring(0, 20000)}
     // actually appears in the resume; drop anything the AI invented. This is
     // the last line of defense against a report confidently discussing a
     // bullet the candidate never wrote.
-    const normalizeForGrounding = (s: string) =>
-      s.toLowerCase().replace(/\[[^\]]*\]/g, ' ').replace(/[^a-z0-9%$ ]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const groundedResume = normalizeForGrounding(resumeText);
-    const appearsInResume = (claim: unknown): boolean => {
-      if (typeof claim !== 'string') return false;
-      const n = normalizeForGrounding(claim);
-      if (!n) return false;
-      if (n.length <= 45) return groundedResume.includes(n);
-      // Long quotes: tolerate minor paraphrase — 70% of significant tokens must appear.
-      const tokens = n.split(' ').filter(w => w.length >= 4);
-      if (tokens.length < 3) return groundedResume.includes(n.slice(0, 45));
-      const hits = tokens.filter(tk => groundedResume.includes(tk)).length;
-      return hits / tokens.length >= 0.7;
-    };
+    // Letters, marks and digits of EVERY script survive (register L5-08; see
+    // grounding.ts): the Latin-only class reduced a Hindi résumé to its
+    // digits and every quote from it to '', so each was dropped as invented.
+    const appearsInResume = groundedIn(resumeText);
 
     let groundingDrops = 0;
     const dropUngrounded = <T>(items: T[] | undefined, getQuote: (x: T) => unknown, label: string): T[] => {
       const kept = (items ?? []).filter(item => {
         const ok = appearsInResume(getQuote(item));
-        if (!ok) { groundingDrops++; console.log(`[FREE-KEYWORD-SCAN] Grounding drop (${label}): "${String(getQuote(item)).slice(0, 80)}"`); }
+        // The claimed quote is résumé-shaped text: its length is logged, never its words.
+        if (!ok) { groundingDrops++; console.log(`[FREE-KEYWORD-SCAN] Grounding drop (${label}): ${String(getQuote(item) ?? '').length} chars`); }
         return ok;
       });
       return kept;
@@ -3617,8 +3669,18 @@ ${resumeText.substring(0, 20000)}
       }
     }
     // 2) Improvement potential can't promise more than the score gap allows.
-    if (typeof analysis.improvementPotential === 'number' && typeof analysis.atsScoreEstimate === 'number') {
-      analysis.improvementPotential = Math.min(analysis.improvementPotential, 98 - analysis.atsScoreEstimate);
+    //    The schema makes it an OBJECT ({level, estimatedScoreIncrease,
+    //    topPriority}); the old check looked for a number, so a 92 could
+    //    still promise "+25 pts" (register L5-15).
+    if (typeof analysis.atsScoreEstimate === 'number') {
+      const gap = Math.max(0, 98 - analysis.atsScoreEstimate);
+      const ip = analysis.improvementPotential;
+      if (typeof ip === 'number') {
+        analysis.improvementPotential = Math.max(0, Math.min(ip, gap));
+      } else if (ip && typeof ip === 'object' && typeof (ip as { estimatedScoreIncrease?: unknown }).estimatedScoreIncrease === 'number') {
+        const inc = (ip as { estimatedScoreIncrease: number }).estimatedScoreIncrease;
+        (ip as { estimatedScoreIncrease: number }).estimatedScoreIncrease = Math.round(Math.max(0, Math.min(inc, gap)));
+      }
     }
 
     // === JD KEYWORD GROUNDING ===
@@ -4189,13 +4251,15 @@ ${resumeText.substring(0, 20000)}
     // the stream fork so both paths warn identically (see resume-structure.ts).
     responseData.parseQuality = computeParseQuality(resumeText);
 
-    // Purchased-credit redemption receipt
-    if (creditUsedEmail) {
+    // Purchased-credit receipt: only for a FULL report. A rule-based or
+    // load-shed report tells the reader to rescan for the full version, so the
+    // reserved credit goes back (finally, below) and no receipt is printed.
+    // The balance is the same proven identity's: the account, plus the
+    // purchases this browser presented.
+    if (creditHold && !usedRuleBasedFallback) {
       responseData.creditUsed = true;
-      try {
-        const { data: remaining } = await supabase.rpc('get_scan_credits', { p_email: creditUsedEmail });
-        responseData.creditsRemaining = typeof remaining === 'number' ? remaining : null;
-      } catch { responseData.creditsRemaining = null; }
+      const presented = await Promise.all(parseCreditSessions(body.creditSessions).map(sessionHash));
+      responseData.creditsRemaining = await scanCreditBalance(supabase, { accountEmail: authedUserEmail, sessionHashes: presented });
     }
 
     // Executive scope check — senior/executive resumes only
@@ -4437,7 +4501,8 @@ ${resumeText.substring(0, 20000)}
       EdgeRuntime.waitUntil(
         supabase.from('scan_report_cache').upsert({
           cache_key: reportCacheKey,
-          report: responseData,
+          // The receipt is this caller's, not the report's: never cached.
+          report: { ...responseData, creditUsed: undefined, creditsRemaining: undefined },
           engine_version: REPORT_ENGINE_VERSION,
           created_at: new Date().toISOString(),
         }).then(({ error }: { error: { message: string } | null }) => {
@@ -4453,14 +4518,27 @@ ${resumeText.substring(0, 20000)}
     // week; the mailer counts sends per report id, so one sealed payload
     // cannot be replayed to a list of strangers. Sealed last, over exactly
     // what the browser receives.
+    // THE ONE PLACE a reserved credit is kept: a full report about to be
+    // returned. Every other exit refunds it in the finally, and anything that
+    // throws from here on lands in the catch, which un-keeps it.
+    creditDelivered = !usedRuleBasedFallback;
     await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-
     return new Response(
       JSON.stringify(responseData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
+    // No report left this function: a credit reserved for it goes back.
+    creditDelivered = false;
+    // Malformed JSON is the caller's mistake: a 400, not a server incident
+    // with an alert email (register L5-14).
+    if ((error as { badJson?: boolean })?.badJson) {
+      return new Response(
+        JSON.stringify({ error: 'Request body must be valid JSON.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     // Log error metric using shared client
     const supabase = getServiceClient();
     if (supabase) {
@@ -4495,5 +4573,12 @@ ${resumeText.substring(0, 20000)}
       JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  } finally {
+    // A credit reserved for a scan that did not deliver a full report goes
+    // back: the cache hit (free), the rule-based or load-shed report (it says
+    // "rescan for the full version"), "Service busy", and every error.
+    if (creditHold && !creditDelivered) {
+      await refundScanCredit(getServiceClient(), creditHold);
+    }
   }
 });

@@ -61,10 +61,11 @@ import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/Floa
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
-import { useScanCredits } from "@/hooks/use-scan-credits";
+import { useScanCredits, creditSessions, CREDITS_UPDATED_EVENT } from "@/hooks/use-scan-credits";
+import { rememberPreStoredResume, forgetPreStoredResume } from "@/hooks/use-product-checkout";
 import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
-import { resilientCallers, callEdgeFunctionWithRetry } from "@/lib/resilient-edge-function";
+import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
   cleanupExpiredResumeData, 
@@ -78,7 +79,8 @@ import {
   getResumeFromSession,
   clearResumeSession,
   hasResumeInSession,
-  setMultiColumnDetectedInSession
+  setMultiColumnDetectedInSession,
+  getMultiColumnDetectedFromSession
 } from "@/hooks/use-session-resume";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useErrorTracking } from "@/hooks/use-error-tracking";
@@ -91,6 +93,13 @@ const ScanFeedback = lazy(() =>
 const LinkedInInsights = lazy(() =>
   import("@/components/LinkedInInsights").then((m) => ({ default: m.LinkedInInsights }))
 );
+
+// How many industries the scanner's detection table holds (register L4-09:
+// the structured data said 59 beside a table of 58). The table is 78 KB
+// gzipped, too heavy to import into the homepage for one number, so the
+// count lives here and a test holds it equal to the table itself:
+// src/test/the-homepage-states-the-scanners-own-industry-count.test.ts.
+const DETECTED_INDUSTRY_COUNT = 58;
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
@@ -745,11 +754,39 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     };
   }, []);
 
+  // The inputs the current pre-stored session was made from, so a scan can
+  // tell whether what it analyses is what a purchase would be delivered from.
+  const preStoredInputsRef = useRef<string>("");
+  const inputsKey = (text: string, linkedIn?: string, jobDesc?: string) =>
+    `${text}\u0000${linkedIn ?? ""}\u0000${jobDesc ?? ""}`;
+
+  // A purchase must be made from the résumé on screen: the moment it changes,
+  // the pre-stored session (state and the tab's copy) is forgotten.
+  // Bumped on every forget, so a store still in flight for the old résumé
+  // cannot re-install its id after the résumé changed.
+  const preStoreGenRef = useRef(0);
+  const forgetPreStored = useCallback(() => {
+    preStoreGenRef.current += 1;
+    preStoredInputsRef.current = "";
+    setPreStoredSessionId(null);
+    forgetPreStoredResume();
+  }, []);
+
+  // The newest inputs asked for while a store was in flight; stored next.
+  const pendingPreStoreRef = useRef<{ text: string; linkedIn?: string; jobDesc?: string } | null>(null);
+
   // Pre-store resume server-side when text changes (reduces checkout friction)
-  const preStoreResume = useCallback(async (text: string, linkedIn?: string, jobDesc?: string) => {
-    if (isPreStoring.current || !text || text.length < 50) return;
-    
+  const preStoreResume = useCallback(async (text: string, linkedIn?: string, jobDesc?: string): Promise<void> => {
+    if (!text || text.length < 50) return;
+    const key = inputsKey(text, linkedIn, jobDesc);
+    if (key === preStoredInputsRef.current) return;
+    if (isPreStoring.current) {
+      pendingPreStoreRef.current = { text, linkedIn, jobDesc };
+      return;
+    }
+
     isPreStoring.current = true;
+    const gen = preStoreGenRef.current;
     try {
       console.log('[PreStore] Storing resume server-side');
       const { data: sessionId, error } = await supabase.rpc('store_temp_resume', {
@@ -757,17 +794,44 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         p_linkedin: linkedIn || null,
         p_job_description: jobDesc || null
       });
-      
-      if (!error && sessionId) {
+
+      // A refused store (its hourly ceiling) answers null: there is simply
+      // no pre-stored copy, and checkout stores one itself.
+      if (!error && typeof sessionId === 'string' && sessionId && gen === preStoreGenRef.current) {
         setPreStoredSessionId(sessionId);
-        console.log('[PreStore] Resume pre-stored with session:', sessionId);
+        preStoredInputsRef.current = key;
+        // Every purchase button on every page falls back to this (L3-03).
+        rememberPreStoredResume(sessionId);
+        console.log('[PreStore] Resume pre-stored');
       }
     } catch (err) {
       console.warn('[PreStore] Failed to pre-store (will retry at checkout):', err);
     } finally {
       isPreStoring.current = false;
+      const next = pendingPreStoreRef.current;
+      pendingPreStoreRef.current = null;
+      if (next && inputsKey(next.text, next.linkedIn, next.jobDesc) !== preStoredInputsRef.current) {
+        void preStoreResumeRef.current?.(next.text, next.linkedIn, next.jobDesc);
+      }
     }
   }, []);
+  const preStoreResumeRef = useRef<typeof preStoreResume | null>(null);
+  preStoreResumeRef.current = preStoreResume;
+
+  // What a scan analyses is what the success page and the server deliver from
+  // (register L13-32, L13-31): the session keys are rewritten whole, so a JD
+  // or LinkedIn text from an earlier résumé never rides along, and the copy
+  // the server keeps is re-made when the inputs changed.
+  const persistScanInputs = useCallback((text: string, linkedIn?: string, jobDesc?: string) => {
+    const multiColumn = getMultiColumnDetectedFromSession();
+    clearResumeSession();
+    saveResumeToSession(text, linkedIn || undefined, jobDesc || undefined);
+    setMultiColumnDetectedInSession(multiColumn);
+    if (inputsKey(text, linkedIn, jobDesc) !== preStoredInputsRef.current) {
+      forgetPreStored();
+      preStoreResume(text, linkedIn, jobDesc);
+    }
+  }, [forgetPreStored, preStoreResume]);
 
   // Show floating scan button when resumeText is available (covers both file upload and text paste)
   useEffect(() => {
@@ -831,6 +895,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     setShowFloatingScan(true); // Show floating button on fresh upload
     setFloatingScanTrigger((v) => v + 1);
     setFreeKeywordResult(null); // Clear previous results
+    forgetPreStored(); // A new résumé: no purchase may be made from the old one
 
     // Clear ALL caches when a new file is uploaded to ensure fresh analysis
     clearBackgroundScanCache();
@@ -967,24 +1032,32 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const skipCache = skipCacheArg === true;
     const overrideText = typeof skipCacheArg === "string" ? skipCacheArg : undefined;
     // Grade→game-plan rescan: a posting pasted in the report arrives here
-    // directly (state updates are async, so the param wins over state).
-    const jdForScan = (jdOverride ?? jobDescriptionText) || undefined;
-    if (jdOverride) setJobDescriptionText(jdOverride);
+    // directly (state updates are async, so the param wins over state). The
+    // uploader's own JD box also arrives as this argument (register L13-31).
+    const jdForScan = (typeof jdOverride === "string" ? jdOverride : jobDescriptionText) || undefined;
+    if (typeof jdOverride === "string" && jdOverride !== jobDescriptionText) setJobDescriptionText(jdOverride);
 
     // Warm the lazy report chunk while the scan runs so results render instantly.
     import("@/components/FreeKeywordResults").catch(() => {});
     const contentToAnalyze = (overrideText ?? resumeText).trim();
 
-    // If the scan was triggered from the paste box, persist it so the UI preview + session stay in sync.
+    // If the scan was triggered from the paste box, keep the UI preview in sync.
     if (overrideText && overrideText.trim() && overrideText.trim() !== resumeText) {
       // Funnel: the paste-box scan button skips handleTextSubmit, so upload
       // events must fire here or the whole paste cohort is invisible.
       trackUploadStarted('pasted_text');
       trackUploadCompleted(overrideText.trim().length);
-      const normalized = overrideText.trim();
-      setResumeText(normalized);
-      saveResumeToSession(normalized, linkedInText || undefined, jobDescriptionText || undefined);
-      preStoreResume(normalized, linkedInText || undefined, jobDescriptionText || undefined);
+      setResumeText(overrideText.trim());
+    }
+
+    // WHAT IS SCANNED IS WHAT A PURCHASE IS MADE FROM (register L13-32). This
+    // used to run only when the paste box's text differed from state, which
+    // the draft handler had already synced, so a paste-mode scan never saved
+    // anything: the success page then generated paid products from an
+    // earlier upload, or found no résumé at all. Now every scan writes the
+    // session whole and re-stores the server copy when the inputs changed.
+    if (contentToAnalyze) {
+      persistScanInputs(contentToAnalyze, linkedInText || undefined, jdForScan);
     }
 
     if (!contentToAnalyze) {
@@ -1050,15 +1123,18 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             confirmedIndustry: scanContext.confirmedIndustry || undefined,
             confirmedExperience: scanContext.confirmedExperience || undefined,
           },
-          // Purchased-credit redemption for anonymous users: the email they
-          // bought the scan pack with (signed-in users redeem via their JWT).
-          creditEmail: localStorage.getItem('scanCreditsEmail') || undefined,
+          // Purchased credits past the daily limit: the Stripe sessions this
+          // browser bought them with are its proof (signed-in accounts prove
+          // theirs with the session JWT). A typed email proves nothing and is
+          // no longer sent (defect sweep 2.07).
+          creditSessions: creditSessions(),
         });
 
         if (scanResult.error) {
-          // Check if rate limited from error details
-          if (scanResult.error.errorCode === 'RATE_LIMITED') {
-            trackRateLimitError('free-keyword-scan', 0, 7);
+          const failure = scanFailureKind(scanResult);
+          if (failure === 'daily_limit') {
+            const body = scanResult.errorBody ?? {};
+            trackRateLimitError('free-keyword-scan', Number(body.scansUsed) || 0, Number(body.scansLimit) || 7);
             toast({
               title: t('homepage.toast.dailyScanLimitReached'),
               description: scanResult.error.description,
@@ -1067,9 +1143,20 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             setShowRateLimitUpsell(true);
             return;
           }
+          if (failure === 'refused') {
+            // A region, a too-short résumé, the hourly request budget or a
+            // busy gateway: the primary's answer stands. The streaming fork is
+            // never asked to do what the primary refused (defect sweep 2.05).
+            toast({
+              title: scanResult.error.title,
+              description: scanResult.error.description,
+              variant: "destructive",
+            });
+            return;
+          }
 
-          // FALLBACK: the streaming fork. Older report shape (fewer cards) but
-          // keeps scans working if the primary endpoint is down.
+          // FALLBACK (outages only): the streaming fork. Older report shape
+          // (fewer cards) but keeps scans working if the primary is down.
           console.warn('[FreeScan] Primary endpoint failed, falling back to streaming scan');
           const streamResult = await startStreamingScan(contentToAnalyze, {
             jobDescriptionText: jdForScan,
@@ -1145,8 +1232,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       }
 
       if (result?.success) {
-        // Purchased-credit redemption receipt
-        if ((result as any).creditUsed) {
+        // Purchased-credit receipt: only a fresh, full report carries one
+        // (the server never caches it, and gives the credit back otherwise).
+        if ((result as any).creditUsed && !(result as any).cachedReport) {
           const remaining = (result as any).creditsRemaining;
           toast({
             title: "Scan credit used",
@@ -1154,7 +1242,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
               ? `You were past today's free limit, so 1 purchased credit covered this scan — ${remaining} remaining.`
               : "You were past today's free limit, so 1 purchased credit covered this scan.",
           });
-          window.dispatchEvent(new CustomEvent('scanCreditsEmailUpdated', { detail: { email: localStorage.getItem('scanCreditsEmail') } }));
+          window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
 
         // Track if this was a cached result
@@ -1343,10 +1431,11 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         resumeText: contentToAnalyze,
         jobDescriptionText: jobDesc,
         honeypot,
+        creditSessions: creditSessions(),
       });
 
       if (scanResult.error) {
-        if (scanResult.error.errorCode === 'RATE_LIMITED') {
+        if (scanFailureKind(scanResult) === 'daily_limit') {
           trackRateLimitError('free-keyword-scan', 0, 7);
           toast({
             title: t('homepage.toast.dailyScanLimitReached'),
@@ -1378,6 +1467,15 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       }
 
       if (data?.success) {
+        if (data.creditUsed && !data.cachedReport) {
+          toast({
+            title: "Scan credit used",
+            description: data.creditsRemaining != null
+              ? `You were past today's free limit, so 1 purchased credit covered this scan — ${data.creditsRemaining} remaining.`
+              : "You were past today's free limit, so 1 purchased credit covered this scan.",
+          });
+          window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
+        }
         setFreeKeywordResult({
           // Spread raw result first (same rationale as the primary path) so no
           // backend field is silently dropped.
@@ -1544,11 +1642,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     setFreeKeywordResult(null);
     setShowFloatingScan(false);
     clearResumeSession();
+    forgetPreStored();
     toast({
       title: t('homepage.toast.resumeCleared'),
       description: t('homepage.toast.resumeClearedDescription'),
     });
-  }, [toast]);
+  }, [toast, forgetPreStored]);
 
   const handleTextSubmit = (text: string, linkedIn?: string, jobDescription?: string) => {
     // Funnel: the paste path is an upload too — without these events the
@@ -1575,7 +1674,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const normalized = draft.trim();
     setResumeText(normalized);
     setFreeKeywordResult(null);
-    
+    // The text changed: a purchase may not be made from the stored older copy.
+    if (!preStoredInputsRef.current.startsWith(`${normalized}\u0000`)) forgetPreStored();
+
     // Clear caches when text changes significantly
     clearAllClientScanCaches();
 
@@ -1585,7 +1686,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // Trigger background scan when user pastes/types enough text
       triggerBackgroundScan(normalized, jobDescriptionText, honeypot);
     }
-  }, [triggerBackgroundScan, jobDescriptionText, honeypot]);
+  }, [triggerBackgroundScan, jobDescriptionText, honeypot, forgetPreStored]);
 
   const handleCheckout = async (text?: string, linkedIn?: string, jobDescription?: string) => {
     const contentToAnalyze = text || resumeText;
@@ -1653,9 +1754,13 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       setCheckoutStep('connecting');
       console.log("[Checkout] Step 2: Connecting to payment service");
       
-      // Use pre-stored session ID if available, otherwise store now
-      let tempSessionData = preStoredSessionId;
-      
+      // Use the pre-stored session only when it holds exactly what is being
+      // bought for (this résumé, this LinkedIn text, this JD); otherwise store now.
+      let tempSessionData =
+        preStoredSessionId && preStoredInputsRef.current === inputsKey(contentToAnalyze, linkedInContent || undefined, jobDescriptionContent || undefined)
+          ? preStoredSessionId
+          : null;
+
       if (!tempSessionData) {
         console.log("[Checkout] No pre-stored session, storing now");
         const { data, error: tempError } = await supabase.rpc('store_temp_resume', {
@@ -1664,8 +1769,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           p_job_description: jobDescriptionContent || null
         });
 
-        if (tempError) {
-          console.error("[Checkout] Failed to store resume data:", tempError);
+        // A refused store answers null (its hourly ceiling): a purchase with
+        // no résumé behind it could never be delivered, so stop here.
+        if (tempError || typeof data !== 'string' || !data) {
+          console.error("[Checkout] Failed to store resume data:", tempError ?? 'no session returned');
           throw new Error("Failed to prepare resume data. Please try uploading your resume again.");
         }
         tempSessionData = data;
@@ -1740,7 +1847,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     } catch (error: any) {
       console.error("Checkout error:", error);
       removeResumeData('tempSessionId');
-      setPreStoredSessionId(null); // Clear pre-stored session on error
+      forgetPreStored(); // Clear pre-stored session on error
       
       // Parse specific error messages from the backend
       let errorTitle = t('homepage.toast.checkoutFailed');
@@ -1810,7 +1917,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         url: "https://resumebooster.work",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        description: "Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across 59 industries and 10 languages.",
+        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${DETECTED_INDUSTRY_COUNT} industries and 10 languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
       {/* TWO TRUE NUMBERS, EACH UNDER ITS OWN NOUN.
@@ -2241,12 +2348,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
               {/* LinkedIn insights — shown when user provided their LinkedIn profile */}
               {linkedInText && (
-                <LinkedInInsights
-                  resumeText={resumeText}
-                  linkedinText={linkedInText}
-                  industry={freeKeywordResult.industry || "general"}
-                  resumeAtsScore={freeKeywordResult.atsScoreEstimate || 0}
-                />
+                // A malformed analysis degrades this card alone, never the
+                // whole report (register L5-17).
+                <CardErrorBoundary section="linkedin-insights" fallback={<></>}>
+                  <LinkedInInsights
+                    resumeText={resumeText}
+                    linkedinText={linkedInText}
+                    industry={freeKeywordResult.industry || "general"}
+                    resumeAtsScore={freeKeywordResult.atsScoreEstimate || 0}
+                  />
+                </CardErrorBoundary>
               )}
 
               {/* Feedback */}

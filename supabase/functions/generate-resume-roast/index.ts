@@ -153,7 +153,10 @@ Give them a roast they'll remember AND learn from.`;
 
     // Grounding: a roast built on an invented quote isn't mean, it's wrong.
     // Same normalization approach as the free scan's claim verification.
-    const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    // Every script's letters, marks and digits survive: the Latin-only class
+    // reduced a non-Latin quote to "", which passed the length guard below
+    // unchecked (register L5-08).
+    const norm = (t: string) => t.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{M}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
     const resumeNorm = norm(resumeText);
     const before = roastData.roasts.length;
     roastData.roasts = roastData.roasts.filter((r: { quote?: string }) => {

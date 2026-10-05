@@ -109,8 +109,11 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   // ── capabilities: the caller holds an unguessable token naming its own rows
   A("public.get_analysis_by_share_id(text)", "src/pages/Success.tsx", "own rows: the analysis behind a 24/32-hex share id"),
   A("public.delete_analysis_by_share_id(text)", "src/pages/Success.tsx", "own rows: deletes the analysis behind a share id", "deletes the one analysis whose share id the caller holds -- the share id IS the ownership proof"),
-  A("public.get_temp_resume(text)", "src/pages/Success.tsx", "own rows: the resume text stored under a session uuid, once (DELETE ... RETURNING)", "deletes the stored text as it returns it, so a session uuid reads exactly once"),
-  A("public.store_temp_resume(text,text,text)", "src/pages/Index.tsx", "own rows: a new session uuid", "stores <=50k characters of the caller's own resume under a fresh uuid that only the caller learns"),
+  // Read-only since 20261005123000: a paid delivery that failed once must be
+  // able to read the résumé again (defect sweep 1.27); the 24-hour retention
+  // job deletes it.
+  A("public.get_temp_resume(text)", "src/pages/Success.tsx", "own rows: the resume text stored under a session uuid the caller holds, until its 24-hour expiry"),
+  A("public.store_temp_resume(text,text,text)", "src/pages/Index.tsx", "own rows: a new session uuid", "stores <=50k characters of the caller's own resume under a fresh uuid that only the caller learns; 30 an hour per address, 1,000 an hour in all, none while 5,000 unexpired rows are held (20261005123000)"),
   A("public.get_affiliate_dashboard(text)", "src/hooks/use-affiliate-auth.ts", "own rows: the dashboard of the affiliate whose session token is presented"),
   A("public.get_affiliate_clicks(text,integer)", "src/pages/Affiliates.tsx", "own rows: daily click counts for the presented affiliate session"),
   A("public.login_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: a session token (and the affiliate's own email) for the affiliate whose password matched", "inserts one affiliate session after a bcrypt password check; 20 attempts an hour per address and 20 an hour per email from every address together"),
@@ -150,11 +153,13 @@ export const CREATED_CLOSED: Array<{ sig: string; why: string }> = [
 ];
 
 /**
- * Open to clients, NOT judged here: another group owns them (credits-
- * entitlements), and revoking either would break a live caller that group is
- * changing in parallel. get_scan_credits answers any email's balance and
- * use_scan_credit spends any email's credit -- both reported, neither closed
- * from this lane.
+ * Left alone by the census because another group owns them (credits-
+ * entitlements). That group closed both in 20261005120000 (service_role only;
+ * the browser now asks the scan-credits function, and the scanner spends a
+ * credit only for a proven identity), so in the replay they are no longer
+ * client-callable at all. They stay listed here because the census migration
+ * itself names them as "elsewhere", and its pglite test holds that it did not
+ * touch them.
  */
 export const OWNED_ELSEWHERE: Array<{ sig: string; owner: string; caller: string }> = [
   { sig: "public.get_scan_credits(text)", owner: "credits-entitlements", caller: "src/hooks/use-scan-credits.ts" },

@@ -1,5 +1,6 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { clientAddressOr } from "../_shared/client-address.ts";
 import { detectIndustry as detectIndustryShared } from "./industry-detection.ts";
 // Geo: the UI calls ONLY this streaming function, so country detection and the
 // 52-market resume standards must run HERE to reach users (the non-stream
@@ -973,16 +974,29 @@ function normalizeIndustry(raw: string | undefined | null): string {
   // Direct match
   if (VALID_INDUSTRIES.includes(normalized)) return normalized;
   
+  // Underscore / space variants ("data engineering" <-> "data_engineering")
+  const underscored = normalized.replace(/\s+/g, '_');
+  if (VALID_INDUSTRIES.includes(underscored)) return underscored;
+  const spaced = normalized.replace(/_/g, ' ');
+
   // Check aliases
   if (INDUSTRY_ALIASES[normalized]) return INDUSTRY_ALIASES[normalized];
-  
-  // Partial match check
+  if (INDUSTRY_ALIASES[underscored]) return INDUSTRY_ALIASES[underscored];
+  if (INDUSTRY_ALIASES[spaced]) return INDUSTRY_ALIASES[spaced];
+
+  // Partial match: the primary scanner's rule (register L5-10). Aliases of 5+
+  // characters, matched at word boundaries. Raw substrings misfired: "it"
+  // inside "hospitality management" read as technology, "ai" inside "retail
+  // management" as ai_ml, "primary education" as brand marketing.
   for (const [alias, industry] of Object.entries(INDUSTRY_ALIASES)) {
-    if (normalized.includes(alias) || alias.includes(normalized)) {
+    if (alias.length < 5) continue;
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const boundary = new RegExp(`(?:^|[\\s_/-])${escaped}(?:$|[\\s_/-])`);
+    if (boundary.test(normalized) || (normalized.length >= 5 && alias.includes(normalized))) {
       return industry;
     }
   }
-  
+
   // Fallback
   return 'general';
 }
@@ -1410,7 +1424,7 @@ function extractMostRecentRole(resumeText: string): MostRecentRole | null {
   
   const section = lines.slice(contextStart, contextEnd).join('\n').substring(0, 800);
   
-  console.log(`[RECENT-ROLE] Extracted most recent role: "${titleLine.substring(0, 80)}" (year: ${bestYear})`);
+  console.log(`[RECENT-ROLE] Extracted most recent role (${titleLine.length} chars, year: ${bestYear})`);
   
   return {
     title: titleLine,
@@ -4794,8 +4808,11 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
   let confidenceBoost = 0;
   
   // ==================== IMPROVEMENT 1: RECENCY WEIGHTING ====================
-  // Extract year from date ranges and boost recent years (2023-2025)
-  const recentYearPattern = /\b(202[3-5])\s*[-–—]\s*(present|current|now|202[4-5])?/gi;
+  // Extract year from date ranges and boost recent years (the last three,
+  // counted from today: a hard-coded 2023-2025 window aged a year every
+  // January; register L5-10).
+  const Y = new Date().getFullYear();
+  const recentYearPattern = new RegExp(`\\b(${Y - 2}|${Y - 1}|${Y})\\s*[-–—]\\s*(present|current|now|${Y - 1}|${Y})?`, 'gi');
   const recentYearMatches = text.match(recentYearPattern);
   const hasRecentDates = recentYearMatches && recentYearMatches.length > 0;
   if (hasRecentDates) {
@@ -4848,17 +4865,20 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
   }
   
   // ==================== IMPROVEMENT 4: EDUCATION RECENCY ====================
-  // Weight recent education (2023-2025) much higher than old degrees
+  // Weight recent education (the last three years) much higher than old degrees
+  const lastTwo = `(?:${Y - 1}|${Y})`;
+  const lastThree = `(?:${Y - 2}|${Y - 1}|${Y})`;
+  const PROGRAMS = 'google|meta|coursera|udacity|general\\s+assembly|flatiron|springboard|careerfoundry|thinkful|ironhack';
   const recentEducationPatterns: [RegExp, number][] = [
-    // 2024-2025 bootcamps/certs = very strong signal
-    [/\b(202[4-5])[^\n]*?(bootcamp|certificate|certification|immersive|intensive)/i, 40],
-    [/\b(bootcamp|certificate|certification)[^\n]*?(202[4-5])/i, 40],
-    // 2023 = strong signal
-    [/\b(2023)[^\n]*?(bootcamp|certificate|certification)/i, 30],
-    [/\b(bootcamp|certificate|certification)[^\n]*?(2023)/i, 30],
+    // This year or last: bootcamps/certs = very strong signal
+    [new RegExp(`\\b(${lastTwo})[^\\n]*?(bootcamp|certificate|certification|immersive|intensive)`, 'i'), 40],
+    [new RegExp(`\\b(bootcamp|certificate|certification)[^\\n]*?(${lastTwo})`, 'i'), 40],
+    // Two years ago = strong signal
+    [new RegExp(`\\b(${Y - 2})[^\\n]*?(bootcamp|certificate|certification)`, 'i'), 30],
+    [new RegExp(`\\b(bootcamp|certificate|certification)[^\\n]*?(${Y - 2})`, 'i'), 30],
     // Recent program names = strong signal
-    [/\b(google|meta|coursera|udacity|general\s+assembly|flatiron|springboard|careerfoundry|thinkful|ironhack)[^\n]*?202[3-5]/i, 35],
-    [/\b202[3-5][^\n]*?(google|meta|coursera|udacity|general\s+assembly|flatiron|springboard|careerfoundry|thinkful|ironhack)/i, 35],
+    [new RegExp(`\\b(${PROGRAMS})[^\\n]*?${lastThree}`, 'i'), 35],
+    [new RegExp(`\\b${lastThree}[^\\n]*?(${PROGRAMS})`, 'i'), 35],
   ];
   
   let recentEducationBoost = 0;
@@ -4869,7 +4889,7 @@ function detectCareerTransition(resumeText: string): CareerTransitionInfo {
   }
   if (recentEducationBoost > 0) {
     confidenceBoost += recentEducationBoost;
-    signals.push(`Recent career-change education (2023-2025) detected - 3x weight applied (+${recentEducationBoost})`);
+    signals.push(`Recent career-change education (${Y - 2}-${Y}) detected - 3x weight applied (+${recentEducationBoost})`);
   }
   
   // Old degrees should NOT count against current direction
@@ -6448,15 +6468,32 @@ async function computeIndustryBenchmark(
   return { ...computeIndustryBenchmarkFallback(score, industry), isRealData: false };
 }
 
+// Provable from outside without a scan: every response, the CORS preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-05.1";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'x-fn-build': FN_BUILD,
 };
 
 const MAX_RESUME_LENGTH = 50000;
 const MAX_JOB_DESCRIPTION_LENGTH = 15000;
 const FREE_SCANS_PER_DAY = 7;
+// The primary's allowance for a signed-in account (free-keyword-scan).
+const SIGNED_IN_SCANS_PER_DAY = 15;
 const FUNCTION_NAME = 'free-keyword-scan';
+// THE PRIMARY'S GUARDS, HERE TOO (defect sweep 2.05). The browser falls back
+// to this function when the primary errors, and anyone can call it directly,
+// so it holds the same regions, the same floor on what counts as a résumé,
+// the same per-address request budget and the same concurrency ceiling.
+const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
+const MIN_RESUME_CHARS = 120;
+// The model calls' clock: each attempt gets at most what is left of it, and
+// the platform's 150-second limit is never the thing that ends a scan.
+const STREAM_AI_DEADLINE_MS = 110_000;
+const STREAM_ATTEMPT_TIMEOUT_MS = 55_000;
 
 const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'resumeboostersupp@gmail.com';
 
@@ -6474,13 +6511,33 @@ const getCountryFromHeaders = (req: Request): string | null => {
 };
 
 
-// Helper to get client IP
-const getClientIp = (req: Request): string => {
-  return req.headers.get('cf-connecting-ip') ||
-         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-         req.headers.get('x-real-ip') || 
-         'unknown';
-};
+// The caller's address for the limits: the platform's word (cf-connecting-ip,
+// else the LAST forwarded hop), never the first hop, which is whatever the
+// caller wrote. The same rule as the primary, from _shared/client-address.ts.
+const getClientIp = (req: Request): string => clientAddressOr(req.headers, 'unknown');
+
+// The country for the regional block: the CDN's header when there is one,
+// else the same ipinfo.io lookup the primary makes (cached per isolate).
+const ipCountryCache = new Map<string, { country: string | null; at: number }>();
+async function resolveCountry(req: Request, clientIp: string): Promise<string | null> {
+  const fromHeader = getCountryFromHeaders(req);
+  if (fromHeader) return fromHeader;
+  if (!clientIp || clientIp === 'unknown') return null;
+  const hit = ipCountryCache.get(clientIp);
+  if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.country;
+  const key = Deno.env.get('IPINFO_API_KEY');
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://ipinfo.io/${encodeURIComponent(clientIp)}?token=${key}`, { signal: AbortSignal.timeout(2000) });
+    if (!r.ok) return null;
+    const j = await r.json() as { country?: unknown };
+    const cc = typeof j.country === 'string' && /^[A-Z]{2}$/.test(j.country) ? j.country : null;
+    ipCountryCache.set(clientIp, { country: cc, at: Date.now() });
+    return cc;
+  } catch {
+    return null;
+  }
+}
 
 // SSE helper to send events
 function createSSEStream() {
@@ -7322,6 +7379,10 @@ serve(async (req) => {
     },
   });
 
+  // The global concurrency slot this scan holds, if any (released in finally).
+  // deno-lint-ignore no-explicit-any
+  const scanSlot: { id: string | null; client: any } = { id: null, client: null };
+
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
@@ -7333,12 +7394,23 @@ serve(async (req) => {
         ? targetCountry.toUpperCase()
         : null;
 
-      // Debug: Log first 100 chars of resume to verify correct text is being sent
-      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume preview (first 100 chars): ${resumeText?.substring(0, 100)?.replace(/\n/g, ' ')}`);
-      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume length: ${resumeText?.length}, skipCache: ${skipCache}, skipAdminEmail: ${skipAdminEmail}`);
+      // NO RÉSUMÉ TEXT IN LOGS, not even a "preview" (defect sweep 2.19). The
+      // first line of a résumé is the candidate's name, email and phone, and
+      // this ran before the honeypot, validation and the daily limit, so it
+      // logged the contact block of people this function then refused.
+      // /privacy says résumé content is not retained. Length only.
+      console.log(`[FREE-KEYWORD-SCAN-STREAM] Resume length: ${typeof resumeText === 'string' ? resumeText.length : 0}, skipCache: ${skipCache}, skipAdminEmail: ${skipAdminEmail}`);
+
+      // Regional block, before anything else is read or spent (2.05).
+      const requestCountry = await resolveCountry(req, clientIp);
+      if (requestCountry && BLOCKED_COUNTRIES.has(requestCountry)) {
+        send('error', { error: 'Service not available in your region.', code: 'geo_blocked' });
+        close();
+        return;
+      }
 
       // Honeypot check
-      if (honeypot && honeypot.trim() !== '') {
+      if (honeypot && typeof honeypot === 'string' && honeypot.trim() !== '') {
         send('complete', { success: true, atsScoreEstimate: 65, industry: "General" });
         close();
         return;
@@ -7353,6 +7425,14 @@ serve(async (req) => {
 
       if (resumeText.length > MAX_RESUME_LENGTH) {
         send('error', { error: 'Resume text is too long. Please limit to 50,000 characters.' });
+        close();
+        return;
+      }
+
+      // The primary's floor (2.05): a few characters are not a résumé, and
+      // without it they walked the whole model pipeline.
+      if (resumeText.trim().length < MIN_RESUME_CHARS) {
+        send('error', { error: "That doesn't look like a complete resume. Please paste the full text (or upload the file) so there's enough to measure.", code: 'too_short' });
         close();
         return;
       }
@@ -7373,7 +7453,7 @@ serve(async (req) => {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
       // Initialize metric context for tracking
-      const ipCountry = getCountryFromHeaders(req) || null;
+      const ipCountry = requestCountry || null;
       const metricCtx: ScanMetricContext = {
         supabase,
         startTime: requestStartTime,
@@ -7385,19 +7465,54 @@ serve(async (req) => {
         aiModel: 'google/gemini-2.5-flash'
       };
 
+      // The primary's per-address request budget (2.05), failing closed.
+      const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
+        p_ip: clientIp,
+        p_max_requests: 100,
+        p_window_minutes: 60
+      });
+      if (globalRlError) {
+        send('error', { error: 'Service temporarily unavailable. Please try again shortly.' });
+        close();
+        return;
+      }
+      if (!globalAllowed) {
+        // A stream has no Retry-After header to send: the event carries it.
+        send('error', { error: 'Too many requests. Please try again later.', rateLimited: true, code: 'rate_limited_budget', retryAfterSeconds: 3600 });
+        close();
+        return;
+      }
+
+      // A signed-in account gets the primary's larger allowance; only the
+      // address the platform verified on the JWT counts.
+      let isAuthedUser = false;
+      try {
+        const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+        if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
+          const { data: { user } } = await supabase.auth.getUser(jwt);
+          isAuthedUser = !!user?.id;
+        }
+      } catch { /* anonymous */ }
+      const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
+
       // Rate limiting
       const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
         p_function: FUNCTION_NAME,
         p_ip: clientIp,
-        p_max_requests: FREE_SCANS_PER_DAY,
+        p_max_requests: dailyScanLimit,
         p_window_minutes: 24 * 60
       });
 
-      if (rlError || !allowed) {
-        send('error', { 
+      if (rlError) {
+        send('error', { error: 'Service temporarily unavailable. Please try again shortly.' });
+        close();
+        return;
+      }
+      if (!allowed) {
+        send('error', {
           error: 'Daily scan limit reached. Upgrade for unlimited access!',
           rateLimited: true,
-          scansLimit: FREE_SCANS_PER_DAY
+          scansLimit: dailyScanLimit
         });
         close();
         return;
@@ -7447,12 +7562,17 @@ serve(async (req) => {
           .toLowerCase();
       };
       
-      // Use first 3000 chars (enough for uniqueness, faster hashing)
-      const normalizedResume = normalizeForCache(resumeText).substring(0, 3000);
-      const normalizedJob = truncatedJobDescription ? normalizeForCache(truncatedJobDescription).substring(0, 1500) : '';
-      
+      // The WHOLE text, and every input that changes the report (register
+      // L5-10): the key used to hash only the first 3,000 characters of the
+      // résumé and 1,500 of the posting, and ignored the applying-to country
+      // and the report language, so two résumés sharing a first page, or the
+      // same résumé aimed at another market, got each other's cached report.
+      const normalizedResume = normalizeForCache(resumeText);
+      const normalizedJob = truncatedJobDescription ? normalizeForCache(truncatedJobDescription) : '';
+      const languageKey = typeof language === 'string' ? language.trim().toLowerCase().slice(0, 12) : '';
+
       // Create cache key from normalized content hash
-      const cacheInput = `v3|${normalizedResume}|${normalizedJob}`;
+      const cacheInput = `v4|${normalizedResume}|${normalizedJob}|${validTargetCountry ?? ''}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -7509,6 +7629,23 @@ serve(async (req) => {
       
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
 
+      // The primary's concurrency ceiling (2.05). Past it the primary serves
+      // its instant rule-based report; this fork has none, so it asks for a
+      // retry instead of queueing behind the gateway. Fails open, as there.
+      try {
+        const maxConcurrent = Number(Deno.env.get('MAX_CONCURRENT_AI_SCANS') ?? '40');
+        const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: maxConcurrent, p_ttl_seconds: 180 });
+        if (!slotErr && slot === null) {
+          send('error', { error: 'Our analysers are busy right now. Please try again in a minute.', code: 'busy', retryable: true });
+          close();
+          return;
+        }
+        if (!slotErr && typeof slot === 'string') {
+          scanSlot.id = slot;
+          scanSlot.client = supabase;
+        }
+      } catch { /* fail open: never block scans on the limiter */ }
+
       send('progress', PROGRESS_STAGES[2]);
 
       // Get API key
@@ -7529,13 +7666,18 @@ serve(async (req) => {
       let correctionHints = '';
       try {
         if (supabase) {
-          const { data: corrections } = await supabase.rpc('get_industry_correction_stats', { p_days_back: 30 });
-          if (corrections && corrections.length > 0) {
+          // The function's real signature and shape (register L13-65): it
+          // takes p_days and returns (detected, corrected, corrections). The
+          // old call named a removed parameter, so every fallback scan got no
+          // correction hints and the error was never read.
+          const { data: corrections, error: corrError } = await supabase.rpc('get_industry_correction_stats', { p_days: 30 });
+          if (corrError) console.warn('[FREE-KEYWORD-SCAN-STREAM] Correction hints unavailable:', corrError.message);
+          if (Array.isArray(corrections) && corrections.length > 0) {
             // Build hint string from frequent corrections
-            const relevantCorrections = corrections
-              .filter((c: any) => c.correction_count >= 2)
+            const relevantCorrections = (corrections as Array<{ detected?: string; corrected?: string; corrections?: number | string }>)
+              .filter((c) => Number(c.corrections) >= 2 && c.detected && c.corrected)
               .slice(0, 5)
-              .map((c: any) => `"${c.original_industry}" is often corrected to "${c.corrected_to}"`)
+              .map((c) => `"${c.detected}" is often corrected to "${c.corrected}"`)
               .join('; ');
             if (relevantCorrections) {
               correctionHints = `\n\nKnown misclassification patterns (learn from these): ${relevantCorrections}`;
@@ -7586,7 +7728,7 @@ RULES:
 - A "Software Engineer" at a bank is in TECHNOLOGY, not finance
 - Consider the person's career trajectory and specialization
 - If the person works in a cross-functional role, classify by their FUNCTION (e.g., HR at a tech company = hr)
-- If a target job posting is provided, treat its stated title/industry as a strong signal for which industry to classify toward — the candidate is actively targeting that role${correctionHints}
+- Classify the candidate's OWN background. A target job posting, if mentioned, is where they want to go, not what they have done: never classify toward it${correctionHints}
 
 Available industries: ${coreIndustries.join(', ')}
 
@@ -7600,15 +7742,17 @@ Respond with ONLY the industry name (snake_case), nothing else.`
 
 Resume excerpt:
 ${classificationExcerpt}
-${jobDescriptionText ? `\nTarget job posting (the candidate is applying to this role — use its stated title/industry as a strong signal):\n${jobDescriptionText.substring(0, 1000)}\n` : ''}
-What is the PRIMARY industry? Reply with only the industry name.`
+
+What is the PRIMARY industry of this candidate's own experience? Reply with only the industry name.`
               }
             ],
             max_tokens: 50,
             temperature: 0,
           }),
+          // A short classification: it never holds the scan past 15 seconds.
+          signal: AbortSignal.timeout(15_000),
         });
-        
+
         if (verifyResponse.ok) {
           const verifyData = await verifyResponse.json();
           const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase()?.replace(/[^a-z_]/g, '');
@@ -7729,7 +7873,7 @@ CRITICAL: READ THE ENTIRE RESUME CAREFULLY before making claims about missing co
 CRITICAL: Adjust your analysis based on the detected resume type. A highlights-based resume should NOT be penalized for "missing work history" if it's clearly designed for direct outreach.
 
 CORE RULES:
-1. EXPERIENCE YEARS: Find EARLIEST job date → calculate to 2025. ALL roles count (consulting, sales, freelance). Example: 2015→present = 10 years.
+1. EXPERIENCE YEARS: Find EARLIEST job date → calculate to ${new Date().getFullYear()}. ALL roles count (consulting, sales, freelance). Example: 2015→present = ${new Date().getFullYear() - 2015} years.
 2. INDUSTRY DETECTION: Prioritize JOB FUNCTION over product domain. "Software Sales", "SaaS Sales", "Enterprise Sales" = "sales" NOT "technology". "Sales Engineer" = "sales". Pure engineering/dev roles (Software Engineer, Developer, Data Scientist) = "technology". Account Executive/BDR/SDR = "sales". Valid: technology, healthcare, finance, legal, sales, marketing, education, engineering, creative, hr, consulting, retail, hospitality, manufacturing, government, general
 3. IMPLICIT SKILLS: Check if skill is demonstrated implicitly before flagging as missing. Salesforce + MEDDPICC implies CRM expertise.
 4. SENIORITY-ADJUSTED SCORING: 
@@ -7864,8 +8008,15 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const MAX_RETRIES = 3;
       const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff
       
+      // Each attempt, its streamed body included, is bounded by what is left of
+      // the scan's clock (register L5-10: these fetches had no timeout, so a
+      // stalled gateway held the stream until the platform killed it).
+      const aiDeadlineAt = requestStartTime + STREAM_AI_DEADLINE_MS;
       const makeAIRequest = async (model: string): Promise<Response> => {
+        const left = aiDeadlineAt - Date.now();
+        if (left < 8_000) throw new Error('scan deadline reached before the model answered');
         return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          signal: AbortSignal.timeout(Math.min(STREAM_ATTEMPT_TIMEOUT_MS, left)),
           method: "POST",
           headers: {
             Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -7901,7 +8052,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
                     formatIssue: { type: "string" },
                     experienceLevel: {
                       type: "object",
-                      description: "Calculate yearsEstimate from earliest job date to present (2025). Count ALL roles including consulting, sales, part-time, freelance. CRITICAL: 'Account Executive' is an IC sales title, NOT executive-level. Only use 'Executive' for C-suite (CEO, CTO, VP, SVP). AE/Sales Rep/BDR = Mid-level or Senior depending on years. Founding sales hire at startup = Senior, not Executive.",
+                      description: `Calculate yearsEstimate from earliest job date to present (${new Date().getFullYear()}). Count ALL roles including consulting, sales, part-time, freelance. CRITICAL: 'Account Executive' is an IC sales title, NOT executive-level. Only use 'Executive' for C-suite (CEO, CTO, VP, SVP). AE/Sales Rep/BDR = Mid-level or Senior depending on years. Founding sales hire at startup = Senior, not Executive.`,
                       properties: {
                         level: { type: "string", description: "Entry-level, Mid-level, Senior, or Executive. ONLY use 'Executive' for C-suite/VP roles. Account Executive = Senior or Mid-level." },
                         yearsEstimate: { type: "string", description: "Total years from earliest job date to now (e.g., '10 years', '9+ years'). Do NOT truncate." }
@@ -8129,11 +8280,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
             console.log(`[FREE-KEYWORD-SCAN-STREAM] JSON auto-repaired (removed trailing commas)`);
             return parsed;
           } catch (e3) {
-            // Log the problematic JSON for debugging (truncated)
-            const preview = jsonString.length > 500 
-              ? `${jsonString.substring(0, 250)}...${jsonString.substring(jsonString.length - 250)}`
-              : jsonString;
-            console.error(`[FREE-KEYWORD-SCAN-STREAM] JSON repair failed. Content preview: ${preview}`);
+            // The model's output quotes the résumé verbatim (bullets, names),
+            // so its shape is logged, never its text (defect sweep 2.19).
+            console.error(`[FREE-KEYWORD-SCAN-STREAM] JSON repair failed (length ${jsonString.length}, braces ${openBraces}/${closeBraces}, brackets ${openBrackets}/${closeBrackets})`);
             return null;
           }
         }
@@ -8666,7 +8815,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }).slice(0, 3),
       };
 
-      const country = getCountryFromHeaders(req) || 'Unknown';
+      const country = requestCountry || 'Unknown';
 
       // Send admin notification email for every free scan (skip if testing)
       EdgeRuntime.waitUntil(
@@ -8775,9 +8924,15 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       close();
 
     } catch (error) {
-      console.error("[FREE-KEYWORD-SCAN-STREAM] Error:", error);
+      console.error("[FREE-KEYWORD-SCAN-STREAM] Error:", error instanceof Error ? error.message : String(error));
       send('error', { error: 'An error occurred. Please try again.' });
       close();
+    } finally {
+      // The concurrency slot is released on every exit (its TTL is the
+      // backstop for a crash).
+      if (scanSlot.id && scanSlot.client) {
+        await scanSlot.client.rpc('release_scan_slot', { p_id: scanSlot.id }).then(() => {}, () => {});
+      }
     }
   })());
 

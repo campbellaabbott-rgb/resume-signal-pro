@@ -6,7 +6,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // shim provides one — identical runtime behavior, type-checkable.
 import * as mammothNs from "https://esm.sh/mammoth@1.6.0";
 const mammoth = (mammothNs as unknown as { default?: typeof mammothNs }).default ?? mammothNs;
+// The same zip reader mammoth uses. Its d.ts exports no default (TS1192), as
+// with mammoth above: take the namespace and prefer .default at runtime.
+import * as jszipNs from "https://esm.sh/jszip@3.10.1";
+const JSZip = ((jszipNs as unknown as { default?: unknown }).default ?? jszipNs) as unknown as {
+  loadAsync(data: Uint8Array): Promise<unknown>;
+};
 import { looksGarbled, isOleCompoundFile } from "../_shared/text-validation.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
+import { headerFooterLines, withHeaderFooter, type ZipLike } from "./header-footer.ts";
+
+// Provable from outside without an upload: every response, the CORS preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = "parse-docx.2026-10-05.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -59,6 +71,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
@@ -73,11 +86,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
-  const clientIp = req.headers.get('cf-connecting-ip') ||
-                   req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
-                   req.headers.get('x-real-ip') || 
-                   'unknown';
+  // The platform's address (cf-connecting-ip, else the LAST forwarded hop),
+  // never the first hop, which the caller writes (_shared/client-address.ts).
+  const clientIp = clientAddressOr(req.headers, 'unknown');
 
   try {
     console.log(`[PARSE-DOCX] Request from IP: ${clientIp}`);
@@ -215,7 +226,16 @@ serve(async (req) => {
     // mammoth's d.ts wants a Node Buffer; the esm.sh shim accepts any
     // Uint8Array at runtime (exercised by every production docx scan).
     const result = await mammoth.extractRawText({ buffer: docxBuffer } as unknown as Parameters<typeof mammoth.extractRawText>[0]);
-    const text = result.value.trim();
+    // mammoth reads the body only; contact details in a page header or footer
+    // are added back (register L5-07). A header that cannot be read is no
+    // reason to fail an upload whose body was read.
+    let text = result.value.trim();
+    try {
+      const zip = await JSZip.loadAsync(docxBuffer);
+      text = withHeaderFooter(text, await headerFooterLines(zip as unknown as ZipLike)).trim();
+    } catch (e) {
+      console.warn("[PARSE-DOCX] Header/footer read skipped:", e instanceof Error ? e.message : String(e));
+    }
 
     if (result.messages && result.messages.length > 0) {
       console.log("[PARSE-DOCX] Mammoth messages:", result.messages);
