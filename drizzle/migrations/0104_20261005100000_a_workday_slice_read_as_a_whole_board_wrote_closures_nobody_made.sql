@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261005100000_a_workday_slice_read_as_a_whole_board_wrote_closures_nobody_made.sql'));

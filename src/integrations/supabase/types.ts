@@ -2012,6 +2012,24 @@ export type Database = {
         }
         Relationships: []
       }
+      job_board_closure_repairs: {
+        Row: {
+          event_id: number
+          marked_at: string
+          repair: string
+        }
+        Insert: {
+          event_id: number
+          marked_at?: string
+          repair: string
+        }
+        Update: {
+          event_id?: number
+          marked_at?: string
+          repair?: string
+        }
+        Relationships: []
+      }
       job_board_closure_rollup: {
         Row: {
           backfill_n: number | null
