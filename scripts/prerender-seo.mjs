@@ -282,7 +282,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     if (!boardFacets && supaUrl2 && supaKey2) {
       const fr = await fetch(`${supaUrl2}/functions/v1/job-board`, {
         method: "POST",
-        // The bake is one build-server address making ~709 board calls: it
+        // The bake is one build-server address making ~721 board calls: it
         // declares itself so the board judges that address's one day row
         // against the build cap, not a browser's (job-board/anon-budget.ts).
         headers: { apikey: supaKey2, Authorization: `Bearer ${supaKey2}`, "Content-Type": "application/json", "x-rb-budget": "build" },
@@ -1716,7 +1716,11 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   const POSTING_PAGE_CAP = 400;
   const POSTING_PAGE_CARRY_MAX = 300;
   const POSTING_FETCH_CONCURRENCY = 8;
-  const POSTING_LIST_PAGES = 8;
+  // Twenty pages of 60: the board gives no caller without a secret more than
+  // a page's 60 rows a call (job-board .88, anon-budget.ts pageCeiling), and
+  // the pool below stops at three times the page cap, 1,200 rows.
+  const POSTING_LIST_PAGES = 20;
+  const POSTING_LIST_PAGE_ROWS = 60;
   const POSTING_MIN_DESCRIPTION = 100;
   /** Rendered into /jobs so the selection is visible from the board itself. */
   let postingIndexSection = "";
@@ -1860,7 +1864,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       let offset = 0;
       let poolDuplicates = 0;
       for (let p = 0; p < POSTING_LIST_PAGES; p++) {
-        const j = await boardRead({ action: "list", sort: "newest", limit: 200, includeFacets: false, offset });
+        const j = await boardRead({ action: "list", sort: "newest", limit: POSTING_LIST_PAGE_ROWS, includeFacets: false, offset });
         if (!j || !Array.isArray(j.jobs) || j.jobs.length === 0) break;
         for (const row of j.jobs) {
           if (!row || typeof row.id !== "string") continue;

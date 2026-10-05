@@ -93,8 +93,18 @@ import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
-import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress } from "./anon-budget.ts";
+import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
+import {
+  addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
+  REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
+} from "./abuse-guards.ts";
+
+// .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
+// vendors, report and click each write a row; a person never needs more.
+const VERIFY_MAX_IDS = 5;
+/** semantic-search is a diagnostic no page calls: ten rows unless the caller is ours. */
+const SEMANTIC_PROBE_ROWS = 10;
 
 // x-rb-pass is the browser's board pass (board-pass.ts). Our tooling's budget
 // and reader headers stay off this list, so a page cannot send them.
@@ -115,7 +125,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.87"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.88"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -2405,6 +2415,50 @@ function chainKey(): Promise<string> {
   return chainKeyPromise;
 }
 
+/**
+ * ONE STATUS ANSWER PER ISOLATE PER HALF MINUTE for a caller without a
+ * credential (.88). status is uncounted -- every homepage view and every
+ * monitor calls it -- and gathers ~40 reads, three RPCs and a cache write, so
+ * a loop of it was that much database work per request. Our servers and
+ * maintenance read fresh. The version is this bundle's own constant, so a
+ * memo never outlives the bundle that wrote it.
+ */
+const STATUS_MEMO_MS = 30_000;
+let statusMemo: { at: number; text: string } | null = null;
+/** host_sweep without a maintenance credential: one sweep per this gap, arrival to arrival (the cron's is 60 minutes). */
+const HOST_SWEEP_ANON_GAP_MS = 50 * 60_000;
+/**
+ * company-suggest's employer list, per isolate, for a minute (.88). The action
+ * is an autocomplete -- a call per keystroke -- and each call read the whole
+ * 1.3-1.6MB refresh row for two of its keys. The facet changes once a pass.
+ */
+const SUGGEST_MEMO_MS = 60_000;
+let suggestMemo: { at: number; facet: unknown; open: unknown } | null = null;
+
+/** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
+async function isMaintenance(req: Request, body: Record<string, unknown>): Promise<boolean> {
+  if (typeof body.chainKey === "string" && body.chainKey === await chainKey()) return true;
+  return (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) === "service";
+}
+
+/**
+ * ONE RUN AT A TIME for work any caller can start once its cache goes stale
+ * (.88): the moment a cache expires is the moment every waiting caller would
+ * start its own copy. Takes meta row `key` only if its stamp is older than
+ * holdMs (a conditional update, so two callers cannot both win), or inserts it
+ * when absent (the unique key settles that race). Fails OPEN on a read error:
+ * the run happens, as it did before this existed.
+ */
+async function claimRun(client: SupabaseClient, key: string, holdMs: number): Promise<boolean> {
+  const now = new Date().toISOString();
+  const { data, error } = await client.from("job_board_meta").update({ v: { at: now }, updated_at: now })
+    .eq("k", key).lt("updated_at", new Date(Date.now() - holdMs).toISOString()).select("k");
+  if (error) return true;
+  if (Array.isArray(data) && data.length === 1) return true;
+  const { error: insErr } = await client.from("job_board_meta").insert({ k: key, v: { at: now }, updated_at: now });
+  return insErr?.code !== "23505";
+}
+
 // Rationale: docs/job-board-index-notes.md#n050-isingestpaused
 async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
   // Fail-open is DELIBERATE here (a transient meta error must never silently
@@ -2878,14 +2932,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // that hot slices of giants do not. So a takedown on a viewed cold-board
   // job disappears within one pass instead of waiting for its rotation.
   let demandBoards: JobSource[] = [];
+  // .88: one board a slice, a capped number an hour, never a hot board (those
+  // re-check every pass anyway), and what it took is stamped served -- in the
+  // refresh's own row, below, only once this slice is admitted.
+  // abuse-guards.ts has the rules.
+  let demandTaken: string[] = [];
   if (!inHotPhase) {
     const sliceTokens = new Set(baseSlice.map((s) => s.token));
-    const { data: demandMeta } = await client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle();
-    demandBoards = (((demandMeta?.v as { tokens?: Array<{ t: string; at: number }> } | null)?.tokens ?? [])
-      .filter((x) => Date.now() - x.at < 20 * 60_000 && !sliceTokens.has(x.t))
-      .slice(0, 5)
-      .map((x) => JOB_SOURCES.find((s) => s.token === x.t))
-      .filter((s): s is JobSource => !!s));
+    const hotTokens = new Set(HOT_LIST.map((s) => s.token));
+    const demand = await readDemand(client);
+    const pick = takeDemand(demand.queue, demand.served, Date.now(), (t) => CATALOGUE_TOKENS.has(t) && !sliceTokens.has(t) && !hotTokens.has(t));
+    demandBoards = pick.take.map((t) => JOB_SOURCES.find((s) => s.token === t)).filter((s): s is JobSource => !!s);
+    demandTaken = demandBoards.map((s) => s.token);
     // Rationale: docs/job-board-index-notes.md#n060-
   }
   // Bootstrap lane: boards with ZERO rows (fresh catalog merges) jump the
@@ -3255,6 +3313,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       return { ok: true, detail: "skipped — a slice was admitted moments ago" };
     }
   }
+  // The demand board this admitted slice took starts its cooldown and counts
+  // against the hour, in the row only the refresh writes.
+  if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
 
   const queue = [...slice];
   const okTokens: string[] = [];
@@ -7244,7 +7305,8 @@ function coverageDisclosure(
 
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // The preflight names the deployed bundle, so a deploy is provable without a read or a write.
+  if (req.method === "OPTIONS") return new Response(null, { headers: { ...corsHeaders, "x-fn-build": `job-board.${BUILD_VERSION}` } });
   // Rationale: docs/job-board-index-notes.md#n198-req-method-get
   if (req.method === "GET") {
     const u = new URL(req.url);
@@ -7337,6 +7399,12 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "searchQuality") {
+      // MAINTENANCE ONLY (.88). Daily search volume, zero-result rate, clicks
+      // and CTR are the aggregate migration 20260821133259 revoked from anon
+      // ("it also reveals traffic volume"); this action handed it back to
+      // anyone through the service client, uncounted, at up to 90 days of
+      // aggregation a call. No page, script or function calls it.
+      if (!(await isMaintenance(req, body))) return json({ error: "searchQuality is a maintenance action" }, 403);
       // Rationale: docs/job-board-index-notes.md#n199-days
       const days = Math.min(Math.max(Number(body.days) || 7, 1), 90);
       const { data, error } = await client.rpc("get_search_quality", { p_days: days });
@@ -7355,20 +7423,37 @@ Deno.serve(async (req) => {
       // Rationale: docs/job-board-index-notes.md#n200-slice
       const SLICE = 200;
       const state = await client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle();
-      // Same stampede lock as the refresh slice: the cron fires hourly, so a
-      // second invocation inside 5 minutes is an overlap, not a schedule.
+      // The stampede lock: no sweep inside 5 minutes of the row's last write,
+      // for anyone. The cron fires hourly (:07) and posts no credential, so
+      // anyone can send this action, and that guard alone let a loop run a
+      // sweep of 200 outbound probes every 5 minutes, twelve times the cron.
+      // .88 also holds a caller without a maintenance credential to one sweep
+      // per HOST_SWEEP_ANON_GAP_MS counted from the last ARRIVAL, never from
+      // completion: arrival to arrival is the cron's own hour, while a slow
+      // sweep's completion stamp lands minutes later and would make the next
+      // tick look early.
       const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;
       if (lockAge < 5 * 60_000) return json({ skipped: "a sweep ran moments ago" });
+      const arrivedMs = Date.parse(String((state.data?.v as { lastArrivedAt?: unknown } | null)?.lastArrivedAt ?? ""));
+      const sinceArrival = Number.isFinite(arrivedMs) ? Date.now() - arrivedMs : lockAge;
+      if (sinceArrival < HOST_SWEEP_ANON_GAP_MS && !(await isMaintenance(req, body))) return json({ skipped: "a sweep ran moments ago" });
       // Stamp ARRIVAL before probing, not only completion. Overnight
       // 2026-08-23→24 the cursor advanced once in ten-plus cron ticks and
       // there was no way to tell arrivals-that-died from ticks-that-never-
       // fired. The arrival stamp also moves the stampede lock to entry time,
-      // where a lock belongs.
+      // where a lock belongs. CONDITIONAL since .88, on the stamp just read
+      // (or on the row not existing yet): callers arriving together all read
+      // an expired lock, and exactly one of them may sweep.
       const svArrive = { ...(state.data?.v as Record<string, unknown> ?? {}), lastArrivedAt: new Date().toISOString() };
-      await client.from("job_board_meta").upsert(
-        { k: "host_sweep", v: svArrive, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      );
+      const arriveAt = new Date().toISOString();
+      if (state.data?.updated_at) {
+        const { data: took, error: takeErr } = await client.from("job_board_meta").update({ v: svArrive, updated_at: arriveAt })
+          .eq("k", "host_sweep").eq("updated_at", state.data.updated_at).select("k");
+        if (!takeErr && !(Array.isArray(took) && took.length === 1)) return json({ skipped: "another caller took this sweep" });
+      } else {
+        const { error: insErr } = await client.from("job_board_meta").insert({ k: "host_sweep", v: svArrive, updated_at: arriveAt });
+        if (insErr?.code === "23505") return json({ skipped: "another caller took this sweep" });
+      }
       const sv = (state.data?.v ?? {}) as { cursor?: number; hosts?: Record<string, { fails: number; postings: number; lastAt: string; lastErr?: string }>; cycleAt?: string; list?: Array<{ host: string; postings: number }> };
       let list = Array.isArray(sv.list) ? sv.list : [];
       let cursor = Number(sv.cursor) || 0;
@@ -7463,6 +7548,12 @@ Deno.serve(async (req) => {
     }
 
     if (action === "status") {
+      // .88: a caller without a credential gets this isolate's last answer
+      // while it is under STATUS_MEMO_MS old; ours and maintenance read fresh.
+      const statusFresh = (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) !== null || await isMaintenance(req, body);
+      if (!statusFresh && statusMemo && Date.now() - statusMemo.at < STATUS_MEMO_MS) {
+        return new Response(statusMemo.text, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-status-age-ms": String(Date.now() - statusMemo.at) } });
+      }
       // Rationale: docs/job-board-index-notes.md#n202-try
       try {
       // Deploy + health introspection. Read-only, zero-cost (meta rows only — no
@@ -7473,11 +7564,16 @@ Deno.serve(async (req) => {
       const anonBudgetRead = Promise.resolve(
         client.from("job_board_meta").select("v").eq("k", "anon_board_budget").maybeSingle(),
       ).catch(() => null);
+      // .88: the demand lane's use, as counts (abuse-guards.ts demandLaneStatus).
+      const demandRead = readDemand(client).catch(() => ({ queue: null, served: null }));
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "cold_rotation").maybeSingle(),
-        client.from("job_board_meta").select("v, updated_at").eq("k", "refresh").maybeSingle(),
+        // ONE FIELD of the 1.3-1.6MB refresh row, by JSON path (.88): status is
+        // uncounted and every homepage view calls it, so the whole row was
+        // ~1.5MB of database egress per call to anyone who looped it.
+        client.from("job_board_meta").select("total:v->total, updated_at").eq("k", "refresh").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "board_failures").maybeSingle(),
         client.from("job_board_meta").select("v").eq("k", "hot_tokens").maybeSingle(),
         // Rationale: docs/job-board-index-notes.md#n203-withdeadline-client-rpc-get-freshness-stats
@@ -7504,7 +7600,7 @@ Deno.serve(async (req) => {
         // already shipped one diagnostic whose delivery depended on the very
         // thing it was diagnosing. `okAgeMin` is the proof of life.
         client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_ok").maybeSingle(),
-        client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_incident").maybeSingle(),
+        client.from("job_board_meta").select("k, v, updated_at").like("k", "filter_integrity_incident.%").limit(40),
         client.from("job_board_meta").select("v, updated_at").eq("k", "filter_audit").maybeSingle(),
         // Has the apply agent ever actually run, and was it the SCHEDULE that
         // ran it? See the applyAgent block in the response for why that second
@@ -7571,9 +7667,10 @@ Deno.serve(async (req) => {
       // overrides), reported as stored. Its own named read, started before the
       // positional batch above so it runs beside it, and never a position in it.
       const anonBudgetRow = await anonBudgetRead;
+      const demandRow = await demandRead;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
-      const rfV = (refreshMeta.data?.v ?? {}) as { total?: number };
+      const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
       const dormant = ((bf.data?.v ?? {}) as { dormant?: Record<string, number> }).dormant ?? {};
       const hotTokens = ((hotMeta.data?.v ?? {}) as { tokens?: unknown[] }).tokens;
       const now = Date.now();
@@ -7594,12 +7691,14 @@ Deno.serve(async (req) => {
       const pbBacklogNow = await undatedBacklog(client);
       // Rationale: docs/job-board-index-notes.md#n210-chainwatchdog
       const chainWatchdog = await maybeRekickDeadChain(client);
-      return json({
+      // Serialised once, here, so the memo holds the exact bytes this caller gets.
+      const statusText = JSON.stringify({
         statusDegraded: false,
         // deployed build identity (constants baked into THIS bundle)
         version: BUILD_VERSION,
         // The anonymous budget's setting row and the code's default caps.
         anonBudget: anonBudgetStatus((anonBudgetRow as { data?: { v?: unknown } | null } | null)?.data?.v ?? null, { passConfigured: !!Deno.env.get("TURNSTILE_SECRET_KEY") }),
+        demandLane: demandLaneStatus(demandRow.queue, demandRow.served, now),
         // Rationale: docs/job-board-index-notes.md#n211-questionvendors-realquestionvendors
         questionVendors: realQuestionVendors(),
         // Rationale: docs/job-board-index-notes.md#n212-applyagent-aameta-data-v
@@ -7813,18 +7912,15 @@ Deno.serve(async (req) => {
         // Rationale: docs/job-board-index-notes.md#n219-filtercontract
         filterContract: (() => {
           const okAt = fiOk.data?.updated_at ? new Date(fiOk.data.updated_at).getTime() : null;
-          const badAt = fiBad.data?.updated_at ? new Date(fiBad.data.updated_at).getTime() : null;
-          const bad = (fiBad.data?.v ?? {}) as { at?: string; violations?: number; fields?: string[] };
+          // .88: per-field rows; the last incident is the newest stamp across them.
+          const bad = summariseIncidents(Array.isArray(fiBad.data) ? fiBad.data : null, Date.now());
           return {
             // Minutes since a page was checked and found clean. Sampled ~2% of
             // requests, so on a live board this stays small; a large or null
             // value means the check is NOT running, which is not the same as
             // "no problems found".
             okAgeMin: okAt === null ? null : Math.round((Date.now() - okAt) / 60000),
-            lastIncidentAt: bad.at ?? null,
-            lastIncidentAgeMin: badAt === null ? null : Math.round((Date.now() - badAt) / 60000),
-            lastIncidentFields: bad.fields ?? null,
-            lastIncidentViolations: bad.violations ?? null,
+            ...bad,
             // An incident row is a tombstone, not a live state — it persists
             // after the fault is fixed. Age is what tells you which.
             note: okAt === null
@@ -8033,6 +8129,8 @@ Deno.serve(async (req) => {
           : ((dcCache.data?.v as unknown[] | undefined) ?? null),
         at: new Date().toISOString(),
       });
+      statusMemo = { at: Date.now(), text: statusText };
+      return new Response(statusText, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } catch (statusErr) {
         // The skeleton always answers, because "which bundle is deployed?" is
         // a constant in this file and needs no database. Reported at 200 with
@@ -8058,8 +8156,14 @@ Deno.serve(async (req) => {
       // bypasses the cache for manual checks.
       const TTL_MS = 30 * 60_000;
       const { data: cached } = await client.from("job_board_meta").select("v, updated_at").eq("k", "vendor_health").maybeSingle();
-      if (cached && body.force !== true && Date.now() - new Date(cached.updated_at).getTime() < TTL_MS) {
+      // force re-probes every canary vendor: maintenance only (.88), or any
+      // anonymous loop could make each request a dozen vendor fetches.
+      const vhForced = body.force === true && await isMaintenance(req, body);
+      if (cached && !vhForced && Date.now() - new Date(cached.updated_at).getTime() < TTL_MS) {
         return json({ ...(cached.v as Record<string, unknown>), cached: true });
+      }
+      if (!vhForced && !(await claimRun(client, "vendor_health_run", 5 * 60_000))) {
+        return json({ ...((cached?.v ?? {}) as Record<string, unknown>), cached: true, running: true });
       }
       const results: CanaryResult[] = await Promise.all(CANARIES.map(async (c) => {
         const r = await fetchBoard({ name: c.name, source: c.vendor, token: c.token });
@@ -8925,6 +9029,10 @@ Deno.serve(async (req) => {
       // the resolution back over the caller hint the client may have sent is
       // the point: from this line on, body.caller is the answer, not a claim.
       body.caller = resolveCaller(req, body) ?? undefined;
+      // .88: no more rows a call than the page holds -- 60, whatever limit is
+      // sent, for anyone without a secret (anon-budget.ts pageCeiling).
+      const rowCap = await pageCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+      if (Number(body.limit) > rowCap) body.limit = rowCap;
 
       if (!meta) {
         // Rationale: docs/job-board-index-notes.md#n240-metatimedout-waituntil-runrefresh-clie
@@ -8964,12 +9072,11 @@ Deno.serve(async (req) => {
       if (resumeText.trim().length < 100 || ids.length === 0) {
         return json({ error: "resumeText (100+ chars) and ids are required" }, 400);
       }
-      // Deterministic compute, but still rate-limited (it reads 60 rows a call).
-      const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-      const { data: allowed } = await client.rpc("check_rate_limit", {
-        p_function: "job-board-fit", p_ip: clientIp, p_max_requests: 120, p_window_minutes: 1440,
-      });
-      if (allowed === false) return json({ error: "Daily fit-ranking limit reached.", rateLimited: true }, 429);
+      // Deterministic compute, but still rate-limited -- on the platform's
+      // address (.88), never the first forwarded hop, which the caller writes.
+      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-fit", FIT_PER_ADDRESS_HOUR))) {
+        return json({ error: "Fit-ranking limit reached for now; try again within the hour.", rateLimited: true }, 429);
+      }
 
       const { data: rows, error } = await client
         .from("job_board_postings")
@@ -9697,6 +9804,10 @@ Deno.serve(async (req) => {
         return json({ error: "id and a valid reason are required" }, 400);
       }
       const note = String(body.note ?? "").replace(/\u0000/g, "").slice(0, 280);
+      // .88: a person reports a handful; a loop must not fill the log.
+      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-report", REPORT_PER_ADDRESS_HOUR))) {
+        return json({ error: "Too many reports from this address; try again within the hour.", rateLimited: true }, 429);
+      }
       const { data: row } = await client.from("job_board_postings").select("id,company_token").eq("id", id).maybeSingle();
       const { error: repErr } = await client.from("job_board_posting_reports").insert({
         posting_id: id,
@@ -9748,7 +9859,10 @@ Deno.serve(async (req) => {
           }
           : { company_token: null, category: null, salary_present: null }
       ).catch(() => ({ company_token: null, category: null, salary_present: null }));
-      waitUntil(clickStamps.then((stamps) =>
+      // .88: past an hour's allowance per address the beacon still answers,
+      // and records nothing (abuse-guards.ts addressAllowance).
+      const clickAllowed = addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-click", CLICK_PER_ADDRESS_HOUR);
+      waitUntil(Promise.all([clickStamps, clickAllowed]).then(([stamps, ok]) => !ok ? undefined :
         client.from("job_board_search_clicks").insert({
           ...clickCore,
           ...stamps,
@@ -9774,8 +9888,15 @@ Deno.serve(async (req) => {
       // surfaced-match re-check). Confirms against the vendor, prunes ids
       // confirmed gone from the DB so they vanish for everyone, and records
       // the boards touched as a demand signal for prioritized refresh.
-      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 12) : [];
+      // FIVE, the most any page sends (LiveMatches re-checks its top five; /jobs
+      // sends one). Each id can cost a vendor fetch, so the batch is the page's.
+      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, VERIFY_MAX_IDS) : [];
       if (ids.length === 0) return json({ live: {} });
+      // Its own allowance on top of the board meter, because a call fans out to
+      // vendors. No answer is not a closure: both callers keep the posting.
+      if (!(await addressAllowance((n, a) => client.rpc(n, a), req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", "job-board-verify", VERIFY_PER_ADDRESS_HOUR))) {
+        return json({ error: "Too many live checks from this address; try again within the hour.", rateLimited: true }, 429);
+      }
       // Rationale: docs/job-board-index-notes.md#n264-livemap
       const liveMap: Record<string, boolean | null> = {};
       const deadIds: string[] = [];
@@ -9792,7 +9913,9 @@ Deno.serve(async (req) => {
         const externalId = rest.join(":");
         const src = JOB_SOURCES.find((s) => s.source === source && s.token === token);
         if (!src || !externalId) { liveMap[id] = false; deadIds.push(id); continue; }
-        demandTokens.add(src.token);
+        // Only a posting the board holds asks for its board: an id we never
+        // stored is not a reader looking at that employer.
+        if (applyBy.has(id)) demandTokens.add(src.token);
         const live = await checkLive(src, externalId, applyBy.get(id) ?? null);
         if (live === false) { liveMap[id] = false; deadIds.push(id); }
         else liveMap[id] = live; // true = confirmed at the source; null = undecidable (page-capped feed). Both keep showing; only one is a confirmation.
@@ -9820,12 +9943,13 @@ Deno.serve(async (req) => {
           await client.from("job_board_postings").delete().in("id", confirmed.slice(i, i + 50));
         }
       }
-      // Demand signal: boards a user just looked at jump the refresh queue.
+      // Demand signal: boards a user just looked at jump the refresh queue --
+      // one a slice, a capped number an hour, each at most once a cooldown.
+      // verify writes the queue row only; the served stamps are the refresh's.
       if (demandTokens.size > 0) {
-        const { data: dm } = await client.from("job_board_meta").select("v").eq("k", "demand").maybeSingle();
-        const prev = ((dm?.v as { tokens?: Array<{ t: string; at: number }> } | null)?.tokens ?? []).filter((x) => Date.now() - x.at < 20 * 60_000);
-        const merged = [...prev.filter((x) => !demandTokens.has(x.t)), ...[...demandTokens].map((t) => ({ t, at: Date.now() }))].slice(-60);
-        await client.from("job_board_meta").upsert({ k: "demand", v: { tokens: merged }, updated_at: new Date().toISOString() }, { onConflict: "k" });
+        const demand = await readDemand(client);
+        const next = admitDemand(demand.queue, demand.served, [...demandTokens], Date.now());
+        if (next) await client.from("job_board_meta").upsert({ k: DEMAND_QUEUE_KEY, v: next, updated_at: new Date().toISOString() }, { onConflict: "k" });
       }
       return json({ live: liveMap, flagged: deadIds.length });
     }
@@ -9835,8 +9959,14 @@ Deno.serve(async (req) => {
       const AUDIT_SAMPLE = 100;
       const { data: prevAudit } = await client.from("job_board_meta").select("v, updated_at").eq("k", "audit").maybeSingle();
       const prevAge = prevAudit ? Date.now() - new Date(prevAudit.updated_at).getTime() : Infinity;
-      if (prevAge < 20 * 3600_000 && body.force !== true) {
+      // force (100 live probes and the demotions they write) is maintenance
+      // only (.88); an expired cache starts one audit, not one per caller.
+      const auditForced = body.force === true && await isMaintenance(req, body);
+      if (prevAge < 20 * 3600_000 && !auditForced) {
         return json({ ...(prevAudit?.v as Record<string, unknown>), cached: true });
+      }
+      if (!auditForced && !(await claimRun(client, "audit_run", 30 * 60_000))) {
+        return json({ ...((prevAudit?.v ?? {}) as Record<string, unknown>), cached: true, running: true });
       }
       // Rationale: docs/job-board-index-notes.md#n267-const-count-totalrows-await-client-from
       const { count: totalRows } = await client.from("job_board_postings").select("id", { count: "planned", head: true });
@@ -10066,8 +10196,19 @@ Deno.serve(async (req) => {
       const q = String(body.q ?? "").trim().toLowerCase().slice(0, 80);
       if (q.length < 2) return json({ companies: [] });
       // Rationale: docs/job-board-index-notes.md#n273-const-data-metarow-await-client-from-job
-      const { data: metaRow } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
-      const suggestV = (metaRow?.v ?? {}) as Record<string, unknown>;
+      // .88: the two keys this needs, by JSON path, and this isolate's copy for
+      // SUGGEST_MEMO_MS -- an autocomplete re-read the whole refresh row per keystroke.
+      let suggestV: Record<string, unknown>;
+      if (suggestMemo && Date.now() - suggestMemo.at < SUGGEST_MEMO_MS) {
+        suggestV = { companiesFacet: suggestMemo.facet, companiesOpen: suggestMemo.open };
+      } else {
+        const { data: metaRow, error: metaErr } = await client.from("job_board_meta")
+          .select("companiesFacet:v->companiesFacet, companiesOpen:v->companiesOpen").eq("k", "refresh").maybeSingle();
+        const row = (metaRow ?? {}) as { companiesFacet?: unknown; companiesOpen?: unknown };
+        // Only a readable list is kept: an error or an absent row is asked again next call.
+        suggestMemo = !metaErr && Array.isArray(row.companiesFacet) ? { at: Date.now(), facet: row.companiesFacet, open: row.companiesOpen } : null;
+        suggestV = { companiesFacet: row.companiesFacet, companiesOpen: row.companiesOpen };
+      }
       const facet = (suggestV.companiesFacet ?? []) as Array<{ token?: string; name?: string; count?: number }>;
       const openRaw = suggestV.companiesOpen;
       const openMap = openRaw && typeof openRaw === "object" && !Array.isArray(openRaw) ? openRaw as Record<string, number> : null;
@@ -10129,9 +10270,10 @@ Deno.serve(async (req) => {
       if (q.length < 3) return json({ error: "q too short" }, 400);
       const qVec = await embedText(q);
       if (!qVec) return json({ error: "inference unavailable in this runtime" }, 503);
+      const semCap = (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) ? 30 : SEMANTIC_PROBE_ROWS;
       const { data: sem, error: sErr } = await client.rpc("search_jobs_semantic", {
         p_embedding: JSON.stringify(qVec),
-        p_limit: Math.min(Math.max(Number(body.limit) || 10, 1), 30),
+        p_limit: Math.min(Math.max(Number(body.limit) || 10, 1), semCap),
       });
       if (sErr) return json({ error: `semantic search unavailable: ${sErr.message?.slice(0, 80)}` }, 503);
       return json({
@@ -10746,23 +10888,17 @@ async function serveList(
     // were written, "no incidents" and "the check stopped running" would look
     // identical. Clean pages sampled ~2% so a healthy board pays almost nothing;
     // violations unsampled, because they should be zero.
-    if (v.length || Math.random() < 0.02) {
+    // .88: an incident is one row PER FIELD (filter_integrity_incident.<field>),
+    // so a page tripping one field cannot erase another field's record, and
+    // nothing the caller wrote -- its filters, the `want` text -- is stored.
+    // Each field's row is rewritten at most once per INCIDENT_REWRITE_MS, so
+    // a request that trips the sensor is not a write per request.
+    if (v.length) {
+      waitUntil(writeIncidents(client, incidentRows(v, jobs.length, new Date().toISOString())).catch(() => {}));
+    } else if (Math.random() < 0.02) {
       const stamp = new Date().toISOString();
       waitUntil(Promise.resolve(
-        client.from("job_board_meta").upsert({
-          k: v.length ? "filter_integrity_incident" : "filter_integrity_ok",
-          v: v.length
-            ? {
-              at: stamp,
-              violations: v.length,
-              rows: jobs.length,
-              fields: [...new Set(v.map((x) => x.field))],
-              sample: v.slice(0, 5),
-              filters: applied,
-            }
-            : { at: stamp, rows: jobs.length },
-          updated_at: stamp,
-        }, { onConflict: "k" }),
+        client.from("job_board_meta").upsert({ k: "filter_integrity_ok", v: { at: stamp, rows: jobs.length }, updated_at: stamp }, { onConflict: "k" }),
       ).then(() => {}).catch(() => {}));
     }
     // Rationale: docs/job-board-index-notes.md#n291-paycontrolactive

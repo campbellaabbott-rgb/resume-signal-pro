@@ -206,7 +206,7 @@ async function boardList(body: Record<string, unknown>): Promise<Record<string, 
       // runner's vendor paging is stored as candidate demand.
       "x-rsp-caller": SWEEP_CALLER,
       "x-rb-caller": SWEEP_CALLER,
-      // A runner paging up to eight vendor pages: counted under this
+      // A runner paging up to twenty-seven vendor pages: counted under this
       // address's probe allowance, never a browser's (job-board/anon-budget.ts).
       "x-rb-budget": "probe",
     },
@@ -286,14 +286,18 @@ async function sampleTenants(vendor: string, want: number): Promise<Tenant[]> {
   // Keyset-paged, not offset-paged: the corpus inserts tens of thousands of
   // rows a day above the reader, and offset windows over it demonstrably
   // duplicate and skip. The board hands back a cursor; follow it.
-  // Eight pages of 200 is up to 1,600 postings per vendor — enough to surface
-  // several hundred distinct employers, and bounded so that discovery cannot
-  // quietly eat the probing budget it exists to fill.
+  // Twenty-seven pages of 60 is up to 1,620 postings per vendor — enough to
+  // surface several hundred distinct employers, and bounded so that discovery
+  // cannot quietly eat the probing budget it exists to fill. Sixty because the
+  // board gives no caller without a secret more than a page's 60 rows a call
+  // (job-board .88); asking for more would be answered with 60 and an offset
+  // stepped by the ask would skip the rows in between.
+  const PAGE_ROWS = 60;
   let cursor: unknown = null;
-  for (let page = 0; page < 8 && seen.size < want; page++) {
-    const body: Record<string, unknown> = { vendor: [vendor], limit: 200, includeFacets: false, groupSimilar: false };
+  for (let page = 0; page < 27 && seen.size < want; page++) {
+    const body: Record<string, unknown> = { vendor: [vendor], limit: PAGE_ROWS, includeFacets: false, groupSimilar: false };
     if (cursor) body.cursor = cursor;
-    else if (page > 0) body.offset = page * 200;
+    else if (page > 0) body.offset = page * PAGE_ROWS;
     const out = await boardList(body);
     if (!out) break;
     const before = seen.size;
