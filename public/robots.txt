@@ -5,7 +5,10 @@
 # (/analytics, /errors, /health-check, /scan-metrics), the Agent Pass receipt
 # (/agents/pass — signed-in only, reads the buyer's own row) and the OAuth
 # consent route (/oauth/consent — exists only for an agent host's authorization
-# request) have zero search value and must never be indexed. (Lovable's
+# request), the market-pulse confirmation page (/market-pulse/confirm --
+# opened only from a single-use link in a confirmation mail) and the fix-plan
+# confirmation page (/fix-plan/confirm -- opened only from the button in a
+# report mail) have zero search value and must never be indexed. (Lovable's
 # route-vs-sitemap checker flags these as "missing" — that is expected; do NOT
 # add them to the sitemap.)
 # Disallow is repeated per named group on purpose: a crawler obeys only its own
@@ -27,6 +30,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: Bingbot
 Allow: /
@@ -41,6 +46,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 # AI / answer engines — explicitly welcome. Our pages are prerendered static
 # HTML with cited sources; being read and cited by these is the point. The
@@ -61,6 +68,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: OAI-SearchBot
 Allow: /
@@ -75,6 +84,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: ChatGPT-User
 Allow: /
@@ -89,6 +100,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: ClaudeBot
 Allow: /
@@ -103,6 +116,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: Claude-Web
 Allow: /
@@ -117,6 +132,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: anthropic-ai
 Allow: /
@@ -131,6 +148,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: PerplexityBot
 Allow: /
@@ -145,6 +164,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: Google-Extended
 Allow: /
@@ -159,6 +180,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: Applebot-Extended
 Allow: /
@@ -173,6 +196,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: CCBot
 Allow: /
@@ -187,6 +212,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 # Social preview fetchers
 
@@ -203,6 +230,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: facebookexternalhit
 Allow: /
@@ -217,6 +246,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 # Meta's AI training crawler. On 2026-10-03 it rendered /jobs as an app from
 # 57.141.0.0/16 and read the job board about 2,400 times an hour, about 85% of
@@ -240,6 +271,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 User-agent: *
 Allow: /
@@ -254,6 +287,8 @@ Disallow: /health-check
 Disallow: /scan-metrics
 Disallow: /agents/pass
 Disallow: /oauth/consent
+Disallow: /market-pulse/confirm
+Disallow: /fix-plan/confirm
 
 Sitemap: https://resumebooster.work/sitemap.xml
 

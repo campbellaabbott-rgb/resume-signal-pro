@@ -1,3 +1,4 @@
+// deploy-stamp: 2026-10-04T22:00Z
 // Agent morning email — the last hop of the overnight loop.
 //
 // agent-runner already scores fresh postings against each mandate and writes
@@ -15,17 +16,35 @@
 //   - The agent NEVER applies. Every row links out for the human to press send.
 //
 // Trigger on a schedule shortly after agent-runner: POST {"action":"send"}.
+//
+// THE BATCH ANSWERS THE SCHEDULER AND OUR SERVICE ROLE, NOBODY ELSE
+// (2026-10-04). It answered any POST and stamped email_last_sent_at only after
+// the awaited send, so concurrent posts each read the same due mandates and
+// mailed every subscriber once per post. The cron now sends x-email-cron
+// (_shared/email-cron.ts), and mandates are CLAIMED by agent_digest_claim_batch,
+// which stamps them in the statement that chooses them (FOR UPDATE SKIP
+// LOCKED, at most once per 20 hours). Every skip that used to leave the cursor
+// alone (not entitled, suppressed, an empty shortlist, a failed send) now
+// gives the claim back, so the cursor is exactly where it was.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
+import { sameSecret } from "../_shared/service-caller.ts";
+
+// Provable from outside without sending anything: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "send-agent-digest.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 const SITE_URL = "https://resumebooster.work";
-// Never more than one morning mail per ~20h, even if the cron double-fires.
-const MIN_HOURS_BETWEEN_SENDS = 20;
+// Never more than one morning mail per ~20h, even if the cron double-fires:
+// the floor lives in agent_digest_claim_batch (20261004100000).
+const CLAIM_BATCH = 500;
 const MAX_ROWS_IN_EMAIL = 6;
 
 function escapeHtml(text: string | number | undefined | null): string {
@@ -64,14 +83,15 @@ function reasonText(reasons: unknown): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
   const url = new URL(req.url);
 
   // ── Unsubscribe (GET from the email) — flips email_opt_in off ──
   if (req.method === "GET" && url.searchParams.get("action") === "unsubscribe") {
     const id = url.searchParams.get("id") ?? "";
     const token = url.searchParams.get("token") ?? "";
-    if (!id || token !== await hmacToken(id)) {
+    if (!id || !sameSecret(token, await hmacToken(id))) {
       return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
     }
     await supabase.from("agent_mandates").update({ email_opt_in: false }).eq("user_id", id);
@@ -94,6 +114,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "POST { action: 'send' } to run a digest batch" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    if (!(await isScheduledCaller(req.headers, supabase, serviceKey))) {
+      return json({ error: "The batch send is for the scheduler only." }, 401);
+    }
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }),
@@ -101,14 +124,17 @@ Deno.serve(async (req) => {
     }
     const resend = new Resend(RESEND_API_KEY);
 
-    const { data: mandates } = await supabase
-      .from("agent_mandates")
-      .select("user_id, email, email_opt_in, email_last_sent_at")
-      .eq("email_opt_in", true)
-      .limit(500);
-
-    const list = (mandates ?? []) as Array<{ user_id: string; email: string; email_opt_in: boolean; email_last_sent_at: string | null }>;
-    if (list.length === 0) return json({ ok: true, sent: 0, skipped: 0, note: "no opted-in mandates" });
+    // THE CLAIM IS THE SELECTION: opted-in mandates not mailed in 20 hours,
+    // stamped in the same statement, each with the stamp it had before (the
+    // "new picks since" cursor, and what a give-back restores).
+    const { data: claimed, error: claimErr } = await supabase.rpc("agent_digest_claim_batch", { p_limit: CLAIM_BATCH });
+    if (claimErr) throw claimErr;
+    const list = ((claimed ?? []) as Array<{ ad_user_id: string; ad_email: string; ad_prev_sent_at: string | null }>)
+      .map((r) => ({ user_id: r.ad_user_id, email: r.ad_email, email_last_sent_at: r.ad_prev_sent_at }));
+    if (list.length === 0) return json({ ok: true, sent: 0, skipped: 0, note: "no opted-in mandates due" });
+    /** Hand a claim back: the cursor returns to where it was, as if never claimed. */
+    const giveBack = (m: { user_id: string; email_last_sent_at: string | null }) =>
+      supabase.from("agent_mandates").update({ email_last_sent_at: m.email_last_sent_at }).eq("user_id", m.user_id);
 
     // Entitlement at SEND time — a lapsed subscriber stops receiving.
     const emails = [...new Set(list.map((m) => normalizeEmail(m.email)).filter(Boolean))];
@@ -131,12 +157,7 @@ Deno.serve(async (req) => {
       // before storing. This line used to ask with the raw address while the
       // suppression check beside it lowercased — so a subscriber whose mandate
       // stored a capitalised address was silently counted as `skipped`.
-      if (!m.email || !isEntitled(entitled, m.email) || suppressed.has(m.email.toLowerCase())) { skipped++; continue; }
-
-      // Rate floor: never twice in one morning.
-      if (m.email_last_sent_at && Date.now() - new Date(m.email_last_sent_at).getTime() < MIN_HOURS_BETWEEN_SENDS * 3600_000) {
-        skipped++; continue;
-      }
+      if (!m.email || !isEntitled(entitled, m.email) || suppressed.has(m.email.toLowerCase())) { await giveBack(m); skipped++; continue; }
 
       // Only picks the user hasn't been told about. Still 'ready' = not yet
       // approved or dismissed in the UI, so the mail never re-surfaces a
@@ -155,8 +176,8 @@ Deno.serve(async (req) => {
         apply_url: string; salary: string | null; fit_pct: number | null; reasons: unknown;
       }>;
       // Never email an empty shortlist, and DON'T advance the cursor — tomorrow's
-      // mail must still cover today's window.
-      if (rows.length === 0) { skipped++; continue; }
+      // mail must still cover today's window. The claim is handed back.
+      if (rows.length === 0) { await giveBack(m); skipped++; continue; }
 
       const token = await hmacToken(m.user_id);
       const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-agent-digest?action=unsubscribe&id=${encodeURIComponent(m.user_id)}&token=${token}`;
@@ -203,19 +224,19 @@ Deno.serve(async (req) => {
 </body></html>`;
 
       try {
-        await resend.emails.send({
+        const { error: sendErr } = await resend.emails.send({
           from: "Resume Booster <agent@resumebooster.work>",
           to: [m.email],
           subject: n === 1 ? "1 role worth your morning" : `${n} roles worth your morning`,
           html,
         });
-        await supabase.from("agent_mandates")
-          .update({ email_last_sent_at: new Date().toISOString() })
-          .eq("user_id", m.user_id);
+        if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
+        // The claim's stamp is the new cursor.
         sent++;
       } catch (e) {
-        // Send failed — leave the cursor alone so the next run retries this window.
+        // Send failed — the claim is handed back so the next run retries this window.
         console.warn(`[AGENT-DIGEST] send failed for ${m.user_id}:`, (e as Error)?.message?.slice(0, 150));
+        await giveBack(m);
         skipped++;
       }
     }

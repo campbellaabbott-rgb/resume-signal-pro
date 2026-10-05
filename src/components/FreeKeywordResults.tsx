@@ -817,7 +817,7 @@ export interface FreeKeywordResultsProps {
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
   countryStandards?: import("./ReportInsightCards").CountryStandardsData | null;
   platformProfileDetected?: { signals: string[] } | null;
-  reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string } | null;
+  reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string; mailSeal?: string } | null;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] } | null;
   /** Honest score band spanning the rule-based computation and AI estimate */
   scoreBand?: { low: number; high: number } | null;
@@ -1662,6 +1662,9 @@ export function FreeKeywordResults({
       passed: findings.filter(f => f.severity === 'pass').length,
     },
     keywordSource: keywordSource ?? null,
+    // The scan's seal over the sentences above: send-scan-report prints them
+    // only when it matches, so nobody can mail their own words from our domain.
+    mailSeal: reportMeta?.mailSeal ?? null,
   };
 
   return (

@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-01.1";
+const FN_BUILD = "verify-product-purchase.2026-10-04.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -526,11 +526,13 @@ serve(async (req) => {
           
           if (affiliateData?.email) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            // The service-role key: the commission mailer is internal and
+            // refuses the publishable key, which every visitor holds.
             const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-affiliate-commission-email`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
               },
               body: JSON.stringify({
                 affiliateEmail: affiliateData.email,
@@ -557,11 +559,13 @@ serve(async (req) => {
     }
     if (isFirstUse && customerEmail) {
       try {
+        // The service-role key: send-product-email is internal and refuses
+        // the publishable key, which every visitor holds.
         const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
           },
           body: JSON.stringify({
             email: customerEmail,

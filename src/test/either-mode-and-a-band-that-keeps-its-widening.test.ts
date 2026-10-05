@@ -129,7 +129,9 @@ describe("either mode, and a band that keeps its widening", () => {
     expect(pulse.slice(0, 400), "an opt-in must never clear an opt-out")
       .not.toMatch(/unsubscribed_at: null/);
     // And the mailer itself is bounded — it sends from the project's own domain
-    // and enqueues four more over fourteen days.
-    expect(SCAN_REPORT).toMatch(/p_function: "send-scan-report"/);
+    // and enqueues four more over fourteen days. Since 2026-10-04 the bound is
+    // a mail_door_take count per network (plus per inbox and per day; see
+    // a-report-mail-counts-the-inbox-not-the-header), not check_rate_limit.
+    expect(SCAN_REPORT).toMatch(/take\(admin, "send-scan-report", net,/);
   });
 });

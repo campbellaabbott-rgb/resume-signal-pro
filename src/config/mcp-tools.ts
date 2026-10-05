@@ -406,7 +406,7 @@ const cliKeyed = (add: (url: string) => string, reconnect: string): McpKeyed => 
   takesKey: true,
   title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
   steps: (ctx) => [
-    { text: `Get a free key at ${MCP_MINT_PATH} — it asks for an email and shows the key once.` },
+    { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
     {
       text: "Paste the key in the field above — the two lines below fill themselves (nothing is sent anywhere; the field only edits the text on this page). Run the first line, then the second:",
       copy: exportLine(ctx.key),
@@ -513,7 +513,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       takesKey: true,
       title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
       steps: (ctx) => [
-        { text: `Get a free key at ${MCP_MINT_PATH} — it asks for an email and shows the key once.` },
+        { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
         { text: "Paste the key in the field above; set it in your shell (nothing is sent anywhere):", copy: exportLine(ctx.key), copyLabel: "the export line", note: ctx.key ? undefined : PASTE_KEY_NOTE },
         { text: "Use this block instead — the header reads the variable, so the key never sits in the file:", copy: cursorBlock(ctx.url, true), copyLabel: "the keyed Cursor mcp.json block" },
         { text: `Restart Cursor, then ask: \`${ASK_KEY}\` — it names your tier and calls left.` },
@@ -545,7 +545,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       takesKey: false,
       title: `With a free key (optional — opens every read tool: ${keyOnlyNames()}; ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day)`,
       steps: () => [
-        { text: `Get a free key at ${MCP_MINT_PATH} — it asks for an email and shows the key once.` },
+        { text: `Get a free key at ${MCP_MINT_PATH} — it emails you a single-use link, and the page that link opens shows the key once.` },
         { text: "When VS Code asks for the key at start (the block above declares it as a hidden input), paste it there — it is never written into the file." },
         { text: `Ask: \`${ASK_KEY}\` — it names your tier and calls left.` },
       ],
@@ -844,8 +844,8 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   {
     id: "key-revoked",
     see: "\"This key has been revoked.\"",
-    why: "A newer key was made for the same account or email; only the newest works.",
-    fix: "Use the newest key, or make one more and update every app that holds the old one.",
+    why: "A newer key replaced it, it went unused for 30 days, or it was a free key issued before keys needed a confirmed email (4 October 2026).",
+    fix: "Use your newest key, or get one at /data-api (we email you a link) and update every app that holds the old one.",
     source: { kind: "server", pin: "This key has been revoked.", file: "index.ts" },
   },
   {

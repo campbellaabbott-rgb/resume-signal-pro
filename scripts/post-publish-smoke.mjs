@@ -99,7 +99,10 @@ if (process.env.NO_SCAN) {
   } else {
     const j = await r.json();
     deployedEngine = j.reportMeta?.engineVersion || null;
-    scanFields = { parseQuality: "parseQuality" in j, countryStandards: "countryStandards" in j };
+    // mailSeal (2026-10-04): send-scan-report prints a report's sentences only
+    // under this seal ("v2.<issued-at>.<hmac>"), so a scan that lacks it means
+    // emailed reports carry the numbers only.
+    scanFields = { parseQuality: "parseQuality" in j, countryStandards: "countryStandards" in j, mailSeal: /^v2\.\d{9,11}\.[0-9a-f]{64}$/.test(j.reportMeta?.mailSeal ?? "") };
     const anatomy = typeof j.atsScoreEstimate === "number" && j.reportMeta?.reportId && j.scoreBand;
     record("free scan end-to-end", !!anatomy,
       anatomy

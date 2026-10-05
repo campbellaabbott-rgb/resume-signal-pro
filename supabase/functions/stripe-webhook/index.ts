@@ -27,7 +27,7 @@ import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-01.1";
+const FN_BUILD = "stripe-webhook.2026-10-04.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -549,11 +549,13 @@ async function triggerProductDelivery(
     if (customerEmail) {
       EdgeRuntime.waitUntil((async () => {
         try {
+          // The service-role key: send-product-email is internal and refuses
+          // the publishable key, which every visitor holds.
           const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
             },
             body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
           });

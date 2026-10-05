@@ -13,7 +13,7 @@ import {
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-01.1";
+const FN_BUILD = "analyze-resume.2026-10-04.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -1211,10 +1211,12 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       if (customerEmail && shareId) {
         console.log(`[ANALYZE-RESUME] Sending analysis email to: ${customerEmail}`);
         EdgeRuntime.waitUntil(
+          // The service-role key: send-analysis-email is internal and refuses
+          // the publishable key, which every visitor holds.
           fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-analysis-email`, {
             method: "POST",
             headers: {
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({

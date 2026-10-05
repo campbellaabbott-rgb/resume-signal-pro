@@ -160,8 +160,10 @@ project_id = "bwhdazbotpblihdxcmho"
   [functions.api-key-request]
     verify_jwt = false
   # Public by necessity: this is where a developer with no account at all gets
-  # their first credential. Bounded by a per-address ceiling in api_key_issue,
-  # and it can only ever mint a free-tier key.
+  # their first credential. A request only mails a single-use link to the
+  # address that asked; the key is minted (free tier only) when that link is
+  # opened, inside per-mailbox, per-network, per-domain and daily ceilings
+  # (api_key_request_open, api_key_issue -- 20261004100000).
 
   [functions.agent-mcp]
     verify_jwt = false

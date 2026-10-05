@@ -74,6 +74,12 @@ const PRIVATE_ROUTES = [
   // The OAuth consent route: exists only for an authorization request from an
   // agent host (?authorization_id=), signed-in only, noindex, no prerender.
   "/oauth/consent",
+  // The market-pulse confirmation page: opened only from the single-use link
+  // in a confirmation mail (#t=...), noindex, nothing to bake for a crawler.
+  "/market-pulse/confirm",
+  // The fix-plan confirmation page: opened only from the button in a report
+  // mail (#d=...), noindex, nothing to bake for a crawler.
+  "/fix-plan/confirm",
 ];
 /** Route families whose every member is private (dev tooling, admin, affiliate redirects). */
 const PRIVATE_PREFIXES = ["/dev/", "/admin/", "/r/"];

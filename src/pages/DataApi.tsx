@@ -12,7 +12,7 @@
 // customer of. The free tier below exists to be used before anyone is billed.
 // BULK licensing stays a mailto, because that genuinely is a conversation.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Database, ShieldCheck, Scale, Newspaper, FlaskConical, Building2, CheckCircle2, XCircle, Mail, KeyRound, Terminal, Copy, Check, Loader2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
+import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -69,23 +70,72 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
   { path: "POST /v1/fit", body: "Paid. POST a résumé and get the board's best matches back scored, with the terms that matched and the terms that are missing. A résumé cannot ride a query string, so this is the one route that takes a body — and it stores nothing." },
 ];
 
-/** Self-serve issuance. The key is shown once — only its hash is stored. */
-function GetAKey() {
+/**
+ * Self-serve issuance, behind a mailbox. The key is shown once — only its hash
+ * is stored — and only to someone who opened the link mailed to the address.
+ *
+ * TWO STEPS (defect sweep 1.43). The form used to hand a working key to
+ * whoever typed an address, so a script could hold as many free keys as it
+ * cared to invent addresses. Now the form mails a single-use link; the link
+ * opens this page with #confirm=… and the button below redeems it.
+ */
+type Issued = { key: string; limits: { perMinute: number; perDay: number }; retired: string[] };
+type ApiError = { error?: { code?: string; message?: string } | string } | null;
+
+const messageOf = (b: ApiError): string | null =>
+  b && typeof b.error === "object" && b.error?.message ? b.error.message : null;
+
+function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [issued, setIssued] = useState<{ key: string; limits: { perMinute: number; perDay: number }; emailed: boolean; rotated: boolean } | null>(null);
+  const [requestedFor, setRequestedFor] = useState<string | null>(null);
+  const [confirmToken, setConfirmToken] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : apiKeyTokenFromHash(window.location.hash));
+  const [issued, setIssued] = useState<Issued | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // A confirmation link lands on this page's top; the button it needs is
+  // half-way down, so bring it into view.
+  useEffect(() => {
+    if (confirmToken) box.current?.scrollIntoView({ block: "center" });
+  }, [confirmToken, box]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true); setErr(null);
     try {
       const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name } });
-      const d = data as { key?: string; limits?: { perMinute: number; perDay: number }; emailed?: boolean; rotated?: boolean; error?: { message?: string } } | null;
-      if (error || !d?.key) { setErr(d?.error?.message ?? "Could not issue a key. Try again shortly."); return; }
-      setIssued({ key: d.key, limits: d.limits ?? { perMinute: 60, perDay: 1000 }, emailed: !!d.emailed, rotated: !!d.rotated });
+      const d = (error ? await errorBodyOf(error) : data) as ApiError & { requested?: boolean };
+      if (error || !d?.requested) { setErr(messageOf(d) ?? "Could not send the confirmation email. Try again shortly."); return; }
+      setRequestedFor(email.trim());
+    } catch {
+      setErr("Could not reach the key service. Try again shortly.");
+    } finally { setBusy(false); }
+  };
+
+  const confirm = async () => {
+    if (!confirmToken) return;
+    setBusy(true); setErr(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { action: "confirm", token: confirmToken } });
+      const d = (error ? await errorBodyOf(error) : data) as ApiError & {
+        key?: string; limits?: { perMinute: number; perDay: number }; retiredPrefixes?: string[];
+      };
+      if (error || !d?.key || !d.limits) {
+        const code = d && typeof d.error === "object" ? d.error?.code : undefined;
+        setErr(messageOf(d) ?? "Could not create the key right now. Open the link again shortly.");
+        // A spent, expired or malformed link cannot be retried: offer the form.
+        if (code === "already_used" || code === "expired" || code === "invalid_link") {
+          setConfirmToken(null);
+          forgetConfirmFragment();
+        }
+        return;
+      }
+      setIssued({ key: d.key, limits: d.limits, retired: Array.isArray(d.retiredPrefixes) ? d.retiredPrefixes : [] });
+      setConfirmToken(null);
+      forgetConfirmFragment();
     } catch {
       setErr("Could not reach the key service. Try again shortly.");
     } finally { setBusy(false); }
@@ -95,11 +145,11 @@ function GetAKey() {
     return (
       <div className="p-6 rounded-2xl bg-card border border-border">
         <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Your key</h3>
-        {/* Shown once, and said so plainly: only a hash is stored, so there is
-            no screen anywhere that can show it again. */}
+        {/* Shown once, and said so plainly: only a hash is stored, and the key
+            is not in any email, so there is no screen anywhere that can show
+            it again. */}
         <p className="text-sm text-muted-foreground mb-3">
-          Copy this now — we store only a hash, so this is the only time it can be shown.
-          {issued.emailed ? " A copy is in your inbox." : " (We could not send the email copy, so this really is the only one.)"}
+          Copy this now — we store only a hash and never email the key, so this is the only time it can be shown.
         </p>
         <div className="flex items-center gap-2 mb-3">
           <code className="flex-1 px-3 py-2 rounded-lg bg-muted text-xs overflow-x-auto whitespace-nowrap">{issued.key}</code>
@@ -111,11 +161,50 @@ function GetAKey() {
             {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />} {copied ? "Copied" : "Copy"}
           </button>
         </div>
-        {issued.rotated && (
-          <p className="text-sm text-warning mb-3">Your previous key was revoked when this one was issued.</p>
+        {issued.retired.length > 0 && (
+          <p className="text-sm text-warning mb-3">
+            An address holds at most three live keys, so the one used least recently ({issued.retired.map((p) => `${p}…`).join(", ")}) was retired.
+          </p>
         )}
         <p className="text-sm text-muted-foreground">
           Free tier: {issued.limits.perMinute} requests/minute, {issued.limits.perDay.toLocaleString()}/day.
+        </p>
+      </div>
+    );
+  }
+
+  if (confirmToken) {
+    return (
+      <div className="p-6 rounded-2xl bg-card border border-border">
+        <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Create your key</h3>
+        {/* A button, not the page load: mail scanners open links by
+            themselves, and a key minted by a scanner's prefetch would be
+            shown to the scanner. */}
+        <p className="text-sm text-muted-foreground mb-4">
+          Your address is confirmed by this link. The key appears below, once.
+        </p>
+        {err && <p className="text-sm text-destructive mb-3">{err}</p>}
+        <button
+          type="button" onClick={confirm} disabled={busy}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+        >
+          {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</> : <>Create my key</>}
+        </button>
+      </div>
+    );
+  }
+
+  if (requestedFor) {
+    return (
+      <div className="p-6 rounded-2xl bg-card border border-border">
+        <h3 className="font-semibold mb-2 flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /> Check your inbox</h3>
+        {/* The server answers the same whether or not it mailed (an address
+            that bounced, complained, or already had two links today gets no
+            mail), so this says only what is true in every case. */}
+        <p className="text-sm text-muted-foreground">
+          If <span className="text-foreground">{requestedFor}</span> can receive mail from us, a link is on its way. Open it
+          within 24 hours and your key is shown on the page it opens. No key exists until then. An address gets at most two
+          links a day, so if nothing arrives, use the newest one in its inbox or try again tomorrow.
         </p>
       </div>
     );
@@ -125,7 +214,7 @@ function GetAKey() {
     <form onSubmit={submit} className="p-6 rounded-2xl bg-card border border-border">
       <h3 className="font-semibold mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-primary" /> Get a free key</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        No account, no card. The key arrives on screen and by email.
+        No account, no card. We email you a link; the key is shown once, on the page it opens.
       </p>
       <div className="grid sm:grid-cols-2 gap-3 mb-3">
         <input
@@ -144,13 +233,19 @@ function GetAKey() {
         type="submit" disabled={busy}
         className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
       >
-        {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Issuing…</> : <>Get a key</>}
+        {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <>Email me a link</>}
       </button>
       <p className="text-xs text-muted-foreground mt-3">
-        Asking again issues a new key and revokes the old one.
+        An address can hold three live keys; a fourth retires the one used least recently. A free key nobody uses for 30
+        days retires on its own.
       </p>
     </form>
   );
+}
+
+function GetAKey() {
+  const box = useRef<HTMLDivElement>(null);
+  return <div ref={box}><GetAKeyBody box={box} /></div>;
 }
 
 export default function DataApi() {
