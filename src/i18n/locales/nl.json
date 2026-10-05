@@ -65,7 +65,7 @@
       "seniorRoles": "Gemaakt voor senior profielen, managers en competitieve rollen",
       "atsCompatible": "Werkt op alle ATS-systemen (Workday, Greenhouse, Lever & 50+ meer)",
       "oneTime": "Eenmalige betaling (verlengt nooit automatisch)",
-      "private": "Cv’s worden nooit opgeslagen of gedeeld"
+      "private": "Gratis scan: je cv wordt binnen 7 dagen verwijderd en nooit verkocht"
     },
     "stats": {
       "scannedToday": "Vandaag gescand",
@@ -145,8 +145,8 @@
     "testimonialAuthorName": "— Sarah K., Software-engineer",
     "transparentScoring": "transparante AI-beoordeling, geen black box",
     "factGdpr": "AVG-conform",
-    "factAutoDelete": "Cv's automatisch verwijderd binnen 24 u",
-    "factNoStorage": "Nooit opgeslagen, nooit gedeeld",
+    "factAutoDelete": "Cv binnen 7 dagen verwijderd",
+    "factNoStorage": "Nooit verkocht",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
     "browseJobs": "Bekijk 550.000+ geverifieerde vacatures",
@@ -170,7 +170,7 @@
     "title": "24-Punten Dieptescan",
     "subtitle": "Onze AI simuleert hoe moderne ATS-systemen je cv scannen en elk woord analyseren tegen echte recruiter-standaarden.",
     "whatWeAnalyze": "Wat We Analyseren",
-    "dataNotStored": "Je gegevens worden nooit opgeslagen",
+    "dataNotStored": "Je cv wordt binnen 7 dagen verwijderd",
     "steps": {
       "upload": {
         "title": "1. Upload CV",
@@ -407,7 +407,7 @@
       },
       "dataStorage": {
         "question": "Slaan jullie mijn CV-gegevens op?",
-        "answer": "Nee. We slaan je CV-inhoud niet op. Je CV wordt real-time verwerkt en dan direct verwijderd."
+        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat hetzelfde bestand hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of het cv dat je aan de sollicitatieagent geeft, die het naar de werkgevers stuurt waar hij namens jou solliciteert. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
       },
       "vsChatGPT": {
         "question": "Waarom is dit beter dan ChatGPT?",
@@ -476,7 +476,7 @@
         "description": "Bankniveau-encryptie"
       },
       "autoDelete": {
-        "label": "Auto-verwijderd 24u",
+        "label": "Verwijderd in 7 dagen",
         "description": "Jouw data, jouw controle"
       },
       "gdpr": {
@@ -484,8 +484,8 @@
         "description": "Privacy eerst"
       },
       "zeroStorage": {
-        "label": "Geen Opslag",
-        "description": "Verwerkt & verwijderd"
+        "label": "Nooit verkocht",
+        "description": "Niet aan recruiters, aan niemand"
       },
       "instant": {
         "label": "Directe Levering",
@@ -742,7 +742,7 @@
     "subtitle": "Gemini Pro voor maximale nauwkeurigheid",
     "complete": "{{percent}}% voltooid",
     "live": "Live",
-    "securityNote": "Je cv wordt veilig geanalyseerd en nooit opgeslagen",
+    "securityNote": "Je cv wordt binnen 7 dagen verwijderd en nooit verkocht",
     "stages": {
       "parsing": {
         "label": "CV wordt geparsed",
@@ -2363,7 +2363,7 @@
     "analysisProcessingDescription": "We konden geen gedetailleerde aanbevelingen uit je cv halen. Dit kan gebeuren als het cv-formaat ongewoon is of als er een probleem was tijdens de verwerking.",
     "bottomCta": "Pas deze wijzigingen toe op je cv en zie je interviewpercentage verbeteren!",
     "bottomCtaWithLinkedIn": "Pas deze wijzigingen toe op je cv en LinkedIn-profiel en zie je interviewpercentage verbeteren!",
-    "analysisSaved": "Deze analyse is opgeslagen. Gebruik de deellink hierboven om er altijd toegang tot te hebben."
+    "analysisSaved": "Deze analyse blijft {{analysisDays}} dagen achter de deellink hierboven bewaard en wordt daarna verwijderd. Download hem als pdf om je eigen kopie te houden."
   },
   "personalization": {
     "experience": {
@@ -2504,14 +2504,14 @@
   },
   "trustPage": {
     "metaTitle": "Vertrouwen & Beveiliging — Resume Booster",
-    "metaDescription": "256-bit versleuteling, geen permanente opslag van je cv, AVG-conforme gegevensverwerking. Ontdek hoe we jouw gegevens veilig houden.",
+    "metaDescription": "Precies wat we van je cv bewaren, waar en hoe lang — plus 256-bit versleuteling en je recht om het te laten wissen.",
     "privacyMatters": "Jouw privacy is belangrijk",
     "titlePrefix": "Jouw cv is",
     "titleHighlight": "veilig bij ons",
     "heroSubtitle": "We hebben Resume Booster gebouwd met security-first-principes. Jouw carrièredocumenten verdienen beveiliging op bankniveau, en dat is precies wat we bieden.",
     "badges": {
       "ssl": "256-bit SSL",
-      "zeroStorage": "Geen opslag",
+      "retention": "Gepubliceerde termijnen",
       "gdpr": "AVG-conform"
     },
     "stats": {
@@ -2525,21 +2525,21 @@
         "title": "256-bit SSL-versleuteling",
         "description": "Je cv wordt beschermd met versleuteling op bankniveau tijdens het uploaden en verwerken. We gebruiken dezelfde beveiligingsstandaard als grote financiële instellingen."
       },
-      "zeroStorage": {
-        "title": "Geen-opslagbeleid",
-        "description": "We slaan je cv nooit op onze servers op. Je document wordt in het geheugen verwerkt en direct na de analyse verwijderd."
+      "freeScan": {
+        "title": "Wat de gratis scan bewaart",
+        "description": "De tekst van je cv {{tempHours}} uur, zodat een betaling hem kan gebruiken, en je rapport, dat je cv citeert, {{reportDays}} dagen. Daarna worden beide automatisch verwijderd."
       },
       "autoDelete": {
-        "title": "Automatisch verwijderd binnen 24 uur",
-        "description": "Alle tijdelijke gegevens die tijdens de verwerking worden gemaakt, worden automatisch binnen 24 uur verwijderd. Jouw gegevens, jouw controle."
+        "title": "Volgens schema verwijderd",
+        "description": "Verwijdertaken draaien elke 15 minuten voor de tijdelijke opslag en elk uur voor de rapportcache, de AI-cache en betaalde analyses, dus geen daarvan blijft meer dan een uur langer dan de genoemde termijn."
       },
       "gdpr": {
         "title": "AVG-conform",
         "description": "We houden ons aan strikte Europese gegevensbeschermingsnormen. Je kunt op elk moment verwijdering van je gegevens aanvragen."
       },
-      "noSharing": {
-        "title": "Geen delen met derden",
-        "description": "De inhoud van je cv wordt nooit gedeeld met recruiters, werkgevers of derden. Het wordt uitsluitend geanalyseerd om je te helpen."
+      "neverSold": {
+        "title": "Nooit verkocht",
+        "description": "We verkopen je cv nooit en laten het aan geen enkele recruiter zien. Het verlaat ons alleen richting de AI-aanbieder die je rapport schrijft, de e-mailprovider die een rapport aflevert dat je naar jezelf stuurt en de betaalde analyse die we je mailen en, als je de sollicitatieagent aanzet, de werkgevers waar hij namens jou solliciteert. Stripe verwerkt de betaling en ontvangt geen cv-tekst."
       },
       "transparent": {
         "title": "Transparante verwerking",
@@ -2548,6 +2548,86 @@
     },
     "protectDataTitle": "Hoe we jouw gegevens beschermen",
     "protectDataSubtitle": "Elk aspect van Resume Booster is ontworpen met jouw privacy en veiligheid in gedachten.",
+    "retention": {
+      "title": "Wat we bewaren, waar en hoe lang",
+      "subtitle": "Elke plek waar een kopie van je cv, of tekst eruit geciteerd, bewaard kan worden — en de termijn van elk.",
+      "colWhat": "Wat",
+      "colWhere": "Waar",
+      "colHowLong": "Hoe lang",
+      "rows": {
+        "upload": {
+          "what": "De tekst van een cv dat je uploadt of plakt, met eventuele LinkedIn-tekst of vacaturetekst die je toevoegt",
+          "where": "Een privé tijdelijke opslag op onze servers",
+          "howLong": "{{tempHours}} uur, daarna verwijderd"
+        },
+        "report": {
+          "what": "Je gratis rapport, dat regels uit je cv citeert, inclusief de eerste ~600 tekens",
+          "where": "Een rapportcache, opgeslagen onder een eenrichtingsvingerafdruk van de tekst",
+          "howLong": "{{reportDays}} dagen, daarna verwijderd"
+        },
+        "fingerprint": {
+          "what": "Die eenrichtingsvingerafdruk, met de branche die we herkenden",
+          "where": "Onze database",
+          "howLong": "Bewaard, zodat een nieuwe scan van hetzelfde bestand dezelfde branche leest. Je cv kan er niet uit worden teruggehaald."
+        },
+        "aiCache": {
+          "what": "De door AI geschreven samenvatting boven je gratis rapport, die je naam kan gebruiken, en het hele rapport als onze reservescanner het schrijft",
+          "where": "Een AI-antwoordcache, opgeslagen onder een eenrichtingsvingerafdruk van de tekst",
+          "howLong": "Tot {{aiCacheHours}} uur, daarna verwijderd"
+        },
+        "browser": {
+          "what": "De tekst van je cv",
+          "where": "Je eigen browsertabblad (sessieopslag)",
+          "howLong": "Tot je het tabblad sluit"
+        },
+        "browserLocal": {
+          "what": "Een cv dat je op de site maakt (in de bouwer of in Freelance Boost), een geschiedenis van je recente scans (naam, functie en scores) en je recente rapporten",
+          "where": "De lokale opslag van deze browser, op je apparaat",
+          "howLong": "Tot die wordt gewist: de knop om browsergegevens te wissen op een betaalde resultatenpagina wist alles, net als het wissen van de gegevens van deze site in je browser"
+        },
+        "ai": {
+          "what": "De tekst van je cv, terwijl een rapport wordt geschreven",
+          "where": "Onze AI-modelaanbieder",
+          "howLong": "Alleen verstuurd om je rapport te maken, onder de voorwaarden van die aanbieder"
+        },
+        "email": {
+          "what": "Een rapport dat je naar jezelf mailt, de betaalde analyse die we je mailen, en verbeterplan-e-mails waarvoor je kiest",
+          "where": "Je inbox, verstuurd via onze e-mailprovider; ingeplande verbeterplan-e-mails wachten in onze verzendwachtrij",
+          "howLong": "De ingeplande e-mails gaan over 14 dagen uit; afmelden annuleert de rest"
+        },
+        "paid": {
+          "what": "Een betaalde analyse, die je cv citeert",
+          "where": "Achter de privé deellink",
+          "howLong": "{{analysisDays}} dagen, of tot je op de resultatenpagina op ‘{{deleteLabel}}’ klikt"
+        },
+        "products": {
+          "what": "Documenten gemaakt voor een ander betaald product, zoals een motivatiebrief of een herschrijving",
+          "where": "Bij je aankoopgegevens, onder je e-mailadres",
+          "howLong": "Bewaard zodat je ze kunt terugvinden; mail {{email}} om ze te laten wissen"
+        },
+        "account": {
+          "what": "Een cv-versie die je opslaat, en het cv dat je instelt voor vacaturematching",
+          "where": "Je account",
+          "howLong": "Tot je je account verwijdert"
+        },
+        "agent": {
+          "what": "Het cv dat je aan de sollicitatieagent geeft: het bestand en de tekst",
+          "where": "Privéopslag die alleen jij en de agent kunnen lezen",
+          "howLong": "Zolang je de agent gebruikt; die stuurt het naar de werkgevers waar hij namens jou solliciteert. Je account verwijderen wist de tekst; mail {{email}} om het bestand te laten wissen."
+        },
+        "payment": {
+          "what": "Je betaling",
+          "where": "Stripe",
+          "howLong": "Stripe ontvangt geen cv-tekst en geen verwijzing ernaar"
+        },
+        "shortlist": {
+          "what": "Cv's van kandidaten die een werkgever met Shortlist beoordeelt",
+          "where": "Het account van die werkgever, als geredigeerde tekst",
+          "howLong": "Tot de werkgever ze verwijdert"
+        }
+      },
+      "footnote": "Verwijderen gebeurt elke 15 minuten voor de tijdelijke opslag en elk uur voor de rapportcache, de AI-cache en betaalde analyses. Wil je iets eerder laten wissen, mail dan {{email}}."
+    },
     "transparentScoringTitle": "Transparante AI-scoring",
     "transparentScoringSubtitle": "Wij geloven in volledige transparantie. Bekijk precies hoe onze AI cv's analyseert, welke factoren we meenemen en hoe scores worden berekend.",
     "viewMethodology": "Bekijk onze methodologie",

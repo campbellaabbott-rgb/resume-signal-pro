@@ -13,9 +13,52 @@ import { SocialProof } from "@/components/SocialProof";
 import { HowItWorks } from "@/components/HowItWorks";
 import { FAQ } from "@/components/FAQ";
 import { ResumeBeforeAfter } from "@/components/ResumeBeforeAfter";
+import {
+  AI_CACHE_MAX_HOURS,
+  PRIVACY_EMAIL,
+  REPORT_CACHE_DAYS,
+  SHARED_ANALYSIS_DAYS,
+  TEMP_RESUME_HOURS,
+} from "@/lib/resume-retention";
+
+/**
+ * Every place a copy of a résumé (or text quoted from it) can be kept, in the
+ * order the table shows them. The wording is trustPage.retention.rows.<key>;
+ * the numbers come from src/lib/resume-retention.ts, which a test compares
+ * with the column defaults, cron jobs and cache windows that enforce them.
+ * A store added to the product without a row here is a store this page
+ * fails to mention.
+ */
+const RETENTION_ROWS = [
+  "upload",
+  "report",
+  "fingerprint",
+  "aiCache",
+  "browser",
+  "browserLocal",
+  "ai",
+  "email",
+  "paid",
+  "products",
+  "account",
+  "agent",
+  "payment",
+  "shortlist",
+] as const;
 
 export default function Trust() {
   const { t } = useTranslation();
+
+  // One set of values for every retention string on the page, so a number is
+  // written once (in resume-retention.ts) and never typed into a translation.
+  const clocks = {
+    tempHours: TEMP_RESUME_HOURS,
+    reportDays: REPORT_CACHE_DAYS,
+    aiCacheHours: AI_CACHE_MAX_HOURS,
+    analysisDays: SHARED_ANALYSIS_DAYS,
+    email: PRIVACY_EMAIL,
+    deleteLabel: t('success.actions.deleteData'),
+  };
 
   const securityFeatures = [
     {
@@ -25,13 +68,13 @@ export default function Trust() {
     },
     {
       icon: CloudOff,
-      title: t('trustPage.security.zeroStorage.title'),
-      description: t('trustPage.security.zeroStorage.description')
+      title: t('trustPage.security.freeScan.title'),
+      description: t('trustPage.security.freeScan.description', clocks)
     },
     {
       icon: Clock,
       title: t('trustPage.security.autoDelete.title'),
-      description: t('trustPage.security.autoDelete.description')
+      description: t('trustPage.security.autoDelete.description', clocks)
     },
     {
       icon: Shield,
@@ -40,8 +83,8 @@ export default function Trust() {
     },
     {
       icon: Server,
-      title: t('trustPage.security.noSharing.title'),
-      description: t('trustPage.security.noSharing.description')
+      title: t('trustPage.security.neverSold.title'),
+      description: t('trustPage.security.neverSold.description')
     },
     {
       icon: Eye,
@@ -95,10 +138,10 @@ export default function Trust() {
                   <Lock className="w-4 h-4 text-primary" />
                   <span className="text-sm">{t('trustPage.badges.ssl')}</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-                  <CloudOff className="w-4 h-4 text-primary" />
-                  <span className="text-sm">{t('trustPage.badges.zeroStorage')}</span>
-                </div>
+                <a href="#retention" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors">
+                  <Clock className="w-4 h-4 text-primary" />
+                  <span className="text-sm">{t('trustPage.badges.retention')}</span>
+                </a>
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
                   <Shield className="w-4 h-4 text-primary" />
                   <span className="text-sm">{t('trustPage.badges.gdpr')}</span>
@@ -152,6 +195,52 @@ export default function Trust() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* What is kept, where, and for how long: the whole inventory, so a
+            reader can check every copy rather than trust a slogan. */}
+        <section id="retention" className="py-16 border-t border-border scroll-mt-24">
+          <div className="container">
+            <div className="max-w-5xl mx-auto">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-bold mb-4">{t('trustPage.retention.title')}</h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto">{t('trustPage.retention.subtitle')}</p>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <table className="w-full text-sm">
+                  <thead className="hidden md:table-header-group bg-muted/40 text-left">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 font-semibold w-[38%]">{t('trustPage.retention.colWhat')}</th>
+                      <th scope="col" className="px-4 py-3 font-semibold w-[27%]">{t('trustPage.retention.colWhere')}</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">{t('trustPage.retention.colHowLong')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {RETENTION_ROWS.map((row) => (
+                      <tr key={row} className="block md:table-row border-t border-border first:border-t-0 md:first:border-t px-4 py-3 md:p-0">
+                        <th scope="row" className="block md:table-cell md:px-4 md:py-3 font-medium text-left text-foreground align-top">
+                          {t(`trustPage.retention.rows.${row}.what`, clocks)}
+                        </th>
+                        <td className="block md:table-cell md:px-4 md:py-3 text-muted-foreground align-top">
+                          <span className="md:hidden font-medium text-foreground">{t('trustPage.retention.colWhere')}: </span>
+                          {t(`trustPage.retention.rows.${row}.where`, clocks)}
+                        </td>
+                        <td className="block md:table-cell md:px-4 md:py-3 text-muted-foreground align-top">
+                          <span className="md:hidden font-medium text-foreground">{t('trustPage.retention.colHowLong')}: </span>
+                          {t(`trustPage.retention.rows.${row}.howLong`, clocks)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                {t('trustPage.retention.footnote', clocks)}
+              </p>
             </div>
           </div>
         </section>

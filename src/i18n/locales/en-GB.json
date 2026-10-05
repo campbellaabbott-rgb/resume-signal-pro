@@ -65,7 +65,7 @@
       "seniorRoles": "Built for senior ICs, managers, and competitive roles",
       "atsCompatible": "Works on all ATS systems (Workday, Greenhouse, Lever & 50+ more)",
       "oneTime": "One-time payment (never auto-renews)",
-      "private": "CVs are never stored or shared"
+      "private": "Free scan: your CV is deleted within 7 days and never sold"
     },
     "stats": {
       "scannedToday": "Scanned today",
@@ -145,8 +145,8 @@
     "testimonialAuthorName": "— Sarah K., Software Engineer",
     "transparentScoring": "transparent AI scoring, no black box",
     "factGdpr": "GDPR compliant",
-    "factAutoDelete": "CVs auto-deleted within 24h",
-    "factNoStorage": "Never stored, never shared",
+    "factAutoDelete": "CV deleted within 7 days",
+    "factNoStorage": "Never sold",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
     "browseJobs": "Browse 550,000+ verified jobs",
@@ -170,7 +170,7 @@
     "title": "24-Point Deep CV Scan",
     "subtitle": "Our AI simulates how modern AI-powered ATS systems scan your CV, analysing every word against real recruiter standards.",
     "whatWeAnalyze": "What We Analyse",
-    "dataNotStored": "Your data is never stored",
+    "dataNotStored": "Your CV is deleted within 7 days",
     "steps": {
       "upload": {
         "title": "1. Upload CV",
@@ -407,11 +407,11 @@
       },
       "dataStorage": {
         "question": "Do you store my CV data?",
-        "answer": "No. We do not store or collect your CV content. Your CV is processed in real-time to generate your analysis, and then immediately discarded. We never retain your personal information."
+        "answer": "Only briefly, and on a clock. When you upload or paste a CV, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your CV, is kept for 7 days so the same file gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a CV longer only when you ask us to: a version you save to your account, the CV you set for job matching, or the CV you give the apply agent, which sends it to the employers it applies to for you. We never sell it. Our Trust page lists every copy and its clock."
       },
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or CV templates?",
-        "answer": "CV Booster is purpose-built for ATS optimisation with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalised rewrites, LinkedIn analysis, and job description alignment. Your data is immediately discarded—never used for training."
+        "answer": "CV Booster is purpose-built for ATS optimisation with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalised rewrites, LinkedIn analysis, and job description alignment. Your CV is never used for training, and the free scan deletes it within 7 days."
       },
       "bringYourAgent": {
         "question": "Can my own AI agent use this?",
@@ -476,7 +476,7 @@
         "description": "Bank-level encryption"
       },
       "autoDelete": {
-        "label": "Auto-deleted 24h",
+        "label": "Deleted in 7 days",
         "description": "Your data, your control"
       },
       "gdpr": {
@@ -484,8 +484,8 @@
         "description": "Privacy first"
       },
       "zeroStorage": {
-        "label": "Zero Storage",
-        "description": "Processed & discarded"
+        "label": "Never Sold",
+        "description": "Not to recruiters, not to anyone"
       },
       "instant": {
         "label": "Instant Delivery",
@@ -742,7 +742,7 @@
     "subtitle": "Using Gemini Pro for maximum accuracy",
     "complete": "{{percent}}% complete",
     "live": "Live",
-    "securityNote": "Your CV is analysed securely and never stored",
+    "securityNote": "Your CV is deleted within 7 days and never sold",
     "stages": {
       "parsing": {
         "label": "Parsing CV",
@@ -2363,7 +2363,7 @@
     "analysisProcessingDescription": "We could not extract detailed recommendations from your CV. This might happen if the CV format is unusual or if there was an issue during processing.",
     "bottomCta": "Apply these changes to your CV and watch your interview rate improve!",
     "bottomCtaWithLinkedIn": "Apply these changes to your CV and LinkedIn profile and watch your interview rate improve!",
-    "analysisSaved": "This analysis has been saved. Use the share link above to access it anytime."
+    "analysisSaved": "This analysis is kept for {{analysisDays}} days behind the share link above, then deleted. Download it as a PDF to keep your own copy."
   },
   "personalization": {
     "experience": {
@@ -2504,14 +2504,14 @@
   },
   "trustPage": {
     "metaTitle": "Trust & Security — Resume Booster",
-    "metaDescription": "256-bit encryption, no permanent CV storage, GDPR-aligned data handling. See how we keep your data safe.",
+    "metaDescription": "Exactly what we keep from your CV, where, and for how long — plus 256-bit encryption and your right to have it erased.",
     "privacyMatters": "Your Privacy Matters",
     "titlePrefix": "Your CV Is",
     "titleHighlight": "Safe With Us",
     "heroSubtitle": "We built Resume Booster with security-first principles. Your career documents deserve bank-level protection, and that's exactly what we provide.",
     "badges": {
       "ssl": "256-bit SSL",
-      "zeroStorage": "Zero Storage",
+      "retention": "Published Retention",
       "gdpr": "GDPR Compliant"
     },
     "stats": {
@@ -2525,21 +2525,21 @@
         "title": "256-bit SSL Encryption",
         "description": "Your CV is protected with bank-level encryption during upload and processing. We use the same security standard as major financial institutions."
       },
-      "zeroStorage": {
-        "title": "Zero Storage Policy",
-        "description": "We never store your CV on our servers. Your document is processed in memory and immediately discarded after analysis."
+      "freeScan": {
+        "title": "What the Free Scan Keeps",
+        "description": "Your CV text for {{tempHours}} hours, so a checkout can use it, and your report, which quotes your CV, for {{reportDays}} days. Then both are deleted automatically."
       },
       "autoDelete": {
-        "title": "Auto-Delete in 24 Hours",
-        "description": "Any temporary data created during processing is automatically deleted within 24 hours. Your data, your control."
+        "title": "Deleted on a Schedule",
+        "description": "Deletion jobs run every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses, so none of those outlives its stated time by more than an hour."
       },
       "gdpr": {
         "title": "GDPR Compliant",
         "description": "We follow strict European data protection standards. You can request deletion of any data at any time."
       },
-      "noSharing": {
-        "title": "No Third-Party Sharing",
-        "description": "Your CV content is never shared with recruiters, employers, or any third parties. It's analysed solely to help you."
+      "neverSold": {
+        "title": "Never Sold",
+        "description": "We never sell your CV or show it to recruiters. It leaves us only for the AI provider that writes your report, the email provider that delivers any report you send yourself and the paid analysis we email you, and, if you turn on the apply agent, the employers it applies to for you. Stripe handles payment and receives no CV text."
       },
       "transparent": {
         "title": "Transparent Processing",
@@ -2548,6 +2548,86 @@
     },
     "protectDataTitle": "How We Protect Your Data",
     "protectDataSubtitle": "Every aspect of Resume Booster is designed with your privacy and security in mind.",
+    "retention": {
+      "title": "What we keep, where, and for how long",
+      "subtitle": "Every place a copy of your CV, or text quoted from it, can be kept — and the clock on each.",
+      "colWhat": "What",
+      "colWhere": "Where",
+      "colHowLong": "How long",
+      "rows": {
+        "upload": {
+          "what": "The text of a CV you upload or paste, with any LinkedIn text or job description you add",
+          "where": "A private temporary store on our servers",
+          "howLong": "{{tempHours}} hours, then deleted"
+        },
+        "report": {
+          "what": "Your free report, which quotes lines from your CV, including its first ~600 characters",
+          "where": "A report cache, filed under a one-way fingerprint of the text",
+          "howLong": "{{reportDays}} days, then deleted"
+        },
+        "fingerprint": {
+          "what": "That one-way fingerprint, with the industry we detected",
+          "where": "Our database",
+          "howLong": "Kept, so a rescan of the same file reads the same industry. It cannot be turned back into your CV."
+        },
+        "aiCache": {
+          "what": "The AI-written summary at the top of your free report, which can use your name, and the whole report when our backup scanner writes it",
+          "where": "An AI response cache, filed under a one-way fingerprint of the text",
+          "howLong": "Up to {{aiCacheHours}} hours, then deleted"
+        },
+        "browser": {
+          "what": "Your CV text",
+          "where": "Your own browser tab (session storage)",
+          "howLong": "Until you close the tab"
+        },
+        "browserLocal": {
+          "what": "A CV you build on the site (in the builder or in Freelance Boost), a history of your recent scans (name, role and scores), and your recent reports",
+          "where": "This browser's local storage, on your device",
+          "howLong": "Until it is cleared: the Clear Browser Data button on a paid results page clears all of it, and so does clearing this site's data in your browser"
+        },
+        "ai": {
+          "what": "Your CV text, while a report is written",
+          "where": "Our AI model provider",
+          "howLong": "Sent only to produce your report, under that provider's terms"
+        },
+        "email": {
+          "what": "A report you email to yourself, the paid analysis we email you, and any fix-plan emails you opt into",
+          "where": "Your inbox, sent through our email provider; scheduled fix-plan emails wait in our send queue",
+          "howLong": "The queued emails go out over 14 days; unsubscribing cancels the rest"
+        },
+        "paid": {
+          "what": "A paid analysis, which quotes your CV",
+          "where": "Behind its private share link",
+          "howLong": "{{analysisDays}} days, or until you press “{{deleteLabel}}” on the results page"
+        },
+        "products": {
+          "what": "Documents made for another paid product, such as a cover letter or a rewrite",
+          "where": "With your purchase record, under your email",
+          "howLong": "Kept so you can recover them; email {{email}} to have them erased"
+        },
+        "account": {
+          "what": "A CV version you save, and the CV you set for job matching",
+          "where": "Your account",
+          "howLong": "Until you delete your account"
+        },
+        "agent": {
+          "what": "The CV you give the apply agent: the file and its text",
+          "where": "Private storage that only you and the agent can read",
+          "howLong": "While you use the agent, which sends it to the employers it applies to for you. Deleting your account erases the text; email {{email}} to have the file erased."
+        },
+        "payment": {
+          "what": "Your payment",
+          "where": "Stripe",
+          "howLong": "Stripe receives no CV text, and no reference to it"
+        },
+        "shortlist": {
+          "what": "Candidates' CVs an employer screens with Shortlist",
+          "where": "That employer's account, as redacted text",
+          "howLong": "Until the employer deletes them"
+        }
+      },
+      "footnote": "Deletion runs every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses. To have anything erased sooner, email {{email}}."
+    },
     "transparentScoringTitle": "Transparent AI Scoring",
     "transparentScoringSubtitle": "We believe in complete transparency. See exactly how our AI analyses CVs, what factors we consider, and how scores are calculated.",
     "viewMethodology": "View Our Methodology",

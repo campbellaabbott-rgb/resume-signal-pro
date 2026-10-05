@@ -146,16 +146,29 @@ describe("one session, one analysis", () => {
     expect(h.db.rows("resume_analyses"), "the losing request's analysis must not survive as a second deliverable").toHaveLength(1);
   });
 
-  it("a cached analysis is redeemed through the same single gate", async () => {
-    const id = buy("cs_live_cached");
-    h.cache.value = { marker: "from-cache", optimizedBullets: [{}], actionVerbs: [], keywords: {}, redFlags: [] };
+  it("a paid analysis is never written to the AI cache, nor served from it: the share link holds the only copy", async () => {
+    const id = buy("cs_live_uncached");
+    const looked: unknown[] = [];
+    const stored: unknown[] = [];
+    // A cache that would answer, as an older deployment's rows would.
+    h.db.rpcs.get_cached_response = (a) => { looked.push(a); return { data: { marker: "from-cache" }, error: null }; };
+    h.db.rpcs.store_cached_response = (a) => { stored.push(a); return { data: true, error: null }; };
     const first = await h.call({ resumeText: RESUME, sessionId: id });
+    await h.settle();
     expect(first.status).toBe(200);
+    expect(first.json.marker).not.toBe("from-cache");
+    expect(h.aiCalls()).toBe(1);
+    expect(looked, "analyze-resume read the AI cache").toEqual([]);
+    expect(stored, "analyze-resume wrote the paid analysis to the AI cache").toEqual([]);
+    // Asked again, the session is answered from its own redemption, not re-analysed.
     const again = await h.call({ resumeText: RESUME, sessionId: id });
     expect(again.status).toBe(200);
     expect(again.json.shareId).toBe(first.json.shareId);
-    expect(h.db.rows("resume_analyses")).toHaveLength(1);
-    expect(h.aiCalls()).toBe(0);
+    expect(h.aiCalls()).toBe(1);
+    // And deleting the share-link copy leaves nothing behind to serve.
+    h.db.tables.resume_analyses = [];
+    expect((await h.call({ resumeText: RESUME, sessionId: id })).status).toBe(409);
+    expect(stored).toEqual([]);
   });
 
   it("a session the pre-fix code already redeemed (a claim with no product, beside the caller's address) is not redeemed again", async () => {

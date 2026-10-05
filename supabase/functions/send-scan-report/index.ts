@@ -601,7 +601,7 @@ Deno.serve(async (req) => {
       </div>` : ""}
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
-      Your resume was never stored — this summary contains only the analysis results you requested.<br>
+      Your resume text is deleted within 24 hours of your scan, and the report that quotes it within 7 days. Every copy we keep, and for how long: resumebooster.work/trust<br>
       You received this because this address was entered for a scan report at resumebooster.work. If that wasn't you, ignore it.<br>
       Follow-up emails come only if the button for them in this email is pressed, and every one has an unsubscribe link.
     </p>

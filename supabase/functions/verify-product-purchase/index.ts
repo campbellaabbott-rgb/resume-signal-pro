@@ -1,11 +1,13 @@
-// deploy-stamp: 2026-10-01T21:00Z
+// deploy-stamp: 2026-10-04T18:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-04.1";
+const FN_BUILD = "verify-product-purchase.2026-10-04.resume-ref";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -70,7 +72,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  // The platform's word for the caller's address, never the first forwarded
+  // hop, which the caller writes itself and could rotate per request.
+  const clientIp = clientAddressOr(req.headers);
   const supabaseEarly = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   const { data: rlAllowed } = await supabaseEarly.rpc("check_rate_limit", { p_function: "verify-product-purchase", p_ip: clientIp, p_max_requests: 30, p_window_minutes: 60 });
   if (!rlAllowed) return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -208,7 +212,11 @@ serve(async (req) => {
     const productType = session.metadata?.product_type;
     const productName = session.metadata?.product_name;
     const customerEmail = session.customer_email || session.metadata?.customer_email;
-    const resumeSessionId = session.metadata?.session_id;
+    // Looked up by the Stripe session id in checkout_resume_refs: the
+    // temporary-store id is no longer written to Stripe (it is a bearer key to
+    // the text). A Pro grant's synthetic session, and a session minted before
+    // that change, still name it in metadata.
+    const resumeSessionId = await resumeSessionForCheckout(supabaseEarly, sessionId, session.metadata);
 
     // Initialize Supabase to check for duplicate processing
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

@@ -112,7 +112,10 @@ type Job = { jobname: string; schedule: string; command: string; active: boolean
 const jobs = async (db: PGlite) =>
   Object.fromEntries((await db.query<Job>("SELECT jobname, schedule, command, active, username FROM cron.job")).rows.map((r) => [r.jobname, r]));
 
-describe("a job whose function asks for more than two minutes gets it in its command", () => {
+// Each case boots its own pglite; under a loaded machine that alone passes the
+// 5-second default (measured 5.5-9.9 s at load ~12-27 on 2026-10-04), so the
+// cases carry the suite's 30-second working range (helpers/mount-budget.ts).
+describe("a job whose function asks for more than two minutes gets it in its command", { timeout: 30_000 }, () => {
   it("wraps exactly those, byte for byte, and keeps schedule, owner and active flag", async () => {
     const db = await boot();
     await db.exec(SQL);
@@ -160,7 +163,7 @@ describe("a job whose function asks for more than two minutes gets it in its com
   });
 });
 
-describe("the cron health reader", () => {
+describe("the cron health reader", { timeout: 30_000 }, () => {
   it("reports runs, failures, timeout cancels and timings per job, and the timeout each command sets", async () => {
     const db = await boot();
     await db.exec(SQL);

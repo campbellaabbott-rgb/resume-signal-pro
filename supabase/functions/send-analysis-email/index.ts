@@ -187,7 +187,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
                   View Full Analysis →
                 </a>
                 <p style="margin: 16px 0 0; color: #9ca3af; font-size: 12px;">
-                  Your results are saved and available anytime
+                  This link works for 90 days from the day your analysis was made. Open it and choose Save as PDF to keep your own copy.
                 </p>
               </div>
             </td>

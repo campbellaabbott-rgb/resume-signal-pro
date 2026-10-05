@@ -16,8 +16,8 @@ const TRUST_POINTS = [
   },
   {
     icon: ShieldCheck,
-    title: "Your resume is never stored",
-    body: "Free scans run in memory. Accounts keep your scores, credits, and purchases — never your documents.",
+    title: "How long we keep your resume, in writing",
+    body: "A free scan's text is deleted after 24 hours and its report after 7 days. An account keeps a resume only when you save one or give one to the apply agent — the full list is on our Trust page.",
   },
   {
     icon: Globe2,

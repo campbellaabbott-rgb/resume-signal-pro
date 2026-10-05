@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 
@@ -2000,7 +2001,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-success" />
-              <span>{t('analysisResults.analysisSaved')}</span>
+              <span>{t('analysisResults.analysisSaved', { analysisDays: SHARED_ANALYSIS_DAYS })}</span>
             </div>
           </div>
         </div>

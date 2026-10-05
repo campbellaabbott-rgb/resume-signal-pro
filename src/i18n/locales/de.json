@@ -71,7 +71,7 @@
       "seniorRoles": "Entwickelt für Senior-Positionen, Manager und kompetitive Rollen",
       "atsCompatible": "Funktioniert mit allen ATS-Systemen (Workday, Greenhouse, Lever & 50+ mehr)",
       "oneTime": "Einmalige Zahlung (verlängert sich nie automatisch)",
-      "private": "Lebensläufe werden nie gespeichert oder geteilt"
+      "private": "Gratis-Scan: Ihr Lebenslauf wird innerhalb von 7 Tagen gelöscht und nie verkauft"
     },
     "stats": {
       "scannedToday": "Heute gescannt",
@@ -145,8 +145,8 @@
     "testimonialAuthorName": "— Sarah K., Softwareentwicklerin",
     "transparentScoring": "transparente KI-Bewertung, keine Blackbox",
     "factGdpr": "DSGVO-konform",
-    "factAutoDelete": "Lebensläufe werden nach 24 h automatisch gelöscht",
-    "factNoStorage": "Nie gespeichert, nie geteilt",
+    "factAutoDelete": "Lebenslauf nach spätestens 7 Tagen gelöscht",
+    "factNoStorage": "Nie verkauft",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
     "browseJobs": "550.000+ verifizierte Jobs ansehen",
@@ -170,7 +170,7 @@
     "title": "24-Punkte-Tiefenscan",
     "subtitle": "Unsere KI simuliert, wie moderne ATS-Systeme Ihren Lebenslauf scannen und jedes Wort gegen echte Recruiter-Standards analysieren.",
     "whatWeAnalyze": "Was wir analysieren",
-    "dataNotStored": "Ihre Daten werden nie gespeichert",
+    "dataNotStored": "Ihr Lebenslauf wird innerhalb von 7 Tagen gelöscht",
     "steps": {
       "upload": {
         "title": "1. Lebenslauf hochladen",
@@ -407,7 +407,7 @@
       },
       "dataStorage": {
         "question": "Speichern Sie meine Lebenslaufdaten?",
-        "answer": "Nein. Wir speichern Ihre Lebenslaufinhalte nicht. Ihr Lebenslauf wird in Echtzeit verarbeitet und dann sofort verworfen."
+        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit dieselbe Datei denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder den Lebenslauf, den Sie dem Bewerbungsagenten geben – er sendet ihn an die Arbeitgeber, bei denen er sich für Sie bewirbt. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
       },
       "vsChatGPT": {
         "question": "Warum ist das besser als ChatGPT?",
@@ -476,7 +476,7 @@
         "description": "Bankniveau-Verschlüsselung"
       },
       "autoDelete": {
-        "label": "Auto-Löschung 24h",
+        "label": "Löschung in 7 Tagen",
         "description": "Ihre Daten, Ihre Kontrolle"
       },
       "gdpr": {
@@ -484,8 +484,8 @@
         "description": "Datenschutz zuerst"
       },
       "zeroStorage": {
-        "label": "Keine Speicherung",
-        "description": "Verarbeitet & gelöscht"
+        "label": "Nie verkauft",
+        "description": "Nicht an Recruiter, an niemanden"
       },
       "instant": {
         "label": "Sofortlieferung",
@@ -742,7 +742,7 @@
     "subtitle": "Gemini Pro für maximale Genauigkeit",
     "complete": "{{percent}}% abgeschlossen",
     "live": "Live",
-    "securityNote": "Ihr Lebenslauf wird sicher analysiert und nie gespeichert",
+    "securityNote": "Ihr Lebenslauf wird innerhalb von 7 Tagen gelöscht und nie verkauft",
     "stages": {
       "parsing": {
         "label": "Lebenslauf wird geparst",
@@ -2363,7 +2363,7 @@
     "analysisProcessingDescription": "Wir konnten keine detaillierten Empfehlungen aus deinem Lebenslauf extrahieren. Dies kann passieren, wenn das Lebenslaufformat ungewöhnlich ist oder es bei der Verarbeitung ein Problem gab.",
     "bottomCta": "Wende diese Änderungen auf deinen Lebenslauf an und beobachte, wie sich deine Interviewquote verbessert!",
     "bottomCtaWithLinkedIn": "Wende diese Änderungen auf deinen Lebenslauf und dein LinkedIn-Profil an und beobachte, wie sich deine Interviewquote verbessert!",
-    "analysisSaved": "Diese Analyse wurde gespeichert. Verwende den Freigabelink oben, um jederzeit darauf zuzugreifen."
+    "analysisSaved": "Diese Analyse bleibt {{analysisDays}} Tage hinter dem Freigabelink oben abrufbar und wird dann gelöscht. Lade sie als PDF herunter, um eine eigene Kopie zu behalten."
   },
   "personalization": {
     "experience": {
@@ -2504,14 +2504,14 @@
   },
   "trustPage": {
     "metaTitle": "Vertrauen & Sicherheit — Resume Booster",
-    "metaDescription": "256-Bit-Verschlüsselung, keine dauerhafte Speicherung des Lebenslaufs, DSGVO-konforme Datenverarbeitung. So schützen wir deine Daten.",
+    "metaDescription": "Genau, was wir von deinem Lebenslauf aufbewahren, wo und wie lange – dazu 256-Bit-Verschlüsselung und dein Recht auf Löschung.",
     "privacyMatters": "Deine Privatsphäre ist uns wichtig",
     "titlePrefix": "Dein Lebenslauf ist",
     "titleHighlight": "bei uns sicher",
     "heroSubtitle": "Wir haben Resume Booster nach dem Prinzip „Sicherheit zuerst“ entwickelt. Deine Karrieredokumente verdienen Schutz auf Bankniveau – genau das bieten wir.",
     "badges": {
       "ssl": "256-Bit-SSL",
-      "zeroStorage": "Keine Speicherung",
+      "retention": "Offengelegte Fristen",
       "gdpr": "DSGVO-konform"
     },
     "stats": {
@@ -2525,21 +2525,21 @@
         "title": "256-Bit-SSL-Verschlüsselung",
         "description": "Dein Lebenslauf wird während des Uploads und der Verarbeitung mit Verschlüsselung auf Bankniveau geschützt. Wir nutzen den gleichen Sicherheitsstandard wie große Finanzinstitute."
       },
-      "zeroStorage": {
-        "title": "Keine-Speicherung-Richtlinie",
-        "description": "Wir speichern deinen Lebenslauf niemals auf unseren Servern. Dein Dokument wird im Arbeitsspeicher verarbeitet und nach der Analyse sofort verworfen."
+      "freeScan": {
+        "title": "Was der Gratis-Scan aufbewahrt",
+        "description": "Den Text deines Lebenslaufs {{tempHours}} Stunden lang, damit ein Kauf darauf zugreifen kann, und deinen Bericht, der deinen Lebenslauf zitiert, {{reportDays}} Tage lang. Danach wird beides automatisch gelöscht."
       },
       "autoDelete": {
-        "title": "Automatische Löschung nach 24 Stunden",
-        "description": "Alle während der Verarbeitung erstellten temporären Daten werden automatisch innerhalb von 24 Stunden gelöscht. Deine Daten, deine Kontrolle."
+        "title": "Löschung nach Zeitplan",
+        "description": "Löschjobs laufen alle 15 Minuten für den Zwischenspeicher und stündlich für den Bericht-Cache, den KI-Cache und bezahlte Analysen, sodass keines davon seine angegebene Frist um mehr als eine Stunde überschreitet."
       },
       "gdpr": {
         "title": "DSGVO-konform",
         "description": "Wir halten uns an strenge europäische Datenschutzstandards. Du kannst jederzeit die Löschung deiner Daten beantragen."
       },
-      "noSharing": {
-        "title": "Keine Weitergabe an Dritte",
-        "description": "Der Inhalt deines Lebenslaufs wird niemals an Recruiter, Arbeitgeber oder Dritte weitergegeben. Er wird ausschließlich analysiert, um dir zu helfen."
+      "neverSold": {
+        "title": "Nie verkauft",
+        "description": "Wir verkaufen deinen Lebenslauf nie und zeigen ihn keinem Recruiter. Er verlässt uns nur an den KI-Anbieter, der deinen Bericht schreibt, an den E-Mail-Anbieter, der einen Bericht zustellt, den du dir selbst schickst, und die bezahlte Analyse, die wir dir mailen, und – wenn du den Bewerbungsagenten einschaltest – an die Arbeitgeber, bei denen er sich für dich bewirbt. Stripe wickelt die Zahlung ab und erhält keinen Lebenslauftext."
       },
       "transparent": {
         "title": "Transparente Verarbeitung",
@@ -2548,6 +2548,86 @@
     },
     "protectDataTitle": "Wie wir deine Daten schützen",
     "protectDataSubtitle": "Jeder Aspekt von Resume Booster ist mit Blick auf deine Privatsphäre und Sicherheit gestaltet.",
+    "retention": {
+      "title": "Was wir aufbewahren, wo und wie lange",
+      "subtitle": "Jeder Ort, an dem eine Kopie deines Lebenslaufs oder daraus zitierter Text liegen kann – und die Frist für jeden.",
+      "colWhat": "Was",
+      "colWhere": "Wo",
+      "colHowLong": "Wie lange",
+      "rows": {
+        "upload": {
+          "what": "Der Text eines Lebenslaufs, den du hochlädst oder einfügst, samt LinkedIn-Text oder Stellenbeschreibung, falls angegeben",
+          "where": "Ein privater Zwischenspeicher auf unseren Servern",
+          "howLong": "{{tempHours}} Stunden, dann gelöscht"
+        },
+        "report": {
+          "what": "Dein kostenloser Bericht, der Zeilen aus deinem Lebenslauf zitiert, einschließlich der ersten ~600 Zeichen",
+          "where": "Ein Bericht-Cache, abgelegt unter einem Einweg-Fingerabdruck des Textes",
+          "howLong": "{{reportDays}} Tage, dann gelöscht"
+        },
+        "fingerprint": {
+          "what": "Dieser Einweg-Fingerabdruck, zusammen mit der erkannten Branche",
+          "where": "Unsere Datenbank",
+          "howLong": "Bleibt erhalten, damit ein erneuter Scan derselben Datei dieselbe Branche erkennt. Aus ihm lässt sich dein Lebenslauf nicht wiederherstellen."
+        },
+        "aiCache": {
+          "what": "Die KI-geschriebene Zusammenfassung oben in deinem kostenlosen Bericht, die deinen Namen verwenden kann, und der ganze Bericht, wenn unser Ersatz-Scanner ihn schreibt",
+          "where": "Ein KI-Antwort-Cache, abgelegt unter einem Einweg-Fingerabdruck des Textes",
+          "howLong": "Bis zu {{aiCacheHours}} Stunden, dann gelöscht"
+        },
+        "browser": {
+          "what": "Der Text deines Lebenslaufs",
+          "where": "Dein eigener Browser-Tab (Session Storage)",
+          "howLong": "Bis du den Tab schließt"
+        },
+        "browserLocal": {
+          "what": "Ein Lebenslauf, den du hier erstellst (im Builder oder in Freelance Boost), ein Verlauf deiner letzten Scans (Name, Rolle und Punktzahlen) und deine letzten Berichte",
+          "where": "Der lokale Speicher dieses Browsers, auf deinem Gerät",
+          "howLong": "Bis er geleert wird: Die Schaltfläche zum Löschen der Browserdaten auf einer bezahlten Ergebnisseite leert alles, ebenso das Löschen der Website-Daten in deinem Browser"
+        },
+        "ai": {
+          "what": "Der Text deines Lebenslaufs, während ein Bericht geschrieben wird",
+          "where": "Unser KI-Modellanbieter",
+          "howLong": "Nur zur Erstellung deines Berichts gesendet, zu den Bedingungen dieses Anbieters"
+        },
+        "email": {
+          "what": "Ein Bericht, den du dir selbst mailst, die bezahlte Analyse, die wir dir mailen, und Fix-Plan-E-Mails, die du abonnierst",
+          "where": "Dein Postfach, versendet über unseren E-Mail-Anbieter; geplante Fix-Plan-E-Mails warten in unserer Versandwarteschlange",
+          "howLong": "Die geplanten E-Mails gehen über 14 Tage hinweg raus; eine Abmeldung storniert den Rest"
+        },
+        "paid": {
+          "what": "Eine bezahlte Analyse, die deinen Lebenslauf zitiert",
+          "where": "Hinter ihrem privaten Freigabelink",
+          "howLong": "{{analysisDays}} Tage oder bis du auf der Ergebnisseite auf „{{deleteLabel}}“ klickst"
+        },
+        "products": {
+          "what": "Dokumente für ein anderes bezahltes Produkt, etwa ein Anschreiben oder eine Überarbeitung",
+          "where": "Bei deinem Kaufdatensatz, unter deiner E-Mail-Adresse",
+          "howLong": "Aufbewahrt, damit du sie wiederherstellen kannst; schreib an {{email}}, um sie löschen zu lassen"
+        },
+        "account": {
+          "what": "Eine Lebenslauf-Version, die du speicherst, und der Lebenslauf für das Job-Matching",
+          "where": "Dein Konto",
+          "howLong": "Bis du dein Konto löschst"
+        },
+        "agent": {
+          "what": "Der Lebenslauf, den du dem Bewerbungsagenten gibst: die Datei und ihr Text",
+          "where": "Privater Speicher, den nur du und der Agent lesen können",
+          "howLong": "Solange du den Agenten nutzt; er sendet ihn an die Arbeitgeber, bei denen er sich für dich bewirbt. Das Löschen deines Kontos entfernt den Text; schreib an {{email}}, um die Datei löschen zu lassen."
+        },
+        "payment": {
+          "what": "Deine Zahlung",
+          "where": "Stripe",
+          "howLong": "Stripe erhält keinen Lebenslauftext und keinen Verweis darauf"
+        },
+        "shortlist": {
+          "what": "Lebensläufe von Kandidaten, die ein Arbeitgeber mit Shortlist prüft",
+          "where": "Das Konto dieses Arbeitgebers, als geschwärzter Text",
+          "howLong": "Bis der Arbeitgeber sie löscht"
+        }
+      },
+      "footnote": "Gelöscht wird alle 15 Minuten im Zwischenspeicher und stündlich im Bericht-Cache, im KI-Cache und bei bezahlten Analysen. Wenn etwas früher gelöscht werden soll, schreib an {{email}}."
+    },
     "transparentScoringTitle": "Transparente KI-Bewertung",
     "transparentScoringSubtitle": "Wir glauben an vollständige Transparenz. Sieh genau, wie unsere KI Lebensläufe analysiert, welche Faktoren wir berücksichtigen und wie Punktzahlen berechnet werden.",
     "viewMethodology": "Unsere Methodik ansehen",

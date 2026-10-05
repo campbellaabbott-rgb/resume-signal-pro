@@ -175,7 +175,7 @@ export default function IndustryKeywords() {
             <h2 className="text-xl font-bold mb-2">See how your resume scores against this data — free</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               A full diagnostic report in seconds: which of these keywords you're missing, how the big ATS platforms parse
-              your file, your weakest bullets rewritten, and a fix plan. No signup, resume never stored.
+              your file, your weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.
             </p>
             <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
               Scan my resume free <ArrowRight className="w-4 h-4" />
