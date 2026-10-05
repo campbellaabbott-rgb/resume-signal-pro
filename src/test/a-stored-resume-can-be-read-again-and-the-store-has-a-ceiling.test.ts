@@ -59,7 +59,21 @@ const asAnon = async <T,>(headers: Record<string, string>, sql: string, params: 
   }
 };
 const store = (ip: string, text = "Jane Doe, senior engineer. ".repeat(4)) =>
-  asAnon<{ id: string | null }>({ "cf-connecting-ip": ip }, "SELECT public.store_temp_resume(p_resume => $1) AS id", [text]).then((r) => r[0].id);
+  asAnon<{ id: string | null }>({ "cf-connecting-ip": ip }, "SELECT public.store_temp_resume(p_resume => $1, p_linkedin => NULL, p_job_description => NULL) AS id", [text]).then((r) => r[0].id);
+
+// 20251216022357's two-argument overload, which nothing later dropped and
+// production still holds, closed to client roles by 20261004110000: the first
+// apply of this file stopped on it ("function public.store_temp_resume(text)
+// is not unique", 2026-10-05).
+const LEFTOVER_TWO_ARGUMENT_STORE = `
+  CREATE FUNCTION public.store_temp_resume(p_resume text, p_linkedin text DEFAULT NULL)
+    RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $f$
+  DECLARE v_id uuid;
+  BEGIN
+    INSERT INTO temp_resume_storage (resume_text, linkedin_text) VALUES (p_resume, p_linkedin) RETURNING session_id INTO v_id;
+    RETURN v_id;
+  END $f$;
+  REVOKE ALL ON FUNCTION public.store_temp_resume(text, text) FROM PUBLIC, anon, authenticated;`;
 
 beforeAll(async () => {
   pg = new PGlite();
@@ -95,6 +109,7 @@ beforeAll(async () => {
     GRANT EXECUTE ON FUNCTION public.get_temp_resume(text) TO anon, authenticated, service_role;
     GRANT EXECUTE ON FUNCTION public.store_temp_resume(text, text, text) TO anon, authenticated, service_role;
   `);
+  await pg.exec(LEFTOVER_TWO_ARGUMENT_STORE);
   await pg.exec(budgetDdl());
   await pg.exec(`BEGIN;\n${MIGRATION}\nCOMMIT;`);
 }, 120_000);
@@ -121,7 +136,7 @@ describe("get_temp_resume reads without consuming", () => {
 
 describe("store_temp_resume is bounded", () => {
   it("malformed input still raises the message callers know", async () => {
-    await expect(asAnon({ "cf-connecting-ip": "203.0.113.3" }, "SELECT public.store_temp_resume(p_resume => 'short')")).rejects.toThrow(/Invalid resume text/);
+    await expect(asAnon({ "cf-connecting-ip": "203.0.113.3" }, "SELECT public.store_temp_resume(p_resume => 'short', p_linkedin => NULL, p_job_description => NULL)")).rejects.toThrow(/Invalid resume text/);
   });
 
   it("one address gets 30 an hour; a forged first forwarded hop is the same address", async () => {
@@ -130,7 +145,7 @@ describe("store_temp_resume is bounded", () => {
       // The client writes the first hop; the platform appends the last one.
       ids.push((await asAnon<{ id: string | null }>(
         { "x-forwarded-for": `10.0.${i}.1, 198.51.100.9` },
-        "SELECT public.store_temp_resume(p_resume => $1) AS id", ["Jane Doe, senior engineer. ".repeat(4)]))[0].id);
+        "SELECT public.store_temp_resume(p_resume => $1, p_linkedin => NULL, p_job_description => NULL) AS id", ["Jane Doe, senior engineer. ".repeat(4)]))[0].id);
     }
     expect(ids.slice(0, 30).every((x) => typeof x === "string")).toBe(true);
     expect(ids.slice(30)).toEqual([null, null]);
@@ -188,6 +203,51 @@ describe("store_temp_resume is bounded", () => {
     expect(await store("203.0.200.1"), "a /16 already holding 5 rows past the soft ceiling").toBeNull();
     await fill(10000 - (await pg.query<{ c: number }>("SELECT count(*)::int AS c FROM public.temp_resume_storage WHERE expires_at > now()")).rows[0].c, "10.100.0.0/24", "10.100.0.0/16");
     expect(await store("198.18.0.1")).toBeNull();
+  });
+});
+
+describe("production's leftover two-argument store", () => {
+  it("the file applies beside it, leaves it closed to client roles, and its own calls are unambiguous", async () => {
+    const r = await pg.query<{ sig: string; anon: boolean }>(
+      `SELECT p.oid::regprocedure::text AS sig, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname = 'store_temp_resume' ORDER BY 1`);
+    expect(r.rows).toEqual([
+      { sig: "store_temp_resume(text,text)", anon: false },
+      { sig: "store_temp_resume(text,text,text)", anon: true },
+    ]);
+  });
+
+  it("TEETH: with the short calls the first apply made, the file stops on the ambiguity", async () => {
+    const twin = new PGlite();
+    try {
+      await twin.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+      await twin.exec(`CREATE TABLE public.temp_resume_storage (session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resume_text text NOT NULL,
+        linkedin_text text, job_description_text text, created_at timestamptz NOT NULL DEFAULT now(),
+        expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'));`);
+      await twin.exec(LEFTOVER_TWO_ARGUMENT_STORE);
+      await twin.exec(budgetDdl());
+      const shortCalls = MIGRATION.split("public.store_temp_resume(v_probe, NULL, NULL)").join("public.store_temp_resume(v_probe)");
+      expect(shortCalls).not.toBe(MIGRATION);
+      await expect(twin.exec(`BEGIN;\n${shortCalls}\nCOMMIT;`)).rejects.toThrow(/not unique/);
+    } finally {
+      await twin.close();
+    }
+  });
+
+  it("an overload a client could still call is refused by the closing check", async () => {
+    const twin = new PGlite();
+    try {
+      await twin.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+      await twin.exec(`CREATE TABLE public.temp_resume_storage (session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resume_text text NOT NULL,
+        linkedin_text text, job_description_text text, created_at timestamptz NOT NULL DEFAULT now(),
+        expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'));`);
+      await twin.exec(LEFTOVER_TWO_ARGUMENT_STORE.replace(/REVOKE ALL[^;]*;/, "GRANT EXECUTE ON FUNCTION public.store_temp_resume(text, text) TO anon;"));
+      await twin.exec(budgetDdl());
+      await expect(twin.exec(`BEGIN;\n${MIGRATION}\nCOMMIT;`)).rejects.toThrow(/every other overload closed to client roles/);
+    } finally {
+      await twin.close();
+    }
   });
 });
 
