@@ -103,6 +103,14 @@ CREATE INDEX IF NOT EXISTS temp_resume_storage_writer_net_idx
 CREATE INDEX IF NOT EXISTS temp_resume_storage_writer_wide_idx
   ON public.temp_resume_storage (writer_wide, expires_at);
 
+-- TWO OVERLOADS, ONE OPEN. Production still carries store_temp_resume(text,text)
+-- from 20251216022357; 20261004110000 closed it to client roles (every caller
+-- passes all three named arguments) and its census counts it as closed, so it
+-- stays. With both overloads defaulting their trailing arguments a SHORT call
+-- matches either -- the first apply of this file stopped on exactly that
+-- ("function public.store_temp_resume(text) is not unique", 2026-10-05) -- so
+-- every call this file makes names all three arguments.
+
 CREATE OR REPLACE FUNCTION public.store_temp_resume(p_resume text, p_linkedin text DEFAULT NULL::text, p_job_description text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -214,6 +222,17 @@ DECLARE
   v_sentinel constant text := 'temp resume probe: rolled back';
   v_probe    constant text := 'selfcheck 20261005123000 résumé text, long enough to be stored by the real function';
 BEGIN
+  -- The three-argument store is the one the clients call; any other overload
+  -- (production's leftover two-argument one) must stay closed to them, or it
+  -- would be a way around every budget below.
+  SELECT count(*)::integer INTO v_n
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'store_temp_resume'
+     AND p.oid IS DISTINCT FROM to_regprocedure('public.store_temp_resume(text,text,text)')::oid
+     AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('authenticated', p.oid, 'EXECUTE'));
+  IF to_regprocedure('public.store_temp_resume(text,text,text)') IS NULL OR v_n <> 0 THEN
+    RAISE EXCEPTION 'want the three-argument store_temp_resume, and every other overload closed to client roles; % other overload(s) are client-callable', v_n;
+  END IF;
   IF NOT has_function_privilege('anon', 'public.get_temp_resume(text)', 'EXECUTE')
      OR NOT has_function_privilege('anon', 'public.store_temp_resume(text,text,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'the publishable key lost the temporary store; the homepage and the success page call it';
@@ -270,11 +289,11 @@ BEGIN
     INSERT INTO public.temp_resume_storage (resume_text, writer_net, writer_wide)
     SELECT 'selfcheck filler', md5('192.0.2.0/24'), md5('192.0.0.0/16') FROM generate_series(1, 150);
     PERFORM set_config('request.headers', '{"cf-connecting-ip":"192.0.2.77"}', true);
-    IF public.store_temp_resume(v_probe) IS NOT NULL THEN
+    IF public.store_temp_resume(v_probe, NULL, NULL) IS NOT NULL THEN
       v_fail := coalesce(v_fail || '; ', '') || 'a network past its 150 live rows could still store';
     END IF;
     PERFORM set_config('request.headers', '{"cf-connecting-ip":"198.51.100.1"}', true);
-    IF public.store_temp_resume(v_probe) IS NULL THEN
+    IF public.store_temp_resume(v_probe, NULL, NULL) IS NULL THEN
       v_fail := coalesce(v_fail || '; ', '') || 'one full network refused a visitor from another network';
     END IF;
 
@@ -284,14 +303,14 @@ BEGIN
     INSERT INTO public.temp_resume_storage (resume_text, writer_net, writer_wide)
     SELECT 'selfcheck filler', md5('filler'), md5('filler') FROM generate_series(1, greatest(8000 - v_n, 0));
     PERFORM set_config('request.headers', '{"cf-connecting-ip":"203.0.113.9"}', true);
-    v_id2 := public.store_temp_resume(v_probe);
+    v_id2 := public.store_temp_resume(v_probe, NULL, NULL);
     IF v_id2 IS NULL THEN
       v_fail := coalesce(v_fail || '; ', '') || 'past the soft ceiling, a visitor from a fresh network was refused';
     END IF;
     INSERT INTO public.temp_resume_storage (resume_text, writer_net, writer_wide)
     SELECT 'selfcheck filler', md5('filler'), md5('203.0.0.0/16') FROM generate_series(1, 5);
     PERFORM set_config('request.headers', '{"cf-connecting-ip":"203.0.200.1"}', true);
-    IF public.store_temp_resume(v_probe) IS NOT NULL THEN
+    IF public.store_temp_resume(v_probe, NULL, NULL) IS NOT NULL THEN
       v_fail := coalesce(v_fail || '; ', '') || 'past the soft ceiling, a wide network already holding 5 rows could still store';
     END IF;
 
@@ -300,7 +319,7 @@ BEGIN
     INSERT INTO public.temp_resume_storage (resume_text, writer_net, writer_wide)
     SELECT 'selfcheck filler', md5('filler'), md5('filler') FROM generate_series(1, greatest(10000 - v_n, 0));
     PERFORM set_config('request.headers', '{"cf-connecting-ip":"100.64.7.7"}', true);
-    IF public.store_temp_resume(v_probe) IS NOT NULL THEN
+    IF public.store_temp_resume(v_probe, NULL, NULL) IS NOT NULL THEN
       v_fail := coalesce(v_fail || '; ', '') || 'the hard ceiling of 10,000 live rows let a row in';
     END IF;
 
