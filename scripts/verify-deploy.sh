@@ -786,6 +786,11 @@ for(const t of ["careers.ulta.com","dominos"]){const r=by[t];if(!r){console.log(
   console.log((ok?"PASS":"FAIL")+"  "+t+" refused as a lap board: "+line(r)+" (baseline: Ulta 0.9431, sufficient_30 TRUE)")}
 for(const t of ["catalent~wd1~External","adventisthealthcare~wd1~AdventistHealthCareCareers"]){const r=by[t];if(!r){console.log("INFO  "+t+" returned no row");continue}
   if(r.observability_bucket==="lap_proven"){console.log((r.insufficient_reason_30==="lap"?"PASS":"FAIL")+"  "+t+" is lap_proven now and must read lap: "+line(r));continue}
+  // Both are mid-feed-zero Workday tenants over the 250 cap (catalent 294,
+  // adventisthealthcare 447 at offset 0 and total 0 at offset 40, measured
+  // 2026-10-05): 20261005100000 (L1-01) marked their full_read closures
+  // suspect, and under .89 they read as windowed boards. No figure is right.
+  if(r.insufficient_reason_30==="unobservable"&&r.sufficient_30===false&&r.still_open_30===null){console.log("PASS  "+t+" carries no figure since the L1-01 repair withdrew its closures (it was never read whole): "+line(r));continue}
   // A truncated read inside 2026-09-23..10-01 (measured the night of the fix)
   // must hold the floor at or after its day; the ledger is never pruned, so
   // this stays true until the board stops being full_read.
@@ -793,6 +798,11 @@ for(const t of ["catalent~wd1~External","adventisthealthcare~wd1~AdventistHealth
   console.log((ok?"PASS":"FAIL")+"  "+t+" floored at its last cut-short read: "+line(r)+" (want watched_from >= 2026-09-23; baseline S30 0.87-0.93 with sufficient_30 TRUE)")}
 const a=by["AbbVie"];
 if(!a)console.log("INFO  AbbVie returned no row");
+// .89 (L7-13) caps a SmartRecruiters visit at 250; AbbVie (1,867 open on
+// 2026-10-05) was read whole in one 2,000-row visit before it and is windowed
+// now, so its day-30 figure goes with the full read. A cost of that fix, not a
+// deploy failure: the trade-off is open in the platform-debug register.
+else if(a.observability_bucket==="lap_pending"||a.observability_bucket==="lap_proven")console.log((a.sufficient_30===false&&a.still_open_30===null?"INFO":"FAIL")+"  AbbVie is windowed since .89 caps SmartRecruiters visits at 250 (L7-13), so it holds no day-30 figure: "+line(a));
 else if(a.watched_from===null&&a.insufficient_reason_30==="watch")console.log("FAIL  AbbVie reads watch with no floor: job_board_board_watch holds no row for it -- the tenure table is not seeded, and every full_read board is being refused ("+line(a)+")");
 else{const ok=a.sufficient_30===true&&a.insufficient_reason_30===null&&typeof a.watched_from==="string"&&a.watched_from<="2026-08-06";
   console.log((ok?"PASS":"FAIL")+"  AbbVie (read in full since 2026-08-02) keeps its figure: "+line(a)+" (want sufficient, floor on or before 2026-08-06, S30 about 0.29)")}
