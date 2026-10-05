@@ -659,6 +659,13 @@
       "when": 1791124597372,
       "tag": "0093_20261004010000_every_cron_job_gets_the_time_its_function_asks_for",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1791222144861,
+      "tag": "0094_20261004100000_a_mail_we_send_needs_a_proof_and_a_key_needs_a_mailbox",
+      "breakpoints": true
     }
   ]
 }
