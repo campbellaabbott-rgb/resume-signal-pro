@@ -6426,6 +6426,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reconcile_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
       reconcile_stripe_tick: { Args: never; Returns: undefined }
       record_affiliate_conversion: {
         Args: {
