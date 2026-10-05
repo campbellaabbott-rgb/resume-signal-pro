@@ -701,6 +701,41 @@
       "when": 1791222203189,
       "tag": "0099_20261005120000_a_scan_credit_is_spent_only_by_whoever_proved_the_purchase",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1791226890616,
+      "tag": "0100_20261005123000_a_stored_resume_can_be_read_again_and_the_store_has_a_ceiling",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1791226904235,
+      "tag": "0101_20261005130000_an_entitlement_is_read_by_the_account_and_a_signed_in_key_has_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1791226921435,
+      "tag": "0102_20261005133000_a_held_packet_can_go_and_the_last_gate_reads_the_stop_button",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1791226926132,
+      "tag": "0103_20261005134500_oracle_leaves_the_one_click_mirror_with_the_list_it_mirrors",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1791227054717,
+      "tag": "0104_20261005100000_a_workday_slice_read_as_a_whole_board_wrote_closures_nobody_made",
+      "breakpoints": true
     }
   ]
 }

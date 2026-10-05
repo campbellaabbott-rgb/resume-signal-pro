@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261005134500_oracle_leaves_the_one_click_mirror_with_the_list_it_mirrors.sql'));

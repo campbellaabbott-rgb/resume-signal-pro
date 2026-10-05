@@ -542,6 +542,7 @@ export type Database = {
           id: number
           location: string
           pass_id: string | null
+          pass_refunded_at: string | null
           posted_at: string | null
           posting_id: string
           reasons: Json
@@ -563,6 +564,7 @@ export type Database = {
           id?: never
           location?: string
           pass_id?: string | null
+          pass_refunded_at?: string | null
           posted_at?: string | null
           posting_id: string
           reasons?: Json
@@ -584,6 +586,7 @@ export type Database = {
           id?: never
           location?: string
           pass_id?: string | null
+          pass_refunded_at?: string | null
           posted_at?: string | null
           posting_id?: string
           reasons?: Json
@@ -794,6 +797,7 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           current_period_end?: string | null
@@ -801,6 +805,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           current_period_end?: string | null
@@ -808,6 +813,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -892,6 +898,33 @@ export type Database = {
           sent_successfully?: boolean | null
           sent_to?: string | null
           threshold_value?: number | null
+        }
+        Relationships: []
+      }
+      api_key_agent_mints: {
+        Row: {
+          created_at: string
+          id: number
+          mint_net: string | null
+          paying: boolean
+          user_id: string
+          via: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          mint_net?: string | null
+          paying?: boolean
+          user_id: string
+          via?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          mint_net?: string | null
+          paying?: boolean
+          user_id?: string
+          via?: string
         }
         Relationships: []
       }
@@ -1976,6 +2009,24 @@ export type Database = {
           rolled_at?: string
           salary_known_clicks?: number
           salary_present_clicks?: number
+        }
+        Relationships: []
+      }
+      job_board_closure_repairs: {
+        Row: {
+          event_id: number
+          marked_at: string
+          repair: string
+        }
+        Insert: {
+          event_id: number
+          marked_at?: string
+          repair: string
+        }
+        Update: {
+          event_id?: number
+          marked_at?: string
+          repair?: string
         }
         Relationships: []
       }
@@ -3282,6 +3333,24 @@ export type Database = {
         }
         Relationships: []
       }
+      mailbox_proof_settings: {
+        Row: {
+          confirmation_required_since: string | null
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          confirmation_required_since?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          confirmation_required_since?: string | null
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       market_pulse_subscribers: {
         Row: {
           confirm_net: string | null
@@ -4264,6 +4333,8 @@ export type Database = {
           linkedin_text: string | null
           resume_text: string
           session_id: string
+          writer_net: string | null
+          writer_wide: string | null
         }
         Insert: {
           created_at?: string | null
@@ -4272,6 +4343,8 @@ export type Database = {
           linkedin_text?: string | null
           resume_text: string
           session_id?: string
+          writer_net?: string | null
+          writer_wide?: string | null
         }
         Update: {
           created_at?: string | null
@@ -4280,6 +4353,8 @@ export type Database = {
           linkedin_text?: string | null
           resume_text?: string
           session_id?: string
+          writer_net?: string | null
+          writer_wide?: string | null
         }
         Relationships: []
       }
@@ -4585,6 +4660,7 @@ export type Database = {
     }
     Functions: {
       _mig_exec: { Args: { p_sql: string }; Returns: undefined }
+      account_mailbox_proven: { Args: { p_user_id: string }; Returns: boolean }
       acquire_scan_slot: {
         Args: { p_max: number; p_ttl_seconds: number }
         Returns: string
@@ -4710,6 +4786,14 @@ export type Database = {
         Returns: undefined
       }
       agent_note_auto_release: { Args: { p_user_id: string }; Returns: number }
+      agent_packet_decide: {
+        Args: { p_decision: string; p_submission_id: number; p_user_id: string }
+        Returns: {
+          decide_reason: string
+          decided_claimable_at: string
+          decided_ok: boolean
+        }[]
+      }
       agent_pass_grant: {
         Args: {
           p_amount_cents: number
@@ -4769,6 +4853,46 @@ export type Database = {
           queued_row_id: number
         }[]
       }
+      agent_queue_refuse: {
+        Args: { p_reason: string; p_row_id: number }
+        Returns: boolean
+      }
+      agent_queue_unprepared: {
+        Args: {
+          p_limit: number
+          p_pass_only: boolean
+          p_statuses: string[]
+          p_user_id: string
+        }
+        Returns: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          created_at: string
+          decided_at: string | null
+          fit_pct: number | null
+          id: number
+          location: string
+          pass_id: string | null
+          pass_refunded_at: string | null
+          posted_at: string | null
+          posting_id: string
+          reasons: Json
+          salary: string
+          search_id: number | null
+          search_label: string
+          status: string
+          title: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "agent_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
@@ -4785,6 +4909,22 @@ export type Database = {
         }[]
       }
       agent_sent_today: { Args: { p_user: string }; Returns: number }
+      agent_subscription_live: { Args: { p_user_id: string }; Returns: boolean }
+      agent_subscription_rows: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          bound: boolean
+          current_period_end: string
+          email: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
+      agent_unclaim_submission: {
+        Args: { p_hold_minutes?: number; p_submission_id: number }
+        Returns: boolean
+      }
       agent_work_pending: { Args: never; Returns: Json }
       agent_worker_ping: {
         Args: { p_claimed?: number; p_version?: string; p_worker: string }
@@ -4828,7 +4968,9 @@ export type Database = {
           p_email: string
           p_key_hash: string
           p_key_prefix: string
+          p_net?: string
           p_user_id: string
+          p_via?: string
         }
         Returns: {
           deny_reason: string
@@ -6423,6 +6565,7 @@ export type Database = {
           lo_upserted: number
         }[]
       }
+      one_click_vendors: { Args: never; Returns: string[] }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
