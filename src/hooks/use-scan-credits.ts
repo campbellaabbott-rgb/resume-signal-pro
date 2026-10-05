@@ -19,10 +19,15 @@ const PRICE_PER_CREDIT_USD = PRODUCTS.scanPack.priceUsd / (PRODUCTS.scanPack.cre
  * kept here and sent to the scanner and to the scan-credits function, which
  * check it with Stripe and let it spend only what that purchase bought.
  *
+ * A signed-in browser that presents a held purchase claims it for its account
+ * (scan-credits / the scanner), so from then on it follows the account to any
+ * device. An address on an account is NOT proof by itself: sign-ups are
+ * auto-confirmed, so the address's whole pool opens only to a session that
+ * proved its mailbox (a verified Google sign-in for it, today).
+ *
  * Browser storage can be missing or throw (private windows, blocked site
  * data), so every access is guarded and the absence of storage is simply "no
- * purchases held": the credits stay usable by signing in with the purchase
- * email.
+ * purchases held".
  */
 export const CREDIT_SESSIONS_KEY = 'scanCreditsSessions';
 /** Fired whenever the credits this browser can prove may have changed. */
@@ -51,12 +56,30 @@ export function rememberCreditSession(sessionId: string | null | undefined): voi
   try { window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT)); } catch { /* non-browser */ }
 }
 
+/**
+ * The address a buyer from before this browser kept purchases typed at
+ * checkout, when this browser holds no purchase: their credits are on record
+ * under that address but nothing here proves it (register review, 2026-10-05).
+ * Null otherwise. A convenience for the hint, never a proof.
+ */
+export function legacyCreditsEmail(): string | null {
+  if (creditSessions().length > 0) return null;
+  try {
+    const e = (localStorage.getItem('scanCreditsEmail') ?? '').trim().toLowerCase();
+    return e.includes('@') ? e : null;
+  } catch {
+    return null;
+  }
+}
+
 export type ProvenCredits = {
-  /** What this browser can spend: its account's pool plus the held purchases' remainder. */
+  /** What this browser can spend: the held and claimed purchases' remainder, plus a proven address's pool. */
   credits: number;
   /** Credits the presented purchases bought in total (the success page's "N added"). */
   bought: number;
   signedIn: boolean;
+  /** The session proved it reads the account's mailbox, so the address's whole pool counts. */
+  mailboxProven: boolean;
   purchases: number;
   /** The account's address, or the held purchases' when there is exactly one. */
   email: string | null;
@@ -77,7 +100,7 @@ export async function fetchProvenCredits(sessions: string[] = creditSessions()):
       signedIn = !!auth?.session;
     } catch { /* no auth client: signed out */ }
     if (!signedIn && sessions.length === 0) {
-      return { credits: 0, bought: 0, signedIn: false, purchases: 0, email: null };
+      return { credits: 0, bought: 0, signedIn: false, mailboxProven: false, purchases: 0, email: null };
     }
     const { data, error } = await supabase.functions.invoke('scan-credits', { body: { sessions } });
     if (error || typeof data?.credits !== 'number') return null;
@@ -85,6 +108,7 @@ export async function fetchProvenCredits(sessions: string[] = creditSessions()):
       credits: data.credits,
       bought: typeof data.bought === 'number' ? data.bought : 0,
       signedIn: data.signedIn === true,
+      mailboxProven: data.mailboxProven === true,
       purchases: typeof data.purchases === 'number' ? data.purchases : 0,
       email: typeof data.email === 'string' ? data.email : null,
     };

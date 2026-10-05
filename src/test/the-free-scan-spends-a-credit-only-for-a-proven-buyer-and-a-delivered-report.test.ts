@@ -12,6 +12,13 @@
  * 2.18: the 7-day report cache replayed the first scanner's credit receipt.
  * Register L5-14: malformed JSON answered 500 and emailed the owner.
  *
+ * Sign-ups are auto-confirmed (mailer_autoconfirm = true), so an address on a
+ * session is a claim too: anyone can sign up as a buyer's or a subscriber's
+ * address. A password session spends only the purchases its account claimed;
+ * the address's pool and its Pro need a verified Google sign-in for that
+ * address (or, once the owner switches confirmation on, a confirmation the
+ * auth server itself vouches for).
+ *
  * The shipped handler runs with its database, its auth and the AI gateway
  * faked. Credits are a balance the fake RPCs keep, so every assertion is about
  * what a buyer is left holding.
@@ -82,9 +89,43 @@ let cacheWrites: unknown[];
 let proRows: Record<string, { status: string; current_period_end: string | null }>;
 let proLookups: unknown[];
 let underLimit: boolean;
-const USERS: Record<string, { id: string; email: string }> = {
-  "jwt-owner": { id: "u-owner", email: "owner@example.com" },
-  "jwt-pro": { id: "u-pro", email: "pro@example.com" },
+let grants: Map<string, { email: string; left: number; claimedBy: string | null }>;
+let settingsReads: number;
+let autoconfirm: boolean;
+const env: Record<string, string> = {
+  SUPABASE_URL: "https://harness.supabase.co",
+  SUPABASE_SERVICE_ROLE_KEY: "service-role-harness-key-0123456789abcdef",
+  SUPABASE_ANON_KEY: "anon_harness",
+  LOVABLE_API_KEY: "lovable_harness",
+  STRIPE_SECRET_KEY: "sk_test_harness",
+  NOTIFY_SCANS: "false",
+};
+
+/** A session token shaped like the auth server's: only its amr claim is read. */
+const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const token = (sub: string, method: string, at = Math.floor(Date.now() / 1000)) =>
+  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", amr: [{ method, timestamp: at }] })}.sig`;
+const google = (email: string) => [{ provider: "google", identity_data: { email, email_verified: true } }];
+type FakeUser = { id: string; email: string; email_confirmed_at?: string; identities?: unknown[] };
+
+const OWNER_ID = "00000000-0000-4000-8000-0000000000a1";
+const PRO_ID = "00000000-0000-4000-8000-0000000000a2";
+const SQUATTER_ID = "00000000-0000-4000-8000-0000000000a3";
+const BUYER_ID = "00000000-0000-4000-8000-0000000000a4";
+const JWT = {
+  ownerGoogle: token(OWNER_ID, "oauth"),
+  ownerPassword: token(OWNER_ID, "password"),
+  proGoogle: token(PRO_ID, "oauth"),
+  // Signed up with a password as the victim's / the subscriber's address.
+  squatsVictim: token(SQUATTER_ID, "password"),
+  buyerPassword: token(BUYER_ID, "password"),
+};
+const USERS: Record<string, FakeUser> = {
+  [JWT.ownerGoogle]: { id: OWNER_ID, email: "owner@example.com", identities: google("owner@example.com") },
+  [JWT.ownerPassword]: { id: OWNER_ID, email: "owner@example.com", identities: google("owner@example.com") },
+  [JWT.proGoogle]: { id: PRO_ID, email: "pro@example.com", identities: google("pro@example.com") },
+  [JWT.squatsVictim]: { id: SQUATTER_ID, email: "victim@example.com", email_confirmed_at: new Date().toISOString() },
+  [JWT.buyerPassword]: { id: BUYER_ID, email: "buyer@example.com", email_confirmed_at: new Date().toISOString() },
 };
 
 /** A supabase-js stand-in: every builder method chains; awaiting answers what the test set. */
@@ -98,16 +139,33 @@ function client() {
       case "scan_credit_redeem": {
         const e = String(args.p_email);
         const n = balances.get(e) ?? 0;
-        if (args.p_session_hash != null || n <= 0) return { data: false, error: null };
+        const g = args.p_session_hash != null ? grants.get(String(args.p_session_hash)) : null;
+        if (args.p_session_hash != null && (!g || g.email !== e || g.left <= 0)) return { data: false, error: null };
+        if (n <= 0) return { data: false, error: null };
         balances.set(e, n - 1);
+        if (g) g.left -= 1;
         return { data: true, error: null };
       }
       case "scan_credit_refund": {
         const e = String(args.p_email);
         balances.set(e, (balances.get(e) ?? 0) + 1);
+        const g = args.p_session_hash != null ? grants.get(String(args.p_session_hash)) : null;
+        if (g) g.left += 1;
         return { data: true, error: null };
       }
-      case "scan_credit_balance": return { data: balances.get(String(args.p_email)) ?? 0, error: null };
+      case "scan_credit_account_grants":
+        return {
+          data: [...grants.entries()]
+            .filter(([, g]) => g.claimedBy === args.p_user_id && g.left > 0)
+            .map(([session_hash, g]) => ({ session_hash, email: g.email })),
+          error: null,
+        };
+      case "scan_credit_balance": {
+        const own = args.p_email ? balances.get(String(args.p_email)) ?? 0 : 0;
+        const claimed = [...grants.values()].filter((g) => g.claimedBy === args.p_user_id && g.email !== args.p_email)
+          .reduce((t, g) => t + Math.min(g.left, balances.get(g.email) ?? 0), 0);
+        return { data: own + claimed, error: null };
+      }
       default: return { data: null, error: null };
     }
   };
@@ -146,19 +204,17 @@ function client() {
   };
 }
 
+const CLAIMED_HASH = "c".repeat(64);
+
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
-  const env: Record<string, string> = {
-    SUPABASE_URL: "https://harness.supabase.co",
-    SUPABASE_SERVICE_ROLE_KEY: "service-role-harness-key-0123456789abcdef",
-    SUPABASE_ANON_KEY: "anon_harness",
-    LOVABLE_API_KEY: "lovable_harness",
-    STRIPE_SECRET_KEY: "sk_test_harness",
-    NOTIFY_SCANS: "false",
-  };
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.EdgeRuntime = { waitUntil: (p: unknown) => { void Promise.resolve(p).catch(() => {}); } };
   g.fetch = async (url: string) => {
+    if (String(url).endsWith("/auth/v1/settings")) {
+      settingsReads++;
+      return new Response(JSON.stringify({ mailer_autoconfirm: autoconfirm, disable_signup: false }), { status: 200 });
+    }
     if (String(url).includes("ai.gateway.lovable.dev")) {
       aiCalls++;
       if (!aiOk) return new Response(JSON.stringify({ error: "down" }), { status: 500 });
@@ -174,7 +230,11 @@ beforeAll(async () => {
 beforeEach(() => {
   aiOk = true;
   aiCalls = 0;
-  balances = new Map([["victim@example.com", 9], ["owner@example.com", 2], ["pro@example.com", 0]]);
+  balances = new Map([["victim@example.com", 9], ["owner@example.com", 2], ["pro@example.com", 0], ["buyer@example.com", 5]]);
+  grants = new Map([[CLAIMED_HASH, { email: "buyer@example.com", left: 1, claimedBy: BUYER_ID }]]);
+  settingsReads = 0;
+  autoconfirm = true; // as read from the live project on 2026-10-04
+  delete env.EMAIL_CONFIRMED_SINCE;
   rpcLog = [];
   cacheRow = null;
   cacheWrites = [];
@@ -217,17 +277,68 @@ describe("an address in the request body proves nothing", () => {
     expect(aiCalls).toBe(0);
   });
 
-  it("a signed-in Pro subscriber still scans past the limit, with no credit spent", async () => {
-    const r = await scan({ resumeText: RESUME }, "jwt-pro");
+  it("a Pro subscriber signed in with Google for that address still scans past the limit, with no credit spent", async () => {
+    const r = await scan({ resumeText: RESUME }, JWT.proGoogle);
     expect(r.status).toBe(200);
     expect(proLookups).toEqual(["pro@example.com"]);
     expect(redeems()).toEqual([]);
   });
 });
 
+describe("an address on a session proves nothing either, while sign-ups are auto-confirmed", () => {
+  it("a password sign-up as a buyer's address spends none of that address's credits", async () => {
+    const r = await scan({ resumeText: RESUME }, JWT.squatsVictim);
+    expect(r.status).toBe(429);
+    expect(r.json.mailboxUnproven).toBe(true);
+    expect(String(r.json.error)).toMatch(/not used until the address is confirmed/);
+    expect(redeems()).toEqual([]);
+    expect(balances.get("victim@example.com")).toBe(9);
+    expect(aiCalls).toBe(0);
+  });
+
+  it("a password sign-up as a subscriber's address gets no Pro, and the subscription is not looked up", async () => {
+    USERS[JWT.squatsVictim].email = "pro@example.com";
+    try {
+      const r = await scan({ resumeText: RESUME }, JWT.squatsVictim);
+      expect(r.status).toBe(429);
+      expect(proLookups).toEqual([]);
+      expect(aiCalls).toBe(0);
+    } finally {
+      USERS[JWT.squatsVictim].email = "victim@example.com";
+    }
+  });
+
+  it("the owner's own password session does not reach the address's pool either: the proof is the session, not the account", async () => {
+    const r = await scan({ resumeText: RESUME }, JWT.ownerPassword);
+    expect(r.status).toBe(429);
+    expect(balances.get("owner@example.com")).toBe(2);
+  });
+
+  it("the owner's flag alone is not enough: while the auth server still auto-confirms, a confirmation proves nothing", async () => {
+    env.EMAIL_CONFIRMED_SINCE = new Date(Date.now() - 3600_000).toISOString();
+    const r = await scan({ resumeText: RESUME }, JWT.squatsVictim);
+    expect(settingsReads).toBe(1);
+    expect(r.status).toBe(429);
+    expect(balances.get("victim@example.com")).toBe(9);
+  });
+
+  it("a password session spends a purchase its account claimed, capped at what that purchase has left", async () => {
+    const first = await scan({ resumeText: RESUME }, JWT.buyerPassword);
+    expect(first.status).toBe(200);
+    expect(first.json.creditUsed).toBe(true);
+    expect(redeems().map(([, a]) => a.p_session_hash)).toEqual([CLAIMED_HASH]);
+    expect(balances.get("buyer@example.com")).toBe(4);
+    // The purchase is spent; the rest of the address's pool is not this session's.
+    rpcLog = [];
+    const second = await scan({ resumeText: RESUME }, JWT.buyerPassword);
+    expect(second.status).toBe(429);
+    expect(balances.get("buyer@example.com")).toBe(4);
+  });
+});
+
 describe("a proven buyer's credit is spent only when a full report is delivered", () => {
   it("a full report keeps the credit and prints the receipt", async () => {
-    const r = await scan({ resumeText: RESUME }, "jwt-owner");
+    const r = await scan({ resumeText: RESUME }, JWT.ownerGoogle);
     expect(r.status).toBe(200);
     expect(r.json.creditUsed).toBe(true);
     expect(r.json.creditsRemaining).toBe(1);
@@ -235,7 +346,7 @@ describe("a proven buyer's credit is spent only when a full report is delivered"
   });
 
   it("the cached copy never carries the receipt", async () => {
-    await scan({ resumeText: RESUME }, "jwt-owner");
+    await scan({ resumeText: RESUME }, JWT.ownerGoogle);
     await new Promise((r) => setTimeout(r, 0));
     expect(cacheWrites.length).toBe(1);
     const report = (cacheWrites[0] as { report: Record<string, unknown> }).report;
@@ -245,7 +356,7 @@ describe("a proven buyer's credit is spent only when a full report is delivered"
 
   it("a model outage serves the rule-based report and gives the credit back", async () => {
     aiOk = false;
-    const r = await scan({ resumeText: RESUME }, "jwt-owner");
+    const r = await scan({ resumeText: RESUME }, JWT.ownerGoogle);
     expect(r.status).toBe(200);
     expect(r.json.partialResults).toBe(true);
     expect(r.json.creditUsed).toBeUndefined();
@@ -254,7 +365,7 @@ describe("a proven buyer's credit is spent only when a full report is delivered"
 
   it("a cache hit is free, and an old cached receipt is not replayed", async () => {
     cacheRow = { report: { success: true, atsScoreEstimate: 70, creditUsed: true, creditsRemaining: 9 }, created_at: new Date().toISOString() };
-    const r = await scan({ resumeText: RESUME }, "jwt-owner");
+    const r = await scan({ resumeText: RESUME }, JWT.ownerGoogle);
     expect(r.status).toBe(200);
     expect(r.json.cachedReport).toBe(true);
     expect(r.json.creditUsed).toBeUndefined();
@@ -265,7 +376,7 @@ describe("a proven buyer's credit is spent only when a full report is delivered"
 
   it("under the daily limit nothing is redeemed at all", async () => {
     underLimit = true;
-    const r = await scan({ resumeText: RESUME }, "jwt-owner");
+    const r = await scan({ resumeText: RESUME }, JWT.ownerGoogle);
     expect(r.status).toBe(200);
     expect(redeems()).toEqual([]);
     expect(balances.get("owner@example.com")).toBe(2);

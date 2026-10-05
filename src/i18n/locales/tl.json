@@ -3522,9 +3522,10 @@
     "buyCredits": "Bumili ng Credits — {{price}} bawat isa",
     "myCredits": "Aking mga Kredito",
     "provenHint": "Awtomatikong lumalabas dito ang mga credit na binili sa browser na ito.",
-    "signInHint": "Binili sa ibang device? Mag-sign in gamit ang email na ginamit mo sa checkout.",
+    "signInHint": "Binili sa ibang browser? Mag-sign in doon nang isang beses, at susunod ang mga ito sa iyong account dito.",
     "signIn": "Mag-sign in",
-    "noCreditsHere": "Wala pang scan credit sa browser o account na ito."
+    "noCreditsHere": "Wala pang scan credit sa browser o account na ito.",
+    "legacyHint": "Bumili ng scan credit bilang {{email}} sa nakaraang pagbisita? Nakatala pa rin ang mga hindi mo nagamit. Mag-email sa {{support}} mula sa address na iyon at idaragdag namin ang mga ito sa iyong account."
   },
   "industryConfidence": {
     "industry": "Industriya:",

@@ -10,11 +10,18 @@
  *     a delivery that failed once can be generated again; an expired row is
  *     invisible; a malformed id returns nothing;
  *   - store_temp_resume, open to the publishable key because the homepage
- *     pre-stores every upload, refuses past 30 rows an hour per address (the
- *     platform's address: a forged first forwarded hop changes nothing), past
- *     1,000 an hour from every address together (a rotating pool), and while
- *     5,000 unexpired rows are held; a refusal answers NULL, and malformed
- *     input still raises the messages callers know.
+ *     pre-stores every scanned résumé, is bounded on its WRITER first, so no
+ *     one writer can refuse everybody's checkout (review of claude/w1-scan-ai:
+ *     a shared 1,000-an-hour budget and a 5,000-row ceiling let ~34 rotating
+ *     addresses refuse every buyer for a day): 30 rows an hour per address
+ *     (the platform's address: a forged first forwarded hop changes nothing),
+ *     120 an hour and 150 unexpired rows per network (IPv4 /24, IPv6 /48);
+ *     only past 8,000 unexpired rows does everyone share a limit, and even
+ *     then a wider network (/16, /32) holding fewer than 5 rows still
+ *     stores, until 10,000. A refusal answers NULL, and malformed input still
+ *     raises the messages callers know;
+ *   - without the census's budget functions the file refuses to apply,
+ *     rather than applying cleanly and failing every store with 42883.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -131,22 +138,70 @@ describe("store_temp_resume is bounded", () => {
     expect(await store("198.51.100.10")).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it("a pool rotating addresses meets the ceiling for everyone together", async () => {
-    await pg.exec("DELETE FROM public.client_write_budget");
-    // Spend the shared hour down to its last row.
-    await pg.exec(`INSERT INTO public.client_write_budget (scope, bucket, window_start, n)
-      VALUES ('temp-resume', '*', to_timestamp(floor(extract(epoch FROM now()) / 3600) * 3600), 999)`);
-    expect(await store("192.0.2.1")).toMatch(/^[0-9a-f-]{36}$/);
-    expect(await store("192.0.2.2")).toBeNull();
-    expect(await store("192.0.2.3")).toBeNull();
+  const reset = async () => {
+    await pg.exec("DELETE FROM public.client_write_budget; DELETE FROM public.temp_resume_storage;");
+  };
+  const netOf = async (id: string | null) =>
+    (await pg.query<{ n: string | null }>("SELECT writer_net AS n FROM public.temp_resume_storage WHERE session_id = $1", [id])).rows[0]?.n;
+  const md5 = async (t: string) => (await pg.query<{ h: string }>("SELECT md5($1) AS h", [t])).rows[0].h;
+  const fill = (n: number, net: string, wide: string) =>
+    pg.query("INSERT INTO public.temp_resume_storage (resume_text, writer_net, writer_wide) SELECT 'filler', md5($1), md5($2) FROM generate_series(1, $3::int)", [net, wide, n]);
+
+  it("names the writer's network on the row, as an md5 of an IPv4 /24 or an IPv6 /48", async () => {
+    await reset();
+    expect(await netOf(await store("192.0.2.200"))).toBe(await md5("192.0.2.0/24"));
+    expect(await netOf(await store("2001:db8:1:2::5"))).toBe(await md5("2001:db8:1::/48"));
+    // Not an address: the shared bucket, never an error.
+    expect(await netOf(await store("not-an-address"))).toBe("no-network");
   });
 
-  it("no new row while 5,000 unexpired rows are held", async () => {
-    await pg.exec("DELETE FROM public.client_write_budget");
-    await pg.exec(`INSERT INTO public.temp_resume_storage (resume_text)
-      SELECT 'filler' FROM generate_series(1, 5000 - (SELECT count(*) FROM public.temp_resume_storage WHERE expires_at > now()))`);
-    expect(await store("192.0.2.50")).toBeNull();
-    await pg.exec("UPDATE public.temp_resume_storage SET expires_at = now() - interval '1 second' WHERE resume_text = 'filler' AND session_id IN (SELECT session_id FROM public.temp_resume_storage WHERE resume_text = 'filler' LIMIT 10)");
-    expect(await store("192.0.2.51")).toMatch(/^[0-9a-f-]{36}$/);
+  it("one network gets 120 an hour across its addresses; the next network is untouched", async () => {
+    await reset();
+    const ids: Array<string | null> = [];
+    for (let i = 0; i < 122; i++) ids.push(await store(`192.0.2.${10 + (i % 5)}`)); // 5 addresses, each under 30
+    expect(ids.slice(0, 120).every((x) => typeof x === "string")).toBe(true);
+    expect(ids.slice(120)).toEqual([null, null]);
+    expect(await store("192.0.3.10")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("a network holding 150 unexpired rows is refused from every address in it, and refuses nobody else", async () => {
+    await reset();
+    await fill(150, "192.0.2.0/24", "192.0.0.0/16");
+    expect(await store("192.0.2.99")).toBeNull();
+    expect(await store("198.51.100.20")).toMatch(/^[0-9a-f-]{36}$/);
+    // Rows expire with the 24-hour clock, and the network may store again.
+    await pg.exec("UPDATE public.temp_resume_storage SET expires_at = now() - interval '1 second' WHERE resume_text = 'filler' AND session_id IN (SELECT session_id FROM public.temp_resume_storage WHERE resume_text = 'filler' LIMIT 1)");
+    expect(await store("192.0.2.99")).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("a rotating pool that fills 8,000 rows still leaves every fresh network room; only 10,000 refuses all", async () => {
+    await reset();
+    // 54 networks of filler, each at its 150, is what 8,000 takes.
+    for (let n = 0; n < 53; n++) await fill(150, `10.${n}.0.0/24`, `10.${n}.0.0/16`);
+    await fill(8000 - 53 * 150, "10.99.0.0/24", "10.99.0.0/16");
+    // A filler network is still held to its own 150.
+    expect(await store("10.5.0.9")).toBeNull();
+    expect(await store("203.0.113.9"), "a visitor from a fresh network was refused").toMatch(/^[0-9a-f-]{36}$/);
+    // A wider network (here a filler's /16) holding 5 rows is out of room.
+    expect(await store("10.0.7.7")).toBeNull();
+    for (let i = 0; i < 4; i++) expect(await store(`203.0.${114 + i}.1`)).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await store("203.0.200.1"), "a /16 already holding 5 rows past the soft ceiling").toBeNull();
+    await fill(10000 - (await pg.query<{ c: number }>("SELECT count(*)::int AS c FROM public.temp_resume_storage WHERE expires_at > now()")).rows[0].c, "10.100.0.0/24", "10.100.0.0/16");
+    expect(await store("198.18.0.1")).toBeNull();
+  });
+});
+
+describe("the file needs the census it builds on", () => {
+  it("refuses to apply without request_client_address and client_write_allowed", async () => {
+    const bare = new PGlite();
+    try {
+      await bare.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;");
+      await bare.exec(`CREATE TABLE public.temp_resume_storage (session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), resume_text text NOT NULL,
+        linkedin_text text, job_description_text text, created_at timestamptz NOT NULL DEFAULT now(),
+        expires_at timestamptz NOT NULL DEFAULT (now() + interval '24 hours'));`);
+      await expect(bare.exec(`BEGIN;\n${MIGRATION}\nCOMMIT;`)).rejects.toThrow(/apply 20261004110000/);
+    } finally {
+      await bare.close();
+    }
   });
 });

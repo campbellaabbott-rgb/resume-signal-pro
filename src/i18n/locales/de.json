@@ -3522,9 +3522,10 @@
     "buyCredits": "Credits kaufen — {{price}} pro Stück",
     "myCredits": "Meine Credits",
     "provenHint": "In diesem Browser gekaufte Credits erscheinen hier automatisch.",
-    "signInHint": "Auf einem anderen Gerät gekauft? Melde dich mit der E-Mail-Adresse an, die du beim Kauf verwendet hast.",
+    "signInHint": "In einem anderen Browser gekauft? Melde dich dort einmal an, dann folgen sie deinem Konto hierher.",
     "signIn": "Anmelden",
-    "noCreditsHere": "In diesem Browser oder Konto gibt es noch keine Scan-Credits."
+    "noCreditsHere": "In diesem Browser oder Konto gibt es noch keine Scan-Credits.",
+    "legacyHint": "Bei einem früheren Besuch Scan-Credits als {{email}} gekauft? Nicht genutzte Credits sind weiterhin erfasst. Schreib von dieser Adresse an {{support}}, dann fügen wir sie deinem Konto hinzu."
   },
   "industryConfidence": {
     "industry": "Branche:",

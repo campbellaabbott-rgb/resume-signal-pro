@@ -3522,9 +3522,10 @@
     "buyCredits": "Comprar créditos — {{price}} cada uno",
     "myCredits": "Mis créditos",
     "provenHint": "Los créditos comprados en este navegador aparecen aquí automáticamente.",
-    "signInHint": "¿Los compraste en otro dispositivo? Inicia sesión con el correo que usaste al pagar.",
+    "signInHint": "¿Los compraste en otro navegador? Inicia sesión allí una vez y aparecerán en tu cuenta aquí.",
     "signIn": "Iniciar sesión",
-    "noCreditsHere": "Todavía no hay créditos de escaneo en este navegador ni en tu cuenta."
+    "noCreditsHere": "Todavía no hay créditos de escaneo en este navegador ni en tu cuenta.",
+    "legacyHint": "¿Compraste créditos de escaneo como {{email}} en una visita anterior? Los que no hayas usado siguen registrados. Escribe a {{support}} desde esa dirección y los añadiremos a tu cuenta."
   },
   "industryConfidence": {
     "industry": "Industria:",

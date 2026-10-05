@@ -18,6 +18,7 @@ import {
   sessionHash,
   type CreditHold,
 } from "../_shared/scan-credits.ts";
+import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
 import {
   detectCountryFromResume,
   getMarketInsight,
@@ -441,7 +442,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-05.1";
+const FN_BUILD = "free-keyword-scan.2026-10-05.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1418,20 +1419,30 @@ serve(async (req) => {
     // Signed-in users get a higher daily limit — the concrete reason to register.
     // The frontend client attaches the session JWT automatically when logged in.
     let isAuthedUser = false;
-    // The address the platform verified on the session JWT: the ONLY address
-    // this function honours for Pro or for a credit. Never one from the body.
-    let authedUserEmail: string | null = null;
+    // WHO IS ASKING, as far as it was proven. The auth user id the platform
+    // verified on the JWT spends the purchases it claimed. The account's
+    // ADDRESS is honoured for Pro or for the address's credit pool only once
+    // the session has proven it reads that mailbox (_shared/mailbox-proof.ts):
+    // sign-ups are auto-confirmed, so an address on a session is a claim, the
+    // same as one in the body (2.07). Never an address from the body.
+    let authedUserId: string | null = null;
+    let authedUser: AuthUserLike | null = null;
+    let authedJwt = '';
     let proBypass = false; // active Pro subscriber past the daily limit
     try {
       const authHeader = req.headers.get('Authorization') ?? '';
       const jwt = authHeader.replace(/^Bearer\s+/i, '');
       // Anon key requests carry the anon token; a user session carries a longer user JWT
       if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
-        const { data: { user: authedUser } } = await supabase.auth.getUser(jwt);
-        isAuthedUser = !!authedUser?.id;
-        authedUserEmail = authedUser?.email?.toLowerCase() ?? null;
+        const { data: { user } } = await supabase.auth.getUser(jwt);
+        isAuthedUser = !!user?.id;
+        authedUserId = user?.id ?? null;
+        authedUser = user ?? null;
+        authedJwt = jwt;
       }
     } catch { /* anonymous */ }
+    // Asked only past the daily limit (it may read the auth settings once).
+    let provenEmail: string | null = null;
     const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
 
     const [
@@ -1516,13 +1527,21 @@ serve(async (req) => {
       // the request proves nothing: it used to be enough to spend a stranger's
       // purchased credits, or to scan without limit as a Pro subscriber.
       //
-      // 1. Pro, for the signed-in account's own verified address.
-      if (authedUserEmail) {
+      // 1. Pro, for the signed-in account's address, once its mailbox is
+      //    proven. A password sign-up as a subscriber's address is not.
+      if (authedUser) {
+        provenEmail = await provenMailbox(authedUser, authedJwt, {
+          confirmedSince: Deno.env.get('EMAIL_CONFIRMED_SINCE') ?? null,
+          supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
+          anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        });
+      }
+      if (provenEmail) {
         try {
           const { data: proRow } = await supabase
             .from('pro_subscribers')
             .select('status, current_period_end')
-            .eq('email', authedUserEmail)
+            .eq('email', provenEmail)
             .maybeSingle();
           const proActive = !!proRow && ['active', 'trialing'].includes(proRow.status) &&
             (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
@@ -1534,16 +1553,16 @@ serve(async (req) => {
           console.warn('[FREE-KEYWORD-SCAN] Pro check failed:', e);
         }
       }
-      // 2. A purchased credit: the signed-in account's own, or one from a
-      //    purchase this browser holds the Stripe Checkout session of (capped
-      //    at what that purchase bought). RESERVED here, before the cache
-      //    lookup and the model call, so concurrent requests cannot share one
-      //    credit; given back in the finally below unless a full report is
-      //    delivered (defect sweep 2.06).
+      // 2. A purchased credit: the proven address's pool, a purchase this
+      //    browser holds the Stripe Checkout session of, or a purchase the
+      //    signed-in account claimed (each capped at what it bought).
+      //    RESERVED here, before the cache lookup and the model call, so
+      //    concurrent requests cannot share one credit; given back in the
+      //    finally below unless a full report is delivered (2.06).
       if (!proBypass) {
         creditHold = await reserveScanCredit(
           supabase,
-          { accountEmail: authedUserEmail, sessionIds: parseCreditSessions(body.creditSessions) },
+          { userId: authedUserId, provenEmail, sessionIds: parseCreditSessions(body.creditSessions) },
           { stripeKey: Deno.env.get('STRIPE_SECRET_KEY') ?? '' },
         );
         if (creditHold) console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — 1 ${creditHold.via} credit reserved`);
@@ -1566,12 +1585,18 @@ serve(async (req) => {
       
       console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp} (${scansUsed}/${dailyScanLimit} used, authed=${isAuthedUser})`);
       
+      // Said to every signed-in account whose address is unproven, whether or
+      // not it holds anything, so the answer reveals nothing about the address.
+      const unprovenNote = isAuthedUser && !provenEmail
+        ? ` Pro or scan credits under this account's address are not used until the address is confirmed: sign in with Google using that address, or sign in once in the browser where you bought the credits.`
+        : '';
       return new Response(
         JSON.stringify({ 
-          error: isAuthedUser
+          error: (isAuthedUser
             ? `You've used all ${dailyScanLimit} free scans for today. Get a Scan Pack to keep going, or your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
-            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, get a Scan Pack, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, get a Scan Pack, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`) + unprovenNote,
           rateLimited: true,
+          mailboxUnproven: isAuthedUser && !provenEmail,
           scansUsed,
           scansLimit: dailyScanLimit,
           hoursUntilReset,
@@ -4259,7 +4284,7 @@ ${resumeText.substring(0, 20000)}
     if (creditHold && !usedRuleBasedFallback) {
       responseData.creditUsed = true;
       const presented = await Promise.all(parseCreditSessions(body.creditSessions).map(sessionHash));
-      responseData.creditsRemaining = await scanCreditBalance(supabase, { accountEmail: authedUserEmail, sessionHashes: presented });
+      responseData.creditsRemaining = await scanCreditBalance(supabase, { provenEmail, userId: authedUserId, sessionHashes: presented });
     }
 
     // Executive scope check — senior/executive resumes only

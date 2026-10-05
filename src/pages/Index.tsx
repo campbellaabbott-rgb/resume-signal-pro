@@ -795,13 +795,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         p_job_description: jobDesc || null
       });
 
-      // A refused store (its hourly ceiling) answers null: there is simply
-      // no pre-stored copy, and checkout stores one itself.
+      // A refused store (one of its writer budgets) answers null: there is
+      // simply no pre-stored copy, and checkout stores one itself.
       if (!error && typeof sessionId === 'string' && sessionId && gen === preStoreGenRef.current) {
         setPreStoredSessionId(sessionId);
         preStoredInputsRef.current = key;
-        // Every purchase button on every page falls back to this (L3-03).
-        rememberPreStoredResume(sessionId);
+        // Every purchase button on every page uses this copy while it holds
+        // what that button's screen shows (L3-03, bindPurchaseResume).
+        rememberPreStoredResume(sessionId, { resumeText: text, linkedInText: linkedIn ?? null, jobDescription: jobDesc ?? null });
         console.log('[PreStore] Resume pre-stored');
       }
     } catch (err) {

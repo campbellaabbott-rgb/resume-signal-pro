@@ -3522,9 +3522,10 @@
     "buyCredits": "Acheter des crédits — {{price}} chacun",
     "myCredits": "Mes crédits",
     "provenHint": "Les crédits achetés dans ce navigateur s'affichent ici automatiquement.",
-    "signInHint": "Achetés sur un autre appareil ? Connectez-vous avec l'e-mail utilisé lors du paiement.",
+    "signInHint": "Achetés dans un autre navigateur ? Connectez-vous-y une fois et ils suivront votre compte ici.",
     "signIn": "Se connecter",
-    "noCreditsHere": "Aucun crédit de scan sur ce navigateur ou ce compte pour l'instant."
+    "noCreditsHere": "Aucun crédit de scan sur ce navigateur ou ce compte pour l'instant.",
+    "legacyHint": "Vous avez acheté des crédits de scan en tant que {{email}} lors d'une visite précédente ? Ceux que vous n'avez pas utilisés sont toujours enregistrés. Écrivez à {{support}} depuis cette adresse et nous les ajouterons à votre compte."
   },
   "industryConfidence": {
     "industry": "Secteur :",

@@ -113,7 +113,7 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   // able to read the résumé again (defect sweep 1.27); the 24-hour retention
   // job deletes it.
   A("public.get_temp_resume(text)", "src/pages/Success.tsx", "own rows: the resume text stored under a session uuid the caller holds, until its 24-hour expiry"),
-  A("public.store_temp_resume(text,text,text)", "src/pages/Index.tsx", "own rows: a new session uuid", "stores <=50k characters of the caller's own resume under a fresh uuid that only the caller learns; 30 an hour per address, 1,000 an hour in all, none while 5,000 unexpired rows are held (20261005123000)"),
+  A("public.store_temp_resume(text,text,text)", "src/pages/Index.tsx", "own rows: a new session uuid", "stores <=50k characters of the caller's own resume under a fresh uuid that only the caller learns; 30 an hour per address, 120 an hour and 150 unexpired rows per /24 or /48 network; past 8,000 unexpired rows only a /16 or /32 holding fewer than 5, none past 10,000 (20261005123000)"),
   A("public.get_affiliate_dashboard(text)", "src/hooks/use-affiliate-auth.ts", "own rows: the dashboard of the affiliate whose session token is presented"),
   A("public.get_affiliate_clicks(text,integer)", "src/pages/Affiliates.tsx", "own rows: daily click counts for the presented affiliate session"),
   A("public.login_affiliate(text,text)", "src/hooks/use-affiliate-auth.ts", "own rows: a session token (and the affiliate's own email) for the affiliate whose password matched", "inserts one affiliate session after a bcrypt password check; 20 attempts an hour per address and 20 an hour per email from every address together"),

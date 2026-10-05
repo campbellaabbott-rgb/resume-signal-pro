@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useScanCredits, CREDITS_UPDATED_EVENT } from "@/hooks/use-scan-credits";
+import { useScanCredits, CREDITS_UPDATED_EVENT, legacyCreditsEmail } from "@/hooks/use-scan-credits";
 import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,9 +20,14 @@ import { supabase } from "@/integrations/supabase/client";
  * (and remember it, so every later scan spent that address's credits): an
  * open door to anyone's purchase (defect sweep 1.26 / 2.07). It now shows the
  * balance the scan-credits function answers for the signed-in account plus
- * the purchases whose Stripe session this browser kept at checkout. Credits
- * bought elsewhere are used by signing in with the purchase email.
+ * the purchases whose Stripe session this browser kept at checkout (a
+ * purchase follows the account once a signed-in browser holding it has
+ * shown it). A buyer from before browsers kept purchases has only the address
+ * they typed here; nothing proves it, so they are told how to get their
+ * credits added rather than that they have none.
  */
+const SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
+
 export function ScanCreditsCounter() {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -128,6 +133,7 @@ export function ScanCreditsCounter() {
   }
 
   // No proven balance: explain where credits show up, and offer sign-in and purchase
+  const legacyEmail = legacyCreditsEmail();
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -147,6 +153,11 @@ export function ScanCreditsCounter() {
             <p className="text-sm text-muted-foreground">
               {known ? t("scanCredits.noCreditsHere") : t("scanCredits.provenHint")}
             </p>
+            {known && legacyEmail && (
+              <p className="text-sm text-muted-foreground mt-2" data-testid="legacy-credits-hint">
+                {t("scanCredits.legacyHint", { email: legacyEmail, support: SUPPORT_EMAIL })}
+              </p>
+            )}
           </div>
 
           {!signedIn && (

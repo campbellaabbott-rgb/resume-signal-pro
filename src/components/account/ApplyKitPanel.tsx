@@ -36,7 +36,7 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
           p_job_description: jobPosting,
         } as never);
         if (typeof data === "string") setTempSessionId(data);
-      } catch { /* checkout re-stores as fallback */ }
+      } catch { /* refused: the buy button stores this résumé + posting itself, or refuses (bindPurchaseResume) */ }
     }
   };
 

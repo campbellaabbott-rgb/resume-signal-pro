@@ -3522,9 +3522,10 @@
     "buyCredits": "Credits kopen — {{price}} per stuk",
     "myCredits": "Mijn credits",
     "provenHint": "Credits die je in deze browser hebt gekocht, verschijnen hier automatisch.",
-    "signInHint": "Op een ander apparaat gekocht? Log in met het e-mailadres dat je bij het afrekenen gebruikte.",
+    "signInHint": "In een andere browser gekocht? Log daar één keer in, dan volgen ze je account hierheen.",
     "signIn": "Inloggen",
-    "noCreditsHere": "Nog geen scancredits in deze browser of dit account."
+    "noCreditsHere": "Nog geen scancredits in deze browser of dit account.",
+    "legacyHint": "Bij een eerder bezoek scancredits gekocht als {{email}}? Wat je nog niet hebt gebruikt, staat nog geregistreerd. Mail {{support}} vanaf dat adres en we voegen ze toe aan je account."
   },
   "industryConfidence": {
     "industry": "Industrie:",

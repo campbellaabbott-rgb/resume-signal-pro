@@ -20,7 +20,13 @@
  *   - a session id the database has never seen claimed costs no Stripe call;
  *   - a session is recorded once, read from the table afterwards, and never
  *     re-pointed at another address;
- *   - the signed-in account is reserved from first and refunded exactly.
+ *   - a proven address is reserved from first and refunded exactly;
+ *   - an account whose address is NOT proven (sign-ups are auto-confirmed, so
+ *     anyone can sign up as a buyer's address) spends nothing of that
+ *     address's pool, and is shown none of it;
+ *   - a purchase presented by a signed-in account is claimed by that auth
+ *     user id and follows it to a device holding no session id, capped at
+ *     what it bought; a second account cannot take the claim over.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -28,6 +34,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay } from "./helpers/function-acl";
 import {
+  accountGrants,
   creditsBoughtOf,
   grantFromStripe,
   parseCreditSessions,
@@ -84,6 +91,10 @@ function creditDb(db: PGlite): CreditDb {
   };
 }
 
+const OWNER = "00000000-0000-4000-8000-00000000000a";
+const BUYER = "00000000-0000-4000-8000-00000000000b";
+const ATTACKER = "00000000-0000-4000-8000-00000000000c";
+
 const balanceOf = async (email: string) =>
   (await pg.query<{ c: number }>("SELECT credits_remaining AS c FROM public.user_scan_credits WHERE email = $1", [email])).rows[0]?.c;
 
@@ -136,7 +147,8 @@ describe("the migration, applied", () => {
   const SIGS = [
     "public.use_scan_credit(text)", "public.get_scan_credits(text)", "public.add_scan_credits(text,integer)",
     "public.scan_credit_grant_record(text,text,text,integer)", "public.scan_credit_redeem(text,text)",
-    "public.scan_credit_refund(text,text)", "public.scan_credit_balance(text,text[])", "public.scan_credit_grants_bought(text[])",
+    "public.scan_credit_refund(text,text)", "public.scan_credit_balance(text,text[],uuid)", "public.scan_credit_grants_bought(text[])",
+    "public.scan_credit_grant_claim(text[],uuid)", "public.scan_credit_account_grants(uuid)",
   ];
 
   it("closes every credit function to both client roles and keeps it for the scanner's role", async () => {
@@ -203,18 +215,18 @@ describe("the scanner's credit module against that database", () => {
     });
     const opts = { stripeKey: "sk_test_x", fetchImpl };
 
-    const first = await reserveScanCredit(db, { accountEmail: null, sessionIds: ["cs_test_attackerbuysone", "cs_test_guessedbyattacker"] }, opts);
+    const first = await reserveScanCredit(db, { userId: null, provenEmail: null, sessionIds: ["cs_test_attackerbuysone", "cs_test_guessedbyattacker"] }, opts);
     expect(first?.via).toBe("purchase");
     expect(stripeCalls, "only the claimed session may reach Stripe").toEqual(["cs_test_attackerbuysone"]);
     expect(await balanceOf("victim@example.com")).toBe(9);
 
     // The purchase is spent: nothing more, however much the address holds.
     stripeCalls.length = 0;
-    const second = await reserveScanCredit(db, { accountEmail: null, sessionIds: ["cs_test_attackerbuysone"] }, opts);
+    const second = await reserveScanCredit(db, { userId: null, provenEmail: null, sessionIds: ["cs_test_attackerbuysone"] }, opts);
     expect(second).toBeNull();
     expect(stripeCalls, "a recorded purchase is read from the table, not Stripe").toEqual([]);
     expect(await balanceOf("victim@example.com")).toBe(9);
-    expect(await scanCreditBalance(db, { accountEmail: null, sessionHashes: [await sessionHash("cs_test_attackerbuysone")] })).toBe(0);
+    expect(await scanCreditBalance(db, { provenEmail: null, userId: null, sessionHashes: [await sessionHash("cs_test_attackerbuysone")] })).toBe(0);
   });
 
   it("a recorded purchase is never re-pointed at another address", async () => {
@@ -226,10 +238,10 @@ describe("the scanner's credit module against that database", () => {
     expect(grants.map((g) => g.email)).toEqual(["victim@example.com"]);
   });
 
-  it("the signed-in account is reserved first, and a refund gives back exactly what was taken", async () => {
+  it("a proven address is reserved first, and a refund gives back exactly what was taken", async () => {
     const db = creditDb(pg);
     await pg.exec("SELECT public.add_scan_credits('owner@example.com', 2)");
-    const hold = await reserveScanCredit(db, { accountEmail: "Owner@Example.com", sessionIds: [] }, { stripeKey: "" });
+    const hold = await reserveScanCredit(db, { userId: OWNER, provenEmail: "Owner@Example.com", sessionIds: [] }, { stripeKey: "" });
     expect(hold).toEqual({ email: "owner@example.com", sessionHash: null, via: "account" });
     expect(await balanceOf("owner@example.com")).toBe(1);
     expect(await refundScanCredit(db, hold)).toBe(true);
@@ -241,7 +253,57 @@ describe("the scanner's credit module against that database", () => {
 
   it("an account with nothing proven gets no credit (and the scan is refused, not given away)", async () => {
     const db = creditDb(pg);
-    expect(await reserveScanCredit(db, { accountEmail: null, sessionIds: [] }, { stripeKey: "" })).toBeNull();
-    expect(await reserveScanCredit(db, { accountEmail: "nobody@example.com", sessionIds: [] }, { stripeKey: "" })).toBeNull();
+    expect(await reserveScanCredit(db, { userId: null, provenEmail: null, sessionIds: [] }, { stripeKey: "" })).toBeNull();
+    expect(await reserveScanCredit(db, { userId: null, provenEmail: "nobody@example.com", sessionIds: [] }, { stripeKey: "" })).toBeNull();
+  });
+
+  it("signing up as a buyer's address (auto-confirmed, so unproven) spends and shows nothing of that pool", async () => {
+    const db = creditDb(pg);
+    const before = await balanceOf("victim@example.com");
+    expect(before).toBeGreaterThan(0);
+    // The attacker's session is real and its account carries the victim's
+    // address, but nothing proved the mailbox, so provenEmail is null.
+    const hold = await reserveScanCredit(db, { userId: ATTACKER, provenEmail: null, sessionIds: [] }, { stripeKey: "" });
+    expect(hold).toBeNull();
+    expect(await balanceOf("victim@example.com")).toBe(before);
+    expect(await scanCreditBalance(db, { provenEmail: null, userId: ATTACKER, sessionHashes: [] })).toBe(0);
+  });
+
+  it("a held purchase is claimed by the signed-in account and follows it to a device holding no session id", async () => {
+    const db = creditDb(pg);
+    await pg.exec("SELECT public.add_scan_credits('buyer@example.com', 3)");
+    await pg.exec("INSERT INTO public.used_stripe_sessions (session_id, product_type) VALUES ('cs_test_buyerbuysthree', 'scan_pack')");
+    const fetchImpl = stripe({
+      cs_test_buyerbuysthree: { id: "cs_test_buyerbuysthree", payment_status: "paid", customer_email: "buyer@example.com", metadata: { product_type: "scan_pack", credits: "3" } },
+    });
+    const opts = { stripeKey: "sk_test_x", fetchImpl };
+
+    // Nothing claimed yet: the account alone has nothing.
+    expect(await accountGrants(db, BUYER)).toEqual([]);
+    expect(await reserveScanCredit(db, { userId: BUYER, provenEmail: null, sessionIds: [] }, opts)).toBeNull();
+
+    // The browser that bought it, signed in: spends from the held id and claims it.
+    const onLaptop = await reserveScanCredit(db, { userId: BUYER, provenEmail: null, sessionIds: ["cs_test_buyerbuysthree"] }, opts);
+    expect(onLaptop?.via).toBe("purchase");
+    const hash = await sessionHash("cs_test_buyerbuysthree");
+    expect((await accountGrants(db, BUYER)).map((g) => g.hash)).toEqual([hash]);
+
+    // Another device, same account, no session id: the claim pays.
+    const onPhone = await reserveScanCredit(db, { userId: BUYER, provenEmail: null, sessionIds: [] }, opts);
+    expect(onPhone).toEqual({ email: "buyer@example.com", sessionHash: hash, via: "purchase" });
+    expect(await scanCreditBalance(db, { provenEmail: null, userId: BUYER, sessionHashes: [] })).toBe(1);
+
+    // A second account that somehow holds the id cannot take the claim over.
+    await resolveCreditSessions(db, ["cs_test_buyerbuysthree"], { ...opts, claimFor: ATTACKER });
+    expect(await accountGrants(db, ATTACKER)).toEqual([]);
+    expect((await accountGrants(db, BUYER)).map((g) => g.hash)).toEqual([hash]);
+
+    // The claim is capped at what the purchase bought, however much the pool holds.
+    await pg.exec("SELECT public.add_scan_credits('buyer@example.com', 40)");
+    expect(await reserveScanCredit(db, { userId: BUYER, provenEmail: null, sessionIds: [] }, opts)).not.toBeNull();
+    expect(await reserveScanCredit(db, { userId: BUYER, provenEmail: null, sessionIds: [] }, opts)).toBeNull();
+    expect(await accountGrants(db, BUYER)).toEqual([]);
+    expect(await scanCreditBalance(db, { provenEmail: null, userId: BUYER, sessionHashes: [] })).toBe(0);
+    expect(await balanceOf("buyer@example.com")).toBe(40);
   });
 });

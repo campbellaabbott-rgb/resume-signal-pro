@@ -16,11 +16,9 @@
  *     never given back, so a busy gateway or a 500 cost a credit and gave no
  *     report.
  *
- * THE RULE NOW. A credit is spent for one of exactly two proven identities:
+ * THE RULE NOW. A credit is spent for one of exactly three proven identities:
  *
- *   1. the signed-in account: the email on the JWT the platform verified
- *      (never an email from the request body); or
- *   2. a purchase the caller holds: the Stripe Checkout session id from the
+ *   1. a purchase the caller holds: the Stripe Checkout session id from the
  *      success redirect. It is a bearer secret only the buyer's browser saw.
  *      It is checked once against Stripe (paid, a credit product, which email
  *      was credited, how many credits) and recorded in
@@ -29,16 +27,21 @@
  *      typed email belongs to the buyer, so a one-credit purchase made "as"
  *      somebody else must not unlock everything that address holds. The cap
  *      is what stops that.
+ *   2. the signed-in account that claimed such a purchase: the first auth
+ *      user id to present a held session id while signed in owns it, and
+ *      spends what it has left on any device. Bound to the user id, never to
+ *      the address.
+ *   3. the address's whole pool, for a signed-in session that has PROVEN its
+ *      mailbox (_shared/mailbox-proof.ts). An address on a JWT is not proof:
+ *      the project auto-confirms sign-ups (mailer_autoconfirm = true, read
+ *      2026-10-04), so anybody can sign up as a buyer's address. Until the
+ *      owner turns confirmation on, only a verified Google or Apple sign-in
+ *      proves an address. The caller decides the proof and passes provenEmail;
+ *      this module never derives it from a token.
  *
  * And a credit is RESERVED, not spent, until a full report exists: the caller
  * refunds the hold on every path that delivers less (a cache hit, a rule-based
  * or load-shed report, a busy gateway, an error).
- *
- * WHAT THIS CANNOT FIX: the project's auth settings report mailer_autoconfirm
- * = true (read 2026-10-04 from /auth/v1/settings), so a password sign-up gets a
- * session for an address it never proved it owns. Until email confirmation is
- * turned on, rule 1 is only as strong as that. It is an owner setting, not
- * code.
  *
  * Plain Web APIs only (fetch, crypto.subtle), so the Node test suite imports
  * this module directly. The database and Stripe are passed in.
@@ -131,7 +134,16 @@ export type ResolveOptions = {
   stripeKey: string;
   fetchImpl?: typeof fetch;
   maxLookups?: number;
+  /**
+   * The signed-in caller's auth user id. Every resolved purchase not yet
+   * claimed becomes this account's (rule 2), so it follows the account to
+   * devices that never held the session id.
+   */
+  claimFor?: string | null;
 };
+
+const USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isAuthUserId = (v: unknown): v is string => typeof v === "string" && USER_ID.test(v);
 
 /** Stripe's REST API directly: the SDK is not worth its weight in a scanner. */
 async function retrieveCheckoutSession(id: string, opts: ResolveOptions): Promise<StripeCheckoutSession | null> {
@@ -201,6 +213,15 @@ export async function resolveCreditSessions(db: CreditDb, ids: string[], opts: R
       const email = byHash.get(hash);
       if (email) out.push({ hash, email });
     }
+    if (out.length > 0 && isAuthUserId(opts.claimFor)) {
+      // A failed claim costs nothing now: the held id still proves the
+      // purchase on this device, and the next request claims it.
+      const { error } = await db.rpc("scan_credit_grant_claim", {
+        p_session_hashes: out.map((g) => g.hash),
+        p_user_id: opts.claimFor,
+      });
+      if (error) console.warn("[SCAN-CREDITS] claiming held purchases failed");
+    }
     return out;
   } catch (e) {
     console.warn("[SCAN-CREDITS] resolving purchase sessions failed:", e instanceof Error ? e.message : String(e));
@@ -208,34 +229,71 @@ export async function resolveCreditSessions(db: CreditDb, ids: string[], opts: R
   }
 }
 
+/**
+ * The purchases a signed-in account claimed that still have a credit left,
+ * oldest first. Empty for no account or an unreadable answer. Never throws.
+ */
+export async function accountGrants(db: CreditDb, userId: string | null | undefined): Promise<SessionGrant[]> {
+  if (!isAuthUserId(userId)) return [];
+  try {
+    const { data, error } = await db.rpc("scan_credit_account_grants", { p_user_id: userId });
+    if (error || !Array.isArray(data)) return [];
+    const out: SessionGrant[] = [];
+    for (const row of data as Array<{ session_hash?: unknown; email?: unknown }>) {
+      const hash = typeof row?.session_hash === "string" ? row.session_hash : "";
+      const email = normalizeCreditEmail(row?.email);
+      if (/^[0-9a-f]{64}$/.test(hash) && email.includes("@")) out.push({ hash, email });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** Who is asking, as far as anything was proven. */
+export type CreditIdentity = {
+  /** The auth user id the platform verified on the JWT, or null. */
+  userId: string | null;
+  /** The account's address ONLY when its mailbox was proven (mailbox-proof.ts). */
+  provenEmail: string | null;
+  /** Stripe Checkout session ids the browser presented. */
+  sessionIds: string[];
+};
+
 /** One reserved credit: whose pool it came from and, for a purchase, which one. */
 export type CreditHold = { email: string; sessionHash: string | null; via: "account" | "purchase" };
 
 /**
- * Reserve one credit for a proven identity: the signed-in account first, then
- * each held purchase in turn. Null when nothing proven has a credit left.
- * Never throws: a failure to reserve is "no credit", which refuses the scan
- * rather than giving it away.
+ * Reserve one credit for a proven identity: the proven address's pool first,
+ * then each held purchase, then each purchase the account claimed. Null when
+ * nothing proven has a credit left. Never throws: a failure to reserve is "no
+ * credit", which refuses the scan rather than giving it away.
  */
 export async function reserveScanCredit(
   db: CreditDb,
-  who: { accountEmail: string | null; sessionIds: string[] },
+  who: CreditIdentity,
   opts: ResolveOptions,
 ): Promise<CreditHold | null> {
-  const account = normalizeCreditEmail(who.accountEmail ?? "");
+  const proven = normalizeCreditEmail(who.provenEmail ?? "");
+  const userId = isAuthUserId(who.userId) ? who.userId : null;
   try {
-    if (account.includes("@")) {
-      const { data } = await db.rpc("scan_credit_redeem", { p_email: account, p_session_hash: null });
-      if (data === true) return { email: account, sessionHash: null, via: "account" };
+    if (proven.includes("@")) {
+      const { data } = await db.rpc("scan_credit_redeem", { p_email: proven, p_session_hash: null });
+      if (data === true) return { email: proven, sessionHash: null, via: "account" };
     }
-    if (who.sessionIds.length > 0) {
-      for (const g of await resolveCreditSessions(db, who.sessionIds, opts)) {
-        // The account's own pool was just asked; a purchase under the same
-        // address draws on that same pool and would only repeat the answer.
-        if (account && g.email === account) continue;
-        const { data } = await db.rpc("scan_credit_redeem", { p_email: g.email, p_session_hash: g.hash });
-        if (data === true) return { email: g.email, sessionHash: g.hash, via: "purchase" };
-      }
+    const held = who.sessionIds.length > 0
+      ? await resolveCreditSessions(db, who.sessionIds, { ...opts, claimFor: userId })
+      : [];
+    const claimed = await accountGrants(db, userId);
+    const seen = new Set<string>();
+    for (const g of [...held, ...claimed]) {
+      if (seen.has(g.hash)) continue;
+      seen.add(g.hash);
+      // The proven pool was just asked; a purchase under the same address
+      // draws on that same pool and would only repeat the answer.
+      if (proven && g.email === proven) continue;
+      const { data } = await db.rpc("scan_credit_redeem", { p_email: g.email, p_session_hash: g.hash });
+      if (data === true) return { email: g.email, sessionHash: g.hash, via: "purchase" };
     }
   } catch (e) {
     console.warn("[SCAN-CREDITS] reserve failed:", e instanceof Error ? e.message : String(e));
@@ -263,19 +321,21 @@ export async function refundScanCredit(db: CreditDb | null | undefined, hold: Cr
 }
 
 /**
- * What a proven identity can still spend: the account's pool, plus, for each
- * other address among the held purchases, what those purchases have left
- * (never more than that address's pool). Null when the read failed.
+ * What a proven identity can still spend: the proven address's pool, plus,
+ * for each other address among the held and claimed purchases, what those
+ * purchases have left (never more than that address's pool). Null when the
+ * read failed.
  */
 export async function scanCreditBalance(
   db: CreditDb,
-  who: { accountEmail: string | null; sessionHashes: string[] },
+  who: { provenEmail: string | null; userId: string | null; sessionHashes: string[] },
 ): Promise<number | null> {
   try {
-    const account = normalizeCreditEmail(who.accountEmail ?? "");
+    const proven = normalizeCreditEmail(who.provenEmail ?? "");
     const { data, error } = await db.rpc("scan_credit_balance", {
-      p_email: account.includes("@") ? account : null,
+      p_email: proven.includes("@") ? proven : null,
       p_session_hashes: who.sessionHashes.length > 0 ? who.sessionHashes : null,
+      p_user_id: isAuthUserId(who.userId) ? who.userId : null,
     });
     if (error || typeof data !== "number") return null;
     return data;

@@ -21,15 +21,25 @@
 --       cost a credit, and the client's automatic retries spent one more each.
 --
 -- WHAT THIS FILE ADDS. The scanner (supabase/functions/_shared/scan-credits.ts)
--- now spends a credit for exactly two proven identities:
---   * the signed-in account: the address on the JWT the platform verified;
+-- now spends a credit for exactly three proven identities:
 --   * a purchase the caller holds: the Stripe Checkout session id from the
 --     success redirect, a bearer secret only the buyer's browser saw. It is
 --     checked once with Stripe and recorded below by its SHA-256 (the id
 --     itself is never stored), and it can spend AT MOST the credits that
 --     purchase bought. Stripe never checked that the email typed at checkout
 --     belongs to the buyer, so a one-credit purchase made "as" somebody else
---     must not unlock everything that address holds; the cap is what stops it.
+--     must not unlock everything that address holds; the cap is what stops it;
+--   * the signed-in account that CLAIMED such a purchase: the first signed-in
+--     user to present a held session id is written into claimed_by, and from
+--     then on that auth user id spends what the purchase has left on any
+--     device, still capped by the purchase. A claim is never re-pointed;
+--   * the signed-in account's whole pool by address, ONLY when the edge
+--     function has proven the session's mailbox (_shared/mailbox-proof.ts).
+--     An address on a JWT is not that proof: the project auto-confirms
+--     sign-ups (mailer_autoconfirm = true, read 2026-10-04), so anybody can
+--     sign up as a buyer's address and hold a session for it. Until the owner
+--     turns email confirmation on, only a verified Google or Apple identity
+--     proves an address; this file never trusts an address by itself.
 -- A credit is RESERVED before the scan (so two concurrent requests cannot
 -- share one) and REFUNDED unless a full report is delivered. The refund can
 -- never lift a balance above what the address ever purchased, so a stray
@@ -76,11 +86,18 @@ CREATE TABLE IF NOT EXISTS public.scan_credit_session_grants (
   product_type   text NOT NULL DEFAULT '',
   credits_bought integer NOT NULL CHECK (credits_bought BETWEEN 1 AND 500),
   credits_used   integer NOT NULL DEFAULT 0 CHECK (credits_used >= 0 AND credits_used <= credits_bought),
+  -- The auth user id that first presented this purchase while signed in. Set
+  -- once by scan_credit_grant_claim, never re-pointed.
+  claimed_by     uuid,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
+-- A table an earlier draft of this file created has no claimed_by.
+ALTER TABLE public.scan_credit_session_grants ADD COLUMN IF NOT EXISTS claimed_by uuid;
 CREATE INDEX IF NOT EXISTS scan_credit_session_grants_email_idx
   ON public.scan_credit_session_grants (email);
+CREATE INDEX IF NOT EXISTS scan_credit_session_grants_claimed_by_idx
+  ON public.scan_credit_session_grants (claimed_by) WHERE claimed_by IS NOT NULL;
 ALTER TABLE public.scan_credit_session_grants ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.scan_credit_session_grants FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.scan_credit_session_grants TO service_role;
@@ -89,7 +106,8 @@ COMMENT ON TABLE public.scan_credit_session_grants IS
   'One row per scan-credit purchase a browser presented by its Stripe Checkout session id. '
   'session_hash is the SHA-256 of that id (the id is a bearer secret and is not stored). '
   'A purchase can spend at most credits_bought from its address''s pool in user_scan_credits. '
-  'Written only by scan_credit_grant_record after the session was checked with Stripe (20261005120000).';
+  'claimed_by is the auth user id that first presented it while signed in; that account spends it on any device. '
+  'Written only by scan_credit_grant_record (after the session was checked with Stripe) and scan_credit_grant_claim (20261005120000).';
 
 -- Records a purchase the edge function checked with Stripe. True when the row
 -- for this hash names this address, written now or before. A recorded purchase
@@ -114,6 +132,52 @@ BEGIN
   SELECT g.email INTO v_stored FROM public.scan_credit_session_grants g WHERE g.session_hash = p_session_hash;
   RETURN v_stored IS NOT DISTINCT FROM v_email;
 END;
+$$;
+
+-- A signed-in caller presented these held purchases: each one not yet claimed
+-- becomes this account's. Answers how many of the presented purchases are now
+-- this account's (claimed now or before). A purchase another account claimed
+-- first stays that account's.
+CREATE OR REPLACE FUNCTION public.scan_credit_grant_claim(p_session_hashes text[], p_user_id uuid)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_mine integer;
+BEGIN
+  IF p_user_id IS NULL OR p_session_hashes IS NULL OR cardinality(p_session_hashes) = 0 THEN RETURN 0; END IF;
+  UPDATE public.scan_credit_session_grants g
+     SET claimed_by = p_user_id, updated_at = now()
+   WHERE g.session_hash = ANY (p_session_hashes[1:10])
+     AND g.claimed_by IS NULL;
+  SELECT count(*)::integer INTO v_mine
+    FROM public.scan_credit_session_grants g
+   WHERE g.session_hash = ANY (p_session_hashes[1:10])
+     AND g.claimed_by = p_user_id;
+  RETURN v_mine;
+END;
+$$;
+
+-- The purchases a signed-in account claimed that still have a credit left,
+-- oldest first, as [{session_hash, email}]: what the account can spend on a
+-- device that holds none of their session ids.
+CREATE OR REPLACE FUNCTION public.scan_credit_account_grants(p_user_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(jsonb_agg(jsonb_build_object('session_hash', x.session_hash, 'email', x.email) ORDER BY x.created_at), '[]'::jsonb)
+    FROM (SELECT g.session_hash, g.email, g.created_at
+            FROM public.scan_credit_session_grants g
+           WHERE p_user_id IS NOT NULL
+             AND g.claimed_by = p_user_id
+             AND g.credits_used < g.credits_bought
+           ORDER BY g.created_at
+           LIMIT 20) x;
 $$;
 
 -- Spends one credit. With no hash it draws on the address's pool (the
@@ -177,10 +241,11 @@ BEGIN
 END;
 $$;
 
--- What a proven identity can spend: the account's pool, plus, for each OTHER
--- address among the held purchases, what those purchases have left (never more
--- than that address's pool).
-CREATE OR REPLACE FUNCTION public.scan_credit_balance(p_email text DEFAULT NULL, p_session_hashes text[] DEFAULT NULL)
+-- What a proven identity can spend: the pool of the address the edge function
+-- proved (p_email, NULL when none was), plus, for each OTHER address among the
+-- held purchases and the purchases p_user_id claimed, what those purchases
+-- have left (never more than that address's pool).
+CREATE OR REPLACE FUNCTION public.scan_credit_balance(p_email text DEFAULT NULL, p_session_hashes text[] DEFAULT NULL, p_user_id uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
 STABLE
@@ -195,14 +260,15 @@ BEGIN
   IF v_email IS NOT NULL THEN
     SELECT c.credits_remaining INTO v_own FROM public.user_scan_credits c WHERE c.email = v_email;
   END IF;
-  IF p_session_hashes IS NOT NULL AND cardinality(p_session_hashes) > 0 THEN
+  IF (p_session_hashes IS NOT NULL AND cardinality(p_session_hashes) > 0) OR p_user_id IS NOT NULL THEN
     SELECT coalesce(sum(least(s.left_by_purchase, s.pool)), 0)::integer INTO v_held
       FROM (SELECT g.email,
                    sum(g.credits_bought - g.credits_used) AS left_by_purchase,
                    coalesce(max(c.credits_remaining), 0) AS pool
               FROM public.scan_credit_session_grants g
               LEFT JOIN public.user_scan_credits c ON c.email = g.email
-             WHERE g.session_hash = ANY (p_session_hashes[1:10])
+             WHERE (g.session_hash = ANY ((coalesce(p_session_hashes, '{}'::text[]))[1:10])
+                    OR (p_user_id IS NOT NULL AND g.claimed_by = p_user_id))
                AND (v_email IS NULL OR g.email <> v_email)
              GROUP BY g.email) s;
   END IF;
@@ -225,14 +291,18 @@ AS $$
 $$;
 
 REVOKE ALL ON FUNCTION public.scan_credit_grant_record(text, text, text, integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.scan_credit_grant_claim(text[], uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.scan_credit_account_grants(uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.scan_credit_redeem(text, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.scan_credit_refund(text, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.scan_credit_balance(text, text[]) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.scan_credit_balance(text, text[], uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.scan_credit_grants_bought(text[]) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.scan_credit_grant_record(text, text, text, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.scan_credit_grant_claim(text[], uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.scan_credit_account_grants(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.scan_credit_redeem(text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.scan_credit_refund(text, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.scan_credit_balance(text, text[]) TO service_role;
+GRANT EXECUTE ON FUNCTION public.scan_credit_balance(text, text[], uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.scan_credit_grants_bought(text[]) TO service_role;
 
 -- ── 3. the catalogue and the behaviour are what this file intends ───────────
@@ -247,6 +317,9 @@ DECLARE
   v_sentinel constant text := 'scan credit probe: rolled back';
   v_probe    constant text := 'migration-check+credits@example.invalid';
   v_hash     constant text := repeat('a', 64);
+  v_buyer    constant uuid := '00000000-0000-4000-8000-0000000000b1';
+  v_other    constant uuid := '00000000-0000-4000-8000-0000000000b2';
+  v_list     jsonb;
 BEGIN
   -- Every credit function: no client role may execute it; service_role must.
   FOR v_sig IN
@@ -254,7 +327,8 @@ BEGIN
       FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
      WHERE ns.nspname = 'public'
        AND p.proname IN ('use_scan_credit', 'get_scan_credits', 'add_scan_credits',
-                         'scan_credit_grant_record', 'scan_credit_redeem', 'scan_credit_refund',
+                         'scan_credit_grant_record', 'scan_credit_grant_claim', 'scan_credit_account_grants',
+                         'scan_credit_redeem', 'scan_credit_refund',
                          'scan_credit_balance', 'scan_credit_grants_bought')
   LOOP
     FOREACH v_role IN ARRAY ARRAY['anon', 'authenticated'] LOOP
@@ -273,12 +347,20 @@ BEGIN
   SELECT count(*) INTO v_n
     FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
    WHERE ns.nspname = 'public'
-     AND p.proname IN ('scan_credit_grant_record', 'scan_credit_redeem', 'scan_credit_refund',
+     AND p.proname IN ('scan_credit_grant_record', 'scan_credit_grant_claim', 'scan_credit_account_grants',
+                       'scan_credit_redeem', 'scan_credit_refund',
                        'scan_credit_balance', 'scan_credit_grants_bought')
      AND p.prosecdef
      AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}'::text[])) cfg WHERE cfg LIKE 'search_path=%');
-  IF v_n <> 5 THEN
-    RAISE EXCEPTION 'expected 5 SECURITY DEFINER credit functions with a pinned search_path, found %', v_n;
+  IF v_n <> 7 THEN
+    RAISE EXCEPTION 'expected 7 SECURITY DEFINER credit functions with a pinned search_path, found %', v_n;
+  END IF;
+  -- One balance, the three-argument one the edge functions call by name.
+  SELECT count(*) INTO v_n
+    FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+   WHERE ns.nspname = 'public' AND p.proname = 'scan_credit_balance';
+  IF v_n <> 1 OR to_regprocedure('public.scan_credit_balance(text,text[],uuid)') IS NULL THEN
+    RAISE EXCEPTION 'expected exactly one scan_credit_balance(text, text[], uuid), found % overloads', v_n;
   END IF;
 
   -- The purchase table: RLS on, nothing for a client role.
@@ -347,6 +429,37 @@ BEGIN
       v_fail := coalesce(v_fail || '; ', '') || 'a refund lifted a balance above what was ever purchased';
     END IF;
 
+    -- A CLAIMED purchase follows the account that claimed it, and no other.
+    -- Pool 2, the purchase has 1 left (refunded above).
+    IF public.scan_credit_balance(NULL, NULL, v_buyer) <> 0 THEN
+      v_fail := coalesce(v_fail || '; ', '') || 'an account that claimed nothing reports a balance';
+    END IF;
+    IF public.scan_credit_grant_claim(ARRAY[v_hash], v_buyer) <> 1 THEN
+      v_fail := coalesce(v_fail || '; ', '') || 'a held purchase could not be claimed';
+    END IF;
+    IF public.scan_credit_grant_claim(ARRAY[v_hash], v_other) <> 0 THEN
+      v_fail := coalesce(v_fail || '; ', '') || 'a claimed purchase was re-claimed by another account';
+    END IF;
+    IF (SELECT g.claimed_by FROM public.scan_credit_session_grants g WHERE g.session_hash = v_hash) IS DISTINCT FROM v_buyer THEN
+      v_fail := coalesce(v_fail || '; ', '') || 'the claim was re-pointed';
+    END IF;
+    v_list := public.scan_credit_account_grants(v_buyer);
+    IF jsonb_array_length(v_list) <> 1 OR v_list -> 0 ->> 'session_hash' <> v_hash OR v_list -> 0 ->> 'email' <> v_probe THEN
+      v_fail := coalesce(v_fail || '; ', '') || format('the claiming account lists %s, want its one purchase', v_list);
+    END IF;
+    IF jsonb_array_length(public.scan_credit_account_grants(v_other)) <> 0 THEN
+      v_fail := coalesce(v_fail || '; ', '') || 'another account lists a purchase it never claimed';
+    END IF;
+    -- No session id held, no address proven: the claim alone shows the
+    -- purchase's remainder, never the whole pool behind it.
+    v_bal := public.scan_credit_balance(NULL, NULL, v_buyer);
+    IF v_bal <> 1 THEN
+      v_fail := coalesce(v_fail || '; ', '') || format('the claiming account reports %s, want the purchase''s 1, not the pool''s 2', v_bal);
+    END IF;
+    IF public.scan_credit_balance(NULL, NULL, v_other) <> 0 THEN
+      v_fail := coalesce(v_fail || '; ', '') || 'another account reports the claimed purchase';
+    END IF;
+
     RAISE EXCEPTION USING MESSAGE = v_sentinel;
   EXCEPTION WHEN others THEN
     IF SQLERRM <> v_sentinel THEN
@@ -356,6 +469,6 @@ BEGIN
   IF v_fail IS NOT NULL THEN
     RAISE EXCEPTION 'scan credits do not behave as this file intends: %', v_fail;
   END IF;
-  RAISE NOTICE 'self-verify 20261005120000: every credit function closed to clients and open to service_role; a purchase spends at most what it bought; refunds never mint';
+  RAISE NOTICE 'self-verify 20261005120000: every credit function closed to clients and open to service_role; a purchase spends at most what it bought; a claim follows only its account; refunds never mint';
 END
 $check$;
