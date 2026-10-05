@@ -26,6 +26,12 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npx tsc
 
+# The one place the worker writes: evidence for an "uncertain" submit. /app is
+# root-owned (everything above ran as root), so the non-root user below could
+# not create mac/uncertain and every screenshot was lost (L9-20). Created here
+# and handed to that user; fly.toml also points WORKER_SHOT_DIR at /tmp.
+RUN mkdir -p /app/mac/uncertain && chown -R pwuser /app/mac
+
 # Not root. This process loads arbitrary employer pages in a browser; if one of
 # them finds a Chromium bug, it should not find it as root.
 USER pwuser

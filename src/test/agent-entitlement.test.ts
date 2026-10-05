@@ -27,7 +27,10 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  ACCOUNT_SUBSCRIPTION_RPC,
+  accountSubscription,
   effectiveDailyCap,
+  entitledAccounts,
   entitledFromRows,
   isEntitled,
   normalizeEmail,
@@ -130,8 +133,45 @@ describe("no consumer asks the easier question", () => {
     "supabase/functions/agent-runner/index.ts",
     "supabase/functions/send-agent-digest/index.ts",
   ];
+  // THE GATES THAT ACT FOR AN ACCOUNT read its subscription by user id
+  // (agent_subscription_rows, 20261005130000), never agent_subscribers by an
+  // address: sign-ups are confirmed automatically, so whoever registered a
+  // subscriber's address took the plan (agents-api review, 2026-10-05). The
+  // behaviour is executed in the-agent-functions-run-against-the-real-database
+  // and a-paid-agent-is-funded-by-its-account-and-stopped-by-its-owner; this
+  // keeps a sixth reader from going back to the address.
+  const BY_ACCOUNT = [
+    "supabase/functions/apply-agent/index.ts",
+    "supabase/functions/apply-broker/index.ts",
+    "supabase/functions/agent-runner/index.ts",
+    "supabase/functions/agent-access/index.ts",
+    "supabase/functions/agent-mcp/index.ts",
+  ];
+  // send-agent-digest only mails the queue agent-runner built, and agent-runner
+  // reads by account; it still reads the row by address, which is the
+  // remaining reader named in the branch's open issues.
+  const BY_ADDRESS = ["supabase/functions/send-agent-digest/index.ts"];
 
-  it.each(CONSUMERS)("%s reads the entitlement columns and the shared predicate", (rel) => {
+  it.each(BY_ACCOUNT)("%s reads the subscription by account id, never the table by an address", (rel) => {
+    const src = readFileSync(resolve(root, rel), "utf8");
+    const code = src.split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*")).join("\n");
+    expect(code).toMatch(/client\.rpc\(ACCOUNT_SUBSCRIPTION_RPC|service\.rpc\(ACCOUNT_SUBSCRIPTION_RPC/);
+    expect(code, `${rel} reads agent_subscribers directly`).not.toContain('.from("agent_subscribers")');
+  });
+
+  it("the account read hands back only the row for the account asked about, and a set of entitled ids", () => {
+    const rows = [
+      { user_id: "u1", email: "a@x.io", status: "active", current_period_end: future },
+      { user_id: "u2", email: "b@x.io", status: "past_due", current_period_end: future },
+    ];
+    expect(accountSubscription(rows, "u2")?.email).toBe("b@x.io");
+    expect(accountSubscription(rows, "u3")).toBeNull();
+    expect(accountSubscription(null, "u1")).toBeNull();
+    expect([...entitledAccounts(rows, NOW)]).toEqual(["u1"]);
+    expect(ACCOUNT_SUBSCRIPTION_RPC).toBe("agent_subscription_rows");
+  });
+
+  it.each(BY_ADDRESS)("%s reads the entitlement columns and the shared predicate", (rel) => {
     const src = readFileSync(resolve(root, rel), "utf8");
     expect(src, "must import the one definition").toContain("_shared/agent-entitlement.ts");
 
@@ -206,7 +246,7 @@ describe("agent-access cannot mint a row for an address Stripe has never seen", 
     // table, and it was not harmless for the two consumers that only checked
     // existence.
     expect(shared).toMatch(/if \(result\.stripeCustomerId\)/);
-    expect(shared).toMatch(/\.upsert\(\{ email: normalized/);
+    expect(shared).toMatch(/\.upsert\(\{\s*email: normalized/);
   });
 
   it("still downgrades an existing row when Stripe no longer knows the customer", () => {
@@ -295,11 +335,18 @@ describe("isEntitled asks the set the way the set was built", () => {
 describe("no consumer re-derives the comparison", () => {
   // Written against the CLASS, not the two known instances. The last time a
   // guard here was written against specific filenames, the identical bug in a
-  // sibling file survived the fix.
+  // sibling file survived the fix. agent-runner no longer builds an address
+  // set at all: its set holds user ids from agent_subscription_rows.
   const CONSUMERS = [
-    "supabase/functions/agent-runner/index.ts",
     "supabase/functions/send-agent-digest/index.ts",
   ];
+
+  it("agent-runner asks its entitled set by user id, built by the shared helper", () => {
+    const src = readFileSync(resolve(__dirname, "../..", "supabase/functions/agent-runner/index.ts"), "utf8");
+    expect(src).toMatch(/entitled = entitledAccounts\(subs\)/);
+    expect(src).toMatch(/entitled\.has\(m\.user_id\)/);
+    expect(src).not.toMatch(/entitled\.has\(m\.email\)|isEntitled\(entitled, m\.email\)/);
+  });
   const root = resolve(__dirname, "../..");
 
   it.each(CONSUMERS)("%s never queries the entitled set with a raw address", (rel) => {
@@ -372,6 +419,9 @@ describe("effectiveDailyCap clamps the candidate's choice to their tier", () => 
     // A subscriber's tier is the subscriber row's status; a pass-funded
     // mandate has none, so its tier is the pass — whose ceiling is its own
     // application count (TIER_SEND_CEILING[PASS_TIER]).
-    expect(agent).toMatch(/dailyCap: effectiveDailyCap\(m\.auto_apply_daily_cap, subscribed \? sub\?\.status : PASS_TIER\)/);
+    // Computed once per mandate since 2026-10-05, and used by both the new
+    // packets and the waiting ones re-decided in the same run.
+    expect(agent).toMatch(/const dailyCap = effectiveDailyCap\(m\.auto_apply_daily_cap, subscribed \? sub\?\.status : PASS_TIER\)/);
+    expect((agent.match(/^\s*dailyCap,$/gm) ?? []).length, "both release decisions read the clamped cap").toBe(2);
   });
 });

@@ -4766,7 +4766,8 @@
     "searchDeleted": "Suche entfernt.",
     "anyRole": "Beliebige Rolle",
     "searchLimitHit": "Du kannst bis zu 10 aktive Suchen haben. Pausiere eine, um eine weitere hinzuzufügen.",
-    "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht."
+    "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht.",
+    "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern."
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",
@@ -4859,7 +4860,15 @@
     },
     "tryAgain": "Erneut versuchen",
     "retried": "Wieder eingereiht — geht beim nächsten Lauf raus",
-    "retryFailed": "Konnte nicht erneut eingereiht werden — bitte nochmal"
+    "retryFailed": "Konnte nicht erneut eingereiht werden — bitte nochmal",
+    "approveSend": "Freigeben und senden",
+    "cancelSend": "Nicht senden",
+    "approved": "Freigegeben — sie geht an den Versand, sobald dein Widerrufsfenster abgelaufen ist.",
+    "cancelled": "Gestoppt — diese Bewerbung wird nicht gesendet.",
+    "decideAgentOff": "Schalte zuerst deinen Agenten ein — eine freigegebene Bewerbung wartet darauf.",
+    "decideBlockedCompany": "Dieser Arbeitgeber steht auf deiner Nie-bewerben-Liste, deshalb sendet der Agent nicht dorthin.",
+    "decideInFlight": "Der Versand bearbeitet diese gerade — sie lässt sich nicht mehr ändern.",
+    "decideFailed": "Das hat nicht geklappt — aktualisiere die Seite und versuche es erneut."
   },
   "agentPlan": {
     "badge": "Bewirbt sich für Sie",
@@ -5099,7 +5108,9 @@
     "stepsTitle": "Schritte für {{host}}:",
     "keyedTitle": "Dann Ihren Agenten-Schlüssel hinzufügen — er trägt den Pass:",
     "connectorNoOauth2": "Die Anmeldung für diesen Host ist noch nicht eingeschaltet, daher antworten von hier aus nur die Werkzeuge ohne Schlüssel. Um den Pass zu nutzen, verbinden Sie sich von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
-    "connectorPassGate": "Von {{host}} aus lässt sich der Pass erst nutzen, wenn die Anmeldung eingeschaltet ist; nutzen Sie ihn heute von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel."
+    "connectorPassGate": "Von {{host}} aus lässt sich der Pass erst nutzen, wenn die Anmeldung eingeschaltet ist; nutzen Sie ihn heute von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
+    "repairSecondPass": "Diese Zahlung hat keinen zweiten Pass erzeugt: Ein Konto hat immer nur einen offenen Pass, und deiner wird hier unverändert angezeigt. Wir sind informiert, und diese Zahlung wird erstattet — falls sie nicht innerhalb weniger Tage auf deiner Karte zurück ist, schreib an resumeboostersupp@gmail.com.",
+    "repairNotYours": "Dieser Kauf gehört zu einem anderen Konto als dem, mit dem du angemeldet bist, und sein Pass liegt auf jenem Konto. Melde dich mit dem Konto an, das bezahlt hat, um ihn zu sehen."
   },
   "oauthConsent": {
     "title": "Verbinde deinen Agenten",

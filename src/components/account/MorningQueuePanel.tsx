@@ -402,13 +402,24 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
     setEditing(true);
   }, []);
 
+  // WHO IS ASKED ABOUT: the signed-in account, from its session — agent-access
+  // reads nobody's address from the body any more (register 2.09). And a $29
+  // Agent Pass counts: it answers active with tier "pass", so a pass holder is
+  // not shown the $99 paywall with every Activate and Resume control disabled,
+  // which left the pass's ten applications unrequestable (L3-02).
+  // The body still carries the caller's OWN address, which the 2026-10-05
+  // function ignores: the frontend deploys before the functions do, and an
+  // older agent-access answers nobody without it — every subscriber would
+  // see the paywall for the length of that window.
+  const [passLeft, setPassLeft] = useState<number | null>(null);
   useEffect(() => {
-    if (!email) { setAgentActive(false); return; }
+    if (!userId) { setAgentActive(false); return; }
     void (async () => {
-      const { data } = await sb.functions.invoke("agent-access", { body: { email } });
+      const { data } = await sb.functions.invoke("agent-access", { body: email ? { email } : {} });
       setAgentActive(!!data?.active);
+      setPassLeft(data?.tier === "pass" && typeof data?.pass?.applicationsLeft === "number" ? data.pass.applicationsLeft : null);
     })();
-  }, [email]);
+  }, [userId, email]);
 
   const subscribe = useCallback(async () => {
     if (!email) return;
@@ -761,6 +772,13 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           ? t("agentQueue.subtitleAuto", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest.")
           : t("agentQueue.subtitle", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.")}
       </p>
+
+      {/* The pass that funds this agent, said where the paywall would be. */}
+      {agentActive === true && passLeft !== null && (
+        <p className="text-[12px] text-muted-foreground mb-3">
+          {t("agentQueue.passFunds", "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications.", { left: passLeft })}
+        </p>
+      )}
 
       {/* Paywall — the $99/mo Apply Agent tier (includes Pro). */}
       {agentActive === false && (

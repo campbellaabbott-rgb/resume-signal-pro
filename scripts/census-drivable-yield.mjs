@@ -77,7 +77,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // with SENDABLE_VENDORS by src/test/drivable-yield-census.test.ts and
 // src/test/collision-prefers-reach.test.ts — a census that ranks a different
 // set from the one the agent can drive optimises for the wrong boards.
-const DRIVABLE = ["breezy", "oracle", "personio", "pinpoint", "teamtailor"];
+// ...and removed 2026-10-05 with SENDABLE_VENDORS (register 1.12): the adapter
+// maps the email step and never reaches a submit.
+const DRIVABLE = ["breezy", "personio", "pinpoint", "teamtailor"];
 
 /** CNAME targets that identify the ATS behind an employer's own hostname. */
 const VENDOR_BY_CNAME = [

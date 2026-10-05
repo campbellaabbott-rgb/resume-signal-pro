@@ -51,6 +51,7 @@ export const breezy: VendorAdapter = {
 
   // Derived from the map above, so a rename cannot desynchronise them.
   mappedNames: new Set([...Object.values(KEYS), RESUME_KEY]),
+  fieldKeys: new Set(Object.keys(KEYS) as PacketFieldKey[]),
 
   enumerateQuestions: (page) => enumerateOn(page),
 

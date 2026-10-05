@@ -211,7 +211,7 @@ describe("only the apply path asks the pass; the subscription products never do"
 
   it("apply-broker's last gate asks packetIsFunded of the claimed row, never the pass window", () => {
     const code = codeOf("supabase/functions/apply-broker/index.ts");
-    expect(code).toMatch(/if \(!packetIsFunded\(sub, row[^)]*\)\) \{ await unclaim\(\); continue; \}/);
+    expect(code).toMatch(/if \(!packetIsFunded\(sub, row[^)]*\)\) \{ await unclaim\([^)]*\); continue; \}/);
     expect(code).not.toMatch(/passIsLive|mayApply/);
     expect(code).not.toMatch(/from\("agent_passes"\)/);
   });
@@ -224,7 +224,10 @@ describe("only the apply path asks the pass; the subscription products never do"
       expect(code).not.toMatch(new RegExp(`\\b${n}\\s*\\(`));
     }
     expect(code).not.toMatch(/agent_passes/);
-    expect(code, "the subscription-only functions keep the subscription set").toMatch(/entitledFromRows/);
+    // The subscription set — by user id since 20261005130000 (agent-runner),
+    // or by the row's address (send-agent-digest, which mails only what
+    // agent-runner queued).
+    expect(code, "the subscription-only functions keep the subscription set").toMatch(/entitledFromRows|entitledAccounts/);
   });
 });
 

@@ -198,7 +198,15 @@ describe("the rules that keep a real employer from getting nonsense", () => {
     // that: "You don't need to have an account... simply using your email",
     // zero password inputs, no sign-in wall. The two were never the same
     // obstacle; only one of them was ever a credential problem.
-    expect(shipped).toMatch(/\boracle\b/);
+    //
+    // AND THEN IT LEFT AGAIN (2026-10-05, register 1.12), for a reason that is
+    // not a credential at all: the adapter maps the email step and never
+    // reaches a submit, so listing it claimed sends that could not happen.
+    // `shipped` here runs from ADAPTERS to NEEDS_RECON; oracle must be absent
+    // from the ADAPTERS map itself (BLOCKED and the notes may name it).
+    const adaptersMap = index.slice(index.indexOf("export const ADAPTERS"), index.indexOf("};", index.indexOf("export const ADAPTERS")));
+    expect(adaptersMap).not.toMatch(/\boracle\b/);
+    expect(shipped.length).toBeGreaterThan(0);
 
     // What still governs every individual Oracle send is the per-candidate
     // opt-in, not this list — pinned in

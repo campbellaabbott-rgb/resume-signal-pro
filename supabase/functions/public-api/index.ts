@@ -32,6 +32,8 @@ import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 // predicate guarantees and three inline copies could not.
 import { isPaidKeyTier } from "../_shared/key-tier.ts";
 import { fillCurveFromCache } from "./fill-curve-cache.ts";
+import { intParam as intQ, isInvalid, isoParam as isoQ, numParam as numQ, type Parsed, secondsToMidnightUtc } from "./params.ts";
+import { companyPage } from "./company-walk.ts";
 // THE CLOSED DOMAINS, IMPORTED RATHER THAN RETYPED. A hand-copied list of
 // vendors or categories is a second list, and every filter defect this board
 // has shipped was two lists disagreeing. These are the same constants the
@@ -260,12 +262,19 @@ const LIST_FILTERS = [
 // If-None-Match flow failed at preflight because the request header was not
 // allowed. That blocks every browser-side integrator: an internal dashboard, a
 // spreadsheet connector, a client-side prototype.
+// Provable from outside with no key: every response, the preflight included,
+// carries it in x-fn-build. 2026-10-05.1: integer limit/offset/max_years/
+// max_age_days, 400 on an unparseable salary or date, Retry-After to midnight
+// UTC, a /v1/companies cursor that walks the whole directory once.
+const FN_BUILD = "public-api.2026-10-05.1";
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, if-none-match",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Expose-Headers":
     "ETag, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Api-Version",
+  "x-fn-build": FN_BUILD,
 };
 
 // Field names mirror the RPC's OUT parameters, which were RENAMED in
@@ -290,6 +299,15 @@ const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =
 /** Errors are a contract too: a machine reads `code`, a human reads `message`. */
 const fail = (status: number, code: string, message: string, extra: Record<string, string> = {}) =>
   json({ error: { code, message }, apiVersion: API_VERSION }, status, extra);
+
+// Whole numbers, numbers and ISO dates from the query string: parsed, or
+// refused with the same invalid_value 400 every other parameter gives, never
+// dropped. The parsers and the reasons live in ./params.ts (pure, tested).
+const asResponse = <T>(v: Parsed<T>, headers: Record<string, string>): T | null | Response =>
+  isInvalid(v) ? fail(400, "invalid_value", v.invalid, headers) : v;
+const intParam = (p: URLSearchParams, name: string, headers: Record<string, string>) => asResponse(intQ(p, name), headers);
+const numParam = (p: URLSearchParams, name: string, headers: Record<string, string>) => asResponse(numQ(p, name), headers);
+const isoParam = (p: URLSearchParams, name: string, headers: Record<string, string>) => asResponse(isoQ(p, name), headers);
 
 async function sha256Hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -396,7 +414,10 @@ Deno.serve(async (req) => {
         }
       : {};
     if (reason === "rate_limited") return fail(429, "rate_limited", `Over ${d!.rate_limit} requests/minute.`, { ...headers, "Retry-After": "60" });
-    if (reason === "quota_exceeded") return fail(429, "quota_exceeded", `Daily quota of ${d!.quota_limit} requests used.`, { ...headers, "Retry-After": "3600" });
+    // The quota is a UTC day, so the honest back-off is the time to midnight
+    // UTC. "3600" told a compliant client to retry hourly for up to 22 hours,
+    // each retry refused and counted (L9-18).
+    if (reason === "quota_exceeded") return fail(429, "quota_exceeded", `Daily quota of ${d!.quota_limit} requests used; it resets at midnight UTC.`, { ...headers, "Retry-After": String(secondsToMidnightUtc()) });
     // A free key is revoked when a newer one replaced it, when it went unused
     // for 30 days, or when it was issued before keys needed a confirmed
     // mailbox (2026-10-04); in every case the fix is a new key from the page.
@@ -593,13 +614,35 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
       "include=description needs the default engine — the ranked engine's rows carry no description. Drop engine=ranked, or fetch the posting at /v1/jobs/{id}, which always includes it.",
       headers);
   }
-  const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
-  const offset = Math.max(Number(p.get("offset")) || 0, 0);
+  const limitAsked = intParam(p, "limit", headers);
+  if (limitAsked instanceof Response) return limitAsked;
+  const offsetAsked = intParam(p, "offset", headers);
+  if (offsetAsked instanceof Response) return offsetAsked;
+  const limit = Math.min(Math.max(limitAsked || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const offset = Math.max(offsetAsked ?? 0, 0);
   if (offset > MAX_OFFSET) {
     return fail(400, "offset_too_deep", `offset cannot exceed ${MAX_OFFSET}.`, headers);
   }
-  const salaryMin = Number(p.get("salary_min"));
-  const salaryMax = Number(p.get("salary_max"));
+  const salaryMinP = numParam(p, "salary_min", headers);
+  if (salaryMinP instanceof Response) return salaryMinP;
+  const salaryMaxP = numParam(p, "salary_max", headers);
+  if (salaryMaxP instanceof Response) return salaryMaxP;
+  const salaryMin = salaryMinP ?? NaN;
+  const salaryMax = salaryMaxP ?? NaN;
+  const postedAfterIso = isoParam(p, "posted_after", headers);
+  if (postedAfterIso instanceof Response) return postedAfterIso;
+  // The board binds both to integer parameters; a fraction was a 500 or a
+  // silent fall-back from ranked to recency (2.26).
+  const maxYearsInt = intParam(p, "max_years", headers);
+  if (maxYearsInt instanceof Response) return maxYearsInt;
+  if (maxYearsInt !== null && maxYearsInt < 0) {
+    return fail(400, "invalid_value", `max_years must be a whole number of years >= 0, got "${p.get("max_years")}".`, headers);
+  }
+  const maxAgeInt = intParam(p, "max_age_days", headers);
+  if (maxAgeInt instanceof Response) return maxAgeInt;
+  if (maxAgeInt !== null && maxAgeInt <= 0) {
+    return fail(400, "invalid_value", `max_age_days must be a positive whole number of days, got "${p.get("max_age_days")}".`, headers);
+  }
   // snake_case /v1 params -> camelCase board body. Names differ where the board
   // and the public API named the same predicate differently (company_token ->
   // companies, source -> vendor, experience_band -> experience).
@@ -628,7 +671,7 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salaryFloor: salaryMin } : {}),
     ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salaryCeiling: salaryMax } : {}),
     ...(p.get("include_unstated_pay") === "true" ? { includeUnstatedPay: true } : {}),
-    ...(p.get("posted_after") ? { postedAfter: p.get("posted_after") } : {}),
+    ...(postedAfterIso ? { postedAfter: postedAfterIso } : {}),
     // The board treats this as a strict boolean and NAMES a non-boolean in
     // ignoredFilters, so the honest mapping is literal "true" or nothing —
     // any other value stays out of the body and the fence below refuses it.
@@ -639,10 +682,10 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     // available here and refused on the default engine below.
     ...(p.get("location") ? { location: p.get("location") } : {}),
     ...(p.get("employment_type") ? { employmentType: p.get("employment_type") } : {}),
-    ...(Number(p.get("max_years")) >= 0 && p.get("max_years") ? { maxYears: Number(p.get("max_years")) } : {}),
+    ...(maxYearsInt !== null ? { maxYears: maxYearsInt } : {}),
     ...(p.get("has_stated_pay") === "true" ? { hasStatedPay: true } : {}),
     ...(p.get("pay_basis") ? { payBasis: p.get("pay_basis") } : {}),
-    ...(Number(p.get("max_age_days")) > 0 ? { maxAgeDays: Number(p.get("max_age_days")) } : {}),
+    ...(maxAgeInt !== null ? { maxAgeDays: maxAgeInt } : {}),
     ...(p.get("agent_ready_only") === "true" ? { sendableOnly: true } : {}),
     ...(p.get("sort") === "newest" || p.get("sort") === "salary" ? { sort: p.get("sort") } : {}),
   };
@@ -762,7 +805,12 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       (raw ?? "").split(",")
         .map((x) => x.trim())
         .filter(Boolean)
-        .map((x) => (f.fold === "upper" ? x.toUpperCase() : f.fold === "lower" ? x.toLowerCase() : x)),
+        .map((x) => (f.fold === "upper" ? x.toUpperCase() : f.fold === "lower" ? x.toLowerCase() : x))
+        // UK IS GB (L8-10, the /v1 half). "UK" is two letters, so it passed
+        // the shape test below, bound country=UK — a code no posting carries —
+        // and came back 200 with an empty page: a statement about the British
+        // market in answer to the most common spelling of it.
+        .map((x) => (f.param === "country" && x === "UK" ? "GB" : x)),
     )];
     if (asked.length > f.cap) {
       return fail(400, "invalid_value",
@@ -830,11 +878,15 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   }
   // THE CAP MOVES WITH THE PAYLOAD, and the move is SAID. Clamping silently is
   // what makes a caller who asked for 100 rows conclude the board only had 25.
-  const askedLimit = Number(p.get("limit")) || DEFAULT_LIMIT;
+  const limitAsked = intParam(p, "limit", headers);
+  if (limitAsked instanceof Response) return limitAsked;
+  const offsetAsked = intParam(p, "offset", headers);
+  if (offsetAsked instanceof Response) return offsetAsked;
+  const askedLimit = limitAsked || DEFAULT_LIMIT;
   const maxLimit = wantDescription ? MAX_LIMIT_WITH_DESCRIPTION : MAX_LIMIT;
   const limit = Math.min(Math.max(askedLimit, 1), maxLimit);
   const limitCappedByInclude = wantDescription && askedLimit > MAX_LIMIT_WITH_DESCRIPTION;
-  const offset = Math.max(Number(p.get("offset")) || 0, 0);
+  const offset = Math.max(offsetAsked ?? 0, 0);
   const cursorRaw = (p.get("cursor") ?? "").trim();
   const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
   if (cursorRaw && !cursor) {
@@ -851,11 +903,22 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   // coverage block after the fetch, so it lives out here.
   const dept = (p.get("department") ?? "").trim().slice(0, 80).replace(/[%_,()]/g, " ").trim();
   const includeUnstated = p.get("include_unstated_pay") === "true";
-  const salaryMax = Number(p.get("salary_max"));
-  const salaryMin = Number(p.get("salary_min"));
-  const postedBefore = p.get("posted_before");
-  const postedAfter = p.get("posted_after");
-  // Title/company only, and websearch rather than raw ILIKE: the description
+  // REFUSED, NEVER DROPPED (L9-12): a value that does not parse is a 400 that
+  // names it, and what binds is the parsed value — the same one explain
+  // echoes, so boundFilters can no longer list a date that bound nothing.
+  const salaryMaxP = numParam(p, "salary_max", headers);
+  if (salaryMaxP instanceof Response) return salaryMaxP;
+  const salaryMinP = numParam(p, "salary_min", headers);
+  if (salaryMinP instanceof Response) return salaryMinP;
+  const salaryMax = salaryMaxP ?? NaN;
+  const salaryMin = salaryMinP ?? NaN;
+  const postedBeforeP = isoParam(p, "posted_before", headers);
+  if (postedBeforeP instanceof Response) return postedBeforeP;
+  const postedAfterP = isoParam(p, "posted_after", headers);
+  if (postedAfterP instanceof Response) return postedAfterP;
+  const postedBefore = postedBeforeP;
+  const postedAfter = postedAfterP;
+  // Title only, and websearch rather than raw ILIKE: the description
   // tier is what makes board search expensive, and an API caller paging a broad
   // term would pay that cost on every page.
   const term = (p.get("q") ?? "").trim().slice(0, 200);
@@ -932,15 +995,16 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   if (payBasis && payBasis !== "hourly" && payBasis !== "salaried") {
     return fail(400, "invalid_value", `pay_basis must be "hourly" or "salaried", got "${payBasis}".`, headers);
   }
+  // WHOLE NUMBERS: min_years is a smallint, and 2.5 was a 500 (2.26).
   const maxYearsRaw = p.get("max_years");
   const maxYears = maxYearsRaw === null ? null : Number(maxYearsRaw);
-  if (maxYears !== null && (!Number.isFinite(maxYears) || maxYears < 0)) {
-    return fail(400, "invalid_value", `max_years must be a number of years >= 0, got "${maxYearsRaw}".`, headers);
+  if (maxYears !== null && (!Number.isInteger(maxYears) || maxYears < 0)) {
+    return fail(400, "invalid_value", `max_years must be a whole number of years >= 0, got "${maxYearsRaw}".`, headers);
   }
   const maxAgeRaw = p.get("max_age_days");
   const maxAgeDays = maxAgeRaw === null ? null : Number(maxAgeRaw);
-  if (maxAgeDays !== null && (!Number.isFinite(maxAgeDays) || maxAgeDays <= 0)) {
-    return fail(400, "invalid_value", `max_age_days must be a positive number of days, got "${maxAgeRaw}".`, headers);
+  if (maxAgeDays !== null && (!Number.isInteger(maxAgeDays) || maxAgeDays <= 0)) {
+    return fail(400, "invalid_value", `max_age_days must be a positive whole number of days, got "${maxAgeRaw}".`, headers);
   }
   const statedPay = strictBool("has_stated_pay");
   if (statedPay instanceof Response) return statedPay;
@@ -998,7 +1062,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
         ? qb.or(`salary_rank_usd.lte.${salaryMax},salary_rank_usd.is.null`)
         : qb.lte("salary_rank_usd", salaryMax);
     }
-    if (postedBefore && !Number.isNaN(Date.parse(postedBefore))) qb = qb.lte("posted_at", new Date(postedBefore).toISOString());
+    if (postedBefore) qb = qb.lte("posted_at", postedBefore);
     if (remoteFilter !== undefined) qb = qb.eq("remote", remoteFilter);
     // Opt-in only, and only ever narrowing: agency is NOT NULL DEFAULT false,
     // so this equality sees every row — no unstated population to disclose.
@@ -1051,7 +1115,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
         ? qb.or(`salary_rank_usd.gte.${salaryMin},salary_rank_usd.is.null`)
         : qb.gte("salary_rank_usd", salaryMin);
     }
-    if (postedAfter && !Number.isNaN(Date.parse(postedAfter))) qb = qb.gte("posted_at", new Date(postedAfter).toISOString());
+    if (postedAfter) qb = qb.gte("posted_at", postedAfter);
     if (safeTerm) qb = qb.textSearch("title", safeTerm, { type: "websearch", config: "simple" });
     return qb;
   };
@@ -1237,7 +1301,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
           order: "effective_posted DESC, id ASC",
           paging: cursor ? "keyset (cursor)" : "offset",
           countBasis: `${countBasis} (keyset-independent, so it is stable across pages)`,
-          note: "This is /v1's own simpler engine — title/company text match, no relevance ranking, no rescue tiers. The site's ranked search differs.",
+          note: "This is /v1's own simpler engine — a title text match (the employer name is not searched; filter by company_token instead), no relevance ranking, no rescue tiers. The site's ranked search differs.",
         },
       }
       : {}),
@@ -1370,7 +1434,11 @@ async function changes(
   const closureOldest = Date.now() - closureMaxDays * 86_400_000;
   const closureSinceIso = new Date(Math.max(since, closureOldest)).toISOString();
   const closureNarrowed = closureSinceIso !== sinceIso;
-  const limit = Math.min(Math.max(Number(p.get("limit")) || DEFAULT_LIMIT, 1), MAX_LIMIT);
+  // A whole number, or hasMore lies: `openedRows.length === 1.5` is never
+  // true, so a fractional limit reported a window drained that was not.
+  const limitAsked = intParam(p, "limit", headers);
+  if (limitAsked instanceof Response) return limitAsked;
+  const limit = Math.min(Math.max(limitAsked || DEFAULT_LIMIT, 1), MAX_LIMIT);
 
   const openedAfter = decodeCursor(p.get("opened_cursor") ?? "");
   const closedAfter = decodeCursor(p.get("closed_cursor") ?? "");
@@ -1511,7 +1579,7 @@ async function changes(
     // against the site would otherwise find federal roles opening and closing
     // on the page and never here, and read that as dropped events.
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
-    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series, and the remainder matches our own published daily figures. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. The remainder can still count HIGHER than our own published daily takedown figures: those also leave out batches the collector flagged as a possible failed read of its own, and this feed does not carry that flag. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
   }, 200, headers);
 }
 
@@ -1560,7 +1628,9 @@ async function usage(client: SupabaseClient, keyId: string | null, headers: Reco
 async function companies(client: SupabaseClient, url: URL, headers: Record<string, string>) {
   const bad = rejectUnknownParams(url, COMPANIES_PARAMS, headers);
   if (bad) return bad;
-  const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 100, 1), MAX_LIMIT);
+  const limitAsked = intParam(url.searchParams, "limit", headers);
+  if (limitAsked instanceof Response) return limitAsked;
+  const limit = Math.min(Math.max(limitAsked || 100, 1), MAX_LIMIT);
   const term = (url.searchParams.get("q") ?? "").trim().toLowerCase().slice(0, 100);
   const cursorRaw = (url.searchParams.get("cursor") ?? "").trim();
   const cursor = cursorRaw ? decodeCursor(cursorRaw) : null;
@@ -1611,19 +1681,16 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
   const openMap = v.companiesOpen && typeof v.companiesOpen === "object" ? v.companiesOpen : null;
   const openOf = (tok: unknown) =>
     openMap ? (openMap[String(tok ?? "")] ?? 0) : null;
-  // Sorted by TOKEN when paging, by open postings otherwise. A cursor needs a
-  // total, stable order and posting counts move between refreshes; the token
-  // does not.
-  const matched = facet
-    .filter((c) => !term || String(c.name ?? "").toLowerCase().includes(term) || String(c.token ?? "").toLowerCase().includes(term))
-    .slice()
-    .sort((a, b) => (cursorRaw || term)
-      ? String(a.token ?? "").localeCompare(String(b.token ?? ""))
-      : (openMap ? (openOf(b.token) ?? 0) - (openOf(a.token) ?? 0) : (b.count ?? 0) - (a.count ?? 0)));
-  const startAt = cursor ? matched.findIndex((c) => String(c.token ?? "") > cursor.id) : 0;
-  const window = startAt < 0 ? [] : matched.slice(startAt, startAt + limit);
-  const more = startAt >= 0 && startAt + limit < matched.length;
-  const lastTok = window.length ? String(window[window.length - 1].token ?? "") : "";
+  // ONE ORDER PER WALK, ONE COMPARATOR FOR SORT AND SEEK (register 1.41):
+  // a count-ordered first page now issues a (count, token) cursor and its
+  // walk stays in count order; a q-filtered walk is in token order; both
+  // compare code units on both sides. See ./company-walk.ts.
+  const countOf = (c: { token?: string; count?: number }) =>
+    openMap ? (openOf(c.token) ?? 0) : Number(c.count ?? 0);
+  const pg = companyPage({ rows: facet, term, cursor, limit, countOf });
+  const window = pg.window;
+  const more = pg.hasMore;
+  const countMode = pg.countMode;
   return json({
     apiVersion: API_VERSION,
     data: window
@@ -1631,12 +1698,14 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     page: {
       limit,
       returned: window.length,
-      matched: matched.length,
+      matched: pg.matched,
       hasMore: more,
-      // `ep` is unused for this cursor — the order key is the token alone — but
-      // the shape is shared with the other endpoints' cursors on purpose, so
-      // one decoder validates all of them.
-      nextCursor: more && lastTok ? encodeCursor("token", lastTok) : null,
+      // `ep` names the walk's order: "token" for a token-ordered walk, and
+      // "count:<n>" for a count-ordered one (n = the last row's open
+      // postings). The shape is shared with the other endpoints' cursors on
+      // purpose, so one decoder validates all of them.
+      nextCursor: pg.next ? encodeCursor(pg.next.ep, pg.next.id) : null,
+      order: countMode ? "open_postings DESC, company_token ASC" : "company_token ASC",
     },
     // Named here for the same reason it is named on /v1/jobs: an employer
     // directory that silently omits one is a directory whose completeness a

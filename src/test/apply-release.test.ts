@@ -13,8 +13,12 @@ const OK: ReleaseInput = {
   applyMode: "auto",
   packetReady: true,
   blockerCount: 0,
-  source: "smartrecruiters",
-  allowedSources: ["smartrecruiters", "workday", "breezy"],
+  // A vendor the worker has an adapter for. Until 2026-10-05 this fixture was
+  // smartrecruiters — CAPTCHA-free, and released, though the worker has no
+  // adapter it can use for it; the same gap let Oracle packets be released to
+  // a worker that could only refuse them (register 1.12).
+  source: "breezy",
+  allowedSources: ["smartrecruiters", "workday", "breezy", "oracle"],
   sentToday: 0,
   dailyCap: 5,
   alreadySubmitted: false,
@@ -44,6 +48,11 @@ describe("it sends only when everything is true at once", () => {
       [{ senderOnline: false }, "sender-offline"],
       [{ fitPct: 40 }, "fit-below-floor"],
       [{ fitPct: null }, "fit-unknown"],
+      // No CAPTCHA is not an adapter: allowed by the candidate and tier
+      // `auto`, and still refused, because the worker cannot reach a submit.
+      [{ source: "oracle" }, "vendor-needs-human"],
+      [{ source: "smartrecruiters" }, "vendor-needs-human"],
+      [{ source: "workday" }, "vendor-needs-human"],
     ];
     for (const [patch, code] of cases) {
       const d = r(patch);

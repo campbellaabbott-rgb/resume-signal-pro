@@ -141,6 +141,7 @@ export const teamtailor: VendorAdapter = {
   requiredAttributeIsTrustworthy: false,
 
   mappedNames: new Set(Object.values(KEYS)),
+  fieldKeys: new Set(Object.keys(KEYS) as PacketFieldKey[]),
 
   enumerateQuestions: (page) => enumerateOn(page),
 

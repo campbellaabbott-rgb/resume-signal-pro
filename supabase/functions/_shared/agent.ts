@@ -26,6 +26,21 @@ export interface AgentStatus {
   status: string;
   currentPeriodEnd: string | null;
   stripeCustomerId: string | null;
+  /**
+   * The account the live subscription was bought by: the user id
+   * create-agent-checkout stamps on `subscription_data.metadata.user_id`
+   * from the VERIFIED session. null on a plan bought before that stamp, or on
+   * anything not live.
+   */
+  boundUserId?: string | null;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The buyer's user id a subscription carries, when it is a well-formed one. */
+export function subscriptionBuyer(sub: { metadata?: unknown } | null | undefined): string | null {
+  const raw = (sub?.metadata as Record<string, unknown> | null | undefined)?.user_id;
+  return typeof raw === "string" && UUID_RE.test(raw.trim()) ? raw.trim().toLowerCase() : null;
 }
 
 // One list, shared with every consumer. A second copy here is how the four
@@ -117,6 +132,7 @@ export async function checkAgentByEmail(
           status: sub.status,
           currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
           stripeCustomerId: customer.id,
+          boundUserId: subscriptionBuyer(sub),
         };
         break;
       }
@@ -177,7 +193,18 @@ export async function checkAgentByEmail(
   try {
     if (result.stripeCustomerId) {
       // Stripe knows this address — cache the answer, active or lapsed.
-      await supabase.from("agent_subscribers").upsert({ email: normalized, ...cached });
+      //
+      // AND WHOSE IT IS (register 1.07). A live plan that carries its buyer's
+      // user id binds the row to that account: every gate reads the row
+      // through agent_subscription_rows by user id, and an unbound row answers
+      // only an account that has proven the mailbox. The id is never cleared
+      // here — a lapsed answer, or a plan bought before the stamp existed,
+      // leaves whatever binding the row has.
+      await supabase.from("agent_subscribers").upsert({
+        email: normalized,
+        ...cached,
+        ...(result.boundUserId ? { user_id: result.boundUserId } : {}),
+      });
     } else {
       // Stripe has never seen it. UPDATE, not upsert: an existing row must
       // still be downgraded (a customer deleted outright must not stay

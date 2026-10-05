@@ -47,9 +47,14 @@ export function AgentStatusBand({ userId, email }: { userId: string; email: stri
     // know", and agentState treats that as unknown rather than as bad news.
     const [entitled, senderOnline] = await Promise.all([
       (async () => {
-        if (!email) return null;
+        // The signed-in account, from its session (agent-access reads no
+        // address from the body), and pass-aware: an open Agent Pass answers
+        // active, so the band no longer sends a pass holder to "See plans"
+        // (L3-02). The body carries the caller's own address only so an
+        // older agent-access still answers during the deploy window; the
+        // 2026-10-05 function ignores it.
         try {
-          const { data } = await sb.functions.invoke("agent-access", { body: { email } });
+          const { data } = await sb.functions.invoke("agent-access", { body: email ? { email } : {} });
           return typeof data?.active === "boolean" ? data.active : null;
         } catch { return null; }
       })(),

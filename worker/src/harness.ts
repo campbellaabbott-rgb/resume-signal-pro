@@ -34,6 +34,7 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { applyToPosting } from "./apply.js";
+import { identityFields } from "./packet-fields.js";
 import type { StandingAnswers } from "./questions/match.js";
 
 /** Breezy's real control names, taken from the captured fixture. */
@@ -135,13 +136,10 @@ async function run(name: string, mode: Mode, extra: string, port: number, expect
     const out = await applyToPosting(browser, {
       applyUrl: `http://localhost:${port}/p/test-job`,
       source: "breezy",
-      fields: {
-        fullName: { value: "Harness Test", source: "profile" },
-        email: { value: "harness@example.invalid", source: "profile" },
-        phone: { value: "+44 7700 900000", source: "profile" },
-        address: { value: "1 Test Street", source: "profile" },
-        salaryExpectation: { value: "£50,000", source: "profile" },
-      },
+      // The production path: the live answers through identityFields, the
+      // builder index.ts uses — not a hand-keyed field map, which is how the
+      // harness passed while production left name boxes empty (1.13).
+      fields: identityFields(ANSWERS),
       resumePath: resume,
       answers: ANSWERS,
     });

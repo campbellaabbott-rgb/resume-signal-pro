@@ -172,3 +172,38 @@ export function applyCountries<T extends Filterable>(
   const codes = parseCountries(m.countries);
   return codes.length ? qb.in("country", codes) : qb;
 }
+
+/**
+ * ONE SAVED SEARCH, RUN WITH THE MANDATE'S PROFILE.
+ *
+ * The run row copied every criterion off the search except `countries`, so a
+ * search scoped to Germany on a mandate with no country ran worldwide, and a
+ * US-only search on a GB mandate returned only GB (L9-04). The panel saves
+ * countries per search and the runner selected the column; the one line that
+ * carried it across was missing, and the guard beside it only counted call
+ * sites. Reach is per SEARCH, the same rule the age and uncategorised fields
+ * already follow: the search's value wins, including an explicit "anywhere"
+ * (null). Only a search row read WITHOUT the column (the select's fallback
+ * rung, before its migration) keeps the mandate's value.
+ */
+export function searchRunRow<
+  M extends { countries?: string | null; max_age_days?: number | null; include_uncategorised?: boolean | null },
+  S extends {
+    id: number; label: string; q: string; category: string; location: string;
+    remote_only: boolean; salary_min: number | null; daily_count: number;
+    max_age_days?: number | null; include_uncategorised?: boolean | null; countries?: string | null;
+  },
+>(m: M, s: S): M & {
+  q: string; category: string; location: string; remote_only: boolean; salary_min: number | null;
+  daily_count: number; search_id: number; search_label: string;
+} {
+  return {
+    ...m,
+    q: s.q, category: s.category, location: s.location,
+    remote_only: s.remote_only, salary_min: s.salary_min,
+    daily_count: s.daily_count,
+    max_age_days: s.max_age_days, include_uncategorised: s.include_uncategorised,
+    countries: s.countries !== undefined ? s.countries : m.countries,
+    search_id: s.id, search_label: s.label,
+  };
+}

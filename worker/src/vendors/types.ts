@@ -123,6 +123,16 @@ export interface VendorAdapter {
   readonly mappedNames: ReadonlySet<string>;
 
   /**
+   * The PACKET FIELD KEYS this adapter places — the same map as mappedNames,
+   * read from the other side. The driver hands an adapter the candidate's
+   * live identity (name, email, phone, place, links) and counts only the keys
+   * the adapter can place toward its partial-application guard; a key the
+   * adapter has no field for is not "missing" (register 1.13). Derived from
+   * the adapter's own map, never hand-listed.
+   */
+  readonly fieldKeys: ReadonlySet<PacketFieldKey>;
+
+  /**
    * Every control group on the current form, with its question label, type and
    * options. `null` means enumeration FAILED — never "the form is empty".
    */

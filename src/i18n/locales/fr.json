@@ -4766,7 +4766,8 @@
     "searchDeleted": "Recherche supprimée.",
     "anyRole": "Tout poste",
     "searchLimitHit": "Vous pouvez avoir jusqu'à 10 recherches actives. Mettez-en une en pause pour en ajouter une autre.",
-    "searchLastRun": "Dernière exécution : {{scanned}} analysées, {{picked}} en file."
+    "searchLastRun": "Dernière exécution : {{scanned}} analysées, {{picked}} en file.",
+    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures."
   },
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",
@@ -4859,7 +4860,15 @@
     },
     "tryAgain": "Réessayer",
     "retried": "Remise en file — partira au prochain passage",
-    "retryFailed": "Impossible de la remettre en file — réessayez"
+    "retryFailed": "Impossible de la remettre en file — réessayez",
+    "approveSend": "Approuver et envoyer",
+    "cancelSend": "Ne pas envoyer",
+    "approved": "Approuvée — elle part à l'envoi une fois votre délai d'annulation écoulé.",
+    "cancelled": "Arrêtée — cette candidature ne sera pas envoyée.",
+    "decideAgentOff": "Activez d'abord votre agent — une candidature approuvée attend cela.",
+    "decideBlockedCompany": "Cet employeur figure sur votre liste « ne jamais postuler », l'agent ne lui enverra donc rien.",
+    "decideInFlight": "L'envoi est en train de la traiter — il est trop tard pour la modifier.",
+    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez."
   },
   "agentPlan": {
     "badge": "Postule à votre place",
@@ -5099,7 +5108,9 @@
     "stepsTitle": "Étapes pour {{host}} :",
     "keyedTitle": "Ajoutez ensuite votre clé d'agent — elle porte le pass :",
     "connectorNoOauth2": "La connexion pour cet hôte n'est pas encore activée, donc depuis ici seuls les outils sans clé répondent. Pour utiliser le pass, connectez-vous depuis {{headerHosts}} avec votre clé d'agent.",
-    "connectorPassGate": "Depuis {{host}}, le pass ne pourra être utilisé qu'une fois la connexion activée ; aujourd'hui, utilisez-le depuis {{headerHosts}} avec votre clé d'agent."
+    "connectorPassGate": "Depuis {{host}}, le pass ne pourra être utilisé qu'une fois la connexion activée ; aujourd'hui, utilisez-le depuis {{headerHosts}} avec votre clé d'agent.",
+    "repairSecondPass": "Ce paiement n'a pas créé de second pass : un compte détient un seul pass ouvert à la fois, et le vôtre est affiché ici, inchangé. Nous avons été prévenus et ce paiement sera remboursé — s'il n'est pas revenu sur votre carte d'ici quelques jours, écrivez à resumeboostersupp@gmail.com.",
+    "repairNotYours": "Cet achat appartient à un autre compte que celui avec lequel vous êtes connecté, et son pass se trouve sur ce compte. Connectez-vous au compte qui a payé pour le voir."
   },
   "oauthConsent": {
     "title": "Connectez votre agent",

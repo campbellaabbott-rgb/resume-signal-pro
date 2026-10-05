@@ -193,7 +193,10 @@ for (const m of src.matchAll(/s\("((?:[^"\\]|\\.)*)",\s*"(\w+)"/g)) noteName(m[1
 // the drivable one wins because it is worth more to a subscriber. Leaving
 // oracle out would have kept sending those collisions to a non-drivable
 // carrier and quietly costing the agent reach it now has.
-const DRIVABLE = new Set(["breezy", "oracle", "teamtailor", "personio", "pinpoint"]);
+// ORACLE LEFT 2026-10-05 with SENDABLE_VENDORS (register 1.12): its adapter
+// never reaches a submit, so a collision sent to an Oracle carrier bought the
+// agent no reach at all.
+const DRIVABLE = new Set(["breezy", "teamtailor", "personio", "pinpoint"]);
 console.log(`catalog: ${existingTokens.size} tokens, ${existingNames.size} names`);
 
 // NUMERIC ENTITIES COME IN TWO SPELLINGS AND ONLY ONE WAS HANDLED.

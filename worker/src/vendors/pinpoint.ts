@@ -58,6 +58,7 @@ export const pinpoint: VendorAdapter = {
 
   // Derived from the map above, so a rename cannot desynchronise them.
   mappedNames: new Set([...Object.values(KEYS), RESUME_KEY].map(n)),
+  fieldKeys: new Set(Object.keys(KEYS) as PacketFieldKey[]),
 
   enumerateQuestions: (page) => enumerateOn(page),
 

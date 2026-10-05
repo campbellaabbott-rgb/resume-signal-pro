@@ -70,6 +70,48 @@ export function rowIsEntitled(row: SubscriberRow | null | undefined, now: number
   return true;
 }
 
+/**
+ * THE SUBSCRIPTION AN ACCOUNT MAY USE, READ BY ITS USER ID (20261005130000).
+ *
+ * Sign-ups are confirmed automatically today, so the address on an account is
+ * a claim: registering a subscriber's address (one with no account yet) made
+ * every gate that looked agent_subscribers up BY ADDRESS answer for the new
+ * account. Every gate now asks this RPC with user ids instead. It answers a
+ * row bound to the account (the user id create-agent-checkout stamps on the
+ * Stripe subscription, which checkAgentByEmail copies onto the row), or an
+ * unbound row on the account's own address only when the account has proven
+ * that mailbox. Nothing here may fall back to an address read: a failed call
+ * funds nothing, and pass-funded rows still go on their own receipt.
+ */
+export const ACCOUNT_SUBSCRIPTION_RPC = "agent_subscription_rows";
+
+export type AccountSubscriptionRow = SubscriberRow & {
+  user_id?: string | null;
+  updated_at?: string | null;
+  bound?: boolean | null;
+};
+
+/** The row the RPC answered for `userId` (or its first row), else null. */
+export function accountSubscription(data: unknown, userId?: string): AccountSubscriptionRow | null {
+  const rows: unknown[] = Array.isArray(data) ? data : data ? [data] : [];
+  for (const r of rows) {
+    if (!r || typeof r !== "object") continue;
+    const row = r as AccountSubscriptionRow;
+    if (!userId || row.user_id === userId) return row;
+  }
+  return null;
+}
+
+/** The user ids a batch answer entitles. */
+export function entitledAccounts(data: unknown, now: number = Date.now()): Set<string> {
+  const out = new Set<string>();
+  for (const r of Array.isArray(data) ? data : []) {
+    const row = r as AccountSubscriptionRow | null;
+    if (row && typeof row.user_id === "string" && rowIsEntitled(row, now)) out.add(row.user_id);
+  }
+  return out;
+}
+
 /** The entitled subset of `emails`, normalised. Unknown addresses are absent. */
 export function entitledFromRows(rows: SubscriberRow[] | null | undefined, now: number = Date.now()): Set<string> {
   const out = new Set<string>();

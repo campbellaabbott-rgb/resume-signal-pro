@@ -4766,7 +4766,8 @@
     "searchDeleted": "Search removed.",
     "anyRole": "Any role",
     "searchLimitHit": "You can run up to 10 active searches. Pause one to add another.",
-    "searchLastRun": "Last run: scanned {{scanned}}, queued {{picked}}."
+    "searchLastRun": "Last run: scanned {{scanned}}, queued {{picked}}.",
+    "passFunds": "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications."
   },
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",
@@ -4859,7 +4860,15 @@
     },
     "tryAgain": "Try again",
     "retried": "Queued again — it will go out on the next run",
-    "retryFailed": "Could not queue that again — try again"
+    "retryFailed": "Could not queue that again — try again",
+    "approveSend": "Approve and send",
+    "cancelSend": "Don't send this",
+    "approved": "Approved — it goes to the sender once your cancel window has passed.",
+    "cancelled": "Stopped — this application will not be sent.",
+    "decideAgentOff": "Switch your agent on first — an approved application waits for that.",
+    "decideBlockedCompany": "This employer is on your never-apply list, so the agent will not send to it.",
+    "decideInFlight": "The sender has this one right now — it is too late to change it.",
+    "decideFailed": "Could not do that — refresh and try again."
   },
   "agentPlan": {
     "badge": "Does the applying for you",
@@ -5099,7 +5108,9 @@
     "stepsTitle": "Steps for {{host}}:",
     "keyedTitle": "Then add your agent key — it carries the pass:",
     "connectorNoOauth2": "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from {{headerHosts}} with your agent key.",
-    "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key."
+    "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.",
+    "repairSecondPass": "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
+    "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it."
   },
   "oauthConsent": {
     "title": "Connect your agent",

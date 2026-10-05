@@ -1,6 +1,5 @@
 import type { VendorAdapter } from "./types.js";
 import { breezy } from "./breezy.js";
-import { oracle } from "./oracle.js";
 import { personio } from "./personio.js";
 import { pinpoint } from "./pinpoint.js";
 import { teamtailor } from "./teamtailor.js";
@@ -20,7 +19,6 @@ import { teamtailor } from "./teamtailor.js";
  */
 export const ADAPTERS: Record<string, VendorAdapter> = {
   breezy,
-  oracle,
   personio,
   pinpoint,
   teamtailor,
@@ -56,6 +54,15 @@ export const NEEDS_RECON: Record<string, string> = {
   // Note this is invisible without testing: no CAPTCHA, no challenge page, just a
   // 403 that reads like a broken link.
   smartrecruiters: "the apply app 403s in BOTH modes. Re-measured 2026-08-01 across 4 tenants: clicking through lands on /oneclick-ui/, which then 403s on its own API (/oneclick-ui/api/company/...) and sometimes on its JS bundle. Headless renders nothing at all; HEADED renders the job title and still reaches 0 form inputs after 20s. The old note said headed got 200 — true of the PAGE, false of the form. Reaching the form would mean defeating the protection, not running a browser differently. Adapter stays written and unused.",
+
+  // BACK HERE 2026-10-05 (register 1.12). The adapter in ./oracle.ts maps the
+  // email step and nothing after it: canProceed answers only "would-advance"
+  // or "stuck", proceed() never returns "submitted", and RECON.md says every
+  // screen past the email step is deliberately unmeasured. Listing it as an
+  // adapter made the board, the status and the account panel say the agent
+  // submits to Oracle when it can only ever stop. The adapter file stays as
+  // the starting point for the recon that would earn it back.
+  oracle: "the email step is mapped and nothing past it: canProceed never answers would-submit, so no Oracle application can be completed. Map the screens after the email step (worker/RECON.md) and prove a submit before listing it again.",
 
   // ORACLE MOVED TO ADAPTERS 2026-08-19. The note that used to sit here said
   // "creates a candidate PROFILE per employer tenant... No guest path offered...

@@ -33,17 +33,26 @@ const ADAPTER = readFileSync(resolve(ROOT, "worker/src/vendors/oracle.ts"), "utf
 const REGISTRY = readFileSync(resolve(ROOT, "worker/src/vendors/index.ts"), "utf8");
 
 describe("the Oracle adapter cannot agree to terms on its own", () => {
-  it("is registered as a servable vendor", () => {
-    expect(REGISTRY).toMatch(/import \{ oracle \} from "\.\/oracle\.js";/);
-    expect(REGISTRY).toMatch(/export const ADAPTERS[\s\S]{0,200}?\boracle,/);
+  // UNREGISTERED 2026-10-05 (register 1.12). The adapter maps the email step
+  // and never reaches a submit, so registering it made the board and the
+  // status claim the agent submits to Oracle. It is back in NEEDS_RECON — for
+  // the missing submit path, never for an account wall, which stays disproved.
+  it("is not registered while it cannot reach a submit", () => {
+    const adapters = REGISTRY.slice(REGISTRY.indexOf("export const ADAPTERS"), REGISTRY.indexOf("};", REGISTRY.indexOf("export const ADAPTERS")));
+    expect(adapters).not.toMatch(/\boracle\b/);
+    expect(ADAPTER, "the adapter still answers no submit — re-register it only when it can")
+      .not.toMatch(/return "would-submit"/);
   });
 
   it("no longer claims Oracle needs an account", () => {
     // The stale note said "No guest path offered" and "Same class of obstacle
-    // as workday". Both are disproved; neither may sit in NEEDS_RECON claiming
-    // this vendor is blocked.
+    // as workday". Both are disproved; the NEEDS_RECON entry names the
+    // missing submit path, never an account.
     const needsRecon = REGISTRY.slice(REGISTRY.indexOf("NEEDS_RECON"));
-    expect(needsRecon).not.toMatch(/^\s*oracle:/m);
+    const entry = /^\s*oracle: "([^"]*)"/m.exec(needsRecon)?.[1] ?? "";
+    expect(entry, "oracle's NEEDS_RECON entry").not.toBe("");
+    expect(entry).toMatch(/submit/);
+    expect(entry).not.toMatch(/account|guest|profile/i);
   });
 
   it("NEVER ticks the terms checkbox itself — it surfaces it as a question", () => {
