@@ -4768,6 +4768,14 @@ export type Database = {
         Returns: undefined
       }
       agent_note_auto_release: { Args: { p_user_id: string }; Returns: number }
+      agent_packet_decide: {
+        Args: { p_decision: string; p_submission_id: number; p_user_id: string }
+        Returns: {
+          decide_reason: string
+          decided_claimable_at: string
+          decided_ok: boolean
+        }[]
+      }
       agent_pass_grant: {
         Args: {
           p_amount_cents: number
@@ -4831,6 +4839,42 @@ export type Database = {
         Args: { p_reason: string; p_row_id: number }
         Returns: boolean
       }
+      agent_queue_unprepared: {
+        Args: {
+          p_limit: number
+          p_pass_only: boolean
+          p_statuses: string[]
+          p_user_id: string
+        }
+        Returns: {
+          apply_url: string
+          category: string
+          company: string
+          company_token: string
+          created_at: string
+          decided_at: string | null
+          fit_pct: number | null
+          id: number
+          location: string
+          pass_id: string | null
+          pass_refunded_at: string | null
+          posted_at: string | null
+          posting_id: string
+          reasons: Json
+          salary: string
+          search_id: number | null
+          search_label: string
+          status: string
+          title: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "agent_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       agent_sender_online: {
         Args: { p_max_age_seconds?: number }
         Returns: boolean
@@ -4858,6 +4902,10 @@ export type Database = {
           updated_at: string
           user_id: string
         }[]
+      }
+      agent_unclaim_submission: {
+        Args: { p_hold_minutes?: number; p_submission_id: number }
+        Returns: boolean
       }
       agent_work_pending: { Args: never; Returns: Json }
       agent_worker_ping: {
@@ -6499,6 +6547,7 @@ export type Database = {
           lo_upserted: number
         }[]
       }
+      one_click_vendors: { Args: never; Returns: string[] }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
