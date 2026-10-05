@@ -147,13 +147,24 @@ describe("what the hourly window depends on, read from source", () => {
     for (const f of files) {
       const src = codeOf(readFileSync(f, "utf8"));
       if (!src.includes("check_rate_limit")) continue;
-      for (const m of src.matchAll(/p_window_minutes:\s*([A-Za-z_][A-Za-z0-9_]*|\d+(?:\s*\*\s*\d+)?)/g)) {
+      // _shared/model-spend-gate.ts takes its window from each caller's limits
+      // object with a default (`limits.windowMinutes ?? 60`): read the default
+      // here, and every configured `windowMinutes: <n>` below.
+      for (const m of src.matchAll(/p_window_minutes:\s*[A-Za-z_][A-Za-z0-9_]*\.windowMinutes\s*\?\?\s*(\d+)/g)) {
+        windows.push({ file: relative(ROOT, f), minutes: Number(m[1]) });
+      }
+      for (const m of src.matchAll(/p_window_minutes:\s*(?![A-Za-z_][A-Za-z0-9_]*\.windowMinutes\s*\?\?)([A-Za-z_][A-Za-z0-9_]*|\d+(?:\s*\*\s*\d+)?)/g)) {
         const term = m[1];
         if (/^\d/.test(term)) { windows.push({ file: relative(ROOT, f), minutes: evalTerm(term) }); continue; }
         const c = new RegExp(`const ${term}\\s*(?::\\s*number)?\\s*=\\s*(\\d+(?:\\s*\\*\\s*\\d+)?)`).exec(src);
         if (c) windows.push({ file: relative(ROOT, f), minutes: evalTerm(c[1]) });
         else unresolved.push(`${relative(ROOT, f)}: ${term}`);
       }
+    }
+    // The windows the spend gate's callers configure, wherever they set them.
+    for (const f of files) {
+      const src = codeOf(readFileSync(f, "utf8"));
+      for (const m of src.matchAll(/\bwindowMinutes:\s*(\d+(?:\s*\*\s*\d+)?)/g)) windows.push({ file: relative(ROOT, f), minutes: evalTerm(m[1]) });
     }
     expect(unresolved, "a window this guard cannot read is a window it cannot vouch for").toEqual([]);
     expect(windows.length, "the scan found the callers").toBeGreaterThan(20);

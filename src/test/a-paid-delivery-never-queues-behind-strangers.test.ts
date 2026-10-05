@@ -132,7 +132,7 @@ const paidSession = (id: string, productType: string) => ({
   currency: "usd",
   customer_email: null,
   customer_details: { email: "buyer@example.com" },
-  metadata: { product_type: productType, product_name: productType, session_id: "temp-resume-1", job_title: "Engineer", customer_email: "buyer@example.com", language: "en" },
+  metadata: { product_type: productType, product_name: productType, session_id: "0b6f1c3e-6a2d-4f8e-9c1a-2d3e4f5a6b7c", job_title: "Engineer", customer_email: "buyer@example.com", language: "en" },
 });
 
 async function viaWebhook(id: string, productType: string) {
@@ -159,7 +159,7 @@ async function viaVerifier(id: string, productType: string) {
 async function viaRetry(id: string, productType: string) {
   db.rows("used_stripe_sessions").push({ session_id: id, product_type: productType });
   db.rpcs.get_failed_deliveries_for_retry = () => ({
-    data: [{ id: `pd-${id}`, product_type: productType, status: "generation_failed", stripe_session_id: id, customer_email: null, retry_count: 0, metadata: { resume_session_id: "temp-resume-1", job_title: "Engineer" } }],
+    data: [{ id: `pd-${id}`, product_type: productType, status: "generation_failed", stripe_session_id: id, customer_email: null, retry_count: 0, metadata: { resume_session_id: "0b6f1c3e-6a2d-4f8e-9c1a-2d3e4f5a6b7c", job_title: "Engineer" } }],
     error: null,
   });
   const res = await callers.get("retry-failed-deliveries")!(new Request("https://harness.supabase.co/functions/v1/retry-failed-deliveries", {
