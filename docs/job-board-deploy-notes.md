@@ -10,7 +10,7 @@ still pins it.
 
 ## 2026-09-09.90
 
-job-board only (index.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
+job-board only (index.ts, slim-stream.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
 
 ### A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (F4)
 
@@ -41,6 +41,16 @@ WHAT IT DOES. The decrement is gone: the enrolled board was started and the curs
 NOT DONE. No re-offer lane for a board the gate deferred (if `deferred` is regularly above 0, .91 adds a one-shot re-offer keyed by board). Light lists over 4 MB still have no greenhouse reader until F3. recruitee, workable, teamtailor and pinpoint registry boards are never re-offered (their abort would repeat).
 
 VERIFY (read-only). `status.sliceStats.lightReread` (absent until the first .90 slice records): over 24h, `enrolled >= 1`, `ok == reread` (without F3, liquidpersonnel and pulse are already light and never enrol again, so they do not count), `deferred` near 0, `since` near the deploy. `oversizeBoards` greenhouse entries narrow to {liquidpersonnel, pulse} (none once F3 is live). `lightSet` rises only by `enrolled`, stays at or under 500 (110 at diagnosis). A newly enrolled board's `list` total matches its feed's in-window count within the same slice, with recheckedAt within about a minute of the `auto-light:` enrolment. Cold cursor rate unchanged (measure by cursor advance, never `sliceStats.at`): the re-read adds at most one fetch per enrolled board, a few a day.
+
+### A GREENHOUSE LIGHT LIST TOO BIG TO HOLD IS READ A POSTING AT A TIME (F3)
+
+WHAT WAS WRONG. Two greenhouse boards served nothing, for good: their light lists (no descriptions) are themselves over the 4 MB byte bound, liquidpersonnel 13.9 MB and pulse 20.6 MB on 2026-10-06, against ~204 and ~76 postings inside the 30-day window. The streamed reader (n411, since .84) had specs for lever and ashby only, so every visit deferred them. The bulk is `metadata`, the tenant's custom fields: 7,019 of 7,666 bytes on the live pulse list's first posting.
+
+WHAT IT DOES. `SLIM_SPECS.greenhouse` (slim-stream.ts) streams the `jobs` array keeping id, title, location, departments, absolute_url, first_published, updated_at, requisition_id, internal_job_id, company_name and language (405 of those 7,666 bytes; `departments` is absent from light lists and kept only because normalizeGreenhouse reads it), dropping `metadata` and `data_compliance`; no description text (light boards are filled by backfill-desc). `readOversizeBoard` normalises it with normalizeGreenhouse. The worker streams a greenhouse board only when it is light at that moment AND this visit already read its light list (light at the start, or the F1 light re-read ran), so the ?content=true list is never streamed and a board whose light re-read the start gate refused is not read past the gate (it reads light on its next visit). Order on a failed greenhouse fetch: light re-read, streamed light read, deferral. Whole or throw as before: truncation, a missing `jobs` key, kept fields over SLIM_RETAINED_BYTES (3 MB) or one posting over SLIM_ELEMENT_BYTES all leave the board deferred and registered, never failed. Log: `streamed greenhouse:<token>: N MB read, N MB kept, 0 description(s) dropped`. Rationale: docs/job-board-index-notes.md#n424-greenhouse-streamed-light-read.
+
+NOT DONE. Descriptions for the two boards still come only from backfill-desc. A streamed read that does not finish inside STREAM_READ_BUDGET_MS (30 s) stays deferred; pulse's 20.6 MB transfer time from the edge is unmeasured.
+
+VERIFY (read-only). `list` with `vendor: "greenhouse"` and `companies: ["liquidpersonnel"]`: total goes from 0 to about its in-window count (204 on 2026-10-06); same for pulse (about 76). Both leave `status.oversizeBoards` (greenhouse entries should be none once both have been visited, at their cold-rotation turns). `hasDescription: true` reaches the same totals within about 2h (backfill-desc filled speechify's 243 rows in about 75 min). If either stays at 0 after its cold turn, read the function logs for `streamed read of greenhouse:<token> failed` (the reason is printed).
 
 ## 2026-09-09.89
 

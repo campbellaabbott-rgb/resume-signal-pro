@@ -999,7 +999,7 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  * OVERSIZE_BOARDS exists to keep them nameable rather than silent.
  */
 const MAX_RESPONSE_BYTES = 4_000_000;
-// The second read of a lever/ashby board the bound refused, one posting at a time.
+// The second read of a lever/ashby board (or a light greenhouse list) the bound refused, one posting at a time.
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
 const STREAM_WIRE_BYTES = 64_000_000;
 const STREAM_READ_BUDGET_MS = 30_000;
@@ -1887,6 +1887,7 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     });
     const jobs = s.source === "lever" ? normalizeLever(raw as never, s.name, s.token)
       : s.source === "ashby" ? normalizeAshby(raw as never, s.name, s.token)
+      : s.source === "greenhouse" ? normalizeGreenhouse(raw as never, s.name, s.token)
       : null;
     if (!jobs) throw new Error(`no normaliser for ${s.source}`);
     console.warn(`[JOB-BOARD] streamed ${s.source}:${s.token}: ${(stats.bytes / 1e6).toFixed(1)}MB read, ${(stats.slimBytes / 1e6).toFixed(1)}MB kept, ${stats.descDropped} description(s) dropped`);
@@ -3758,20 +3759,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
         // Rationale: docs/job-board-index-notes.md#n081-light-reread-in-the-same-visit
+        let lightListRead = isLight(s);
         if (!r) ({ r, failReason } = await lightReread({
-          board: s, failReason, lightCapable: LIGHT_CAPABLE_VENDORS.has(s.source), light: isLight(s),
+          board: s, failReason, lightCapable: LIGHT_CAPABLE_VENDORS.has(s.source), light: lightListRead,
           enrol: () => enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`),
           canStart: () => canStart(false) === "ok",
           read: async () => {
             let why = "";
+            lightListRead = true;
             inFlightReserve += reserve;
             try { return { r: await fetchBoard(s, (m) => { why = m; }, 0), failReason: why }; }
             finally { inFlightReserve -= reserve; }
           },
           done: lightRereadDone, stats: lightStats,
         }));
-        // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
-        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
+        // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read, #n424-greenhouse-streamed-light-read
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightListRead && isLight(s))) && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
           inFlightReserve += reserve;
           try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
           finally { inFlightReserve -= reserve; }

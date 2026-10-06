@@ -1,4 +1,4 @@
-// A Lever or Ashby feed too big to hold, read one posting at a time.
+// A Lever or Ashby feed, or a greenhouse light list, too big to hold, read one posting at a time.
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
 //
 // Pure: no I/O of its own, no database. Every failure THROWS, because a partial
@@ -44,6 +44,14 @@ export const SLIM_SPECS: Record<string, SlimSpec> = {
     },
     postedAt: (j) => (typeof j.publishedAt === "string" ? j.publishedAt : null),
     text: (j) => String(j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(String(j.descriptionHtml)) : "")).trim(),
+  },
+  // The light list only (index.ts streams no greenhouse content list), so no text; metadata (~7.5 KB a posting) is dropped.
+  // Rationale: docs/job-board-index-notes.md#n424-greenhouse-streamed-light-read
+  greenhouse: {
+    arrayKey: "jobs",
+    keep: ["id", "title", "location", "departments", "absolute_url", "first_published", "updated_at", "requisition_id", "internal_job_id", "company_name", "language"],
+    postedAt: (j) => (typeof j.first_published === "string" ? j.first_published : null),
+    text: () => "",
   },
 };
 

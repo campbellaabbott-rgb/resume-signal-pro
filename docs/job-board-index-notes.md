@@ -682,7 +682,9 @@ from a slow edge: cgsfederal was 36.5 MB in 32 s from a desktop), boards whose
 metadata alone is over SLIM_RETAINED_BYTES (ashby bjakcareer), and boards the
 slice clock or the heap gate kept from starting the retry this visit. For
 greenhouse, after the n019 cap raise, expect only the shared-token boards and
-the two whose light list is itself over the bound (liquidpersonnel, pulse).
+the two whose light list is itself over the bound (liquidpersonnel, pulse);
+since .90 those two stream their light list (n424), so expect a greenhouse
+entry only while a streamed read fails or the gates keep it from starting.
 The other vendors without a light form (teamtailor, workable, recruitee,
 pinpoint and the rest) are unchanged and still defer here.
 
@@ -2103,9 +2105,9 @@ After the first read fails, `lightReread` decides:
   board; not now.
 - A light read that fails is never a vendor failure: an oversize
   verdict replaces the first one (the light list is itself over the
-  bound: liquidpersonnel 13.9 MB, pulse 20.6 MB, which only a streamed
-  reader can heal), any other failure keeps the first verdict, and the
-  board is deferred by n080.
+  bound: liquidpersonnel 13.9 MB, pulse 20.6 MB, which the streamed
+  light read heals in the same visit, n424), any other failure keeps the
+  first verdict, and a board neither read reaches is deferred by n080.
 
 recruitee, workable, teamtailor and pinpoint boards in the registry are
 never re-offered: none has a light form a filler can refill, so their
@@ -9148,7 +9150,8 @@ the undated tail rather than making a claim it cannot support.
 
 Above: `const STREAM_WIRE_BYTES = 64_000_000;`, `async function readOversizeBoard(`, the worker's retry after the pinned fetchBoard call, and `async function readBoardForDetail(`.
 
-A LEVER OR ASHBY BOARD TOO BIG TO HOLD IS READ A POSTING AT A TIME.
+A LEVER OR ASHBY BOARD TOO BIG TO HOLD IS READ A POSTING AT A TIME. (Since
+.90 a greenhouse LIGHT list too, never its content list: n424.)
 
 Neither vendor has a lighter form or pagination: one request returns the
 whole board. Since the byte bound shipped (2026-09-06) a feed over
@@ -9591,4 +9594,57 @@ board onto `budgetSkipped`, setting sizeStopped, wallStopped or
 heapStopped as before. The re-read passes no board count, because it
 is the board already started; it does not wait on `reserve`, it
 defers, and it sets no stop flag, since those describe the loop.
+
+## n424-greenhouse-streamed-light-read
+
+Above: `SLIM_SPECS.greenhouse` (slim-stream.ts), the greenhouse branch of
+`readOversizeBoard`, and the greenhouse clause of the worker's streamed-read
+condition (`lightListRead`).
+
+A GREENHOUSE LIGHT LIST TOO BIG TO HOLD IS READ A POSTING AT A TIME. Two
+greenhouse boards were dark for good: their LIGHT lists, the form without
+descriptions, are themselves over MAX_RESPONSE_BYTES (liquidpersonnel 13.9 MB,
+pulse 20.6 MB on 2026-10-06), and the streamed reader (n411) had specs for
+lever and ashby only. Both served 0 rows against ~204 and ~76 postings inside
+the 30-day window. The bulk is `metadata`, the tenant's custom fields: on the
+live pulse light list's first posting, 7,019 of 7,666 bytes (78 fields); the
+fields kept are 405 bytes, so a 20.6 MB list keeps about 1.1 MB, well under
+SLIM_RETAINED_BYTES.
+
+THE SPEC. `arrayKey: "jobs"`. Kept: id, title, location, departments,
+absolute_url, first_published, updated_at, requisition_id, internal_job_id,
+company_name, language. `metadata` and `data_compliance` are dropped (nothing
+reads them). `departments` is what normalizeGreenhouse reads for the
+department; the light list does not carry it, so it costs nothing there, and
+keeping it keeps the field contract the guard derives from normalize.ts
+(every field the normaliser reads is kept). `postedAt` is first_published,
+the date normalizeGreenhouse stores; `text` is empty, because a light board's
+descriptions come from backfill-desc (n019) and the success path writes no
+description column for a light board.
+
+ONLY THE LIGHT LIST IS STREAMED, and only one this visit read under the start
+gate. The streamed read re-requests `listUrl(s)`, which is the content list
+(`?content=true`, every description) for a board that is not light, so the
+worker streams a greenhouse board only when `isLight(s)` holds at that moment
+AND this visit already read the light list: the board was light at the start
+(the read that failed was the light list), or the light re-read (n081) ran.
+The second half matters: when the start gate refuses the re-read
+(posting budget, wall, heap), the board is enrolled, so `isLight` is true,
+but no light read passed the gate; the streamed read checks only wall and
+heap, so without that half it would read the light list in the re-read's
+place, past the posting budget. Such a board stays deferred and reads light
+on its next visit, as in n081.
+
+Order on a failed greenhouse fetch: light re-read (n081), then the streamed
+light read, then deferral (n080). For liquidpersonnel and pulse, already
+light, that is one streamed read per visit. A board enrolled this visit whose
+light list is also over the bound makes three requests in that visit (content,
+light, streamed light), once.
+
+WHOLE OR THROW, as for lever and ashby: truncation, a missing or nested
+`jobs` key, kept fields past SLIM_RETAINED_BYTES, one posting past
+SLIM_ELEMENT_BYTES, or the deadline all throw, readOversizeBoard returns null,
+and the board is deferred and registered at the light list's size, never
+failed. The light list is the whole board, so a completed read may drive the
+id-diff prune and closures like any light read.
 

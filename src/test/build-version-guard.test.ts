@@ -1402,7 +1402,8 @@ const PINNED = {
   // is keyed by board, so a shared token's twin no longer clears it (n422).
   // A greenhouse board enrolled at the byte bound reads its light list in the
   // same visit instead of a rotation later, behind the one start gate (n081,
-  // n423); the misaimed cold-cursor decrement is gone (n080).
+  // n423); the misaimed cold-cursor decrement is gone (n080). A greenhouse
+  // light list over the bound is streamed without its metadata (n424).
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.90",
 };
