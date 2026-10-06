@@ -5,7 +5,7 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-product-email.2026-10-04.1";
+const FN_BUILD = "send-product-email.2026-10-06.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -379,7 +379,7 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 
               <!-- CTA Button -->
               <div style="text-align: center; margin-top: 32px;">
-                <a href="https://resumebooster.lovable.app" 
+                <a href="https://resumebooster.work" 
                    style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   View Your Results →
                 </a>

@@ -548,7 +548,10 @@ describe("the fix-plan sequence starts only when the inbox's owner presses its b
 
   it("the preflight answers its build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/send-scan-report", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^send-scan-report\.2026-10-04\.\d+$/);
-    expect(Number(res.headers.get("x-fn-build")!.split(".").pop())).toBeGreaterThanOrEqual(3);
+    // 2026-10-04.3 (the build with the review's fixes) or any later one: a
+    // pin on the day alone failed the moment a later change rebuilt it.
+    const m = /^send-scan-report\.(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(res.headers.get("x-fn-build") ?? "");
+    expect(m, `x-fn-build = ${res.headers.get("x-fn-build")}`).not.toBeNull();
+    expect(m![1] > "2026-10-04" || (m![1] === "2026-10-04" && Number(m![2]) >= 3)).toBe(true);
   });
 });

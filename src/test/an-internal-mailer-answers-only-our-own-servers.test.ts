@@ -105,7 +105,10 @@ describe("the three internal mailers refuse every caller but the service role", 
 
     it(`${fn}: the preflight answers its build, so a deploy is provable without a send`, async () => {
       const res = await handlers[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
-      expect(res.headers.get("x-fn-build")).toMatch(new RegExp(`^${fn}\\.2026-10-04\\.\\d+$`));
+      // Built on 2026-10-04 (the internal-only build) or any later day.
+      const m = new RegExp(`^${fn}\\.(\\d{4}-\\d{2}-\\d{2})\\.\\d+$`).exec(res.headers.get("x-fn-build") ?? "");
+      expect(m, `x-fn-build = ${res.headers.get("x-fn-build")}`).not.toBeNull();
+      expect(m![1] >= "2026-10-04").toBe(true);
     });
   }
 
