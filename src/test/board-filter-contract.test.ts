@@ -58,6 +58,25 @@ describe("normalizeFilters — a filter is never silently ignored", () => {
     expect(norm({ companies: [{ nope: 1 }] }).ignored).toContain("companies");
   });
 
+  it("names a plural vendor key it does not read, and does not alias it (.90 F5)", () => {
+    // 2026-10-06: {vendors:["personio"], companies:["lush"]} returned lush's
+    // whole board (76 rows, mostly greenhouse) with no ignoredFilters, and the
+    // probe read the twin's rows as personio's. The wire name is singular.
+    const probe = norm({ vendors: ["personio"], companies: ["lush"] });
+    expect(probe.ignored).toEqual(["vendors"]);
+    expect(probe.applied.vendors, "a plural key must not start filtering").toEqual([]);
+    expect(probe.applied.companies).toEqual(["lush"]);
+    expect(norm({ vendors: "personio" }).ignored).toEqual(["vendors"]);
+    expect(norm({ vendors: "personio", vendor: "" }).ignored).toEqual(["vendors"]);
+    // Sent beside the singular key, the singular one is read and nothing was dropped.
+    const both = norm({ vendor: ["personio"], vendors: ["personio"] });
+    expect(both.applied.vendors).toEqual(["personio"]);
+    expect(both.ignored).toEqual([]);
+    // An empty plural key is not a request.
+    expect(norm({ vendors: [] }).ignored).toEqual([]);
+    expect(norm({ vendors: "" }).ignored).toEqual([]);
+  });
+
   it("does NOT report the UI's off position as ignored", () => {
     // salaryFloor=0 and maxAgeDays=0 are how the controls say "no constraint".
     // Reporting them would hang a warning on every unfiltered page.

@@ -775,6 +775,8 @@ export function normalizeFilters(
     .filter((v) => (BOARD_VENDORS as readonly string[]).includes(v))
     .slice(0, VENDOR_LIMIT);
   if (sent(body.vendor) && vendors.length !== vendorsAsked.length) ignored.push("vendor");
+  // The plural key is named, never aliased. Rationale: docs/job-board-index-notes.md#n425-plural-vendor-key-is-named
+  if (sent(body.vendors) && !sent(body.vendor)) ignored.push("vendors");
 
   const ageN = Number(body.maxAgeDays);
   const maxAgeDays = Number.isFinite(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;

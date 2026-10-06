@@ -10,7 +10,7 @@ still pins it.
 
 ## 2026-09-09.90
 
-job-board only (index.ts, slim-stream.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
+job-board only (index.ts, slim-stream.ts, filters.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
 
 ### A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (F4)
 
@@ -51,6 +51,14 @@ WHAT IT DOES. `SLIM_SPECS.greenhouse` (slim-stream.ts) streams the `jobs` array 
 NOT DONE. Descriptions for the two boards still come only from backfill-desc. A streamed read that does not finish inside STREAM_READ_BUDGET_MS (30 s) stays deferred; pulse's 20.6 MB transfer time from the edge is unmeasured.
 
 VERIFY (read-only). `list` with `vendor: "greenhouse"` and `companies: ["liquidpersonnel"]`: total goes from 0 to about its in-window count (204 on 2026-10-06); same for pulse (about 76). Both leave `status.oversizeBoards` (greenhouse entries should be none once both have been visited, at their cold-rotation turns). `hasDescription: true` reaches the same totals within about 2h (backfill-desc filled speechify's 243 rows in about 75 min). If either stays at 0 after its cold turn, read the function logs for `streamed read of greenhouse:<token> failed` (the reason is printed).
+
+### A PLURAL `vendors` KEY WAS DROPPED WITHOUT A WORD (F5)
+
+WHAT WAS WRONG. The list reads its vendor filter from `vendor` only. A `vendors` key was ignored and not named in `ignoredFilters`: on 2026-10-06 `{vendors: ["personio"], companies: ["lush"]}` returned lush's whole board (76 rows, 73 greenhouse) with no notice, and the diagnosis probe read greenhouse:lush's rows as personio:lush's.
+
+WHAT IT DOES. normalizeFilters (filters.ts) names `vendors` in `ignoredFilters` when it is sent and `vendor` is not. It is NOT an alias: the rows served are unchanged (still unfiltered by vendor), only the notice is new. With both keys sent, `vendor` applies and nothing is named. An empty `vendors` is not named. Rationale: docs/job-board-index-notes.md#n425-plural-vendor-key-is-named.
+
+VERIFY (read-only). `list` with `{vendors: ["personio"], companies: ["lush"], groupSimilar: false}` returns `ignoredFilters` containing "vendors" and the same total as `{companies: ["lush"]}`. `{vendor: ["personio"], companies: ["lush"]}` still returns no `ignoredFilters` (total 3 on 2026-10-06).
 
 ## 2026-09-09.89
 

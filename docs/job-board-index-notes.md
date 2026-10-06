@@ -9648,3 +9648,24 @@ and the board is deferred and registered at the light list's size, never
 failed. The light list is the whole board, so a completed read may drive the
 id-diff prune and closures like any light read.
 
+
+## n425-plural-vendor-key-is-named
+
+Above (filters.ts, normalizeFilters): the line after the `vendor` check that
+names the plural key.
+
+The list's vendor filter is read from `vendor` (singular, CSV or array). On
+2026-10-06 a diagnosis probe sent `vendors: ["personio"]` with
+`companies: ["lush"]`: the key was never read, the response carried no
+ignoredFilters, and lush's whole board came back (76 rows, 73 of them
+greenhouse), which the probe read as personio's rows. That is the silent drop
+this file's header forbids, for a key a caller can easily guess.
+
+Named, not aliased. Treating `vendors` as `vendor` would change what every
+existing caller that sends it receives, from the whole board to a filtered
+page, with no notice; naming it tells the caller the filter did not apply and
+changes no result. It is named only when `vendor` is not also sent: with both,
+the singular key is read and applied, so nothing the caller asked for was
+dropped. An empty plural key (`[]` or "") is not a request and is not named.
+No first-party caller sends `vendors` (the page, nl-search, public-api and
+agent-mcp all send `vendor`).

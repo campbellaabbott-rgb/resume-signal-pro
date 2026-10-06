@@ -43,6 +43,7 @@ import {
 } from "../../supabase/functions/nl-search/parse.ts";
 import {
   BOARD_VENDORS,
+  normalizeFilters,
   EMPLOYMENT_TYPES as BOARD_EMPLOYMENT_TYPES,
   PAY_BASES as BOARD_PAY_BASES,
   WORK_MODES as BOARD_WORK_MODES,
@@ -75,6 +76,13 @@ const NL_KEYS = NL_FILTERS.map((f) => f.key);
  * satisfied by quietly adding an unknown key to this side.
  */
 const BOARD_CONTROLS = ["activelyHiring"];
+
+/**
+ * Body keys normalizeFilters reads only to REFUSE by name: a guessed plural of
+ * a real param (.90 F5). Not a filter, so neither emitted nor declined; the
+ * test below proves each one is refused, never applied.
+ */
+const REFUSED_KEYS = ["vendors"];
 
 /** The applyNlSearch block, stripped — every "does the page do X with the
  *  parse" assertion reads this and only this. */
@@ -123,7 +131,17 @@ describe("the parser's vocabulary is the board's vocabulary", () => {
     const accountedFor = [
       ...new Set([...NL_KEYS.filter((k) => !BOARD_CONTROLS.includes(k)), ...Object.keys(NL_DECLINED)]),
     ].sort();
-    expect(accountedFor).toEqual(BOARD_WIRE_PARAMS);
+    expect(accountedFor).toEqual(BOARD_WIRE_PARAMS.filter((k) => !REFUSED_KEYS.includes(k)));
+  });
+
+  it("a refused key is only exempt while the board really reads it and refuses it", () => {
+    const bare = normalizeFilters({}, 40_000).applied;
+    for (const k of REFUSED_KEYS) {
+      expect(BOARD_WIRE_PARAMS, `${k} is no longer read off the body; drop the exemption`).toContain(k);
+      const r = normalizeFilters({ [k]: "greenhouse" }, 40_000);
+      expect(r.ignored, `${k} is read but not named back`).toContain(k);
+      expect(r.applied, `${k} narrows the board, so it is a filter and needs a decision`).toEqual(bare);
+    }
   });
 
   it("a board CONTROL is only exempt while it really is not a filter param", () => {
