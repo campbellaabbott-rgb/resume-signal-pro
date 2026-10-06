@@ -686,6 +686,9 @@ the two whose light list is itself over the bound (liquidpersonnel, pulse).
 The other vendors without a light form (teamtailor, workable, recruitee,
 pinpoint and the rest) are unchanged and still defer here.
 
+SINCE .90 a slice that could not read this row neither writes it nor lets the
+freshness sweep log any closure (n421).
+
 ## n021-startoffset-is-honoured-only-by-the-paginatin
 
 Above: `// startOffset is honoured only by the paginating vendors; every other branch`
@@ -9479,3 +9482,22 @@ reference states none), and wraps there without feedEnded, so a 31,000-match
 feed is read 10,000 deep and never closes what it cannot see. A deep visit that
 fails twice running starts the next from the top, so an HTTP error at a
 stranded cursor cannot reach the dormancy prune either.
+
+## n421-a-row-not-read-is-not-written
+
+Above: `META_READ`, `readMetaRow`, loadDynamicLight, loadOversizeBoards,
+persistOversizeBoards, enrolDynamicLight and the freshness sweep's
+`oversizeHeld`. The light set and the oversize registry are reloaded at every
+slice start and written back whole. supabase-js returns a failed read as
+`{ data: null, error }`, and both loaders read `data` only, so a timeout cleared
+the set and the slice's next enrolment or dirty persist wrote the near-empty set
+over the row. Now a failed read (error or throw) keeps the set the isolate
+already held and marks the row unread until the next load; while unread, an
+enrolment is admitted in memory but not persisted and the registry is not
+persisted at all. A missing row is a read (empty set, writes resume). The sweep
+fails closed: with the registry unread it cannot tell an oversize board from a
+closed one, so every aged row is held out of the closure log that pass (still
+deleted and tombstoned), because a false closure is permanent and a skipped one
+costs only that pass's exits. The two writers of light_desc_dynamic are still
+only loadDynamicLight and enrolDynamicLight. Concurrent slices can still
+overwrite each other (whole-row writes); that needs per-key storage.

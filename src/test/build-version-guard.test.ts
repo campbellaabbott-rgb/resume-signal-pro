@@ -1396,7 +1396,11 @@ const PINNED = {
   // the list never undoes the detail sweep. Migration 20261005100000 marks
   // the Workday mid-feed closures suspect, reversibly.
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.89",
+  // 2026-09-09.90: the light set and the oversize registry are written back
+  // only by a slice that read them, and a slice that could not read the
+  // registry writes no freshness-sweep closures (n421).
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.90",
 };
 
 /**

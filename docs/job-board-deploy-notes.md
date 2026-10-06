@@ -8,6 +8,20 @@ earlier are still in `index.ts` around the constant. New notes go here, newest f
 `BUILD_VERSION` itself still moves with every deploy, and `src/test/build-version-guard.test.ts`
 still pins it.
 
+## 2026-09-09.90
+
+job-board only (index.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
+
+### A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (F4)
+
+WHAT WAS WRONG. Two job_board_meta rows are loaded at the start of every refresh slice and written back WHOLE from that slice's memory: the light set (`light_desc_dynamic`, 110 of 500 on 2026-10-06) and the oversize registry (`oversize_boards`, 37 entries). supabase-js reports a failed read as `{ data: null, error }` and does not throw; both loaders read `data` only, so a failed read cleared the in-memory set and the next enrolment (`enrolDynamicLight`) or dirty registry persist (`persistOversizeBoards`) wrote the near-empty set over the row. Every light board would then fetch ?content=true again, trip the byte bound and serve nothing new for a rotation. The registry also feeds the pass-end freshness sweep's `oversizeHeld` (n147): with it empty, aged rows on oversize boards would be written into the closure log as employer closures. No live case observed; found by code reading.
+
+WHAT IT DOES. `readMetaRow` checks `error` (and a throw). On a failed read the loader keeps the set it already held and marks the row unread (`META_READ`) until the next load. While unread, `enrolDynamicLight` enrols in memory (the board is light for this slice) but does not write the row, and `persistOversizeBoards` writes nothing. A missing row (no error) is still a read: the set is empty and writes resume. While the registry is unread the freshness sweep holds every aged row: the rows are still deleted and tombstoned, but none is written to the closure log that pass. Logs: `light set unread (...)`, `oversize registry unread (...)`, `auto-light: ... not persisted, the row was unread this slice`, `freshness sweep: N aged posting(s) on M board(s) dropped without a closure-log entry — the oversize registry was unread this slice`. Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written.
+
+NOT DONE. Both rows are still written whole by one isolate, so concurrent slices can still lose each other's writes (last writer wins); a per-key write needs a migration. A fresh isolate whose first read fails holds an empty set for that slice (its light boards fetch ?content=true and defer, nothing is persisted). The stale lane still excludes whatever registry the isolate holds; it is not gated on the read.
+
+VERIFY. No live trigger exists; the proof is `src/test/a-row-a-slice-could-not-read-is-a-row-it-must-not-write.test.ts` (runs the shipped loaders, enrolment, persist and the sweep's ledger loop against a read that fails). Live, read-only: `status.sliceStats.lightSet` (110 at deploy) is one isolate's in-memory count, so a single low reading can be a fresh isolate whose read failed and which wrote nothing; a reading that STAYS far below 110 across slices means the row itself shrank. Read the row with service role (`strandedRemoved` names any sweep).
+
 ## 2026-09-09.89
 
 THE INGEST READS WHAT THE EMPLOYERS PUBLISH. job-board only (index.ts BUILD_VERSION and the ingest/refresh paths, `dormancy.ts`, `stale-lane.ts`, `normalize.ts` (one new rule, `listMayRewriteMode`), NEW `read-window.ts`, NEW `tombstone.ts`), plus ONE MIGRATION, 20261005100000 (a data repair; apply it AFTER this bundle serves, see ORDER). No other function, no frontend, sources.ts UNCHANGED. Platform debug sweep 2026-10-04 (register `~/.config/resumebooster/platform-debug-2026-10-04/register.json`): L1-01, L1-02, L7-01, L7-02, L7-13, L13-17, L13-49 (part), L13-54, L13-70, L13-71. Carries open PR #5 (built as .87 on branch claude/quirky-almeida-472c7c while main shipped its own .87 and .88), renumbered; PR #5 can be closed as superseded. Main's .88 has not deployed either (live answered `2026-09-09.87` on 2026-10-05): run section 88 as well as 89.

@@ -128,7 +128,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.89"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.90"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -680,10 +680,26 @@ const DESC_BACKFILL_VENDOR = "greenhouse"; // backfill-desc hits the GH per-JOB 
 const descBackfillBoards = (): JobSource[] =>
   JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s));
 
-async function loadDynamicLight(client: SupabaseClient): Promise<void> {
+// Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written
+const META_READ = { light: false, oversize: false };
+async function readMetaRow(client: SupabaseClient, k: string): Promise<{ read: true; v: unknown } | { read: false; why: string }> {
   try {
-    const { data } = await client.from("job_board_meta").select("v").eq("k", "light_desc_dynamic").maybeSingle();
-    const tokens = (data?.v as { tokens?: unknown } | null)?.tokens;
+    const { data, error } = await client.from("job_board_meta").select("v").eq("k", k).maybeSingle();
+    return error ? { read: false, why: String(error.message ?? error).slice(0, 120) } : { read: true, v: data?.v ?? null };
+  } catch (e) {
+    return { read: false, why: String((e as Error)?.message ?? e).slice(0, 120) };
+  }
+}
+
+async function loadDynamicLight(client: SupabaseClient): Promise<void> {
+  const row = await readMetaRow(client, "light_desc_dynamic");
+  META_READ.light = row.read;
+  if (!row.read) {
+    console.warn(`[JOB-BOARD] light set unread (${row.why}): previous set kept, nothing persisted this slice`);
+    return;
+  }
+  try {
+    const tokens = (row.v as { tokens?: unknown } | null)?.tokens;
     DYNAMIC_LIGHT.clear();
     // SWEEP THE ROW, don't merely filter the read. Tokens an older build
     // persisted without a vendor test are refused by the set above, which is
@@ -730,27 +746,31 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
         { onConflict: "k" },
       );
     }
-  } catch { /* meta unreadable — static set still applies */ }
+  } catch { /* the row was read; a failed sweep write retries on the next load */ }
 }
 
 // Rationale: docs/job-board-index-notes.md#n020-oversize-boards
 const OVERSIZE_BOARDS = new Map<string, { source: string; mb: number; at: string }>();
 const OVERSIZE_CAP = 200;
 async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
-  try {
-    const { data } = await client.from("job_board_meta").select("v").eq("k", "oversize_boards").maybeSingle();
-    const rec = (data?.v as { boards?: Record<string, { source?: string; mb?: number; at?: string }> } | null)?.boards;
-    OVERSIZE_BOARDS.clear();
-    if (rec && typeof rec === "object") {
-      for (const [tk, e] of Object.entries(rec)) {
-        if (typeof tk === "string" && e && typeof e === "object") {
-          OVERSIZE_BOARDS.set(tk, { source: String(e.source ?? ""), mb: Number(e.mb) || 0, at: String(e.at ?? "") });
-        }
+  const row = await readMetaRow(client, "oversize_boards");
+  META_READ.oversize = row.read;
+  if (!row.read) {
+    console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep logs no exits this slice`);
+    return;
+  }
+  const rec = (row.v as { boards?: Record<string, { source?: string; mb?: number; at?: string }> } | null)?.boards;
+  OVERSIZE_BOARDS.clear();
+  if (rec && typeof rec === "object") {
+    for (const [tk, e] of Object.entries(rec)) {
+      if (typeof tk === "string" && e && typeof e === "object") {
+        OVERSIZE_BOARDS.set(tk, { source: String(e.source ?? ""), mb: Number(e.mb) || 0, at: String(e.at ?? "") });
       }
     }
-  } catch { /* meta unreadable — the registry is diagnostic, never a gate */ }
+  }
 }
 async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
+  if (!META_READ.oversize) return;
   try {
     // Newest last, oldest dropped: a board that stopped being oversize ages
     // out of the registry instead of being asserted forever.
@@ -785,7 +805,8 @@ async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, 
   const key = lightKey(board);
   DYNAMIC_LIGHT.add(key);
   if (!DYNAMIC_LIGHT.has(key)) return false;
-  console.warn(`[JOB-BOARD] auto-light: ${key} ${why} — enrolled in light mode (descs via backfill)`);
+  console.warn(`[JOB-BOARD] auto-light: ${key} ${why} — enrolled in light mode (descs via backfill)${META_READ.light ? "" : "; not persisted, the row was unread this slice"}`);
+  if (!META_READ.light) return true;
   try {
     const { error: alErr } = await client.from("job_board_meta").upsert(
       { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString(), keyedBy: "source:token" }, updated_at: new Date().toISOString() },
@@ -5458,10 +5479,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             { onConflict: "id", ignoreDuplicates: true },
           )).then(() => {}).catch(() => {}));
           // Rationale: docs/job-board-index-notes.md#n147-oversizeheld
-          const oversizeHeld = agedRows.filter((r) => OVERSIZE_BOARDS.has(String(r.company_token)) && !alreadyTombstoned.has(String(r.id)));
+          const oversizeHeld = agedRows.filter((r) => (!META_READ.oversize || OVERSIZE_BOARDS.has(String(r.company_token))) && !alreadyTombstoned.has(String(r.id)));
           for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
           if (oversizeHeld.length > 0) {
-            console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} OVERSIZE board(s) dropped without a closure-log entry — the board is deferred by the byte budget, not closed`);
+            console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} board(s) dropped without a closure-log entry — ${META_READ.oversize ? "OVERSIZE: deferred by the byte budget, not closed" : "the oversize registry was unread this slice"}`);
           }
           const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
           if (freshlyDead.length === 0) continue;
