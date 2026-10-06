@@ -184,6 +184,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
 export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
+export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
 export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
@@ -2862,11 +2863,21 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
     });
 
-    const tEn = (D.EN_LOCALE && D.EN_LOCALE.changelogEntries) || {};
+    // THE CHANGELOG'S TEXT IS NOT IN THE MAIN LOCALE FILE. It moved to
+    // src/i18n/changelog/en.json on 2026-07-26 (its own lazy bundle), and this
+    // line went on reading src/i18n/locales/en.json, which has no
+    // changelogEntries at all: every entry filtered out, and from that day to
+    // 2026-10-06 crawlers got a /changelog with a heading and nothing under it
+    // (9,669 bytes; the description fell back to its no-entries sentence).
+    const tEn = (D.EN_CHANGELOG && D.EN_CHANGELOG.changelogEntries) || {};
     const clItems = D.changelog
       .slice(0, 30)
       .map((e) => ({ ...e, title: tEn[e.id]?.title, desc: tEn[e.id]?.description }))
       .filter((e) => e.title);
+    // Not a throw: one page without entries is better than every page SPA-only.
+    if (D.changelog.length > 0 && clItems.length === 0) {
+      console.error("[prerender-seo] /changelog: NONE of the newest entries has English text in EN_CHANGELOG -- the page ships empty to crawlers");
+    }
     const TAG_LABEL = { new: "New", improved: "Improved", fixed: "Fixed" };
     write({
       path: "/changelog",
