@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runGate, runVisit } from "./helpers/slice-worker";
 
 /**
  * A RESERVATION THAT EMPTIED THE QUEUE.
@@ -30,8 +32,11 @@ const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const num = (name: string) => Number(CODE.match(new RegExp(`const ${name} = ([0-9_]+);`))![1].replace(/_/g, ""));
 
 describe("a reservation that emptied the queue", () => {
-  it("defers only on LANDED postings, and never inside the reservation branch", () => {
-    expect(CODE).toMatch(/if \(fetchedInSlice >= SLICE_POSTING_BUDGET\) \{ budgetSkipped\.push\(s\.token\); continue; \}/);
+  it("defers only on LANDED postings, and never inside the reservation branch", async () => {
+    // .90 (n423): the start checks are one gate (start-gate.ts); the worker's turn is RUN, not spelled.
+    const budget = num("SLICE_POSTING_BUDGET");
+    const board = { source: "lever", token: "a" };
+    expect((await runGate({ queue: [board], fetchedInSlice: budget })).deferred, "landed postings").toEqual(["a"]);
     // .41 added a SECOND deferral, on heap — the quantity that actually runs
     // out (the-budget-counted-the-wrong-thing.test.ts). Both are deferrals of
     // a board never attempted; what must never happen is a deferral inside the
@@ -43,22 +48,31 @@ describe("a reservation that emptied the queue", () => {
     // BEFORE the allocation exists rather than after — every other bound here
     // measures something already in memory, which is why five of them could be
     // "measured on both sides" and still read as refuted.
-    expect((CODE.match(/budgetSkipped\.push\(/g) ?? []).length, "six deferral sites: landed postings, heap, wall time, slice size, a wait that cannot end, and the byte budget").toBe(6);
-    expect(CODE).toMatch(/if \(heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB\) \{\s*heapStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
-    expect(CODE, "neither deferral may sit in the reservation branch").not.toMatch(/inFlightReserve >= SLICE_POSTING_BUDGET\) \{\s*budgetSkipped/);
+    // Six deferrals, each RUN: landed postings (above), heap, wall time, slice size, a wait that cannot end, and the byte budget.
+    expect((await runGate({ queue: [board], heapMb: num("HEAP_SOFT_LIMIT_MB") })).deferred, "heap").toEqual(["a"]);
+    expect((await runGate({ queue: [board], elapsedMs: num("SLICE_WALL_BUDGET_MS") })).deferred, "wall time").toEqual(["a"]);
+    expect((await runGate({ queue: [board], boardsDone: 8, boardBudget: 8 })).deferred, "slice size").toEqual(["a"]);
+    expect((await runGate({ queue: [board], fetchedInSlice: budget - 10, inFlightReserve: 40, spinsSoFar: num("YIELD_SPIN_LIMIT") })).deferred, "a wait that cannot end").toEqual(["a"]);
+    const over = await runVisit({ board: { source: "lever", token: "a" }, failReason: "oversize 6.2MB" });
+    expect([over.deferred, over.failed], "the byte budget").toEqual([["a"], []]);
+    // The reservation branch defers nothing while something in flight can still lower it.
+    const held = await runGate({ queue: [board], fetchedInSlice: budget - 1, inFlightReserve: 40 });
+    expect(held.deferred, "neither deferral may sit in the reservation branch").toEqual([]);
   });
 
-  it("retires the worker and returns the board when the reservation fills the budget", () => {
-    const landed = CODE.indexOf("if (fetchedInSlice >= SLICE_POSTING_BUDGET) {");
+  it("retires the worker and returns the board when the reservation fills the budget", async () => {
     // .39: it YIELDS rather than exiting — `return` ended the worker for the
     // whole slice, ratcheting concurrency down to 1 in the tail of every cold
     // slice (four-ways-to-lose-a-board.test.ts). The board still goes back to
     // the head of the queue for whoever is still in flight.
-    const retire = CODE.indexOf("if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {");
-    expect(retire, "retire branch missing").toBeGreaterThan(0);
-    expect(retire, "landed check first, so a board over budget is deferred, not bounced between workers").toBeGreaterThan(landed);
-    expect(CODE, "a retired board must go back to the HEAD, or it waits behind the whole queue").toMatch(/queue\.unshift\(s\);\s*await new Promise\(\(r\) => setTimeout\(r, 250\)\);\s*continue;/);
-    expect(CODE, "and the worker must NOT exit the slice").not.toMatch(/queue\.unshift\(s\); return;/);
+    const budget = num("SLICE_POSTING_BUDGET");
+    const [a, b] = [{ source: "lever", token: "a" }, { source: "lever", token: "b" }];
+    const both = await runGate({ queue: [a, b], fetchedInSlice: budget, inFlightReserve: 40 });
+    expect([both.deferred, both.waitedMs], "landed check first, so a board over budget is deferred, not bounced between workers").toEqual([["a"], []]);
+    const held = await runGate({ queue: [a, b], fetchedInSlice: budget - 10, inFlightReserve: 40, turns: 2 });
+    expect(held.queue, "a retired board must go back to the HEAD, or it waits behind the whole queue").toEqual(["a", "b"]);
+    expect(held.waitedMs, "it waits, once a turn").toEqual([250, 250]);
+    expect(held.exited, "and the worker must NOT exit the slice").toBe(false);
   });
 
   it("reserves per board — the cap for hot-phase and deep boards, a small constant for cold ones", () => {

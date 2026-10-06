@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, runGate } from "./helpers/slice-worker";
 
 /**
  * THE BUDGET COUNTED POSTINGS; THE ISOLATE RUNS OUT OF BYTES.
@@ -28,13 +30,20 @@ const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const num = (name: string) => Number(CODE.match(new RegExp(`const ${name} = ([0-9_]+)`))![1].replace(/_/g, ""));
 
 describe("the budget counted the wrong thing", () => {
-  it("the slice stops on heap, before starting a board", () => {
-    expect(CODE).toMatch(/const heapNow = memStamp\(\)\.heapMb;\s*if \(heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB\) \{\s*heapStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
-    // Before the fetch it prevents, and after the dormancy skip — the same
-    // position the posting budget occupies.
-    const heap = CODE.indexOf("const heapNow = memStamp().heapMb;");
-    expect(heap).toBeGreaterThan(CODE.indexOf("if (skipTokens.has(s.token)) continue;"));
-    expect(heap).toBeLessThan(CODE.indexOf("r = await fetchBoard(s,"));
+  it("the slice stops on heap, before starting a board", async () => {
+    // .90 (n423): one start gate (start-gate.ts); the worker's turn is RUN, not spelled.
+    const limit = constOf("HEAP_SOFT_LIMIT_MB");
+    const board = { source: "lever", token: "a" };
+    const full = await runGate({ queue: [board], heapMb: limit });
+    expect(full.started, "no board is started at the limit, so its fetch never runs").toBeNull();
+    expect(full.heapStopped).toBe(true);
+    expect(full.deferred).toEqual(["a"]);
+    expect((await runGate({ queue: [board], heapMb: limit - 1 })).started).toBe("a");
+    expect((await runGate({ queue: [board], heapMb: undefined })).started, "an unmeasurable heap stops nothing").toBe("a");
+    // After the dormancy skip — the same position the posting budget occupies.
+    const dormant = await runGate({ queue: [board], heapMb: limit, dormant: ["a"] });
+    expect(dormant.deferred, "a dormant board is skipped before the gate, not counted as deferred").toEqual([]);
+    expect(dormant.heapStopped).toBe(false);
   });
 
   it("the limit leaves headroom for the boards already in flight", () => {
@@ -65,8 +74,10 @@ describe("the budget counted the wrong thing", () => {
     expect(CODE).toMatch(/breadcrumb\(client, "loop-done", \{ boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped\.length, heapStopped, wallStopped/);
   });
 
-  it("the posting budget stays — it bounds a different thing, and says so", () => {
-    expect(CODE).toMatch(/if \(fetchedInSlice >= SLICE_POSTING_BUDGET\) \{ budgetSkipped\.push\(s\.token\); continue; \}/);
+  it("the posting budget stays — it bounds a different thing, and says so", async () => {
+    const spent = await runGate({ queue: [{ source: "lever", token: "a" }], fetchedInSlice: constOf("SLICE_POSTING_BUDGET") });
+    expect(spent.deferred).toEqual(["a"]);
+    expect([spent.heapStopped, spent.wallStopped, spent.sizeStopped], "a landed-budget deferral raises no other stop").toEqual([false, false, false]);
     expect(num("SLICE_POSTING_BUDGET")).toBeGreaterThan(0);
   });
 });

@@ -10,7 +10,7 @@ still pins it.
 
 ## 2026-09-09.90
 
-job-board only (index.ts, NEW oversize-registry.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
+job-board only (index.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
 
 ### A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (F4)
 
@@ -31,6 +31,16 @@ WHAT IT DOES. The registry is keyed by board, like board_failures since .89: the
 NOT DONE. The verification stamp is still per token (.91, needs a migration), so a twin's read still keeps a deferred board's rows looking rechecked and out of the 48h missing sweep (the lush ghost rows). While a .89 isolate is still running after the deploy it matches by token: it cannot delete or see a `source:token` entry.
 
 VERIFY (read-only). Use greenhouse:pulse while F3 is not live, otherwise afg (workable, shared with bamboohr). Poll `status` while `cursor.cold` passes the twin's index (ashby:pulse is at about 35,100 by a static reconstruction). Pass: an `oversizeBoards` row with `key: "greenhouse:pulse"` and `token: "pulse"` stays present the whole time (under .89 the entry was gone 00:45-01:32Z). Shared-token entries show `key` = `source:token` once the registry has been rewritten (any slice that records or clears an entry); until then a legacy row shows `key` equal to `token`.
+
+### AN ENROLLED BOARD READS LIGHT IN THE SAME VISIT (F1)
+
+WHAT WAS WRONG. When a greenhouse board's ?content=true list crossed the 4 MB byte bound, the visit enrolled it in light mode, deferred it (no insert, no stamp, no closure), and took one off the cold-cursor count to "give the slot back". The cold cursor moves by position (`cold + started`, rotation.ts), so one fewer only started the next slice one place earlier: it re-read the slice's last base board, never the enrolled one. Every board enrolled at the byte bound waited a full cold rotation for its light read: speechify 19:47 to 01:44Z (5h57m), samsara 21:22 to 02:59Z (5h37m) on 2026-10-05/06, and lush (73 of ~212 in-window postings served, 19 of them closed upstream) still waiting at diagnosis. The guard that pinned the decrement's spelling claimed the opposite.
+
+WHAT IT DOES. The decrement is gone: the enrolled board was started and the cursor counts it. After a failed first read, `lightReread` (light-reread.ts) enrols an oversize board through the existing writer (enrolDynamicLight, cap 500 unchanged) and, for greenhouse only, at most once per board per slice, and only if the start gate passes, reads it again: the light list now, under the board's reservation, landing through the ordinary success path. No second `++boardsDone`. Order on a failed fetch: light re-read, then the streamed read (n411), then deferral. A refused gate leaves the board enrolled and deferred (its next visit reads light). A light read that fails is never a vendor failure: a light list itself over the bound (liquidpersonnel 13.9 MB, pulse 20.6 MB) is registered at that size and deferred once, no loop. The four start checks (landed postings, wall, heap, landed plus in-flight reservation) plus the board count are one pure gate, `startGate` (start-gate.ts), called by both the queue loop and the re-read (the re-read without the board count); the loop's verdicts, order and stop flags are unchanged. `status.sliceStats.lightReread` = running totals `{enrolled, reread, ok, deferred, since}` across slices (enrolled = reread + deferred; reread - ok = light reads that also failed). Log: `light re-read: N enrolled, N read again (N ok), N deferred`. Rationale: docs/job-board-index-notes.md#n080-failreason-startswith-oversize, #n081-light-reread-in-the-same-visit, #n423-one-start-gate.
+
+NOT DONE. No re-offer lane for a board the gate deferred (if `deferred` is regularly above 0, .91 adds a one-shot re-offer keyed by board). Light lists over 4 MB still have no greenhouse reader until F3. recruitee, workable, teamtailor and pinpoint registry boards are never re-offered (their abort would repeat).
+
+VERIFY (read-only). `status.sliceStats.lightReread` (absent until the first .90 slice records): over 24h, `enrolled >= 1`, `ok == reread` (without F3, liquidpersonnel and pulse are already light and never enrol again, so they do not count), `deferred` near 0, `since` near the deploy. `oversizeBoards` greenhouse entries narrow to {liquidpersonnel, pulse} (none once F3 is live). `lightSet` rises only by `enrolled`, stays at or under 500 (110 at diagnosis). A newly enrolled board's `list` total matches its feed's in-window count within the same slice, with recheckedAt within about a minute of the `auto-light:` enrolment. Cold cursor rate unchanged (measure by cursor advance, never `sliceStats.at`): the re-read adds at most one fetch per enrolled board, a few a day.
 
 ## 2026-09-09.89
 

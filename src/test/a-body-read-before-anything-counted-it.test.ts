@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runVisit } from "./helpers/slice-worker";
 import * as oversizeRegistry from "../../supabase/functions/job-board/oversize-registry.ts";
 
 /**
@@ -287,24 +289,25 @@ describe("a body read before anything counted it", () => {
     expect(CODE).toMatch(/const budgetSkippedSet = new Set\(budgetSkipped\);/);
   });
 
-  it("a light-capable vendor ENROLS rather than being deferred forever", () => {
-    const i = CODE.indexOf('if (failReason.startsWith("oversize"))');
-    const block = CODE.slice(i, i + 1400);
-    // Since .89 light mode is keyed by BOARD (source:token), so the board itself is passed.
-    expect(block).toMatch(/LIGHT_CAPABLE_VENDORS\.has\(s\.source\) && !isLight\(s\)/);
-    expect(block).toMatch(/await enrolDynamicLight\(client, s,/);
-    // AND IT GETS ITS SLOT BACK. Every other budget deferral `continue`s
-    // before `baseAttempted++`, so its board is re-offered on the next slice;
-    // this branch sits after that line. Left alone, a board enrolled for a
-    // light re-fetch that would succeed immediately waits a full cold rotation
-    // — 6.7h at baseline, ~59h at the p50 this whole change exists to fix.
-    // Returned only where the next attempt would DIFFER: a board with no light
-    // form would abort identically, so re-offering it every slice would burn a
-    // board slot and a 4MB transfer per pass, forever.
-    expect(
-      block.slice(block.indexOf("enrolDynamicLight")),
-      "an enrolled board must not wait a whole rotation for the light fetch",
-    ).toMatch(/baseTokens\.has\(s\.token\) && baseAttempted > 0\) baseAttempted--/);
+  it("a light-capable vendor ENROLS rather than being deferred forever", async () => {
+    // AND IT READS LIGHT IN THE SAME VISIT (.90, n081). Until .90 an enrolled
+    // board took one off the cold-cursor count to "get its slot back", but the
+    // cursor moves by position, so that re-read the slice's last base board,
+    // never this one: every enrolled board waited a full cold rotation
+    // (speechify 5h57m, samsara 5h37m on .89). Now the visit, RUN here, reads
+    // the light list once; a board with no light form, or one the set refuses,
+    // would abort identically and is deferred without a re-read.
+    // Every case: an-enrolled-board-reads-light-in-the-same-visit.test.ts.
+    const gh = await runVisit({
+      board: { source: "greenhouse", token: "speechify" }, failReason: "oversize 6.1MB", base: true, baseAttempted: 5,
+      reread: ({ light }) => (light ? { read: { jobs: [{ id: "1" }], raw: {} } } : { read: null, reason: "oversize 6.1MB" }),
+    });
+    expect([gh.enrolCalls, gh.light], "enrolled, keyed by board").toEqual([1, true]);
+    expect(gh.fetchCalls.map((c) => c.light), "an enrolled board must not wait a whole rotation for the light fetch").toEqual([true]);
+    expect(gh.deferred).toEqual([]);
+    expect(gh.baseAttempted, "and the cursor counts it, because it was started").toBe(5);
+    const refused = await runVisit({ board: { source: "greenhouse", token: "speechify" }, failReason: "oversize 6.1MB", refuse: true });
+    expect([refused.fetchCalls, refused.deferred], "a refusal re-fetches nothing and defers").toEqual([[], ["speechify"]]);
     // Reuse of the machinery that already exists, not a second copy of it:
     // the enrolment must persist through the same meta row the auto-light
     // measurement writes, or a restart forgets every enrolment.

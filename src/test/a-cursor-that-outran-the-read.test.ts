@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, runGate } from "./helpers/slice-worker";
 
 /**
  * A CURSOR THAT OUTRAN THE READ.
@@ -32,14 +34,24 @@ const RAW = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
 describe("a cursor that outran the read", () => {
-  it("counts the base-slice boards actually STARTED", () => {
+  it("counts the base-slice boards actually STARTED", async () => {
     expect(CODE).toMatch(/const baseTokens = new Set\(baseSlice\.map\(\(b\) => b\.token\)\);/);
     expect(CODE).toMatch(/let baseAttempted = 0;/);
     expect(CODE).toMatch(/if \(baseTokens\.has\(s\.token\)\) baseAttempted\+\+;/);
     // Counted where the board is committed to, after every deferral check —
-    // a board the budget skipped must not be counted as attempted.
+    // a board the budget skipped must not be counted as attempted. RUN since .90 (n423).
+    const base = { source: "lever", token: "b" };
+    expect((await runGate({ queue: [base], base: ["b"], baseAttempted: 3 })).baseAttempted, "a started base board counts").toBe(4);
+    expect((await runGate({ queue: [{ source: "lever", token: "x" }], base: ["b"], baseAttempted: 3 })).baseAttempted, "a board from another lane does not").toBe(3);
+    for (const [why, o] of [
+      ["landed postings", { fetchedInSlice: constOf("SLICE_POSTING_BUDGET") }],
+      ["wall", { elapsedMs: 10_000_000 }],
+      ["heap", { heapMb: 10_000 }],
+      ["slice size", { boardsDone: 80, boardBudget: 80 }],
+    ] as const) {
+      expect((await runGate({ queue: [base], base: ["b"], baseAttempted: 3, ...o })).baseAttempted, `after the ${why} deferral`).toBe(3);
+    }
     const inc = CODE.indexOf("if (baseTokens.has(s.token)) baseAttempted++;");
-    expect(inc, "after the landed-postings deferral").toBeGreaterThan(CODE.indexOf("if (fetchedInSlice >= SLICE_POSTING_BUDGET)"));
     expect(inc, "and before the fetch it accompanies").toBeLessThan(CODE.indexOf("r = await fetchBoard(s,"));
   });
 

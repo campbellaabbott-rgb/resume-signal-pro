@@ -103,6 +103,8 @@ import {
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens } from "./oversize-registry.ts";
+import { startGate } from "./start-gate.ts";
+import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -791,8 +793,8 @@ async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
  * Returns whether the board is now light. FALSE means the set refused the
  * vendor (it logs why), and the caller must take the deferral path instead of
  * reporting an enrolment that did not happen — nothing may be persisted, and
- * at the byte bound no board slot may be handed back for a re-fetch that would
- * be byte-for-byte identical to the one that just failed.
+ * at the byte bound the board is not read again in the same visit (n081): the
+ * read would be byte-for-byte identical to the one that just failed.
  */
 async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, "source" | "token">, why: string): Promise<boolean> {
   const key = lightKey(board);
@@ -3032,6 +3034,8 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
 // below in the same invocation. Module state rather than a parameter because a
 // guard counts the recorder's exact call literal at its three terminal returns.
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
+// This slice's light re-reads (n081), added to the row's running totals by the recorder.
+let sliceLightReread: LightRereadStats | null = null;
 // WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
 // sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
 // that died last was a small cold one (6,386 postings, 39s). That is the
@@ -3098,6 +3102,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The stale lane's slice outcome rides the same row: how many stale
         // boards this slice tried, and how many of those stamped.
         ...(sliceStaleNote ? { staleTries: sliceStaleNote.tries, staleResolved: sliceStaleNote.resolved } : {}),
+        ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
@@ -3170,6 +3175,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // stale lane's fold, so an isolate that served a cold hop and then a hot one
   // would otherwise write the cold hop's staleTries onto the hot hop's row.
   sliceStaleNote = null;
+  sliceLightReread = null;
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Loaded in the same invocation that runs the freshness sweep, because the
@@ -3702,6 +3708,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // permanently oversize board must not cost a meta write every ten minutes.
   let oversizeDirty = false;
   let lastUpsertError: string | null = null;
+  // Rationale: docs/job-board-index-notes.md#n423-one-start-gate
+  const canStart = (newBoard: boolean) => startGate({
+    fetched: fetchedInSlice, inFlight: inFlightReserve, postingBudget: SLICE_POSTING_BUDGET,
+    elapsedMs: Date.now() - sliceWallStart, wallBudgetMs: SLICE_WALL_BUDGET_MS,
+    heapMb: memStamp().heapMb, heapLimitMb: HEAP_SOFT_LIMIT_MB,
+    ...(newBoard ? { boards: { done: boardsDone, budget: boardBudget } } : {}),
+  });
+  const lightStats = lightRereadStats();
+  const lightRereadDone = new Set<string>();
+  sliceLightReread = lightStats;
 
   await Promise.all(
     Array.from({ length: inHotPhase ? HOT_CONCURRENCY : effConcurrency }, async () => {
@@ -3711,30 +3727,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(boardKeyOf(s))) continue;
-        // Deferred only on what has LANDED. When it is the reservation that
-        // fills the budget, this worker retires and hands the board back to a
-        // worker still in flight — concurrency shrinks, the queue does not.
-        if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
-        // Checked before STARTING a board, so whatever is already in flight
-        // has headroom to land.
-        if (boardsDone >= boardBudget) {
-          sizeStopped = true;
-          budgetSkipped.push(s.token);
-          continue;
-        }
-        if (Date.now() - sliceWallStart >= SLICE_WALL_BUDGET_MS) {
-          wallStopped = true;
-          budgetSkipped.push(s.token);
-          continue;
-        }
-        const heapNow = memStamp().heapMb;
-        if (heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB) {
-          heapStopped = true;
-          budgetSkipped.push(s.token);
-          continue;
-        }
+        // Checked before STARTING a board: landed postings, board count, wall and heap defer it; a full reservation waits.
+        const gate = canStart(true);
         // Rationale: docs/job-board-index-notes.md#n076-fetchedinslice-inflightreserve-slic
-        if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {
+        if (gate === "reserve") {
           // Rationale: docs/job-board-index-notes.md#n077-spins
           const spins = (yieldsByToken.get(s.token) ?? 0) + 1;
           yieldsByToken.set(s.token, spins);
@@ -3746,6 +3742,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           await new Promise((r) => setTimeout(r, 250));
           continue;
         }
+        if (gate !== "ok") {
+          if (gate === "boards") sizeStopped = true;
+          else if (gate === "wall") wallStopped = true;
+          else if (gate === "heap") heapStopped = true;
+          budgetSkipped.push(s.token);
+          continue;
+        }
         let failReason = "";
         // Rationale: docs/job-board-index-notes.md#n078-reserve
         const reserve = inHotPhase || deepTokens.has(s.token) || CAPPED_VISIT_VENDORS.has(s.source) || !!s.pages ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
@@ -3754,6 +3757,19 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
+        // Rationale: docs/job-board-index-notes.md#n081-light-reread-in-the-same-visit
+        if (!r) ({ r, failReason } = await lightReread({
+          board: s, failReason, lightCapable: LIGHT_CAPABLE_VENDORS.has(s.source), light: isLight(s),
+          enrol: () => enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`),
+          canStart: () => canStart(false) === "ok",
+          read: async () => {
+            let why = "";
+            inFlightReserve += reserve;
+            try { return { r: await fetchBoard(s, (m) => { why = m; }, 0), failReason: why }; }
+            finally { inFlightReserve -= reserve; }
+          },
+          done: lightRereadDone, stats: lightStats,
+        }));
         // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
         if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
           inFlightReserve += reserve;
@@ -3778,11 +3794,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // nameable long after that.
             // Keyed by board (n422); dirty on a new board, a moved size or a 12h-old stamp.
             if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;
-            // Rationale: docs/job-board-index-notes.md#n081-light-capable-vendors-has-s-source
-            if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s)) {
-              const enrolled = await enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`);
-              if (enrolled && baseTokens.has(s.token) && baseAttempted > 0) baseAttempted--;
-            }
             budgetSkipped.push(s.token);
             continue;
           }
@@ -5069,6 +5080,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped, sizeStopped, boardBudget };
   if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
   if (oversized.length) console.warn(`[JOB-BOARD] byte budget: ${oversized.length} board(s) over ${MAX_RESPONSE_BYTES} bytes and deferred — ${oversized.slice(0, 10).join(", ")}`);
+  if (lightStats.enrolled) console.warn(`[JOB-BOARD] light re-read: ${lightStats.enrolled} enrolled, ${lightStats.reread} read again (${lightStats.ok} ok), ${lightStats.deferred} deferred`);
   if (oversizeDirty) await persistOversizeBoards(client);
   await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length, heapStopped, wallStopped, sizeStopped, elapsedMs: Date.now() - sliceWallStart });
   await stampSliceWork(client, inHotPhase, sliceWallStart);

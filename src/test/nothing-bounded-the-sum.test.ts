@@ -1,6 +1,9 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, runGate } from "./helpers/slice-worker";
+const COLD = constOf("COLD_BOARD_RESERVE");
 
 /**
  * EVERY LEVER BOUNDED A PART. NOTHING BOUNDED THE SUM, AND THE SUM IS WHAT DIED.
@@ -47,17 +50,18 @@ describe("nothing bounded the sum", () => {
     expect((budget * 29) / 1024, "a budget the isolate cannot survive is not a bound").toBeLessThan(heapGate);
   });
 
-  it("stops STARTING fetches at the budget, after the dormancy skip and before the fetch", () => {
-    const skip = CODE.indexOf("if (skipTokens.has(s.token)) continue;");
-    const budget = CODE.indexOf("if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }");
-    // .32 wrapped the fetch in try/finally to release the in-flight reservation.
-    const fetch = CODE.indexOf("r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0);");
-    expect(budget, "budget check missing").toBeGreaterThan(0);
-    expect(budget, "budget check must follow the dormancy skip").toBeGreaterThan(skip);
-    expect(fetch, "budget check must precede the fetch it prevents").toBeGreaterThan(budget);
+  it("stops STARTING fetches at the budget, after the dormancy skip and before the fetch", async () => {
+    // .90 (n423): one start gate (start-gate.ts); the worker's turn is RUN, not spelled.
+    const budget = constOf("SLICE_POSTING_BUDGET");
+    const board = { source: "lever", token: "a" };
+    const spent = await runGate({ queue: [board], fetchedInSlice: budget });
+    expect(spent.started, "budget check must precede the fetch it prevents").toBeNull();
+    expect(spent.deferred).toEqual(["a"]);
+    expect((await runGate({ queue: [board], fetchedInSlice: budget - COLD })).started).toBe("a");
+    expect((await runGate({ queue: [board], fetchedInSlice: budget, dormant: ["a"] })).deferred, "budget check must follow the dormancy skip").toEqual([]);
   });
 
-  it("reserves in-flight worst case, so the check sees what is HELD, not what has landed", () => {
+  it("reserves in-flight worst case, so the check sees what is HELD, not what has landed", async () => {
     // Concurrency 8 x a 2,000 cap = up to 16,000 postings past a check that
     // only looked at landed volume. Three chain deaths in an hour with
     // budgetHit=false, the last completed slice at 10,402, said so.
@@ -70,8 +74,10 @@ describe("nothing bounded the sum", () => {
     // .39: yields instead of exiting — see four-ways-to-lose-a-board.test.ts.
     // .53 inserted the cannot-end escape before the unshift; the reservation
     // check itself is unchanged.
-    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{/);
-    expect(CODE).toMatch(/queue\.unshift\(s\);/);
+    const budget = constOf("SLICE_POSTING_BUDGET");
+    const held = await runGate({ queue: [{ source: "lever", token: "a" }], fetchedInSlice: budget - 2 * COLD, inFlightReserve: 2 * COLD });
+    expect(held.started, "landed is under budget, but landed + held is not").toBeNull();
+    expect([held.queue, held.deferred]).toEqual([["a"], []]);
   });
 
   it("counts what was HELD, not what was stored", () => {

@@ -1964,7 +1964,9 @@ started board reserves its worst case until it returns.
 
 ## n076-fetchedinslice-inflightreserve-slic
 
-Above: `if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {`
+Above: `if (gate === "reserve") {` (until .90 the check was spelled inline as
+landed plus in-flight against SLICE_POSTING_BUDGET; it is the `reserve`
+verdict of start-gate.ts now, n423)
 
 YIELDS, DOES NOT EXIT. `return` ended the worker for the rest of the
 slice, so every reservation trip permanently removed one of the eight
@@ -2045,43 +2047,75 @@ Above: `if (failReason.startsWith("oversize")) {`
 AN OVERSIZE BODY IS A DEFERRAL, NOT A FAILURE.
 
 The byte bound aborted this board's response before the allocation
-existed, which is the whole point — but the board must still come
+existed, which is the whole point, but the board must still come
 back, so this must not reach `failed` (a failed board feeds the
 failure streak, the dormancy prune and the operator's list, and
 none of those is true here: the vendor answered us).
 
-A light-capable vendor ENROLS: greenhouse's next visit omits
-?content=true and the board ingests light, its descriptions
-arriving through backfill-desc's per-JOB endpoint — the same
-landing the auto-light measurement gives a giant, reached one pass
-earlier because the bound fires before the parse instead of after
-it. That is greenhouse ONLY; see LIGHT_CAPABLE_VENDORS for why
-workable's light form would delete descriptions rather than defer
-them.
+By the time a board gets here the visit has already tried what it
+can (since .90): a greenhouse board enrolled in light mode and, gate
+permitting, read its light list in the same visit (n081), and a
+vendor with a slim spec was streamed (n411). What reaches this branch
+is the board neither could read. It is registered by board (n422),
+named in this slice's log line, and pushed onto `budgetSkipped`, the
+channel the failure accounting already excludes. A board whose light
+re-read also crossed the bound is registered at the light list's
+size, which is the size its next visit will meet.
 
-ENROLMENT ALSO GIVES THE BOARD ITS SLOT BACK. The other budget
-deferrals `continue` before `baseAttempted++`, so their board is
-re-offered on the very next slice; this branch is past that line,
-and leaving it there would make an enrolled board wait a full cold
-rotation (6.7h at baseline, ~59h at today's measured p50) for a
-light re-fetch that would have succeeded immediately. So the slot
-is returned exactly when the next attempt would DIFFER. A board
-with no light form is left to the ordinary rotation instead: it
-would abort identically, and re-offering it every slice would burn
-a board slot and a 4MB transfer per pass forever.
+UNTIL .90 THIS BRANCH ALSO "GAVE THE SLOT BACK". On an enrolment it
+took one off `baseAttempted`, meaning to re-offer the board on the
+next slice. But the cold cursor moves by POSITION (`cold + baseAttempted`,
+rotation.ts), so one fewer only started the next slice one place
+earlier: it re-read whichever base board started last in this slice,
+never the board just enrolled, and every board enrolled at the byte
+bound waited a full cold rotation for its light read. Measured on .89
+(2026-10-05/06): speechify enrolled 19:47Z and read light at 01:44Z
+(5h57m), samsara 21:22Z to 02:59Z (5h37m), lush (73 of ~212 in-window
+postings served, 19 of them closed upstream) still waiting. The
+decrement is gone: the enrolled board was started, and the cursor
+counts it.
 
-## n081-light-capable-vendors-has-s-source
+## n081-light-reread-in-the-same-visit
 
-Above: `if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s.token)) {`
+Above: `if (!r) ({ r, failReason } = await lightReread({` and light-reread.ts.
 
-THE SLOT IS RETURNED ONLY IF THE NEXT ATTEMPT WOULD DIFFER.
-The vendor pre-filter is not sufficient on its own: the set
-refuses a greenhouse board whose TOKEN is shared with a vendor
-that has no light form (see lightTokenRefusal), and such a board
-will re-fetch byte-for-byte identically. Handing its slot back on
-a refusal is exactly the "burn a board slot and a 4MB transfer
-per pass forever" the paragraph above says this avoids, so the
-decrement follows the enrolment that actually happened.
+READ THE LIGHT LIST IN THE VISIT THAT FOUND THE CONTENT LIST TOO BIG.
+After the first read fails, `lightReread` decides:
+
+- Only an `oversize` verdict, on a LIGHT_CAPABLE_VENDORS board that
+  was not already light, is offered to the set at all (an already-light
+  board's failed read WAS its light list, so another read would be the
+  same bytes). The enrolment is the existing writer, enrolDynamicLight,
+  under the existing cap (AUTO_LIGHT_CAP 500, `slice(-500)`): F1 adds
+  no enrolment path and changes only when the read happens.
+- If the set refuses the board, nothing is read: the re-fetch would be
+  byte-for-byte identical. If it enrols, the board is read again only
+  when it is greenhouse (the one vendor whose light list differs: it
+  drops ?content=true), not already re-read this slice, and the start
+  gate passes (n423, without the board count: it is the same board, so
+  no second `++boardsDone`). The read takes the board's reservation
+  again and releases it, so other workers see it in flight, and its
+  rows land through the ordinary success path (descriptions omitted,
+  then filled by backfill-desc, as on any light visit).
+- A refused gate defers the board: it stays enrolled, so its next
+  visit reads light, a rotation later. That is the `deferred` count.
+  If it is regularly above zero, .91 adds a one-shot re-offer keyed by
+  board; not now.
+- A light read that fails is never a vendor failure: an oversize
+  verdict replaces the first one (the light list is itself over the
+  bound: liquidpersonnel 13.9 MB, pulse 20.6 MB, which only a streamed
+  reader can heal), any other failure keeps the first verdict, and the
+  board is deferred by n080.
+
+recruitee, workable, teamtailor and pinpoint boards in the registry are
+never re-offered: none has a light form a filler can refill, so their
+abort would repeat identically.
+
+`slice_stats.lightReread` keeps running totals {enrolled, reread, ok,
+deferred, since}, added each slice by the recorder (read-modify-write
+like `slices`, so two concurrent slices can lose an increment):
+enrolled = reread + deferred, and reread - ok counts light reads that
+also failed. A per-slice count would read zero on almost every poll.
 
 ## n082-waituntil-promise-resolve-client-from-job-board
 
@@ -9538,3 +9572,23 @@ so a twin's read still keeps a deferred board's rows "rechecked" and out of the
 token: its success path cannot delete a `source:token` entry, and its sweep
 cannot see one, for as long as a .89 isolate keeps running after the deploy
 (its own oversize visits write bare keys, which .90 re-keys on its next load).
+
+## n423-one-start-gate
+
+Above: `const canStart = (newBoard: boolean) => startGate({` and start-gate.ts.
+
+ONE GATE FOR STARTING A FETCH. The worker loop checked, in order,
+landed postings against SLICE_POSTING_BUDGET, the board count against
+the slice's boardBudget, wall time against SLICE_WALL_BUDGET_MS, heap
+against HEAP_SOFT_LIMIT_MB (an unmeasurable heap never refuses), and
+landed plus in-flight reservation against the posting budget. The
+light re-read (n081) starts a fetch too, and a hand-copied second set
+of checks drifts from the first, so both now call `startGate` through
+the `canStart` closure, which reads the slice's live counters. The
+order is unchanged, so every verdict the loop acted on before it acts
+on the same way: `reserve` waits (n076, n077); the others defer the
+board onto `budgetSkipped`, setting sizeStopped, wallStopped or
+heapStopped as before. The re-read passes no board count, because it
+is the board already started; it does not wait on `reserve`, it
+defers, and it sets no stop flag, since those describe the loop.
+

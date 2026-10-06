@@ -1400,6 +1400,9 @@ const PINNED = {
   // only by a slice that read them, and a slice that could not read the
   // registry writes no freshness-sweep closures (n421). The oversize registry
   // is keyed by board, so a shared token's twin no longer clears it (n422).
+  // A greenhouse board enrolled at the byte bound reads its light list in the
+  // same visit instead of a rotation later, behind the one start gate (n081,
+  // n423); the misaimed cold-cursor decrement is gone (n080).
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.90",
 };

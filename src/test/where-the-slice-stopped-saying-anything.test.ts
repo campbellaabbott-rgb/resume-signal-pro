@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, runGate } from "./helpers/slice-worker";
 
 /**
  * WHERE THE SLICE STOPPED SAYING ANYTHING.
@@ -49,14 +51,17 @@ describe("where the slice stopped saying anything", () => {
     expect(done).toBeLessThan(CODE.indexOf("await stampSliceWork(client, inHotPhase, sliceWallStart);"));
   });
 
-  it("the marks are per board, and bracket its DB work", () => {
+  it("the marks are per board, and bracket its DB work", async () => {
     // .54. Periodic marks reported that the slice always reached 8 boards and
     // never 16 — true, and useless, because 8 IS the budget. A pair per board
     // names which board, and whether it died fetching or storing: 760 lines of
     // existing-row paging, upserts and verification stamps run between them.
     expect(CODE).toMatch(/\+\+boardsDone;\s*await breadcrumb\(client, "board-fetched"/);
     expect(CODE).toMatch(/await breadcrumb\(client, "board-stored", \{ boardsDone, token: s\.token, rows: rows\.length, fetched: fetchedInSlice \}\);/);
-    expect(CODE, "and the budget still bounds how many pairs a slice can write").toMatch(/if \(boardsDone >= boardBudget\)/);
+    // .90 (n423): the worker's turn is RUN against the one start gate (start-gate.ts).
+    const capped = await runGate({ queue: [{ source: "lever", token: "a" }], boardsDone: 8, boardBudget: 8 });
+    expect(capped.started, "and the budget still bounds how many pairs a slice can write").toBeNull();
+    expect(capped.sizeStopped).toBe(true);
   });
 
   it("carries the hop and the heap, and reaches the status action", () => {
