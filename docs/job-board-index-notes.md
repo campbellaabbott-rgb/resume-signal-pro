@@ -687,7 +687,8 @@ The other vendors without a light form (teamtailor, workable, recruitee,
 pinpoint and the rest) are unchanged and still defer here.
 
 SINCE .90 a slice that could not read this row neither writes it nor lets the
-freshness sweep log any closure (n421).
+freshness sweep log any closure (n421), and the registry is keyed by BOARD:
+the bare token, or `source:token` on a shared token (n422).
 
 ## n021-startoffset-is-honoured-only-by-the-paginatin
 
@@ -1897,7 +1898,8 @@ accelerator is never a failed slice.
 
 ## n072-staleexclude
 
-Above: `const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });`
+Above: `const staleExclude = staleExclusion({ oversize: oversizeTokens(OVERSIZE_BOARDS), tries: staleTries });`
+(since .90 the registry is keyed by board, so its keys go as tokens; n422)
 
 Cancelled, not abandoned: the request carries its own abort at the
 deadline, so a slow RPC does not sit unread past the race (the
@@ -3392,7 +3394,8 @@ before is not news.
 
 ## n147-oversizeheld
 
-Above: `const oversizeHeld = agedRows.filter((r) => OVERSIZE_BOARDS.has(String(r.company_token)) && !alreadyTombstoned.has(Strin`
+Above: `const oversizeHeld = agedRows.filter((r) => (!META_READ.oversize || heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS)) && ...`
+(since .90 matched by the row's board, `source` + `company_token`, not its token; n422)
 
 A BOARD WE CANNOT READ IS NOT A BOARD THAT CLOSED.
 
@@ -9430,7 +9433,8 @@ stale lane's tokensOf maps a keyed entry back to its token. NOT DONE (they need
 schema changes and serving-path readers): the verification stamp
 (job_board_verifications PK company_token), job_board_board_state (PK
 company_token, observed_on), attachRecheckedAt, OVERSIZE_BOARDS, and the orphan
-prune, whose company list comes from a token-level facet.
+prune, whose company list comes from a token-level facet. SINCE .90
+OVERSIZE_BOARDS is keyed the same way (n422).
 
 ## n418-verify-stamps-never-deletes
 
@@ -9501,3 +9505,36 @@ deleted and tombstoned), because a false closure is permanent and a skipped one
 costs only that pass's exits. The two writers of light_desc_dynamic are still
 only loadDynamicLight and enrolDynamicLight. Concurrent slices can still
 overwrite each other (whole-row writes); that needs per-key storage.
+
+## n422-oversize-registry-by-board
+
+Above: oversize-registry.ts (loadOversizeEntries, noteOversize, clearOversize,
+heldOversize, oversizeTokens, oversizeStatusRows) and its callers in index.ts:
+loadOversizeBoards, the oversize branch, the success path, the freshness
+sweep's `oversizeHeld`, the stale lane and status `oversizeBoards`.
+
+The registry was keyed by bare token. On the 139 tokens two or three vendors
+share, a twin reached the other board's entry: personio:lush's reads deleted
+greenhouse:lush's entry on every success, and pulse's entry vanished from
+status from 00:45 to 01:32Z on 2026-10-06 as ashby:pulse read. While the entry
+was gone the freshness sweep had no record that greenhouse:lush is deferred,
+so its aged rows would be written into the closure log as closures (n147).
+
+Now keyed like board_failures (n417): `boardKey(source, token, SHARED_TOKENS)`,
+so only shared tokens' keys change and every other key stays the bare token.
+A row an older build wrote by bare token is re-keyed on load by the entry's
+stored `source` (every entry since the registry began carries one), so every
+board registered at deploy keeps its sweep protection; a `source:token` key
+whose token is no longer shared goes back to bare the same way. When one board
+appears under both spellings the later entry wins. The sweep matches a row by
+`boardKey(r.source, r.company_token)`; both aged-row selects carry `source`.
+The stale lane keeps speaking tokens: `get_stalest_boards`' p_exclude and
+classifyStale compare tokens, so the keys go through `keyToken`, deduplicated.
+Status rows keep `token` (the bare token the verifiers filter on) and add `key`.
+
+NOT DONE: the verification stamp is still per token (.91, needs a migration),
+so a twin's read still keeps a deferred board's rows "rechecked" and out of the
+48h missing sweep. During the deploy overlap a .89 isolate still matches by
+token: its success path cannot delete a `source:token` entry, and its sweep
+cannot see one, for as long as a .89 isolate keeps running after the deploy
+(its own oversize visits write bare keys, which .90 re-keys on its next load).

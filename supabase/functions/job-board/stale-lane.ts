@@ -63,7 +63,7 @@
 //      Set/Map; convert meta Records with tokensOf() (own keys only):
 //        catalogued:         new Set(JOB_SOURCES.map((s) => s.token))
 //        quarantinedVendors: quarantinedVendors                 (already a Set)
-//        oversize:           new Set(OVERSIZE_BOARDS.keys())    (already a Map)
+//        oversize:           the registry's tokens (its keys are board keys since .90, n422)
 //        dormant:            tokensOf(boardFailures.dormant)
 //        failing:            tokensOf(boardFailures.failedAt) ∪ tokensOf(streaks)
 //        tries:              readStaleTries(staleMeta?.v)       (meta k = "stale_lane")
@@ -165,7 +165,7 @@ export interface StaleContext {
   catalogued: ReadonlySet<string>;
   /** Vendors under the circuit breaker (meta vendor_breaker.quarantined). */
   quarantinedVendors: ReadonlySet<string>;
-  /** Tokens in OVERSIZE_BOARDS (meta oversize_boards.boards, own keys). */
+  /** Tokens of the boards in OVERSIZE_BOARDS (meta oversize_boards.boards). */
   oversize: ReadonlySet<string>;
   /** Tokens in board_failures.dormant (own keys). */
   dormant: ReadonlySet<string>;
@@ -296,8 +296,8 @@ export function unresolvedTokens(
  * while it is blocked), quarantined (lifts on its own), dormant and failing
  * (other lanes own them and they leave the tail when those lanes stamp them).
  *
- * `oversize` is an Iterable so the call site can pass OVERSIZE_BOARDS.keys()
- * without materialising a Set. Pure: returns a new array, inputs untouched.
+ * `oversize` is an Iterable of tokens (the registry's board keys mapped to
+ * tokens since .90), so the call site need not materialise a Set. Pure: returns a new array, inputs untouched.
  */
 export function staleExclusion(
   ctx: { oversize: Iterable<string>; tries: ReadonlyMap<string, number>; triesMax?: number },

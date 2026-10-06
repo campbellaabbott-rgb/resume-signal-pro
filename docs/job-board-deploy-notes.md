@@ -10,7 +10,7 @@ still pins it.
 
 ## 2026-09-09.90
 
-job-board only (index.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
+job-board only (index.ts, NEW oversize-registry.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
 
 ### A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (F4)
 
@@ -21,6 +21,16 @@ WHAT IT DOES. `readMetaRow` checks `error` (and a throw). On a failed read the l
 NOT DONE. Both rows are still written whole by one isolate, so concurrent slices can still lose each other's writes (last writer wins); a per-key write needs a migration. A fresh isolate whose first read fails holds an empty set for that slice (its light boards fetch ?content=true and defer, nothing is persisted). The stale lane still excludes whatever registry the isolate holds; it is not gated on the read.
 
 VERIFY. No live trigger exists; the proof is `src/test/a-row-a-slice-could-not-read-is-a-row-it-must-not-write.test.ts` (runs the shipped loaders, enrolment, persist and the sweep's ledger loop against a read that fails). Live, read-only: `status.sliceStats.lightSet` (110 at deploy) is one isolate's in-memory count, so a single low reading can be a fresh isolate whose read failed and which wrote nothing; a reading that STAYS far below 110 across slices means the row itself shrank. Read the row with service role (`strandedRemoved` names any sweep).
+
+### A TWIN'S READ CLEARED THE OTHER BOARD'S OVERSIZE ENTRY (F2)
+
+WHAT WAS WRONG. The oversize registry (`oversize_boards`) was keyed by bare token. 139 tokens are carried by two or three vendors, and on those a twin's successful read deleted the other board's entry: personio:lush cleared greenhouse:lush, and pulse's entry left status from 00:45 to 01:32Z on 2026-10-06 while ashby:pulse read, coming back when greenhouse:pulse failed again. With the entry gone the freshness sweep's `oversizeHeld` (n147) no longer knew the greenhouse board was deferred, so its aged rows would be written into the closure log as closures.
+
+WHAT IT DOES. The registry is keyed by board, like board_failures since .89: the bare token, or `source:token` on a shared token, so only shared tokens' keys change. New module `oversize-registry.ts` owns every lookup: an over-bound visit records the board, a successful read clears only that board's entry, and the sweep holds an aged row only if its own board (`source` + `company_token`) is registered. A row written by bare token is re-keyed on load by the entry's stored `source`, so every board registered at deploy keeps its sweep protection. The stale lane still sends tokens (`p_exclude` type unchanged). `status.oversizeBoards` rows keep `token` (still the bare token, so verify-deploy.sh and 89-job-board-ingest.sh read them unchanged) and add `key`. Rationale: docs/job-board-index-notes.md#n422-oversize-registry-by-board.
+
+NOT DONE. The verification stamp is still per token (.91, needs a migration), so a twin's read still keeps a deferred board's rows looking rechecked and out of the 48h missing sweep (the lush ghost rows). While a .89 isolate is still running after the deploy it matches by token: it cannot delete or see a `source:token` entry.
+
+VERIFY (read-only). Use greenhouse:pulse while F3 is not live, otherwise afg (workable, shared with bamboohr). Poll `status` while `cursor.cold` passes the twin's index (ashby:pulse is at about 35,100 by a static reconstruction). Pass: an `oversizeBoards` row with `key: "greenhouse:pulse"` and `token: "pulse"` stays present the whole time (under .89 the entry was gone 00:45-01:32Z). Shared-token entries show `key` = `source:token` once the registry has been rewritten (any slice that records or clears an entry); until then a legacy row shows `key` equal to `token`.
 
 ## 2026-09-09.89
 

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { codeOf } from "./helpers/strip-comments";
+import * as oversizeRegistry from "../../supabase/functions/job-board/oversize-registry.ts";
 
 /**
  * A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (job-board .90, F4).
@@ -112,6 +113,8 @@ function isolate() {
   const exits: Row[][] = [];
   const DYNAMIC_LIGHT = new Set<string>();
   const deps: Record<string, unknown> = {
+    ...oversizeRegistry,
+    SHARED_TOKENS: new Set<string>(),
     DYNAMIC_LIGHT,
     JOB_SOURCES: [{ source: "greenhouse", token: "acme" }],
     LIGHT_CAPABLE_VENDORS: new Set(["greenhouse"]),

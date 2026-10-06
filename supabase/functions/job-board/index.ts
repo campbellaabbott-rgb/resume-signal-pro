@@ -102,6 +102,7 @@ import {
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
+import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens } from "./oversize-registry.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -759,15 +760,7 @@ async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
     console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep logs no exits this slice`);
     return;
   }
-  const rec = (row.v as { boards?: Record<string, { source?: string; mb?: number; at?: string }> } | null)?.boards;
-  OVERSIZE_BOARDS.clear();
-  if (rec && typeof rec === "object") {
-    for (const [tk, e] of Object.entries(rec)) {
-      if (typeof tk === "string" && e && typeof e === "object") {
-        OVERSIZE_BOARDS.set(tk, { source: String(e.source ?? ""), mb: Number(e.mb) || 0, at: String(e.at ?? "") });
-      }
-    }
-  }
+  loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS);
 }
 async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
   if (!META_READ.oversize) return;
@@ -3549,7 +3542,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const { data: slMeta } = await client.from("job_board_meta").select("v").eq("k", "stale_lane").maybeSingle();
       staleTries = readStaleTries(slMeta?.v);
       // Rationale: docs/job-board-index-notes.md#n072-staleexclude
-      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
+      const staleExclude = staleExclusion({ oversize: oversizeTokens(OVERSIZE_BOARDS), tries: staleTries });
       const askStale = (exclude: readonly string[] | null) => withDeadline(
         client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
@@ -3580,7 +3573,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const verdicts: StaleVerdict[] = classifyStale(rows, {
           catalogued: CATALOGUE_TOKENS,
           quarantinedVendors,
-          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          oversize: new Set(oversizeTokens(OVERSIZE_BOARDS)),
           dormant: tokensOf(boardFailures.dormant),
           failing: new Set([...tokensOf(boardFailures.failedAt), ...tokensOf(boardFailures.streaks)]),
           tries: staleTries,
@@ -3783,15 +3776,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // The durable record. slice_stats is one row overwritten every ten
             // minutes; a board that is permanently past the budget has to be
             // nameable long after that.
-            const prev = OVERSIZE_BOARDS.get(s.token);
-            // Dirty on a new board, a materially different size, or a stamp
-            // that has gone stale — so `at` keeps meaning "last seen oversize"
-            // without costing a meta write every ten minutes for a board that
-            // is simply always too big.
-            const prevAge = prev ? Date.now() - new Date(prev.at).getTime() : Infinity;
-            if (!prev || Math.abs(prev.mb - mb) >= 0.1 || !(prevAge < 12 * 3_600_000)) oversizeDirty = true;
-            OVERSIZE_BOARDS.delete(s.token); // re-insert so the cap keeps the most RECENT
-            OVERSIZE_BOARDS.set(s.token, { source: s.source, mb, at: new Date().toISOString() });
+            // Keyed by board (n422); dirty on a new board, a moved size or a 12h-old stamp.
+            if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;
             // Rationale: docs/job-board-index-notes.md#n081-light-capable-vendors-has-s-source
             if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s)) {
               const enrolled = await enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`);
@@ -4998,10 +4984,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
         // greenhouse giant reads fine on its very next visit, and a vendor
         // trimming its payload heals the same way. Left in the registry the
-        // token would keep this board's genuinely aged-out postings out of the
-        // closure log forever — the suppression that protects a live board
-        // would start hiding real exits.
-        if (OVERSIZE_BOARDS.delete(s.token)) oversizeDirty = true;
+        // entry would keep this board's genuinely aged-out postings out of the
+        // closure log forever. Only this board's own entry goes (n422).
+        if (clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;
         // Stamp verification IMMEDIATELY, per board — not at hop end. Heavy hot
         // hops can die post-processing (WORKER_RESOURCE_LIMIT) before hop-end
         // code runs, which silently starved every hot board of stamps while the
@@ -5479,7 +5464,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             { onConflict: "id", ignoreDuplicates: true },
           )).then(() => {}).catch(() => {}));
           // Rationale: docs/job-board-index-notes.md#n147-oversizeheld
-          const oversizeHeld = agedRows.filter((r) => (!META_READ.oversize || OVERSIZE_BOARDS.has(String(r.company_token))) && !alreadyTombstoned.has(String(r.id)));
+          const oversizeHeld = agedRows.filter((r) => (!META_READ.oversize || heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS)) && !alreadyTombstoned.has(String(r.id)));
           for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
           if (oversizeHeld.length > 0) {
             console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} board(s) dropped without a closure-log entry — ${META_READ.oversize ? "OVERSIZE: deferred by the byte budget, not closed" : "the oversize registry was unread this slice"}`);
@@ -8382,13 +8367,7 @@ Deno.serve(async (req) => {
         // Boards past MAX_RESPONSE_BYTES: named, sized and dated, largest
         // first. A deferral is not a failure, so nothing else on this page
         // would ever mention them.
-        oversizeBoards: (() => {
-          const rec = ((overMeta as { data?: { v?: { boards?: Record<string, { source?: string; mb?: number; at?: string }> } } } | null)?.data?.v?.boards) ?? {};
-          return Object.entries(rec)
-            .map(([token, e]) => ({ token, source: String(e?.source ?? ""), mb: Number(e?.mb) || 0, at: String(e?.at ?? "") }))
-            .sort((a, b) => b.mb - a.mb)
-            .slice(0, 50);
-        })(),
+        oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
         descCoverageAgeMin: ageMin((descCov as { data?: { computed_at?: string } } | null)?.data?.computed_at ?? null),
         descCoverage: Array.isArray((descCov as { data?: { v?: unknown } } | null)?.data?.v)

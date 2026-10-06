@@ -1398,7 +1398,8 @@ const PINNED = {
   // sources.ts UNCHANGED.
   // 2026-09-09.90: the light set and the oversize registry are written back
   // only by a slice that read them, and a slice that could not read the
-  // registry writes no freshness-sweep closures (n421).
+  // registry writes no freshness-sweep closures (n421). The oversize registry
+  // is keyed by board, so a shared token's twin no longer clears it (n422).
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.90",
 };

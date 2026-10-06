@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import * as oversizeRegistry from "../../supabase/functions/job-board/oversize-registry.ts";
 
 /**
  * THE ONLY VOLUME GUARD THIS FUNCTION HAD FIRED AFTER THE ALLOCATION IT WAS
@@ -402,7 +403,19 @@ describe("a body read before anything counted it", () => {
       .toMatch(/await loadOversizeBoards\(client\);/);
     const i = CODE.indexOf('if (failReason.startsWith("oversize"))');
     const block = CODE.slice(i, i + 1400);
-    expect(block, "an oversize board must be recorded where it survives the next slice").toMatch(/OVERSIZE_BOARDS\.set\(s\.token,/);
+    // Run the block's registry statements (since .90 keyed by board, n422) and read the Map persistOversizeBoards writes.
+    const runWith = (stmts: string, scope: Record<string, unknown>) => {
+      const all: Record<string, unknown> = { ...oversizeRegistry, SHARED_TOKENS: new Set(["pulse"]), ...scope };
+      return new Function(...Object.keys(all), stmts)(...Object.values(all));
+    };
+    const reg = new Map<string, { source: string; mb: number; at: string }>();
+    const recordStmts = block.slice(0, block.indexOf("budgetSkipped.push(s.token);")).split("\n").filter((l) => l.includes("OVERSIZE_BOARDS")).join("\n");
+    runWith(`let oversizeDirty = false;\n${recordStmts}`, { OVERSIZE_BOARDS: reg, s: { source: "greenhouse", token: "pulse" }, mb: 20.6 });
+    expect(
+      [...reg.keys()],
+      "an oversize board must be recorded where it survives the next slice, under its own board's key (pulse is greenhouse AND ashby)",
+    ).toEqual(["greenhouse:pulse"]);
+    expect(reg.get("greenhouse:pulse")).toMatchObject({ source: "greenhouse", mb: 20.6 });
     // THE CLOSURE LOG IS THE ONE UNCOPYABLE ASSET HERE. A board we are too
     // small to READ has not closed: its postings age past the 30-day window
     // unverified and are dropped, but writing them into the exit ledger would
@@ -411,9 +424,19 @@ describe("a body read before anything counted it", () => {
     const s = CODE.indexOf("const oversizeHeld = agedRows.filter(");
     expect(s, "the freshness sweep no longer looks at the oversize registry at all").toBeGreaterThan(0);
     const sweep = CODE.slice(s, CODE.indexOf('"freshness-sweep"', s) + 40);
-    expect(sweep, "the freshness sweep must exclude oversize boards from the ledger").toMatch(
-      /OVERSIZE_BOARDS\.has\(String\(r\.company_token\)\)/,
-    );
+    const heldStmt = sweep.split("\n").find((l) => l.includes("const oversizeHeld = agedRows.filter("))!;
+    const aged = [
+      { id: "greenhouse:pulse:1", source: "greenhouse", company_token: "pulse" },
+      { id: "ashby:pulse:2", source: "ashby", company_token: "pulse" },
+      { id: "lever:acme:3", source: "lever", company_token: "acme" },
+    ];
+    const held = runWith(`${heldStmt}\nreturn oversizeHeld.map((r) => r.id);`, {
+      OVERSIZE_BOARDS: new Map([["greenhouse:pulse", { source: "greenhouse", mb: 20.6, at: "x" }]]),
+      META_READ: { light: true, oversize: true },
+      agedRows: aged,
+      alreadyTombstoned: new Set<string>(),
+    });
+    expect(held, "the freshness sweep must exclude oversize boards from the ledger: that board's rows, not its token twin's").toEqual(["greenhouse:pulse:1"]);
     // The exclusion rides the one set the ledger line already consults, so
     // there is exactly one filter in front of the exit ledger and the guards
     // that pin that line (a-posting-that-aged-out-must-not-walk-back-in,
