@@ -55,7 +55,7 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-scan-report.2026-10-04.3";
+const FN_BUILD = "send-scan-report.2026-10-06.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

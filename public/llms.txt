@@ -18,7 +18,7 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 
 - [The apply agent](/): Reads your CV, scores every live verified opening against it, and applies for you. What makes it different from bulk auto-appliers:
   - **It writes per role, never one blast.** Each application is drafted against that posting's own text and requirements.
-  - **It answers the employer's REAL screening questions**, parsed from the actual application form on the vendors that publish them (Ashby, Breezy, Greenhouse, Pinpoint, Recruitee, Teamtailor). Where a form is not published, inferred questions are labelled as inferred and never presented as the employer's.
+  - **It answers the employer's REAL screening questions**, parsed from the actual application form on the vendors that publish them (Ashby, Breezy, Greenhouse, Pinpoint, Recruitee). Where a form is not published, inferred questions are labelled as inferred and never presented as the employer's.
   - **It refuses to fabricate.** Asked about experience the CV does not show, it states the gap rather than inventing it — verified in live testing against a Kubernetes question on a CV with no Kubernetes.
   - **It never solves a CAPTCHA, spoofs a fingerprint, or evades a bot check.** On hiring systems that gate applications behind those, the agent prepares the complete application and the human submits it. This is a permanent product boundary, not a current limitation.
   - **It tracks what happens.** Every application is recorded, and because the board watches each posting's lifecycle, it can tell you when a role you applied to came down and whether it was filled or merely re-listed.

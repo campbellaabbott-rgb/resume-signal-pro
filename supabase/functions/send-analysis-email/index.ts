@@ -5,7 +5,7 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-analysis-email.2026-10-04.1";
+const FN_BUILD = "send-analysis-email.2026-10-06.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,8 +76,8 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
   // Validate shareId format before using in URL
   const safeShareId = shareId && /^[a-f0-9]{24,32}$/.test(shareId) ? shareId : null;
   const viewResultsUrl = safeShareId 
-    ? `https://resumebooster.lovable.app/success?share=${safeShareId}`
-    : 'https://resumebooster.lovable.app';
+    ? `https://resumebooster.work/success?share=${safeShareId}`
+    : 'https://resumebooster.work';
 
   return `
 <!DOCTYPE html>
