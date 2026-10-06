@@ -8,14 +8,17 @@
 #
 # WORKDAY IS JUDGED BY WHAT .89 STORED. On .89 a capped Workday board moves one
 # 260-row window of its feed per cold rotation (~6h): the deep lane visited
-# nothing (.90 note, F7). lastSeen is set at insert only, so a served row whose
-# lastSeen is after VD89_AT was written by .89, and each 260-row window of the
-# board's own feed holding such a row was read on .89; the served in-window
-# rows in those windows are what .89 is credited with. Rows served from before
-# the deploy are not (novartis served 220 that way and none was .89's).
-# recheckedAt is one stamp per token: it says something visited, not what was
-# stored. VD89_AT defaults to 19:47Z on 10-05, the first cold rotation run on
-# .89 (a later floor than the deploy credits less, never more).
+# nothing (.90 note, F7). lastSeen is set at insert only, so a served in-window
+# row whose lastSeen is after VD89_AT was written by .89, and those rows alone
+# are what .89 is credited with. A row stored before the floor is never
+# credited, wherever it sits on the feed (novartis served 220 such rows at
+# diagnosis and none was .89s); it leaves the denominator too, so the want is
+# half of the in-window ids the floor left for .89 to store (stored since, or
+# still missing). Each 260-row window holding a .89 row was read on .89: the
+# windows are printed, and the lap (windows x ~6.5h) sets when a short credit
+# FAILs. recheckedAt is one stamp per token: it says something visited, not
+# what was stored. VD89_AT defaults to 19:47Z on 10-05, the first cold rotation
+# run on .89 (a later floor than the deploy credits less, never more).
 VD89_AT=${VD89_AT:-2026-10-05T19:47:00Z}
 echo "== 89. job-board ingest (.89): mid-feed Workday zeros, re-dated ids, USAJOBS, light per board, iCIMS page size =="
 J '{"action":"status"}' > /tmp/vd_89_status.json
@@ -78,8 +81,9 @@ info("deepCursor.laps: tracking "+laps.tracking+", proven "+laps.proven+" (608 /
 // Served counts.
 const rows=rd("/tmp/vd_89_served.tsv").split("\n").filter(Boolean).map((l)=>{const [v,t,...j]=l.split("\t");return {v,t,j:js(j.join("\t"))}});
 const served=(v,t)=>{const r=rows.find((x)=>x.v===v&&x.t===t);return r&&r.j&&typeof r.j.total==="number"?r.j.total:null};
-// Workday: credited = served in-window rows in a 260-row feed window that holds a row inserted after
-// VD89_AT. Positions drift by the postings added since the read, so a window edge is approximate.
+// Workday: credited = served in-window rows inserted after VD89_AT, and nothing else. Rows stored before
+// the floor are out of both sides: want half of the in-window ids left (stored since, or missing).
+// Positions drift by the postings added since the read, so a window edge is approximate.
 const W=260,floor=Date.parse(process.env.VD89_AT),hrs=(Date.now()-floor)/3600000;
 const wd=js(rd("/tmp/vd_89_workday.json"))||{};
 for(const tok of ["adobe~wd5~external_experienced","novartis~wd3~Novartis_Careers","pg~wd5~1000","td~wd3~TD_Bank_Careers","tmobile~wd1~External"]){
@@ -87,15 +91,17 @@ for(const tok of ["adobe~wd5~external_experienced","novartis~wd3~Novartis_Career
   if(!x||!x.feed||!x.served||x.feed.err||x.served.err||!Array.isArray(x.feed.pos)){info("workday:"+tok+" "+((x&&((x.feed&&x.feed.err)||(x.served&&x.served.err)))||"unreadable")+" -- cannot judge");continue}
   const at=new Map(x.feed.pos.map((p)=>[p.id,p.at]));
   const inWin=new Set(x.feed.pos.filter((p)=>p.d===null||p.d<=30).map((p)=>p.id));
-  const since=x.served.rows.filter((r)=>Date.parse(r.lastSeen)>=floor);
+  const isNew=(r)=>Date.parse(r.lastSeen)>=floor;
+  const since=x.served.rows.filter(isNew);
   const read=new Set(since.filter((r)=>at.has(r.id)).map((r)=>Math.floor(at.get(r.id)/W)));
   const servedIn=x.served.rows.filter((r)=>inWin.has(r.id));
-  const credited=servedIn.filter((r)=>read.has(Math.floor(at.get(r.id)/W))).length;
+  const credited=servedIn.filter(isNew).length,older=servedIn.length-credited,left=inWin.size-older;
   const lap=Math.max(1,Math.ceil(Math.min(x.feed.total||inWin.size,2000)/W)),lapH=lap*6.5;
-  const want=Math.ceil(inWin.size*0.5);
+  const want=Math.ceil(left*0.5);
   const wins=[...read].sort((a,b)=>a-b).map((w)=>"["+w*W+","+(w+1)*W+")").join(" ")||"none";
-  const msg="workday:"+tok+" credits .89 with "+credited+" of "+inWin.size+" in-window ids on its own feed (want at least "+want+"): windows holding a row inserted since "+process.env.VD89_AT+": "+wins+", of "+lap+" in its lap (feed total "+x.feed.total+"); serves "+x.served.total+" ("+servedIn.length+" in-window, "+since.length+" inserted since, "+(x.served.rows.length-servedIn.length)+" not in-window on the feed)";
-  if(credited>=want)ok(true,msg);
+  const msg="workday:"+tok+" credits .89 with "+credited+" of "+left+" in-window ids left for it to store (want at least "+want+"; "+inWin.size+" in-window on its own feed, "+older+" served from before the floor and not credited): windows holding a row inserted since "+process.env.VD89_AT+": "+wins+", of "+lap+" in its lap (feed total "+x.feed.total+"); serves "+x.served.total+" ("+servedIn.length+" in-window, "+since.length+" inserted since, "+(x.served.rows.length-servedIn.length)+" not in-window on the feed)";
+  if(left===0)info(msg+" -- every in-window id was stored before the floor: nothing to credit .89 with or against");
+  else if(credited>=want)ok(true,msg);
   else console.log((v89&&hrs>=lapH?"FAIL":"INFO")+"  "+msg+(hrs<lapH?" -- one window a cold rotation (~6.5h) on .89, so a lap is ~"+Math.round(lapH)+"h after the floor; "+Math.round(hrs)+"h so far":""));
 }
 const us=served("usajobs","usajobs");

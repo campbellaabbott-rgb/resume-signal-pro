@@ -83,6 +83,12 @@ const hrs=Number.isFinite(at)?(Date.now()-at)/3600000:0,ROT=393/60;
 info("deploy instant "+(Number.isFinite(at)?new Date(at).toISOString()+" ("+(Number.isFinite(atEnv)?"VD90_AT":"sliceStats.lightReread.since")+"), "+hrs.toFixed(1)+"h ago":"unknown (not .90 yet)")+"; a board visited by the cold rotation is judged after "+ROT.toFixed(1)+"h, pg after "+(2*ROT).toFixed(1)+"h");
 const due=(h)=>v90&&hrs>=h;
 const verdict=(good,h,msg,wait)=>console.log((good?"PASS":(due(h)?"FAIL":"INFO"))+"  "+msg+(good||due(h)?"":" -- "+(v90?wait+"; "+hrs.toFixed(1)+"h of "+h.toFixed(1)+"h so far":"not .90 yet")));
+// Greenhouse registry entries; one stamped at or after the deploy was written by a .90 visit.
+const ob=Array.isArray(st.oversizeBoards)?st.oversizeBoards:[];
+const ghE=ob.filter((e)=>e.source==="greenhouse");
+const fresh=(e)=>Number.isFinite(at)&&Date.parse(e.at)>=at;
+const ghNew=ghE.filter(fresh),ghOld=ghE.filter((e)=>!fresh(e));
+const ghName=(e)=>(e.key||e.source+":"+e.token)+" "+e.mb+"MB at "+e.at;
 // F1: sliceStats.lightReread = running totals {enrolled, reread, ok, deferred, since}.
 const nn=(x)=>Number.isInteger(x)&&x>=0;
 const shape=!!lr&&typeof lr==="object"&&["enrolled","reread","ok","deferred"].every((k)=>nn(lr[k]))&&Number.isFinite(atLr);
@@ -92,23 +98,24 @@ if(shape){
   const lh=(Date.now()-atLr)/3600000;
   if(lh<24)info("lightReread covers "+lh.toFixed(1)+"h; the 24h reading (enrolled >= 1, ok == reread, deferred near 0) is due at "+new Date(atLr+86400000).toISOString());
   else console.log((lr.enrolled>=1?"PASS":"INFO")+"  lightReread.enrolled = "+lr.enrolled+" over "+lh.toFixed(0)+"h"+(lr.enrolled>=1?"":" (no greenhouse board crossed the byte bound: the path is unexercised, not broken)"));
-  ok(lr.ok===lr.reread,"lightReread.ok = reread ("+lr.ok+" of "+lr.reread+"): every light re-read landed"+(lr.ok===lr.reread?"":" -- a light list itself over the bound is the one expected cause, and such a board must then land through the streamed read and leave oversizeBoards; read the logs for `streamed read of greenhouse:`"));
+  console.log((lr.ok===lr.reread?"PASS":"INFO")+"  lightReread.ok = reread ("+lr.ok+" of "+lr.reread+")"+(lr.ok===lr.reread?": every light re-read landed":": "+(lr.reread-lr.ok)+" light re-read(s) did not land -- by design when the light list is itself over the bound and the streamed read lands the board; "+(ghNew.length?"the greenhouse entries registered on a .90 visit are judged below":"no greenhouse board is registered from a .90 visit, so each left oversizeBoards")+" (logs `streamed read of greenhouse:`)"));
   console.log((lr.deferred===0?"PASS":"INFO")+"  lightReread.deferred = "+lr.deferred+(lr.deferred===0?"":" (the start gate refused the re-read; each such board reads light on its next visit, a rotation later. Regularly above 0 = .91 adds a one-shot re-offer lane)"));
 }
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<=LC&&LC===500,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (cap stays 500)");
-info("lightSet "+LS+" against 110 at diagnosis"+(shape?" and lightReread.enrolled "+lr.enrolled:"")+" (the in-memory count of one isolate; the content-payload threshold path enrols too, so a rise above enrolled is that path. Staying far below 110 across runs = the row shrank: read it with service role)");
+info("lightSet "+LS+" against 110 at diagnosis"+(shape?" and lightReread.enrolled "+lr.enrolled:"")+" (the in-memory count of one isolate; the content-payload threshold path enrols too, so a rise above enrolled is that path; enrolled can also rise with no change to the row, when an isolate whose light-row read failed re-enrols in memory boards the row already holds. Staying far below 110 across runs = the row shrank: read it with service role)");
 // F2: status rows carry the board key.
-const ob=Array.isArray(st.oversizeBoards)?st.oversizeBoards:[];
 const badKey=ob.filter((e)=>!(typeof e.key==="string"&&(e.key===e.token||e.key===e.source+":"+e.token)));
 late(ob.length>0&&badKey.length===0,"oversizeBoards rows carry key = token or source:token ("+ob.length+" rows, oversizeBoardCount "+st.oversizeBoardCount+")"+(badKey.length?"; without a valid key: "+badKey.slice(0,6).map((e)=>(e.source||"?")+":"+e.token+" key="+JSON.stringify(e.key)).join(", "):""));
 const sharedKeys=ob.filter((e)=>typeof e.key==="string"&&e.key.includes(":"));
 info("shared-token registry keys: "+(sharedKeys.map((e)=>e.key).join(", ")||"none")+" (a read by the twin must not remove one: poll status while cursor.cold passes the twin, e.g. afg on workable/bamboohr)");
-// F1 + F3: greenhouse registry entries narrow to none.
-const ghE=ob.filter((e)=>e.source==="greenhouse");
-const ghNew=Number.isFinite(at)?ghE.filter((e)=>Date.parse(e.at)>=at):[];
-if(ghNew.length)ok(false,"greenhouse boards deferred as oversize on a .90 visit: "+ghNew.map((e)=>(e.key||e.source+":"+e.token)+" "+e.mb+"MB at "+e.at).join(", ")+" (the light re-read was refused by the start gate, or the streamed read failed: logs `light re-read:` / `streamed read of greenhouse:`)");
-verdict(ghE.length===0,ROT,"greenhouse oversizeBoards entries: "+(ghE.map((e)=>(e.key||e.source+":"+e.token)+" "+e.mb+"MB at "+e.at).join(", ")||"none")+" (lush, pulse, liquidpersonnel on 2026-10-06 03:20Z; pulse and liquidpersonnel at 16:40Z; want none)","each leaves at its cold turn");
+// F1 + F3: greenhouse registry entries narrow to none. One a .90 visit registered may be a one-off deferral
+// (gate refused the light re-read, the re-read failed for another reason, the stream did not start or finish)
+// until its next turn has passed. A board deferred at every turn is re-stamped each time, so its stamp alone
+// cannot FAIL it: the named boards are judged by their served lines below.
+for(const e of ghNew){const eh=(Date.now()-Date.parse(e.at))/3600000,past=v90&&eh>=ROT;
+  console.log((past?"FAIL":"INFO")+"  greenhouse board deferred as oversize on a .90 visit: "+ghName(e)+(past?", still registered "+eh.toFixed(1)+"h later, past its next cold turn":" -- a one-off deferral when the start gate refused its light re-read (lightReread.deferred "+(shape?lr.deferred:"?")+"), the light re-read failed for another reason, or its streamed light read did not start or finish; "+(v90?"it reads at its next turn, FAIL if still registered "+Math.round(ROT*60)+" min after this stamp. A light list the stream can never read is re-stamped at every turn and stays INFO here: the same key in runs a rotation apart is that defect":"not .90 yet"))+" (logs `light re-read:` / `streamed read of greenhouse:`)");}
+verdict(ghOld.length===0,ROT,"greenhouse oversizeBoards entries: "+(ghOld.map(ghName).join(", ")||"none")+" registered before the deploy"+(ghNew.length?" ("+ghNew.length+" more from a .90 visit, judged above)":"")+" (lush, pulse, liquidpersonnel on 2026-10-06 03:20Z; pulse and liquidpersonnel at 16:40Z; want none)","each leaves at its cold turn");
 // F1 + F3: served against the light list of the board itself.
 const D=js(rd("/tmp/vd_90_data.json"))||{};
 for(const t of ["liquidpersonnel","pulse","lush"]){

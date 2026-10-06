@@ -30,11 +30,13 @@ export interface LightRereadInput<R> {
 /**
  * After a failed first read. Returns the read that landed, or null with the verdict the oversize
  * branch defers on: the light read's own oversize verdict, else the first read's, so a re-read
- * never turns a deferral into a vendor failure.
+ * never turns a deferral into a vendor failure. lightOversize: the light list itself was refused
+ * by the byte bound in this visit, the only list the greenhouse stream may read (n424).
  */
-export async function lightReread<R>(v: LightRereadInput<R>): Promise<{ r: R | null; failReason: string }> {
-  const kept = { r: null, failReason: v.failReason };
-  if (!v.failReason.startsWith("oversize") || !v.lightCapable || v.light) return kept;
+export async function lightReread<R>(v: LightRereadInput<R>): Promise<{ r: R | null; failReason: string; lightOversize: boolean }> {
+  const oversize = v.failReason.startsWith("oversize");
+  const kept = { r: null, failReason: v.failReason, lightOversize: oversize && v.light };
+  if (!oversize || !v.lightCapable || v.light) return kept;
   if (!(await v.enrol())) return kept;
   v.stats.enrolled++;
   const key = `${v.board.source}:${v.board.token}`;
@@ -48,9 +50,10 @@ export async function lightReread<R>(v: LightRereadInput<R>): Promise<{ r: R | n
   try { x = await v.read(); } catch (e) { x = { r: null, failReason: String((e as Error)?.message ?? e) }; }
   if (x.r) {
     v.stats.ok++;
-    return { r: x.r, failReason: "" };
+    return { r: x.r, failReason: "", lightOversize: false };
   }
-  return { r: null, failReason: x.failReason.startsWith("oversize") ? x.failReason : v.failReason };
+  const own = x.failReason.startsWith("oversize");
+  return { r: null, failReason: own ? x.failReason : v.failReason, lightOversize: own };
 }
 
 /** slice_stats.lightReread: running totals across slices, from the first slice that wrote them. */

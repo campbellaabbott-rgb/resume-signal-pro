@@ -2124,8 +2124,11 @@ After the first read fails, `lightReread` decides:
 - A light read that fails is never a vendor failure: an oversize
   verdict replaces the first one (the light list is itself over the
   bound: liquidpersonnel 13.9 MB, pulse 20.6 MB, which the streamed
-  light read heals in the same visit, n424), any other failure keeps the
-  first verdict, and a board neither read reaches is deferred by n080.
+  light read heals in the same visit, n424), any other failure (timeout,
+  5xx, 429) keeps the first verdict, and a board neither read reaches is
+  deferred by n080. `lightOversize` says which: true only when the list
+  the bound refused was the light list (light at the start, or the
+  re-read's own verdict), the one case the greenhouse stream may read.
 
 recruitee, workable, teamtailor and pinpoint boards in the registry are
 never re-offered: none has a light form a filler can refill, so their
@@ -3448,8 +3451,9 @@ before is not news.
 
 ## n147-oversizeheld
 
-Above: `const oversizeHeld = agedRows.filter((r) => (!META_READ.oversize || heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS)) && ...`
-(since .90 matched by the row's board, `source` + `company_token`, not its token; n422)
+Above: `const oversizeHeld = agedRows.filter((r) => heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS) && ...`
+(since .90 matched by the row's board, `source` + `company_token`, not its token; n422;
+and the sweep runs only in a slice that read the registry, n421)
 
 A BOARD WE CANNOT READ IS NOT A BOARD THAT CLOSED.
 
@@ -9545,21 +9549,31 @@ stranded cursor cannot reach the dormancy prune either.
 ## n421-a-row-not-read-is-not-written
 
 Above: `META_READ`, `readMetaRow`, loadDynamicLight, loadOversizeBoards,
-persistOversizeBoards, enrolDynamicLight and the freshness sweep's
-`oversizeHeld`. The light set and the oversize registry are reloaded at every
-slice start and written back whole. supabase-js returns a failed read as
-`{ data: null, error }`, and both loaders read `data` only, so a timeout cleared
-the set and the slice's next enrolment or dirty persist wrote the near-empty set
-over the row. Now a failed read (error or throw) keeps the set the isolate
-already held and marks the row unread until the next load; while unread, an
-enrolment is admitted in memory but not persisted and the registry is not
-persisted at all. A missing row is a read (empty set, writes resume). The sweep
-fails closed: with the registry unread it cannot tell an oversize board from a
-closed one, so every aged row is held out of the closure log that pass (still
-deleted and tombstoned), because a false closure is permanent and a skipped one
-costs only that pass's exits. The two writers of light_desc_dynamic are still
-only loadDynamicLight and enrolDynamicLight. Concurrent slices can still
-overwrite each other (whole-row writes); that needs per-key storage.
+persistOversizeBoards, enrolDynamicLight and the freshness sweep's aged-row
+select (`META_READ.oversize` in its loop condition). The light set and the
+oversize registry are reloaded at every slice start and written back whole.
+supabase-js returns a failed read as `{ data: null, error }`, and both loaders
+read `data` only, so a timeout cleared the set and the slice's next enrolment
+or dirty persist wrote the near-empty set over the row. Now a failed read
+(error or throw) keeps the set the isolate already held and marks the row
+unread until the next load; while unread, an enrolment is admitted in memory
+but not persisted and the registry is not persisted at all. A missing row is a
+read (empty set, writes resume). The sweep fails closed by not running: with
+the registry unread it cannot tell an oversize board from a closed one, so it
+selects no aged rows that pass, and writes no closure, no tombstone and no
+delete. A false closure is permanent, and so is a true one lost: deleting every
+aged row without its exit (the first .90 draft held them all) would have
+dropped up to FRESH_PRUNE_MAX true exits across every board, to protect the ~37
+oversize ones. Skipping loses nothing: the list already hides aged rows (it
+filters `effective_posted` against the same cutoff the sweep selects on), and
+the next pass with a readable registry sweeps them with their exits and the
+oversize holds. A fresh isolate whose first light read fails holds an empty
+set: its light boards fetch ?content=true, and one over the bound is
+re-enrolled in memory and re-read light in the same visit (n081), one extra
+aborted 4 MB fetch each, counted in lightReread.enrolled and reread although
+the row already holds it. The two writers of light_desc_dynamic are still only
+loadDynamicLight and enrolDynamicLight. Concurrent slices can still overwrite
+each other (whole-row writes); that needs per-key storage.
 
 ## n422-oversize-registry-by-board
 
@@ -9617,7 +9631,7 @@ defers, and it sets no stop flag, since those describe the loop.
 
 Above: `SLIM_SPECS.greenhouse` (slim-stream.ts), the greenhouse branch of
 `readOversizeBoard`, and the greenhouse clause of the worker's streamed-read
-condition (`lightListRead`).
+condition (`lightOversize`, from lightReread).
 
 A GREENHOUSE LIGHT LIST TOO BIG TO HOLD IS READ A POSTING AT A TIME. Two
 greenhouse boards were dark for good: their LIGHT lists, the form without
@@ -9644,14 +9658,18 @@ ONLY THE LIGHT LIST IS STREAMED, and only one this visit read under the start
 gate. The streamed read re-requests `listUrl(s)`, which is the content list
 (`?content=true`, every description) for a board that is not light, so the
 worker streams a greenhouse board only when `isLight(s)` holds at that moment
-AND this visit already read the light list: the board was light at the start
-(the read that failed was the light list), or the light re-read (n081) ran.
-The second half matters: when the start gate refuses the re-read
-(posting budget, wall, heap), the board is enrolled, so `isLight` is true,
-but no light read passed the gate; the streamed read checks only wall and
-heap, so without that half it would read the light list in the re-read's
-place, past the posting budget. Such a board stays deferred and reads light
-on its next visit, as in n081.
+AND the byte bound refused the light list itself in this visit: the board was
+light at the start (the read that failed was the light list), or the light
+re-read (n081) ran and its own verdict was oversize. The second half matters
+twice. When the start gate refuses the re-read (posting budget, wall, heap),
+the board is enrolled, so `isLight` is true, but no light read passed the
+gate; the streamed read checks only wall and heap, so it would read the light
+list in the re-read's place, past the posting budget. And when the light
+re-read failed for another reason (a 20 s timeout, a 5xx, a 429), nothing
+showed the light list over the bound; streaming it would be a third fetch of
+an endpoint that just failed, up to 30 s of a worker, registered at the
+content list's size. Either board stays deferred and reads light on its next
+visit, as in n081.
 
 Order on a failed greenhouse fetch: light re-read (n081), then the streamed
 light read, then deferral (n080). For liquidpersonnel and pulse, already

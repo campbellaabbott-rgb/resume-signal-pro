@@ -761,7 +761,7 @@ async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
   const row = await readMetaRow(client, "oversize_boards");
   META_READ.oversize = row.read;
   if (!row.read) {
-    console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep logs no exits this slice`);
+    console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep skipped this slice`);
     return;
   }
   loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS);
@@ -3756,14 +3756,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
         // Rationale: docs/job-board-index-notes.md#n081-light-reread-in-the-same-visit
-        let lightListRead = isLight(s);
-        if (!r) ({ r, failReason } = await lightReread({
-          board: s, failReason, lightCapable: LIGHT_CAPABLE_VENDORS.has(s.source), light: lightListRead,
+        let lightOversize = false;
+        if (!r) ({ r, failReason, lightOversize } = await lightReread({
+          board: s, failReason, lightCapable: LIGHT_CAPABLE_VENDORS.has(s.source), light: isLight(s),
           enrol: () => enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`),
           canStart: () => canStart(false) === "ok",
           read: async () => {
             let why = "";
-            lightListRead = true;
             inFlightReserve += reserve;
             try { return { r: await fetchBoard(s, (m) => { why = m; }, 0), failReason: why }; }
             finally { inFlightReserve -= reserve; }
@@ -3771,7 +3770,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           done: lightRereadDone, stats: lightStats,
         }));
         // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read, #n424-greenhouse-streamed-light-read
-        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightListRead && isLight(s))) && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s))) && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
           inFlightReserve += reserve;
           try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
           finally { inFlightReserve -= reserve; }
@@ -5414,7 +5413,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     {
       const freshCutoffIso = new Date(freshCutoffMs).toISOString();
       const ids: string[] = [];
-      for (let from = 0; ids.length < FRESH_PRUNE_MAX; from += 1000) {
+      // Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written
+      if (!META_READ.oversize) console.warn("[JOB-BOARD] freshness sweep skipped: the oversize registry was unread this slice, so aged rows wait for the next pass (the list already hides them)");
+      for (let from = 0; META_READ.oversize && ids.length < FRESH_PRUNE_MAX; from += 1000) {
         const take = Math.min(1000, FRESH_PRUNE_MAX - ids.length);
         const { data: page, error } = await client
           .from("job_board_postings")
@@ -5476,10 +5477,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             { onConflict: "id", ignoreDuplicates: true },
           )).then(() => {}).catch(() => {}));
           // Rationale: docs/job-board-index-notes.md#n147-oversizeheld
-          const oversizeHeld = agedRows.filter((r) => (!META_READ.oversize || heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS)) && !alreadyTombstoned.has(String(r.id)));
+          const oversizeHeld = agedRows.filter((r) => heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS) && !alreadyTombstoned.has(String(r.id)));
           for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
           if (oversizeHeld.length > 0) {
-            console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} board(s) dropped without a closure-log entry — ${META_READ.oversize ? "OVERSIZE: deferred by the byte budget, not closed" : "the oversize registry was unread this slice"}`);
+            console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} OVERSIZE board(s) dropped without a closure-log entry — the board is deferred by the byte budget, not closed`);
           }
           const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
           if (freshlyDead.length === 0) continue;

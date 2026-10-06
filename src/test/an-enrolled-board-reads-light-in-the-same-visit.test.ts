@@ -168,7 +168,7 @@ describe("lightReread: the decision, case by case", () => {
     ] as const) {
       const { input, calls, stats } = base(o as never);
       const out = await lightReread(input);
-      expect(out, why).toEqual({ r: null, failReason: input.failReason });
+      expect(out, why).toEqual({ r: null, failReason: input.failReason, lightOversize: why === "already light" });
       expect(calls.read, why).toBe(0);
       expect(stats.reread, why).toBe(0);
     }
@@ -183,18 +183,18 @@ describe("lightReread: the decision, case by case", () => {
 
   it("gate refuses: deferred with the first verdict", async () => {
     const { input, calls, stats } = base({ canStart: () => false });
-    expect(await lightReread(input)).toEqual({ r: null, failReason: "oversize 6.1MB" });
+    expect(await lightReread(input), "the content list was refused, not the light list").toEqual({ r: null, failReason: "oversize 6.1MB", lightOversize: false });
     expect(calls.read).toBe(0);
     expect(stats).toEqual({ enrolled: 1, reread: 0, ok: 0, deferred: 1 });
   });
 
   it("light read also oversize: its own verdict, one read; another failure or a throw: the first verdict", async () => {
     const over = base({ read: async () => ({ r: null, failReason: "oversize 13.9MB" }) });
-    expect(await lightReread(over.input)).toEqual({ r: null, failReason: "oversize 13.9MB" });
+    expect(await lightReread(over.input), "the light list itself was refused by the bound").toEqual({ r: null, failReason: "oversize 13.9MB", lightOversize: true });
     const other = base({ read: async () => ({ r: null, failReason: "HTTP 503" }) });
-    expect(await lightReread(other.input)).toEqual({ r: null, failReason: "oversize 6.1MB" });
+    expect(await lightReread(other.input), "the light list failed for another reason: nothing showed it over the bound").toEqual({ r: null, failReason: "oversize 6.1MB", lightOversize: false });
     const thrown = base({ read: async () => { throw new Error("boom"); } });
-    expect(await lightReread(thrown.input)).toEqual({ r: null, failReason: "oversize 6.1MB" });
+    expect(await lightReread(thrown.input)).toEqual({ r: null, failReason: "oversize 6.1MB", lightOversize: false });
     for (const x of [over, other, thrown]) expect(x.stats).toEqual({ enrolled: 1, reread: 1, ok: 0, deferred: 0 });
   });
 

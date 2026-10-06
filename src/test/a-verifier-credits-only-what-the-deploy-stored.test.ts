@@ -47,35 +47,48 @@ const run89 = (rows: Array<{ id: string; lastSeen: string }>, floorAgoH: number)
 const rowsAt = (from: number, to: number, lastSeen: string) =>
   Array.from({ length: to - from }, (_, k) => ({ id: `workday:${NOV}:R${from + k}`, lastSeen }));
 
-describe("section 89 credits a Workday board with the feed windows .89 read", () => {
+describe("section 89 credits a Workday board with the rows .89 stored, and nothing older", () => {
   it("finds its judging block", () => {
     expect(judge89, "no node block reading vd_89_served.tsv and vd_89_status.json").not.toBe("");
   });
 
-  it("rows inserted after the floor in two windows credit both windows", () => {
+  it("rows inserted after the floor in two windows are credited, and both windows are named as read", () => {
     const out = run89([...rowsAt(0, 260, iso(20 * H)), ...rowsAt(260, 400, iso(10 * H))], 30);
     expect(out, out.join("\n")).toHaveLength(1);
-    expect(out[0]).toMatch(/^PASS .* credits \.89 with 400 of 520 in-window ids/);
+    expect(out[0]).toMatch(/^PASS .* credits \.89 with 400 of 520 in-window ids left for it to store \(want at least 260; 520 in-window on its own feed, 0 served from before the floor/);
     expect(out[0]).toContain("[0,260) [260,520)");
   });
 
   it("rows served from before the floor credit nothing, however many there are (the novartis 220)", () => {
     const out = run89(rowsAt(0, 450, iso(48 * H)), 30);
     expect(out, out.join("\n")).toHaveLength(1);
-    expect(out[0]).toMatch(/^FAIL .* credits \.89 with 0 of 520 in-window ids/);
-    expect(out[0]).toContain("windows holding a row inserted since");
+    expect(out[0]).toMatch(/^FAIL .* credits \.89 with 0 of 70 in-window ids left for it to store/);
+    expect(out[0]).toContain("450 served from before the floor and not credited");
     expect(out[0]).toMatch(/: none, of 4 in its lap/);
   });
 
-  it("an old row is credited only inside a window a .89 insert proves was read", () => {
+  it("one .89 insert does not credit the older rows around it: a window it proves was read lends them nothing", () => {
+    // One row inserted after the floor at the head of the feed, 259 older rows behind it in the same
+    // window, and windows [260,520) never read: under window credit this passed with 260 of 520.
+    const out = run89([...rowsAt(0, 1, iso(20 * H)), ...rowsAt(1, 260, iso(48 * H))], 30);
+    expect(out, out.join("\n")).toHaveLength(1);
+    expect(out[0]).toMatch(/^FAIL .* credits \.89 with 1 of 261 in-window ids left for it to store \(want at least 131/);
+    expect(out[0]).toContain("259 served from before the floor and not credited");
+    expect(out[0]).toContain(": [0,260), of 4 in its lap");
+  });
+
+  it("older rows leave the denominator too: a board .89 stored everything it could on passes, its old rows uncredited", () => {
     const out = run89([...rowsAt(0, 260, iso(20 * H)), ...rowsAt(260, 520, iso(48 * H))], 30);
-    expect(out[0]).toMatch(/^PASS .* credits \.89 with 260 of 520 in-window ids/);
+    expect(out[0]).toMatch(/^PASS .* credits \.89 with 260 of 260 in-window ids left for it to store/);
+    expect(out[0]).toContain("260 served from before the floor and not credited");
     expect(out[0]).not.toContain("[260,520)");
+    const all = run89(rowsAt(0, 520, iso(48 * H)), 30);
+    expect(all[0], "nothing left to store is not a pass").toMatch(/^INFO .* credits \.89 with 0 of 0 .*nothing to credit \.89 with or against/);
   });
 
   it("before a whole lap has passed since the floor, a short credit is INFO, not FAIL", () => {
     const out = run89(rowsAt(0, 450, iso(48 * H)), 10);
-    expect(out[0]).toMatch(/^INFO .* credits \.89 with 0 of 520/);
+    expect(out[0]).toMatch(/^INFO .* credits \.89 with 0 of 70/);
     expect(out[0]).toMatch(/a lap is ~26h after the floor; 10h so far/);
   });
 });
@@ -136,7 +149,7 @@ describe("section 90 judges the .90 claims", () => {
     const out = run90(healthy(36));
     expect(fails(out), out.join("\n")).toEqual([]);
     for (const re of [/lightReread counters agree/, /lightReread\.ok = reread/, /lightReread\.deferred = 0/, /oversizeBoards rows carry key/,
-      /greenhouse oversizeBoards entries: none/, /greenhouse:pulse serves 77 of 79/, /names vendors in ignoredFilters/, /not an alias/,
+      /greenhouse oversizeBoards entries: none registered before the deploy/, /greenhouse:pulse serves 77 of 79/, /names vendors in ignoredFilters/, /not an alias/,
       /deepCursor\.lane visited == selected in 2 of 2/, /bootstrapQueue\.lastSlice\.drained = 24/, /pg~wd5~1000 serves 465 of 471/])
       expect(line(out, re), out.join("\n")).toMatch(/^PASS/);
   });
@@ -175,14 +188,44 @@ describe("section 90 judges the .90 claims", () => {
     }
   });
 
-  it("a greenhouse board re-registered by a .90 visit FAILs at once", () => {
+  it("a greenhouse board registered on a .90 visit is a designed deferral until its next turn has passed, then FAILs", () => {
     const fx = healthy(2);
     const ent = { token: "liquidpersonnel", key: "liquidpersonnel", source: "greenhouse", mb: 4, at: iso(H) };
     for (const s of [fx.status0, fx.status1]) s.oversizeBoards = [...s.oversizeBoards, ent];
-    expect(line(run90(fx), /deferred as oversize on a \.90 visit: liquidpersonnel/)).toMatch(/^FAIL/);
+    const now = run90(fx);
+    expect(fails(now), now.join("\n")).toEqual([]);
+    expect(line(now, /deferred as oversize on a \.90 visit: liquidpersonnel/)).toMatch(/^INFO .*FAIL if still registered 393 min after/);
+    const late = healthy(10);
+    const stale = { ...ent, at: iso(7 * H) };
+    for (const s of [late.status0, late.status1]) s.oversizeBoards = [...s.oversizeBoards, stale];
+    expect(line(run90(late), /deferred as oversize on a \.90 visit: liquidpersonnel/)).toMatch(/^FAIL .*still registered 7\.0h later, past its next cold turn/);
   });
 
-  it("counters that disagree, a light re-read that did not land, and a row without its key FAIL", () => {
+  it("a light re-read the start gate refused is not a FAIL, though the board it deferred registers on a .90 visit", () => {
+    const fx = healthy(36);
+    for (const s of [fx.status0, fx.status1]) {
+      s.sliceStats.lightReread = { ...s.sliceStats.lightReread, enrolled: 3, reread: 2, ok: 2, deferred: 1 };
+      s.oversizeBoards = [...s.oversizeBoards, { token: "acme", key: "acme", source: "greenhouse", mb: 4.2, at: iso(H) }];
+    }
+    const out = run90(fx);
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(line(out, /lightReread\.deferred = 1/)).toMatch(/^INFO/);
+    expect(line(out, /deferred as oversize on a \.90 visit: acme/)).toMatch(/^INFO .*lightReread\.deferred 1/);
+  });
+
+  it("on .89 with VD90_AT set, a greenhouse entry .89 re-stamps after that instant is INFO", () => {
+    const fx = healthy(36);
+    for (const s of [fx.status0, fx.status1]) {
+      Object.assign(s, { version: "2026-09-09.89" });
+      delete (s.sliceStats as Record<string, unknown>).lightReread;
+      s.oversizeBoards = [...s.oversizeBoards, { token: "pulse", key: "pulse", source: "greenhouse", mb: 20.6, at: iso(H) }];
+    }
+    const out = run90(fx, { VD90_AT: iso(3 * H) });
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(line(out, /deferred as oversize on a \.90 visit: pulse/)).toMatch(/^INFO .*not \.90 yet/);
+  });
+
+  it("counters that disagree and a row without its key FAIL; a light re-read that did not land is INFO, judged by the registry", () => {
     const fx = healthy(36);
     for (const s of [fx.status0, fx.status1]) {
       s.sliceStats.lightReread = { ...s.sliceStats.lightReread, enrolled: 4, reread: 2, ok: 1, deferred: 1 };
@@ -190,8 +233,16 @@ describe("section 90 judges the .90 claims", () => {
     }
     const out = run90(fx);
     expect(line(out, /lightReread counters agree/)).toMatch(/^FAIL/);
-    expect(line(out, /lightReread\.ok = reread/)).toMatch(/^FAIL/);
+    expect(line(out, /lightReread\.ok = reread/)).toMatch(/^INFO .*1 light re-read\(s\) did not land .*no greenhouse board is registered from a \.90 visit/);
     expect(line(out, /oversizeBoards rows carry key/)).toMatch(/^FAIL .*greenhouse:pulse key=undefined/);
+  });
+
+  it("a light list over the bound that the streamed read then landed leaves ok below reread, and that is not a FAIL", () => {
+    const fx = healthy(36);
+    for (const s of [fx.status0, fx.status1]) s.sliceStats.lightReread = { ...s.sliceStats.lightReread, enrolled: 3, reread: 3, ok: 2, deferred: 0 };
+    const out = run90(fx);
+    expect(fails(out), out.join("\n")).toEqual([]);
+    expect(line(out, /lightReread\.ok = reread \(2 of 3\)/)).toMatch(/^INFO .*each left oversizeBoards/);
   });
 
   it("the plural vendors key not named, or acting as a filter, FAILs on .90", () => {

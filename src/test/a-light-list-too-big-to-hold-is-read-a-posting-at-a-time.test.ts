@@ -198,6 +198,22 @@ describe("the visit, run: a greenhouse board streams its light list, and never i
     }
   });
 
+  it("a light re-read that failed for another reason (timeout, 5xx, 429) is not streamed: nothing showed the light list over the bound", async () => {
+    // Positive control: the same visit with the light list refused by the bound does stream.
+    const over = await runVisit({ board: SPEECHIFY, failReason: "oversize 4.3MB", reread: () => ({ read: null, reason: "oversize 4.1MB" }), slimSpecs: SLIM_SPECS, stream: lightStream(246) });
+    expect(over.streamCalls.map((c) => c.light), "control: a light list the bound refused streams").toEqual([true]);
+    for (const reason of ["timeout after 20000ms", "HTTP 503", "HTTP 429"]) {
+      const x = await runVisit({ board: SPEECHIFY, failReason: "oversize 4.3MB", reread: () => ({ read: null, reason }), slimSpecs: SLIM_SPECS, stream: lightStream(246) });
+      expect(x.fetchCalls.map((c) => c.light), `${reason}: the light re-read ran`).toEqual([true]);
+      expect(x.streamCalls, `${reason}: a third fetch of an endpoint that just failed, for up to 30 s, on no size evidence`).toEqual([]);
+      expect(x.r).toBeNull();
+      expect(x.deferred, `${reason}: deferred, so its next visit reads light`).toEqual([SPEECHIFY.token]);
+      expect(x.failed, `${reason}: never a vendor failure`).toEqual([]);
+      expect(x.registry.get(SPEECHIFY.token)?.mb, `${reason}: registered at the first read's size`).toBe(4.3);
+      expect(x.stats).toEqual({ enrolled: 1, reread: 1, ok: 0, deferred: 0 });
+    }
+  });
+
   it("a streamed light read that fails leaves the board deferred at the light list's size, never failed", async () => {
     const x = await runVisit({ board: PULSE, failReason: "oversize 20.6MB", lightAtStart: true, slimSpecs: SLIM_SPECS, stream: () => null });
     expect(x.streamCalls.length, "the stream was tried").toBe(1);

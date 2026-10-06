@@ -803,11 +803,11 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     return seg.slice(i);
   })();
   const WALL = num("SLICE_WALL_BUDGET_MS"), BUDGET = num("STREAM_READ_BUDGET_MS"), HEAP = num("HEAP_SOFT_LIMIT_MB");
-  const runRetry = async (o: { r?: unknown; failReason: string; source: string; elapsedMs?: number; heapMb?: number | null; result?: Read; light?: boolean; lightListRead?: boolean }) => {
+  const runRetry = async (o: { r?: unknown; failReason: string; source: string; elapsedMs?: number; heapMb?: number | null; result?: Read; light?: boolean; lightOversize?: boolean }) => {
     const calls: Array<{ reserveDuring: number; args: unknown[] }> = [];
     const fn = new Function(`${toJs(`async function __retry(env) {
       let r = env.r, failReason = env.failReason, inFlightReserve = env.inFlightReserve;
-      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightListRead } = env;
+      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize } = env;
       const readOversizeBoard = (...a) => env.read(inFlightReserve, a);
       ${retryBlock}
       return { r, failReason, inFlightReserve };
@@ -818,16 +818,16 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
       sliceWallStart: Date.now() - (o.elapsedMs ?? 1000), freshCutoffMs: 123_456,
       SLIM_SPECS, STREAM_READ_BUDGET_MS: BUDGET, SLICE_WALL_BUDGET_MS: WALL, HEAP_SOFT_LIMIT_MB: HEAP,
       memStamp: () => ({ heapMb: o.heapMb === null ? undefined : (o.heapMb ?? 40) }),
-      isLight: () => o.light === true, lightListRead: o.lightListRead === true,
+      isLight: () => o.light === true, lightOversize: o.lightOversize === true,
       read: async (reserveDuring: number, args: unknown[]) => { calls.push({ reserveDuring, args }); return o.result === undefined ? { jobs: [1], raw: [] } : o.result; },
     });
     return { ...out, calls, s };
   };
 
-  it("runs on an oversize verdict for lever, ashby and a greenhouse light list just read, under the reserve, with the worker's cutoff, and lands its result", async () => {
+  it("runs on an oversize verdict for lever, ashby and a greenhouse light list the bound refused, under the reserve, with the worker's cutoff, and lands its result", async () => {
     for (const [source, light] of [["lever", false], ["ashby", false], ["greenhouse", true]] as const) {
       const t0 = Date.now();
-      const x = await runRetry({ failReason: "oversize 6.2MB", source, light, lightListRead: light });
+      const x = await runRetry({ failReason: "oversize 6.2MB", source, light, lightOversize: light });
       expect(x.calls.length, `${source}: the retry did not run`).toBe(1);
       const [s, deadlineAt, cutoff] = x.calls[0].args as [unknown, number, number];
       expect(s).toBe(x.s);
@@ -854,7 +854,7 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     };
     await none({ failReason: "oversize 4.0MB", source: "greenhouse" }, "a greenhouse board that is not light: its list URL is the content list, never streamed");
     await none({ failReason: "oversize 4.0MB", source: "greenhouse", light: true }, "enrolled this visit, light list not read (the start gate refused): no stream past the gate");
-    await none({ failReason: "oversize 4.0MB", source: "greenhouse", lightListRead: true }, "read light, but no longer light: the URL would be the content list");
+    await none({ failReason: "oversize 4.0MB", source: "greenhouse", lightOversize: true }, "light list refused, but no longer light: the URL would be the content list");
     await none({ failReason: "oversize 4.0MB", source: "workable" }, "no spec, no stream");
     const landed = { jobs: [9], raw: [] };
     expect((await none({ r: landed, failReason: "", source: "lever" }, "the first read landed")).r).toBe(landed);

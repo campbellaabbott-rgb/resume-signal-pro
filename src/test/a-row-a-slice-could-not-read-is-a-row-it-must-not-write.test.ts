@@ -21,12 +21,15 @@ import * as oversizeRegistry from "../../supabase/functions/job-board/oversize-r
  * The registry also feeds the pass-end freshness sweep, which keeps aged rows
  * of oversize boards OUT of the closure log (n147). An empty registry there
  * writes those boards' live postings into the ledger as employer closures,
- * forever. So an unread registry makes the sweep fail closed: every aged row
- * is held, and the sweep writes no closure that pass.
+ * forever. So an unread registry makes the sweep fail closed by not running:
+ * it writes no closure, and it deletes and tombstones nothing either, because
+ * deleting a row without its exit loses a true closure for good. The aged rows
+ * are already hidden from the list, and the next pass with a readable registry
+ * sweeps them with their exits and the oversize holds.
  *
  * This file runs the SHIPPED loaders, the enrolment, the registry persist and
- * the sweep's ledger loop (lifted from index.ts and transpiled) against a stub
- * client whose meta read fails the way supabase-js fails.
+ * the whole freshness sweep (lifted from index.ts and transpiled) against a
+ * stub client whose meta read fails the way supabase-js fails.
  */
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
@@ -44,32 +47,36 @@ function lifted(name: string): string {
 }
 const constNum = (name: string) => Number(new RegExp(`const ${name} = ([0-9_]+);`).exec(CODE)![1].replace(/_/g, ""));
 
-/** The freshness sweep's per-chunk loop: the read of the aged rows through to the ledger write. */
-function sweepLoop(): string {
-  const ledger = CODE.indexOf('"freshness-sweep"');
-  expect(ledger, "the freshness sweep's ledger write is gone").toBeGreaterThan(0);
-  const head = "for (let i = 0; i < ids.length; i += 200) {";
-  const at = CODE.lastIndexOf(head, ledger);
-  expect(at, "the sweep's chunk loop was not found").toBeGreaterThan(0);
+/** The whole freshness sweep block: the aged-row select, tombstones, the ledger write, the delete and the cleanup. */
+function sweepBlock(): string {
+  const head = "const freshCutoffIso = new Date(freshCutoffMs).toISOString();";
+  const at = CODE.indexOf(head);
+  expect(at, "the freshness sweep's cutoff line was not found").toBeGreaterThan(0);
+  expect(CODE.indexOf('"freshness-sweep"', at), "the freshness sweep's ledger write is gone").toBeGreaterThan(at);
+  const open = CODE.lastIndexOf("{", at);
   let depth = 0;
-  for (let j = CODE.indexOf("{", at); j < CODE.length; j++) {
+  for (let j = open; j < CODE.length; j++) {
     if (CODE[j] === "{") depth++;
-    else if (CODE[j] === "}" && --depth === 0) return CODE.slice(at, j + 1);
+    else if (CODE[j] === "}" && --depth === 0) return CODE.slice(open + 1, j);
   }
-  throw new Error("unbalanced sweep loop");
+  throw new Error("unbalanced sweep block");
 }
 
 type Read = { data: unknown; error: unknown } | Error;
 type Row = Record<string, unknown>;
 
-/** A client whose meta reads answer from `reads` and which records every write. */
+/**
+ * A client whose meta reads answer from `reads`, whose postings table holds `postings` (all aged
+ * past the window), and which records every write and delete.
+ */
 function stubClient(reads: Record<string, Read>, postings: Row[] = []) {
   const upserts: Array<{ table: string; k?: string; row: unknown }> = [];
+  const deleted: string[] = [];
   const client = {
     from(table: string) {
       return {
         select() {
-          return {
+          const q = {
             eq(_col: string, k: string) {
               return {
                 maybeSingle: async () => {
@@ -79,17 +86,30 @@ function stubClient(reads: Record<string, Read>, postings: Row[] = []) {
                 },
               };
             },
-            in: async (_col: string, ids: string[]) => ({ data: postings.filter((p) => ids.includes(String(p.id))), error: null }),
+            lt: () => q,
+            order: () => q,
+            range: async (a: number, b: number) => ({ data: postings.slice(a, b + 1).map((p) => ({ id: p.id })), error: null }),
+            in: async (_col: string, ids: string[]) => ({ data: table === "job_board_postings" ? postings.filter((p) => ids.includes(String(p.id))) : [], error: null }),
           };
+          return q;
         },
         upsert(row: unknown) {
           upserts.push({ table, k: (row as { k?: string })?.k, row });
           return Promise.resolve({ error: null });
         },
+        delete() {
+          return {
+            in: async (_col: string, ids: string[]) => {
+              if (table === "job_board_postings") deleted.push(...ids);
+              return { error: null };
+            },
+            lt: async () => ({ error: null }),
+          };
+        },
       };
     },
   };
-  return { client, upserts, metaWrites: (k: string) => upserts.filter((u) => u.table === "job_board_meta" && u.k === k) };
+  return { client, upserts, deleted, metaWrites: (k: string) => upserts.filter((u) => u.table === "job_board_meta" && u.k === k) };
 }
 
 /**
@@ -106,7 +126,7 @@ function isolate() {
     ${lifted("enrolDynamicLight")}
     ${lifted("loadOversizeBoards")}
     ${lifted("persistOversizeBoards")}
-    const sweep = async (client, ids, alreadyTombstoned, exitedAt) => { ${sweepLoop()} };
+    const sweep = async (client, freshCutoffMs, sliceWallStart) => { ${sweepBlock()} };
     return { OVERSIZE_BOARDS, loadDynamicLight, enrolDynamicLight, loadOversizeBoards, persistOversizeBoards, sweep };
   }`;
   const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
@@ -122,6 +142,9 @@ function isolate() {
     AUTO_LIGHT_CAP: constNum("AUTO_LIGHT_CAP"),
     OVERSIZE_CAP: constNum("OVERSIZE_CAP"),
     LIFECYCLE_SELECT: "id, source, company_token, company, title, category, posted_at, first_seen",
+    FRESH_PRUNE_MAX: constNum("FRESH_PRUNE_MAX"),
+    FRESH_WINDOW_DAYS: constNum("FRESH_WINDOW_DAYS"),
+    breadcrumb: async () => {},
     waitUntil: () => {},
     tenureDays: () => ({ days: 31, basis: "posted_at" }),
     exitReasonFor: () => "aged_out",
@@ -139,7 +162,7 @@ function isolate() {
     enrolDynamicLight: (c: unknown, b: { source: string; token: string }, why: string) => Promise<boolean>;
     loadOversizeBoards: (c: unknown) => Promise<void>;
     persistOversizeBoards: (c: unknown) => Promise<void>;
-    sweep: (c: unknown, ids: string[], tomb: Set<string>, at: string) => Promise<void>;
+    sweep: (c: unknown, freshCutoffMs: number, sliceWallStart: number) => Promise<void>;
   };
   /** Closure-log rows the sweep handed to insertExits since the last call, by posting id. */
   const logged = () => exits.splice(0).flat().map((r) => String(r.posting_id)).sort();
@@ -192,17 +215,21 @@ describe("a loader that could not read writes nothing back", () => {
     ).toHaveLength(0);
   });
 
-  it("an unread registry keeps its entries, is not persisted, and the freshness sweep writes no closure", async () => {
+  it("an unread registry keeps its entries, is not persisted, and the freshness sweep does not run: no closure, no delete", async () => {
     const iso = isolate();
     const bigco = { source: "teamtailor", mb: 15, at: "2026-10-05T23:00:00Z" };
+    const cutoff = Date.parse("2026-09-06T04:00:00Z");
+    const tombstones = (c: ReturnType<typeof stubClient>) => c.upserts.filter((u) => u.table === "job_board_aged_out").length;
 
-    // Slice 1, read: the oversize board's aged row is held, the other is a closure.
+    // Slice 1, read: the oversize board's aged row is held, the other is a closure; both leave.
     const good = stubClient({ oversize_boards: registryRow({ bigco }) }, aged);
     await iso.loadOversizeBoards(good.client);
     await iso.persistOversizeBoards(good.client);
     expect(good.metaWrites("oversize_boards"), "control: after a good read the registry persists").toHaveLength(1);
-    await iso.sweep(good.client, ids, new Set(), "2026-10-06T04:00:00Z");
+    await iso.sweep(good.client, cutoff, Date.now());
     expect(iso.logged(), "control: with the registry read, only the board that is not oversize is logged").toEqual(["greenhouse:acme:1"]);
+    expect(good.deleted.sort(), "control: a readable sweep deletes every aged row").toEqual([...ids].sort());
+    expect(tombstones(good), "control: and tombstones them").toBe(1);
 
     // Slice 2, the read fails.
     const bad = stubClient({ oversize_boards: FAILED }, aged);
@@ -213,18 +240,26 @@ describe("a loader that could not read writes nothing back", () => {
       bad.metaWrites("oversize_boards"),
       "a slice that never read the registry wrote it whole, over whatever another slice had recorded",
     ).toHaveLength(0);
-    await iso.sweep(bad.client, ids, new Set(), "2026-10-06T05:00:00Z");
+    await iso.sweep(bad.client, cutoff, Date.now());
     expect(
       iso.logged(),
       "the sweep logged closures while it could not know which boards are oversize: a board we are too small to read " +
         "has its live postings written into the closure log as an employer's closures",
     ).toEqual([]);
     expect(
-      bad.upserts.filter((u) => u.table === "job_board_aged_out").length,
-      "the rows still leave: only the claim that they closed is withheld, so their tombstones are still written",
-    ).toBe(1);
+      bad.deleted,
+      "the sweep deleted aged rows it wrote no exit for: greenhouse:acme:1 is a true exit, and once its row is gone the closure log can never get it back",
+    ).toEqual([]);
+    expect(tombstones(bad), "nothing is tombstoned either: the rows are swept, with their exits, by the next readable pass").toBe(0);
 
-    // Slice 3, the row is simply absent: that is a read, so the registry is empty and writes resume.
+    // Slice 3, readable again: the rows still there are swept with the exit and the hold slice 1 wrote.
+    const again = stubClient({ oversize_boards: registryRow({ bigco }) }, aged);
+    await iso.loadOversizeBoards(again.client);
+    await iso.sweep(again.client, cutoff, Date.now());
+    expect(iso.logged(), "the next readable pass logs the true exit the skipped pass left").toEqual(["greenhouse:acme:1"]);
+    expect(again.deleted.sort()).toEqual([...ids].sort());
+
+    // Slice 4, the row is simply absent: that is a read, so the registry is empty and writes resume.
     const none = stubClient({ oversize_boards: { data: null, error: null } }, aged);
     await iso.loadOversizeBoards(none.client);
     expect(iso.OVERSIZE_BOARDS.size).toBe(0);
@@ -244,7 +279,8 @@ describe("a loader that could not read writes nothing back", () => {
     expect(thrown.metaWrites("oversize_boards")).toHaveLength(0);
     expect(thrown.metaWrites("light_desc_dynamic")).toHaveLength(0);
     expect([...iso.DYNAMIC_LIGHT].sort()).toEqual(["greenhouse:acme", "greenhouse:speechify"]);
-    await iso.sweep(thrown.client, ids, new Set(), "2026-10-06T05:00:00Z");
-    expect(iso.logged(), "an unread registry must hold every aged row").toEqual([]);
+    await iso.sweep(thrown.client, Date.parse("2026-09-06T05:00:00Z"), Date.now());
+    expect(iso.logged(), "an unread registry writes no closure").toEqual([]);
+    expect(thrown.deleted, "and deletes nothing").toEqual([]);
   });
 });
