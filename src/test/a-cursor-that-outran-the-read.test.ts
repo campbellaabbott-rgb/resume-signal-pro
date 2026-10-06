@@ -2,12 +2,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { constOf, runGate } from "./helpers/slice-worker";
+import { constOf, runGate, runLaneTakes } from "./helpers/slice-worker";
 
 /**
  * A CURSOR THAT OUTRAN THE READ.
  *
- * The slice is composed [demand, bootstrap, retry, COLD ROTATION, deep], and a
+ * The slice is composed [demand, bootstrap, retry, stale, deep, COLD ROTATION]
+ * (.90; the deep lane was last until then), and a
  * memory-bounded slice necessarily stops partway through it — the posting
  * budget is there precisely to stop it. So the boards it never reached were
  * never read, and the cold cursor must not move past them.
@@ -68,8 +69,12 @@ describe("a cursor that outran the read", () => {
   });
 
   it("the lanes are full-sized again — the throttle is gone", () => {
-    expect(CODE).toMatch(/const effColdSlice = shedColdSlice;/);
-    expect(CODE).toMatch(/const bootstrapTake = shedBootstrapPerSlice;/);
+    // Run, not spelled (.90): the lane-size block computes without the board
+    // budget (the harness binds no boardBudget), the cold slice is whole, and
+    // the bootstrap take gives up only the deep lane's board (n426).
+    const t = runLaneTakes(0);
+    expect(t.effColdSlice).toBe(constOf("COLD_SLICE"));
+    expect(t.bootstrapTake + t.deepTake).toBe(constOf("BOOTSTRAP_PER_SLICE"));
     expect(CODE, "no lane may be sized from the board budget again").not.toMatch(/const coldTake = Math\.max\(1, boardBudget/);
   });
 

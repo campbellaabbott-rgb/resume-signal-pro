@@ -486,6 +486,12 @@ is 14 — sharing a factor of two with 66, so a take of one visits only the
 even positions and starves half the lane forever. The take stays at two and
 the per-visit cap carries the memory reduction instead.
 
+.90: the take APPLIED is one again (DEEP_LANE_TAKE; DEEP_PER_SLICE stays 2
+as the memory ceiling), and the fairness property is kept by the start rule
+instead of the take: the start is the cold cursor's place in its rotation
+mapped onto the list, so a step sharing a factor with the list's length
+starves nothing (n426).
+
 ## n015-retry-per-slice
 
 Above: `const RETRY_PER_SLICE = 5;`
@@ -1609,6 +1615,9 @@ slice, let the posting budget stop it wherever memory says, and advance
 the cold cursor after the loop by the base-slice boards ACTUALLY
 ATTEMPTED. Nothing is skipped and nothing is throttled.
 
+.90: the deep lane now runs before the cold rotation (n426); the cursor rule
+is unchanged, and it is why base can be the tail.
+
 ## n060-
 
 Above: `}`
@@ -1824,6 +1833,11 @@ starved by the ones ahead of it, deduped against everything already in the
 slice so no board is fetched twice in one pass, and capped at the size the
 bootstrap lane already proved fits the wall-time budget.
 
+.90 (n426): the lane runs AHEAD of the base rotation, one board a slice
+(DEEP_LANE_TAKE) taken out of the bootstrap take; until then it sat last and
+visited nothing. The start is no longer `cold % candidates` but the cursor's
+place in its rotation mapped onto the map (selectDeepLane, deep-lane.ts).
+
 ## n068-deeplane-at-new-date-toisostring-candi
 
 Above: `deepLane = { at: new Date().toISOString(), candidates: tokens.length, selected: deepBoards.length, visited: 0, start };`
@@ -1835,10 +1849,14 @@ split, an offset that does not move has two indistinguishable causes
 and gets guessed at — which is how this rotation was misread three
 times before it carried a number.
 `visited` is filled after the loop. SELECTED IS NOT VISITED, and the
-gap is the whole point: the deep lane is LAST in the composed slice
-(index >= COLD_SLICE + the other lanes), and the posting budget stops
-the loop around 30 boards, so nothing in this lane has been fetched
-in a very long time. `selected: 2` standing alone reported the lane
+gap was the whole point: until .90 the deep lane was LAST in the composed
+slice (index >= COLD_SLICE + the other lanes), and the posting budget stopped
+the loop around 30 boards, so nothing in this lane had been fetched
+in a very long time (visited 0 in 16 of 16 cold slices sampled on .89,
+2026-10-06). Since .90 it runs ahead of base (n426), so `visited` should
+equal `selected` on nearly every cold slice; a gap now means the start gate
+(posting budget, board budget, wall, heap) deferred the deep board.
+The history, as written then: `selected: 2` standing alone reported the lane
 as working — the wrong side of exactly the fork this instrumentation
 was added to resolve, and the dial the runbook tells an operator to
 judge rotation by. (At-cap boards still advance their own deepCursor
@@ -9669,3 +9687,65 @@ the singular key is read and applied, so nothing the caller asked for was
 dropped. An empty plural key (`[]` or "") is not a request and is not named.
 No first-party caller sends `vendors` (the page, nl-search, public-api and
 agent-mcp all send `vendor`).
+
+## n426-deep-lane-ahead-of-base
+
+Above: `const DEEP_LANE_TAKE = 1;`, the bootstrap take (`bootstrapTake`), the
+deep-lane block (`selectDeepLane`, deep-lane.ts) and the slice composition
+(`const slice = [...]`).
+
+THE DEEP LANE NEVER RAN. The lane (n067) resumes capped boards (Workday,
+Oracle, iCIMS, SmartRecruiters, Rippling, USAJOBS) between their cold-rotation
+turns. It sat last, [demand, bootstrap, retry, stale, base, deep]: a cold slice
+at rest composed about 1 + 25 + 5 + 3 + 80 + 2 boards against a board budget of
+80 and SLICE_POSTING_BUDGET 1,500, so the loop stopped before the tail. On .89
+`deepCursor.lane` read visited 0 in all 16 cold slices sampled 00:53-01:16Z on
+2026-10-06 (selected 2, candidates ~720) and again at 03:19Z; those slices had
+budgetSkipped 24-28 with sizeStopped (the board budget) or 42-66 (the posting
+budget). A capped cold board therefore moved one 260-row window per cold
+rotation (~6h). pg~wd5~1000 holds its 471 in-window postings at feed positions
+0-470 of 816, newest first; a visit starting at 520 or 780 stores nothing, and
+pg served 0. The bootstrap lane that crowded it out is permanent, not a
+post-deploy drain: it re-seeds whenever it empties on an unchanged version
+(3,846 then 9,977 pending on .89).
+
+WHY LAST WAS WRONG. .29 put the lane last so the posting budget would defer it
+before base, on the premise that a deferred base board waits a rotation. Since
+.56 (n059) the post-loop cursor write advances by the base boards started
+(baseAttempted), so a base board the budget defers heads the next slice.
+Position protected nothing, and it starved the lane.
+
+WHAT IT DOES. The slice is [demand, bootstrap, retry, stale, deep, base]. The
+deep take is DEEP_LANE_TAKE (1) at rest, 1 at L1 and 0 at L2, never above
+DEEP_PER_SLICE (2, the memory ceiling, n014). It comes out of the bootstrap
+take, `bootstrapTake = effBootstrapPerSlice - deepTake` (24 at rest, 9 at L1, 0
+at L2), so the lanes ahead of base hold as many boards as before, and a slice
+the board budget stops starts as many base boards as it did (46 with every lane
+full: 80 - 1 - 25 - 5 - 3). The bootstrap queue drains what it selected (n064),
+now 24. The cut uses the planned take, not the selected count, because the
+bootstrap take runs before the lane is chosen (the lane dedupes against it).
+
+WHAT IT COSTS. A deep visit reserves MAX_POSTINGS_PER_VISIT (250) and lands up
+to ~260 postings of the 1,500 budget. On a slice the posting budget stops (most
+cold slices on .89 read budgetFetched 1,502-1,951) that share comes out of the
+base rotation: at ~60 postings a base board, about four fewer base boards that
+slice. That is the cost to measure after deploy (the .90 deploy note, F7): the
+cold cursor rate by cursor advance, never sliceStats.at, against the .89
+baseline, rolled back if more than 10% slower. Rollback is DEEP_LANE_TAKE = 0:
+no deep board and the bootstrap take back to 25, which is what .89 did in
+effect (its lane at the tail visited nothing).
+
+THE START. n014 recorded that a take of one with the start at `cold % L`
+visited only the even positions when the cursor stepped 80 over 66 boards. The
+cursor steps by baseAttempted, which varies, but a near-constant step sharing a
+factor with L still starves the rest: a 55-board step over 700 candidates
+reaches 140 of them in a rotation. selectDeepLane maps the cursor's place in its
+rotation onto the list, `start = floor(cold x L / coldListLen)`. Within a
+rotation the start only moves forward, by at most step x L / coldListLen per
+slice, so while that is at most one (L up to coldListLen / step: about 800
+candidates at a 55-board step) every candidate is selected at least once a
+rotation, and above that as many distinct boards as there are slices. Below one,
+consecutive slices can take the same board; each visit reads its next window,
+so a capped board can finish its lap in one run. Dedupe before the cap against
+base, demand and bootstrap is unchanged, and retry and stale still exclude the
+board the lane took.

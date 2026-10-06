@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { constOf, runGate } from "./helpers/slice-worker";
+import { constOf, runCompose, runGate } from "./helpers/slice-worker";
 const COLD = constOf("COLD_BOARD_RESERVE");
 
 /**
@@ -87,12 +87,16 @@ describe("nothing bounded the sum", () => {
     expect(CODE).toMatch(/if \(r\) fetchedInSlice \+= r\.jobs\.length;/);
   });
 
-  it("puts the deep lane LAST, so the budget protects the rotation first", () => {
-    // Under the budget the tail of this list is what gets deferred. The
-    // cursor-bearing base carries the freshness claim; the lane's fill rate
-    // does not. This is the .21 trade made on purpose.
-    // .69 added the stale lane between retry and base; deep is still last.
-    expect(CODE).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\];/);
+  it("puts the base rotation LAST: the budget defers boards the cursor has not counted (.90, n426)", async () => {
+    // .29 put the deep lane last so the budget would defer it before base. It
+    // never ran there (visited 0 in 16 of 16 sampled cold slices on .89), and
+    // base needs no protection by position: the cursor counts only the base
+    // boards started, so a base board the budget defers heads the next slice.
+    const slice = runCompose({ demand: ["d"], bootstrap: ["b"], retry: ["r"], stale: ["s"], deep: ["x"], base: ["k1", "k2"] });
+    expect(slice.slice(-2), "every lane that moves no cursor runs before the base rotation").toEqual(["k1", "k2"]);
+    const budget = constOf("SLICE_POSTING_BUDGET");
+    const spent = await runGate({ queue: [{ source: "lever", token: "k1" }], base: ["k1"], fetchedInSlice: budget, baseAttempted: 7 });
+    expect([spent.deferred, spent.baseAttempted], "a deferred base board is not counted, so the cursor stops short of it").toEqual([["k1"], 7]);
   });
 
   it("records the outcome where status already looks", () => {

@@ -15,6 +15,9 @@
  *               path: the light re-read, the streamed read, the landed count,
  *               boardsDone, and the failure/oversize branch. Answers what the
  *               visit read, streamed, deferred, failed or registered.
+ *   runLaneTakes, runDeepLane, runCompose — the lane sizes at a shed level,
+ *               the deep lane's selection block, and the composed slice, so a
+ *               test can run a whole slice through runGate (n426).
  *
  * A miss throws: the code moved, and the harness must be re-pointed on
  * purpose rather than pass on nothing.
@@ -26,6 +29,8 @@ import { startGate } from "../../../supabase/functions/job-board/start-gate";
 import { lightReread, lightRereadStats, type LightRereadStats } from "../../../supabase/functions/job-board/light-reread";
 import { noteOversize, type OversizeEntry } from "../../../supabase/functions/job-board/oversize-registry";
 import { cursorAfterFailure } from "../../../supabase/functions/job-board/read-window";
+import { selectDeepLane } from "../../../supabase/functions/job-board/deep-lane";
+import { STALE_PER_SLICE } from "../../../supabase/functions/job-board/stale-lane";
 
 export const INDEX_PATH = resolve(__dirname, "../../../supabase/functions/job-board/index.ts");
 const RAW = (): string => readFileSync(INDEX_PATH, "utf8");
@@ -281,4 +286,84 @@ export async function runVisit(env: VisitEnv): Promise<VisitOut> {
   };
   const out = await (run(...names.map((n) => scope[n])) as () => Promise<{ r: Read; failReason: string; inFlightReserve: number; fetchedInSlice: number; boardsDone: number; baseAttempted: number }>)();
   return { ...out, fetchCalls, streamCalls, enrolCalls, light: lightSet.has(key), deferred, oversized, failed, registry, gateAsked, stats };
+}
+
+// ── lanes ───────────────────────────────────────────────────────────────────
+
+export interface LaneTakes {
+  effColdSlice: number; effConcurrency: number; effDeepPerSlice: number; effHotSlice: number;
+  effBootstrapPerSlice: number; effStalePerSlice: number; deepTake: number; retryTake: number; bootstrapTake: number;
+}
+
+/** The shipped lane-size block at a shed level. `consts` overrides a top-level constant (e.g. a rolled-back take). */
+export function runLaneTakes(shedLevel: 0 | 1 | 2, consts: Record<string, number> = {}): LaneTakes {
+  const span = between(RAW(), "const shedColdSlice = ", "if (shedLevel > 0) {", "the lane-size block");
+  const code = transformSync(`function __probe() {\n${span}\n}`, { loader: "ts" }).code;
+  const names = [...new Set(code.match(/\b[A-Z][A-Z0-9_]{2,}\b/g) ?? [])];
+  const run = compile(`function __run() {
+    ${span}
+    return { effColdSlice, effConcurrency, effDeepPerSlice, effHotSlice, effBootstrapPerSlice, effStalePerSlice, deepTake, retryTake, bootstrapTake };
+  }`, ["shedLevel", ...names]);
+  const val = (n: string) => (n in consts ? consts[n] : n === "STALE_PER_SLICE" ? STALE_PER_SLICE : constOf(n));
+  return (run(shedLevel, ...names.map(val)) as () => LaneTakes)();
+}
+
+export interface DeepLaneEnv {
+  /** deepCursors, in the row's (insertion) order. */
+  cursors: Array<[string, number]>;
+  cold: number;
+  coldListLen: number;
+  deepTake: number;
+  base?: string[];
+  demand?: string[];
+  bootstrap?: string[];
+  inHotPhase?: boolean;
+  /** Stands in for selectDeepLane (default: the shipped one). */
+  select?: typeof selectDeepLane;
+}
+export interface DeepLaneOut {
+  picked: string[];
+  lane: { candidates: number; selected: number; visited: number; start: number } | null;
+}
+
+/** The shipped deep-lane block, from its declaration to the failure-state read, compiled once for many runs. */
+export function deepLaneRunner(): (env: DeepLaneEnv) => DeepLaneOut {
+  const span = between(RAW(), "let deepBoards: JobSource[] = [];", "const { data: bfMeta }", "the deep-lane block");
+  const names = ["inHotPhase", "deepCursors", "baseSlice", "demandBoards", "bootstrapBoards", "cold", "COLD_LIST", "deepTake", "effDeepPerSlice", "selectDeepLane", "JOB_SOURCES"];
+  const run = compile(`function __run() {
+    ${span}
+    return { picked: deepBoards.map((b) => b.token), lane: deepLane };
+  }`, names);
+  return (env) => runDeepLaneWith(run, names, env);
+}
+
+export const runDeepLane = (env: DeepLaneEnv): DeepLaneOut => deepLaneRunner()(env);
+
+function runDeepLaneWith(run: ReturnType<typeof compile>, names: string[], env: DeepLaneEnv): DeepLaneOut {
+  const src = (t: string) => ({ source: "workday", token: t, name: t });
+  const all = new Set([...env.cursors.map(([t]) => t), ...(env.base ?? []), ...(env.demand ?? []), ...(env.bootstrap ?? [])]);
+  const scope: Record<string, unknown> = {
+    inHotPhase: env.inHotPhase ?? false,
+    deepCursors: new Map(env.cursors),
+    baseSlice: (env.base ?? []).map(src),
+    demandBoards: (env.demand ?? []).map(src),
+    bootstrapBoards: (env.bootstrap ?? []).map(src),
+    cold: env.cold,
+    COLD_LIST: { length: env.coldListLen },
+    deepTake: env.deepTake,
+    effDeepPerSlice: env.deepTake,
+    selectDeepLane: env.select ?? selectDeepLane,
+    JOB_SOURCES: [...all].map(src),
+  };
+  return (run(...names.map((n) => scope[n])) as () => DeepLaneOut)();
+}
+
+export interface Lanes<T> { demand: T[]; bootstrap: T[]; retry: T[]; stale: T[]; deep: T[]; base: T[] }
+
+/** The shipped slice composition over the given lanes. */
+export function runCompose<T>(lanes: Lanes<T>): T[] {
+  const stmt = between(RAW(), "const slice = [", "];", "the slice composition", true);
+  const names = ["demandBoards", "bootstrapBoards", "retryBoards", "staleBoards", "deepBoards", "baseSlice"];
+  const run = compile(`function __run() {\n    ${stmt}\n    return slice;\n  }`, names);
+  return (run(lanes.demand, lanes.bootstrap, lanes.retry, lanes.stale, lanes.deep, lanes.base) as () => T[])();
 }

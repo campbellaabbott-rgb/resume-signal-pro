@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -22,6 +23,7 @@ import {
 } from "../../supabase/functions/job-board/stale-lane.ts";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources.ts";
 import { oversizeTokens } from "../../supabase/functions/job-board/oversize-registry.ts";
+import { runCompose } from "./helpers/slice-worker";
 
 /**
  * EVERY STALE BOARD IS NAMED AND CLASSIFIED.
@@ -430,8 +432,9 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
 
   it("takes up to STALE_PER_SLICE 'unexplained' tokens not already in the slice, through the ordinary fetch path", () => {
     expect(IDX).toMatch(/const taken = new Set\(\[\.\.\.baseSlice, \.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.deepBoards\]\.map\(\(s\) => s\.token\)\);\s*staleBoards = selectStaleLane\(verdicts, \{ perSlice: effStalePerSlice, exclude: taken \}\)/);
-    // Appended to the composed slice ahead of the base rotation, behind retry — the ordinary loop fetches it.
-    expect(IDX).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\];/);
+    // In the composed slice ahead of the base rotation, behind retry — the ordinary loop fetches it. Run, not spelled.
+    const slice = runCompose({ demand: [], bootstrap: [], retry: ["r"], stale: ["s"], deep: [], base: ["k"] });
+    expect([slice.indexOf("r") < slice.indexOf("s"), slice.indexOf("s") < slice.indexOf("k")], "retry, then stale, then base").toEqual([true, true]);
     // No second fetch path, no second budget: the lane has no fetchBoard call of its own.
     const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
     expect(lane).not.toMatch(/fetchBoard\(/);

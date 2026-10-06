@@ -10,7 +10,7 @@ still pins it.
 
 ## 2026-09-09.90
 
-job-board only (index.ts, slim-stream.ts, filters.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
+job-board only (index.ts, slim-stream.ts, filters.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts, NEW deep-lane.ts). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; this section grows as each lands).
 
 ### A ROW A SLICE COULD NOT READ IS A ROW IT MUST NOT WRITE (F4)
 
@@ -59,6 +59,26 @@ WHAT WAS WRONG. The list reads its vendor filter from `vendor` only. A `vendors`
 WHAT IT DOES. normalizeFilters (filters.ts) names `vendors` in `ignoredFilters` when it is sent and `vendor` is not. It is NOT an alias: the rows served are unchanged (still unfiltered by vendor), only the notice is new. With both keys sent, `vendor` applies and nothing is named. An empty `vendors` is not named. Rationale: docs/job-board-index-notes.md#n425-plural-vendor-key-is-named.
 
 VERIFY (read-only). `list` with `{vendors: ["personio"], companies: ["lush"], groupSimilar: false}` returns `ignoredFilters` containing "vendors" and the same total as `{companies: ["lush"]}`. `{vendor: ["personio"], companies: ["lush"]}` still returns no `ignoredFilters` (total 3 on 2026-10-06).
+
+### THE DEEP LANE RAN NOTHING (F7) -- A DECISION BEHIND A CONSTANT, NOT YET MEASURED
+
+WHAT WAS WRONG. The deep lane resumes capped boards (Workday, Oracle, iCIMS, SmartRecruiters, Rippling, USAJOBS) between their cold-rotation turns. It was last in the slice, behind ~1 demand, 25 bootstrap, up to 5 retry, 3 stale and 80 base boards, against a board budget of 80 and a posting budget of 1,500, so no slice reached it: on .89 `deepCursor.lane` read `visited: 0` in all 16 cold slices sampled 00:53-01:16Z on 2026-10-06 (selected 2, candidates ~720) and again at 03:19Z. A capped cold board moved one 260-row window per cold rotation (~6h). pg~wd5~1000 holds its 471 in-window postings at feed positions 0-470 of 816 (newest first), so a visit starting at 520 or 780 stores nothing, and pg served 0. The bootstrap lane is not a post-deploy drain: it re-seeds when it empties (3,846 then 9,977 pending on .89), so its 25 slots were permanent.
+
+WHAT IT DOES. Slice order [demand, bootstrap, retry, stale, deep, base]. The deep take is `DEEP_LANE_TAKE` = 1 at rest (1 at L1, 0 at L2; DEEP_PER_SLICE 2 stays the memory ceiling) and comes out of the bootstrap take (24 at rest, 9 at L1, 0 at L2), so the lanes ahead of base hold the same number of boards and a slice the board budget stops starts as many base boards as before (46 with every lane full). The cold cursor still advances by base boards started only; a base board the budget defers heads the next slice. The lane's start is the cold cursor's place in its rotation mapped onto the candidate list (`selectDeepLane`, deep-lane.ts), not `cold % candidates`: with a take of one, a near-constant cursor step sharing a factor with the list length reached a fraction of the candidates (a 55-board step over 700: 140 a rotation). Now every candidate is selected at least once a rotation while candidates <= cold boards / step (~800 at 55), and consecutive slices may take the same board's next window. Rationale: docs/job-board-index-notes.md#n426-deep-lane-ahead-of-base (n014, n059, n067, n068 point at it).
+
+COST. Each deep visit reserves 250 of the 1,500-posting budget and lands up to ~260. On a slice the posting budget stops (most cold slices on .89 read budgetFetched 1,502-1,951) that comes out of the base rotation: at ~60 postings a base board, about four fewer base boards that slice. The bootstrap lane gives up 1 of its 25 boards a slice (first ingest of a new merge ~4% slower). The slice's memory bound is unchanged (the posting budget still bounds what a slice holds, and the reservation guard already allows DEEP_PER_SLICE = 2 deep boards), but a deep visit is the heaviest fetch per board (13 chunked Workday pages) and none ran on .89, so `heapStopped` and chain deaths are part of the measurement.
+
+ROLLBACK. `DEEP_LANE_TAKE = 0` in index.ts (and move BUILD_VERSION): no deep board, the bootstrap take back to 25; the order then changes nothing, since the lane is empty. That is what .89 did in effect.
+
+NOT DONE. One deep board a slice whatever the backlog (~720 candidates against ~800 cold slices a rotation). A mid-feed Workday visit whose rows are all aged out still walks the 30+ tail (pg: 345 rows, ~1.3 visits a lap that cannot store anything).
+
+MEASURE -- MANDATORY BEFORE THIS COUNTS AS SHIPPED (read-only, `status` only; judge by cursor advance, NEVER `sliceStats.at`, which freezes outside the hot phase).
+1. Baseline on .89, BEFORE the deploy: poll `status` once a minute for at least 30 minutes inside the COLD phase (`cursor.hot` at the hot-list length, `cursor.cold` moving); cold rate = Δ`cursor.cold` / Δminutes, adding `coldBoards` across a wrap. Record `sliceStats.budgetHit`, `budgetSkipped`, `budgetFetched` and `sizeStopped` per slice as you go. Reference: the rotation 2026-10-05 19:47 to 2026-10-06 01:44Z took 5h57m (about 83-131 boards/min in cold-only samples); take your own baseline, the reference is only a sanity check.
+2. After the deploy, the same poll, same duration, same phase: the cold rate within 10% of the baseline. Then the next full cold rotation (`lastRotationAgeMin` resets at the wrap) within 10% of 5h57m, i.e. at most ~6h33m.
+3. `deepCursor.lane`: `visited == selected` (1) in at least 90% of cold slices polled; `deepCursor.laps.proven` rising over 24h; `deepCursor.boards` flat or falling.
+4. `bootstrapQueue.lastSlice.drained` = 24 at rest (10 -> 9 at L1).
+5. pg~wd5~1000: rows whose lastSeen falls after the deploy, mapping to CXS windows [0,260) and [260,520), building to ~471 within hours instead of one window a rotation.
+If the cold rate is more than 10% below baseline, the rotation runs past ~6h33m, or slices start dying (chain deaths, `heapStopped`), roll back with `DEEP_LANE_TAKE = 0`.
 
 ## 2026-09-09.89
 

@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, deepLaneRunner, runCompose, runDeepLane, runLaneTakes } from "./helpers/slice-worker";
 
 /**
  * A CURSOR THAT ADVANCES ONCE EVERY 11.4 HOURS IS NOT A FILL.
@@ -39,24 +41,19 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "")
   .split("\n").map((l) => (/^\s*\/\//.test(l) ? "" : l)).join("\n");
 
 describe("at-cap boards need a fast lane", () => {
-  it("the lane is a fourth source in the slice, BEHIND the base rotation", () => {
-    // Composition, not a literal list: lanes have been added since (retry), and
-    // a guard that pins the exact spelling fails on an addition it has no
-    // opinion about. What must hold is that deepBoards is IN the slice.
-    //
-    // .19 pinned it PREPENDED "so the cold cursor still advances by
-    // baseSlice.length alone" — but position never carried that: the cursor
-    // rule takes baseSliceLen explicitly (pinned below). Position became
-    // load-bearing in .29, when SLICE_POSTING_BUDGET started deferring the
-    // TAIL of the slice: a deferred deep board is revisited by the lane next
-    // slice, a deferred base board waits a whole rotation (~8h at L0). That
-    // asymmetry is why deep goes LAST, and this guard now holds it there.
-    const sliceLine = /const slice = \[([^\]]+)\];/.exec(CODE)?.[1] ?? "";
-    expect(sliceLine, "the slice is never assembled").not.toBe("");
-    expect(sliceLine, "deepBoards is not in the slice at all").toContain("...deepBoards");
-    expect(sliceLine.indexOf("...deepBoards"), "deepBoards must come AFTER the base rotation — under the posting budget the tail is what gets deferred, and base carries the freshness claim")
-      .toBeGreaterThan(sliceLine.indexOf("...baseSlice"));
-    // The property .19 actually wanted, pinned where it actually lives.
+  it("the lane is a source in the slice, AHEAD of the base rotation (.90, n426)", () => {
+    // .29 put it LAST so the posting budget would defer the lane before base.
+    // Last never ran: behind 25 bootstrap and 80 base boards against a budget
+    // of 80, the lane visited 0 boards in 16 of 16 cold slices sampled on .89
+    // (2026-10-06). And a base board the budget defers costs nothing since .50:
+    // the cursor counts only the base boards started, so it heads the next
+    // slice. The composition is run, not spelled; the whole slice is run in
+    // a-lane-behind-the-budget-never-ran.test.ts.
+    const slice = runCompose({ demand: ["d"], bootstrap: ["b"], retry: ["r"], stale: ["s"], deep: ["x"], base: ["k1", "k2"] });
+    expect(slice, "deepBoards is not in the slice at all").toContain("x");
+    expect(slice.indexOf("x"), "the deep lane must come before the base rotation").toBeLessThan(slice.indexOf("k1"));
+    expect(slice.slice(-2), "the base rotation is the tail").toEqual(["k1", "k2"]);
+    // The optimistic write still advances by the base take alone, whatever else rides in the slice.
     expect(CODE, "the cursor must advance by the base take alone, whatever else rides in the slice").toMatch(/baseSliceLen: baseSlice\.length,/);
   });
 
@@ -72,56 +69,56 @@ describe("at-cap boards need a fast lane", () => {
   });
 
   it("the added work is capped, and the cap is a named constant", () => {
-    expect(CODE).toMatch(/const DEEP_PER_SLICE = \d+;/);
-    // The cap APPLIED is effDeepPerSlice, which is DEEP_PER_SLICE at rest and
-    // smaller (0 at L2) while the rotation is shedding load — the ceiling this
-    // test guards is still the named constant.
-    expect(CODE, "the lane takes the whole map instead of a capped page")
-      .toMatch(/\.slice\(0, effDeepPerSlice\)/);
-    expect(CODE, "the shed ceiling must derive from the named constant")
-      // .29: L1 take is 1, not 4. A deep board is exactly MAX_POSTINGS_PER_VISIT
-      // now, so the lane is sized in postings and the shed halves its VOLUME.
-      .toMatch(/const effDeepPerSlice = shedLevel === 2 \? 0 : shedLevel === 1 \? 1 : DEEP_PER_SLICE;/);
     // THE CONSTANT STAYS TIED TO WHAT IT COUNTS. DEEP_PER_SLICE is derived from
     // a volume allowance over the per-visit cap; if either moves without the
     // other, the lane is silently re-sized in postings — the .21 failure.
-    const num = (name: string) => Number(new RegExp(`const ${name} = ([\\d_]+);`).exec(CODE)?.[1]?.replace(/_/g, ""));
-    const deepTake = num("DEEP_PER_SLICE"), deepVolume = num("DEEP_VOLUME_PER_SLICE"), visitCap = num("MAX_POSTINGS_PER_VISIT");
-    expect([deepTake, deepVolume, visitCap].every(Number.isFinite), "one of the three constants is unparsed").toBe(true);
-    expect(deepTake, "DEEP_PER_SLICE must be floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT)").toBe(Math.max(1, Math.floor(deepVolume / visitCap)));
-    const cap = Number(/const DEEP_PER_SLICE = (\d+);/.exec(CODE)?.[1]);
+    const ceiling = constOf("DEEP_PER_SLICE");
+    expect(ceiling, "DEEP_PER_SLICE must be floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT)")
+      .toBe(Math.max(1, Math.floor(constOf("DEEP_VOLUME_PER_SLICE") / constOf("MAX_POSTINGS_PER_VISIT"))));
+    expect(ceiling).toBeGreaterThan(0);
     // 160 at-cap boards x 500 postings is real work. The bootstrap lane's 25
     // is the largest per-slice prepend this function has actually survived.
-    expect(cap).toBeGreaterThan(0);
-    expect(cap, "a prepend larger than the proven-safe bootstrap lane").toBeLessThanOrEqual(25);
+    expect(ceiling, "a prepend larger than the proven-safe bootstrap lane").toBeLessThanOrEqual(25);
+    // The take APPLIED (.90: DEEP_LANE_TAKE, 1) never passes the ceiling, and sheds to 0 at L2.
+    for (const level of [0, 1, 2] as const) expect(runLaneTakes(level).deepTake, `L${level}`).toBeLessThanOrEqual(ceiling);
+    expect(runLaneTakes(2).deepTake).toBe(0);
+    // And the lane takes no more than its take, however many boards are waiting.
+    const cursors = Array.from({ length: 200 }, (_, i) => [`cap${i}`, 260] as [string, number]);
+    for (const take of [0, 1, 2]) {
+      expect(runDeepLane({ cursors, cold: 1_234, coldListLen: 44_399, deepTake: take }).picked, `take ${take}`).toHaveLength(take);
+    }
   });
 
   it("dedupe happens BEFORE the cap, not after", () => {
     // Filtering after slicing would let boards already in this slice consume
     // the lane's places with fetches that never happen — the lane would report
-    // 25 selected and deliver fewer.
-    const filterAt = CODE.indexOf("!taken.has(t)");
-    const capAt = CODE.indexOf(".slice(0, effDeepPerSlice)");
-    expect(filterAt, "the lane does not dedupe against the slice").toBeGreaterThan(-1);
-    expect(capAt).toBeGreaterThan(-1);
-    expect(filterAt, "the cap is applied before the dedupe").toBeLessThan(capAt);
+    // selected and deliver fewer.
+    const cursors: Array<[string, number]> = [["a", 260], ["b", 260], ["c", 260]];
+    const r = runDeepLane({ cursors, cold: 0, coldListLen: 44_399, deepTake: 1, base: ["a"] });
+    expect(r.picked, "the start board is in the slice, so the next one takes the place").toEqual(["b"]);
+    expect(r.lane?.selected).toBe(1);
   });
 
   it("dedupes against every other source in the slice", () => {
-    expect(CODE).toMatch(/const taken = new Set\(\[\.\.\.baseSlice, \.\.\.demandBoards, \.\.\.bootstrapBoards\]\.map\(\(s\) => s\.token\)\)/);
+    const cursors: Array<[string, number]> = [["a", 260], ["b", 260], ["c", 260], ["d", 260]];
+    const r = runDeepLane({ cursors, cold: 0, coldListLen: 44_399, deepTake: 2, base: ["a"], demand: ["b"], bootstrap: ["c"] });
+    expect(r.picked, "base, demand and bootstrap boards are never fetched twice").toEqual(["d"]);
   });
 
-  it("is round-robin, phased on the cold cursor", () => {
-    expect(CODE, "no rotation — the first boards in the map would starve the rest")
-      .toMatch(/const start = cold % tokens\.length;/);
-    expect(CODE).toMatch(/\[\.\.\.tokens\.slice\(start\), \.\.\.tokens\.slice\(0, start\)\]/);
+  it("is phased on the cold cursor: the start walks the map as the cursor walks its rotation", () => {
+    const cursors = Array.from({ length: 66 }, (_, i) => [`board-${i}`, 500] as [string, number]);
+    const startAt = (cold: number) => runDeepLane({ cursors, cold, coldListLen: 31_501, deepTake: 1 }).lane!.start;
+    const starts = [0, 480, 9_000, 20_000, 31_500].map(startAt);
+    expect(starts, "no rotation — the first boards in the map would starve the rest").toEqual([...starts].sort((a, b) => a - b));
+    expect([starts[0], starts[starts.length - 1]], "from the head of the map to its last board").toEqual([0, 65]);
   });
 
   it("runs only on cold slices and can never break the rotation", () => {
-    const lane = CODE.slice(CODE.indexOf("let deepBoards"), CODE.indexOf("const slice = [...demandBoards"));
-    expect(lane, "the lane is not gated to cold slices").toMatch(/if \(!inHotPhase\)/);
-    expect(lane, "an accelerator that can throw is a dependency, not an accelerator")
-      .toMatch(/\} catch \{/);
+    const cursors: Array<[string, number]> = [["a", 260], ["b", 260]];
+    const hot = runDeepLane({ cursors, cold: 0, coldListLen: 44_399, deepTake: 1, inHotPhase: true });
+    expect([hot.picked, hot.lane], "the lane is not gated to cold slices").toEqual([[], null]);
+    const broken = runDeepLane({ cursors, cold: 0, coldListLen: 44_399, deepTake: 1, select: () => { throw new Error("boom"); } });
+    expect([broken.picked, broken.lane], "an accelerator that can throw is a dependency, not an accelerator").toEqual([[], null]);
   });
 
   it("reports whether it actually ran, not just that offsets moved", () => {
@@ -167,20 +164,19 @@ describe("at-cap boards need a fast lane", () => {
     expect(entries.reduce((t, [, n]) => t + (n as number), 0)).toBe(1500);
   });
 
-  it("rotation covers every board: the window is wider than the cursor's step", () => {
-    // A re-implementation of the selection rule, not the shipped code — it
-    // exists to prove the FAIRNESS property the shipped rule depends on. The
-    // cold cursor moves COLD_SLICE (80) per slice, so successive starts step
-    // by 80 % len. Coverage holds only while the cap exceeds that step, which
-    // is why the cap must never shrink below it without re-checking this.
-    const COLD_SLICE = Number(/const COLD_SLICE = (\d+);/.exec(CODE)?.[1]);
-    const cap = Number(/const DEEP_PER_SLICE = (\d+);/.exec(CODE)?.[1]);
-    const tokens = Array.from({ length: 66 }, (_, i) => `board-${i}`);
-    const seen = new Set<string>();
-    for (let pass = 0, cold = 0; pass < 40; pass++, cold += COLD_SLICE) {
-      const start = cold % tokens.length;
-      [...tokens.slice(start), ...tokens.slice(0, start)].slice(0, cap).forEach((t) => seen.add(t));
+  it("rotation covers every board at the take that ships, whatever the cursor's step", () => {
+    // Runs the shipped lane. n014: with the start at cold % L, a take of one
+    // and the cursor stepping 80 over 66 boards visited only the even
+    // positions. Since .90 the start is the cursor's place in its rotation
+    // mapped onto the map (deep-lane.ts), so a step sharing a factor with the
+    // map's length starves nothing.
+    const take = runLaneTakes(0).deepTake;
+    const lane = deepLaneRunner();
+    const cursors = Array.from({ length: 66 }, (_, i) => [`board-${i}`, 500] as [string, number]);
+    for (const step of [80, 55, 66]) {
+      const seen = new Set<string>();
+      for (let cold = 0; cold < 31_501; cold += step) lane({ cursors, cold, coldListLen: 31_501, deepTake: take }).picked.forEach((t) => seen.add(t));
+      expect(seen.size, `step ${step}: some boards are never selected — the rotation starves them`).toBe(cursors.length);
     }
-    expect(seen.size, "some boards are never selected — the rotation starves them").toBe(tokens.length);
   });
 });

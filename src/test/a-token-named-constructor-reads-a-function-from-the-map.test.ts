@@ -47,7 +47,7 @@ import { tokenMapFromRecord, tokenMapToRecord } from "../../supabase/functions/j
  * future trap must be waived here by name, and a waived trap must be real.
  */
 const DIR = resolve(__dirname, "../../supabase/functions/job-board");
-const FETCH_PATH = ["index.ts", "dormancy.ts", "stale-lane.ts", "token-map.ts", "chain-watchdog.ts", "rotation.ts", "paging.ts", "oversize-registry.ts", "start-gate.ts", "light-reread.ts"] as const;
+const FETCH_PATH = ["index.ts", "dormancy.ts", "stale-lane.ts", "token-map.ts", "chain-watchdog.ts", "rotation.ts", "paging.ts", "oversize-registry.ts", "start-gate.ts", "light-reread.ts", "deep-lane.ts"] as const;
 
 /**
  * Traps waived by name. EMPTY since 2026-09-09.69 — the five present at HEAD

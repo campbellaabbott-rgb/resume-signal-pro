@@ -1,7 +1,9 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { retryBackoffMs, selectRetries, updateBoardFailures } from "../../supabase/functions/job-board/dormancy.ts";
+import { runCompose } from "./helpers/slice-worker";
 
 /**
  * THE FRESHNESS TAIL WAS NEVER A ROTATION-SPEED PROBLEM.
@@ -180,13 +182,11 @@ describe("a failed board should not wait a whole rotation", () => {
     const lane = CODE.slice(CODE.indexOf("let retryBoards"), CODE.indexOf("const slice = [...demandBoards"));
     expect(lane).toMatch(/if \(!inHotPhase\)/);
     expect(lane).toMatch(/\} catch \{/);
-    // .29 moved the deep lane LAST: under SLICE_POSTING_BUDGET the tail of the
-    // slice is what gets deferred, and the retry lane and cursor-bearing base
-    // must outrank the lane's fill rate. Retry is still present and still
-    // ahead of base, which is what this guard exists to hold.
-    // .69 put the stale lane between retry and base, for the same reason retry
-    // sits ahead of base: a lane behind the budget-hit tail is never visited.
-    expect(CODE).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\]/);
+    // Retry is present and ahead of base: a lane behind the budget-hit tail is
+    // never visited. Run, not spelled (.90 moved the deep lane ahead of base too).
+    const slice = runCompose({ demand: [], bootstrap: [], retry: ["r"], stale: [], deep: [], base: ["k"] });
+    expect(slice.indexOf("r"), "the retry lane is not in the slice").toBeGreaterThan(-1);
+    expect(slice.indexOf("r"), "the retry lane must run ahead of the base rotation").toBeLessThan(slice.indexOf("k"));
   });
 
   it("the failure state is read BEFORE the slice is sealed", () => {

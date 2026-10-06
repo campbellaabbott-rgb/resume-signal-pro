@@ -105,6 +105,7 @@ import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWi
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
+import { selectDeepLane } from "./deep-lane.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -244,9 +245,8 @@ const HOT_SLICE = 10;
  * postings. Boards not started skip this pass — one rotation stale, which is
  * precisely what a death already costs them — but the slice COMPLETES: stats
  * record, the shed reads a live row, and `budgetHit` becomes the first signal
- * that measures the thing actually killing slices. The slice order puts the
- * deep lane LAST so the budget protects the cursor-bearing rotation first;
- * the deep lane filling slowly is the .21 trade made deliberately this time.
+ * that measures the thing actually killing slices. Base runs last since .90
+ * (n426): the cursor counts only the base boards started.
  *
  * Counted from r.jobs.length — normalised postings, before the freshness
  * filter — because that is what was held in memory, not what was stored.
@@ -550,6 +550,8 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
 // Rationale: docs/job-board-index-notes.md#n014-deep-volume-per-slice
 const DEEP_VOLUME_PER_SLICE = 500;
 const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT); pinned by test
+// Rationale: docs/job-board-index-notes.md#n426-deep-lane-ahead-of-base
+const DEEP_LANE_TAKE = 1; // deep boards a cold slice takes at rest, out of the bootstrap take; 0 turns the lane off
 // Rationale: docs/job-board-index-notes.md#n015-retry-per-slice
 const RETRY_PER_SLICE = 5;
 // Rationale: docs/job-board-index-notes.md#n016-stale-rpc-limit
@@ -3249,7 +3251,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   const effConcurrency = Math.min(CONCURRENCY, shedLevel === 2 ? 3 : CONCURRENCY);
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
-  const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 1 : DEEP_PER_SLICE;
+  const effDeepPerSlice = shedLevel === 2 ? 0 : Math.min(DEEP_LANE_TAKE, shedLevel === 1 ? 1 : DEEP_PER_SLICE);
   // Rationale: docs/job-board-index-notes.md#n057-hotbybudget
   const hotByBudget = Math.max(1, Math.floor(HOT_POSTING_BUDGET / MAX_POSTINGS_PER_VISIT));
   const effHotSlice = Math.min(shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : HOT_SLICE, hotByBudget);
@@ -3267,7 +3269,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // Rationale: docs/job-board-index-notes.md#n059-deeptake
   const deepTake = shedDeepPerSlice;
   const retryTake = shedRetryPerSlice;
-  const bootstrapTake = shedBootstrapPerSlice;
+  // The deep take comes out of the bootstrap take, so the lanes ahead of base hold as many boards as before (n426).
+  const bootstrapTake = Math.max(0, shedBootstrapPerSlice - deepTake);
   const effColdSlice = shedColdSlice;
   const effRetryPerSlice = retryTake;
   if (shedLevel > 0) {
@@ -3476,12 +3479,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const tokens = [...deepCursors.keys()];
       if (tokens.length > 0) {
         const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards].map((s) => s.token));
-        const start = cold % tokens.length;
-        // Dedupe BEFORE the cap, so a board already in this slice does not
-        // spend one of the lane's places on a fetch that will not happen.
-        deepBoards = [...tokens.slice(start), ...tokens.slice(0, start)]
-          .filter((t) => !taken.has(t))
-          .slice(0, effDeepPerSlice)
+        const { start, picked } = selectDeepLane(tokens, { cold, coldListLen: COLD_LIST.length, take: deepTake, taken });
+        deepBoards = picked
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
         // Rationale: docs/job-board-index-notes.md#n068-deeplane-at-new-date-toisostring-candi
@@ -3620,10 +3619,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       staleBoards = [];
     }
   }
-  // Deep lane LAST: under SLICE_POSTING_BUDGET the tail of this list is what
-  // gets skipped, and the rotation's freshness claim outranks the lane's fill
-  // rate — see SLICE_POSTING_BUDGET.
-  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...baseSlice, ...deepBoards];
+  // Base LAST: a base board the budget defers heads the next slice (the cursor counts only base boards started); n426.
+  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 

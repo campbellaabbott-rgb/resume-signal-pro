@@ -1403,7 +1403,9 @@ const PINNED = {
   // A greenhouse board enrolled at the byte bound reads its light list in the
   // same visit instead of a rotation later, behind the one start gate (n081,
   // n423); the misaimed cold-cursor decrement is gone (n080). A greenhouse
-  // light list over the bound is streamed without its metadata (n424).
+  // light list over the bound is streamed without its metadata (n424). The
+  // deep lane runs ahead of the base rotation, one board a slice out of the
+  // bootstrap take, its start mapped from the cold cursor's place (n426).
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.90",
 };
