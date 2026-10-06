@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runGate } from "./helpers/slice-worker";
 
 /**
  * A SLICE WITH NO CLOCK.
@@ -28,11 +30,17 @@ const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const num = (name: string) => Number(CODE.match(new RegExp(`const ${name} = ([0-9_]+)`))![1].replace(/_/g, ""));
 
 describe("a slice with no clock", () => {
-  it("stops taking new boards on elapsed wall time", () => {
-    expect(CODE).toMatch(/if \(Date\.now\(\) - sliceWallStart >= SLICE_WALL_BUDGET_MS\) \{\s*wallStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
-    const stop = CODE.indexOf("Date.now() - sliceWallStart >= SLICE_WALL_BUDGET_MS");
-    expect(stop, "before the fetch it prevents").toBeLessThan(CODE.indexOf("r = await fetchBoard(s,"));
-    expect(stop, "after the dormancy skip, like the other bounds").toBeGreaterThan(CODE.indexOf("if (skipTokens.has(boardKeyOf(s))) continue;"));
+  it("stops taking new boards on elapsed wall time", async () => {
+    // .90 (n423): one start gate (start-gate.ts); the worker's turn is RUN, not spelled.
+    const wall = num("SLICE_WALL_BUDGET_MS");
+    const board = { source: "lever", token: "a" };
+    const late = await runGate({ queue: [board], elapsedMs: wall + 50 });
+    expect(late.started, "before the fetch it prevents").toBeNull();
+    expect(late.wallStopped).toBe(true);
+    expect(late.deferred).toEqual(["a"]);
+    expect((await runGate({ queue: [board], elapsedMs: wall - 1_000 })).started).toBe("a");
+    const dormant = await runGate({ queue: [board], elapsedMs: wall + 50, dormant: ["a"] });
+    expect([dormant.deferred, dormant.wallStopped], "after the dormancy skip, like the other bounds").toEqual([[], false]);
   });
 
   it("the budget leaves room for an in-flight fetch AND the stamps that follow", () => {
@@ -69,12 +77,13 @@ describe("a slice with no clock", () => {
     expect(CODE).toMatch(/wallStopped: sliceBudgetNote\.wallStopped,/);
   });
 
-  it("is capped at a size the breadcrumbs show it reaches", () => {
+  it("is capped at a size the breadcrumbs show it reaches", async () => {
     // .43. Not a theory about the cause — an observation about what survives.
     // .47: the cap is no longer a constant — it rides the chain and ramps
     // (a-cap-that-finds-its-own-ceiling.test.ts), so the stop reads the budget
     // this hop was handed.
-    expect(CODE).toMatch(/if \(boardsDone >= boardBudget\) \{\s*sizeStopped = true;\s*budgetSkipped\.push\(s\.token\);\s*continue;\s*\}/);
+    const capped = await runGate({ queue: [{ source: "lever", token: "a" }], boardsDone: 16, boardBudget: 16 });
+    expect([capped.started, capped.sizeStopped, capped.deferred]).toEqual([null, true, ["a"]]);
     // Floor and ceiling are equal after the revert: the ramp is neutralised
     // and a slice composes its full COLD_SLICE again.
     expect(num("MIN_BOARDS_PER_SLICE")).toBe(num("MAX_BOARDS_PER_SLICE"));
@@ -86,10 +95,11 @@ describe("a slice with no clock", () => {
     expect(CODE).toMatch(/\+\+boardsDone;\s*await breadcrumb\(client, "board-fetched"/);
   });
 
-  it("the heap bound stays, and is honest about what it is", () => {
+  it("the heap bound stays, and is honest about what it is", async () => {
     // Kept because it is a real secondary ceiling, not because it explained
     // anything — it never fired on the slices it was shipped for.
-    expect(CODE).toMatch(/heapNow >= HEAP_SOFT_LIMIT_MB/);
+    const heap = await runGate({ queue: [{ source: "lever", token: "a" }], heapMb: num("HEAP_SOFT_LIMIT_MB") });
+    expect([heap.started, heap.heapStopped]).toEqual([null, true]);
     expect(RAW).toMatch(/it was not the cause/);
   });
 });

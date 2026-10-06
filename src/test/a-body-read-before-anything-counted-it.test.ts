@@ -1,6 +1,9 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runVisit } from "./helpers/slice-worker";
+import * as oversizeRegistry from "../../supabase/functions/job-board/oversize-registry.ts";
 
 /**
  * THE ONLY VOLUME GUARD THIS FUNCTION HAD FIRED AFTER THE ALLOCATION IT WAS
@@ -286,24 +289,25 @@ describe("a body read before anything counted it", () => {
     expect(CODE).toMatch(/const budgetSkippedSet = new Set\(budgetSkipped\);/);
   });
 
-  it("a light-capable vendor ENROLS rather than being deferred forever", () => {
-    const i = CODE.indexOf('if (failReason.startsWith("oversize"))');
-    const block = CODE.slice(i, i + 1400);
-    // Since .89 light mode is keyed by BOARD (source:token), so the board itself is passed.
-    expect(block).toMatch(/LIGHT_CAPABLE_VENDORS\.has\(s\.source\) && !isLight\(s\)/);
-    expect(block).toMatch(/await enrolDynamicLight\(client, s,/);
-    // AND IT GETS ITS SLOT BACK. Every other budget deferral `continue`s
-    // before `baseAttempted++`, so its board is re-offered on the next slice;
-    // this branch sits after that line. Left alone, a board enrolled for a
-    // light re-fetch that would succeed immediately waits a full cold rotation
-    // — 6.7h at baseline, ~59h at the p50 this whole change exists to fix.
-    // Returned only where the next attempt would DIFFER: a board with no light
-    // form would abort identically, so re-offering it every slice would burn a
-    // board slot and a 4MB transfer per pass, forever.
-    expect(
-      block.slice(block.indexOf("enrolDynamicLight")),
-      "an enrolled board must not wait a whole rotation for the light fetch",
-    ).toMatch(/baseTokens\.has\(s\.token\) && baseAttempted > 0\) baseAttempted--/);
+  it("a light-capable vendor ENROLS rather than being deferred forever", async () => {
+    // AND IT READS LIGHT IN THE SAME VISIT (.90, n081). Until .90 an enrolled
+    // board took one off the cold-cursor count to "get its slot back", but the
+    // cursor moves by position, so that re-read the slice's last base board,
+    // never this one: every enrolled board waited a full cold rotation
+    // (speechify 5h57m, samsara 5h37m on .89). Now the visit, RUN here, reads
+    // the light list once; a board with no light form, or one the set refuses,
+    // would abort identically and is deferred without a re-read.
+    // Every case: an-enrolled-board-reads-light-in-the-same-visit.test.ts.
+    const gh = await runVisit({
+      board: { source: "greenhouse", token: "speechify" }, failReason: "oversize 6.1MB", base: true, baseAttempted: 5,
+      reread: ({ light }) => (light ? { read: { jobs: [{ id: "1" }], raw: {} } } : { read: null, reason: "oversize 6.1MB" }),
+    });
+    expect([gh.enrolCalls, gh.light], "enrolled, keyed by board").toEqual([1, true]);
+    expect(gh.fetchCalls.map((c) => c.light), "an enrolled board must not wait a whole rotation for the light fetch").toEqual([true]);
+    expect(gh.deferred).toEqual([]);
+    expect(gh.baseAttempted, "and the cursor counts it, because it was started").toBe(5);
+    const refused = await runVisit({ board: { source: "greenhouse", token: "speechify" }, failReason: "oversize 6.1MB", refuse: true });
+    expect([refused.fetchCalls, refused.deferred], "a refusal re-fetches nothing and defers").toEqual([[], ["speechify"]]);
     // Reuse of the machinery that already exists, not a second copy of it:
     // the enrolment must persist through the same meta row the auto-light
     // measurement writes, or a restart forgets every enrolment.
@@ -402,7 +406,19 @@ describe("a body read before anything counted it", () => {
       .toMatch(/await loadOversizeBoards\(client\);/);
     const i = CODE.indexOf('if (failReason.startsWith("oversize"))');
     const block = CODE.slice(i, i + 1400);
-    expect(block, "an oversize board must be recorded where it survives the next slice").toMatch(/OVERSIZE_BOARDS\.set\(s\.token,/);
+    // Run the block's registry statements (since .90 keyed by board, n422) and read the Map persistOversizeBoards writes.
+    const runWith = (stmts: string, scope: Record<string, unknown>) => {
+      const all: Record<string, unknown> = { ...oversizeRegistry, SHARED_TOKENS: new Set(["pulse"]), ...scope };
+      return new Function(...Object.keys(all), stmts)(...Object.values(all));
+    };
+    const reg = new Map<string, { source: string; mb: number; at: string }>();
+    const recordStmts = block.slice(0, block.indexOf("budgetSkipped.push(s.token);")).split("\n").filter((l) => l.includes("OVERSIZE_BOARDS")).join("\n");
+    runWith(`let oversizeDirty = false;\n${recordStmts}`, { OVERSIZE_BOARDS: reg, s: { source: "greenhouse", token: "pulse" }, mb: 20.6 });
+    expect(
+      [...reg.keys()],
+      "an oversize board must be recorded where it survives the next slice, under its own board's key (pulse is greenhouse AND ashby)",
+    ).toEqual(["greenhouse:pulse"]);
+    expect(reg.get("greenhouse:pulse")).toMatchObject({ source: "greenhouse", mb: 20.6 });
     // THE CLOSURE LOG IS THE ONE UNCOPYABLE ASSET HERE. A board we are too
     // small to READ has not closed: its postings age past the 30-day window
     // unverified and are dropped, but writing them into the exit ledger would
@@ -411,9 +427,19 @@ describe("a body read before anything counted it", () => {
     const s = CODE.indexOf("const oversizeHeld = agedRows.filter(");
     expect(s, "the freshness sweep no longer looks at the oversize registry at all").toBeGreaterThan(0);
     const sweep = CODE.slice(s, CODE.indexOf('"freshness-sweep"', s) + 40);
-    expect(sweep, "the freshness sweep must exclude oversize boards from the ledger").toMatch(
-      /OVERSIZE_BOARDS\.has\(String\(r\.company_token\)\)/,
-    );
+    const heldStmt = sweep.split("\n").find((l) => l.includes("const oversizeHeld = agedRows.filter("))!;
+    const aged = [
+      { id: "greenhouse:pulse:1", source: "greenhouse", company_token: "pulse" },
+      { id: "ashby:pulse:2", source: "ashby", company_token: "pulse" },
+      { id: "lever:acme:3", source: "lever", company_token: "acme" },
+    ];
+    const held = runWith(`${heldStmt}\nreturn oversizeHeld.map((r) => r.id);`, {
+      OVERSIZE_BOARDS: new Map([["greenhouse:pulse", { source: "greenhouse", mb: 20.6, at: "x" }]]),
+      META_READ: { light: true, oversize: true },
+      agedRows: aged,
+      alreadyTombstoned: new Set<string>(),
+    });
+    expect(held, "the freshness sweep must exclude oversize boards from the ledger: that board's rows, not its token twin's").toEqual(["greenhouse:pulse:1"]);
     // The exclusion rides the one set the ledger line already consults, so
     // there is exactly one filter in front of the exit ledger and the guards
     // that pin that line (a-posting-that-aged-out-must-not-walk-back-in,

@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, runGate } from "./helpers/slice-worker";
 
 /**
  * A CAP THAT SAVED THE CHAIN, AND THEN BECAME THE BOTTLENECK.
@@ -56,8 +58,14 @@ describe("a cap that finds its own ceiling", () => {
     expect(CODE).toMatch(/\.\.\.\(nextBoards \? \{ boards: nextBoards \} : \{\}\)/);
   });
 
-  it("the slice stops on the budget it was given, not on a constant", () => {
-    expect(CODE).toMatch(/if \(boardsDone >= boardBudget\) \{/);
+  it("the slice stops on the budget it was given, not on a constant", async () => {
+    // .90 (n423): one start gate (start-gate.ts); the worker's turn is RUN. A budget of 8 under a ceiling of 80.
+    const board = { source: "lever", token: "a" };
+    const at = await runGate({ queue: [board], boardsDone: 8, boardBudget: 8 });
+    expect(at.started).toBeNull();
+    expect(at.sizeStopped).toBe(true);
+    expect(at.deferred).toEqual(["a"]);
+    expect((await runGate({ queue: [board], boardsDone: 7, boardBudget: 8 })).started).toBe("a");
     expect(CODE, "the old fixed cap must not linger").not.toMatch(/boardsDone >= MAX_BOARDS_PER_SLICE/);
   });
 

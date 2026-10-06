@@ -102,6 +102,10 @@ import {
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
+import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens } from "./oversize-registry.ts";
+import { startGate } from "./start-gate.ts";
+import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
+import { selectDeepLane } from "./deep-lane.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -128,7 +132,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.89"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.90"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -241,9 +245,8 @@ const HOT_SLICE = 10;
  * postings. Boards not started skip this pass — one rotation stale, which is
  * precisely what a death already costs them — but the slice COMPLETES: stats
  * record, the shed reads a live row, and `budgetHit` becomes the first signal
- * that measures the thing actually killing slices. The slice order puts the
- * deep lane LAST so the budget protects the cursor-bearing rotation first;
- * the deep lane filling slowly is the .21 trade made deliberately this time.
+ * that measures the thing actually killing slices. Base runs last since .90
+ * (n426): the cursor counts only the base boards started.
  *
  * Counted from r.jobs.length — normalised postings, before the freshness
  * filter — because that is what was held in memory, not what was stored.
@@ -547,6 +550,8 @@ const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice afte
 // Rationale: docs/job-board-index-notes.md#n014-deep-volume-per-slice
 const DEEP_VOLUME_PER_SLICE = 500;
 const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT); pinned by test
+// Rationale: docs/job-board-index-notes.md#n426-deep-lane-ahead-of-base
+const DEEP_LANE_TAKE = 1; // deep boards a cold slice takes at rest, out of the bootstrap take; 0 turns the lane off
 // Rationale: docs/job-board-index-notes.md#n015-retry-per-slice
 const RETRY_PER_SLICE = 5;
 // Rationale: docs/job-board-index-notes.md#n016-stale-rpc-limit
@@ -680,10 +685,26 @@ const DESC_BACKFILL_VENDOR = "greenhouse"; // backfill-desc hits the GH per-JOB 
 const descBackfillBoards = (): JobSource[] =>
   JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s));
 
-async function loadDynamicLight(client: SupabaseClient): Promise<void> {
+// Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written
+const META_READ = { light: false, oversize: false };
+async function readMetaRow(client: SupabaseClient, k: string): Promise<{ read: true; v: unknown } | { read: false; why: string }> {
   try {
-    const { data } = await client.from("job_board_meta").select("v").eq("k", "light_desc_dynamic").maybeSingle();
-    const tokens = (data?.v as { tokens?: unknown } | null)?.tokens;
+    const { data, error } = await client.from("job_board_meta").select("v").eq("k", k).maybeSingle();
+    return error ? { read: false, why: String(error.message ?? error).slice(0, 120) } : { read: true, v: data?.v ?? null };
+  } catch (e) {
+    return { read: false, why: String((e as Error)?.message ?? e).slice(0, 120) };
+  }
+}
+
+async function loadDynamicLight(client: SupabaseClient): Promise<void> {
+  const row = await readMetaRow(client, "light_desc_dynamic");
+  META_READ.light = row.read;
+  if (!row.read) {
+    console.warn(`[JOB-BOARD] light set unread (${row.why}): previous set kept, nothing persisted this slice`);
+    return;
+  }
+  try {
+    const tokens = (row.v as { tokens?: unknown } | null)?.tokens;
     DYNAMIC_LIGHT.clear();
     // SWEEP THE ROW, don't merely filter the read. Tokens an older build
     // persisted without a vendor test are refused by the set above, which is
@@ -730,27 +751,23 @@ async function loadDynamicLight(client: SupabaseClient): Promise<void> {
         { onConflict: "k" },
       );
     }
-  } catch { /* meta unreadable — static set still applies */ }
+  } catch { /* the row was read; a failed sweep write retries on the next load */ }
 }
 
 // Rationale: docs/job-board-index-notes.md#n020-oversize-boards
 const OVERSIZE_BOARDS = new Map<string, { source: string; mb: number; at: string }>();
 const OVERSIZE_CAP = 200;
 async function loadOversizeBoards(client: SupabaseClient): Promise<void> {
-  try {
-    const { data } = await client.from("job_board_meta").select("v").eq("k", "oversize_boards").maybeSingle();
-    const rec = (data?.v as { boards?: Record<string, { source?: string; mb?: number; at?: string }> } | null)?.boards;
-    OVERSIZE_BOARDS.clear();
-    if (rec && typeof rec === "object") {
-      for (const [tk, e] of Object.entries(rec)) {
-        if (typeof tk === "string" && e && typeof e === "object") {
-          OVERSIZE_BOARDS.set(tk, { source: String(e.source ?? ""), mb: Number(e.mb) || 0, at: String(e.at ?? "") });
-        }
-      }
-    }
-  } catch { /* meta unreadable — the registry is diagnostic, never a gate */ }
+  const row = await readMetaRow(client, "oversize_boards");
+  META_READ.oversize = row.read;
+  if (!row.read) {
+    console.warn(`[JOB-BOARD] oversize registry unread (${row.why}): previous registry kept, not persisted, and the freshness sweep skipped this slice`);
+    return;
+  }
+  loadOversizeEntries(OVERSIZE_BOARDS, (row.v as { boards?: unknown } | null)?.boards, SHARED_TOKENS);
 }
 async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
+  if (!META_READ.oversize) return;
   try {
     // Newest last, oldest dropped: a board that stopped being oversize ages
     // out of the registry instead of being asserted forever.
@@ -778,14 +795,15 @@ async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
  * Returns whether the board is now light. FALSE means the set refused the
  * vendor (it logs why), and the caller must take the deferral path instead of
  * reporting an enrolment that did not happen — nothing may be persisted, and
- * at the byte bound no board slot may be handed back for a re-fetch that would
- * be byte-for-byte identical to the one that just failed.
+ * at the byte bound the board is not read again in the same visit (n081): the
+ * read would be byte-for-byte identical to the one that just failed.
  */
 async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, "source" | "token">, why: string): Promise<boolean> {
   const key = lightKey(board);
   DYNAMIC_LIGHT.add(key);
   if (!DYNAMIC_LIGHT.has(key)) return false;
-  console.warn(`[JOB-BOARD] auto-light: ${key} ${why} — enrolled in light mode (descs via backfill)`);
+  console.warn(`[JOB-BOARD] auto-light: ${key} ${why} — enrolled in light mode (descs via backfill)${META_READ.light ? "" : "; not persisted, the row was unread this slice"}`);
+  if (!META_READ.light) return true;
   try {
     const { error: alErr } = await client.from("job_board_meta").upsert(
       { k: "light_desc_dynamic", v: { tokens: [...DYNAMIC_LIGHT].slice(-AUTO_LIGHT_CAP), updatedAt: new Date().toISOString(), keyedBy: "source:token" }, updated_at: new Date().toISOString() },
@@ -983,7 +1001,7 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  * OVERSIZE_BOARDS exists to keep them nameable rather than silent.
  */
 const MAX_RESPONSE_BYTES = 4_000_000;
-// The second read of a lever/ashby board the bound refused, one posting at a time.
+// The second read of a lever/ashby board (or a light greenhouse list) the bound refused, one posting at a time.
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
 const STREAM_WIRE_BYTES = 64_000_000;
 const STREAM_READ_BUDGET_MS = 30_000;
@@ -1871,6 +1889,7 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
     });
     const jobs = s.source === "lever" ? normalizeLever(raw as never, s.name, s.token)
       : s.source === "ashby" ? normalizeAshby(raw as never, s.name, s.token)
+      : s.source === "greenhouse" ? normalizeGreenhouse(raw as never, s.name, s.token)
       : null;
     if (!jobs) throw new Error(`no normaliser for ${s.source}`);
     console.warn(`[JOB-BOARD] streamed ${s.source}:${s.token}: ${(stats.bytes / 1e6).toFixed(1)}MB read, ${(stats.slimBytes / 1e6).toFixed(1)}MB kept, ${stats.descDropped} description(s) dropped`);
@@ -3018,6 +3037,8 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
 // below in the same invocation. Module state rather than a parameter because a
 // guard counts the recorder's exact call literal at its three terminal returns.
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
+// This slice's light re-reads (n081), added to the row's running totals by the recorder.
+let sliceLightReread: LightRereadStats | null = null;
 // WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
 // sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
 // that died last was a small cold one (6,386 postings, 39s). That is the
@@ -3084,6 +3105,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The stale lane's slice outcome rides the same row: how many stale
         // boards this slice tried, and how many of those stamped.
         ...(sliceStaleNote ? { staleTries: sliceStaleNote.tries, staleResolved: sliceStaleNote.resolved } : {}),
+        ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
@@ -3156,6 +3178,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // stale lane's fold, so an isolate that served a cold hop and then a hot one
   // would otherwise write the cold hop's staleTries onto the hot hop's row.
   sliceStaleNote = null;
+  sliceLightReread = null;
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Loaded in the same invocation that runs the freshness sweep, because the
@@ -3228,7 +3251,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   const effConcurrency = Math.min(CONCURRENCY, shedLevel === 2 ? 3 : CONCURRENCY);
   // The deep lane is the most expensive work a hop does and the least urgent —
   // it re-pages boards we already carry. It is the first thing to go.
-  const effDeepPerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 1 : DEEP_PER_SLICE;
+  const effDeepPerSlice = shedLevel === 2 ? 0 : Math.min(DEEP_LANE_TAKE, shedLevel === 1 ? 1 : DEEP_PER_SLICE);
   // Rationale: docs/job-board-index-notes.md#n057-hotbybudget
   const hotByBudget = Math.max(1, Math.floor(HOT_POSTING_BUDGET / MAX_POSTINGS_PER_VISIT));
   const effHotSlice = Math.min(shedLevel === 2 ? 3 : shedLevel === 1 ? 5 : HOT_SLICE, hotByBudget);
@@ -3246,7 +3269,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // Rationale: docs/job-board-index-notes.md#n059-deeptake
   const deepTake = shedDeepPerSlice;
   const retryTake = shedRetryPerSlice;
-  const bootstrapTake = shedBootstrapPerSlice;
+  // The deep take comes out of the bootstrap take, so the lanes ahead of base hold as many boards as before (n426).
+  const bootstrapTake = Math.max(0, shedBootstrapPerSlice - deepTake);
   const effColdSlice = shedColdSlice;
   const effRetryPerSlice = retryTake;
   if (shedLevel > 0) {
@@ -3455,12 +3479,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const tokens = [...deepCursors.keys()];
       if (tokens.length > 0) {
         const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards].map((s) => s.token));
-        const start = cold % tokens.length;
-        // Dedupe BEFORE the cap, so a board already in this slice does not
-        // spend one of the lane's places on a fetch that will not happen.
-        deepBoards = [...tokens.slice(start), ...tokens.slice(0, start)]
-          .filter((t) => !taken.has(t))
-          .slice(0, effDeepPerSlice)
+        const { start, picked } = selectDeepLane(tokens, { cold, coldListLen: COLD_LIST.length, take: deepTake, taken });
+        deepBoards = picked
           .map((t) => JOB_SOURCES.find((s) => s.token === t))
           .filter((s): s is JobSource => !!s);
         // Rationale: docs/job-board-index-notes.md#n068-deeplane-at-new-date-toisostring-candi
@@ -3528,7 +3548,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const { data: slMeta } = await client.from("job_board_meta").select("v").eq("k", "stale_lane").maybeSingle();
       staleTries = readStaleTries(slMeta?.v);
       // Rationale: docs/job-board-index-notes.md#n072-staleexclude
-      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
+      const staleExclude = staleExclusion({ oversize: oversizeTokens(OVERSIZE_BOARDS), tries: staleTries });
       const askStale = (exclude: readonly string[] | null) => withDeadline(
         client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
@@ -3559,7 +3579,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const verdicts: StaleVerdict[] = classifyStale(rows, {
           catalogued: CATALOGUE_TOKENS,
           quarantinedVendors,
-          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          oversize: new Set(oversizeTokens(OVERSIZE_BOARDS)),
           dormant: tokensOf(boardFailures.dormant),
           failing: new Set([...tokensOf(boardFailures.failedAt), ...tokensOf(boardFailures.streaks)]),
           tries: staleTries,
@@ -3599,10 +3619,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       staleBoards = [];
     }
   }
-  // Deep lane LAST: under SLICE_POSTING_BUDGET the tail of this list is what
-  // gets skipped, and the rotation's freshness claim outranks the lane's fill
-  // rate — see SLICE_POSTING_BUDGET.
-  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...baseSlice, ...deepBoards];
+  // Base LAST: a base board the budget defers heads the next slice (the cursor counts only base boards started); n426.
+  const slice = [...demandBoards, ...bootstrapBoards, ...retryBoards, ...staleBoards, ...deepBoards, ...baseSlice];
   const startIso = new Date().toISOString();
   const freshCutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000; // roles older than this are dropped
 
@@ -3688,6 +3706,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // permanently oversize board must not cost a meta write every ten minutes.
   let oversizeDirty = false;
   let lastUpsertError: string | null = null;
+  // Rationale: docs/job-board-index-notes.md#n423-one-start-gate
+  const canStart = (newBoard: boolean) => startGate({
+    fetched: fetchedInSlice, inFlight: inFlightReserve, postingBudget: SLICE_POSTING_BUDGET,
+    elapsedMs: Date.now() - sliceWallStart, wallBudgetMs: SLICE_WALL_BUDGET_MS,
+    heapMb: memStamp().heapMb, heapLimitMb: HEAP_SOFT_LIMIT_MB,
+    ...(newBoard ? { boards: { done: boardsDone, budget: boardBudget } } : {}),
+  });
+  const lightStats = lightRereadStats();
+  const lightRereadDone = new Set<string>();
+  sliceLightReread = lightStats;
 
   await Promise.all(
     Array.from({ length: inHotPhase ? HOT_CONCURRENCY : effConcurrency }, async () => {
@@ -3697,30 +3725,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
         if (skipTokens.has(boardKeyOf(s))) continue;
-        // Deferred only on what has LANDED. When it is the reservation that
-        // fills the budget, this worker retires and hands the board back to a
-        // worker still in flight — concurrency shrinks, the queue does not.
-        if (fetchedInSlice >= SLICE_POSTING_BUDGET) { budgetSkipped.push(s.token); continue; }
-        // Checked before STARTING a board, so whatever is already in flight
-        // has headroom to land.
-        if (boardsDone >= boardBudget) {
-          sizeStopped = true;
-          budgetSkipped.push(s.token);
-          continue;
-        }
-        if (Date.now() - sliceWallStart >= SLICE_WALL_BUDGET_MS) {
-          wallStopped = true;
-          budgetSkipped.push(s.token);
-          continue;
-        }
-        const heapNow = memStamp().heapMb;
-        if (heapNow !== undefined && heapNow >= HEAP_SOFT_LIMIT_MB) {
-          heapStopped = true;
-          budgetSkipped.push(s.token);
-          continue;
-        }
+        // Checked before STARTING a board: landed postings, board count, wall and heap defer it; a full reservation waits.
+        const gate = canStart(true);
         // Rationale: docs/job-board-index-notes.md#n076-fetchedinslice-inflightreserve-slic
-        if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {
+        if (gate === "reserve") {
           // Rationale: docs/job-board-index-notes.md#n077-spins
           const spins = (yieldsByToken.get(s.token) ?? 0) + 1;
           yieldsByToken.set(s.token, spins);
@@ -3732,6 +3740,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           await new Promise((r) => setTimeout(r, 250));
           continue;
         }
+        if (gate !== "ok") {
+          if (gate === "boards") sizeStopped = true;
+          else if (gate === "wall") wallStopped = true;
+          else if (gate === "heap") heapStopped = true;
+          budgetSkipped.push(s.token);
+          continue;
+        }
         let failReason = "";
         // Rationale: docs/job-board-index-notes.md#n078-reserve
         const reserve = inHotPhase || deepTokens.has(s.token) || CAPPED_VISIT_VENDORS.has(s.source) || !!s.pages ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
@@ -3740,8 +3755,22 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
         finally { inFlightReserve -= reserve; }
-        // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
-        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
+        // Rationale: docs/job-board-index-notes.md#n081-light-reread-in-the-same-visit
+        let lightOversize = false;
+        if (!r) ({ r, failReason, lightOversize } = await lightReread({
+          board: s, failReason, lightCapable: LIGHT_CAPABLE_VENDORS.has(s.source), light: isLight(s),
+          enrol: () => enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`),
+          canStart: () => canStart(false) === "ok",
+          read: async () => {
+            let why = "";
+            inFlightReserve += reserve;
+            try { return { r: await fetchBoard(s, (m) => { why = m; }, 0), failReason: why }; }
+            finally { inFlightReserve -= reserve; }
+          },
+          done: lightRereadDone, stats: lightStats,
+        }));
+        // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read, #n424-greenhouse-streamed-light-read
+        if (!r && failReason.startsWith("oversize") && SLIM_SPECS[s.source] && (s.source !== "greenhouse" || (lightOversize && isLight(s))) && Date.now() - sliceWallStart + STREAM_READ_BUDGET_MS <= SLICE_WALL_BUDGET_MS && (memStamp().heapMb ?? 0) < HEAP_SOFT_LIMIT_MB) {
           inFlightReserve += reserve;
           try { r = await readOversizeBoard(s, Date.now() + STREAM_READ_BUDGET_MS, freshCutoffMs); }
           finally { inFlightReserve -= reserve; }
@@ -3762,20 +3791,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // The durable record. slice_stats is one row overwritten every ten
             // minutes; a board that is permanently past the budget has to be
             // nameable long after that.
-            const prev = OVERSIZE_BOARDS.get(s.token);
-            // Dirty on a new board, a materially different size, or a stamp
-            // that has gone stale — so `at` keeps meaning "last seen oversize"
-            // without costing a meta write every ten minutes for a board that
-            // is simply always too big.
-            const prevAge = prev ? Date.now() - new Date(prev.at).getTime() : Infinity;
-            if (!prev || Math.abs(prev.mb - mb) >= 0.1 || !(prevAge < 12 * 3_600_000)) oversizeDirty = true;
-            OVERSIZE_BOARDS.delete(s.token); // re-insert so the cap keeps the most RECENT
-            OVERSIZE_BOARDS.set(s.token, { source: s.source, mb, at: new Date().toISOString() });
-            // Rationale: docs/job-board-index-notes.md#n081-light-capable-vendors-has-s-source
-            if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s)) {
-              const enrolled = await enrolDynamicLight(client, s, `list response ${failReason} — over the byte budget`);
-              if (enrolled && baseTokens.has(s.token) && baseAttempted > 0) baseAttempted--;
-            }
+            // Keyed by board (n422); dirty on a new board, a moved size or a 12h-old stamp.
+            if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;
             budgetSkipped.push(s.token);
             continue;
           }
@@ -4977,10 +4994,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
         // greenhouse giant reads fine on its very next visit, and a vendor
         // trimming its payload heals the same way. Left in the registry the
-        // token would keep this board's genuinely aged-out postings out of the
-        // closure log forever — the suppression that protects a live board
-        // would start hiding real exits.
-        if (OVERSIZE_BOARDS.delete(s.token)) oversizeDirty = true;
+        // entry would keep this board's genuinely aged-out postings out of the
+        // closure log forever. Only this board's own entry goes (n422).
+        if (clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;
         // Stamp verification IMMEDIATELY, per board — not at hop end. Heavy hot
         // hops can die post-processing (WORKER_RESOURCE_LIMIT) before hop-end
         // code runs, which silently starved every hot board of stamps while the
@@ -5063,6 +5079,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   sliceBudgetNote = { fetched: fetchedInSlice, skipped: budgetSkipped.length, hit: budgetSkipped.length > 0, lastUpsertError, heapStopped, wallStopped, sizeStopped, boardBudget };
   if (budgetSkipped.length) console.warn(`[JOB-BOARD] slice budget hit: ${fetchedInSlice} postings fetched, ${budgetSkipped.length} board(s) deferred to next pass`);
   if (oversized.length) console.warn(`[JOB-BOARD] byte budget: ${oversized.length} board(s) over ${MAX_RESPONSE_BYTES} bytes and deferred — ${oversized.slice(0, 10).join(", ")}`);
+  if (lightStats.enrolled) console.warn(`[JOB-BOARD] light re-read: ${lightStats.enrolled} enrolled, ${lightStats.reread} read again (${lightStats.ok} ok), ${lightStats.deferred} deferred`);
   if (oversizeDirty) await persistOversizeBoards(client);
   await breadcrumb(client, "loop-done", { boardsDone, fetched: fetchedInSlice, skipped: budgetSkipped.length, heapStopped, wallStopped, sizeStopped, elapsedMs: Date.now() - sliceWallStart });
   await stampSliceWork(client, inHotPhase, sliceWallStart);
@@ -5396,7 +5413,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     {
       const freshCutoffIso = new Date(freshCutoffMs).toISOString();
       const ids: string[] = [];
-      for (let from = 0; ids.length < FRESH_PRUNE_MAX; from += 1000) {
+      // Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written
+      if (!META_READ.oversize) console.warn("[JOB-BOARD] freshness sweep skipped: the oversize registry was unread this slice, so aged rows wait for the next pass (the list already hides them)");
+      for (let from = 0; META_READ.oversize && ids.length < FRESH_PRUNE_MAX; from += 1000) {
         const take = Math.min(1000, FRESH_PRUNE_MAX - ids.length);
         const { data: page, error } = await client
           .from("job_board_postings")
@@ -5458,7 +5477,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             { onConflict: "id", ignoreDuplicates: true },
           )).then(() => {}).catch(() => {}));
           // Rationale: docs/job-board-index-notes.md#n147-oversizeheld
-          const oversizeHeld = agedRows.filter((r) => OVERSIZE_BOARDS.has(String(r.company_token)) && !alreadyTombstoned.has(String(r.id)));
+          const oversizeHeld = agedRows.filter((r) => heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS) && !alreadyTombstoned.has(String(r.id)));
           for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
           if (oversizeHeld.length > 0) {
             console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} OVERSIZE board(s) dropped without a closure-log entry — the board is deferred by the byte budget, not closed`);
@@ -8361,13 +8380,7 @@ Deno.serve(async (req) => {
         // Boards past MAX_RESPONSE_BYTES: named, sized and dated, largest
         // first. A deferral is not a failure, so nothing else on this page
         // would ever mention them.
-        oversizeBoards: (() => {
-          const rec = ((overMeta as { data?: { v?: { boards?: Record<string, { source?: string; mb?: number; at?: string }> } } } | null)?.data?.v?.boards) ?? {};
-          return Object.entries(rec)
-            .map(([token, e]) => ({ token, source: String(e?.source ?? ""), mb: Number(e?.mb) || 0, at: String(e?.at ?? "") }))
-            .sort((a, b) => b.mb - a.mb)
-            .slice(0, 50);
-        })(),
+        oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),
         oversizeBoardCount: Object.keys(((overMeta as { data?: { v?: { boards?: Record<string, unknown> } } } | null)?.data?.v?.boards) ?? {}).length,
         descCoverageAgeMin: ageMin((descCov as { data?: { computed_at?: string } } | null)?.data?.computed_at ?? null),
         descCoverage: Array.isArray((descCov as { data?: { v?: unknown } } | null)?.data?.v)

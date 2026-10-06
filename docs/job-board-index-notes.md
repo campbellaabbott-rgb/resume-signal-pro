@@ -486,6 +486,12 @@ is 14 — sharing a factor of two with 66, so a take of one visits only the
 even positions and starves half the lane forever. The take stays at two and
 the per-visit cap carries the memory reduction instead.
 
+.90: the take APPLIED is one again (DEEP_LANE_TAKE; DEEP_PER_SLICE stays 2
+as the memory ceiling), and the fairness property is kept by the start rule
+instead of the take: the start is the cold cursor's place in its rotation
+mapped onto the list, so a step sharing a factor with the list's length
+starves nothing (n426).
+
 ## n015-retry-per-slice
 
 Above: `const RETRY_PER_SLICE = 5;`
@@ -682,9 +688,15 @@ from a slow edge: cgsfederal was 36.5 MB in 32 s from a desktop), boards whose
 metadata alone is over SLIM_RETAINED_BYTES (ashby bjakcareer), and boards the
 slice clock or the heap gate kept from starting the retry this visit. For
 greenhouse, after the n019 cap raise, expect only the shared-token boards and
-the two whose light list is itself over the bound (liquidpersonnel, pulse).
+the two whose light list is itself over the bound (liquidpersonnel, pulse);
+since .90 those two stream their light list (n424), so expect a greenhouse
+entry only while a streamed read fails or the gates keep it from starting.
 The other vendors without a light form (teamtailor, workable, recruitee,
 pinpoint and the rest) are unchanged and still defer here.
+
+SINCE .90 a slice that could not read this row neither writes it nor lets the
+freshness sweep log any closure (n421), and the registry is keyed by BOARD:
+the bare token, or `source:token` on a shared token (n422).
 
 ## n021-startoffset-is-honoured-only-by-the-paginatin
 
@@ -1603,6 +1615,9 @@ slice, let the posting budget stop it wherever memory says, and advance
 the cold cursor after the loop by the base-slice boards ACTUALLY
 ATTEMPTED. Nothing is skipped and nothing is throttled.
 
+.90: the deep lane now runs before the cold rotation (n426); the cursor rule
+is unchanged, and it is why base can be the tail.
+
 ## n060-
 
 Above: `}`
@@ -1818,6 +1833,11 @@ starved by the ones ahead of it, deduped against everything already in the
 slice so no board is fetched twice in one pass, and capped at the size the
 bootstrap lane already proved fits the wall-time budget.
 
+.90 (n426): the lane runs AHEAD of the base rotation, one board a slice
+(DEEP_LANE_TAKE) taken out of the bootstrap take; until then it sat last and
+visited nothing. The start is no longer `cold % candidates` but the cursor's
+place in its rotation mapped onto the map (selectDeepLane, deep-lane.ts).
+
 ## n068-deeplane-at-new-date-toisostring-candi
 
 Above: `deepLane = { at: new Date().toISOString(), candidates: tokens.length, selected: deepBoards.length, visited: 0, start };`
@@ -1829,10 +1849,14 @@ split, an offset that does not move has two indistinguishable causes
 and gets guessed at — which is how this rotation was misread three
 times before it carried a number.
 `visited` is filled after the loop. SELECTED IS NOT VISITED, and the
-gap is the whole point: the deep lane is LAST in the composed slice
-(index >= COLD_SLICE + the other lanes), and the posting budget stops
-the loop around 30 boards, so nothing in this lane has been fetched
-in a very long time. `selected: 2` standing alone reported the lane
+gap was the whole point: until .90 the deep lane was LAST in the composed
+slice (index >= COLD_SLICE + the other lanes), and the posting budget stopped
+the loop around 30 boards, so nothing in this lane had been fetched
+in a very long time (visited 0 in 16 of 16 cold slices sampled on .89,
+2026-10-06). Since .90 it runs ahead of base (n426), so `visited` should
+equal `selected` on nearly every cold slice; a gap now means the start gate
+(posting budget, board budget, wall, heap) deferred the deep board.
+The history, as written then: `selected: 2` standing alone reported the lane
 as working — the wrong side of exactly the fork this instrumentation
 was added to resolve, and the dial the runbook tells an operator to
 judge rotation by. (At-cap boards still advance their own deepCursor
@@ -1894,7 +1918,8 @@ accelerator is never a failed slice.
 
 ## n072-staleexclude
 
-Above: `const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });`
+Above: `const staleExclude = staleExclusion({ oversize: oversizeTokens(OVERSIZE_BOARDS), tries: staleTries });`
+(since .90 the registry is keyed by board, so its keys go as tokens; n422)
 
 Cancelled, not abandoned: the request carries its own abort at the
 deadline, so a slow RPC does not sit unread past the race (the
@@ -1959,7 +1984,9 @@ started board reserves its worst case until it returns.
 
 ## n076-fetchedinslice-inflightreserve-slic
 
-Above: `if (fetchedInSlice + inFlightReserve >= SLICE_POSTING_BUDGET) {`
+Above: `if (gate === "reserve") {` (until .90 the check was spelled inline as
+landed plus in-flight against SLICE_POSTING_BUDGET; it is the `reserve`
+verdict of start-gate.ts now, n423)
 
 YIELDS, DOES NOT EXIT. `return` ended the worker for the rest of the
 slice, so every reservation trip permanently removed one of the eight
@@ -2040,43 +2067,78 @@ Above: `if (failReason.startsWith("oversize")) {`
 AN OVERSIZE BODY IS A DEFERRAL, NOT A FAILURE.
 
 The byte bound aborted this board's response before the allocation
-existed, which is the whole point — but the board must still come
+existed, which is the whole point, but the board must still come
 back, so this must not reach `failed` (a failed board feeds the
 failure streak, the dormancy prune and the operator's list, and
 none of those is true here: the vendor answered us).
 
-A light-capable vendor ENROLS: greenhouse's next visit omits
-?content=true and the board ingests light, its descriptions
-arriving through backfill-desc's per-JOB endpoint — the same
-landing the auto-light measurement gives a giant, reached one pass
-earlier because the bound fires before the parse instead of after
-it. That is greenhouse ONLY; see LIGHT_CAPABLE_VENDORS for why
-workable's light form would delete descriptions rather than defer
-them.
+By the time a board gets here the visit has already tried what it
+can (since .90): a greenhouse board enrolled in light mode and, gate
+permitting, read its light list in the same visit (n081), and a
+vendor with a slim spec was streamed (n411). What reaches this branch
+is the board neither could read. It is registered by board (n422),
+named in this slice's log line, and pushed onto `budgetSkipped`, the
+channel the failure accounting already excludes. A board whose light
+re-read also crossed the bound is registered at the light list's
+size, which is the size its next visit will meet.
 
-ENROLMENT ALSO GIVES THE BOARD ITS SLOT BACK. The other budget
-deferrals `continue` before `baseAttempted++`, so their board is
-re-offered on the very next slice; this branch is past that line,
-and leaving it there would make an enrolled board wait a full cold
-rotation (6.7h at baseline, ~59h at today's measured p50) for a
-light re-fetch that would have succeeded immediately. So the slot
-is returned exactly when the next attempt would DIFFER. A board
-with no light form is left to the ordinary rotation instead: it
-would abort identically, and re-offering it every slice would burn
-a board slot and a 4MB transfer per pass forever.
+UNTIL .90 THIS BRANCH ALSO "GAVE THE SLOT BACK". On an enrolment it
+took one off `baseAttempted`, meaning to re-offer the board on the
+next slice. But the cold cursor moves by POSITION (`cold + baseAttempted`,
+rotation.ts), so one fewer only started the next slice one place
+earlier: it re-read whichever base board started last in this slice,
+never the board just enrolled, and every board enrolled at the byte
+bound waited a full cold rotation for its light read. Measured on .89
+(2026-10-05/06): speechify enrolled 19:47Z and read light at 01:44Z
+(5h57m), samsara 21:22Z to 02:59Z (5h37m), lush (73 of ~212 in-window
+postings served, 19 of them closed upstream) still waiting. The
+decrement is gone: the enrolled board was started, and the cursor
+counts it.
 
-## n081-light-capable-vendors-has-s-source
+## n081-light-reread-in-the-same-visit
 
-Above: `if (LIGHT_CAPABLE_VENDORS.has(s.source) && !isLight(s.token)) {`
+Above: `if (!r) ({ r, failReason } = await lightReread({` and light-reread.ts.
 
-THE SLOT IS RETURNED ONLY IF THE NEXT ATTEMPT WOULD DIFFER.
-The vendor pre-filter is not sufficient on its own: the set
-refuses a greenhouse board whose TOKEN is shared with a vendor
-that has no light form (see lightTokenRefusal), and such a board
-will re-fetch byte-for-byte identically. Handing its slot back on
-a refusal is exactly the "burn a board slot and a 4MB transfer
-per pass forever" the paragraph above says this avoids, so the
-decrement follows the enrolment that actually happened.
+READ THE LIGHT LIST IN THE VISIT THAT FOUND THE CONTENT LIST TOO BIG.
+After the first read fails, `lightReread` decides:
+
+- Only an `oversize` verdict, on a LIGHT_CAPABLE_VENDORS board that
+  was not already light, is offered to the set at all (an already-light
+  board's failed read WAS its light list, so another read would be the
+  same bytes). The enrolment is the existing writer, enrolDynamicLight,
+  under the existing cap (AUTO_LIGHT_CAP 500, `slice(-500)`): F1 adds
+  no enrolment path and changes only when the read happens.
+- If the set refuses the board, nothing is read: the re-fetch would be
+  byte-for-byte identical. If it enrols, the board is read again only
+  when it is greenhouse (the one vendor whose light list differs: it
+  drops ?content=true), not already re-read this slice, and the start
+  gate passes (n423, without the board count: it is the same board, so
+  no second `++boardsDone`). The read takes the board's reservation
+  again and releases it, so other workers see it in flight, and its
+  rows land through the ordinary success path (descriptions omitted,
+  then filled by backfill-desc, as on any light visit).
+- A refused gate defers the board: it stays enrolled, so its next
+  visit reads light, a rotation later. That is the `deferred` count.
+  If it is regularly above zero, .91 adds a one-shot re-offer keyed by
+  board; not now.
+- A light read that fails is never a vendor failure: an oversize
+  verdict replaces the first one (the light list is itself over the
+  bound: liquidpersonnel 13.9 MB, pulse 20.6 MB, which the streamed
+  light read heals in the same visit, n424), any other failure (timeout,
+  5xx, 429) keeps the first verdict, and a board neither read reaches is
+  deferred by n080. `lightOversize` says which: true only when the list
+  the bound refused was the light list (light at the start, or the
+  re-read's own verdict), the one case the greenhouse stream may read.
+
+recruitee, workable, teamtailor and pinpoint boards in the registry are
+never re-offered: none has a light form a filler can refill, so their
+abort would repeat identically.
+
+`slice_stats.lightReread` keeps running totals {enrolled, reread, ok,
+deferred, since}, added each slice by the recorder (read-modify-write
+like `slices`, so two concurrent slices can lose an increment):
+enrolled = reread + deferred, and reread - ok counts light reads that
+also failed. A per-slice count would read zero on almost every poll.
 
 ## n082-waituntil-promise-resolve-client-from-job-board
 
@@ -3389,7 +3451,9 @@ before is not news.
 
 ## n147-oversizeheld
 
-Above: `const oversizeHeld = agedRows.filter((r) => OVERSIZE_BOARDS.has(String(r.company_token)) && !alreadyTombstoned.has(Strin`
+Above: `const oversizeHeld = agedRows.filter((r) => heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS) && ...`
+(since .90 matched by the row's board, `source` + `company_token`, not its token; n422;
+and the sweep runs only in a slice that read the registry, n421)
 
 A BOARD WE CANNOT READ IS NOT A BOARD THAT CLOSED.
 
@@ -9108,7 +9172,8 @@ the undated tail rather than making a claim it cannot support.
 
 Above: `const STREAM_WIRE_BYTES = 64_000_000;`, `async function readOversizeBoard(`, the worker's retry after the pinned fetchBoard call, and `async function readBoardForDetail(`.
 
-A LEVER OR ASHBY BOARD TOO BIG TO HOLD IS READ A POSTING AT A TIME.
+A LEVER OR ASHBY BOARD TOO BIG TO HOLD IS READ A POSTING AT A TIME. (Since
+.90 a greenhouse LIGHT list too, never its content list: n424.)
 
 Neither vendor has a lighter form or pagination: one request returns the
 whole board. Since the byte bound shipped (2026-09-06) a feed over
@@ -9427,7 +9492,8 @@ stale lane's tokensOf maps a keyed entry back to its token. NOT DONE (they need
 schema changes and serving-path readers): the verification stamp
 (job_board_verifications PK company_token), job_board_board_state (PK
 company_token, observed_on), attachRecheckedAt, OVERSIZE_BOARDS, and the orphan
-prune, whose company list comes from a token-level facet.
+prune, whose company list comes from a token-level facet. SINCE .90
+OVERSIZE_BOARDS is keyed the same way (n422).
 
 ## n418-verify-stamps-never-deletes
 
@@ -9479,3 +9545,225 @@ reference states none), and wraps there without feedEnded, so a 31,000-match
 feed is read 10,000 deep and never closes what it cannot see. A deep visit that
 fails twice running starts the next from the top, so an HTTP error at a
 stranded cursor cannot reach the dormancy prune either.
+
+## n421-a-row-not-read-is-not-written
+
+Above: `META_READ`, `readMetaRow`, loadDynamicLight, loadOversizeBoards,
+persistOversizeBoards, enrolDynamicLight and the freshness sweep's aged-row
+select (`META_READ.oversize` in its loop condition). The light set and the
+oversize registry are reloaded at every slice start and written back whole.
+supabase-js returns a failed read as `{ data: null, error }`, and both loaders
+read `data` only, so a timeout cleared the set and the slice's next enrolment
+or dirty persist wrote the near-empty set over the row. Now a failed read
+(error or throw) keeps the set the isolate already held and marks the row
+unread until the next load; while unread, an enrolment is admitted in memory
+but not persisted and the registry is not persisted at all. A missing row is a
+read (empty set, writes resume). The sweep fails closed by not running: with
+the registry unread it cannot tell an oversize board from a closed one, so it
+selects no aged rows that pass, and writes no closure, no tombstone and no
+delete. A false closure is permanent, and so is a true one lost: deleting every
+aged row without its exit (the first .90 draft held them all) would have
+dropped up to FRESH_PRUNE_MAX true exits across every board, to protect the ~37
+oversize ones. Skipping loses nothing: the list already hides aged rows (it
+filters `effective_posted` against the same cutoff the sweep selects on), and
+the next pass with a readable registry sweeps them with their exits and the
+oversize holds. A fresh isolate whose first light read fails holds an empty
+set: its light boards fetch ?content=true, and one over the bound is
+re-enrolled in memory and re-read light in the same visit (n081), one extra
+aborted 4 MB fetch each, counted in lightReread.enrolled and reread although
+the row already holds it. The two writers of light_desc_dynamic are still only
+loadDynamicLight and enrolDynamicLight. Concurrent slices can still overwrite
+each other (whole-row writes); that needs per-key storage.
+
+## n422-oversize-registry-by-board
+
+Above: oversize-registry.ts (loadOversizeEntries, noteOversize, clearOversize,
+heldOversize, oversizeTokens, oversizeStatusRows) and its callers in index.ts:
+loadOversizeBoards, the oversize branch, the success path, the freshness
+sweep's `oversizeHeld`, the stale lane and status `oversizeBoards`.
+
+The registry was keyed by bare token. On the 139 tokens two or three vendors
+share, a twin reached the other board's entry: personio:lush's reads deleted
+greenhouse:lush's entry on every success, and pulse's entry vanished from
+status from 00:45 to 01:32Z on 2026-10-06 as ashby:pulse read. While the entry
+was gone the freshness sweep had no record that greenhouse:lush is deferred,
+so its aged rows would be written into the closure log as closures (n147).
+
+Now keyed like board_failures (n417): `boardKey(source, token, SHARED_TOKENS)`,
+so only shared tokens' keys change and every other key stays the bare token.
+A row an older build wrote by bare token is re-keyed on load by the entry's
+stored `source` (every entry since the registry began carries one), so every
+board registered at deploy keeps its sweep protection; a `source:token` key
+whose token is no longer shared goes back to bare the same way. When one board
+appears under both spellings the later entry wins. The sweep matches a row by
+`boardKey(r.source, r.company_token)`; both aged-row selects carry `source`.
+The stale lane keeps speaking tokens: `get_stalest_boards`' p_exclude and
+classifyStale compare tokens, so the keys go through `keyToken`, deduplicated.
+Status rows keep `token` (the bare token the verifiers filter on) and add `key`.
+
+NOT DONE: the verification stamp is still per token (.91, needs a migration),
+so a twin's read still keeps a deferred board's rows "rechecked" and out of the
+48h missing sweep. During the deploy overlap a .89 isolate still matches by
+token: its success path cannot delete a `source:token` entry, and its sweep
+cannot see one, for as long as a .89 isolate keeps running after the deploy
+(its own oversize visits write bare keys, which .90 re-keys on its next load).
+
+## n423-one-start-gate
+
+Above: `const canStart = (newBoard: boolean) => startGate({` and start-gate.ts.
+
+ONE GATE FOR STARTING A FETCH. The worker loop checked, in order,
+landed postings against SLICE_POSTING_BUDGET, the board count against
+the slice's boardBudget, wall time against SLICE_WALL_BUDGET_MS, heap
+against HEAP_SOFT_LIMIT_MB (an unmeasurable heap never refuses), and
+landed plus in-flight reservation against the posting budget. The
+light re-read (n081) starts a fetch too, and a hand-copied second set
+of checks drifts from the first, so both now call `startGate` through
+the `canStart` closure, which reads the slice's live counters. The
+order is unchanged, so every verdict the loop acted on before it acts
+on the same way: `reserve` waits (n076, n077); the others defer the
+board onto `budgetSkipped`, setting sizeStopped, wallStopped or
+heapStopped as before. The re-read passes no board count, because it
+is the board already started; it does not wait on `reserve`, it
+defers, and it sets no stop flag, since those describe the loop.
+
+## n424-greenhouse-streamed-light-read
+
+Above: `SLIM_SPECS.greenhouse` (slim-stream.ts), the greenhouse branch of
+`readOversizeBoard`, and the greenhouse clause of the worker's streamed-read
+condition (`lightOversize`, from lightReread).
+
+A GREENHOUSE LIGHT LIST TOO BIG TO HOLD IS READ A POSTING AT A TIME. Two
+greenhouse boards were dark for good: their LIGHT lists, the form without
+descriptions, are themselves over MAX_RESPONSE_BYTES (liquidpersonnel 13.9 MB,
+pulse 20.6 MB on 2026-10-06), and the streamed reader (n411) had specs for
+lever and ashby only. Both served 0 rows against ~204 and ~76 postings inside
+the 30-day window. The bulk is `metadata`, the tenant's custom fields: on the
+live pulse light list's first posting, 7,019 of 7,666 bytes (78 fields); the
+fields kept are 405 bytes, so a 20.6 MB list keeps about 1.1 MB, well under
+SLIM_RETAINED_BYTES.
+
+THE SPEC. `arrayKey: "jobs"`. Kept: id, title, location, departments,
+absolute_url, first_published, updated_at, requisition_id, internal_job_id,
+company_name, language. `metadata` and `data_compliance` are dropped (nothing
+reads them). `departments` is what normalizeGreenhouse reads for the
+department; the light list does not carry it, so it costs nothing there, and
+keeping it keeps the field contract the guard derives from normalize.ts
+(every field the normaliser reads is kept). `postedAt` is first_published,
+the date normalizeGreenhouse stores; `text` is empty, because a light board's
+descriptions come from backfill-desc (n019) and the success path writes no
+description column for a light board.
+
+ONLY THE LIGHT LIST IS STREAMED, and only one this visit read under the start
+gate. The streamed read re-requests `listUrl(s)`, which is the content list
+(`?content=true`, every description) for a board that is not light, so the
+worker streams a greenhouse board only when `isLight(s)` holds at that moment
+AND the byte bound refused the light list itself in this visit: the board was
+light at the start (the read that failed was the light list), or the light
+re-read (n081) ran and its own verdict was oversize. The second half matters
+twice. When the start gate refuses the re-read (posting budget, wall, heap),
+the board is enrolled, so `isLight` is true, but no light read passed the
+gate; the streamed read checks only wall and heap, so it would read the light
+list in the re-read's place, past the posting budget. And when the light
+re-read failed for another reason (a 20 s timeout, a 5xx, a 429), nothing
+showed the light list over the bound; streaming it would be a third fetch of
+an endpoint that just failed, up to 30 s of a worker, registered at the
+content list's size. Either board stays deferred and reads light on its next
+visit, as in n081.
+
+Order on a failed greenhouse fetch: light re-read (n081), then the streamed
+light read, then deferral (n080). For liquidpersonnel and pulse, already
+light, that is one streamed read per visit. A board enrolled this visit whose
+light list is also over the bound makes three requests in that visit (content,
+light, streamed light), once.
+
+WHOLE OR THROW, as for lever and ashby: truncation, a missing or nested
+`jobs` key, kept fields past SLIM_RETAINED_BYTES, one posting past
+SLIM_ELEMENT_BYTES, or the deadline all throw, readOversizeBoard returns null,
+and the board is deferred and registered at the light list's size, never
+failed. The light list is the whole board, so a completed read may drive the
+id-diff prune and closures like any light read.
+
+
+## n425-plural-vendor-key-is-named
+
+Above (filters.ts, normalizeFilters): the line after the `vendor` check that
+names the plural key.
+
+The list's vendor filter is read from `vendor` (singular, CSV or array). On
+2026-10-06 a diagnosis probe sent `vendors: ["personio"]` with
+`companies: ["lush"]`: the key was never read, the response carried no
+ignoredFilters, and lush's whole board came back (76 rows, 73 of them
+greenhouse), which the probe read as personio's rows. That is the silent drop
+this file's header forbids, for a key a caller can easily guess.
+
+Named, not aliased. Treating `vendors` as `vendor` would change what every
+existing caller that sends it receives, from the whole board to a filtered
+page, with no notice; naming it tells the caller the filter did not apply and
+changes no result. It is named only when `vendor` is not also sent: with both,
+the singular key is read and applied, so nothing the caller asked for was
+dropped. An empty plural key (`[]` or "") is not a request and is not named.
+No first-party caller sends `vendors` (the page, nl-search, public-api and
+agent-mcp all send `vendor`).
+
+## n426-deep-lane-ahead-of-base
+
+Above: `const DEEP_LANE_TAKE = 1;`, the bootstrap take (`bootstrapTake`), the
+deep-lane block (`selectDeepLane`, deep-lane.ts) and the slice composition
+(`const slice = [...]`).
+
+THE DEEP LANE NEVER RAN. The lane (n067) resumes capped boards (Workday,
+Oracle, iCIMS, SmartRecruiters, Rippling, USAJOBS) between their cold-rotation
+turns. It sat last, [demand, bootstrap, retry, stale, base, deep]: a cold slice
+at rest composed about 1 + 25 + 5 + 3 + 80 + 2 boards against a board budget of
+80 and SLICE_POSTING_BUDGET 1,500, so the loop stopped before the tail. On .89
+`deepCursor.lane` read visited 0 in all 16 cold slices sampled 00:53-01:16Z on
+2026-10-06 (selected 2, candidates ~720) and again at 03:19Z; those slices had
+budgetSkipped 24-28 with sizeStopped (the board budget) or 42-66 (the posting
+budget). A capped cold board therefore moved one 260-row window per cold
+rotation (~6h). pg~wd5~1000 holds its 471 in-window postings at feed positions
+0-470 of 816, newest first; a visit starting at 520 or 780 stores nothing, and
+pg served 0. The bootstrap lane that crowded it out is permanent, not a
+post-deploy drain: it re-seeds whenever it empties on an unchanged version
+(3,846 then 9,977 pending on .89).
+
+WHY LAST WAS WRONG. .29 put the lane last so the posting budget would defer it
+before base, on the premise that a deferred base board waits a rotation. Since
+.56 (n059) the post-loop cursor write advances by the base boards started
+(baseAttempted), so a base board the budget defers heads the next slice.
+Position protected nothing, and it starved the lane.
+
+WHAT IT DOES. The slice is [demand, bootstrap, retry, stale, deep, base]. The
+deep take is DEEP_LANE_TAKE (1) at rest, 1 at L1 and 0 at L2, never above
+DEEP_PER_SLICE (2, the memory ceiling, n014). It comes out of the bootstrap
+take, `bootstrapTake = effBootstrapPerSlice - deepTake` (24 at rest, 9 at L1, 0
+at L2), so the lanes ahead of base hold as many boards as before, and a slice
+the board budget stops starts as many base boards as it did (46 with every lane
+full: 80 - 1 - 25 - 5 - 3). The bootstrap queue drains what it selected (n064),
+now 24. The cut uses the planned take, not the selected count, because the
+bootstrap take runs before the lane is chosen (the lane dedupes against it).
+
+WHAT IT COSTS. A deep visit reserves MAX_POSTINGS_PER_VISIT (250) and lands up
+to ~260 postings of the 1,500 budget. On a slice the posting budget stops (most
+cold slices on .89 read budgetFetched 1,502-1,951) that share comes out of the
+base rotation: at ~60 postings a base board, about four fewer base boards that
+slice. That is the cost to measure after deploy (the .90 deploy note, F7): the
+cold cursor rate by cursor advance, never sliceStats.at, against the .89
+baseline, rolled back if more than 10% slower. Rollback is DEEP_LANE_TAKE = 0:
+no deep board and the bootstrap take back to 25, which is what .89 did in
+effect (its lane at the tail visited nothing).
+
+THE START. n014 recorded that a take of one with the start at `cold % L`
+visited only the even positions when the cursor stepped 80 over 66 boards. The
+cursor steps by baseAttempted, which varies, but a near-constant step sharing a
+factor with L still starves the rest: a 55-board step over 700 candidates
+reaches 140 of them in a rotation. selectDeepLane maps the cursor's place in its
+rotation onto the list, `start = floor(cold x L / coldListLen)`. Within a
+rotation the start only moves forward, by at most step x L / coldListLen per
+slice, so while that is at most one (L up to coldListLen / step: about 800
+candidates at a 55-board step) every candidate is selected at least once a
+rotation, and above that as many distinct boards as there are slices. Below one,
+consecutive slices can take the same board; each visit reads its next window,
+so a capped board can finish its lap in one run. Dedupe before the cap against
+base, demand and bootstrap is unchanged, and retry and stale still exclude the
+board the lane took.

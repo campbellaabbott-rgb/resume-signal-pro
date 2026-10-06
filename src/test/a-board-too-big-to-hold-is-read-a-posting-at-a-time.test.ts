@@ -38,6 +38,10 @@
  *       board read the bound refused;
  *   (h) the verifier judges the light set's size only when it can be judged.
  *
+ * Since .90 the same reader also streams a greenhouse LIGHT list (never its
+ * content list); a-light-list-too-big-to-hold-is-read-a-posting-at-a-time
+ * runs that, and (c), (e) and (f) here cover the greenhouse spec too.
+ *
  * Every failure that leaves bytes unread must CANCEL the body. Uncancelled,
  * abandoned response bodies were the September slice deaths (heap p50 176 MB
  * against 36 after the fix), so (b) and (f) assert the cancel on the source
@@ -51,7 +55,7 @@ import { join, resolve } from "node:path";
 import { transformSync } from "esbuild";
 import { codeOf } from "./helpers/strip-comments";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
-import { htmlToText, isDatedBefore, normalizeAshby, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
+import { htmlToText, isDatedBefore, normalizeAshby, normalizeGreenhouse, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
 import { beforeDeadline, jsonArrayElements, SLIM_SPECS, streamSlim } from "../../supabase/functions/job-board/slim-stream";
 import population from "./fixtures/oversize-light-population-2026-10-01.json";
 import leverFixture from "./fixtures/oversize-lever-palantir-2026-10-01.json";
@@ -341,16 +345,18 @@ describe("(c) the normalisers see the same postings, and the stored text is the 
   });
 
   it("the allowlists keep every field the normalisers read — derived from normalize.ts, not listed", () => {
-    for (const [vendor, fn] of [["lever", "normalizeLever"], ["ashby", "normalizeAshby"]] as const) {
+    for (const [vendor, fn] of [["lever", "normalizeLever"], ["ashby", "normalizeAshby"], ["greenhouse", "normalizeGreenhouse"]] as const) {
       const i = NORMALIZE.indexOf(`export function ${fn}(`);
       expect(i, `${fn} not found`).toBeGreaterThan(0);
-      const body = NORMALIZE.slice(i, NORMALIZE.indexOf("\n}\n", i));
+      // A filter over the normaliser's OUTPUT rows (greenhouse drops a row with no applyUrl) reads no feed field.
+      // Cut only that exact tail: any other shape stays in and fails closed.
+      const body = NORMALIZE.slice(i, NORMALIZE.indexOf("\n}\n", i)).replace(/\}\)\.filter\(\(j\) => j\.applyUrl !== ""\);$/, "});");
       const read = new Set([...body.matchAll(/\bj\.(\w+)/g)].map((m) => m[1]));
       expect(read.size, `${fn}: the field derivation found nothing`).toBeGreaterThan(5);
       const missing = [...read].filter((f) => !SLIM_SPECS[vendor].keep.includes(f));
       expect(missing, `${fn} reads these fields and the streamed ${vendor} row drops them`).toEqual([]);
       // A bare `j` handed to a helper would hide the fields it reads.
-      const bare = [...body.matchAll(/\bj\b(?!\s*(?:\.|\?\.))/g)].filter((m) => !/\(j\)\s*=>/.test(body.slice(m.index! - 1, m.index! + 8)));
+      const bare = [...body.matchAll(/\bj\b(?!\s*(?:\.|\?\.))/g)].filter((m) => !/\(j\)\s*=>/.test(body.slice(m.index! - 1, m.index! + 8)) && !/^const j of /.test(body.slice(m.index! - 6, m.index! + 5)));
       expect(bare.map((m) => body.slice(m.index! - 20, m.index! + 20)), `${fn} passes the whole posting somewhere the derivation cannot see`).toEqual([]);
     }
     const sub = [...NORMALIZE.matchAll(/\bj\.compensation\?\.(\w+)/g)].map((m) => m[1]);
@@ -591,7 +597,7 @@ describe("(e) the retry is a separate statement that never writes the failure ve
     expect(body).toMatch(/s\.source === "ashby" \? normalizeAshby\(/);
     expect(body, "every failure becomes null, which the oversize branch defers").toMatch(/\} catch \(e\) \{[\s\S]*return null;\s*\}$/);
     expect(body).not.toMatch(/failReason|onFail/);
-    expect(Object.keys(SLIM_SPECS).sort(), "a vendor with a spec needs a normaliser branch above").toEqual(["ashby", "lever"]);
+    expect(Object.keys(SLIM_SPECS).sort(), "a vendor with a spec needs a normaliser branch above; (f) runs each").toEqual(["ashby", "greenhouse", "lever"]);
   });
 });
 
@@ -633,8 +639,8 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     const warned: string[] = [];
     const urls: string[] = [];
     const listUrl = (s: Board) => { urls.push(`${s.source}:${s.token}`); return `https://feed.test/${s.source}/${s.token}`; };
-    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "console", `${toJs(ts)}\nreturn readOversizeBoard;`)(
-      fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby,
+    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "console", `${toJs(ts)}\nreturn readOversizeBoard;`)(
+      fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby, normalizeGreenhouse,
       { warn: (...a: unknown[]) => warned.push(a.map(String).join(" ")), log: () => {}, error: () => {} },
     ) as (s: Board, deadlineAt: number, freshCutoffMs: number) => Promise<Read>;
     return { read, warned, urls };
@@ -697,6 +703,32 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
       expect(urls, "it re-requests the board's own list").toEqual([`${board.source}:${board.token}`]);
     });
   }
+
+  it("greenhouse: a light list past the bound streams to the postings a whole-body read would, without metadata, and a cut one is refused", async () => {
+    const PULSE: Board = { source: "greenhouse", token: "pulse-token", name: "Pulse Display Name" };
+    const meta = Array.from({ length: 78 }, (_, i) => ({ id: 4_565_018_003 + i, name: `Custom field ${i}`, value: i % 3 ? null : `Value ${i}`, value_type: "single_select" }));
+    const feed = {
+      jobs: Array.from({ length: 900 }, (_, k) => ({
+        absolute_url: `https://job-boards.greenhouse.io/pulse/jobs/${7_820_220_003 + k}`, internal_job_id: 5_802_143_003 + k, location: { name: "London" },
+        metadata: meta, data_compliance: [{ type: "gdpr", requires_consent: false }], id: 7_820_220_003 + k, updated_at: "2026-09-29T01:15:54-04:00",
+        requisition_id: String(35_687 + k), title: `Consultant ${k}`, company_name: "Pulse Healthcare",
+        first_published: new Date(CUTOFF + (k - 300) * 3_000_000).toISOString(), language: "en", application_deadline: null,
+      })),
+      meta: { total: 900 },
+    };
+    const bytes = enc.encode(JSON.stringify(feed));
+    expect(bytes.length, "past the per-response bound, so only the stream reads it").toBeGreaterThan(num("MAX_RESPONSE_BYTES"));
+    const { read, warned, urls } = shippedReader(async () => respond(recorded(chunked(bytes, 65_536)).stream));
+    const r = await read(PULSE, Date.now() + 30_000, CUTOFF);
+    expect(r, `readOversizeBoard returned null: ${warned.join(" | ")}`).not.toBeNull();
+    expect(r!.jobs.length).toBe(900);
+    expect(r!.jobs).toEqual(normalizeGreenhouse(JSON.parse(JSON.stringify(feed)), PULSE.name, PULSE.token));
+    const kept = (r!.raw as { jobs: Array<Record<string, unknown>> }).jobs;
+    expect(kept.filter((j) => "metadata" in j || "data_compliance" in j).length, "the slim rows carry metadata").toBe(0);
+    expect(urls, "it re-requests the board's own list").toEqual([`greenhouse:${PULSE.token}`]);
+    const cut = shippedReader(async () => respond(recorded(chunked(bytes.slice(0, Math.floor(bytes.length * 0.6)), 65_536)).stream));
+    expect(await cut.read(PULSE, Date.now() + 5_000, CUTOFF), "60% of a light list is not the board").toBeNull();
+  });
 
   // Each refusal must come back null (the oversize branch then defers the
   // board, exactly as before) inside its deadline, and release what it did not read.
@@ -771,11 +803,11 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     return seg.slice(i);
   })();
   const WALL = num("SLICE_WALL_BUDGET_MS"), BUDGET = num("STREAM_READ_BUDGET_MS"), HEAP = num("HEAP_SOFT_LIMIT_MB");
-  const runRetry = async (o: { r?: unknown; failReason: string; source: string; elapsedMs?: number; heapMb?: number | null; result?: Read }) => {
+  const runRetry = async (o: { r?: unknown; failReason: string; source: string; elapsedMs?: number; heapMb?: number | null; result?: Read; light?: boolean; lightOversize?: boolean }) => {
     const calls: Array<{ reserveDuring: number; args: unknown[] }> = [];
     const fn = new Function(`${toJs(`async function __retry(env) {
       let r = env.r, failReason = env.failReason, inFlightReserve = env.inFlightReserve;
-      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp } = env;
+      const { s, reserve, sliceWallStart, freshCutoffMs, SLIM_SPECS, STREAM_READ_BUDGET_MS, SLICE_WALL_BUDGET_MS, HEAP_SOFT_LIMIT_MB, memStamp, isLight, lightOversize } = env;
       const readOversizeBoard = (...a) => env.read(inFlightReserve, a);
       ${retryBlock}
       return { r, failReason, inFlightReserve };
@@ -786,15 +818,16 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
       sliceWallStart: Date.now() - (o.elapsedMs ?? 1000), freshCutoffMs: 123_456,
       SLIM_SPECS, STREAM_READ_BUDGET_MS: BUDGET, SLICE_WALL_BUDGET_MS: WALL, HEAP_SOFT_LIMIT_MB: HEAP,
       memStamp: () => ({ heapMb: o.heapMb === null ? undefined : (o.heapMb ?? 40) }),
+      isLight: () => o.light === true, lightOversize: o.lightOversize === true,
       read: async (reserveDuring: number, args: unknown[]) => { calls.push({ reserveDuring, args }); return o.result === undefined ? { jobs: [1], raw: [] } : o.result; },
     });
     return { ...out, calls, s };
   };
 
-  it("runs on an oversize verdict for lever and ashby, under the reserve, with the worker's cutoff, and lands its result", async () => {
-    for (const source of ["lever", "ashby"]) {
+  it("runs on an oversize verdict for lever, ashby and a greenhouse light list the bound refused, under the reserve, with the worker's cutoff, and lands its result", async () => {
+    for (const [source, light] of [["lever", false], ["ashby", false], ["greenhouse", true]] as const) {
       const t0 = Date.now();
-      const x = await runRetry({ failReason: "oversize 6.2MB", source });
+      const x = await runRetry({ failReason: "oversize 6.2MB", source, light, lightOversize: light });
       expect(x.calls.length, `${source}: the retry did not run`).toBe(1);
       const [s, deadlineAt, cutoff] = x.calls[0].args as [unknown, number, number];
       expect(s).toBe(x.s);
@@ -819,7 +852,9 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
       expect(x.inFlightReserve).toBe(7);
       return x;
     };
-    await none({ failReason: "oversize 4.0MB", source: "greenhouse" }, "greenhouse has its light list, not a stream");
+    await none({ failReason: "oversize 4.0MB", source: "greenhouse" }, "a greenhouse board that is not light: its list URL is the content list, never streamed");
+    await none({ failReason: "oversize 4.0MB", source: "greenhouse", light: true }, "enrolled this visit, light list not read (the start gate refused): no stream past the gate");
+    await none({ failReason: "oversize 4.0MB", source: "greenhouse", lightOversize: true }, "light list refused, but no longer light: the URL would be the content list");
     await none({ failReason: "oversize 4.0MB", source: "workable" }, "no spec, no stream");
     const landed = { jobs: [9], raw: [] };
     expect((await none({ r: landed, failReason: "", source: "lever" }, "the first read landed")).r).toBe(landed);

@@ -1396,7 +1396,18 @@ const PINNED = {
   // the list never undoes the detail sweep. Migration 20261005100000 marks
   // the Workday mid-feed closures suspect, reversibly.
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.89",
+  // 2026-09-09.90: the light set and the oversize registry are written back
+  // only by a slice that read them, and a slice that could not read the
+  // registry writes no freshness-sweep closures (n421). The oversize registry
+  // is keyed by board, so a shared token's twin no longer clears it (n422).
+  // A greenhouse board enrolled at the byte bound reads its light list in the
+  // same visit instead of a rotation later, behind the one start gate (n081,
+  // n423); the misaimed cold-cursor decrement is gone (n080). A greenhouse
+  // light list over the bound is streamed without its metadata (n424). The
+  // deep lane runs ahead of the base rotation, one board a slice out of the
+  // bootstrap take, its start mapped from the cold cursor's place (n426).
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.90",
 };
 
 /**

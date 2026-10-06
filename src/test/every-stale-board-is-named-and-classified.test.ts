@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -21,6 +22,8 @@ import {
   type StaleRow,
 } from "../../supabase/functions/job-board/stale-lane.ts";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources.ts";
+import { oversizeTokens } from "../../supabase/functions/job-board/oversize-registry.ts";
+import { runCompose } from "./helpers/slice-worker";
 
 /**
  * EVERY STALE BOARD IS NAMED AND CLASSIFIED.
@@ -314,6 +317,16 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   // never mistaken for the site.
   const IDX = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8")
     .replace(/(^|[^:\w])\/\/[^\n]*/g, "$1 ").replace(/\/\*[\s\S]*?\*\//g, " ");
+  // Since .90 the oversize registry is keyed by board (bare token, or source:token on a
+  // shared token), so the lane's expressions are RUN against one, not matched by spelling.
+  const REGISTRY = new Map([
+    ["greenhouse:pulse", { source: "greenhouse", mb: 20.6, at: "x" }],
+    ["bigco", { source: "teamtailor", mb: 15, at: "y" }],
+  ]);
+  const laneExpr = <T,>(expr: string, scope: Record<string, unknown>): T => {
+    const all: Record<string, unknown> = { OVERSIZE_BOARDS: REGISTRY, oversizeTokens, staleExclusion, ...scope };
+    return new Function(...Object.keys(all), `return (${expr});`)(...Object.values(all)) as T;
+  };
 
   it("imports the module and never re-implements it", () => {
     expect(IDX).toMatch(/import \{ STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict \} from "\.\/stale-lane\.ts";/);
@@ -367,7 +380,13 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   // unexplained 0, windowFull, fetched 0 — every pass, forever. The lane now
   // tells the RPC what it already knows cannot be fetched.
   it("passes p_exclude = staleExclusion(oversize ∪ unresolved ∪ prototype names) built from the Map and the tries Map", () => {
-    expect(IDX).toMatch(/const staleExclude = staleExclusion\(\{ oversize: OVERSIZE_BOARDS\.keys\(\), tries: staleTries \}\);/);
+    const decl = /const staleExclude = (staleExclusion\(\{[^;]*\}\));/.exec(IDX);
+    expect(decl, "the exclusion is one staleExclusion call").toBeTruthy();
+    const tries = new Map([["gone", STALE_TRIES_MAX], ["retrying", 1]]);
+    expect(
+      laneExpr<string[]>(decl![1], { staleTries: tries }),
+      "p_exclude takes tokens: the registry's board keys go as their tokens, beside the unresolved and prototype names",
+    ).toEqual(staleExclusion({ oversize: ["pulse", "bigco"], tries }));
     expect(IDX).toMatch(/let rpc = await askStale\(staleExclude\);/);
     expect(IDX).toMatch(/let excluded = staleExclude\.length;/);
     // The tries map is read BEFORE the exclusion is built (unresolved comes from it).
@@ -396,7 +415,12 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   it("builds the context from Sets and Maps the hop already holds — never a token-keyed Record", () => {
     expect(IDX).toMatch(/const CATALOGUE_TOKENS: ReadonlySet<string> = new Set\(JOB_SOURCES\.map\(\(s\) => s\.token\)\);/);
     expect(IDX).toMatch(/catalogued: CATALOGUE_TOKENS,/);
-    expect(IDX).toMatch(/quarantinedVendors,\s*oversize: new Set\(OVERSIZE_BOARDS\.keys\(\)\),/);
+    const ctx = IDX.slice(IDX.indexOf("classifyStale(rows, {"));
+    const over = /^classifyStale\(rows, \{\s*catalogued: CATALOGUE_TOKENS,\s*quarantinedVendors,\s*oversize: ([^\n]+),\n/.exec(ctx);
+    expect(over, "the classifier's oversize member").toBeTruthy();
+    const overSet = laneExpr<ReadonlySet<string>>(over![1], {});
+    expect(overSet instanceof Set, "a Set, never a token-keyed Record").toBe(true);
+    expect([...overSet].sort(), "classifyStale compares row tokens, so the registry reaches it as tokens").toEqual(["bigco", "pulse"]);
     expect(IDX).toMatch(/dormant: tokensOf\(boardFailures\.dormant\),/);
     expect(IDX).toMatch(/failing: new Set\(\[\.\.\.tokensOf\(boardFailures\.failedAt\), \.\.\.tokensOf\(boardFailures\.streaks\)\]\),/);
     expect(IDX).toMatch(/tries: staleTries,/);
@@ -408,8 +432,9 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
 
   it("takes up to STALE_PER_SLICE 'unexplained' tokens not already in the slice, through the ordinary fetch path", () => {
     expect(IDX).toMatch(/const taken = new Set\(\[\.\.\.baseSlice, \.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.deepBoards\]\.map\(\(s\) => s\.token\)\);\s*staleBoards = selectStaleLane\(verdicts, \{ perSlice: effStalePerSlice, exclude: taken \}\)/);
-    // Appended to the composed slice ahead of the base rotation, behind retry — the ordinary loop fetches it.
-    expect(IDX).toMatch(/const slice = \[\.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.staleBoards, \.\.\.baseSlice, \.\.\.deepBoards\];/);
+    // In the composed slice ahead of the base rotation, behind retry — the ordinary loop fetches it. Run, not spelled.
+    const slice = runCompose({ demand: [], bootstrap: [], retry: ["r"], stale: ["s"], deep: [], base: ["k"] });
+    expect([slice.indexOf("r") < slice.indexOf("s"), slice.indexOf("s") < slice.indexOf("k")], "retry, then stale, then base").toEqual([true, true]);
     // No second fetch path, no second budget: the lane has no fetchBoard call of its own.
     const lane = IDX.slice(IDX.indexOf("let staleBoards: JobSource[] = [];"), IDX.indexOf("const slice = [...demandBoards"));
     expect(lane).not.toMatch(/fetchBoard\(/);

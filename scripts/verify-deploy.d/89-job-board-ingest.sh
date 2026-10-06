@@ -3,10 +3,23 @@
 # scripts/verify-deploy.sh. Read-only: status, a preflight, list and exists
 # reads with x-rb-budget: probe (list logs one search event, as every list
 # probe here does), anon SELECTs on job_board_verifications, and the vendors'
-# own public list feeds. Never verify, report, click or a refresh.
+# own public list feeds (Workday's CXS search included). Never verify, report,
+# click or a refresh.
 #
-# Judge the served counts only after one full cold rotation on .89 (a lap of a
-# 2,000-posting Workday board is eight visits; the deep lane takes two a slice).
+# WORKDAY IS JUDGED BY WHAT .89 STORED. On .89 a capped Workday board moves one
+# 260-row window of its feed per cold rotation (~6h): the deep lane visited
+# nothing (.90 note, F7). lastSeen is set at insert only, so a served in-window
+# row whose lastSeen is after VD89_AT was written by .89, and those rows alone
+# are what .89 is credited with. A row stored before the floor is never
+# credited, wherever it sits on the feed (novartis served 220 such rows at
+# diagnosis and none was .89s); it leaves the denominator too, so the want is
+# half of the in-window ids the floor left for .89 to store (stored since, or
+# still missing). Each 260-row window holding a .89 row was read on .89: the
+# windows are printed, and the lap (windows x ~6.5h) sets when a short credit
+# FAILs. recheckedAt is one stamp per token: it says something visited, not
+# what was stored. VD89_AT defaults to 19:47Z on 10-05, the first cold rotation
+# run on .89 (a later floor than the deploy credits less, never more).
+VD89_AT=${VD89_AT:-2026-10-05T19:47:00Z}
 echo "== 89. job-board ingest (.89): mid-feed Workday zeros, re-dated ids, USAJOBS, light per board, iCIMS page size =="
 J '{"action":"status"}' > /tmp/vd_89_status.json
 curl -s -m 30 -o /dev/null -D /tmp/vd_89_preflight.txt -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" \
@@ -16,15 +29,41 @@ for OFF in 0 1000 2000 3000 4000; do
   curl -s -m 60 "$B/rest/v1/job_board_verifications?select=company_token,feed_total&company_token=like.*~wd*&order=company_token&limit=1000&offset=$OFF" \
     -H "apikey: $K" -H "Authorization: Bearer $K" -o "/tmp/vd_89_wd_$OFF.json"
 done
-# Served counts for the boards each fix names.
-for VT in workday:adobe~wd5~external_experienced workday:novartis~wd3~Novartis_Careers workday:pg~wd5~1000 workday:td~wd3~TD_Bank_Careers workday:tmobile~wd1~External \
-          usajobs:usajobs greenhouse:lush greenhouse:samsara greenhouse:pulse icims:jobs.zs.com icims:jobs.qxo.com icims:careers.ringpower.com; do
+# Served counts for the boards each fix names. The filter key is `vendor`; a
+# plural key is not a filter (before .90 it was dropped without a word).
+for VT in usajobs:usajobs greenhouse:lush greenhouse:samsara greenhouse:pulse icims:jobs.zs.com icims:jobs.qxo.com icims:careers.ringpower.com; do
   V=${VT%%:*}; T=${VT#*:}
   printf '%s\t%s\t' "$V" "$T"
-  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"$V\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" | tr -d '\n'
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendor\":[\"$V\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" | tr -d '\n'
   echo
 done > /tmp/vd_89_served.tsv
-node -e '
+# Workday: each board's own CXS feed (newest first, walked to the end of its
+# 30-day part; Workday states `total` on the offset-0 page only) and every row
+# we serve for it, 60 a page. The feeds are cached for section 90.
+B="$B" K="$K" node -e '(async()=>{
+const fs=require("fs");const {B,K}=process.env;
+const H={"Content-Type":"application/json","x-rb-budget":"probe",apikey:K,Authorization:"Bearer "+K};
+const BOARDS=["adobe~wd5~external_experienced","novartis~wd3~Novartis_Careers","pg~wd5~1000","td~wd3~TD_Bank_Careers","tmobile~wd1~External"];
+const days=(p)=>{const s=String(p||"").toLowerCase();if(/today/.test(s))return 0;if(/yesterday/.test(s))return 1;const m=/(\d+)/.exec(s);if(!m||!/day/.test(s))return null;return /\+|more than|over/.test(s)?Number(m[1])+1:Number(m[1])};
+async function walk(tok){const [t,dc,site]=tok.split("~");const pos=[];let total=null;
+  for(let off=0;off<2000;off+=20){let j;
+    try{j=await (await fetch("https://"+t+"."+dc+".myworkdayjobs.com/wday/cxs/"+t+"/"+site+"/jobs",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({appliedFacets:{},limit:20,offset:off,searchText:""})})).json()}catch{return {err:"feed unreadable at offset "+off}}
+    if(off===0)total=Number(j.total)||0;
+    const p=Array.isArray(j.jobPostings)?j.jobPostings:[];if(!p.length)break;
+    p.forEach((x,i)=>{const path=String(x.externalPath||"");pos.push({id:"workday:"+tok+":"+(path.split("_").pop()||(Array.isArray(x.bulletFields)?x.bulletFields[0]:"")||""),at:off+i,d:days(x.postedOn)})});
+    if(p.every((x)=>{const d=days(x.postedOn);return d!==null&&d>30}))break;}
+  return {total,pos,at:new Date().toISOString()};}
+async function served(tok){const rows=new Map();let total=null;
+  for(let off=0;off<2400;off+=60){let r;
+    try{r=await (await fetch(B+"/functions/v1/job-board",{method:"POST",headers:H,body:JSON.stringify({action:"list",companies:[tok],vendor:["workday"],groupSimilar:false,includeFacets:false,limit:60,offset:off})})).json()}catch{return {err:"list unreadable at offset "+off}}
+    if(off===0)total=typeof r.total==="number"?r.total:null;const js=Array.isArray(r.jobs)?r.jobs:[];
+    for(const x of js)rows.set(x.id,{id:x.id,lastSeen:x.lastSeen});if(js.length<60)break;}
+  return {total,rows:[...rows.values()]};}
+const out={};
+await Promise.all(BOARDS.map(async(tok)=>{const [f,s]=await Promise.all([walk(tok),served(tok)]);if(!f.err)fs.writeFileSync("/tmp/vd_89_cxs_"+tok+".json",JSON.stringify(f));out[tok]={feed:f,served:s}}));
+fs.writeFileSync("/tmp/vd_89_workday.json",JSON.stringify(out));
+})()'
+VD89_AT="$VD89_AT" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(s)=>{try{return JSON.parse(s)}catch{return null}};
 const st=js(rd("/tmp/vd_89_status.json"))||{};
@@ -42,24 +81,44 @@ info("deepCursor.laps: tracking "+laps.tracking+", proven "+laps.proven+" (608 /
 // Served counts.
 const rows=rd("/tmp/vd_89_served.tsv").split("\n").filter(Boolean).map((l)=>{const [v,t,...j]=l.split("\t");return {v,t,j:js(j.join("\t"))}});
 const served=(v,t)=>{const r=rows.find((x)=>x.v===v&&x.t===t);return r&&r.j&&typeof r.j.total==="number"?r.j.total:null};
-const was={"adobe~wd5~external_experienced":[0,518],"novartis~wd3~Novartis_Careers":[0,491],"pg~wd5~1000":[0,475],"td~wd3~TD_Bank_Careers":[248,1250],"tmobile~wd1~External":[255,1502]};
-for(const [t,[b,w]] of Object.entries(was)){const s=served("workday",t);
-  if(s===null){info("workday:"+t+" list unreadable");continue}
-  const want=Math.round(w*0.5);
-  console.log((s>=want?"PASS":(v89?"FAIL":"INFO"))+"  workday:"+t+" serves "+s+" (was "+b+" on 2026-10-05; "+w+" in-window on its own feed then; want at least "+want+" after one rotation on .89)");}
+// Workday: credited = served in-window rows inserted after VD89_AT, and nothing else. Rows stored before
+// the floor are out of both sides: want half of the in-window ids left (stored since, or missing).
+// Positions drift by the postings added since the read, so a window edge is approximate.
+const W=260,floor=Date.parse(process.env.VD89_AT),hrs=(Date.now()-floor)/3600000;
+const wd=js(rd("/tmp/vd_89_workday.json"))||{};
+for(const tok of ["adobe~wd5~external_experienced","novartis~wd3~Novartis_Careers","pg~wd5~1000","td~wd3~TD_Bank_Careers","tmobile~wd1~External"]){
+  const x=wd[tok];
+  if(!x||!x.feed||!x.served||x.feed.err||x.served.err||!Array.isArray(x.feed.pos)){info("workday:"+tok+" "+((x&&((x.feed&&x.feed.err)||(x.served&&x.served.err)))||"unreadable")+" -- cannot judge");continue}
+  const at=new Map(x.feed.pos.map((p)=>[p.id,p.at]));
+  const inWin=new Set(x.feed.pos.filter((p)=>p.d===null||p.d<=30).map((p)=>p.id));
+  const isNew=(r)=>Date.parse(r.lastSeen)>=floor;
+  const since=x.served.rows.filter(isNew);
+  const read=new Set(since.filter((r)=>at.has(r.id)).map((r)=>Math.floor(at.get(r.id)/W)));
+  const servedIn=x.served.rows.filter((r)=>inWin.has(r.id));
+  const credited=servedIn.filter(isNew).length,older=servedIn.length-credited,left=inWin.size-older;
+  const lap=Math.max(1,Math.ceil(Math.min(x.feed.total||inWin.size,2000)/W)),lapH=lap*6.5;
+  const want=Math.ceil(left*0.5);
+  const wins=[...read].sort((a,b)=>a-b).map((w)=>"["+w*W+","+(w+1)*W+")").join(" ")||"none";
+  const msg="workday:"+tok+" credits .89 with "+credited+" of "+left+" in-window ids left for it to store (want at least "+want+"; "+inWin.size+" in-window on its own feed, "+older+" served from before the floor and not credited): windows holding a row inserted since "+process.env.VD89_AT+": "+wins+", of "+lap+" in its lap (feed total "+x.feed.total+"); serves "+x.served.total+" ("+servedIn.length+" in-window, "+since.length+" inserted since, "+(x.served.rows.length-servedIn.length)+" not in-window on the feed)";
+  if(left===0)info(msg+" -- every in-window id was stored before the floor: nothing to credit .89 with or against");
+  else if(credited>=want)ok(true,msg);
+  else console.log((v89&&hrs>=lapH?"FAIL":"INFO")+"  "+msg+(hrs<lapH?" -- one window a cold rotation (~6.5h) on .89, so a lap is ~"+Math.round(lapH)+"h after the floor; "+Math.round(hrs)+"h so far":""));
+}
 const us=served("usajobs","usajobs");
-const ov=(st.oversizeBoards||[]).map((o)=>o.token);
+const ovOf=(v)=>(st.oversizeBoards||[]).filter((o)=>!o.source||o.source===v).map((o)=>o.token);
 console.log(((us??0)>0?"PASS":(v89?"FAIL":"INFO"))+"  usajobs serves "+us+" (0 since it joined: every 500-row page was over the 4 MB bound; pages of 100 under .89)");
-console.log((!ov.includes("usajobs")?"PASS":(v89?"FAIL":"INFO"))+"  usajobs is "+(ov.includes("usajobs")?"STILL":"no longer")+" in status.oversizeBoards");
+console.log((!ovOf("usajobs").includes("usajobs")?"PASS":(v89?"FAIL":"INFO"))+"  usajobs is "+(ovOf("usajobs").includes("usajobs")?"STILL":"no longer")+" in status.oversizeBoards");
 const usCur=((st.deepCursor||{}).top||[]);const usc=Array.isArray(usCur)?usCur.find((x)=>x&&(x.token==="usajobs"||x[0]==="usajobs")):null;
 info("usajobs deep cursor: "+JSON.stringify(usc||null)+" (advances by ~300 a visit and wraps at the feed end or at 10,000, the API result cap; it must never sit still while usajobs fails)");
+const ovG=ovOf("greenhouse");
 for(const t of ["lush","samsara"]){const s=served("greenhouse",t);
-  console.log(((s??0)>0&&!ov.includes(t)?"PASS":(v89?"FAIL":"INFO"))+"  greenhouse:"+t+" serves "+s+(ov.includes(t)?", still oversize":"")+" (light mode is per board since .89; was refused for sharing its token)");}
+  console.log(((s??0)>0&&!ovG.includes(t)?"PASS":(v89?"FAIL":"INFO"))+"  greenhouse:"+t+" serves "+s+(ovG.includes(t)?", still oversize":"")+" (light mode is per board since .89; was refused for sharing its token)");}
 // pulse enrols in light mode too, but its LIGHT list is 20.6 MB (2,703 jobs, ~7 KB of metadata each, measured 2026-10-05):
-// still over the 4 MB bound, and greenhouse has no streamed reader (SLIM_SPECS), so it stays deferred. Not a .89 claim.
-{const s=served("greenhouse","pulse");info("greenhouse:pulse serves "+s+(ov.includes("pulse")?", in oversizeBoards":"")+" (expected: still deferred -- its light list alone is 20.6 MB; needs a greenhouse streamed reader)");}
+// still over the 4 MB bound, so .89 defers it. Not a .89 claim; section 90 judges the streamed light read of .90.
+{const s=served("greenhouse","pulse");info("greenhouse:pulse serves "+s+(ovG.includes("pulse")?", in oversizeBoards":"")+" (on .89 still deferred -- its light list alone is 20.6 MB; .90 streams it, see section 90)");}
+const ovI=ovOf("icims");
 for(const t of ["jobs.zs.com","jobs.qxo.com","careers.ringpower.com"]){const s=served("icims",t);
-  console.log(((s??0)>0&&!ov.includes(t)?"PASS":(v89?"FAIL":"INFO"))+"  icims:"+t+" serves "+s+(ov.includes(t)?", still oversize":"")+" (page 1 over 4 MB at 100 rows; retried at 50/25 since .89)");}
+  console.log(((s??0)>0&&!ovI.includes(t)?"PASS":(v89?"FAIL":"INFO"))+"  icims:"+t+" serves "+s+(ovI.includes(t)?", still oversize":"")+" (page 1 over 4 MB at 100 rows; retried at 50/25 since .89)");}
 const top=((st.deepCursor||{}).top||[]);const dom=Array.isArray(top)?top.find((x)=>x&&(x.token==="dominos"||x[0]==="dominos")):null;
 info("smartrecruiters dominos deep cursor: "+JSON.stringify(dom||null)+" (since .89 a visit advances it by 250, not 2,000)");
 info("dormantBoards = "+st.dormantBoards+" (496 on 2026-10-05; the boards of a shared token are tracked apart since .89, so a dead twin can now reach dormancy)");
@@ -75,7 +134,7 @@ for VT in ashby:openai ashby:snowflake greenhouse:anthropic greenhouse:databrick
     lever) U="https://api.lever.co/v0/postings/$T?mode=json";;
   esac
   curl -s --compressed -m 120 "$U" -o /tmp/vd_89_feed.json
-  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"$V\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > /tmp/vd_89_list.json
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendor\":[\"$V\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":1}" > /tmp/vd_89_list.json
   node -e '(async()=>{
 const fs=require("fs");const [V,T,B,K]=process.argv.slice(1);const cut=Date.now()-30*86400000;
 let feed;try{feed=JSON.parse(fs.readFileSync("/tmp/vd_89_feed.json","utf8"))}catch{return console.log("INFO  "+V+":"+T+" vendor feed unreadable -- cannot judge")}

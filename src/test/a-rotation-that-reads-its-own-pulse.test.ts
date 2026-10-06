@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { runDeepLane, runLaneTakes } from "./helpers/slice-worker";
 
 /**
  * THE INGEST AND THE READERS SHARE ONE DATABASE.
@@ -109,9 +111,9 @@ describe("the rotation reads its own pulse and stands down", () => {
   it("sheds all three costs: slice size, workers, and the deep lane first", () => {
     expect(BOARD).toMatch(/COLD_LIST\.slice\(cold, cold \+ effColdSlice\)/);
     expect(BOARD).toMatch(/inHotPhase \? HOT_CONCURRENCY : effConcurrency/);
-    expect(BOARD).toMatch(/\.slice\(0, effDeepPerSlice\)/);
-    expect(BOARD, "the deep lane is the first thing to go at L2")
-      .toMatch(/const effDeepPerSlice = shedLevel === 2 \? 0 :/);
+    // The deep lane, run (.90): its take is 0 at L2, and a take of 0 selects nothing.
+    expect(runLaneTakes(2).deepTake, "the deep lane is the first thing to go at L2").toBe(0);
+    expect(runDeepLane({ cursors: [["a", 260]], cold: 0, coldListLen: 100, deepTake: runLaneTakes(2).deepTake }).picked).toEqual([]);
   });
 
   it("is safe for the cursor BY THE ARITHMETIC'S OWN CONTRACT, not by assumption", () => {

@@ -1,6 +1,8 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { constOf, runGate } from "./helpers/slice-worker";
 
 /**
  * FOUR WAYS TO LOSE A BOARD, ALL FOUND IN ONE SWEEP.
@@ -37,20 +39,30 @@ describe("four ways to lose a board", () => {
     expect(CODE.match(/\.or\(`[^`]*ilike\.%/g) ?? [], "an unquoted ilike inside an or()").toEqual([]);
   });
 
-  it("a budget-retired worker yields and comes back — it never exits the slice", () => {
+  it("a budget-retired worker yields and comes back — it never exits the slice", async () => {
     // .53: the yield now escapes when nothing is in flight, because waiting
     // for a reservation that is already zero is waiting forever — the defect
     // that kept the loop from ever exiting
     // (a-wait-for-something-that-cannot-happen.test.ts). The property this
     // guard is about — the worker comes BACK rather than retiring — is intact.
-    expect(CODE).toMatch(/if \(fetchedInSlice \+ inFlightReserve >= SLICE_POSTING_BUDGET\) \{/);
+    // .90 (n423): the start checks are one gate (start-gate.ts), so the worker's turn is RUN, not spelled.
+    const budget = constOf("SLICE_POSTING_BUDGET");
+    const held = await runGate({ queue: [{ source: "lever", token: "a" }, { source: "lever", token: "b" }], fetchedInSlice: budget - 10, inFlightReserve: 40 });
+    expect(held.started, "a full reservation starts nothing").toBeNull();
+    expect(held.deferred, "and defers nothing while a board is in flight").toEqual([]);
+    expect(held.queue, "the board goes back to the head").toEqual(["a", "b"]);
+    expect(held.waitedMs).toEqual([250]);
+    expect(held.exited, "the worker stays in the slice").toBe(false);
     expect(CODE).toMatch(/queue\.unshift\(s\);\s*await new Promise\(\(r\) => setTimeout\(r, 250\)\);\s*continue;/);
     expect(CODE, "and it must escape rather than wait when nothing can end the wait")
       .toMatch(/if \(inFlightReserve === 0 \|\| spins > YIELD_SPIN_LIMIT\)/);
     expect(CODE, "the reservation branch must not return").not.toMatch(/queue\.unshift\(s\); return;/);
     // The landed check still exits the BOARD (not the worker) when the budget
     // is genuinely spent — that is what makes the yield above terminate.
-    expect(CODE).toMatch(/if \(fetchedInSlice >= SLICE_POSTING_BUDGET\) \{ budgetSkipped\.push\(s\.token\); continue; \}/);
+    const spent = await runGate({ queue: [{ source: "lever", token: "a" }, { source: "lever", token: "b" }], fetchedInSlice: budget, inFlightReserve: 40, turns: 2 });
+    expect(spent.deferred, "each board is deferred and the worker takes the next").toEqual(["a", "b"]);
+    expect(spent.waitedMs, "a spent budget is not waited on").toEqual([]);
+    expect(spent.exited).toBe(false);
   });
 
   it("a resumed read reports windowed, so a wrap visit cannot absence-prune a giant board", () => {
