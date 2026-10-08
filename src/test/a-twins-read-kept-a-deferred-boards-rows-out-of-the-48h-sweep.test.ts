@@ -169,6 +169,28 @@ describe("20261008100000: the sweep reads a shared board's own stamp", { timeout
     expect(await sweepWith([["lush", 1], ["personio:lush", 70], ["greenhouse:lush", 70], ["oldco", 60], ["fresh", 1]])).toEqual(["greenhouse:oldco:1"]);
   });
 
+  it("after a rollback, a board whose own key crossed 48h is not swept while .90's read keeps its token's stamp fresh, though another key is newer", async () => {
+    // .91 last wrote personio:lush 10h ago and greenhouse:lush 50h ago; .90 read
+    // greenhouse:lush 2h ago and moved the bare stamp alone. A key on another
+    // token written an hour ago (.91 still serving elsewhere, or a later lap)
+    // must not make lush's aging keys count.
+    expect(await sweepWith([["lush", 2], ["greenhouse:lush", 50], ["personio:lush", 10], ["samsara", 1], ["pinpoint:samsara", 1], ["oldco", 60], ["fresh", 1]]))
+      .toEqual(["greenhouse:oldco:1"]);
+  });
+
+  it("judges each token by its own writer: a token .90 has read falls back, a token .91 last stamped keeps its keys", async () => {
+    const db = new PGlite();
+    await db.exec(CRON + TABLES + postings + `
+      INSERT INTO public.job_board_postings (id, source, company_token) VALUES
+        ('greenhouse:samsara:1', 'greenhouse', 'samsara'), ('pinpoint:samsara:1', 'pinpoint', 'samsara');
+    ` + stamps([["lush", 3], ["greenhouse:lush", 55], ["personio:lush", 20], ["samsara", 5], ["pinpoint:samsara", 5], ["greenhouse:samsara", 70], ["fresh", 1], ["oldco", 1]]));
+    await db.exec(SWEEP);
+    await db.exec((await db.query<{ command: string }>("SELECT command FROM cron.job")).rows[0].command);
+    const out = (await db.query<{ id: string }>("SELECT id FROM public.job_board_postings WHERE missing_since IS NOT NULL ORDER BY id")).rows.map((r) => r.id);
+    expect(out).toEqual(["greenhouse:samsara:1"]);
+    await db.close();
+  });
+
   it("every board on a stale bare token without a key of its own is swept; a board with a fresh key is not", async () => {
     expect(await sweepWith([["lush", 60], ["personio:lush", 1], ["oldco", 1], ["fresh", 1]])).toEqual(["greenhouse:lush:1", "greenhouse:lush:2"]);
   });
@@ -186,13 +208,13 @@ describe("20261008100000: the sweep reads a shared board's own stamp", { timeout
   it("changes the command in place: same job id, same minute", async () => {
     const db = new PGlite();
     await db.exec(CRON + TABLES);
-    const before = (await db.query<{ jobid: number }>("SELECT jobid FROM cron.job")).rows[0].jobid;
+    const before = (await db.query<{ jobid: number; command: string }>("SELECT jobid, command FROM cron.job")).rows[0];
     await db.exec(SWEEP);
     const after = (await db.query<{ jobid: number; schedule: string; command: string }>("SELECT jobid, schedule, command FROM cron.job")).rows;
     expect(after.length).toBe(1);
-    expect(after[0].jobid).toBe(before);
+    expect(after[0].jobid).toBe(before.jobid);
     expect(after[0].schedule).toBe("41 3 * * *");
-    expect(after[0].command).toMatch(/live\.per_board/);
+    expect(after[0].command, "the command was not replaced").not.toBe(before.command);
     await db.close();
   });
 

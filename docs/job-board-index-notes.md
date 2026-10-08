@@ -9822,11 +9822,19 @@ bare row is dropped from the window (its boards' own, older-or-equal rows stand
 for it).
 
 The sweep (20261008100000) judges a row by its own board's key when one exists
-and the per-board writer is alive (some key written in the last 48h), else by
-the bare token as before: applied early, or after a rollback to .90, every key
-ages past 48h together and the sweep falls back to bare stamps instead of
-sweeping every shared board. It reads the stamp table once and joins the stale
-set to postings. get_stalest_boards (20261008100100) resolves a key to its
+and its token's bare stamp is no newer than the token's newest key (1s slack),
+else by the bare token as before. The test is per token: .91 writes the bare
+stamp and the reading board's key in one upsert with one value (a seed copies
+the bare value), so it holds while .91 writes; .90 moves the bare stamp alone,
+so after a rollback a token falls back at .90's first read of any of its
+boards. A global test ("some key written in 48h") was wrong: keys age over a
+lap, not together, so a rollback would sweep every shared board whose own key
+crossed 48h while .90 read it. Before .90 reads a token its boards are judged
+by .91's last keys (a board unread for 48h is swept, as .91 would). A key
+removed while its token stays shared (a board left the catalogue) can leave the
+bare stamp newer than every remaining key: that token falls back to bare until
+its next read. It reads the stamp table once and joins the stale set to
+postings. get_stalest_boards (20261008100100) resolves a key to its
 vendor's rows; closed to client roles as the census left it.
 
 NOT DONE: job_board_board_state is still keyed by company_token (day history of
