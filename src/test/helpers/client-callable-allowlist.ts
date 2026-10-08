@@ -153,6 +153,16 @@ export const CREATED_CLOSED: Array<{ sig: string; why: string }> = [
 ];
 
 /**
+ * Operations readers created AFTER the census, closed to both client roles
+ * from their first migration, that admin-ops serves to the owner's dashboards.
+ * Not CLOSED_BY_CENSUS rows: the census migration never named them, and its
+ * own arrays are held equal to that list.
+ */
+export const ADMIN_READERS_CREATED_CLOSED: Array<{ sig: string; why: string; served: string }> = [
+  { sig: "public.get_recent_heartbeats(integer)", why: "scan-heartbeat results; heartbeat_results is closed to the client roles (20260627121655)", served: "admin-ops proxy for /health-check (20261008123000, wave 2 email-ops)" },
+];
+
+/**
  * Left alone by the census because another group owns them (credits-
  * entitlements). That group closed both in 20261005120000 (service_role only;
  * the browser now asks the scan-credits function, and the scanner spends a

@@ -271,7 +271,7 @@ describe("the call site, on comment-stripped code", () => {
   });
 
   it("the version marker moved with the check, so a stale deploy is tellable from the payload", () => {
-    expect(CODE).toMatch(/const BUILD_VERSION = "2026-09-21\.\d+"/);
+    expect(CODE).toMatch(/const BUILD_VERSION = "2026-(09-(2[1-9]|30)|1[0-2]-\d{2})\.\d+"/);
   });
 });
 

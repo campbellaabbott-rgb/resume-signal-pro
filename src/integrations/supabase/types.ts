@@ -6070,6 +6070,17 @@ export type Database = {
           worst_title_first_at: string
         }[]
       }
+      get_recent_heartbeats: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          function_name: string
+          id: string
+          response_time_ms: number
+          status: string
+          test_passed: boolean
+        }[]
+      }
       get_repost_churn_companies: {
         Args: { p_limit?: number }
         Returns: {

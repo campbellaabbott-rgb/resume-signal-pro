@@ -254,6 +254,9 @@ function HealthCheckContent() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [heartbeats, setHeartbeats] = useState<HeartbeatRecord[]>([]);
+  // The heartbeat history could not be read (register L3-08). An empty list
+  // used to render as 100% uptime and "All systems operational".
+  const [heartbeatsUnavailable, setHeartbeatsUnavailable] = useState(false);
   const [productMetrics, setProductMetrics] = useState<ProductMetrics | null>(null);
   const [recentIncidents, setRecentIncidents] = useState<HeartbeatRecord[]>([]);
   
@@ -275,6 +278,8 @@ function HealthCheckContent() {
   // AI Fallback monitoring
   const [aiFallbackStatus, setAIFallbackStatus] = useState<AIFallbackStatus | null>(null);
   const [aiFallbackLoading, setAIFallbackLoading] = useState(false);
+  // The test endpoint allows 3 runs an hour; a refusal keeps the last result.
+  const [aiFallbackRateLimited, setAIFallbackRateLimited] = useState(false);
   
   // Circuit breaker monitoring
   const [circuitBreakers, setCircuitBreakers] = useState<Record<string, CircuitBreakerStatus>>({});
@@ -307,20 +312,23 @@ function HealthCheckContent() {
     }
   };
 
+  // heartbeat_results is closed to the browser (20260627121655), so the read
+  // goes through admin-ops; a refusal is shown as unavailable, never as calm.
   const fetchHeartbeats = async () => {
     try {
-      const { data: hbData } = await supabase
-        .from('heartbeat_results')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (hbData) {
-        setHeartbeats(hbData);
-        setRecentIncidents(hbData.filter(h => !h.test_passed).slice(0, 5));
+      const { data: hbData, error: hbError } = await adminRpc('get_recent_heartbeats', { p_limit: 10 });
+      if (hbError || !Array.isArray(hbData)) {
+        setHeartbeatsUnavailable(true);
+        setHeartbeats([]);
+        setRecentIncidents([]);
+        return;
       }
+      setHeartbeatsUnavailable(false);
+      setHeartbeats(hbData as HeartbeatRecord[]);
+      setRecentIncidents((hbData as HeartbeatRecord[]).filter(h => !h.test_passed).slice(0, 5));
     } catch (e) {
       console.error('Failed to fetch heartbeats:', e);
+      setHeartbeatsUnavailable(true);
     }
   };
 
@@ -451,9 +459,16 @@ function HealthCheckContent() {
     setAIFallbackLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('test-ai-fallback', {
-        body: { mode }
+        body: { mode },
       });
+      // 3 tests an hour (register L3-09): a refusal is not a degraded model
+      // chain, so the last result stays and the panel says why it is old.
+      if ((error as { context?: { status?: number } } | null)?.context?.status === 429) {
+        setAIFallbackRateLimited(true);
+        return;
+      }
       if (error) throw error;
+      setAIFallbackRateLimited(false);
       setAIFallbackStatus(data);
     } catch (e) {
       console.error('Failed to fetch AI fallback status:', e);
@@ -527,7 +542,9 @@ function HealthCheckContent() {
     fetchCheckoutFunnel();
     fetchWebhookHealth();
     fetchParseFailures();
-    fetchAIFallbackStatus('quick');
+    // NOT the AI fallback test: it spends a paid model call and allows 3 an
+    // hour, so running it every 30 s turned the panel red after 90 s (register
+    // L3-09). It runs from its own buttons.
     fetchCircuitBreakerStatus();
   };
 
@@ -540,8 +557,9 @@ function HealthCheckContent() {
 
   const StatusIcon = data ? statusConfig[data.status].icon : Activity;
 
-  const getUptimePercentage = () => {
-    if (heartbeats.length === 0) return 100;
+  /** null when there is nothing to measure: no rows is not 100% uptime. */
+  const getUptimePercentage = (): number | null => {
+    if (heartbeatsUnavailable || heartbeats.length === 0) return null;
     const passed = heartbeats.filter(h => h.test_passed).length;
     return Math.round((passed / heartbeats.length) * 100);
   };
@@ -615,7 +633,12 @@ function HealthCheckContent() {
               
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-green-500">{getUptimePercentage()}%</p>
+                  {(() => {
+                    const up = getUptimePercentage();
+                    return up === null
+                      ? <p className="text-2xl font-bold text-muted-foreground">{heartbeatsUnavailable ? 'unavailable' : '—'}</p>
+                      : <p className={`text-2xl font-bold ${up === 100 ? 'text-green-500' : 'text-yellow-500'}`}>{up}%</p>;
+                  })()}
                   <p className="text-xs text-muted-foreground">Uptime (recent)</p>
                 </div>
                 {data && (
@@ -1478,10 +1501,21 @@ function HealthCheckContent() {
                   )}
                   Test All Models
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchAIFallbackStatus('quick')}
+                  disabled={aiFallbackLoading}
+                >
+                  Quick test
+                </Button>
                 {aiFallbackStatus && (
                   <Badge variant={aiFallbackStatus.success ? 'default' : 'destructive'}>
                     {aiFallbackStatus.success ? 'Healthy' : 'Degraded'}
                   </Badge>
+                )}
+                {aiFallbackRateLimited && (
+                  <Badge variant="outline">Rate-limited (3 tests an hour){aiFallbackStatus ? ': last result shown' : ''}</Badge>
                 )}
               </div>
             </CardTitle>
@@ -1489,8 +1523,10 @@ function HealthCheckContent() {
           <CardContent>
             {!aiFallbackStatus ? (
               <div className="text-center py-4">
-                <RefreshCw className="h-8 w-8 text-muted-foreground mx-auto mb-2 animate-spin" />
-                <p className="text-sm text-muted-foreground">Testing AI models...</p>
+                <RefreshCw className={`h-8 w-8 text-muted-foreground mx-auto mb-2 ${aiFallbackLoading ? 'animate-spin' : ''}`} />
+                <p className="text-sm text-muted-foreground">
+                  {aiFallbackLoading ? 'Testing AI models...' : 'Not tested yet. Each test spends a model call (3 an hour): press Quick test or Test All Models.'}
+                </p>
               </div>
             ) : aiFallbackStatus.error ? (
               <div className="text-center py-4">
@@ -1628,7 +1664,9 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {heartbeats.length === 0 ? (
+              {heartbeatsUnavailable ? (
+                <p className="text-sm text-destructive text-center py-4">Heartbeat history unavailable (admin key missing, or the reader refused)</p>
+              ) : heartbeats.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No heartbeat data yet</p>
               ) : (
                 <div className="space-y-2">
@@ -1666,7 +1704,16 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {recentIncidents.length === 0 ? (
+              {heartbeatsUnavailable ? (
+                <div className="text-center py-4">
+                  <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Incidents unknown: the heartbeat history could not be read</p>
+                </div>
+              ) : heartbeats.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">No heartbeat data yet, so no incidents can be reported</p>
+                </div>
+              ) : recentIncidents.length === 0 ? (
                 <div className="text-center py-4">
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No recent incidents</p>

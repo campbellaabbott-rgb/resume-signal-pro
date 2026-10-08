@@ -30,6 +30,9 @@ export const ADMIN_OPS_RPCS: ReadonlySet<string> = new Set([
   "get_parse_failure_stats",
   "get_payment_health",
   "get_rate_limit_stats",
+  // 20261008123000: the heartbeat results /health-check read straight from a
+  // table closed to the browser, and rendered the refusal as 100% uptime.
+  "get_recent_heartbeats",
   "get_scan_metrics_hourly",
   "get_webhook_health",
   "get_webhook_metrics_hourly",

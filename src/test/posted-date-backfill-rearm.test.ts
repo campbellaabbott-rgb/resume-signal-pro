@@ -270,7 +270,9 @@ describe("the heartbeat watches the vendors that depend on the sweep", () => {
     // and a skip with its reason on empty or unmigrated tables.
     // 2026-09-21.1: the daily board-name mirror (read-log kind 'mirror') is a
     // live kind — a mirror failing every night left stale names and no alarm.
-    expect(HB).toMatch(/const BUILD_VERSION = "2026-09-21\.\d+"/);
+    // 2026-10-08.1 (wave 2 email-ops): the endpoint answers only its cron, the
+    // service role and the owner; this and later builds pass.
+    expect(HB).toMatch(/const BUILD_VERSION = "2026-(09-(2[1-9]|30)|1[0-2]-\d{2})\.\d+"/);
   });
 
   it("reads the ROLLUP, not the cache that was frozen when this shipped", () => {

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { adminRpc } from '@/lib/admin-auth';
+import { adminAuthHeaders, adminRpc } from '@/lib/admin-auth';
 import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import {
   LineChart,
@@ -143,7 +143,9 @@ function ScanMetricsContent() {
   const runHeartbeat = async () => {
     setRunningHeartbeat(true);
     try {
-      const { data, error } = await supabase.functions.invoke('scan-heartbeat');
+      // scan-heartbeat answers its cron, the service role and the owner's key
+      // only (register L10-10); this button sends the key the gate holds.
+      const { data, error } = await supabase.functions.invoke('scan-heartbeat', { headers: adminAuthHeaders() });
       if (error) throw error;
       console.log('Heartbeat result:', data);
       // Refresh metrics to show new heartbeat

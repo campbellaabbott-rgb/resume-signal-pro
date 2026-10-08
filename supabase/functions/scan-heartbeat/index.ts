@@ -1,6 +1,8 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
+import { keyMatches } from "../_shared/admin-key.ts";
 // THE BATTERY BELOW IS NOT CANDIDATE DEMAND. Its four filter probes call the
 // board's `list` action, which logs a search event unconditionally — so a
 // literal {salaryFloor: 100000} probe has been landing in the demand log on
@@ -12,7 +14,10 @@ declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
+  'Access-Control-Expose-Headers': 'x-fn-build',
+  // BUILD_VERSION below, as the other functions carry it.
+  'x-fn-build': 'scan-heartbeat.2026-10-08.1',
 };
 
 // Test resume for heartbeat checks
@@ -37,6 +42,11 @@ BS Computer Science, State University, 2018
 
 SKILLS
 JavaScript, TypeScript, React, Node.js, Python, AWS, Docker, PostgreSQL`;
+
+/** The test résumé with this run's own reference line, so no run is a report-cache hit. */
+function heartbeatResume(): string {
+  return `${TEST_RESUME}\n\nREFERENCE\nHeartbeat run ${new Date().toISOString()} ${crypto.randomUUID().slice(0, 8)}`;
+}
 
 // Thresholds for health determination
 const HEALTHY_RESPONSE_TIME_MS = 30000; // 30s
@@ -110,7 +120,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-09-21.1"; // 09-21.1: the daily board-name mirror (read-log kind 'mirror') is a live kind; a mirror that fails every night left stale names with no alarm
+const BUILD_VERSION = "2026-10-08.1"; // 10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -278,6 +288,21 @@ serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // WHO MAY RUN THIS (register L10-10). Every run makes a model call, a full
+  // end-to-end scan with the limiter bypass, whole-table counts, the slow
+  // job-board status and list probes, and (on a stall) a service-role refresh
+  // kick, and it can email the owner -- and it answered anyone. Now: the cron
+  // (x-email-cron, the vault key 20261008123000 makes its job send), our own
+  // service role, or the owner's ADMIN_API_KEY (the /scan-metrics button).
+  // Everyone else is a 401 before any check runs.
+  const byOwner = keyMatches(req.headers.get('x-admin-key') ?? '', Deno.env.get('ADMIN_API_KEY') ?? '');
+  if (!byOwner && !(await isScheduledCaller(req.headers, supabase, supabaseServiceKey))) {
+    return new Response(
+      JSON.stringify({ error: 'The heartbeat runs for its scheduler and the owner only.' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     // Check 1: Database connectivity
     const dbStart = Date.now();
@@ -367,6 +392,45 @@ serve(async (req) => {
       });
       overallStatus = 'down';
       errorMessage = errorMessage || `AI Gateway: ${e instanceof Error ? e.message : 'Unknown'}`;
+    }
+
+    // Check 2b: the Stripe key still opens Stripe (register L13-67). A rolled
+    // or missing STRIPE_SECRET_KEY fails every checkout while every other
+    // check stays green, and nothing here looked. A 200 from the balance
+    // endpoint is the only pass; a missing key, 401, 402 or 403 fails; a 5xx
+    // or a timeout is Stripe's trouble, not ours, and is recorded as a skip.
+    const stripeStart = Date.now();
+    try {
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
+      if (!stripeKey) {
+        checks.push({ name: 'stripe_credentials', passed: false, responseTimeMs: 0, error: 'STRIPE_SECRET_KEY is not set — every checkout fails' });
+      } else {
+        const ac = new AbortController();
+        const to = setTimeout(() => ac.abort(), 8000);
+        let sr: Response;
+        try {
+          sr = await fetch('https://api.stripe.com/v1/balance', { headers: { Authorization: `Bearer ${stripeKey}` }, signal: ac.signal });
+        } finally { clearTimeout(to); }
+        await sr.body?.cancel().catch(() => {});
+        if (sr.status >= 500) {
+          skip('stripe_credentials', `Stripe answered HTTP ${sr.status} — credentials not evaluated`);
+        } else {
+          const ok = sr.status === 200;
+          checks.push({
+            name: 'stripe_credentials',
+            passed: ok,
+            responseTimeMs: Date.now() - stripeStart,
+            error: ok ? undefined : `Stripe refused the secret key (HTTP ${sr.status}) — checkout is failing`,
+          });
+        }
+      }
+      const stripeCheck = checks.find((c) => c.name === 'stripe_credentials');
+      if (stripeCheck && !stripeCheck.passed) {
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || `Stripe: ${stripeCheck.error}`;
+      }
+    } catch (e) {
+      skip('stripe_credentials', `Stripe did not answer (${e instanceof Error ? e.message : 'unreachable'}) — credentials not evaluated`);
     }
 
     // Check 3: Cache system
@@ -1579,10 +1643,15 @@ serve(async (req) => {
         });
       } finally { clearTimeout(timeoutId); }
       const vBody = await vResp.json().catch(() => null) as { drifted?: string[]; unreachable?: string[] } | null;
-      const oldBuild = vResp.status === 400; // older bundle without the action — not live yet
-      const drifted = Array.isArray(vBody?.drifted) ? vBody!.drifted : [];
+      // UNEVALUATED IS SKIPPED, NEVER PASSED (register L10-15). A 5xx, a 400
+      // or a body without the drifted list used to push passed:true -- the
+      // canary failing read exactly like no vendor drifting.
+      if (!vResp.ok || !Array.isArray(vBody?.drifted)) {
+        throw new Error(`vendor-health answered HTTP ${vResp.status}${vResp.ok ? ' without a drifted list' : ''}`);
+      }
+      const drifted = vBody!.drifted as string[];
       const unreachable = Array.isArray(vBody?.unreachable) ? vBody!.unreachable : [];
-      const driftBad = !oldBuild && vResp.ok && drifted.length > 0;
+      const driftBad = drifted.length > 0;
       checks.push({
         name: 'job_board_vendors',
         passed: !driftBad,
@@ -1598,9 +1667,12 @@ serve(async (req) => {
         console.log(`[HEARTBEAT] vendor canary: ${unreachable.join(', ')} unreachable this cycle (transient, not paged)`);
       }
     } catch (e) {
-      // A failure to reach the canary is not itself a vendor-drift signal; log,
-      // don't page (the deploy/refresh checks already cover a down function).
-      console.log(`[HEARTBEAT] vendor-health check skipped: ${e instanceof Error ? e.message : 'unreachable'}`);
+      // A failure to reach the canary is not itself a vendor-drift signal, so
+      // it does not page -- but it is RECORDED as a skip with its reason, so
+      // the check never vanishes from the payload (a timeout used to).
+      const why = e instanceof Error ? (e.name === 'AbortError' ? 'vendor-health did not answer within 20s' : e.message) : 'unreachable';
+      skip('job_board_vendors', `${why} — drift not evaluated`);
+      console.log(`[HEARTBEAT] vendor-health check skipped: ${why}`);
     }
 
     // Check 6: END-TO-END scan through the real deployed function. The
@@ -1623,7 +1695,13 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           ...(heartbeatSecret ? { 'x-heartbeat-secret': heartbeatSecret } : {}),
         },
-        body: JSON.stringify({ resumeText: TEST_RESUME }),
+        // A LINE NO EARLIER RUN HAD (register L10-21). The constant résumé hit
+        // free-keyword-scan's 7-day report cache, which answers before any
+        // AI work or scan_metrics write, so ~177 heartbeats in a row recorded
+        // no completion while e2e_scan read green. The run's own reference
+        // makes every scan a cache miss; synthetic keeps it out of the
+        // published score statistics and the owner's per-scan note.
+        body: JSON.stringify({ resumeText: heartbeatResume(), synthetic: true }),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -1640,12 +1718,15 @@ serve(async (req) => {
         errorMessage = errorMessage || `E2E scan: HTTP ${scanResp.status}`;
       } else {
         const scanJson = await scanResp.json();
-        const anatomyOk = typeof scanJson.atsScoreEstimate === 'number' && !!scanJson.reportMeta?.reportId;
+        const fromCache = scanJson?.cachedReport === true;
+        const anatomyOk = !fromCache && typeof scanJson.atsScoreEstimate === 'number' && !!scanJson.reportMeta?.reportId;
         checks.push({
           name: 'e2e_scan',
           passed: anatomyOk,
           responseTimeMs: e2eTime,
-          error: anatomyOk ? undefined : 'Response missing atsScoreEstimate/reportMeta',
+          error: fromCache
+            ? 'served from the 7-day report cache — the scan pipeline was not exercised'
+            : anatomyOk ? undefined : 'Response missing atsScoreEstimate/reportMeta',
         });
         if (!anatomyOk) {
           overallStatus = 'degraded';
@@ -1950,11 +2031,29 @@ async function evaluateDelivery(
 ): Promise<{
   reason: string; sent: number; failed: number; stuck: number; failRate: number | null;
   byStatus: Array<{ status: string; n: number }>; lastSentAt: string | null;
+  paidMail: { sent: number; failed: number } | null;
 }> {
-  const empty = { reason: 'rpc-missing', sent: 0, failed: 0, stuck: 0, failRate: null, byStatus: [], lastSentAt: null };
+  const empty = { reason: 'rpc-missing', sent: 0, failed: 0, stuck: 0, failRate: null, byStatus: [], lastSentAt: null, paidMail: null };
   try {
+    // THE PAID MAIL IS LOGGED ELSEWHERE (register L10-08). email_delivery_health
+    // reads email_send_log, which only the auth hook and the queue write; the
+    // paid-report mailers (send-product-email, send-analysis-email) log to
+    // email_logs through log_email_send. This check exists for the paid report
+    // that never arrives, so it reads both: email_logs as COUNTS only (the
+    // reader's recipient sample is never copied into this public response).
+    const paidMail = await (async () => {
+      try {
+        const { data: pm, error: pmErr } = await supabase.rpc('get_email_health', { p_hours_back: 24 });
+        if (pmErr) return null;
+        const row = (Array.isArray(pm) ? pm[0] : pm) as Record<string, unknown> | null | undefined;
+        if (!row) return { sent: 0, failed: 0 };
+        return { sent: Number(row.successful_emails ?? 0) || 0, failed: Number(row.failed_emails ?? 0) || 0 };
+      } catch {
+        return null;
+      }
+    })();
     const { data, error } = await supabase.rpc('email_delivery_health', { p_hours: 24 });
-    if (error) return empty;
+    if (error) return { ...empty, paidMail };
     const rows = (Array.isArray(data) ? data as Array<Record<string, unknown>> : []).map((r) => ({
       status: String(r.status ?? 'unknown'),
       n: Number(r.n ?? 0),
@@ -1962,11 +2061,11 @@ async function evaluateDelivery(
       last_at: r.last_at ? String(r.last_at) : null,
     }));
     const of = (s: string) => rows.find((r) => r.status === s)?.n ?? 0;
-    const sent = of('sent');
+    const sent = of('sent') + (paidMail?.sent ?? 0);
     // Everything that means the person did not get it. `suppressed` is
     // deliberately NOT counted as a failure: it is the system correctly
     // refusing to mail someone who unsubscribed or hard-bounced before.
-    const failed = of('failed') + of('bounced') + of('dlq');
+    const failed = of('failed') + of('bounced') + of('dlq') + (paidMail?.failed ?? 0);
     // NEITHER SENT NOR FAILED, which is how a stranded email stayed invisible.
     // Measured 2026-08-06: one row pending since 2026-07-03 — thirty-four days
     // — counted by nothing, so a log of nothing but stuck sends read as 'clean'.
@@ -1988,6 +2087,7 @@ async function evaluateDelivery(
       failRate: total > 0 ? Math.round((failed / total) * 1000) / 10 : null,
       byStatus: rows.map(({ status, n }) => ({ status, n })).slice(0, 10),
       lastSentAt: rows.find((r) => r.status === 'sent')?.last_at ?? null,
+      paidMail,
     };
   } catch {
     return empty;
@@ -2129,7 +2229,7 @@ async function sendSenderOfflineAlert(state: SenderState): Promise<void> {
     } catch (_e) { /* dedupe is best-effort — never swallow a real alert */ }
 
     const mins = state.offlineSeconds === null ? '?' : Math.round(state.offlineSeconds / 60).toString();
-    await fetch("https://api.resend.com/emails", {
+    const sentRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2151,6 +2251,11 @@ async function sendSenderOfflineAlert(state: SenderState): Promise<void> {
         `,
       }),
     });
+    // A refusal is not "sent" (register L10-05): the response was discarded.
+    if (!sentRes.ok) {
+      console.error(`[SCAN-HEARTBEAT] Sender-offline alert REFUSED by Resend: HTTP ${sentRes.status} ${(await sentRes.text().catch(() => '')).slice(0, 200)}`);
+      return;
+    }
     console.log(`[SCAN-HEARTBEAT] Sender-offline alert sent (${mins}m, ${state.activeMandates} mandates)`);
   } catch (e) {
     console.error('[SCAN-HEARTBEAT] Failed to send sender-offline alert:', e);
@@ -2174,14 +2279,16 @@ async function sendRecoveryIfAlerted(): Promise<void> {
       .from('job_board_meta').select('v').eq('k', 'heartbeat_alert_state').maybeSingle();
     const prev = ((st as { v?: unknown } | null)?.v ?? {}) as { fingerprint?: string };
     if (!prev.fingerprint || prev.fingerprint.startsWith('healthy')) return;
-    await client.from('job_board_meta').upsert(
+    // The state turns healthy only once the note is out (register L10-05):
+    // it was written first, so a refused note was never retried.
+    const markHealthy = () => client.from('job_board_meta').upsert(
       { k: 'heartbeat_alert_state', v: { fingerprint: 'healthy', lastSentAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
       { onConflict: 'k' },
     );
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
-    if (!RESEND_API_KEY) return;
-    await fetch("https://api.resend.com/emails", {
+    if (!RESEND_API_KEY) { await markHealthy(); return; }
+    const noteRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2191,6 +2298,11 @@ async function sendRecoveryIfAlerted(): Promise<void> {
         html: `<h2>Heartbeat recovered</h2><p>The previously reported failing state (<code>${prev.fingerprint}</code>) has cleared — all checks pass as of ${new Date().toISOString()}.</p>`,
       }),
     });
+    if (!noteRes.ok) {
+      console.error(`[SCAN-HEARTBEAT] Recovery email REFUSED by Resend: HTTP ${noteRes.status}; the state stays alerted and the note is retried next healthy run`);
+      return;
+    }
+    await markHealthy();
     console.log('[SCAN-HEARTBEAT] Recovery email sent');
   } catch (e) {
     console.error('[SCAN-HEARTBEAT] Recovery email failed:', e);
@@ -2225,6 +2337,12 @@ async function sendHeartbeatAlert(
     // and write is best-effort — a dedupe failure must never swallow a real
     // alert, so on any error we fall through to the rate cap below and send.
     const fingerprint = `${status}|${failedChecks.map((c) => c.name).sort().join(",")}`;
+    // Written only AFTER Resend accepted the mail (register L10-05). It was
+    // written before the backstop (which could then return) and before the
+    // send (whose Response was discarded), so a refused alert -- a 429, a
+    // 5xx, a 403 if ADMIN_EMAIL stops matching the Resend account -- marked
+    // every failing check announced and silenced it for a day.
+    let stampAfterSend: (() => PromiseLike<unknown>) | null = null;
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL");
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -2279,7 +2397,7 @@ async function sendHeartbeatAlert(
           if (shouldSend) nextAlerted[c.name] = new Date().toISOString();
           else if (alerted[c.name]) nextAlerted[c.name] = alerted[c.name];
         }
-        await stateClient.from('job_board_meta').upsert(
+        const writeState = () => stateClient.from('job_board_meta').upsert(
           {
             k: 'heartbeat_alert_state',
             v: {
@@ -2291,6 +2409,8 @@ async function sendHeartbeatAlert(
           },
           { onConflict: 'k' },
         );
+        if (shouldSend) stampAfterSend = writeState;
+        else await writeState();
         if (!shouldSend) {
           console.log(`[SCAN-HEARTBEAT] Alert suppressed — no unalerted check (24h/check), no escalation, no reminder due (${fingerprint})`);
           return;
@@ -2320,7 +2440,7 @@ async function sendHeartbeatAlert(
     } catch (_e) { /* fall through and send */ }
     const statusEmoji = status === 'down' ? '🔴' : '🟡';
 
-    await fetch("https://api.resend.com/emails", {
+    const alertRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
@@ -2360,7 +2480,14 @@ async function sendHeartbeatAlert(
         `,
       }),
     });
-    
+    if (!alertRes.ok) {
+      console.error(`[SCAN-HEARTBEAT] Alert email REFUSED by Resend: HTTP ${alertRes.status} ${(await alertRes.text().catch(() => '')).slice(0, 200)}; nothing is marked announced, so the next run tries again`);
+      return;
+    }
+    if (stampAfterSend) {
+      try { await stampAfterSend(); } catch (e) { console.error('[SCAN-HEARTBEAT] alert state write failed after a sent alert:', e); }
+    }
+
     console.log(`[SCAN-HEARTBEAT] Alert email sent for status: ${status}`);
   } catch (e) {
     console.error("[SCAN-HEARTBEAT] Failed to send alert:", e);

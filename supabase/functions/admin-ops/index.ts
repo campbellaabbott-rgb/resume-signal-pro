@@ -18,7 +18,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 
 // Provable from outside without the key: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "admin-ops.2026-10-04.1";
+const FN_BUILD = "admin-ops.2026-10-08.1";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
