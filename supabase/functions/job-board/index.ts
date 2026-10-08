@@ -11534,7 +11534,7 @@ async function serveList(
     // rather than publish a different population's (n433).
     const facetRoute = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
     const facetTokens = facetRoute?.route === "EMPLOYER" && facetRoute.tokens?.length ? facetRoute.tokens : null;
-    if (qText && !facetTokens) {
+    if (!facetTokens && qText) {
       return json({
         categories: {},
         facetSource: "withheld",

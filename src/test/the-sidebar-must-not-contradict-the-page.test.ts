@@ -40,7 +40,7 @@ describe("the sidebar must not contradict the page", () => {
     // numbers, except an employer query, counted by its tokens (the routed
     // list's own matcher). Run end to end in
     // the-chips-counted-a-different-population-than-the-list.test.ts.
-    expect(/if \(qText && !facetTokens\) \{/.test(FACET)).toBe(true);
+    expect(/if \(!facetTokens && qText\) \{/.test(FACET)).toBe(true);
     expect(/facetSource: "withheld",/.test(FACET)).toBe(true);
     expect(/count_jobs_capped/.test(FACET), "no substring RPC count").toBe(false);
     // The filter-only and employer cases use buildQuery, the list's own binder.

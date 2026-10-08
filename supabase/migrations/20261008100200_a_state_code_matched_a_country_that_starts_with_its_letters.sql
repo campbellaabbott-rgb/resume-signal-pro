@@ -27,15 +27,34 @@
 -- body is extracted from its own latest definition (all three in
 -- 20260927034117) and differs from it in exactly the location clause; the
 -- signatures, return shapes, settings and every other predicate are
--- byte-identical, so CREATE OR REPLACE replaces each in place (no overload can
--- appear) and the grants are re-stated as they stand: service_role only.
+-- byte-identical. The span is that file's own drop-and-create: every overload
+-- of the three names is dropped from the catalog first (its loop, then its named
+-- drops), so no stale overload survives to make a call ambiguous, and the
+-- grants DROP discards are re-issued as they stand: service_role only.
 -- p_location is still a '|'-joined alias list matched with EXISTS over
 -- string_to_array; a single-name location splits into a one-element array and
 -- behaves EXACTLY as before.
 -- The browse path and preferMatchedLocation in job-board .91 apply the same
 -- rule (location-match.ts).
 
-CREATE OR REPLACE FUNCTION public.search_jobs(
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT oid::regprocedure AS sig
+    FROM pg_proc
+    WHERE pronamespace = 'public'::regnamespace
+      AND proname IN ('search_jobs', 'count_jobs_capped', 'fuzzy_title_search')
+  LOOP
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig;
+  END LOOP;
+END $$;
+
+DROP FUNCTION IF EXISTS public.search_jobs(text, timestamptz, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, integer, text[], boolean, boolean, numeric, text, integer, text, text, boolean);
+DROP FUNCTION IF EXISTS public.search_jobs(text, timestamptz, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, integer, text[], boolean, boolean, numeric, text, integer, text, text);
+DROP FUNCTION IF EXISTS public.search_jobs(text, timestamptz, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, integer, text[], boolean, boolean, numeric, text, integer, text);
+DROP FUNCTION IF EXISTS public.search_jobs(text, timestamptz, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, integer, text[], boolean, boolean);
+CREATE FUNCTION public.search_jobs(
   p_q text,
   p_fresh_cutoff timestamptz,
   p_location text DEFAULT NULL,
@@ -237,7 +256,11 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.count_jobs_capped(
+DROP FUNCTION IF EXISTS public.count_jobs_capped(timestamptz, text, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, text[], boolean, boolean, numeric, text, integer, text, text, boolean);
+DROP FUNCTION IF EXISTS public.count_jobs_capped(timestamptz, text, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, text[], boolean, boolean, numeric, text, integer, text, text);
+DROP FUNCTION IF EXISTS public.count_jobs_capped(timestamptz, text, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, text[], boolean, boolean, numeric, text, integer, text);
+DROP FUNCTION IF EXISTS public.count_jobs_capped(timestamptz, text, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, text[], boolean, boolean);
+CREATE FUNCTION public.count_jobs_capped(
   p_fresh_cutoff timestamptz,
   p_q text DEFAULT NULL,
   p_location text DEFAULT NULL,
@@ -363,7 +386,12 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.fuzzy_title_search(
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean, numeric, text, integer, text, text, boolean);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean, numeric, text, integer, text, text);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean, numeric, text, integer, text);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, text[], boolean, boolean);
+DROP FUNCTION IF EXISTS public.fuzzy_title_search(text, timestamptz, integer);
+CREATE FUNCTION public.fuzzy_title_search(
   p_q text,
   p_fresh_cutoff timestamptz,
   p_limit integer DEFAULT 40,
@@ -462,6 +490,7 @@ AS $$
   ORDER BY m.sim DESC, m.effective_posted DESC;
 $$;
 
+-- DROP discards grants, so they are re-issued: service_role only, as they stand.
 REVOKE ALL ON FUNCTION public.search_jobs(text, timestamptz, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, integer, text[], boolean, boolean, numeric, text, integer, text, text, boolean) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.search_jobs(text, timestamptz, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, integer, text[], boolean, boolean, numeric, text, integer, text, text, boolean) TO service_role;
 REVOKE ALL ON FUNCTION public.count_jobs_capped(timestamptz, text, text, boolean, text, text, text[], numeric, text[], timestamptz, integer, text, integer, text[], boolean, boolean, numeric, text, integer, text, text, boolean) FROM PUBLIC, anon, authenticated;

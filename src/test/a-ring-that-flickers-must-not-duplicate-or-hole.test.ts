@@ -62,7 +62,7 @@ describe("counts and disclosures stay self-consistent", () => {
     // the list matched by FTS: q=rn legal 1,159 over a list of 8. A text query
     // now withholds the chips, except an employer query, counted by its tokens.
     expect(BOARD).not.toMatch(/facetUseRpc/);
-    expect(BOARD).toMatch(/if \(qText && !facetTokens\) \{/);
+    expect(BOARD).toMatch(/if \(!facetTokens && qText\) \{/);
   });
 
   it("the router's stand-down gate is mechanical, so future filters count", () => {

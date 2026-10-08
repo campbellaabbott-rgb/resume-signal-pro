@@ -52,7 +52,7 @@ An honest reservation for a whole read is min(feed total, SR_CAP) up to 2,000, a
 
 ### ORDER, DEPLOY, MIGRATIONS
 
-1. DEPLOY. Ask Lovable, after pulling main: deploy the edge function job-board. Judge only by `status.version = 2026-09-09.91` and the preflight `x-fn-build: job-board.2026-09-09.91` (over the ~4.5 MB raw-source cap the old bundle keeps serving and the deploy still reports success). job-board plus _shared .ts source 4,082,931 -> 4,103,471 bytes (+20,540), ~0.4 MB under the cap.
+1. DEPLOY. Ask Lovable, after pulling main: deploy the edge function job-board. Judge only by `status.version = 2026-09-09.91` and the preflight `x-fn-build: job-board.2026-09-09.91` (over the ~4.5 MB raw-source cap the old bundle keeps serving and the deploy still reports success). Bundle source: the local module graph goes 3,698,636 -> 3,719,176 bytes (+20,540; 42 -> 44 modules; same walk as the .90 figure); job-board plus _shared .ts source 4,082,931 -> 4,103,471 bytes, ~0.4 MB under the cap.
 2. THEN apply, in order (each is safe before or after the bundle, and re-runnable):
    - 20261008100000_a_twins_read_kept_a_deferred_boards_rows_out_of_the_48h_sweep.sql (the sweep's command; until .91 has written a key in the last 48h it behaves exactly as before)
    - 20261008100100_the_stale_window_reads_a_board_stamp_by_its_board.sql (get_stalest_boards body; harmless with no keys)
