@@ -25,7 +25,8 @@
 --      subscription checkouts and copied onto the row by checkProByEmail.
 --      Rows that exist now are bound once to the account that holds their
 --      address now -- what every gate already served -- so nobody who pays is
---      dropped. From here on an address alone binds nothing.
+--      dropped. From here on an address alone binds nothing, and a re-run of
+--      this file binds nothing either.
 --
 --   2. pro_entitlement_rows(user id) answers the account's subscription rows
 --      from BOTH caches: a pro_subscribers row bound to the account, or an
@@ -47,18 +48,38 @@
 
 -- ── 1. the Pro cache knows whose plan it is ──────────────────────────────────
 
-ALTER TABLE public.pro_subscribers ADD COLUMN IF NOT EXISTS user_id uuid;
+-- THE BINDING RUNS ONCE, in the run that adds the column. After it, an
+-- unbound row is deliberate: a plan made in the Stripe dashboard with no
+-- metadata.user_id, or one on an address whose password account has not
+-- proven the mailbox. Binding those again on a re-run (the staged runner
+-- re-stages files) would hand each to whoever registered its address -- the
+-- hole this file closes -- and checkProByEmail never overrides a binding.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'pro_subscribers' AND column_name = 'user_id') THEN
+    RAISE NOTICE 'pro_subscribers.user_id exists already: its rows were bound when it was added; nothing is bound again';
+    RETURN;
+  END IF;
+  ALTER TABLE public.pro_subscribers ADD COLUMN user_id uuid;
+  UPDATE public.pro_subscribers p
+     SET user_id = u.id
+    FROM auth.users u
+   WHERE p.user_id IS NULL
+     AND coalesce(btrim(u.email), '') <> ''
+     AND lower(btrim(u.email)) = lower(btrim(p.email));
+  IF EXISTS (
+    SELECT 1 FROM public.pro_subscribers p JOIN auth.users u
+        ON lower(btrim(u.email)) = lower(btrim(p.email)) AND coalesce(btrim(u.email), '') <> ''
+     WHERE p.user_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'self-check: a Pro row whose address had an account was left unbound by the one-time binding';
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS pro_subscribers_user_idx
   ON public.pro_subscribers (user_id) WHERE user_id IS NOT NULL;
 COMMENT ON COLUMN public.pro_subscribers.user_id IS
-  'The account this plan belongs to: the user id the subscription checkout stamped on the Stripe subscription (copied here by checkProByEmail), or the account that held the address when 20261008130000 ran. Read through pro_entitlement_rows; an unbound row answers only for an account that has proven its mailbox.';
-
-UPDATE public.pro_subscribers p
-   SET user_id = u.id
-  FROM auth.users u
- WHERE p.user_id IS NULL
-   AND coalesce(btrim(u.email), '') <> ''
-   AND lower(btrim(u.email)) = lower(btrim(p.email));
+  'The account this plan belongs to: the user id the subscription checkout stamped on the Stripe subscription (copied here by checkProByEmail), or the account that held the address when 20261008130000 first ran (bound once, never again). Read through pro_entitlement_rows; an unbound row answers only for an account that has proven its mailbox.';
 
 -- ── 2. one read of both caches, by account ──────────────────────────────────
 
@@ -131,13 +152,6 @@ BEGIN
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns
                      WHERE table_schema = 'public' AND table_name = 'pro_grants' AND column_name = 'revoked_at') THEN
     RAISE EXCEPTION 'self-check: pro_subscribers.user_id, pro_grants.user_id or pro_grants.revoked_at is missing';
-  END IF;
-  IF EXISTS (
-    SELECT 1 FROM public.pro_subscribers p JOIN auth.users u
-        ON lower(btrim(u.email)) = lower(btrim(p.email)) AND coalesce(btrim(u.email), '') <> ''
-     WHERE p.user_id IS NULL
-  ) THEN
-    RAISE EXCEPTION 'self-check: a Pro row whose address has an account was left unbound';
   END IF;
 END $$;
 
