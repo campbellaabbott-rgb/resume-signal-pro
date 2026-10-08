@@ -23,7 +23,9 @@ design.
   - 4.4(c), L6-08: a trial includes batch application prep. On main a
     trialing subscriber gets a 402 from `generate-apply-package`.
   - 4.6(d), L6-18: a refund or dispute revokes what it bought.
-  - 4.5(e), L9-13 / L6-07: every never-sent pass application is given back.
+  - 4.5(e), L9-13: every never-sent pass application is given back.
+    (L6-07, a refused queue row, is already fixed on main by
+    `20261005130000`.)
   - 4.3(e) Option B, L6-30: deleting an account cancels the plan.
   - 4.3(f): we email subscribers before a price change. No mailer exists,
     and the clause is a firm "we will". The owner commits to sending it by

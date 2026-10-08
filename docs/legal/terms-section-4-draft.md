@@ -140,10 +140,15 @@ Measured on `acd64c4c`:
 > when you subscribe, or, for the Apply Agent plan, when its free trial ends
 > (4.4).
 >
-> **(c) One plan at a time.** An account holds one plan at a time. To move
-> from Pro to the Apply Agent plan, first cancel Pro. Pro stays on until the
-> end of the period you have already paid for and is not charged again, and
-> you can start the Apply Agent plan straight away.
+> **(c) One renewing plan at a time.** We will not start a new plan for you
+> while another of your plans is still set to renew, or while one has a
+> payment due (4.3(d)). We check this against every plan held under your
+> email address, whichever account bought it. To move from Pro to the Apply
+> Agent plan, first cancel Pro. Pro then stays on until the end of the
+> period you have already paid for and is not charged again, and you can
+> start the Apply Agent plan straight away, so until that Pro period ends
+> you hold both plans. The unused part of the Pro period is not refunded
+> (4.3(e)).
 >
 > **(d) Failed payments.** If a renewal payment fails, our payment processor
 > may retry it, and we may suspend the plan's features until it succeeds.
@@ -170,10 +175,16 @@ Measured on `acd64c4c`:
   `src/test/pricing-truth.test.ts`. Monthly interval:
   `create-subscription-checkout/index.ts:93` and
   `create-agent-checkout/index.ts:116`. Agent includes Pro:
-  `_shared/agent.ts:1-6` and `_shared/pro.ts:198-213`. One plan at a time and
-  the Pro-to-Agent switch: `_shared/subscription-standing.ts:136-148`
+  `_shared/agent.ts:1-6` and `_shared/pro.ts:198-213`. One renewing plan at
+  a time and the Pro-to-Agent switch: `_shared/subscription-standing.ts:136-148`
   (`checkoutVerdict`); its message at `:162-166` already tells the buyer that
-  Pro "stays on until its period ends". Failed payments: the
+  Pro "stays on until its period ends". A Pro plan set to cancel does not
+  block the Agent checkout (`:146`, `!pro.cancelAtPeriodEnd`), so the two
+  overlap until Pro's period ends; (c) says so. The check reads every Stripe
+  customer under the buyer's email (`subscriptionStandingByEmail`,
+  `_shared/pro.ts:56-57`, called at `create-agent-checkout/index.ts:96` and
+  `create-subscription-checkout/index.ts:80`), not the account, which is
+  why (c) says "under your email address". Failed payments: the
   `needs_payment_update` verdict (`:144-145`). Cancellation: the
   *Manage subscription* button opens Stripe's billing portal
   (`create-portal-session/index.ts:55-58`); the Pro card says "Cancel anytime
@@ -294,9 +305,9 @@ Measured on `acd64c4c`:
 >
 > **(f) No stacking.** An account can hold one open pass (not started, or
 > running) at a time. You cannot buy a pass while your account has an active
-> Apply Agent plan, which already includes applications. If two pass payments
-> complete for one account at the same moment, only one creates a pass and we
-> refund the other.
+> Apply Agent plan, which already includes applications. If a pass payment
+> completes while your account already holds an open pass, it does not
+> create a second pass, and we refund it.
 >
 > **(g) Limits and scope.** While a pass is running, the higher call limits
 > shown on the pass page apply to your agent's calls to our MCP server. A pass
@@ -314,23 +325,42 @@ Measured on `acd64c4c`:
   (`p_endpoint <> '/mcp/key_status' AND NOT LIKE '/mcp/resource/%'`; the clock
   is `now() + session_hours`). The overlay applies only to `/mcp/` endpoints
   (`:83`). Shelf life `pass.ts:49-56`, shown to buyers in `en.json:5070`.
-  Applications: `en.json:5092` and the refund trigger
-  `20260917170000_a_pass_refund_is_the_pipelines_to_give_never_the_owners_to_take.sql:45-53`.
-  Lapse and finishing late: `en.json:5105-5106`. No stacking: the partial
-  unique index `20260917100000_...sql:81-83`, refused at checkout while a pass
-  is open (`create-pass-checkout/index.ts:149-175`) or a plan is active
-  (`:140-147`). Duplicate refund promise: `en.json:5112`, rendered at
-  `src/pages/AgentPass.tsx:226`. Raised limits: `pass.ts:46-47`. Not a `/v1`
-  licence: `supabase/functions/_shared/key-tier.ts:25-33` (the pass reads as
-  unpaid to every `/v1` gate).
+  Applications: `en.json:5092`, and two paths that give one back. The first
+  is the refund trigger
+  `20260917170000_a_pass_refund_is_the_pipelines_to_give_never_the_owners_to_take.sql:45-53`,
+  for a packet that goes stale or is blocked with an error or at 99
+  attempts. The second is `agent_queue_refuse`
+  (`20261005130000_an_entitlement_is_read_by_the_account_and_a_signed_in_key_has_limits.sql`,
+  section 3, L6-07), for a pass-funded queue row refused before any packet
+  exists; `apply-agent/index.ts:421-426` (`refusePassRow`) calls it for a
+  blocked employer (`:611`) and the employer cooldown (`:625`). Before
+  either, `agent-mcp/index.ts:3129-3148` refuses a blocked or cooling-down
+  employer at request time, spending nothing ("A request we refuse uses
+  none"). Lapse and finishing late: `en.json:5105-5106`. No stacking: the
+  partial unique index `20260917100000_...sql:81-83` refuses a second open
+  pass whenever its payment completes. Checkout refuses while a pass is open
+  (`create-pass-checkout/index.ts:149-175`) or a plan is active (`:140-147`),
+  but only when it creates the session, and the session sets no
+  `expires_at` (`:178-212`), so Stripe's default lifetime (24 hours)
+  applies: a session opened before the first pass existed can be paid while
+  that pass is open. That is why (f) names any such payment, not only
+  simultaneous ones. Duplicate refund promise, with no timing condition:
+  `en.json:5112`, rendered at `src/pages/AgentPass.tsx:226`; the owner alert
+  is `agent-pass-status/index.ts:61, 232-234` (`pass_already_open`). Raised
+  limits: `pass.ts:46-47`. Not a `/v1` licence:
+  `supabase/functions/_shared/key-tier.ts:25-33` (the pass reads as unpaid
+  to every `/v1` gate).
 - Code status:
   - (a)-(c), (f) and (g) **ENFORCED**.
   - (d) **ENFORCED** as a lazy close, but `pass.ts:49-55` marks 30 days
     as a **GUESS** with no measured basis.
-  - (e) **PARTIAL**. Applications go back only for the statuses the trigger
-    recognises. Some never-sent applications are not given back
-    (L9-13, L6-07, both open in the agents-api group). Option B has no code
-    at all.
+  - (e) **PARTIAL**. A refused request spends nothing, and a pass-funded
+    row refused before preparation is given back (L6-07, fixed on main by
+    `20261005130000`; verifier section 45 says whether it is applied). Two
+    kinds of never-sent application are still not given back: a packet
+    blocked at preparation (error '', attempts 0) and a ready packet that
+    ran out of attempts. Both are L9-13, open on main; `wave2/entitlements`
+    `e991862b` addresses it but is not merged. Option B has no code at all.
   - The duplicate refund in (f) is **manual**: the owner is alerted and
     refunds by hand.
 
@@ -393,7 +423,9 @@ other means to access the Service") with:
 > Agent plan;
 > (iii) the apply agent included in the Apply Agent plan or used under an
 > Agent Pass, acting on your instructions; and
-> (iv) search-engine crawlers that follow our robots.txt.
+> (iv) crawlers and AI assistants that follow our robots.txt, including
+> search engines, AI answer engines, and an assistant fetching a page at a
+> user's request.
 > You may not use these interfaces to get around a limit, to collect what an
 > interface does not return, or to share one key or pass among several people.
 
@@ -411,7 +443,13 @@ commercially exploit our analysis services without written consent") with:
   and the free-key daily quota). Licensing tiers, including commercial use as
   a custom licence: `DataApi.tsx:301-327`. The federal feed is excluded from
   `/v1` because of its terms of use: `supabase/functions/public-api/index.ts:168`
-  and `DataApi.tsx:50`. The crawler policy is `public/robots.txt`.
+  and `DataApi.tsx:50`. The crawler policy is `public/robots.txt`, which
+  welcomes AI answer engines by name, not only search engines (`:52-59`:
+  "explicitly welcome ... being read and cited by these is the point",
+  then a block per agent, GPTBot first, including the user-initiated
+  ChatGPT-User), and `public/llms.txt` invites agents to read the site. (iv)
+  therefore covers every crawler and assistant that follows robots.txt; a
+  search-engine-only carve-out would leave the readers we invite in breach.
 - Code status: **ENFORCED** (the limits, the exclusion and the robots rules
   all exist). The carve-out only brings the contract into line with what is
   sold.
@@ -481,7 +519,7 @@ free-key retirement rules are at `DataApi.tsx:240`.
 | 4.2 one-off, credits never expire, regeneration | `products.ts:9-213, 34`; `Terms.tsx:60`; `en.json:2804` | ENFORCED |
 | 4.3(a) plans and prices | `_shared/pro.ts:15`, `_shared/agent.ts:21`, `pricing-truth.test.ts` | ENFORCED |
 | 4.3(b) monthly auto-renewal | `create-subscription-checkout:93`, `create-agent-checkout:116` | ENFORCED |
-| 4.3(c) one plan, Pro to Agent | `subscription-standing.ts:136-148, 162-166` | ENFORCED |
+| 4.3(c) one renewing plan, by email; Pro-to-Agent overlap | `subscription-standing.ts:136-148, 162-166`; `pro.ts:56-57` | ENFORCED |
 | 4.3(d) failed payment | `subscription-standing.ts:144-145, 155-161` | ENFORCED |
 | 4.3(e) cancel via portal, at period end | `create-portal-session:55-58`; `ProSubscriptionCard.tsx:24` | DASHBOARD |
 | 4.3(e) account deletion | `delete-account` (no Stripe call), L6-30 | NOT YET (Option B) |
@@ -491,8 +529,8 @@ free-key retirement rules are at `DataApi.tsx:240`.
 | 4.4(c) trial: batch prep; no consumables; lower send limit | `generate-apply-package:66, 183, 189-193` and `wave2/entitlements` `550f9e2b` (L6-08, L6-29); `agent-entitlement.ts:215-222` | PARTIAL (batch prep and no consumables NOT YET) |
 | 4.5(a)-(c) pass, account-bound, clock at first call | `pass.ts`; `create-pass-checkout:107-118`; `20260917230000:141-151` | ENFORCED |
 | 4.5(d) unstarted pass expires | `pass.ts:49-56` (GUESS); `en.json:5070` | ENFORCED (value provisional) |
-| 4.5(e) applications given back | `20260917170000:45-53`; `en.json:5092`; L9-13, L6-07 | PARTIAL |
-| 4.5(f) no stacking, duplicate refunded | index `20260917100000:81-83`; `create-pass-checkout:140-175`; `en.json:5112` | ENFORCED (refund manual) |
+| 4.5(e) applications given back | `20260917170000:45-53`; `agent_queue_refuse` `20261005130000` (L6-07, fixed); `en.json:5092`; L9-13 | PARTIAL (L9-13) |
+| 4.5(f) no stacking; a payment while a pass is open is refunded | index `20260917100000:81-83`; `create-pass-checkout:140-175, 178-212`; `en.json:5112` | ENFORCED (refund manual) |
 | 4.5(g) not a data licence | `key-tier.ts:25-33`; overlay `20260917230000:83` | ENFORCED |
 | 4.6(d) refund or dispute revokes | `stripe-webhook:1109-1137`; L6-18 | NOT YET (manual) |
 | 5 carve-out | `DataApi.tsx`, `mcp-tools.ts:139-141`, `public-api:168`, `robots.txt` | ENFORCED |
@@ -622,8 +660,10 @@ free-key retirement rules are at `DataApi.tsx:240`.
   pass while it is open, as the pass page says) or Option B (refunded in
   money afterwards)? Under Option A, an application given back after the
   clock ends is worth nothing. Either way, the code must give back every
-  never-sent case (L9-13, L6-07) before 4.5(e) goes live, or the clause must
-  narrow to the cases the trigger handles.
+  never-sent case before 4.5(e) goes live, or the clause must narrow to the
+  cases the code handles. L6-07 (a refused queue row) is fixed on main by
+  `20261005130000`; L9-13 (packets blocked at preparation, ready packets out
+  of attempts) is still open on main.
 - **Q-O3. Is the Full Analysis part of Pro (L3-04)?** The Pro checkout
   description says "Every Resume Booster tool included — full analysis ...",
   and `create-checkout` still charges a Pro member $5.
@@ -668,7 +708,7 @@ free-key retirement rules are at `DataApi.tsx:240`.
 
 1. Ship the code that the **NOT YET** clauses depend on first, or reword
    them: L6-29 (4.4(b), and no consumables in 4.4(c)), L6-08 (batch prep in
-   4.4(c)), L6-18 (4.6(d)), L9-13/L6-07 (4.5(e)), L6-30 (4.3(e) Option B), and a
+   4.4(c)), L6-18 (4.6(d)), L9-13 (4.5(e)), L6-30 (4.3(e) Option B), and a
    price-change mailer or the owner's commitment to send the notice by hand
    (4.3(f), Q-O10). Settle Q-O9 (product-page bullets) and Q-O11 (trial
    copy) in the same release.
