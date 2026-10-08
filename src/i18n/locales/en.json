@@ -5202,7 +5202,7 @@
   },
   "fixPlanConfirm": {
     "title": "Start your fix-plan emails",
-    "body": "Four short emails over two weeks: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6, and one question on day 14. Every email has a one-click unsubscribe.",
+    "body": "Four short emails over two weeks: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6, and one question on day 14. Every email has an unsubscribe link.",
     "button": "Yes, start the emails",
     "done": "Done. The first email arrives in two days.",
     "already": "A fix-plan sequence already started for this address this month, so nothing more was queued.",
@@ -5210,6 +5210,18 @@
     "invalid": "This link has expired or is not valid. Email yourself a fresh report from your next scan to get a new one.",
     "missing": "This page needs the button from your report email.",
     "error": "Could not start it right now. Try the button again shortly.",
+    "home": "Back to Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Turn off these emails",
+    "searchDigest": "Stop the digest emails for this saved search. Your other saved searches are not affected.",
+    "marketPulse": "Stop the monthly market pulse emails to this address.",
+    "scanReport": "Stop all emails from Resume Booster to this address, including any fix-plan emails still to come.",
+    "button": "Yes, turn them off",
+    "done": "Done. You will not get these emails again.",
+    "invalid": "This link is not valid. Use the unsubscribe link in the email itself.",
+    "missing": "This page needs the unsubscribe link from one of our emails.",
+    "error": "Could not turn them off right now. Try the button again shortly.",
     "home": "Back to Resume Booster"
   }
 }

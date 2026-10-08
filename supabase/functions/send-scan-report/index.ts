@@ -52,10 +52,11 @@ import { scanMailSealValid } from "../_shared/scan-mail-seal.ts";
 import { mailSafeText } from "../_shared/mail-text.ts";
 import { openDripLink, signDripLink, type DripPlan } from "../_shared/scan-drip-link.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
+import { redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-scan-report.2026-10-06.1";
+const FN_BUILD = "send-scan-report.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -244,7 +245,7 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
   }
   const score = plan.score;
   const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
-  const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-scan-report?action=unsubscribe&token=${token}`;
+  const unsubUrl = unsubscribePageUrl("scan-report", { token: token ?? "" });
   const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails started from the button in your scan report from resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>`;
   const wrap = (inner: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
 
@@ -308,25 +309,35 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // One-click unsubscribe for the fix-plan drip (linked from every drip
-  // email). Inserts into suppressed_emails, which the queue processor checks
-  // before every non-auth send — so already-queued day-4/6 emails are
-  // silently dropped too.
+  // Unsubscribe for the fix-plan drip (linked from every drip email). It
+  // inserts into suppressed_emails, which the queue processor checks before
+  // every non-auth send — so already-queued day-4/6 emails are dropped too.
+  // A GET (the link in drips already queued, and every mail scanner that
+  // follows it) changes nothing and opens the confirm page on our domain;
+  // only a POST with the token unsubscribes (register L10-14).
+  const reqUrl = new URL(req.url);
   if (req.method === "GET") {
-    const url = new URL(req.url);
-    if (url.searchParams.get("action") === "unsubscribe") {
-      const token = url.searchParams.get("token") ?? "";
-      const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-      const { data: row } = await admin.from("email_unsubscribe_tokens").select("email").eq("token", token).maybeSingle();
-      if (!row) return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
-      await admin.from("suppressed_emails").upsert({ email: row.email, reason: "unsubscribe" }, { onConflict: "email" });
-      await admin.from("email_unsubscribe_tokens").update({ used_at: new Date().toISOString() }).eq("token", token);
-      return new Response(
-        "<html><body style='font-family:sans-serif;text-align:center;padding:60px'><h2>You're unsubscribed.</h2><p>No more emails from us. Your remaining fix-plan emails are cancelled too.</p></body></html>",
-        { headers: { "Content-Type": "text/html" } },
-      );
+    if (reqUrl.searchParams.get("action") === "unsubscribe") {
+      return redirectToConfirm("scan-report", { token: reqUrl.searchParams.get("token") ?? "" });
     }
     return new Response("Not found", { status: 404 });
+  }
+  if (req.method === "POST") {
+    const un = await unsubscribeParams(req, reqUrl);
+    if (un) {
+      const token = un.token ?? "";
+      if (!/^[0-9a-f]{32}$/.test(token)) return reply({ error: "invalid unsubscribe link" }, 400);
+      const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+      const { data: row } = await admin.from("email_unsubscribe_tokens").select("email").eq("token", token).maybeSingle();
+      if (!row) return reply({ error: "invalid unsubscribe link" }, 400);
+      const { error: supErr } = await admin.from("suppressed_emails").upsert({ email: row.email, reason: "unsubscribe" }, { onConflict: "email" });
+      if (supErr) {
+        console.error("[SEND-SCAN-REPORT] unsubscribe failed:", supErr.message);
+        return reply({ error: "could not unsubscribe right now" }, 503);
+      }
+      await admin.from("email_unsubscribe_tokens").update({ used_at: new Date().toISOString() }).eq("token", token);
+      return reply({ unsubscribed: true });
+    }
   }
 
   try {

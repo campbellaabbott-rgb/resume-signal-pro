@@ -5202,7 +5202,7 @@
   },
   "fixPlanConfirm": {
     "title": "Inicia los correos de tu plan de arreglos",
-    "body": "Cuatro correos breves en dos semanas: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 y una pregunta el día 14. Cada correo permite darse de baja con un clic.",
+    "body": "Cuatro correos breves en dos semanas: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 y una pregunta el día 14. Cada correo incluye un enlace para darse de baja.",
     "button": "Sí, iniciar los correos",
     "done": "Listo. El primer correo llega en dos días.",
     "already": "Ya se inició una secuencia del plan para esta dirección este mes, así que no se programó nada más.",
@@ -5210,6 +5210,18 @@
     "invalid": "Este enlace caducó o no es válido. Envíate un informe nuevo desde tu próximo escaneo para obtener otro.",
     "missing": "Esta página necesita el botón de tu correo del informe.",
     "error": "No se pudo iniciar ahora. Vuelve a pulsar el botón en un momento.",
+    "home": "Volver a Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Dejar de recibir estos correos",
+    "searchDigest": "Dejar de recibir los correos de resumen de esta búsqueda guardada. Tus otras búsquedas guardadas no cambian.",
+    "marketPulse": "Dejar de recibir los correos mensuales del pulso del mercado en esta dirección.",
+    "scanReport": "Dejar de recibir todos los correos de Resume Booster en esta dirección, incluidos los correos del plan de mejoras que falten.",
+    "button": "Sí, darme de baja",
+    "done": "Listo. No volverás a recibir estos correos.",
+    "invalid": "Este enlace no es válido. Usa el enlace para darse de baja del propio correo.",
+    "missing": "Esta página necesita el enlace para darse de baja de uno de nuestros correos.",
+    "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
     "home": "Volver a Resume Booster"
   }
 }

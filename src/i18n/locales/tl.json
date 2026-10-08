@@ -5202,7 +5202,7 @@
   },
   "fixPlanConfirm": {
     "title": "Simulan ang mga email ng iyong fix plan",
-    "body": "Apat na maikling email sa loob ng dalawang linggo: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6, at isang tanong sa araw 14. May one-click na unsubscribe ang bawat email.",
+    "body": "Apat na maikling email sa loob ng dalawang linggo: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6, at isang tanong sa araw 14. May link para mag-unsubscribe ang bawat email.",
     "button": "Oo, simulan ang mga email",
     "done": "Tapos na. Darating ang unang email sa loob ng dalawang araw.",
     "already": "May fix plan sequence nang nasimulan para sa address na ito ngayong buwan, kaya walang naidagdag.",
@@ -5210,6 +5210,18 @@
     "invalid": "Expired na o hindi valid ang link na ito. I-email ang bagong report sa iyong susunod na scan para makakuha ng bago.",
     "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
     "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
+    "home": "Bumalik sa Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Itigil ang mga email na ito",
+    "searchDigest": "Itigil ang mga digest email para sa naka-save na paghahanap na ito. Hindi maaapektuhan ang iba mong naka-save na paghahanap.",
+    "marketPulse": "Itigil ang buwanang market pulse email sa address na ito.",
+    "scanReport": "Itigil ang lahat ng email mula sa Resume Booster sa address na ito, kasama ang mga fix-plan email na darating pa.",
+    "button": "Oo, itigil na",
+    "done": "Tapos na. Hindi mo na matatanggap ang mga email na ito.",
+    "invalid": "Hindi wasto ang link na ito. Gamitin ang unsubscribe link sa mismong email.",
+    "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
+    "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
     "home": "Bumalik sa Resume Booster"
   }
 }

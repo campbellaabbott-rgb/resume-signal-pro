@@ -67,7 +67,7 @@ export default function FixPlanConfirm() {
         {(state === "ready" || state === "confirming") && (
           <>
             <p className="text-sm text-muted-foreground mb-5">
-              {t("fixPlanConfirm.body", "Four short emails over two weeks: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6, and one question on day 14. Every email has a one-click unsubscribe.")}
+              {t("fixPlanConfirm.body", "Four short emails over two weeks: your top fixes on day 2, the rest on day 4, a rescan reminder on day 6, and one question on day 14. Every email has an unsubscribe link.")}
             </p>
             <button
               type="button"

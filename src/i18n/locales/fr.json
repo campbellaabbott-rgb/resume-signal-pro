@@ -5202,7 +5202,7 @@
   },
   "fixPlanConfirm": {
     "title": "Lancez les e-mails de votre plan de correction",
-    "body": "Quatre courts e-mails sur deux semaines : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 et une question au jour 14. Chaque e-mail permet de se désabonner en un clic.",
+    "body": "Quatre courts e-mails sur deux semaines : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 et une question au jour 14. Chaque e-mail contient un lien de désabonnement.",
     "button": "Oui, lancer les e-mails",
     "done": "C'est fait. Le premier e-mail arrive dans deux jours.",
     "already": "Une séquence du plan a déjà été lancée pour cette adresse ce mois-ci, donc rien de plus n'a été programmé.",
@@ -5210,6 +5210,18 @@
     "invalid": "Ce lien a expiré ou n'est pas valide. Envoyez-vous un nouveau rapport lors de votre prochain scan pour en obtenir un autre.",
     "missing": "Cette page a besoin du bouton de l'e-mail de votre rapport.",
     "error": "Impossible de lancer pour le moment. Réessayez le bouton dans un instant.",
+    "home": "Retour à Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Ne plus recevoir ces e-mails",
+    "searchDigest": "Arrêter les e-mails de synthèse pour cette recherche enregistrée. Vos autres recherches enregistrées ne changent pas.",
+    "marketPulse": "Arrêter les e-mails mensuels du pouls du marché à cette adresse.",
+    "scanReport": "Arrêter tous les e-mails de Resume Booster à cette adresse, y compris les e-mails du plan de corrections encore à venir.",
+    "button": "Oui, me désabonner",
+    "done": "C'est fait. Vous ne recevrez plus ces e-mails.",
+    "invalid": "Ce lien n'est pas valide. Utilisez le lien de désabonnement de l'e-mail lui-même.",
+    "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
+    "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
     "home": "Retour à Resume Booster"
   }
 }
