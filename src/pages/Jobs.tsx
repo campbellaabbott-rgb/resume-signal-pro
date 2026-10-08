@@ -6599,10 +6599,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
     { id: "clear", label: t("jobsPage.paClear", "Clear all filters"), run: () => activeFilters.forEach((f) => f.clear()) },
     { id: "saved", label: t("jobsPage.paSaved", "My saved jobs & tracker"), run: () => { window.location.href = "/account"; } },
     { id: "ghost", label: t("jobsPage.paGhost", "Ghost Job Index"), run: () => { window.location.href = "/ghost-job-index"; } },
-    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => { window.location.href = "/#scan"; } },
+    // The uploader's anchor is #upload (ResumeUploader, and Index's hash
+    // handler reads only that). "/#scan" named no element and landed at the
+    // top of the homepage; navigate() also skips the full reload.
+    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => navigate("/#upload") },
     { id: "help", label: t("jobsPage.paHelp", "Keyboard shortcuts"), hint: "?", run: () => setHelpOpen(true) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [remoteOnly, workMode, activeFilters, t]);
+  ], [remoteOnly, workMode, activeFilters, navigate, t]);
 
 
   // Smart zero-result help: when the server really has nothing for this
