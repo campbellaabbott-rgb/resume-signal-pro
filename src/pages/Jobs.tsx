@@ -4301,22 +4301,33 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // into true is how a user who correctly reported a posting gone got told
   // "{{company}}'s own board still lists this role as open" — a confident claim
   // about a named employer built on a read that never reached the posting.
+  //
+  // AND OUR OWN FAILURE IS A FOURTH ANSWER, NOT A THIRD. `null` covered both a
+  // feed that pages short of its total AND a verify call that never answered
+  // (network, 5xx, budget refusal) — so a failed check printed "{{company}}'s
+  // feed lists more roles than it lets us read", blaming a named employer's
+  // feed for our outage. verifyJobOutcome keeps them apart; verifyJob keeps
+  // its three-valued contract for the apply path.
   const verifyJob = async (job: BoardJob): Promise<boolean | null> => {
+    const v = await verifyJobOutcome(job);
+    return v === "live" ? true : v === "closed" ? false : null;
+  };
+  const verifyJobOutcome = async (job: BoardJob): Promise<"live" | "closed" | "uncheckable" | "error"> => {
     try {
-      const { data } = await invokeBoard<unknown>({ action: "verify", ids: [job.id] }, { retry: false });
-      const live = (data as { live?: Record<string, boolean | null> })?.live;
-      if (!live || !(job.id in live)) return null; // no answer is not a confirmation
-      if (live[job.id] === null) return null;      // the board answered; our read could not reach the posting
+      const { data, error: verifyErr } = await invokeBoard<unknown>({ action: "verify", ids: [job.id] }, { retry: false });
+      const live = (data as { live?: Record<string, boolean | null> } | null)?.live;
+      if (verifyErr || !live || !(job.id in live)) return "error"; // no answer is not a confirmation, and not a fact about their feed
+      if (live[job.id] === null) return "uncheckable";             // the board answered; our read could not reach the posting
       if (live[job.id] === false) {
         setJobs((prev) => prev.filter((j) => j.id !== job.id));
         toast({
           title: t("jobsPage.postingClosedTitle", "That posting just closed"),
           description: t("jobsPage.postingClosedBody", "{{company}} took this one down. It's off the board now — the openings below are still live.", { company: job.company }),
         });
-        return false;
+        return "closed";
       }
-    } catch { return null; /* unverifiable — never blocks the user, and never claims a confirmation either */ }
-    return true;
+    } catch { return "error"; /* unverifiable — never blocks the user, and never claims a confirmation either */ }
+    return "live";
   };
 
   // P1 detail panel: click a card → slide-over with the full stored JD, fit,
@@ -4755,17 +4766,39 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const reportJob = async (job: BoardJob, reason: "gone" | "misleading" | "other") => {
     setReportingId(null);
     setReportedIds((prev) => new Set(prev).add(job.id));
+    // "LOGGED" ONLY WHEN IT WAS. invoke resolves {error} on an HTTP failure
+    // rather than throwing, so the awaited call's error was discarded and the
+    // page said "Your report is logged" for a report that never landed.
+    let reportLogged = false;
     try {
-      await invokeJobBoard({ body: { action: "report", id: job.id, reason } });
+      const { error: reportErr } = await invokeJobBoard({ body: { action: "report", id: job.id, reason } });
+      reportLogged = !reportErr;
     } catch { /* the report is best-effort — never block the user on telemetry */ }
+    // An unsent report leaves the card reportable again, so "try again" can.
+    if (!reportLogged) setReportedIds((prev) => { const next = new Set(prev); next.delete(job.id); return next; });
     if (reason === "gone") {
-      const stillLive = await verifyJob(job); // prunes + toasts if confirmed gone
-      if (stillLive === true) {
+      const outcome = await verifyJobOutcome(job); // prunes + toasts if confirmed gone
+      if (outcome === "live") {
         toast({
           title: t("jobsPage.reportCheckedTitle", "We just re-checked it"),
-          description: t("jobsPage.reportCheckedBody", "{{company}}'s own board still lists this role as open. Thanks for flagging — we log every report.", { company: job.company }),
+          description: reportLogged
+            ? t("jobsPage.reportCheckedBody", "{{company}}'s own board still lists this role as open. Thanks for flagging — we log every report.", { company: job.company })
+            : t("jobsPage.reportCheckedBodyUnsent", "{{company}}'s own board still lists this role as open. Your report did not reach us, so nothing was logged — please try again later.", { company: job.company }),
         });
-      } else if (stillLive === null) {
+      } else if (outcome === "error") {
+        // OUR CHECK FAILED: a neutral sentence, and no claim about their feed.
+        toast({
+          title: t("jobsPage.reportCheckFailedTitle", "We couldn't check it just now"),
+          description: reportLogged
+            ? t("jobsPage.reportCheckFailedBody", "Our check of this posting didn't go through, so we can't say yet whether it is gone. Your report is logged.")
+            : t("jobsPage.reportCheckFailedBodyUnsent", "Our check of this posting didn't go through, and your report did not reach us either — please try again later."),
+        });
+      } else if (outcome === "uncheckable" && !reportLogged) {
+        toast({
+          title: t("jobsPage.reportUncheckableTitle", "We couldn't confirm either way"),
+          description: t("jobsPage.reportUncheckableBodyUnsent", "{{company}}'s feed lists more roles than it lets us read in one pass, so we can't confirm this one is gone — or that it isn't. Your report did not reach us, so nothing was logged — please try again later.", { company: job.company }),
+        });
+      } else if (outcome === "uncheckable") {
         // THE USER IS PROBABLY RIGHT AND WE CANNOT PROVE IT EITHER WAY. This is
         // the one path where the reader has independent evidence — they went and
         // looked. Answering a correct report with "their board still lists it as
@@ -4777,10 +4810,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
           description: t("jobsPage.reportUncheckableBody", "{{company}}'s feed lists more roles than it lets us read in one pass, so we can't confirm this one is gone — or that it isn't. Your report is logged and the posting goes back in the queue for a deeper check.", { company: job.company }),
         });
       }
-    } else {
+    } else if (reportLogged) {
       toast({
         title: t("jobsPage.reportThanksTitle", "Report received"),
         description: t("jobsPage.reportThanksBody", "Thanks — every report is logged and factors into which company boards we keep listing."),
+      });
+    } else {
+      toast({
+        title: t("jobsPage.reportUnsentTitle", "Your report didn't reach us"),
+        description: t("jobsPage.reportUnsentBody", "Nothing was logged. Please try again in a little while."),
       });
     }
   };

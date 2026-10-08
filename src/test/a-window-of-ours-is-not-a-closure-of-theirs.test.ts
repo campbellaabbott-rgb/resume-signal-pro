@@ -397,8 +397,12 @@ describe("a window of ours is not a closure of theirs", () => {
     const JOBS = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
     expect(JOBS, "verifyJob still returns a boolean — the third state dies at the client instead")
       .toMatch(/const verifyJob = async \(job: BoardJob\): Promise<boolean \| null> =>/);
+    // The report path now reads a four-valued outcome (our own failed check
+    // is its own answer, 2026-10-08); "live" is still only an explicit true.
     expect(JOBS, "the 'still open' toast must require an explicit true")
-      .toMatch(/if \(stillLive === true\) \{/);
+      .toMatch(/if \(outcome === "live"\) \{/);
+    expect(JOBS, "an explicit true is the only road to \"live\"")
+      .toMatch(/return v === "live" \? true : v === "closed" \? false : null;/);
     expect(JOBS, "there must be a distinct string for the undecidable case")
       .toMatch(/jobsPage\.reportUncheckableBody/);
     const EN = JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8"));
