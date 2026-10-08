@@ -40,6 +40,24 @@ describe("subscription prices match the checkout functions", () => {
     const cents = centsFrom("supabase/functions/_shared/agent.ts", "AGENT_PRICE_CENTS");
     expect(SUBSCRIPTIONS.agent.priceUsd * 100).toBe(cents);
   });
+
+  // The trial the board's pitch names is the trial the checkout offers: one
+  // number, read from the Deno declaration, never typed into a sentence.
+  it("the agent trial length mirrors AGENT_TRIAL_DAYS", () => {
+    expect(SUBSCRIPTIONS.agent.trialDays).toBe(centsFrom("supabase/functions/_shared/agent.ts", "AGENT_TRIAL_DAYS"));
+  });
+
+  it("no locale types a trial length into the board's two trial sentences", () => {
+    const localeDir = resolve(root, "src/i18n/locales");
+    for (const file of readdirSync(localeDir).filter((f) => f.endsWith(".json"))) {
+      const jobs = JSON.parse(readFileSync(resolve(localeDir, file), "utf8")).jobsPage;
+      for (const key of ["agentPitchCta", "savedMilestoneDesc"]) {
+        const v = String(jobs[key]);
+        expect(v.split("{{trialDays}}").length - 1, `${file} jobsPage.${key}`).toBe(1);
+        expect(v, `${file} jobsPage.${key} types a number`).not.toMatch(/\d/);
+      }
+    }
+  });
 });
 
 describe("the subscription FAQ tells the truth in every language", () => {

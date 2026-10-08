@@ -48,10 +48,17 @@ describe("the apply agent is visible on the board, with countable claims", () =>
     expect(SRC).toMatch(/\{agentReadyOnPage > 0 && !agentOnly && \(/);
   });
 
-  it("states the price and the trial", () => {
-    // These appeared ZERO times on the board before.
-    expect(SRC).toMatch(/\$99\/mo/);
-    expect(SRC).toMatch(/7 days free/);
+  it("states the price and the trial, as the checkout's own numbers", () => {
+    // These appeared ZERO times on the board before. Since the trial became
+    // once per customer (wave 2) the pitch says so, and both numbers are
+    // INTERPOLATED from SUBSCRIPTIONS (pricing-truth pins those to the Deno
+    // constants), never typed into the sentence.
+    const code = SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+    expect(code).toMatch(/jobsPage\.agentPitchCta"[\s\S]{0,200}trialDays: SUBSCRIPTIONS\.agent\.trialDays, agentPrice: SUBSCRIPTIONS\.agent\.priceUsd/);
+    const en = JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8")).jobsPage.agentPitchCta as string;
+    expect(en).toContain("{{trialDays}}");
+    expect(en).toContain("{{agentPrice}}");
+    expect(en).toMatch(/first-time/);
   });
 
   it("states the scope limit rather than implying whole-board coverage, as a derived figure", () => {

@@ -19,6 +19,13 @@ import { listAll } from "./stripe-paging.ts";
 export { ENTITLEMENT_COLUMNS, entitledFromRows, rowIsEntitled };
 
 export const AGENT_PRICE_CENTS = 9900;
+
+/**
+ * The free trial a FIRST-TIME agent subscriber gets, in days. Mirrored by
+ * src/config/products.ts SUBSCRIPTIONS.agent.trialDays (pricing-truth reads
+ * this declaration), and offered only once per customer (create-agent-checkout).
+ */
+export const AGENT_TRIAL_DAYS = 7;
 export const AGENT_PRODUCT_NAME = "Resume Booster Apply Agent — Morning Queue";
 
 export interface AgentStatus {
@@ -97,6 +104,32 @@ export async function manualAgentGrant(
     return rowIsEntitled(manual) ? (manual as { current_period_end?: string | null }) : null;
   } catch (_) {
     return null;
+  }
+}
+
+/**
+ * HAS THIS ACCOUNT EVER HELD A STRIPE-BILLED AGENT PLAN? One of the three keys
+ * of the one-trial rule (the account's id, its address, the Stripe customer:
+ * the last two are read from Stripe in standingFrom). A row in
+ * agent_subscribers with a Stripe customer exists only for an address that
+ * held an agent-priced subscription; it is bound to the buyer's account by
+ * user_id. A failed read answers TRUE: when we cannot tell, no trial is
+ * offered, and the checkout page shows the first charge plainly.
+ */
+export async function agentPlanEverHeld(
+  supabase: { from: (t: string) => any },
+  userId: string,
+  email: string,
+): Promise<boolean> {
+  try {
+    const byAccount = await supabase.from("agent_subscribers").select("email")
+      .eq("user_id", userId).not("stripe_customer_id", "is", null).limit(1);
+    const byAddress = await supabase.from("agent_subscribers").select("email")
+      .eq("email", normalizeEmail(email)).not("stripe_customer_id", "is", null).limit(1);
+    if (byAccount.error || byAddress.error) return true;
+    return (byAccount.data?.length ?? 0) > 0 || (byAddress.data?.length ?? 0) > 0;
+  } catch (_) {
+    return true;
   }
 }
 
