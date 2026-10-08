@@ -194,7 +194,10 @@ describe("every changed function answers its build on the preflight", () => {
       const src = code(read(file));
       expect(src).toMatch(/const FN_BUILD = /);
       expect(src).toMatch(/"x-fn-build": FN_BUILD/);
-      expect(src).toMatch(/2026-10-05/);
+      // This sweep's build (2026-10-05) or a later one: a later fix to the
+      // same function rebuilds it, and must not read as a regression.
+      const built = /const (?:FN_BUILD|BUILD_VERSION) = "(?:[a-z-]+\.)?(\d{4}-\d{2}-\d{2})\.\d+"/.exec(src)?.[1] ?? "";
+      expect(built >= "2026-10-05", `${fn} FN_BUILD date ${built || "(unparsed)"}`).toBe(true);
     });
   }
   it("agent-pass-status", () => {

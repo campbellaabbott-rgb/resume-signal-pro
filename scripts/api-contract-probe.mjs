@@ -240,6 +240,20 @@ let firstId = null;
   const r = await api(`/v1/changes?since=${since}&limit=5`);
   ok(r.status === 200, "/v1/changes answers with ?since", `HTTP ${r.status}`);
   for (const k of ["opened", "closed", "since"]) ok(k in (r.body ?? {}), `/v1/changes carries ${k}`);
+  // 2026-10-08.1 (register 1.70): a default walk leaves the doubted closure
+  // batches out and says so; include_suspect=true returns them, marked.
+  const closed = Array.isArray(r.body?.closed) ? r.body.closed : [];
+  // suspectBatch is false (assessed, not doubted) or null (written before the
+  // collector assessed batches; 2026-10-08.2): never true on a default walk.
+  ok(r.body?.suspectBatchesIncluded === false && closed.every((c) => c.suspectBatch === false || c.suspectBatch === null),
+    "/v1/changes leaves suspect batches out by default", `suspectBatchesIncluded=${r.body?.suspectBatchesIncluded}, ${closed.length} rows`);
+  const all = await api(`/v1/changes?since=${since}&limit=5&include_suspect=true`);
+  ok(all.status === 200 && all.body?.suspectBatchesIncluded === true
+    && (all.body?.closed ?? []).every((c) => typeof c.suspectBatch === "boolean" || c.suspectBatch === null),
+    "/v1/changes?include_suspect=true marks every row", `HTTP ${all.status}`);
+  const bad = await api(`/v1/changes?since=${since}&limit=1&include_suspect=yes`);
+  ok(bad.status === 400 && bad.body?.error?.code === "invalid_value",
+    "/v1/changes refuses include_suspect=yes", bad.body?.error?.code ?? `HTTP ${bad.status}`);
 }
 {
   const r = await api("/v1/stats");
@@ -357,7 +371,7 @@ console.log("\n[/v1] MCP-parity filters");
 console.log("\n[/v1] 2026-09-03 upgrades");
 {
   const root = await api("/v1");
-  ok(root.body?.apiVersion === "2026-09-30.1", "apiVersion is 2026-09-30.1", root.body?.apiVersion ?? "none");
+  ok(root.body?.apiVersion === "2026-10-08.1", "apiVersion is 2026-10-08.1", root.body?.apiVersion ?? "none");
   ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
   const loc = await api("/v1/jobs?location=London&limit=10");
   ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);

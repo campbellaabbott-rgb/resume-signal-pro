@@ -110,8 +110,11 @@ describe("the scorer in its own isolate", () => {
     // openedHistoryDays, closureSince and closureWindowNarrowed to keep the two
     // bounds tellable apart. A consumer diffing versions must be able to see a
     // window close, which is exactly the kind of change this pin exists for.
-    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-09-30\.1"/);
-    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1"]) {
+    // 2026-10-08.1 NARROWS /v1/changes closed[] by default: batches the
+    // collector doubted are left out unless include_suspect=true, which marks
+    // them suspectBatch (register 1.70 / L13-56).
+    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-10-08\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1", "2026-09-30\\.1"]) {
       expect(API, `the API still reports the superseded version ${old}`)
         .not.toMatch(new RegExp(`"${old}"`));
     }

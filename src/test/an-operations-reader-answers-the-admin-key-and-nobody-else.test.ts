@@ -126,6 +126,23 @@ describe("admin-ops", () => {
     expect(r.res.headers.get("cache-control")).toBe("no-store");
   });
 
+  it("the owner's catalogue reader answers the admin key with the service role, and nobody without it", async () => {
+    // client_callable_unlisted_names (20261008141000) names the definers the
+    // census only counts; it was not a function admin-ops would call.
+    const unlisted = { unlisted: [{ signature: "public.stray_reader(integer)", anon: true, authenticated: true }], agrees: true };
+    db.rpcs.client_callable_unlisted_names = (args) => { calls.push({ fn: "client_callable_unlisted_names", args }); return { data: unlisted, error: null }; };
+    expect((await ask({ fn: "client_callable_unlisted_names" })).status).toBe(401);
+    expect((await ask({ fn: "client_callable_unlisted_names" }, { "x-admin-key": "wrong" })).status).toBe(401);
+    expect(calls).toEqual([]);
+    const r = await ask({ fn: "client_callable_unlisted_names" }, { "x-admin-key": env.ADMIN_API_KEY });
+    expect(r.status).toBe(200);
+    expect(r.body.data).toEqual(unlisted);
+    expect(calls).toEqual([{ fn: "client_callable_unlisted_names", args: {} }]);
+    expect(clients).toEqual(["service_harness"]);
+    // A neighbouring catalogue name it does not list is still refused.
+    expect((await ask({ fn: "client_callable_census" }, { "x-admin-key": env.ADMIN_API_KEY })).status).toBe(400);
+  });
+
   it("a database error is a 502 that names it, not an empty success", async () => {
     db.rpcs.get_payment_health = () => ({ data: null, error: { code: "57014", message: "canceling statement due to statement timeout" } });
     const r = await ask({ fn: "get_payment_health", args: { p_hours_back: 24 } }, { "x-admin-key": env.ADMIN_API_KEY });

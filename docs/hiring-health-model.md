@@ -347,9 +347,16 @@ Index's closure opener and the `/data-api` hero tile print beside
 `closed_90d`, with the record's depth stated beside it once the ledger is
 deeper than 90 days; both used to print `observed_days` as the count's window
 (`a-ninety-day-count-names-the-days-it-covers.test.tsx`). Still carrying
-suspect rows, each by an open decision rather than by oversight:
-`get_board_flow` (an operator flow metric on `/status`) and `/v1/changes`
-(which emits every row as `outcome: "closed"` and does not expose the flag).
+suspect rows by an open decision rather than by oversight: `get_board_flow`
+(an operator flow metric on `/status`). `/v1/changes` emitted every suspect
+row as `outcome: "closed"` until API version 2026-10-08.1; by the owner's
+decision of 2026-10-07 it now leaves them out unless the caller passes
+`include_suspect=true`, which returns them marked `suspectBatch: true`
+(`the-change-feed-served-a-doubted-batch-as-a-closure.test.ts`). The feed
+does NOT apply the retroactive proxy below: a row with `batch_live_before IS
+NULL` (written before stamping, reachable on a paid key's 180-day walk) is
+served in both walks and marked `suspectBatch: null`, never `false`, so a
+consumer can tell "assessed and trusted" from "never assessed".
 
 **There is no promotion path, and this section used to promise one.** It said a
 suspect batch is promoted back to counted after a later successful fetch
