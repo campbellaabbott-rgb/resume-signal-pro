@@ -130,6 +130,18 @@ export class FakeDb {
 let seq = 0;
 const hex = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join("");
 
+/**
+ * Tables whose primary key is not `id`, as the migrations declare it. An upsert
+ * with no onConflict targets the primary key in Postgres; keyed on `id` here, it
+ * appended a second row where the database updates the one row (an address's
+ * pro_subscribers cache then read as two rows and missed the cache).
+ */
+const UPSERT_PRIMARY_KEYS: Record<string, string> = {
+  pro_subscribers: "email",
+  agent_subscribers: "email",
+  job_board_meta: "k",
+};
+
 class FakeQuery implements PromiseLike<DbResult> {
   private op: "select" | "insert" | "update" | "delete" | "upsert" = "select";
   private payload: unknown = null;
@@ -144,7 +156,7 @@ class FakeQuery implements PromiseLike<DbResult> {
 
   select(_cols?: string) { this.returning = true; return this; }
   insert(payload: unknown) { this.op = "insert"; this.payload = payload; return this; }
-  upsert(payload: unknown, opts?: { onConflict?: string }) { this.op = "upsert"; this.payload = payload; this.conflict = opts?.onConflict ?? "id"; return this; }
+  upsert(payload: unknown, opts?: { onConflict?: string }) { this.op = "upsert"; this.payload = payload; this.conflict = opts?.onConflict ?? UPSERT_PRIMARY_KEYS[this.table] ?? "id"; return this; }
   update(payload: unknown) { this.op = "update"; this.payload = payload; return this; }
   delete() { this.op = "delete"; return this; }
   eq(col: string, val: unknown) { this.filters.push([col, val]); return this; }

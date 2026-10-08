@@ -1666,9 +1666,16 @@ describe("locale guards actually check every locale", () => {
       const thirtyDayClaims = m.filter((x) => /30\s*(days|días|dias|jours|Tagen|Tage|dagen|दिन|araw)/i.test(x));
       for (const claim of thirtyDayClaims) {
         // Any sentence promising nothing older than 30 days must say WHICH
-        // postings that covers — undated ones are kept and show no age.
-        if (/nothing|no postings?|ninguna|aucune|keine|nenhuma|geen|कोई|walang/i.test(claim)) {
-          expect(claim, `${l}: unqualified 30-day absolute -> ${claim}`).toMatch(QUALIFIER[l]);
+        // postings that covers — undated ones are kept and show no age. Judged
+        // per SENTENCE: the affiliate line ("buys ... within 30 days, you earn
+        // ... . Subscriptions earn nothing.") has its "nothing" in the next
+        // sentence and promises nothing about posting age.
+        for (const sentence of claim.split(/(?<=[.!?।])\s+/)) {
+          if (!/30\s*(days|días|dias|jours|Tagen|Tage|dagen|दिन|araw)/i.test(sentence)) continue;
+          // Hindi \u0915\u094b\u0908 alone is "someone"; "no posting" is \u0915\u094b\u0908 \u2026 \u0928\u0939\u0940\u0902.
+          if (/nothing|no postings?|ninguna|aucune|keine|nenhuma|geen|कोई[^।]*नहीं|walang/i.test(sentence)) {
+            expect(sentence, `${l}: unqualified 30-day absolute -> ${sentence}`).toMatch(QUALIFIER[l]);
+          }
         }
       }
     }

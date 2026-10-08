@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeGreenhouse } from "../../supabase/functions/job-board/normalize";
 import { SLIM_SPECS, streamSlim } from "../../supabase/functions/job-board/slim-stream";
 import { constOf, runVisit } from "./helpers/slice-worker";
+import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 
 /**
  * A GREENHOUSE LIGHT LIST TOO BIG TO HOLD IS READ A POSTING AT A TIME (job-board .90, F3).
@@ -108,7 +109,8 @@ describe("SLIM_SPECS.greenhouse, run over a light list", () => {
     }
   });
 
-  it("a light list it cannot finish throws at every cut point, never returning part of the board", async () => {
+  // ~690 full stream passes: 6.2-12.0 s on GitHub runners, past the 5 s default (sweep S8-036).
+  it("a light list it cannot finish throws at every cut point, never returning part of the board", { timeout: MOUNT_TEST_BUDGET.testTimeout }, async () => {
     // Short metadata so every 7th byte can be a cut point inside the test's budget.
     const small = { jobs: Array.from({ length: 6 }, (_, k) => ghRow(k, { metadata: METADATA.slice(0, 2) })), meta: { total: 6 } };
     const whole = JSON.stringify(small);

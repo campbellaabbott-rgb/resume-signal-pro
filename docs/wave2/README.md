@@ -27,7 +27,7 @@ scheduled work run only after the code they call is serving.
      (NOT 125000 or 128000 yet)
    - entitlements: `20261008130000`, `20261008131000`, `20261008132000`
    - public-api: `20261008140000`, `20261008141000`
-2. **Edge functions** (38), each answering this build on its preflight:
+2. **Edge functions** (39), each answering this build on its preflight:
 
    | function | build |
    |---|---|
@@ -35,9 +35,9 @@ scheduled work run only after the code they call is serving.
    | admin-ops | `admin-ops.2026-10-08.2` (both public-api's and email-ops' readers) |
    | free-keyword-scan | `free-keyword-scan.2026-10-08.3` (both entitlements' and email-ops' changes) |
    | affiliate-payout-request (NEW) | `.2026-10-08.1` |
-   | agent-pass-status, auth-email-hook, check-alerts, check-error-spikes, check-subscription, company-claim, create-checkout, create-portal-session, create-product-checkout, create-subscription-checkout, free-keyword-scan-stream, generate-ats-defense, get-account-data, get-analytics, get-error-telemetry, health-check, industry-corrections-digest, notify-owner, process-email-queue, scan-credits, scheduled-health-probe, send-agent-digest, send-market-pulse, send-scan-report, send-search-digest, test-ai-fallback | `<fn>.2026-10-08.1` |
+   | agent-pass-status, auth-email-hook, check-alerts, check-error-spikes, check-subscription, company-claim, create-checkout, create-product-checkout, create-subscription-checkout, free-keyword-scan-stream, generate-ats-defense, get-account-data, get-analytics, get-error-telemetry, health-check, industry-corrections-digest, notify-owner, process-email-queue, scan-credits, scheduled-health-probe, send-agent-digest, send-market-pulse, send-scan-report, send-search-digest, test-ai-fallback, nl-search | `<fn>.2026-10-08.1` |
    | scan-heartbeat | `2026-10-08.1` |
-   | analyze-resume, create-agent-checkout, generate-apply-package, generate-freelance-boost, public-api, stripe-webhook, verify-product-purchase | `<fn>.2026-10-08.2` |
+   | analyze-resume, create-agent-checkout, create-portal-session, generate-apply-package, generate-freelance-boost, public-api, stripe-webhook, verify-product-purchase | `<fn>.2026-10-08.2` |
 
    Changed shared modules whose importers were not otherwise touched need no
    redeploy: `_shared/agent.ts` only gained exports (AGENT_TRIAL_DAYS,
@@ -61,6 +61,13 @@ must PASS before step 2.
 Mail only arrives once `notify.resumebooster.work` has DNS again (owner).
 
 ## Owner steps this deploy creates
+
+- Stripe → Settings → Billing → Customer portal → copy the **login link**
+  (`https://billing.stripe.com/p/login/...`) into the Supabase secret
+  `STRIPE_PORTAL_LOGIN_URL`. create-portal-session now opens a subscriber's
+  portal only for the account the plan names or a proven mailbox (sweep
+  S8-001); everyone else gets that link, where Stripe emails them a sign-in.
+  Without it they are told to use the link in their Stripe receipt.
 
 - Stripe: subscribe the webhook to `charge.refunded` and `charge.dispute.created`
   (until then a refund revokes nothing).
