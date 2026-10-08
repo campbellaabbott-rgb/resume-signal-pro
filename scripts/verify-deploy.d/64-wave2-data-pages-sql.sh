@@ -46,6 +46,25 @@ const num=(v)=>typeof v==="number"&&Number.isFinite(v);
     const jj=fc.j.find(r=>r.company_token==="jj~wd5~JJ");
     if(jj)info("(a3) J&J: fill events "+fmt(jj.fills_90d)+", roles that stayed down "+fmt(jj.filled_roles_90d)+", roles that came back "+fmt(jj.relisted_roles_90d)+", same-title re-list events "+fmt(jj.relists_90d)+", dated_n "+fmt(jj.dated_n)+" (pre-deploy 2,687 / - / - / 0 / 6,741; register 2026-10-04: 2,499 events against at most 1,799 roles and 403 back). dated_n falls by the doubted rows whose postings were seen again (L13-12)");
   }
+  // (a4/a5) THE COST, MEASURED WHERE THE BOARD PAYS IT. The role counts and the
+  // seen-again test run inside the RPC /jobs calls for every visible employer
+  // (25s header). (a4) a heavy batch: the biggest Workday and flap boards we
+  // hold; (a5) the first page of the board, its tokens as the page sends them.
+  // Pre-deploy 2026-10-08 ~08:00Z, old body, cold / warm: (a4) 16 tokens 1.9s /
+  // 1.0s; (a5) 24 tokens 2.2s / 0.5s. pglite puts the new body at 1.4-1.6x the
+  // old; FAIL is half the header, the point at which a cold read starts to
+  // brush it.
+  const HEAVY=["jj~wd5~JJ","emqk~ca3~CX_1","dominos","AbbVie","careers.ulta.com","catalent~wd1~External","target~wd5~targetcareers","sysco~wd5~syscocareers","vanguard~wd5~vanguard_external","viatris~wd5~External","warnerbros~wd5~global","workday~wd5~Workday","zoom~wd5~Zoom","zillow~wd5~Zillow_Group_External","fa-exvn-saasfaprod1~ocs~CX_1","ciandt"];
+  const timed=async(label,toks)=>{const runs=[];for(let i=0;i<2;i++){const r=await R("get_company_fill_curve",{p_tokens:toks});runs.push(r);if(r.status!==200)break}
+    const bad=runs.find(r=>r.status!==200||!Array.isArray(r.j));
+    if(bad){ok(false,label+" get_company_fill_curve("+toks.length+" tokens) -> HTTP "+bad.status+" after "+bad.ms+"ms "+bad.txt.slice(0,120)+" -- the board shows healthFailed for every employer in such a batch");return}
+    const worst=Math.max(...runs.map(r=>r.ms));
+    ok(worst<12500,label+" get_company_fill_curve("+toks.length+" tokens) answered in "+runs.map(r=>(r.ms/1000).toFixed(1)+"s").join(" then ")+" (FAIL at 12.5s, half its 25s header)");};
+  await timed("(a4) heavy batch:",HEAVY);
+  try{const l=await (await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify({action:"list",limit:60})})).json();
+    const toks=[...new Set((l.jobs||[]).map(j=>j.token).filter(Boolean))].slice(0,200);
+    if(toks.length)await timed("(a5) first page of /jobs:",toks);else info("(a5) job-board list returned no tokens");
+  }catch(e){info("(a5) job-board list unreadable: "+e.message)}
   // (b..e) the hourly cache: weeks, live_new, fields, the field curve.
   const sc=await R("get_stats_cache");
   const c=(sc.j&&!Array.isArray(sc.j))?sc.j:(Array.isArray(sc.j)&&sc.j[0])?sc.j[0]:{};

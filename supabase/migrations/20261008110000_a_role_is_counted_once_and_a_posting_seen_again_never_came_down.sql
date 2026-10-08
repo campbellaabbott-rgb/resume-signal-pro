@@ -47,11 +47,31 @@
 -- census status (client-callable, allowlisted, uncapped token array). The
 -- shape changes, so the catalogue drop, the COMMENT ON (extended, not
 -- replaced) and the grants are restated. The 30-day freshness fence is not
--- touched. No index is added: the seen-again test is one hash aggregate per
--- ledger over the doubted posting ids (read through the (company_token,
--- instant) indexes both ledgers already have) and a lookup on
--- job_board_postings' key, so it costs one more pass over rows this function
--- already reads, never a scan per doubted row.
+-- touched. No index is added.
+--
+-- WHAT THE SEEN-AGAIN TEST AND THE ROLE COUNTS COST, AND WHY THIS SHAPE. This
+-- is the function /jobs calls for every visible employer (26 tokens a batch)
+-- and get_actively_hiring_companies calls with 200 inside the hourly cache.
+-- The first draft of this file answered both questions with more reads: two
+-- more passes over the closure log, two over the exit ledger, and a lookup on
+-- job_board_postings' key for every doubted row and every role -- 1.6-2.0x
+-- the old body in pglite, and in the database those lookups are random reads
+-- into the largest table we have. It also joined the doubted rows back onto
+-- the closure arm on (board, posting, instant), and without a hash join --
+-- a plan the planner can choose whenever it misjudges a CTE's size -- that
+-- join merged on (board, instant) alone with the posting as a filter: two
+-- boards with 2,000-row doubted batches discarded 16.4 million rows, 4.4s
+-- against the old body's 0.1s. Here the ledgers are read exactly as the old
+-- body read them, once each into `arms`; a board with no doubted batch pays
+-- nothing for the seen-again test; only a board WITH a doubted batch has its
+-- held rows aggregated by posting, joined back on the whole (board, posting)
+-- key from a held scan that has no sort order, so a merge join must sort on
+-- the whole key. The one key lookup left is for a doubted row that is its
+-- posting's latest observation, a per-row seek by construction (a scalar
+-- subquery). Role counts read the held rows. The guard
+-- src/test/the-seen-again-test-re-read-both-ledgers-and-joined-a-batch-onto-itself.test.ts
+-- counts the reads from Postgres's own statistics; the measured cost is in
+-- docs/wave2/data-pages-sql.md.
 
 SET LOCAL statement_timeout = '5min';
 
@@ -384,56 +404,6 @@ AS $$
     UNION
     SELECT d.tok, d.at FROM dark d
   ),
-  -- A DOUBTED ROW WHOSE POSTING WAS SEEN AGAIN NEVER CAME DOWN (20261008110000).
-  -- bad_obs is every doubted observation on these boards: a closure stamped
-  -- suspect or caught by the dark proxy, and an age-out logged in a bad batch.
-  -- seen_again keeps the ones whose posting_id was observed AFTER that
-  -- instant -- stored again (first_seen later), closed again or exited again.
-  -- Such a row is dropped from the risk set and from the role counts below;
-  -- the later observation already carries the posting. Only a doubted row
-  -- whose posting was never seen again stays, censored as before.
-  -- last_obs is one hash aggregate per ledger over the doubted ids only, and
-  -- seen_again joins it and the posting key: no per-row range scan, so the
-  -- cost grows with the rows read, never with their product.
-  bad_obs AS (
-    SELECT c.company_token AS tok, c.posting_id AS pid, c.closed_at AS at
-    FROM public.job_board_closures c
-    JOIN toks ON toks.tok = c.company_token
-    LEFT JOIN dark dk ON dk.tok = c.company_token AND dk.at = c.closed_at
-    WHERE c.closed_at >= now() - interval '90 days'
-      AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
-      AND (COALESCE(c.suspect, false) OR dk.tok IS NOT NULL)
-    UNION
-    SELECT e.company_token, e.posting_id, e.exited_at
-    FROM public.job_board_exits e
-    JOIN bad_batch bb ON bb.tok = e.company_token AND bb.at = e.exited_at
-    WHERE e.exited_at >= now() - interval '90 days'
-      AND e.exit_reason IN ('aged_out', 'board_dormant', 'untracked')
-  ),
-  last_obs AS (
-    SELECT x.tok, x.pid, max(x.at) AS last_at
-    FROM (
-      SELECT c2.company_token AS tok, c2.posting_id AS pid, c2.closed_at AS at
-      FROM public.job_board_closures c2
-      JOIN toks ON toks.tok = c2.company_token
-      WHERE c2.closed_at >= now() - interval '90 days'
-        AND c2.posting_id IN (SELECT b.pid FROM bad_obs b)
-      UNION ALL
-      SELECT e2.company_token, e2.posting_id, e2.exited_at
-      FROM public.job_board_exits e2
-      JOIN toks ON toks.tok = e2.company_token
-      WHERE e2.exited_at >= now() - interval '90 days'
-        AND e2.posting_id IN (SELECT b.pid FROM bad_obs b)
-    ) x
-    GROUP BY x.tok, x.pid
-  ),
-  seen_again AS (
-    SELECT b.tok, b.pid, b.at
-    FROM bad_obs b
-    LEFT JOIN last_obs l ON l.tok = b.tok AND l.pid = b.pid
-    LEFT JOIN public.job_board_postings p2 ON p2.id = b.pid
-    WHERE l.last_at > b.at OR p2.first_seen > b.at
-  ),
   -- One pass that produces every observation in the risk set, plus the flags
   -- the counts need.
   --
@@ -473,7 +443,16 @@ AS $$
   -- dated_coverage, and contribute to neither fills_90d nor relists_90d. A
   -- false positive then costs one observation's worth of information rather
   -- than an employer's entire fill record.
-  raw AS (
+  --
+  -- arms IS THAT PASS, HELD ONCE, plus three columns and the rows only the
+  -- seen-again test reads (20261008110000): seen_at is the row's instant (a
+  -- served role's is its first_seen); kept is false on a lap_backfill closure
+  -- and on a backdated exit, which are observations of their posting and
+  -- never statistics; bad marks a doubted row. A 'removed' exit is not read:
+  -- the collector writes it only beside a closure at the same instant, which
+  -- is already here. raw below is arms with the kept rows only, less the
+  -- doubted rows whose posting was seen again.
+  arms AS MATERIALIZED (
     SELECT
       c.company_token AS tok,
       CASE WHEN c.posted_at IS NOT NULL
@@ -503,17 +482,17 @@ AS $$
       'c'::text AS arm,
       c.posting_id AS pid,
       (COALESCE(c.suspect, false) OR dk.tok IS NOT NULL) AS doubted,
-      c.superseded AS sup
+      c.superseded AS sup,
+      c.closed_at AS seen_at,
+      (c.absence_basis IS DISTINCT FROM 'lap_backfill') AS kept,
+      (COALESCE(c.suspect, false) OR dk.tok IS NOT NULL) AS bad
     FROM public.job_board_closures c
     JOIN toks ON toks.tok = c.company_token
     -- `dark` is one row per (tok, closed_at) by construction, so this cannot
     -- multiply rows; dk.tok IS NOT NULL is the flag, not a filter.
     LEFT JOIN dark dk ON dk.tok = c.company_token AND dk.at = c.closed_at
     LEFT JOIN obs wf ON wf.tok = c.company_token
-    LEFT JOIN seen_again sa ON sa.tok = c.company_token AND sa.pid = c.posting_id AND sa.at = c.closed_at
     WHERE c.closed_at >= now() - interval '90 days'
-      AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
-      AND NOT ((COALESCE(c.suspect, false) OR dk.tok IS NOT NULL) AND sa.tok IS NOT NULL)
 
     UNION ALL
 
@@ -544,17 +523,18 @@ AS $$
       'e'::text AS arm,
       e.posting_id AS pid,
       false AS doubted,
-      false AS sup
+      false AS sup,
+      e.exited_at AS seen_at,
+      (e.exit_reason IN ('aged_out', 'board_dormant', 'untracked')) AS kept,
+      (bb.tok IS NOT NULL) AS bad
     FROM public.job_board_exits e
     JOIN toks ON toks.tok = e.company_token
     -- bad_batch is DISTINCT on (tok, at) by construction, so this cannot
     -- multiply rows; bb.tok IS NOT NULL is the flag, not a filter.
     LEFT JOIN bad_batch bb ON bb.tok = e.company_token AND bb.at = e.exited_at
     LEFT JOIN obs wf ON wf.tok = e.company_token
-    LEFT JOIN seen_again sa ON sa.tok = e.company_token AND sa.pid = e.posting_id AND sa.at = e.exited_at
     WHERE e.exited_at >= now() - interval '90 days'
-      AND e.exit_reason IN ('aged_out', 'board_dormant', 'untracked')
-      AND NOT (bb.tok IS NOT NULL AND sa.tok IS NOT NULL)
+      AND e.exit_reason <> 'removed'
 
     UNION ALL
 
@@ -584,11 +564,57 @@ AS $$
       'p'::text AS arm,
       p.id AS pid,
       false AS doubted,
-      false AS sup
+      false AS sup,
+      p.first_seen AS seen_at,
+      true AS kept,
+      false AS bad
     FROM public.job_board_postings p
     JOIN toks ON toks.tok = p.company_token
     LEFT JOIN obs wf ON wf.tok = p.company_token
     WHERE p.missing_since IS NULL
+  ),
+  -- A DOUBTED ROW WHOSE POSTING WAS SEEN AGAIN NEVER CAME DOWN (20261008110000).
+  -- A doubted row -- a kept closure stamped suspect or caught by the dark
+  -- proxy, or a kept age-out logged in a bad batch -- is SEEN AGAIN when its
+  -- posting was observed at a later instant: closed again (any basis), exited
+  -- again, or stored again (a later first_seen). Such a row leaves the risk
+  -- set and the role counts; the later observation already carries the
+  -- posting. A doubted row never seen again stays, censored at its instant.
+  --
+  -- Only a board with a doubted batch (dirty) can hold such a row, so only
+  -- its held rows are aggregated: seen_last is the latest observation of each
+  -- of its postings that has a doubted row, one row per (board, posting).
+  -- raw joins it on that whole key, from a held scan with no sort order of
+  -- its own, so the join can never be merged on the board alone with the
+  -- posting left as a filter. The scalar seek is the one observation the held
+  -- rows cannot make -- a posting stored again and not served now (stamped
+  -- missing, or under another board) -- and the CASE reaches it only for a
+  -- doubted row that is its posting's latest observation. It is a CASE and
+  -- not an OR on purpose: the planner lifts the arm of an OR that names only
+  -- arms' columns into a filter below the join, and that copy ran the seek
+  -- for every doubted row. The COALESCE is load-bearing: a doubted row whose
+  -- posting has no row at all must be KEPT, and NOT (true AND NULL) is NULL,
+  -- which a WHERE drops.
+  dirty AS (
+    SELECT DISTINCT bb.tok FROM bad_batch bb
+  ),
+  seen_last AS (
+    SELECT a.tok, a.pid, max(a.seen_at) AS last_at
+    FROM arms a
+    WHERE a.tok IN (SELECT d.tok FROM dirty d)
+    GROUP BY a.tok, a.pid
+    HAVING bool_or(a.bad AND a.kept)
+  ),
+  raw AS MATERIALIZED (
+    SELECT a.tok, a.tt, a.in_cohort, a.in_cohort30, a.in_watch30, a.is_fill, a.is_relist,
+           a.is_ageout, a.is_live, a.is_lstar, a.in_cov, a.dated, a.arm, a.pid, a.doubted, a.sup
+    FROM arms a
+    LEFT JOIN seen_last l ON l.tok = a.tok AND l.pid = a.pid
+    WHERE a.kept
+      AND NOT (a.bad
+               AND CASE WHEN l.last_at > a.seen_at THEN true
+                        ELSE COALESCE((SELECT p2.first_seen FROM public.job_board_postings p2 WHERE p2.id = a.pid) > a.seen_at, false)
+                   END)
   ),
   -- Counts over the 90-day activity window, including undated rows.
   --
@@ -878,28 +904,34 @@ AS $$
       CASE WHEN b.v30 <= 0 THEN b.s30 ELSE b.s30 ^ GREATEST(exp(-1.96 * sqrt(b.v30)), 0.02) END AS s30_hi
     FROM band30 b
   ),
-  -- ONE ROW PER ROLE, NOT PER CLOSURE EVENT (20261008110000), built the way
-  -- get_actively_hiring_companies builds its roles and classified CTEs, over
-  -- the closure rows the risk set admitted. A role that closed more than once,
-  -- was superseded, or is serving on the board again today came back: it is a
-  -- re-listed role, never a filled one. A doubted role (any admitted closure of
-  -- it suspect or dark) is dropped from both sides. filled is therefore a
-  -- CEILING (a re-list under a new id is invisible) and relisted a FLOOR.
+  -- ONE ROW PER ROLE, NOT PER CLOSURE EVENT (20261008110000). The three
+  -- witnesses and the both-sides drop are get_actively_hiring_companies'
+  -- (roles / classified); the rows are THIS function's, the closure rows its
+  -- risk set kept, so a doubted closure whose posting was seen again is
+  -- already gone and does not doubt its role. A role that closed more than
+  -- once, was superseded, or is served on its board today (a live row in raw)
+  -- came back: it is a re-listed role, never a filled one. A role with a
+  -- doubted closure still standing (never seen again) is in neither. filled
+  -- is therefore a CEILING (a re-list under a new id is invisible) and
+  -- relisted a FLOOR. One hash aggregate over held rows: no lookup per role.
+  -- The leaderboard drops a role on ANY doubted closure in the window, seen
+  -- again or not, so on a board with dark batches the two can differ; the
+  -- COMMENT ON says by how.
   roles AS (
     SELECT r.tok, r.pid,
-           count(*)::int  AS n_close,
+           count(*) FILTER (WHERE r.arm = 'c')::int AS n_close,
            bool_or(r.sup) AS sup,
-           bool_or(r.doubted) AS doubted
+           bool_or(r.doubted) AS doubted,
+           bool_or(r.arm = 'p') AS live
     FROM raw r
-    WHERE r.arm = 'c'
+    WHERE r.arm IN ('c', 'p')
     GROUP BY r.tok, r.pid
   ),
   role_counts AS (
     SELECT ro.tok,
-           count(*) FILTER (WHERE NOT ro.doubted AND ro.n_close = 1 AND NOT ro.sup AND lv.id IS NULL)::int AS filled,
-           count(*) FILTER (WHERE NOT ro.doubted AND (ro.n_close > 1 OR ro.sup OR lv.id IS NOT NULL))::int AS relisted
+           count(*) FILTER (WHERE ro.n_close = 1 AND NOT ro.doubted AND NOT ro.sup AND NOT ro.live)::int AS filled,
+           count(*) FILTER (WHERE ro.n_close > 0 AND NOT ro.doubted AND (ro.n_close > 1 OR ro.sup OR ro.live))::int AS relisted
     FROM roles ro
-    LEFT JOIN public.job_board_postings lv ON lv.id = ro.pid AND lv.missing_since IS NULL
     GROUP BY ro.tok
   ),
   span AS (
@@ -1334,7 +1366,9 @@ BEGIN
   IF cols NOT LIKE '%filled_roles_90d%' OR cols NOT LIKE '%relisted_roles_90d%' THEN
     RAISE EXCEPTION 'get_company_fill_curve: re-issued without the role counts: %', cols;
   END IF;
-  IF body NOT LIKE '%seen_again%' OR body NOT LIKE '%p2.first_seen > b.at%' THEN
+  IF body NOT LIKE '%HAVING bool_or(a.bad AND a.kept)%'
+     OR body NOT LIKE '%CASE WHEN l.last_at > a.seen_at THEN true%'
+     OR body NOT LIKE '%WHERE p2.id = a.pid) > a.seen_at%' THEN
     RAISE EXCEPTION 'get_company_fill_curve: re-issued without the seen-again rule';
   END IF;
   IF NOT has_function_privilege('anon', 'public.get_company_fill_curve(text[])', 'EXECUTE') THEN

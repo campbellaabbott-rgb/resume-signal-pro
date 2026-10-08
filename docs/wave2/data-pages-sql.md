@@ -109,10 +109,28 @@ in all nine locales.
 ## What to measure
 
 Run `bash scripts/verify-deploy.sh` (section 64). Pre-deploy (2026-10-08
-~03:45Z) it printed FAIL on (a) (a2) (b) (c) (h ×2) and (i1–i7), INFO
-elsewhere, no crash. After the deploy and one `:27` tick every line should be
+~03:45Z, and again ~12:00Z with the latency lines) it printed FAIL on (a)
+(a2) (b) (c) (h ×2) and (i1–i7), PASS on (a4) (a5), INFO elsewhere, no
+crash. After the deploy and one `:27` tick every line should be
 PASS or INFO. Also watch:
 
+- **The company curve's latency, on the board and in the cache.**
+  `get_company_fill_curve` is the RPC `/jobs` calls for every visible
+  employer (26 tokens a batch, 25 s header); section 64 lines (a4) and (a5)
+  time it on a heavy 16-board batch and on the board's own first page, PASS
+  under 12.5 s. Pre-deploy (old body, 2026-10-08 ~08:00Z and ~12:00Z, cold /
+  warm): (a4) 1.9–2.0 s / 1.0 s; (a5) 1.9–2.2 s / 0.5 s. The new body costs
+  1.4–1.6× the old in pglite (below), so expect roughly 3 s cold on the heavy
+  batch. There is **no server-side count of the board's `healthFailed`**
+  state — it is client state only — so (a4)/(a5) failing, or an HTTP 500 on
+  either, is the signal; a `healthFailed` event would need a `trackBoard`
+  call in `Jobs.tsx` (not added here).
+- **Already over its header before this change:** a live anon call of
+  `get_actively_hiring_companies(20)` answered HTTP 500 after 25.3 s on
+  2026-10-08 (old body). The hourly cache path is unaffected (the cron
+  command's own timeout governs), and the cached section was written at
+  11:27Z. The curve call inside it (≤ 200 tokens) grows by the same
+  1.4–1.6×; watch `refresh-stats-cache` and `refresh-explore-cache` below.
 - `get_cron_health`: `refresh-stats-cache` ran 166 s last / 208 s max on
   2026-10-08 (header 600 s). The field curve is about 2× its old body in a
   465k-closure pglite model (3.5 s → 7.3 s); its share of the run was roughly
@@ -123,6 +141,42 @@ PASS or INFO. Also watch:
   whole, deletes nothing, and the next night retries that one month.
 - J&J (`jj~wd5~JJ`) on the employer page: the "Filled N roles" figure should
   sit well under the 2,687 events.
+
+### What the company curve costs (pglite, measured 2026-10-08)
+
+26 tokens, each with 4,000 closures, 1,200 exits and 1,500 served roles,
+three runs, the same database for every body; "filler" adds 200 other boards
+(400k closures, 200k postings) so every read is an index read, as in
+production. Seconds:
+
+| doubted rows per board | old (20261002121417) | first draft of 110000 | shipped 110000 |
+|---|---|---|---|
+| 6,000 (four flap batches) | 0.90 | 1.64 | 1.35 |
+| 6,000, filler | 1.04 | 2.04 | 1.48 |
+| 500 | 0.52 | 0.99 | 0.92 |
+| 500, filler | 0.69 | 1.38 | 1.07 |
+| none | 0.42 | 0.70 | 0.68 |
+| none, filler | 0.65 | 1.06 | 0.90 |
+
+The shipped body reads each ledger exactly as the old one did (counted from
+Postgres's own statistics in
+`src/test/the-seen-again-test-re-read-both-ledgers-and-joined-a-batch-onto-itself.test.ts`):
+the first draft read the closure log twice more and the exit ledger twice
+more, and looked up `job_board_postings` by key for every doubted row and
+every role (165 lookups in the guard's fixture, against 5 now — the five
+doubted rows never seen again). It also joined the doubted rows back on
+(board, posting, instant), which without a hash join merged on
+(board, instant) alone: two boards with 2,000-row flap batches discarded
+16.4 million rows (4.4 s against the old body's 0.1 s). What remains of the
+overhead is the role counts themselves (one aggregate per posting) and the
+seen-again aggregate on boards that have a doubted batch.
+
+**Not measured: `EXPLAIN ANALYZE` in production.** No service key is
+available to this group. If the owner can run SQL, the statement to run
+before and after migration 1 is
+`EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM public.get_company_fill_curve(ARRAY['jj~wd5~JJ','dominos','target~wd5~targetcareers','sysco~wd5~syscocareers','careers.ulta.com','AbbVie'])`;
+the number to compare is the total, and the line to look for is any join
+whose "Rows Removed by Join Filter" runs into the millions.
 
 ## Rollback
 
