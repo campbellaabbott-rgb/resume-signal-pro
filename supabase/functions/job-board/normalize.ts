@@ -3483,42 +3483,80 @@ export function sortJobs(jobs: JobPosting[]): JobPosting[] {
  *  NOT AGENT-SENDABLE: federal applications run through USAJOBS accounts and
  *  agency assessments. The board must never badge these as agent-ready.
  */
-interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown }
+interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown; RateIntervalCode?: unknown; Description?: unknown }
+/** UserArea.Details: where the API puts the summary, the duties and the telework fields (S8-023). */
+interface UsajobsDetails { JobSummary?: unknown; MajorDuties?: unknown; TeleworkEligible?: unknown; RemoteIndicator?: unknown }
 interface UsajobsDescriptor {
   PositionID?: unknown; PositionTitle?: unknown; OrganizationName?: unknown; DepartmentName?: unknown;
-  PositionLocation?: Array<{ LocationName?: unknown }>; PositionLocationDisplay?: unknown;
+  PositionLocation?: Array<{ LocationName?: unknown; CountryCode?: unknown }>; PositionLocationDisplay?: unknown;
   RemoteIndicator?: unknown; TeleworkEligible?: unknown; PublicationStartDate?: unknown;
   PositionRemuneration?: UsajobsRemuneration[]; JobCategory?: Array<{ Name?: unknown }>;
-  PositionSchedule?: Array<{ Name?: unknown }>;
+  PositionSchedule?: Array<{ Name?: unknown }>; QualificationSummary?: unknown;
   ApplyURI?: unknown[]; PositionURI?: unknown;
+  UserArea?: { Details?: UsajobsDetails };
 }
 interface UsajobsItem { MatchedObjectId?: unknown; MatchedObjectDescriptor?: UsajobsDescriptor }
+
+const usajobsId = (wrap: UsajobsItem, d: UsajobsDescriptor) => String(wrap?.MatchedObjectId ?? d.PositionID ?? "").trim();
+const statedBool = (v: unknown): boolean | null => (v === true || v === "true" || v === "True" ? true : v === false || v === "false" || v === "False" ? false : null);
+// RateIntervalCode -> the words the salary parser reads; "WC" (without compensation) states no pay.
+const USAJOBS_RATE: Record<string, string> = { PA: "per year", PH: "per hour", PD: "per day", PW: "per week", PM: "per month" };
+
+/** The posting body the feed carries: Details.JobSummary, Details.MajorDuties, QualificationSummary. */
+export function usajobsDescriptions(items: unknown, token: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const wrap of (Array.isArray(items) ? items : []) as UsajobsItem[]) {
+    const d = (wrap?.MatchedObjectDescriptor ?? {}) as UsajobsDescriptor;
+    const det = d.UserArea?.Details ?? {};
+    const duties = Array.isArray(det.MajorDuties) ? det.MajorDuties.map(String).join("\n") : String(det.MajorDuties ?? "");
+    const text = [det.JobSummary, duties, d.QualificationSummary]
+      .map((x) => htmlToText(String(x ?? "").slice(0, 200_000)).trim())
+      .filter(Boolean)
+      .join("\n\n");
+    const id = usajobsId(wrap, d);
+    if (id && text) out.set(`usajobs:${token}:${id}`, text);
+  }
+  return out;
+}
 
 export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: string): JobPosting[] {
   return (Array.isArray(items) ? items : [])
     .map((wrap) => {
       const d = (wrap?.MatchedObjectDescriptor ?? {}) as UsajobsDescriptor;
-      const externalId = String(wrap?.MatchedObjectId ?? d.PositionID ?? "").trim();
+      const det = d.UserArea?.Details ?? {};
+      const externalId = usajobsId(wrap, d);
       const title = String(d.PositionTitle ?? "").trim();
       // The agency IS the employer here; OrganizationName is the parent
       // department, DepartmentName the sub-agency. Prefer the specific one.
       const agency = String(d.OrganizationName ?? d.DepartmentName ?? "").trim();
-      const loc = Array.isArray(d.PositionLocation) && d.PositionLocation.length
-        ? String(d.PositionLocation[0]?.LocationName ?? "").trim()
-        : String(d.PositionLocationDisplay ?? "").trim();
-      // Federal remote/telework is stated structurally; text detection only
-      // fills the gap, never overrides the government's own field.
-      const stated = d.RemoteIndicator === true ? "remote" as const
-        : String(d.TeleworkEligible ?? "").toLowerCase() === "true" ? "hybrid" as const
+      const first = Array.isArray(d.PositionLocation) && d.PositionLocation.length ? d.PositionLocation[0] : null;
+      const loc = first ? String(first.LocationName ?? "").trim() : String(d.PositionLocationDisplay ?? "").trim();
+      // Federal remote/telework is stated structurally (under UserArea.Details;
+      // the top level carries neither), and text detection only fills the gap.
+      // Both stated false is a stated on-site post.
+      const remoteSaid = statedBool(det.RemoteIndicator ?? d.RemoteIndicator);
+      const teleworkSaid = statedBool(det.TeleworkEligible ?? d.TeleworkEligible);
+      const stated = remoteSaid === true ? "remote" as const
+        : teleworkSaid === true ? "hybrid" as const
+        : remoteSaid === false && teleworkSaid === false ? "onsite" as const
         : null;
       const workMode = stated ?? detectWorkMode(loc, title);
       const posted = safeIso(d.PublicationStartDate);
       const pay = Array.isArray(d.PositionRemuneration) ? d.PositionRemuneration[0] : null;
       const min = Number(pay?.MinimumRange) || 0;
       const max = Number(pay?.MaximumRange) || 0;
-      const salary = min > 0 && max > 0
-        ? `$${Math.round(min).toLocaleString("en-US")} - $${Math.round(max).toLocaleString("en-US")}`
+      const code = String(pay?.RateIntervalCode ?? "").trim().toUpperCase();
+      const per = USAJOBS_RATE[code] ?? (/^per (year|hour|day|week|month)$/i.test(String(pay?.Description ?? "").trim()) ? String(pay?.Description).trim().toLowerCase() : "");
+      const money = (n: number) => (per === "per hour" || !Number.isInteger(n)
+        ? `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : `$${Math.round(n).toLocaleString("en-US")}`);
+      const salary = min > 0 && max > 0 && code !== "WC"
+        ? `${money(min)} - ${money(max)}${per ? ` ${per}` : ""}`
         : null;
+      // The country the posting names (CountryCode carries a country NAME,
+      // "Germany"), else the place; a post that states neither is US (S8-083).
+      const cc = String(first?.CountryCode ?? "").trim();
+      const country = (cc ? detectCountry(cc) : null) ?? detectCountry(loc) ?? (!cc || /united states/i.test(cc) ? "US" : null);
       return {
         id: `usajobs:${token}:${externalId}`,
         source: "usajobs" as const,
@@ -3534,8 +3572,7 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         salary,
         // PositionSchedule Name: "Full-time"/"Part-time"/"Intermittent" etc.
         employmentType: normalizeEmploymentType(String(d.PositionSchedule?.[0]?.Name ?? "")),
-        // Federal postings are US by definition; the feed also states it.
-        country: "US",
+        country,
         applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),
       };
     })

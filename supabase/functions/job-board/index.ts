@@ -37,7 +37,7 @@ import {
   sanePostedAt,
   isDatedBefore,
   normalizeCloseTitle,
-  normalizeIcims, normalizeUsajobs,
+  normalizeIcims, normalizeUsajobs, usajobsDescriptions,
   normalizeRippling,
   normalizePinpoint,
   normalizePaylocity,
@@ -4182,6 +4182,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const text = htmlToText((xmlValue(item, "description") ?? "").slice(0, RAW_HTML_CAP)).trim();
             if (idMatch && text) descs.set(`teamtailor:${s.token}:${idMatch[1]}`, text.slice(0, STORED_DESC_CAP));
           }
+        } else if (s.source === "usajobs") {
+          // The summary and duties sit under UserArea.Details (S8-023); every federal row stored none before .92.
+          for (const [k, v] of usajobsDescriptions((r.raw as { items?: unknown[] }).items, s.token)) descs.set(k, v.slice(0, STORED_DESC_CAP));
         }
         const clean = (x: string | null | undefined) => (x == null ? null : x.replace(/\u0000/g, ""));
         // isLight covers the static set, prior auto-enrollments, AND a board
@@ -4650,6 +4653,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         const DERIVED_NOT_EMPLOYER_EDITS = new Set(["region_code"]);
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
+        // .92 changed how these federal fields are read (S8-023, S8-083): the patches land, unlogged. Remove after 2026-11-09 (n444).
+        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
         const changeLog: Array<Record<string, unknown>> = [];
@@ -4682,7 +4687,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           const capped = (v: unknown): string | null =>
             v === null || v === undefined ? null : String(v).replace(/\u0000/g, "").slice(0, VALUE_CAP);
           const note = (field: string, oldV: unknown, newV: unknown) => {
-            if (DERIVED_NOT_EMPLOYER_EDITS.has(field)) return;
+            if (DERIVED_NOT_EMPLOYER_EDITS.has(field) || OUR_READING_CHANGED.has(`${s.source}:${field}`)) return;
             if (changeLog.length >= FIELD_CHANGES_PER_VISIT) {
               // corrections.length is the count of COMPLETED postings: this
               // posting's patch has not been pushed yet, so cutting here drops

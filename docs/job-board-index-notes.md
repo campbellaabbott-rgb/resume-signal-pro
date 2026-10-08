@@ -10192,3 +10192,34 @@ Two halves of n420, sweep S8-086.
    CURSOR_STRAND_MS (6h): still far inside the 40-hour dormancy floor the
    reset exists to stay ahead of. With no first-failure time recorded, the
    second failure resets as before.
+
+## n444-a-federal-posting-carries-what-the-api-states
+
+Above: `usajobsDescriptions` and normalizeUsajobs (normalize.ts), the usajobs
+branch of the ingest's descs chain, and `OUR_READING_CHANGED`.
+
+USAJOBS rows landed from .89 (L7-01) with no description, no stated work mode,
+no pay period and country "US" on every row (sweeps S8-023, S8-083; on .91,
+7,927 federal rows, 0 described; 60 sampled had work mode and salary period
+null; 107 rows placed in Germany were stored US and a DE filter found none).
+The API's search reference puts JobSummary, MajorDuties, TeleworkEligible and
+RemoteIndicator under UserArea.Details, and the normaliser read the telework
+pair at the top level; PositionRemuneration's RateIntervalCode was dropped;
+PositionLocation[].CountryCode names the country ("Germany").
+
+Now: the body is JobSummary + MajorDuties (array or string) +
+QualificationSummary, stored at insert like every vendor's list payload;
+RemoteIndicator true is remote, TeleworkEligible true is hybrid, both stated
+false is on-site; the pay text carries its period ("per year", "per hour", a
+WC "without compensation" range states no pay), so salary_period follows from
+the existing parser; country is CountryCode's country, else the place's, else
+(nothing stated, or "United States") US.
+
+Not done: ingest never rewrites a stored description, and the board-level
+desc lane re-reads a board from offset 0, which for the national feed is its
+first 250 postings only, so the ~7,900 rows stored before .92 keep a null body
+until they close (most announcements run 2-4 weeks). Country, work mode and
+pay ARE corrected on the next visit by the corrections diff, and because .92
+changed our reading, not the agencies' postings, those four fields are patched
+without a field-change log row on usajobs until OUR_READING_CHANGED is removed
+(after 2026-11-09, when every live federal row has been re-read).
