@@ -102,6 +102,7 @@ import {
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
+import { isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
 import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
@@ -10897,15 +10898,15 @@ function preferMatchedLocation(
   jobs: Array<Record<string, unknown>>,
   locTerms: string[],
 ): Array<Record<string, unknown>> {
-  if (locTerms.length === 0) return jobs;
-  const needles = locTerms.map((t) => t.toLowerCase().replace(/^,\s*/, "")).filter(Boolean);
+  // The filter's own rule: a ", XX" code at a boundary, never "or" inside "New York" (n429).
+  const needles = locTerms.filter((t) => t.trim().length > 0);
   if (needles.length === 0) return jobs;
   for (const j of jobs) {
     const loc = typeof j.location === "string" ? j.location : "";
     // Multi-location postings use ";" or "/" — measured on live rows.
     const parts = loc.split(/\s*[;/]\s*/).map((x) => x.trim()).filter(Boolean);
     if (parts.length < 2) continue;
-    const hit = parts.findIndex((part) => needles.some((n) => part.toLowerCase().includes(n)));
+    const hit = parts.findIndex((part) => needles.some((n) => partMatchesTerm(part, n)));
     if (hit <= 0) continue; // already first, or this row matched on something else
     j.location = [parts[hit], ...parts.filter((_, i) => i !== hit)].join("; ");
     j.locationMatchedIndex = hit;
@@ -11300,14 +11301,15 @@ async function serveList(
     // and a noisy two-letter form is REPLACED rather than ORed in — searching
     // %LA% returns Plain City, Ohio.
     const locTerms = locationTerms(body.location).terms;
-    if (locTerms.length === 1) q = q.ilike("location", `%${locTerms[0]}%`);
+    // A state code binds at a boundary, on a US/CA/unplaced row (n429).
+    if (locTerms.length === 1 && !isStateCodeAlias(locTerms[0])) q = q.ilike("location", `%${locTerms[0]}%`);
     // QUOTED, because a state alias contains a comma. PostgREST separates
     // or() branches on commas, so an unquoted `location.ilike.%, TX%` splits
     // into two malformed branches — the filter would silently stop meaning
     // what it says. Quoting the value is the documented escape for exactly
     // this, and sanitizeTerm already removes the characters that could close
     // the quote early.
-    else if (locTerms.length > 1) q = q.or(locTerms.map((t) => `location.ilike."%${t}%"`).join(","));
+    else if (locTerms.length > 0) q = q.or(locTerms.map(locationBranch).join(","));
     // Rationale: docs/job-board-index-notes.md#n299-applied-remote
     if (applied.remote) {
       q = q.eq("remote", true);

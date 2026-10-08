@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { locationBranch } from "../../supabase/functions/job-board/location-match.ts";
 
 /**
  * "CA" RETURNED 113,223 JOBS AND 70% OF THEM WERE NOT CALIFORNIA.
@@ -73,7 +74,13 @@ describe("a state reaches its own jobs, and only its own", () => {
     // PostgREST splits or() branches on commas, so an unquoted
     // `location.ilike.%, TX%` becomes two malformed branches and the filter
     // silently stops meaning what it says.
-    expect(BOARD).toMatch(/location\.ilike\."%\$\{t\}%"/);
+    // Since .91 every branch is built by locationBranch (location-match.ts),
+    // which a code alias also bounds (n429); run, not spelled.
+    expect(BOARD).toMatch(/q = q\.or\(locTerms\.map\(locationBranch\)\.join\(","\)\)/);
+    for (const t of [", TX", "Texas", "San Francisco"]) {
+      const branch = locationBranch(t);
+      expect(branch, t).toContain(`location.ilike."%${t}%"`);
+    }
   });
 
   it("strips the quote that quoting made load-bearing", () => {
