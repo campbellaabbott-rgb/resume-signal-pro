@@ -53,7 +53,8 @@ describe("the page", () => {
     fireEvent.click(screen.getByRole("button", { name: /Yes, turn them off/ }));
     await waitFor(() => expect(screen.getByText(/You will not get these emails again/)).toBeTruthy());
     expect(invoke).toHaveBeenCalledWith("send-search-digest", { body: { action: "unsubscribe", id: SID, token: TOKEN } });
-    expect(window.location.hash, "the spent token stayed in the address bar").toBe("");
+    // The fragment is forgotten in an effect that runs after the "done" render.
+    await waitFor(() => expect(window.location.hash, "the spent token stayed in the address bar").toBe(""));
   });
 
   it("a link the mailer refuses says it is not valid", async () => {
