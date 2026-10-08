@@ -11559,7 +11559,10 @@ async function serveList(
   const qClass = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
   const qClassRetriever = qClass ? RETRIEVER_FOR[qClass.route] : null;
   const onlyQuery = isUnfiltered({ ...applied, q: "" });
-  const routeDecision = qText && onlyQuery && qClass
+  // Routed with or without filters: buildQuery binds every filter in SQL BEFORE
+  // the routed window, so a filter no longer sends "IT manager" to the english
+  // tsquery that drops "it" (L8-04, n432).
+  const routeDecision = qText && qClass
     ? qClass
     : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
   const routedRetriever = RETRIEVER_FOR[routeDecision.route];
@@ -11585,6 +11588,9 @@ async function serveList(
     };
     if (!wantCount) return json({ total: safeMetaTotal, ...(safeMetaTotal === null ? { countUnavailable: true } : {}), ...countHonesty }); // unfiltered — the maintained catalog total, degraded to null when the cache is unreadable
     // Rationale: docs/job-board-index-notes.md#n321-qtext-body-sort-salary-rout
+    // The pay-ordered list publishes no total (stated pay only), so neither does its count;
+    // it fell to the substring count, which the list no longer uses (L8-01).
+    if (body.sort === "salary" && qText) return json({ total: null, countUnavailable: true, ...countHonesty });
     if (qText && body.sort !== "salary" && (routedRetriever === "company" || routedRetriever === "simple")) {
       try {
         let rqC = buildQuery("effective_posted", false, undefined, { skipTerms: true });
@@ -11774,23 +11780,36 @@ async function serveList(
   }
 
   // Rationale: docs/job-board-index-notes.md#n330-salarytextsort
-  const salaryTextSort = !countOnly && !!qText && body.sort === "salary" && onlyQuery;
+  // Every text query under the pay order, filtered or not: the recency path's
+  // ILIKE served "rn" as NorthwesteRN (L8-01). An employer route binds its
+  // tokens, never the name as title text (L8-02); the title match takes the
+  // same alias expansion the other title tiers do.
+  const salaryTextSort = !countOnly && !!qText && body.sort === "salary";
+  const salaryEmployer = qClass?.route === "EMPLOYER" && !!qClass.tokens?.length ? qClass.tokens : null;
+  const salaryExpand = salaryEmployer ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
 
-  if (salaryTextSort) try {
+  if (salaryTextSort) {
     const t_salary_sorted = Date.now();
-    const { data: salRows, error: salErr } = await withDeadline(
-      buildQuery("effective_posted", false, undefined, { skipTerms: true })
-        .textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" })
-        .not("salary_rank_usd", "is", null)
-        .order("salary_rank_usd", { ascending: false })
-        .order("id", { ascending: true })
-        .range(offset, offset + limit - 1),
-      7_000,
-    ) as { data: unknown[] | null; error?: unknown };
+    let salRows: unknown[] | null = null;
+    try {
+      const salBase = buildQuery("effective_posted", false, undefined, { skipTerms: true });
+      const res = await withDeadline(
+        (salaryEmployer
+          ? salBase.in("company_token", salaryEmployer)
+          : salBase.textSearch("title", salaryExpand.expansions.length ? ftsSafe(salaryExpand.q) : ftsQuery(qText), { type: "websearch", config: "simple" }))
+          .not("salary_rank_usd", "is", null)
+          .order("salary_rank_usd", { ascending: false })
+          .order("id", { ascending: true })
+          .range(offset, offset + limit - 1),
+        7_000,
+      ) as { data: unknown[] | null; error?: unknown };
+      if (!res.error && Array.isArray(res.data)) salRows = res.data;
+    } catch { /* answered below as unavailable, never by the substring path */ }
     markFrom("salary_sorted", t_salary_sorted);
-    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search hit its deadline for q=${JSON.stringify(qText)}`);
-    if (!salErr && Array.isArray(salRows) && salRows.length > 0) {
-      const salJobs = (salRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search failed or hit its deadline for q=${JSON.stringify(qText)}`);
+    {
+      // No pay-ordered row on page one is said out loud; the recency ILIKE never stands in (L8-01, L8-02).
+      const salJobs = ((salRows ?? []) as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
       const salGrouped = groupSimilar
         ? collapseClusters(salJobs, limit)
         : { jobs: salJobs.slice(0, limit), rawConsumed: Math.min(salJobs.length, limit) };
@@ -11811,7 +11830,12 @@ async function serveList(
         hasMore: salJobs.length >= limit,
         nextOffset: offset + salGrouped.rawConsumed,
         searchRoute: "SALARY",
-        searchRouteReason: "salary-sorted text search, ordered on the indexed pay column",
+        searchRouteReason: salaryEmployer
+          ? "salary-sorted employer search, ordered on the indexed pay column"
+          : "salary-sorted text search, ordered on the indexed pay column",
+        ...(salaryExpand.expansions.length ? { aliases: salaryExpand.expansions } : {}),
+        ...(salaryEmployer && qClass?.matchedName ? { companyMatched: qClass.matchedName } : {}),
+        ...(salJobs.length === 0 && offset === 0 ? { sortUnavailable: salRows === null ? "unavailable" : "no-stated-pay" } : {}),
         // Said out loud: this page deliberately shows only postings that state
         // pay, which is about an eighth of the board.
         salaryStatedOnly: true,
@@ -11833,7 +11857,7 @@ async function serveList(
         refreshedAt: (metaV.refreshedAt as string) ?? null,
       });
     }
-  } catch { /* fall through to the substring path this query used before */ }
+  }
 
   // Rationale: docs/job-board-index-notes.md#n333-newesttextsort
   const newestTextSort = !countOnly && !!qText && newestFirst
@@ -11914,7 +11938,7 @@ async function serveList(
   } catch { /* fall through to the ranked path, which owns the description tier and the rescue ladder */ }
 
   // Rationale: docs/job-board-index-notes.md#n338-routedservesthisorder
-  const routedServesThisOrder = routedRetriever === "company" || !newestFirst;
+  const routedServesThisOrder = body.sort !== "salary" && (routedRetriever === "company" || !newestFirst);
   if (!countOnly && routedServesThisOrder && (routedRetriever === "company" || routedRetriever === "simple")) try {
     // Rationale: docs/job-board-index-notes.md#n339-blockstart
     const blockStart = Math.floor(offset / ROUTE_WINDOW) * ROUTE_WINDOW;

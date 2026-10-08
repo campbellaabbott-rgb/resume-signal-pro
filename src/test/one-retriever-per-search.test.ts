@@ -258,14 +258,18 @@ describe("routed retrieval is wired so it cannot fail quietly", () => {
     // in two days.
     expect(/buildQuery\("effective_posted", false, undefined, \{ skipTerms: true \}\)/.test(BLK)).toBe(true);
     expect(/\.in\("company_token", routeDecision\.tokens\)/.test(BLK)).toBe(true);
-    expect(/\.textSearch\("title", ftsQuery\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(BLK)).toBe(true);
+    expect(/routedExpand\.expansions\.length \? ftsSafe\(routedExpand\.q\) : ftsQuery\(qText\),\s*\{ type: "websearch", config: "simple" \}/.test(BLK)).toBe(true);
   });
 
-  it("stands down when a filter is active, rather than answering from a capped subset", () => {
-    // The routed window is capped at 400. Applying a filter on top of a capped
-    // window silently answers from a subset of the matches — the honest place
-    // for a filtered query is the ranked path, which binds filters in SQL.
-    // The gate must consider EVERY filter, excluding q — and it does so
+  it("keeps the route under a filter (.91, L8-04), and still derives filtered-ness mechanically for explain", () => {
+    // REVERSED in .91. The premise above ("a filter on top of a capped window
+    // answers from a subset") was false: buildQuery binds every filter in SQL
+    // BEFORE the routed window, so the window is of the filtered set. Standing
+    // down sent q="it manager" + country=GB to the english tsquery, which drops
+    // "it": 5,649 rows identical to q="manager". Run end to end in
+    // a-filter-or-the-pay-order-changed-which-jobs-were-searched.test.ts.
+    expect(FN).toMatch(/const routeDecision = qText && qClass\n/);
+    // onlyQuery stays (explain reports it). The gate must consider EVERY filter, excluding q — and it does so
     // MECHANICALLY now, via isUnfiltered over a q-blanked copy of applied,
     // rather than a hand-listed conjunction. The old hand-list omitted the
     // seven filters added after it was written, so a filtered abbreviation

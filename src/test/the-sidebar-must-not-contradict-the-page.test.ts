@@ -93,13 +93,14 @@ describe("the sidebar must not contradict the page", () => {
 
 describe("a salary-sorted search is ordered by the database, not by a window", () => {
   const FN2 = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
-  const BLK = /const salaryTextSort[\s\S]*?catch \{ \/\* fall through to the substring path this query used before \*\/ \}/.exec(FN2)?.[0] ?? "";
+  // To the next branch: since .91 the salary branch has no fall-through (L8-01).
+  const BLK = /const salaryTextSort[\s\S]*?(?=\/\/ Rationale: docs\/job-board-index-notes\.md#n333-newesttextsort)/.exec(FN2)?.[0] ?? "";
 
   it("matches with word boundaries instead of substrings", () => {
     // q="nurse" sorted by salary returned "Unqualified Nursery Practitioner"
     // at #1, matched on "Nurser" by the substring path.
     expect(BLK, "the salary-sorted branch is missing").not.toBe("");
-    expect(/\.textSearch\("title", ftsQuery\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(BLK)).toBe(true);
+    expect(/salBase\.textSearch\("title", salaryExpand\.expansions\.length \? ftsSafe\(salaryExpand\.q\) : ftsQuery\(qText\), \{ type: "websearch", config: "simple" \}\)/.test(BLK)).toBe(true);
   });
 
   it("orders in SQL on the indexed column, over the WHOLE match set", () => {
@@ -118,9 +119,13 @@ describe("a salary-sorted search is ordered by the database, not by a window", (
     expect(/salaryStatedOnly: true,/.test(BLK), "and the page must say so").toBe(true);
   });
 
-  it("degrades to the path this query used before", () => {
+  it("never degrades to the substring path: a pay order it cannot serve is said out loud (.91, L8-01/L8-02)", () => {
+    // The fall-through it used to have WAS the defect: the recency ILIKE served
+    // q="rn" as NorthwesteRN under the pay order. Run end to end in
+    // a-filter-or-the-pay-order-changed-which-jobs-were-searched.test.ts.
     expect(/withDeadline\(/.test(BLK)).toBe(true);
     expect(/hit its deadline/.test(BLK)).toBe(true);
-    expect(/catch \{ \/\* fall through/.test(BLK)).toBe(true);
+    expect(/catch \{ \/\* fall through/.test(BLK)).toBe(false);
+    expect(/sortUnavailable: salRows === null \? "unavailable" : "no-stated-pay"/.test(BLK)).toBe(true);
   });
 });
