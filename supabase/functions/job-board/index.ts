@@ -599,6 +599,8 @@ interface StaleLaneRun {
 }
 /** The slice's stale-lane outcome, written onto slice_stats by recordSliceStats beside the budget note. */
 let sliceStaleNote: { tries: number; resolved: number } | null = null;
+/** This cold slice's cursor bookkeeping: admitted by the whole base slice, then corrected to the boards started (n434). */
+let sliceCursorNote: { from: number; admitted: number; to: number; base: number; started: number } | null = null;
 const HEADLINE_MAX_AGE_MS = 15 * 60_000; // how stale the published board total may get before it is recounted; the count itself measured 0.63s, so this is cadence, not cost
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
@@ -3128,6 +3130,8 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, boardBudget: sliceBudgetNote.boardBudget, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
+        // null on a hot slice, so a cold slice's step never outlives it on the row.
+        cursorStep: sliceCursorNote,
         // Saturation of the persisted light set, whose own row anon cannot read (n019).
         lightSet: DYNAMIC_LIGHT.size,
         lightCap: AUTO_LIGHT_CAP,
@@ -3207,6 +3211,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // stale lane's fold, so an isolate that served a cold hop and then a hot one
   // would otherwise write the cold hop's staleTries onto the hot hop's row.
   sliceStaleNote = null;
+  sliceCursorNote = null;
   sliceLightReread = null;
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
@@ -5131,6 +5136,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     baseSliceLen: baseAttempted,
   });
   hot = progressAfter.hot;
+  // Admitted at +base, written back at +started: a "step back" a poll sees is this correction (n434).
+  if (!inHotPhase) {
+    const len = Math.max(1, COLD_LIST.length);
+    sliceCursorNote = { from: progressBefore.cold, admitted: (progressBefore.cold + baseSlice.length) % len, to: progressAfter.cold, base: baseSlice.length, started: baseAttempted };
+  }
   cold = progressAfter.cold;
   coldDone = progressAfter.coldDone;
   // The cold cursor just wrapped past the end → the ENTIRE cold tail has now
