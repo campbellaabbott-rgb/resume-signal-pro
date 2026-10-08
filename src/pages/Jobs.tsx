@@ -2371,7 +2371,10 @@ export default function Jobs() {
     mounted.current = { loc: location, n: 0, id: newBoardId() };
   } else if (mounted.current.loc !== location) {
     const st = typeof window !== "undefined" ? (window.history.state as { rbBoard?: unknown } | null) : null;
-    const ownEntry = navType === "POP" && st?.rbBoard === mounted.current.id;
+    // A navigation OFF the board (the free scan at /#upload, /auth) is the
+    // router's to unmount, not a new board to start.
+    const offBoard = !/^\/jobs(?:\/(?:field|company)\/[^/]+)?\/?$/.test(location.pathname);
+    const ownEntry = offBoard || (navType === "POP" && st?.rbBoard === mounted.current.id);
     mounted.current = ownEntry
       ? { ...mounted.current, loc: location }
       : { loc: location, n: mounted.current.n + 1, id: newBoardId() };
