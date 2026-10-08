@@ -85,7 +85,7 @@ import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
+import { foldName, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
@@ -7296,6 +7296,17 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
   return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
 }
 
+/**
+ * Words that qualify a place in a location string but name none on their own,
+ * so a trailing one is never tried as the location-split's place (L8-09):
+ * "united" matches every "United States/Kingdom" row. Not a gazetteer (n358):
+ * a closed list of qualifiers, every real place name still passes.
+ */
+const PLACE_QUALIFIERS: ReadonlySet<string> = new Set([
+  "united", "states", "state", "kingdom", "county", "remote", "republic", "city", "north", "south",
+  "east", "west", "new", "greater", "central", "area", "region", "metro", "district", "province",
+]);
+
 /** Terms as OR groups: "welder or fabricator" is [[welder], [fabricator]] (L8-07). */
 function orGroups(terms: readonly string[]): string[][] {
   const groups: string[][] = [[]];
@@ -8256,11 +8267,13 @@ Deno.serve(async (req) => {
           };
         })(),
         filterAudit: (() => {
-          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number; throttledCases?: number };
+          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; incomplete?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number; throttledCases?: number };
           return {
             at: v.at ?? null,
             ageMin: faMeta.data?.updated_at ? Math.round((Date.now() - new Date(faMeta.data.updated_at).getTime()) / 60000) : null,
             clean: v.clean ?? null,
+            // Every finding a refusal: not measured, rather than measured broken (L1-07; absent before .91).
+            incomplete: v.incomplete ?? null,
             cases: v.cases ?? null,
             findings: Array.isArray(v.findings) ? v.findings.slice(0, 12) : null,
             findingCount: Array.isArray(v.findings) ? v.findings.length : null,
@@ -8519,14 +8532,21 @@ Deno.serve(async (req) => {
             headers: { "content-type": "application/json", apikey: svc, Authorization: `Bearer ${svc}` },
             body,
           });
-          let res = await send();
-          if (res.status === 429) {
-            const ra = Number(res.headers.get("retry-after"));
+          // The runtime refuses a self-call by THROWING RateLimitError, and answers
+          // 503/546 under load: throttling, not a board defect (L1-07).
+          const attempt = () => send().then((res) => ({ res, err: null as unknown }), (err: unknown) => ({ res: null, err }));
+          const refused = (a: { res: Response | null; err: unknown }) =>
+            a.res ? [429, 503, 546].includes(a.res.status) : /RateLimitError|rate limit/i.test(`${(a.err as Error)?.name ?? ""} ${String(a.err)}`);
+          let a = await attempt();
+          if (refused(a)) {
+            const ra = Number(a.res?.headers.get("retry-after"));
+            await a.res?.body?.cancel().catch(() => {});
             await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(ra) && ra > 0 ? ra * 1000 : 2_000, 5_000)));
-            res = await send();
+            a = await attempt();
           }
-          const j = await boundBody(res, SELF_RESPONSE_BYTES).json().catch(() => ({}));
-          return { ok: res.ok, throttled: res.status === 429, ms: Date.now() - started, body: j as Record<string, unknown> };
+          if (!a.res) return { ok: false, throttled: refused(a), ms: Date.now() - started, body: { error: String(a.err).slice(0, 80) } };
+          const j = await boundBody(a.res, SELF_RESPONSE_BYTES).json().catch(() => ({}));
+          return { ok: a.res.ok, throttled: refused(a), ms: Date.now() - started, body: j as Record<string, unknown> };
         } catch (e) {
           return { ok: false, throttled: false, ms: Date.now() - started, body: { error: String(e).slice(0, 80) } };
         }
@@ -8658,6 +8678,8 @@ Deno.serve(async (req) => {
 
       await inBatches(IGNORE_CASES, BATCH, async (c) => {
         const r = await probe(c.body);
+        // A refused probe measured nothing; it is not a silent drop.
+        if (!r.ok) { findings.push({ case: c.name, kind: r.throttled ? "throttled" : "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
         const ig = Array.isArray(r.body.ignoredFilters) ? r.body.ignoredFilters as string[] : [];
         if (!ig.includes(c.expect)) {
           findings.push({ case: c.name, kind: "silent-drop", detail: `expected "${c.expect}" in ignoredFilters, got [${ig.join(",")}]` });
@@ -8682,12 +8704,14 @@ Deno.serve(async (req) => {
       // PAGINATION INTEGRITY — the interleave regression duplicated rows onto
       // page 2 and dropped others forever, and no unit test could see it because
       // it only exists across two requests.
-      // Offsets within one shape must stay ordered; the three shapes are
-      // independent, so they walk concurrently.
-      await Promise.all([{}, { category: "design" }, { q: "nurse" }].map(async (shape) => {
+      // Offsets within one shape must stay ordered. The three shapes walk ONE
+      // AT A TIME, paced: walked together they burst twelve self-calls and the
+      // runtime refused them every day as RateLimitError (L1-07).
+      for (const shape of [{}, { category: "design" }, { q: "nurse" }] as Array<Record<string, unknown>>) {
         const seen: string[] = [];
         const label = Object.keys(shape).length ? JSON.stringify(shape) : "no-filter";
         for (let off = 0; off < 240; off += 60) {
+          if (off > 0 || seen.length > 0) await new Promise((r) => setTimeout(r, 500));
           const r = await probe({ ...shape, offset: off });
           // Fail LOUD, not open. Without this an outage reads as a clean walk:
           // every request errors, jobs is [], the loop breaks at offset 0, the
@@ -8703,7 +8727,7 @@ Deno.serve(async (req) => {
         }
         const dupes = seen.length - new Set(seen).size;
         if (dupes > 0) findings.push({ case: `paging ${label}`, kind: "duplicate-rows", detail: `${dupes} of ${seen.length} repeated across pages` });
-      }));
+      }
 
       const slow = timings.filter((t) => t.ms > 15_000);
       const payload = {
@@ -8716,6 +8740,8 @@ Deno.serve(async (req) => {
         // the paced retry. clean stays false (the audit did not finish), but
         // "could not measure" and "measured broken" are different alarms.
         throttledCases: findings.filter((f) => f.kind === "throttled").length,
+        // Nothing measured broken, something not measured: the audit did not finish (L1-07).
+        incomplete: findings.length > 0 && findings.every((f) => f.kind === "throttled"),
         p95Ms: (() => {
           const xs = timings.map((t) => t.ms).sort((a, b) => a - b);
           return xs.length ? xs[Math.min(xs.length - 1, Math.floor(xs.length * 0.95))] : null;
@@ -10533,13 +10559,16 @@ Deno.serve(async (req) => {
           ? facet.map((c) => ({ ...c, open: typeof c.token === "string" && Object.prototype.hasOwnProperty.call(openMap, c.token) ? openMap[c.token] : 0 }))
           : facet,
       );
-      const hit = merged.filter((c) => String(c.name ?? "").toLowerCase().includes(q));
+      // Folded both sides: "dominos" finds Domino's, "chilis" Chili's, "att" AT&T (L8-08).
+      const fq = foldName(q);
+      if (!fq) return json({ companies: [] });
+      const hit = merged.filter((c) => foldName(String(c.name ?? "")).includes(fq));
       // A name that STARTS with what was typed is what the reader meant; the
       // servable count breaks ties beneath that (the raw facet count only when
       // there is no servable one to rank by, and it is never published).
       hit.sort((a, b) => {
-        const ap = String(a.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
-        const bp = String(b.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
+        const ap = foldName(String(a.name ?? "")).startsWith(fq) ? 0 : 1;
+        const bp = foldName(String(b.name ?? "")).startsWith(fq) ? 0 : 1;
         return ap - bp || (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0);
       });
       return json({
@@ -12309,6 +12338,8 @@ async function serveList(
               // A tail with digits or symbols is not a city and probing it is
               // a wasted round trip.
               if (!/^[\p{L}][\p{L}\s.'-]*$/u.test(place)) continue;
+              // A word that qualifies a place never names one: "pilot united" became pilots anywhere "United" appears (L8-09).
+              if (n === 1 && PLACE_QUALIFIERS.has(place.toLowerCase())) continue;
               splits.push({ head: words.slice(0, -n).join(" "), place });
             }
             if (splits.length > 0) {

@@ -26,12 +26,16 @@ const FN = readFileSync(
 describe("the filter audit distinguishes throttling from breakage", () => {
   it("retries once on 429, honouring Retry-After with a hard cap", () => {
     const probe = FN.slice(FN.indexOf("const probe = async (payload"), FN.indexOf("const cutoff", FN.indexOf("const probe = async (payload")));
-    expect(probe).toMatch(/if \(res\.status === 429\)/);
+    // Since .91 a refusal is a 429, a 503/546, or the runtime's THROWN
+    // RateLimitError (L1-07); run end to end in
+    // the-daily-audit-read-its-own-throttling-as-a-defect.test.ts.
+    expect(probe).toMatch(/a\.res \? \[429, 503, 546\]\.includes\(a\.res\.status\) : \/RateLimitError\|rate limit\/i/);
+    expect(probe).toMatch(/if \(refused\(a\)\) \{/);
     expect(probe).toMatch(/retry-after/);
     // Cap present: Math.min(..., 5_000). Without it a hostile/buggy header
     // parks the audit for its whole budget.
     expect(probe).toMatch(/Math\.min\(.*5_000\)/);
-    expect(probe).toMatch(/throttled: res\.status === 429/);
+    expect(probe).toMatch(/throttled: refused\(a\)/);
   });
 
   it("paces the burst instead of hammering its own gateway", () => {
