@@ -3826,7 +3826,7 @@
     "verdictGo": "Jetzt bewerben lohnt sich",
     "verdictCaution": "Mit Erwartungsmanagement bewerben",
     "verdictNeutral": "Was die Daten sagen",
-    "takedownsToday": "{{n}} Stellen heute besetzt oder geschlossen",
+    "takedownsLast24h": "{{n}} Stellen in den letzten 24 Stunden besetzt oder geschlossen",
     "recheckLine": "Median-Feed vor {{m}} Min. re-geprüft",
     "chipWeek": "Diese Woche",
     "chipRemote": "Remote",

@@ -3826,7 +3826,7 @@
     "verdictGo": "Worth applying now",
     "verdictCaution": "Apply with expectations",
     "verdictNeutral": "What the data says",
-    "takedownsToday": "{{n}} roles filled or closed today",
+    "takedownsLast24h": "{{n}} roles filled or closed in the last 24 hours",
     "recheckLine": "median feed re-checked {{m}} min ago",
     "chipWeek": "Posted this week",
     "chipRemote": "Remote",

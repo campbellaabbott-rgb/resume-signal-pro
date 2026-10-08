@@ -3826,7 +3826,7 @@
     "verdictGo": "Vale la pena aplicar ya",
     "verdictCaution": "Aplica con expectativas",
     "verdictNeutral": "Lo que dicen los datos",
-    "takedownsToday": "{{n}} puestos cubiertos o cerrados hoy",
+    "takedownsLast24h": "{{n}} puestos cubiertos o cerrados en las últimas 24 horas",
     "recheckLine": "feed mediano re-verificado hace {{m}} min",
     "chipWeek": "Esta semana",
     "chipRemote": "Remoto",

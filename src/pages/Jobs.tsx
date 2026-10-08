@@ -8334,7 +8334,7 @@ export default function Jobs() {
                     what closed, not just what is open. */}
                 {!!data?.trackedTotal && t("jobsPage.trackedCorpus", "{{n}} postings tracked including closed roles", { n: data.trackedTotal.toLocaleString() })}
                 {!!data?.trackedTotal && (takedownsToday !== null || recheckP50Min !== null) && " · "}
-                {takedownsToday !== null && t("jobsPage.takedownsToday", "{{n}} roles filled or closed today", { n: takedownsToday.toLocaleString() })}
+                {takedownsToday !== null && t("jobsPage.takedownsLast24h", "{{n}} roles filled or closed in the last 24 hours", { n: takedownsToday.toLocaleString() })}
                 {takedownsToday !== null && recheckP50Min !== null && " · "}
                 {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
               </span>

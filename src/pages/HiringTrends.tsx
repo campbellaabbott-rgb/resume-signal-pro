@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { WeeklyBars } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
-import { closureVerdict, heldClosureSentence, type ClosureRecord } from "@/lib/hiring-trends-trust";
+import { closureVerdict, heldClosureSentence, remoteShareOf, weekInsideFence, type ClosureRecord } from "@/lib/hiring-trends-trust";
 
 interface WeekRow {
   week_start: string;
@@ -35,6 +35,9 @@ interface WeekRow {
   /** Takedown records the collector flagged and the SQL excluded from `closed`.
    *  Absent on a row written before 20261002113617. */
   closed_flagged?: number;
+  /** The week's live rows alone -- the population entry_new and remote_new are
+   *  counted over. Absent on a row written before 20261008111000. */
+  live_new?: number;
 }
 interface CatTrend {
   category: string;
@@ -73,7 +76,9 @@ export default function HiringTrends() {
         const g = cache?.ghost_stats;
         if (g && typeof g === "object" && !Array.isArray(g)) setGhost(g as ClosureRecord);
         if (cache && Array.isArray(cache.hiring_trends) && (cache.hiring_trends as unknown[]).length > 0) {
-          setWeeks(cache.hiring_trends as WeekRow[]);
+          // A week whose Monday was past the 30-day fence when the cache was
+          // computed has lost its aged-out postings; it is not drawn.
+          setWeeks((cache.hiring_trends as WeekRow[]).filter((w) => weekInsideFence(w.week_start, cache.computed_at)));
           if (Array.isArray(cache.trending_categories)) setCats(cache.trending_categories as CatTrend[]);
           return;
         }
@@ -114,9 +119,14 @@ export default function HiringTrends() {
   // Last week's takedown figure, or the reason it is withheld. Never printed
   // unconditionally: the number that was is the incident in the header.
   const lastClosure = lastFull ? closureVerdict(lastFull, ghost) : null;
+  // Remote share over the live rows it was counted from (live_new), never over
+  // new_postings, which also counts the week's closed postings.
+  const lastRemoteShare = remoteShareOf(lastFull);
 
+  // week_start is a date-only UTC string: format it in UTC, or every week is
+  // labelled a day early west of Greenwich.
   const weekLabel = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
 
   return (
     <div className="min-h-screen bg-background">
@@ -162,9 +172,9 @@ export default function HiringTrends() {
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="text-2xl font-bold text-foreground">
-                {lastFull.new_postings > 0 ? `${Math.round((100 * lastFull.remote_new) / lastFull.new_postings)}%` : "—"}
+                {lastRemoteShare !== null ? `${Math.round(100 * lastRemoteShare)}%` : "—"}
               </div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">of last week's new roles are remote</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">of last week's new roles still on the board state remote</div>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="text-2xl font-bold text-foreground">

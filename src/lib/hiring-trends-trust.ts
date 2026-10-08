@@ -156,3 +156,40 @@ export function heldClosureSentence(
   }
   return "Withheld — the week's takedown count did not arrive as a number.";
 }
+
+/**
+ * WHETHER A WEEK CAN BE DRAWN AT ALL: its Monday must sit inside the 30-day
+ * freshness fence of the moment the rows were computed.
+ *
+ * The collector moves every posting dated more than FRESH_FENCE_DAYS ago to
+ * the exit ledger as aged_out, so a week reaching past the fence has lost its
+ * live postings for those days -- in neither the live count nor the closure
+ * count. /hiring-trends drew that half-week as its oldest bar from Wednesday
+ * to Sunday: 126,499 beside 235,529 / 265,495 / 267,124 (register L2-06).
+ * 20261008111000 stops returning such weeks; this applies the same rule to a
+ * cached row computed before it, judged against the cache's own stamp. A row
+ * with no stamp is drawn as the SQL returned it; an unparseable week is not.
+ */
+export const FRESH_FENCE_DAYS = 30;
+export function weekInsideFence(weekStart: unknown, computedAt: unknown): boolean {
+  if (typeof weekStart !== "string") return false;
+  const start = Date.parse(`${weekStart.slice(0, 10)}T00:00:00Z`);
+  if (!Number.isFinite(start)) return false;
+  const at = typeof computedAt === "string" ? Date.parse(computedAt) : NaN;
+  if (!Number.isFinite(at)) return true;
+  return start >= at - FRESH_FENCE_DAYS * 86_400_000;
+}
+
+/**
+ * THE REMOTE SHARE OF A WEEK, OVER THE POPULATION ITS COUNT WAS DRAWN FROM.
+ *
+ * remote_new counts the week's live rows; new_postings also counts the ones
+ * since closed. Dividing the first by the second printed 4% for a week whose
+ * like-for-like share was higher (register L2-21). live_new (20261008111000)
+ * is the live rows' own count. A row without it gets no share at all.
+ */
+export function remoteShareOf(week: { remote_new?: unknown; live_new?: unknown } | null | undefined): number | null {
+  const remote = count(week?.remote_new);
+  const live = count(week?.live_new);
+  return remote !== null && live !== null && live > 0 ? remote / live : null;
+}

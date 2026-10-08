@@ -3826,7 +3826,7 @@
     "verdictGo": "Ça vaut le coup de postuler maintenant",
     "verdictCaution": "Postulez en connaissance de cause",
     "verdictNeutral": "Ce que disent les données",
-    "takedownsToday": "{{n}} postes pourvus ou fermés aujourd'hui",
+    "takedownsLast24h": "{{n}} postes pourvus ou fermés au cours des dernières 24 heures",
     "recheckLine": "flux médian revérifié il y a {{m}} min",
     "chipWeek": "Cette semaine",
     "chipRemote": "Télétravail",

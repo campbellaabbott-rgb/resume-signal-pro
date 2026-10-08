@@ -3826,7 +3826,7 @@
     "verdictGo": "Vale aplicar agora",
     "verdictCaution": "Aplique com expectativas",
     "verdictNeutral": "O que os dados dizem",
-    "takedownsToday": "{{n}} vagas preenchidas ou fechadas hoje",
+    "takedownsLast24h": "{{n}} vagas preenchidas ou fechadas nas últimas 24 horas",
     "recheckLine": "feed mediano re-verificado há {{m}} min",
     "chipWeek": "Esta semana",
     "chipRemote": "Remoto",
