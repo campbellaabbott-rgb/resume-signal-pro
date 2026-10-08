@@ -14,8 +14,18 @@ for T in "Big Workday employers were missing many of their jobs" \
   if printf '%s' "$CL" | grep -qF "$T"; then echo "PASS  /changelog serves crawlers \"$T\""
   else echo "FAIL  /changelog does not serve \"$T\" (frontend not published, or the prerender did not rebuild)"; fi
 done
-if printf '%s' "$CL" | grep -qF "Correction, 5 October 2026"; then echo "PASS  /changelog carries the dated corrections to the two never-stored entries"
-else echo "FAIL  /changelog has no dated correction on freeAccounts / savedVersions"; fi
+# The corrected entries are from July, past the 30 the crawler page lists, so
+# they are judged in the English strings chunk the browser loads for the page.
+CL_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
+CL_CORR=0
+for CH in $(curl -s -m 30 "$SITE$CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+  CL_BODY=$(curl -s -m 30 "$SITE/assets/$CH")
+  printf '%s' "$CL_BODY" | grep -q "aSliceReadAsTheWholeSite" || continue
+  CL_CORR=$(printf '%s' "$CL_BODY" | grep -o "Correction, 5 October 2026" | wc -l | tr -d ' ')
+  break
+done
+if [ "$CL_CORR" -ge 2 ]; then echo "PASS  the changelog strings the browser loads carry both dated corrections ($CL_CORR)"
+else echo "FAIL  the changelog strings the browser loads carry $CL_CORR of the 2 dated corrections (freeAccounts, savedVersions)"; fi
 
 # Each rebuilt function names the build that carries the change.
 for PAIR in "send-scan-report|2026-10-06|1" "send-product-email|2026-10-06|1" "send-analysis-email|2026-10-06|1" "generate-resume-roast|2026-10-05|1"; do
