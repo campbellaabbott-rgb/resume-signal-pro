@@ -1015,10 +1015,16 @@ interface FieldCurve {
  * since it learned the cap. The client discarded the whole payload and printed
  * "no longer live — it was filled or taken down", which for an aged-out posting
  * is not merely vague, it is false.
+ *
+ * A THIRD FACT, unlisted: a bare 404 (the row is gone and no closure was
+ * recorded) or a 200 carrying only a description (the row is hidden while the
+ * employer still serves it). Neither is evidence the employer filled or took
+ * anything down, so neither may say so — it is "no longer listed HERE".
  */
 type DeadLink =
   | { kind: "closed"; title: string | null; company: string | null }
-  | { kind: "agedOut"; title: string | null; company: string | null; postedAt: string | null; capDays: number | null };
+  | { kind: "agedOut"; title: string | null; company: string | null; postedAt: string | null; capDays: number | null }
+  | { kind: "unlisted"; description: string | null };
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 // The year range is baked into each localized label (jobsPage.experience.*).
@@ -4610,6 +4616,18 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // (see the DeadLink type). Title present when we know the posting, so we can
   // offer a search for live siblings instead of a shrug.
   const [deadLink, setDeadLink] = useState<DeadLink | null>(null);
+  // The ?job= id whose read FAILED (not the server's answer about the posting):
+  // a retry is offered and nothing is claimed about the posting.
+  const [deepLinkFailed, setDeepLinkFailed] = useState<string | null>(null);
+  /** Take ?job= off the address once its banner is dismissed, so the dead or
+   *  failed link stops holding back desktop auto-select. */
+  const dropJobParam = useCallback(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (!p.has("job")) return;
+    p.delete("job");
+    const qs = p.toString();
+    window.history.replaceState({ rbBoard: boardId }, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  }, [boardId]);
 
   // GSC "Soft 404" (2026-08-07): a dead ?job= deep link renders this banner
   // under a head that says index,follow — the textbook soft-404 shape, and with
@@ -4626,21 +4644,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
     markDeadForRobots(t("jobsPage.deadLinkDocTitle", "Posting no longer available — Resume Booster"));
     return () => { clearDeadForRobots(); document.title = prevTitle; };
   }, [deadLink, t]);
-  useEffect(() => {
-    if (deepLinkTried.current) return;
-    const id = new URLSearchParams(window.location.search).get("job");
-    if (!id) { deepLinkTried.current = true; return; }
-    const inList = jobs.find((j) => j.id === id);
-    if (inList) {
-      deepLinkTried.current = true;
-      void openDetail(inList, "none");
-    } else if (!loading) {
-      // Loaded list doesn't contain it — the detail action resolves the row.
-      // Gated on the FIRST LOAD SETTLING, not on jobs.length: a shared link
-      // whose other filters happen to match nothing left the visitor with a
-      // generic zero-state and no answer about the posting they clicked.
-      deepLinkTried.current = true;
-      (async () => {
+  // Resolves a ?job= id the loaded list does not contain. A callback, so the
+  // failed-read banner's Try again runs the same path the mount did.
+  const resolveDeepLink = useCallback(async (id: string) => {
+        setDeepLinkFailed(null);
         // Owns the panel from here — stamp the sequence so no concurrent
         // openDetail can paint its description under this posting.
         const seq = ++detailSeq.current;
@@ -4656,12 +4663,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // daily allowance), a timeout or a 5xx says nothing about the posting,
           // and "no longer available" plus noindex on a LIVE posting is a false
           // claim to the reader and to every crawler that renders the URL. A
-          // 404 is the answer "no such posting"; anything else leaves the board
-          // as it is (the budget notice speaks for a refusal).
+          // 404 is the answer "no such posting HERE" — no closure was recorded,
+          // so it is unlisted, never "filled or taken down". A refusal leaves
+          // the board as it is (the budget notice speaks for it); any other
+          // failure offers a retry rather than silence.
           if (linkErr || !res) {
-            if (!(await readBoardBudgetRefusal(linkErr)) && httpStatusOf(linkErr) === 404) {
-              setDeadLink({ kind: "closed", title: null, company: null });
-            }
+            if (await readBoardBudgetRefusal(linkErr)) return;
+            if (httpStatusOf(linkErr) === 404) setDeadLink({ kind: "unlisted", description: null });
+            else setDeepLinkFailed(id);
             return;
           }
           if (res?.job) {
@@ -4692,13 +4701,34 @@ function JobsBoard({ boardId }: { boardId: string }) {
               company: res.closed.company ? decodeNameEntities(res.closed.company) : res.closed.company,
             });
           } else {
-            setDeadLink({ kind: "closed", title: null, company: null });
+            // {job:null, description}: the row is hidden or gone while the
+            // employer still serves the text. Unlisted here, and the text is
+            // offered rather than thrown away.
+            const desc = typeof res.description === "string" && res.description.trim() ? res.description : null;
+            setDeadLink({ kind: "unlisted", description: desc });
           }
         } catch {
           // A thrown failure is not the server's answer about the posting:
-          // no dead link, and no noindex on what may be a live posting.
+          // no dead link, no noindex on what may be a live posting — a retry.
+          if (seq === detailSeq.current) setDeepLinkFailed(id);
         }
-      })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (deepLinkTried.current) return;
+    const id = new URLSearchParams(window.location.search).get("job");
+    if (!id) { deepLinkTried.current = true; return; }
+    const inList = jobs.find((j) => j.id === id);
+    if (inList) {
+      deepLinkTried.current = true;
+      void openDetail(inList, "none");
+    } else if (!loading) {
+      // Loaded list doesn't contain it — the detail action resolves the row.
+      // Gated on the FIRST LOAD SETTLING, not on jobs.length: a shared link
+      // whose other filters happen to match nothing left the visitor with a
+      // generic zero-state and no answer about the posting they clicked.
+      deepLinkTried.current = true;
+      void resolveDeepLink(id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs, loading]);
@@ -10593,6 +10623,98 @@ function JobsBoard({ boardId }: { boardId: string }) {
           {budgetRefusal && !(error && errorKind === "budget") && (
             <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />
           )}
+          {/* Dead deep link. Say what it was (when we know) and offer live
+              siblings — a visible answer where there used to be silence.
+              ABOVE the loading/error/zero/list switch: inside the list branch
+              a dead link under filters that match nothing set noindex and the
+              title while the visitor saw only the generic zero-state.
+              Three kinds, three claims: closed (we watched it go), agedOut
+              (OUR cap, not the employer's) and unlisted (gone from THIS board
+              with no closure recorded). "Filled or taken down" is a claim
+              about the employer; for the other two it
+              is a claim we have no evidence for. */}
+          {deadLink && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/5 px-3.5 py-2.5 mb-4" data-dead-link={deadLink.kind}>
+              <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <div className="text-[13px] min-w-0">
+                {deadLink.kind === "agedOut" ? (
+                  <>
+                    <p className="text-foreground">
+                      {deadLink.title
+                        ? t("jobsPage.agedLinkKnown", "“{{title}}”{{at}} is no longer listed here — it aged out of this board's freshness window.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                        : t("jobsPage.agedLinkUnknown", "The posting in that link aged out of this board's freshness window, so it is no longer listed here.")}
+                    </p>
+                    {/* Each fact on its own gate, because each has its own
+                        basis. The cap comes from the server; the age is the
+                        COMPANY'S stated date and is absent when it stated none. */}
+                    <p className="text-muted-foreground mt-0.5">
+                      {daysAgo(deadLink.postedAt) !== null
+                        ? t("jobsPage.agedLinkPosted", "The company dated it {{days}} days ago on its own feed.", { days: daysAgo(deadLink.postedAt) })
+                        : t("jobsPage.agedLinkUndated", "This employer states no posting date, so the window ran from when we first saw it — our discovery date, not theirs.")}
+                      {typeof deadLink.capDays === "number" && (
+                        <> {t("jobsPage.agedLinkCap", "We only carry postings for {{cap}} days.", { cap: deadLink.capDays })}</>
+                      )}{" "}
+                      {t("jobsPage.agedLinkStillOpen", "Aging out is our rule, not the employer's — it may still be open on their own site.")}
+                    </p>
+                  </>
+                ) : deadLink.kind === "unlisted" ? (
+                  <>
+                    <p className="text-foreground">
+                      {t("jobsPage.unlistedLink", "The posting in that link is no longer listed on this board. That says nothing about the employer — it may still be open on their own site.")}
+                    </p>
+                    {deadLink.description && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-[13px] font-semibold text-primary">
+                          {t("jobsPage.unlistedLinkDesc", "Read the last description we held")}
+                        </summary>
+                        <div className="mt-1 text-muted-foreground whitespace-pre-line leading-6 max-w-[72ch]">
+                          {decodeEntities(deadLink.description).slice(0, 4000)}
+                        </div>
+                      </details>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-foreground">
+                    {deadLink.title
+                      ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                      : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
+                  </p>
+                )}
+                <div className="mt-1 flex flex-wrap gap-3">
+                  {deadLink.kind !== "unlisted" && deadLink.title && (
+                    <button
+                      type="button"
+                      className="text-[13px] font-semibold text-primary hover:underline"
+                      onClick={() => { setQ(deadLink.title ?? ""); setDeadLink(null); dropJobParam(); }}
+                    >
+                      {t("jobsPage.deadLinkSearch", "Find similar live roles")}
+                    </button>
+                  )}
+                  <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => { setDeadLink(null); dropJobParam(); }}>
+                    {t("jobsPage.deadLinkDismiss", "Dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* A ?job= link whose READ failed: no claim about the posting, no
+              noindex — a retry, where there used to be nothing at all. */}
+          {deepLinkFailed && !deadLink && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 mb-4" data-deep-link-failed="">
+              <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="text-[13px] min-w-0">
+                <p className="text-foreground">{t("jobsPage.deepLinkFailed", "We couldn't load the posting in that link just now.")}</p>
+                <div className="mt-1 flex flex-wrap gap-3">
+                  <button type="button" className="text-[13px] font-semibold text-primary hover:underline" onClick={() => void resolveDeepLink(deepLinkFailed)}>
+                    {t("jobsPage.retry", "Try again")}
+                  </button>
+                  <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => { setDeepLinkFailed(null); dropJobParam(); }}>
+                    {t("jobsPage.deadLinkDismiss", "Dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {loading ? (
             // Skeleton cards: the page keeps its shape while the first load
             // lands — no spinner void, no layout jump when cards arrive.
@@ -10682,63 +10804,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
             </div>
           ) : (
             <>
-              {/* Dead deep link. Say what it was (when we know) and offer live
-                  siblings — a visible answer where there used to be silence.
-                  The aged-out branch says something DIFFERENT from the closed
-                  branch on purpose: "filled or taken down" is a claim about the
-                  employer, and for a posting that merely passed our own cap it
-                  is a claim we have no evidence for. */}
-              {deadLink && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/5 px-3.5 py-2.5 mb-4">
-                  <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                  <div className="text-[13px] min-w-0">
-                    {deadLink.kind === "agedOut" ? (
-                      <>
-                        <p className="text-foreground">
-                          {deadLink.title
-                            ? t("jobsPage.agedLinkKnown", "“{{title}}”{{at}} is no longer listed here — it aged out of this board's freshness window.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
-                            : t("jobsPage.agedLinkUnknown", "The posting in that link aged out of this board's freshness window, so it is no longer listed here.")}
-                        </p>
-                        {/* Each fact on its own gate, because each has its own
-                            basis. The cap comes from the server rather than a
-                            client-side constant that could drift away from it;
-                            the age is the COMPANY'S stated date and is simply
-                            absent when the company stated none — first_seen has
-                            never been a posting age on this board. */}
-                        <p className="text-muted-foreground mt-0.5">
-                          {daysAgo(deadLink.postedAt) !== null
-                            ? t("jobsPage.agedLinkPosted", "The company dated it {{days}} days ago on its own feed.", { days: daysAgo(deadLink.postedAt) })
-                            : t("jobsPage.agedLinkUndated", "This employer states no posting date, so the window ran from when we first saw it — our discovery date, not theirs.")}
-                          {typeof deadLink.capDays === "number" && (
-                            <> {t("jobsPage.agedLinkCap", "We only carry postings for {{cap}} days.", { cap: deadLink.capDays })}</>
-                          )}{" "}
-                          {t("jobsPage.agedLinkStillOpen", "Aging out is our rule, not the employer's — it may still be open on their own site.")}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-foreground">
-                        {deadLink.title
-                          ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
-                          : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
-                      </p>
-                    )}
-                    <div className="mt-1 flex flex-wrap gap-3">
-                      {deadLink.title && (
-                        <button
-                          type="button"
-                          className="text-[13px] font-semibold text-primary hover:underline"
-                          onClick={() => { setQ(deadLink.title ?? ""); setDeadLink(null); }}
-                        >
-                          {t("jobsPage.deadLinkSearch", "Find similar live roles")}
-                        </button>
-                      )}
-                      <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => setDeadLink(null)}>
-                        {t("jobsPage.deadLinkDismiss", "Dismiss")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
               {disclosure && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 mb-4">
                   <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
