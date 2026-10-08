@@ -1814,13 +1814,19 @@ function mergeCompanyOptions(
   // FOLDED, both sides: "dominos" found nothing although Domino's had 21,531
   // open roles, because "domino's".includes("dominos") is false. foldName is
   // the server's own rule (accents, case and punctuation dropped).
+  // The fold keeps only [a-z0-9]: a query in another script (or punctuation
+  // alone) folds to "", which every name "includes". Such a query matches on
+  // its own lower-cased spelling instead, so it finds names that contain it.
   const q = foldName(query);
+  const raw = query.trim().toLowerCase();
+  const matches = (name: string) =>
+    q ? foldName(name).includes(q) || name.toLowerCase().includes(raw) : name.toLowerCase().includes(raw);
   // `tokens` travels with each option because `open` is the SUM across a
   // merged employer's sub-boards — see scopeTokensOf below.
   const out: Array<{ token: string; name: string; open?: number; tokens?: string[] }> = [];
   const seen = new Set<string>();
   for (const c of head) {
-    if (!c?.name || !foldName(c.name).includes(q) || seen.has(c.token)) continue;
+    if (!c?.name || !matches(c.name) || seen.has(c.token)) continue;
     seen.add(c.token); out.push(c);
   }
   for (const c of remote) {

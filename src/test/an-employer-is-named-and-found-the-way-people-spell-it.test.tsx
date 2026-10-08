@@ -47,6 +47,7 @@ const HEAD = [
   { token: "dominos", name: "Domino's", open: 21531 },
   { token: "chilis", name: "Chili's", open: 1094 },
   { token: "acme", name: "Acme", open: 900 },
+  { token: "tatamotors", name: "टाटा मोटर्स", open: 600 },
 ];
 const row = (i: number, token: string, company: string) => ({
   id: `workday:${token}:${1000 + i}`, token, company, title: `Analyst ${i}`,
@@ -111,5 +112,25 @@ describe("an employer is named, and found, the way people spell it", () => {
     fireEvent.change(box, { target: { value: "acm" } });
     await waitFor(() => expect(screen.getAllByRole("option").map((o) => o.textContent ?? "").join("|")).toContain("Acme"), SLOW);
     expect(screen.getAllByRole("option").map((o) => o.textContent ?? "").join("|")).not.toContain("Domino's");
+  });
+
+  // The fold keeps only [a-z0-9], so a Devanagari, CJK or Cyrillic query --
+  // or one of punctuation alone -- folded to "" and "".includes("") matched
+  // every employer: the dropdown offered the twelve biggest names as matches
+  // for a query none of them contain, and a non-Latin name matched nothing.
+  it("a query the fold empties matches only names that contain it", async () => {
+    window.history.replaceState({}, "", "/jobs");
+    render(<MemoryRouter><Jobs /></MemoryRouter>);
+    await waitFor(() => expect(document.body.textContent).toContain("Analyst 0"), SLOW);
+    const box = screen.getByLabelText("Employer") as HTMLInputElement;
+    // The typeahead's own listbox, not every <option> on the page.
+    const options = () => Array.from(document.querySelectorAll('#company-typeahead-list [role="option"]'))
+      .map((o) => o.textContent ?? "").join("|");
+    fireEvent.focus(box);
+    fireEvent.change(box, { target: { value: "टाटा" } });
+    await waitFor(() => expect(options()).toContain("टाटा मोटर्स"), SLOW);
+    expect(options(), "a Devanagari query listed employers that do not contain it").not.toMatch(/Domino's|Chili's|Acme/);
+    fireEvent.change(box, { target: { value: "&" } });
+    await waitFor(() => expect(options(), "a punctuation-only query listed every employer").not.toMatch(/Domino's|Chili's|Acme|टाटा/), SLOW);
   });
 });
