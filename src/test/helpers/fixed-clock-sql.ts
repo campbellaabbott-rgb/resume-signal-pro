@@ -19,7 +19,7 @@ export const migFiles = () => readdirSync(MIGRATIONS).filter((f) => f.endsWith("
 export function definitionOf(sql: string, fn: string): string {
   const m = new RegExp(`CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${fn}\\s*\\(`, "i").exec(sql);
   if (!m) throw new Error(`no definition of ${fn}`);
-  const tag = /\bAS\s+(\$[A-Za-z_]*\$)/.exec(sql.slice(m.index));
+  const tag = /\bAS\s+(\$[A-Za-z_]*\$)/i.exec(sql.slice(m.index));
   if (!tag) throw new Error(`no body opener for ${fn}`);
   const open = m.index + tag.index + tag[0].indexOf(tag[1]);
   const close = sql.indexOf(tag[1], open + tag[1].length);
