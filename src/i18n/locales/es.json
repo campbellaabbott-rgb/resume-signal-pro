@@ -5185,7 +5185,7 @@
     "noDate": "Este empleador no indica fecha de publicación, así que esta página tampoco la indica.",
     "payLabel": "Salario",
     "payValue": "{{salary}} — las palabras del propio empleador, sin convertir ni estimar",
-    "noPay": "Este empleador no indica salario en esta vacante.",
+    "noPayFound": "No encontramos ninguna cifra salarial en esta vacante. Es nuestra lectura, no una declaración del empleador: la descripción aún podría indicar una.",
     "applyCta": "Postúlate en el sitio de {{company}}",
     "applyCtaPlain": "Postúlate en el sitio del propio empleador",
     "applyNote": "La postulación ocurre en el sistema de selección del propio empleador. Este tablero nunca republica una vacante ni se interpone entre tú y la empresa.",

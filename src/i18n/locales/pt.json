@@ -5185,7 +5185,7 @@
     "noDate": "Este empregador não indica data de publicação, por isso esta página também não indica nenhuma.",
     "payLabel": "Remuneração",
     "payValue": "{{salary}} — as palavras do próprio empregador, sem conversão nem estimativa",
-    "noPay": "Este empregador não indica remuneração nesta vaga.",
+    "noPayFound": "Não encontramos nenhum valor de remuneração nesta vaga. É a nossa leitura, não uma declaração do empregador — a descrição ainda pode indicar um.",
     "applyCta": "Candidate-se no site da {{company}}",
     "applyCtaPlain": "Candidate-se no site do próprio empregador",
     "applyNote": "A candidatura decorre no sistema de recrutamento do próprio empregador. Este quadro nunca republica uma vaga nem se coloca entre si e o empregador.",

@@ -5185,7 +5185,7 @@
     "noDate": "Walang sinasabing petsa ng pag-post ang employer na ito, kaya wala ring sinasabing petsa ang pahinang ito.",
     "payLabel": "Sahod",
     "payValue": "{{salary}} — mismong pananalita ng employer, hindi kino-convert o tinatantiya",
-    "noPay": "Walang sinasabing sahod ang employer na ito sa posting na ito.",
+    "noPayFound": "Wala kaming nakitang halaga ng sahod sa posting na ito. Iyan ang aming pagbasa, hindi pahayag ng employer — maaaring may nakasaad pa rin sa paglalarawan.",
     "applyCta": "Mag-apply sa sariling site ng {{company}}",
     "applyCtaPlain": "Mag-apply sa sariling site ng employer",
     "applyNote": "Ang aplikasyon ay nangyayari sa sariling hiring system ng employer. Hindi kailanman muling ipina-post ng board na ito ang isang trabaho at hindi ito pumapagitna sa inyo ng employer.",

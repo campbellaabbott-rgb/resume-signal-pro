@@ -5185,7 +5185,7 @@
     "noDate": "Cet employeur n'indique aucune date de publication, cette page n'en indique donc aucune.",
     "payLabel": "Rémunération",
     "payValue": "{{salary}} — les mots de l'employeur, sans conversion ni estimation",
-    "noPay": "Cet employeur n'indique aucune rémunération sur cette offre.",
+    "noPayFound": "Nous n'avons trouvé aucun montant de rémunération sur cette offre. C'est notre lecture, pas une déclaration de l'employeur — la description peut tout de même en indiquer un.",
     "applyCta": "Postuler sur le site de {{company}}",
     "applyCtaPlain": "Postuler sur le site de l'employeur",
     "applyNote": "La candidature se fait sur le système de recrutement de l'employeur. Ce tableau ne republie jamais une offre et ne s'interpose jamais entre vous et l'employeur.",

@@ -5185,7 +5185,7 @@
     "noDate": "Deze werkgever noemt geen plaatsingsdatum, dus noemt deze pagina er ook geen.",
     "payLabel": "Salaris",
     "payValue": "{{salary}} — de eigen woorden van de werkgever, niet omgerekend en niet geschat",
-    "noPay": "Deze werkgever noemt geen salaris bij deze vacature.",
+    "noPayFound": "We vonden geen salarisbedrag bij deze vacature. Dat is onze lezing, geen uitspraak van de werkgever — de beschrijving kan er toch een noemen.",
     "applyCta": "Solliciteer op de eigen site van {{company}}",
     "applyCtaPlain": "Solliciteer op de eigen site van de werkgever",
     "applyNote": "De sollicitatie verloopt via het eigen wervingssysteem van de werkgever. Dit bord plaatst een vacature nooit opnieuw en gaat nooit tussen jou en de werkgever staan.",

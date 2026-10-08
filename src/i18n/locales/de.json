@@ -5185,7 +5185,7 @@
     "noDate": "Dieser Arbeitgeber nennt kein Veröffentlichungsdatum, deshalb nennt diese Seite auch keines.",
     "payLabel": "Vergütung",
     "payValue": "{{salary}} — die Angabe des Arbeitgebers im Wortlaut, weder umgerechnet noch geschätzt",
-    "noPay": "Dieser Arbeitgeber nennt in dieser Anzeige keine Vergütung.",
+    "noPayFound": "Wir haben in dieser Anzeige keine Vergütungsangabe gefunden. Das ist unsere Auslesung, keine Aussage des Arbeitgebers — die Beschreibung kann trotzdem eine nennen.",
     "applyCta": "Auf der eigenen Seite von {{company}} bewerben",
     "applyCtaPlain": "Auf der eigenen Seite des Arbeitgebers bewerben",
     "applyNote": "Die Bewerbung läuft über das eigene Bewerbersystem des Arbeitgebers. Dieses Board veröffentlicht keine Stelle erneut und schaltet sich nie zwischen Sie und den Arbeitgeber.",

@@ -22,8 +22,8 @@
  * that has passed the board's serving window, is not shown as live: the page
  * says it is gone, marks the URL unindexable, and carries no job markup at all
  * — one of the sanctioned ways to retract a posting. No field is invented to
- * fill the schema; an unstated salary is an absent property and the page says
- * the employer stated none.
+ * fill the schema; a salary we could not read is an absent property, and the
+ * page says WE found none — never that the employer stated none.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,7 +35,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
-import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal, type BoardBudgetRefusal } from "@/lib/board-budget";
+import { boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, type BoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import {
   BOARD_FRESH_WINDOW_DAYS,
@@ -120,6 +120,13 @@ export default function JobPosting() {
       if (res.error || res.data == null) {
         const refused = await readBoardBudgetRefusal(res.error);
         if (refused) { refusedWith(refused); return; }
+        // A 404 IS THE BOARD'S ANSWER, NOT A FAILURE: "Posting not found (it
+        // may have closed)". Retrying it was a second counted read, and
+        // rendering it as a retryable "couldn't load" kept a soft 404 indexed.
+        if (httpStatusOf(res.error) === 404) {
+          if (seq.current === mine) setState("gone");
+          return;
+        }
         await new Promise((r) => setTimeout(r, 1200));
         res = await invokeJobBoard({ body: { action: "detail", id } });
       }
@@ -128,7 +135,7 @@ export default function JobPosting() {
       if (res.error || !data) {
         const refused = await readBoardBudgetRefusal(res.error);
         if (refused) { refusedWith(refused); return; }
-        setState("failed");
+        setState(httpStatusOf(res.error) === 404 ? "gone" : "failed");
         return;
       }
       const row = data.job ?? null;
@@ -161,16 +168,24 @@ export default function JobPosting() {
     () => (live && job ? postingJsonLd(job, description, { site: SITE }) : null),
     [live, job, description],
   );
+  //
+  // ONLY "GONE" RETRACTS. While loading, after a failed read and under a
+  // budget refusal the posting may well be live, and clearing the baked block
+  // then told every early renderer it was not — so the head is left exactly
+  // as the bake wrote it until there is an answer either way.
   useEffect(() => {
-    clearJobMarkup();
+    if (state === "gone") { clearJobMarkup(); return; }
     if (!ld) return;
+    clearJobMarkup();
     const tag = document.createElement("script");
     tag.type = "application/ld+json";
     tag.id = LD_TAG_ID;
     tag.textContent = JSON.stringify(ld);
     document.head.appendChild(tag);
     return () => { clearJobMarkup(); };
-  }, [ld]);
+  }, [ld, state]);
+  // Leaving the page takes any posting markup with it, baked or ours.
+  useEffect(() => () => { clearJobMarkup(); }, []);
 
   // A URL whose posting is gone must not stay indexable. Refusing to index is
   // the only per-URL expiry signal a statically hosted SPA can emit — there is
@@ -208,6 +223,11 @@ export default function JobPosting() {
   const path = postingPagePath(id) ?? "/jobs";
   const company = (job?.company ?? "").trim();
   const heading = live && job?.title ? job.title : t("jobPostingPage.genericHeading", "Job posting");
+  // THE GONE COPY IS FOR "GONE" ONLY. It used to cover every state that was
+  // not ready, so a renderer that snapshotted while loading, after a transient
+  // failure or under a budget refusal read "This posting is no longer live" as
+  // the title of a live posting. Until there is an answer the page renders no
+  // head of its own and the baked one stands.
   const seoTitle = live && job ? postingPageTitle(job) : t("jobPostingPage.goneTitle", "This posting is no longer live");
   const seoDescription = live && job
     ? postingPageDescription(job)
@@ -220,7 +240,7 @@ export default function JobPosting() {
     <>
       {/* The crawl directive for a gone posting is set on the tag the bake
           already wrote (see the effect above), never as a second one here. */}
-      <SEO title={seoTitle} description={seoDescription} path={path} />
+      {(live || state === "gone") && <SEO title={seoTitle} description={seoDescription} path={path} />}
       <Header />
       <main className="min-h-screen pt-24 pb-20">
         <div className="container max-w-3xl">
@@ -321,7 +341,10 @@ export default function JobPosting() {
                           defaultValue: "{{salary}} — the employer's own words, not converted or estimated",
                           salary: job.salary,
                         })
-                      : t("jobPostingPage.noPay", "This employer states no pay on this posting.")}
+                      // OUR READING, NOT THE EMPLOYER'S STATEMENT: the pay
+                      // reader misses forms like "Salary Range: $110,000-140,000",
+                      // so an empty field is not "states no pay".
+                      : t("jobPostingPage.noPayFound", "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one.")}
                   </dd>
                 </div>
               </dl>

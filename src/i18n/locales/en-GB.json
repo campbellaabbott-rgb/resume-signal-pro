@@ -5185,7 +5185,7 @@
     "noDate": "This employer states no posting date, so this page states none.",
     "payLabel": "Pay",
     "payValue": "{{salary}} — the employer's own words, not converted or estimated",
-    "noPay": "This employer states no pay on this posting.",
+    "noPayFound": "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one.",
     "applyCta": "Apply on {{company}}'s own site",
     "applyCtaPlain": "Apply on the employer's own site",
     "applyNote": "The application happens on the employer's own hiring system. This board never reposts a vacancy or stands between you and them.",
