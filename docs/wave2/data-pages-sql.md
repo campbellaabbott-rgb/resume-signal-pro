@@ -74,6 +74,11 @@ in all nine locales.
   1,799 roles that stayed down and 403 that came back. Some employers will
   lose "Actively hiring" (more roles came back than stayed down); none gains
   it from this change alone.
+- **Two pages can print two filled-role counts for one employer.** On a
+  board with dark batches the employer page counts a role that flapped and
+  then came down for real; /explore and the hiring index (the leaderboard)
+  still leave it out, so they can print fewer. Both functions' descriptions
+  now say so; aligning them is a separate change (see "For the integrator").
 - **The fill curves stop double-counting postings that survived a dark
   batch.** A doubted closure (suspect or dark proxy) and the age-out its bad
   batch logged now leave the risk set when the same posting_id was seen again
@@ -215,6 +220,25 @@ a row (the field-pool cache key is withheld, and is rewritten by the next
   named the two fill curves; the partition is the layoff page's filed-vs-control
   comparison, and applying the same rule there is a re-issue of that function
   (and a move of the pins in a-day-thirty-share-needs-thirty-days-of-reading-in-full).
+- **The employer page and the leaderboard now publish different role counts
+  for a board with dark batches, by one rule, and both contracts say so.**
+  `get_company_fill_curve` removes a doubted closure whose posting was seen
+  again before it counts roles; `get_actively_hiring_companies` (unchanged,
+  20260909201000) still drops a role on ANY doubted closure in the window. A
+  role that flapped in a dark batch and then came down for real is in
+  `filled_roles_90d` on the employer page and in neither of
+  `filled_roles_ceiling` / `relisted_roles_floor` on /explore and the hiring
+  index, so those pages can print fewer filled roles for the same employer
+  (largest on Workday tenants such as `jj~wd5~JJ`). Migration 1 corrects the
+  curve's COMMENT (it said "built as get_actively_hiring_companies builds")
+  and appends one sentence to the leaderboard's COMMENT (which said the two
+  "cannot publish different fill counts"); executed in
+  `src/test/two-role-counts-built-differently-claimed-to-be-built-alike.test.ts`.
+  Aligning them is a re-issue of the leaderboard — either apply the
+  seen-again rule there, or have it publish the curve's role counts for the
+  ≤ 200 tokens it already measures — and was not done here: that function
+  already answers 500 at its 25 s header when called live (see "What to
+  measure"), so it wants its own change and its own measurement.
 - **agent-mcp needs no change**: `employer_hiring_record` reads
   `get_company_hiring_health`, and its basis already says `closed_90d` counts
   takedown events, not distinct postings.

@@ -1290,15 +1290,24 @@ COMMENT ON FUNCTION public.get_company_fill_curve(text[]) IS
   'censored at its instant, as before. fills_90d, relists_90d and ageouts_90d '
   'never counted a doubted row and do not move; dated_n, undated_n and the '
   'chains do. ROLES, NOT EVENTS (20261008110000): filled_roles_90d counts '
-  'distinct posting_ids among the admitted closures of the window that closed '
-  'exactly once, were not superseded and are not serving again today -- a '
-  'CEILING, because a re-list under a new id is invisible; relisted_roles_90d '
-  'counts the ones that closed more than once, were superseded or are serving '
-  'again today -- a FLOOR. A role with any doubted admitted closure is in '
-  'neither. Built as get_actively_hiring_companies builds filled_roles_ceiling '
-  'and relisted_roles_floor. fills_90d and relists_90d are a count of closure '
-  'EVENTS and must never be printed as roles taken down for good: one role '
-  'that closed twice is two of them.';
+  'distinct posting_ids among the closures of the window the risk set keeps '
+  'that closed exactly once, were not superseded and are not served on their '
+  'board today -- a CEILING, because a re-list under a new id is invisible; '
+  'relisted_roles_90d counts the ones that closed more than once, were '
+  'superseded or are served again today -- a FLOOR. A role whose doubted '
+  'closure was never seen again is in neither. NOT THE LEADERBOARD''S COUNT, '
+  'AND BY ONE RULE: the three witnesses and the drop from both sides are '
+  'get_actively_hiring_companies'' (filled_roles_ceiling, '
+  'relisted_roles_floor), but that function drops a role on ANY doubted '
+  'closure in the window, seen again or not, while this one first removes a '
+  'doubted closure whose posting was seen again, so a role that flapped in a '
+  'dark batch and then came down for real is filled here and in neither count '
+  'there. On a board with dark batches the employer page can therefore print '
+  'more filled roles than the leaderboard pages print as '
+  'filled_roles_ceiling for the same employer; elsewhere the two agree '
+  '(that function also skips closures with no company name). fills_90d and '
+  'relists_90d are a count of closure EVENTS and must never be printed as '
+  'roles taken down for good: one role that closed twice is two of them.';
 -- THE REACHABLE SET IS STATED, NOT INHERITED. The catalogue drop above
 -- discarded every grant, and a freshly created function carries EXECUTE TO
 -- PUBLIC by default -- so a bare GRANT names three roles on top of everyone.
@@ -1310,6 +1319,41 @@ REVOKE ALL ON FUNCTION public.get_company_fill_curve(text[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.get_company_fill_curve(text[]) FROM anon;
 REVOKE ALL ON FUNCTION public.get_company_fill_curve(text[]) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.get_company_fill_curve(text[]) TO anon, authenticated, service_role;
+
+-- THE LEADERBOARD'S CONTRACT, CORRECTED WHERE THIS FILE MAKES IT FALSE.
+-- get_actively_hiring_companies' COMMENT (20260909201000) says its suspect
+-- and feed-dark exclusion matches this function's "so the two cannot publish
+-- different fill counts for one employer". Once this function's role counts
+-- drop a doubted closure whose posting was seen again and that one does not,
+-- they can. The sentence is appended, not the whole comment restated, and only
+-- once; a database without the leaderboard (the guards' pglite subsets) skips.
+DO $$
+DECLARE c text;
+BEGIN
+  IF to_regprocedure('public.get_actively_hiring_companies(integer)') IS NULL THEN
+    RAISE NOTICE 'get_actively_hiring_companies absent -- no contract to correct';
+    RETURN;
+  END IF;
+  c := COALESCE(obj_description('public.get_actively_hiring_companies(integer)'::regprocedure, 'pg_proc'), '');
+  IF position('SEEN AGAIN (20261008110000)' IN c) = 0 THEN
+    EXECUTE format('COMMENT ON FUNCTION public.get_actively_hiring_companies(int) IS %L',
+      c || ' SEEN AGAIN (20261008110000): the sentence above no longer holds for '
+        || 'the role counts. get_company_fill_curve now removes a doubted closure '
+        || 'whose posting was seen again (stored, closed or exited again later) '
+        || 'before it counts roles; this function still drops a role on ANY '
+        || 'doubted closure in the window. A role that flapped in a dark batch and '
+        || 'then came down for real is therefore filled in that function''s '
+        || 'filled_roles_90d and in neither of filled_roles_ceiling and '
+        || 'relisted_roles_floor here, so on a board with dark batches this '
+        || 'function can publish fewer filled roles than the employer page does. '
+        || 'Elsewhere the two apply the same three witnesses to the same window '
+        || '(this function also skips closures with no company name).');
+  END IF;
+  IF position('SEEN AGAIN (20261008110000)' IN
+       COALESCE(obj_description('public.get_actively_hiring_companies(integer)'::regprocedure, 'pg_proc'), '')) = 0 THEN
+    RAISE EXCEPTION 'get_actively_hiring_companies: its contract still says the two cannot publish different fill counts';
+  END IF;
+END $$;
 
 -- Self-verifying: exactly one definition must remain and it must carry the
 -- new columns; a migration whose purpose is a new shape must not be able to
