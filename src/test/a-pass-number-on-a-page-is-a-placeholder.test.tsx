@@ -490,7 +490,10 @@ describe("the consent route /oauth/consent", () => {
     mount(<OAuthConsent />, "/oauth/consent?authorization_id=auth_1");
     await screen.findByText(/Claude is asking/);
     expect(screen.getByText(/It will see: email/)).toBeInTheDocument();
-    expect(screen.getByText(/return to claude\.ai/)).toBeInTheDocument();
+    // The client's self-declared homepage is never named as where access goes
+    // (S8-081); with no pending redirect in the details, no host is named.
+    expect(screen.queryByText(/claude\.ai/)).toBeNull();
+    expect(screen.getByText(/does not say where access will go/)).toBeInTheDocument();
     // Consent is never gated on purchase: the strip informs, Allow is enabled.
     expect(await screen.findByText(new RegExp(`Pass not started · ${PASS.applications} applications`))).toBeInTheDocument();
     const allow = screen.getByRole("button", { name: /allow/i });
