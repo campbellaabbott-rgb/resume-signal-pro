@@ -35,5 +35,20 @@ export const ADMIN_OPS_RPCS: ReadonlySet<string> = new Set([
   "get_webhook_metrics_hourly",
 ]);
 
+/**
+ * The owner's catalogue readers: service-role-only INVOKER functions that read
+ * the database's own catalogue, asked for with curl and the ADMIN_API_KEY
+ * rather than by a dashboard panel. A separate list because they are not
+ * functions the census closed -- they were never client-callable -- and no
+ * dashboard calls them.
+ *
+ *   client_callable_unlisted_names (20261008141000): the signatures behind
+ *   client_callable_census()'s unlisted_client_callable count, which the
+ *   census gives the publishable key as a number only.
+ */
+export const ADMIN_CATALOGUE_RPCS: ReadonlySet<string> = new Set([
+  "client_callable_unlisted_names",
+]);
+
 /** Argument names the readers above take; anything else is refused. */
 export const ARG_NAME = /^p_[a-z_]{1,40}$/;
