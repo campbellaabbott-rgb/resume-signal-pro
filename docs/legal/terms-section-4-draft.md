@@ -104,21 +104,27 @@ Measured on `acd64c4c`:
 > Deliverables are generated and delivered digitally, normally straight after
 > payment. Scan credits are sold in packs. One credit is used by one résumé
 > scan; credits do not expire, have no cash value, and cannot be transferred
-> or exchanged. Where a product's page makes a promise specific to that
-> product (for example, the 30-day re-optimisation offered with ATS Defense
-> Complete), that promise is part of these Terms for that purchase. If you
-> are not satisfied with a paid tool's output, contact us (for example by
-> replying to your purchase receipt) and we will regenerate the deliverable
-> free of charge.
+> or exchanged. If you are not satisfied with a paid tool's output, contact
+> us (for example by replying to your purchase receipt) and we will
+> regenerate the deliverable free of charge.
 
 - Source: products `src/config/products.ts:9-213`. Scan credits
   `:24-36` ("Never expires" `:34`), `create-scan-pack-checkout/index.ts:22`
-  (`PRICE_PER_CREDIT_CENTS`) and `:28-29` (`MIN_CREDITS`/`MAX_CREDITS`). ATS
-  Defense guarantee `products.ts:125`. The regeneration remedy is the owner
-  decision of 2026-07-10 (commit `8193b4b8`), already live at
-  `Terms.tsx:60` and `en.json:2804`.
+  (`PRICE_PER_CREDIT_CENTS`) and `:28-29` (`MIN_CREDITS`/`MAX_CREDITS`). The
+  regeneration remedy is the owner decision of 2026-07-10 (commit
+  `8193b4b8`), already live at `Terms.tsx:60` and `en.json:2804`.
 - Code status: **ENFORCED** as copy. Whether every deliverable is actually
   delivered is a separate matter (Q-O6).
+- **Not incorporated on purpose:** this clause does not make product-page
+  bullets part of the Terms, because at least two have no code behind them.
+  "Priority processing" (Premium Resume Package, `products.ts:107`) has no
+  queue or priority anywhere in `generate-premium-package`,
+  `generate-premium-package-stream` or `_shared`. The "30-day guarantee" /
+  "30-day re-optimize guarantee" (ATS Defense Complete, `products.ts:115`,
+  `:125`) appears nowhere in `src` or `supabase/functions` except those two
+  strings. Leaving the sentence out may not be enough on its own (Q-C12),
+  so implement, honour by hand, or remove each such bullet before the new
+  section 4 goes live (Q-O9).
 
 ### 4.3 Subscription plans: Pro and the Apply Agent plan
 
@@ -176,10 +182,14 @@ Measured on `acd64c4c`:
 - Code status: **ENFORCED** for (a)-(d). **DASHBOARD** for (e): whether the
   portal cancels at the period end or at once, and whether it prorates, is a
   portal setting (A-5). **NOT YET** for (e) Option B (L6-30). **NOT YET** for
-  (f): no price-change email exists. Changing `AGENT_PRICE_CENTS` would also
-  de-entitle every existing Agent subscriber, because entitlement matches on
-  amount (`_shared/agent.ts:50-74`). A price change is therefore an
-  engineering task as well as a notice.
+  (f): no price-change mailer exists, and (f) is a firm "we will email you",
+  not a "we may". Before adoption either a mailer ships, or the owner
+  commits to sending the notice by hand to every subscriber (from Stripe's
+  customer list) before any new price applies (Q-O10). Changing
+  `AGENT_PRICE_CENTS` would also de-entitle every existing Agent
+  subscriber, because entitlement matches on amount
+  (`_shared/agent.ts:50-74`). A price change is therefore an engineering
+  task as well as a notice.
 
 ### 4.4 The Apply Agent plan's free trial
 
@@ -200,7 +210,7 @@ Measured on `acd64c4c`:
 > and scan credits that a paid plan includes are not issued during the trial;
 > they become available with the first paid period. During the trial, the
 > daily number of applications the agent may send for you is lower than on
-> the paid plan, and your account shows the limit.
+> the paid plan.
 >
 > **(d) Cancelling during the trial.** If you cancel during the trial you are
 > not charged. [Owner: you keep the trial until its scheduled end / the
@@ -212,8 +222,14 @@ Measured on `acd64c4c`:
   applies (A-4). Trial copy: `en.json:4725` ("7 mornings free, then $99/month
   ... Cancel anytime."). Lower send limit during the trial:
   `_shared/agent-entitlement.ts:215-222` (`TIER_SEND_CEILING`, trialing vs
-  active). No consumables during a trial: `_shared/pro-standing.ts` on branch
-  `wave2/entitlements`, commit `550f9e2b` (not yet on main).
+  active), applied only at `apply-agent/index.ts:494` (`effectiveDailyCap`).
+  No surface shows that limit: the Apply profile accepts 1 to 20 a day with
+  no ceiling shown (`src/components/account/ApplyProfilePanel.tsx:594`), so
+  (c) promises no display. Batch prep: `generate-apply-package/index.ts:66`
+  (`PRO_ACTIVE_ONLY`, `active` only), used at `:183`, answers 402 at
+  `:189-193`. No consumables during a trial, and batch prep for a live
+  trial: `_shared/pro-standing.ts` on branch `wave2/entitlements`, commit
+  `550f9e2b` (not yet on main).
 - Code status:
   - (a) **ENFORCED**, plus **DASHBOARD** for the card collection.
   - (b) **NOT YET** (L6-29). Every Agent checkout that passes
@@ -222,10 +238,29 @@ Measured on `acd64c4c`:
     (`subscription-standing.ts:141-145`). Until L6-29 ships, (b) works only as
     a right we exercise by hand: refuse, or bill from day one. The wording
     above does not promise that the refusal is automatic.
-  - (c) **PARTIAL**. The lower send limit is enforced on main. "No
-    consumables" is enforced only once `wave2/entitlements` is merged and
-    deployed. On main today, a trialing plan counts as Pro for the whole paid
-    catalogue (L6-29).
+  - (c) **PARTIAL**. The lower send limit is enforced on main. Two parts are
+    enforced only once `wave2/entitlements` (`550f9e2b`) is merged and
+    deployed:
+    - **Batch application prep: NOT YET** (L6-08). On main, a trialing
+      subscriber gets a 402 from batch prep, because `generate-apply-package`
+      accepts only an `active` plan. The board already sells batch prep with
+      the trial (`en.json:3989`, `savedMilestoneDesc`).
+    - **No consumables: NOT YET** (L6-29). On main today, a trialing plan
+      counts as Pro for the whole paid catalogue.
+  - The trial's sales copy contradicts (b) and (c) at the point of sale
+    (Q-O11, Q-C3). The Morning Queue panel says "7 mornings free, then
+    $99/month — everything in Pro included. Cancel anytime."
+    (`src/components/account/MorningQueuePanel.tsx:799-800`, `en.json:4725`
+    and `:4760`), and Pro's perks include "Every paid tool included — Full
+    Analysis, Keyword Fix, Cover Letters ..."
+    (`src/components/ProSubscriptionCard.tsx:23`). Neither says the trial is
+    for first-time subscribers only, and `jobsPage.agentPitchCta`
+    (`en.json:4230`, "7 days free, then $99/mo") does not either. A specific
+    promise made at the point of sale may override a general term.
+    `wave2/entitlements` rewrites `agentPitchCta` and `savedMilestoneDesc`
+    (first-time subscribers, `6b29fc45`) and the Pro card's trialing text
+    (`550f9e2b`), but leaves `payBoundary` and `payBoundaryOffline`
+    unchanged.
 
 ### 4.5 The Agent Pass
 
@@ -423,7 +458,7 @@ so crawlers get the homepage.
 | Basic Keyword Fix (hidden from pricing, still purchasable) | 3 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:75, 230-235` |
 | Cover Letter Generator | 4 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:87` |
 | Premium Resume Package | 12 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:100` |
-| ATS Defense Complete (30-day re-optimisation) | 15 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:116, 125` |
+| ATS Defense Complete (its "30-day guarantee" is unimplemented, 4.2, Q-O9) | 15 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:116` |
 | Career Snapshot | 25 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:133` |
 | Graduate Game Plan | 10 | one-off | Stripe Price object (**DASHBOARD**) | `products.ts:150` |
 | Apply Assistant | 7 | one-off | inline, `create-product-checkout/index.ts:72-76` | `products.ts:167` |
@@ -450,10 +485,10 @@ free-key retirement rules are at `DataApi.tsx:240`.
 | 4.3(d) failed payment | `subscription-standing.ts:144-145, 155-161` | ENFORCED |
 | 4.3(e) cancel via portal, at period end | `create-portal-session:55-58`; `ProSubscriptionCard.tsx:24` | DASHBOARD |
 | 4.3(e) account deletion | `delete-account` (no Stripe call), L6-30 | NOT YET (Option B) |
-| 4.3(f) price-change notice | none | NOT YET |
+| 4.3(f) price-change notice | none (no mailer) | NOT YET (by hand until a mailer ships, Q-O10) |
 | 4.4(a) 7-day trial, converts | `create-agent-checkout:134`; `en.json:4725` | ENFORCED + DASHBOARD |
 | 4.4(b) one trial per customer | L6-29 | NOT YET |
-| 4.4(c) trial: no consumables; lower send limit | `wave2/entitlements` `550f9e2b`; `agent-entitlement.ts:215-222` | PARTIAL |
+| 4.4(c) trial: batch prep; no consumables; lower send limit | `generate-apply-package:66, 183, 189-193` and `wave2/entitlements` `550f9e2b` (L6-08, L6-29); `agent-entitlement.ts:215-222` | PARTIAL (batch prep and no consumables NOT YET) |
 | 4.5(a)-(c) pass, account-bound, clock at first call | `pass.ts`; `create-pass-checkout:107-118`; `20260917230000:141-151` | ENFORCED |
 | 4.5(d) unstarted pass expires | `pass.ts:49-56` (GUESS); `en.json:5070` | ENFORCED (value provisional) |
 | 4.5(e) applications given back | `20260917170000:45-53`; `en.json:5092`; L9-13, L6-07 | PARTIAL |
@@ -512,6 +547,11 @@ free-key retirement rules are at `DataApi.tsx:240`.
   arbitration service").
 - **Section 18** makes changes "effective immediately upon posting". That
   conflicts with the notice period proposed in 4.3(f) for plan prices.
+- **The trial's send limit is invisible.** A trialing subscriber who sets
+  10 applications a day in the Apply profile (`ApplyProfilePanel.tsx:594`,
+  1 to 20) is held to the trial ceiling without being told
+  (`apply-agent/index.ts:494`). No register item covers showing it; 4.4(c)
+  makes no promise about it.
 
 ---
 
@@ -536,6 +576,11 @@ free-key retirement rules are at `DataApi.tsx:240`.
   the checkout itself is Stripe's page), affirmative consent, an
   acknowledgment that states how to cancel (A-10), online cancellation (the
   Stripe portal), and any refund duty for the unused part of a period.
+  The disclosure next to the button also contradicts 4.4(b) and 4.4(c)
+  today: "7 mornings free, then $99/month — everything in Pro included"
+  promises the paid tools during the trial and does not say the trial is
+  for first-time subscribers (4.4 status, Q-O11). Does that copy override
+  the Terms for anyone who bought on it?
 - **Q-C4. Price-change notice.** What notice period and method suit a monthly
   plan, and does section 18's "effective immediately upon posting" need a
   carve-out for prices?
@@ -560,6 +605,12 @@ free-key retirement rules are at `DataApi.tsx:240`.
 - **Q-C11. The data-API and MCP carve-out.** Should the API and MCP terms be
   a separate document incorporated by reference (as section 15 allows),
   rather than living inside section 5?
+- **Q-C12. Product-page bullets.** 4.2 deliberately does not make
+  product-page promises part of the Terms, because some have no code behind
+  them (Q-O9). Does consumer law in the markets we sell to make what a
+  product page says binding anyway, so that leaving the sentence out
+  changes nothing? Should the Terms say that the product page describes the
+  deliverable?
 
 ### For the owner (business decisions the text depends on)
 
@@ -592,11 +643,35 @@ free-key retirement rules are at `DataApi.tsx:240`.
 - **Q-O8. Stripe dashboard checks.** Confirm A-3 (Price object amounts), A-4
   (trial collects a card), A-5 (portal cancels at the period end with no
   proration), and whether Stripe sends trial-ending reminders and receipts.
+- **Q-O9. Product-page promises with no code behind them.** "Priority
+  processing" (Premium Resume Package, `products.ts:107`) and the "30-day
+  guarantee" / "30-day re-optimize guarantee" (ATS Defense Complete,
+  `products.ts:115`, `:125`) are sold, but nothing implements them. For
+  each: implement it, honour it by hand (say how a buyer claims it), or
+  remove it from the catalogue. Audit every other bullet in `products.ts`
+  the same way before the new section 4 goes live.
+- **Q-O10. Price-change notice (4.3(f)).** No mailer exists. Commit to
+  emailing every subscriber by hand at least [30] days before a new price
+  applies, or ship a mailer first. If neither, (f) must be reworded before
+  adoption.
+- **Q-O11. Trial sales copy.** Change the trial copy before 4.4(b) and
+  4.4(c) go live, so the point of sale matches the Terms: for example "7
+  mornings free for first-time subscribers, then $99/month. Paid tools are
+  included from your first payment. Cancel anytime." The strings are
+  `agentQueue.payBoundary` and `agentQueue.payBoundaryOffline`
+  (`en.json:4725`, `:4760`, in all nine locales), which `wave2/entitlements`
+  leaves unchanged, and Pro's "Every paid tool included" perk
+  (`ProSubscriptionCard.tsx:23`), which an Agent trial inherits through
+  "everything in Pro included".
 
 ## 9. Implementation notes, for after sign-off
 
-1. Ship the code that the **NOT YET** clauses depend on first (L6-29, L6-18,
-   L9-13/L6-07, L6-30), or keep those clauses in their "we may" wording.
+1. Ship the code that the **NOT YET** clauses depend on first, or reword
+   them: L6-29 (4.4(b), and no consumables in 4.4(c)), L6-08 (batch prep in
+   4.4(c)), L6-18 (4.6(d)), L9-13/L6-07 (4.5(e)), L6-30 (4.3(e) Option B), and a
+   price-change mailer or the owner's commitment to send the notice by hand
+   (4.3(f), Q-O10). Settle Q-O9 (product-page bullets) and Q-O11 (trial
+   copy) in the same release.
 2. Interpolate every number from `PRODUCTS`, `SUBSCRIPTIONS` and `PASS`. Add a
    behaviour test, in the style of `src/test/pricing-truth.test.ts`, that
    renders the Terms page and fails if a printed price, hour or count differs
