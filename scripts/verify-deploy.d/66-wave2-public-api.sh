@@ -7,7 +7,9 @@
 #   - /v1/changes leaves suspect closure batches out by default; include_suspect
 #     =true returns them, each marked suspectBatch:true; anything but true/false
 #     is a 400; the response says which feed it is (suspectBatchesIncluded) and
-#     the API version is 2026-10-08.1 (register 1.70 / L13-56);
+#     the API version is 2026-10-08.1 (register 1.70 / L13-56); a closure
+#     written before the collector assessed its batches is suspectBatch:null,
+#     never false (public-api.2026-10-08.2);
 #   - free-keyword-scan-stream clamps the improvement promise to the score gap
 #     on fresh and cached reports (register L5-15, ported from the primary);
 #   - the owner can read the NAMES of the client-callable definers the census
@@ -27,7 +29,7 @@
 # proved by src/test/the-scan-fallback-promised-more-points-than-the-score-could-gain.test.ts.
 echo "== 66. wave 2 public-api: /v1/changes leaves doubted batches out, the fallback's promise is bounded, the owner can read the census's names =="
 
-for PAIR in "public-api|2026-10-08|1" "free-keyword-scan-stream|2026-10-08|1" "admin-ops|2026-10-08|1"; do
+for PAIR in "public-api|2026-10-08|2" "free-keyword-scan-stream|2026-10-08|1" "admin-ops|2026-10-08|1"; do
   W66_FN=${PAIR%%|*}; W66_REST=${PAIR#*|}; W66_D=${W66_REST%%|*}; W66_N=${W66_REST#*|}
   W66_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W66_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W66_H" ]; then echo "FAIL  $W66_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
@@ -58,12 +60,14 @@ const dc=Array.isArray(d&&d.closed)?d.closed:null, ac=Array.isArray(a&&a.closed)
 if(!dc){ok(false,"/v1/changes default walk -> "+JSON.stringify(d).slice(0,160));}
 else{
   ok(d.suspectBatchesIncluded===false,"default walk says suspectBatchesIncluded=false (got "+d.suspectBatchesIncluded+"; undefined = old build)");
-  ok(dc.every(c=>c.suspectBatch===false),"every row of the default walk is suspectBatch=false ("+dc.length+" rows; "+dc.filter(c=>c.suspectBatch!==false).length+" not)");
+  ok(dc.every(c=>"suspectBatch" in c&&(c.suspectBatch===false||c.suspectBatch===null)),"every row of the default walk is suspectBatch false or null, never true or absent ("+dc.length+" rows; "+dc.filter(c=>!(c.suspectBatch===false||c.suspectBatch===null)).length+" not)");
+  ok(dc.every(c=>!("batch_live_before" in c)),"no raw batch_live_before column beside the named field");
+  info("default walk rows never assessed (suspectBatch null): "+dc.filter(c=>c.suspectBatch===null).length+" of "+dc.length+" (0 expected in a 2-day window: batches are stamped since 20260906090000)");
   ok(dc.every(c=>!("suspect" in c)),"no raw suspect column beside the named field");
 }
 if(!ac){ok(false,"/v1/changes?include_suspect=true -> "+JSON.stringify(a).slice(0,160)+" (unknown_parameter = old build)");}
 else{
-  ok(a.suspectBatchesIncluded===true&&ac.every(c=>typeof c.suspectBatch==="boolean"),"include_suspect=true says so and marks every row ("+ac.length+" rows, "+ac.filter(c=>c.suspectBatch===true).length+" suspect)");
+  ok(a.suspectBatchesIncluded===true&&ac.every(c=>typeof c.suspectBatch==="boolean"||c.suspectBatch===null),"include_suspect=true says so and marks every row ("+ac.length+" rows, "+ac.filter(c=>c.suspectBatch===true).length+" suspect, "+ac.filter(c=>c.suspectBatch===null).length+" never assessed)");
   if(dc&&dc.length===100&&ac.length===100){
     const firstDef=dc[0].event_id, firstAll=ac[0].event_id;
     info("both first pages full; first event_id default="+firstDef+" include_suspect="+firstAll+" (equal unless a suspect batch opens the window)");
@@ -87,5 +91,7 @@ echo "INFO  20261008140000 changes only get_takedowns_today's catalogue descript
 W66_DA=$(curl -s -m 30 -A "$UA" "$SITE/data-api")
 if printf '%s' "$W66_DA" | grep -qF "include_suspect=true"; then echo "PASS  /data-api serves crawlers the include_suspect opt-in"
 else echo "FAIL  /data-api does not mention include_suspect (frontend not published, or the prerender did not rebuild)"; fi
+if printf '%s' "$W66_DA" | grep -qF "suspectBatch: null"; then echo "PASS  /data-api tells crawlers an unassessed closure is suspectBatch: null"
+else echo "FAIL  /data-api does not say what suspectBatch: null means (frontend not published, or the prerender did not rebuild)"; fi
 if printf '%s' "$W66_DA" | grep -qF "30 days back on a free key, 180 on a paid one"; then echo "FAIL  /data-api still says closures reach 30 days on a free key (they reach 72 hours)"
 else echo "PASS  /data-api no longer says closures reach 30 days on a free key"; fi

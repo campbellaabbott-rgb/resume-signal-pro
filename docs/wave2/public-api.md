@@ -11,6 +11,7 @@ claim below; read-only).
 | id | what | state |
 |---|---|---|
 | L13-56 (1.70) | `/v1/changes` served `suspect` closure batches as outcome `closed`; its note claimed reconciliation | **fixed** as the owner approved: left out by default, `include_suspect=true` returns them marked `suspectBatch: true`; note, code comment, `/data-api` copy, crawler copy, docs and the ticker's catalogue description corrected |
+| L13-56, review follow-up | closures written before the collector stamped its batches (`suspect` false by column default, `batch_live_before` NULL) passed the default filter and were marked `suspectBatch: false`, "assessed and trusted", on a paid key's 180-day walk | **fixed**: those rows are `suspectBatch: null` (never assessed) in both walks, and the note, `/data-api`, its crawler copy and docs/hiring-health-model.md say so. The retroactive proxy the fill estimators apply to them is **not** applied to the feed (see "What to tell the owner") |
 | L9-25 (1.44) | the claim read neither the pause nor the blocklist; no cancel control | **skipped, already fixed on main and live**: `agent_claim_submission` in 20261005133000 gates on `active`/`paused_until`/funding and parks blocked-employer and cooldown packets; Cancel is wired (ApplyQueuePanel → agent-access → `agent_packet_decide`); section 45 shows that migration applied (`agent_unclaim_submission` 42501) |
 | L13-50 (2.14) | the cooldown counted only sent applications | **skipped, already fixed on main and live**: `agent_employer_in_cooldown` (20261005133000) counts released-but-unsent packets, and apply-agent keeps an in-run `releasedCompanies` set |
 | L13-25 (1.41) | the `/v1/companies` cursor skipped most of the directory and could loop | **skipped, already fixed on main and live**: `public-api/company-walk.ts` (one comparator, a `(count, token)` cursor), walked by `an-agent-sends-what-it-holds-and-says-what-it-did.test.ts`; public-api 2026-10-05.1 is serving |
@@ -24,7 +25,7 @@ Edge functions (any order between them):
 
 | function | new `x-fn-build` | why |
 |---|---|---|
-| `public-api` | `public-api.2026-10-08.1` | `/v1/changes` default and `include_suspect`; `apiVersion` 2026-10-08.1 |
+| `public-api` | `public-api.2026-10-08.2` | `/v1/changes` default and `include_suspect`; `suspectBatch: null` on unassessed rows; `apiVersion` 2026-10-08.1 |
 | `free-keyword-scan-stream` | `free-keyword-scan-stream.2026-10-08.1` | the improvement clamp, fresh and cached |
 | `admin-ops` | `admin-ops.2026-10-08.1` | serves `client_callable_unlisted_names` (`ADMIN_CATALOGUE_RPCS`) |
 
@@ -33,7 +34,8 @@ Migrations, in this order, after the functions:
 1. `20261008140000_the_takedown_ticker_no_longer_says_the_change_feed_counts_higher.sql`
    restates `get_takedowns_today()`'s description with the one sentence about the
    feed corrected. Comment only: no function body or grant changes. Apply after
-   public-api 2026-10-08.1 is serving, because the sentence describes that build.
+   public-api.2026-10-08.2 is serving (`apiVersion` 2026-10-08.1), because the
+   sentence describes that build.
 2. `20261008141000_the_owner_can_read_which_client_callable_definers_no_list_names.sql`
    creates `client_callable_unlisted_names()`, a SECURITY INVOKER SQL function,
    granted to `service_role` only. Its DO block raises unless the function is
@@ -59,6 +61,21 @@ saying closures reach 30 days on a free key; they reach 72 hours).
   changed. Anything other than `true` or `false` is a 400. If any API customer
   should be told directly, this is the line to send; a changelog entry was not
   written (it would need all nine locales).
+- **History from before the collector stamped its batches is not assessed.**
+  Stamping began with migration 20260906090000 and nothing was backfilled, so
+  every older closure has `suspect = false` by column default. A paid key may walk
+  180 days back, so on 2026-10-07 a full paid walk starts at 2026-04-10 and about
+  its first five months (to the stamping) are unassessed history. Those rows are
+  served in both walks and marked `suspectBatch: null`; a failed read of ours from
+  that period still arrives as outcome `closed`. `false` now means only "the
+  collector sized this batch and did not doubt it". The fill estimators apply a
+  retroactive check to the same rows (group by `(company_token, closed_at)`,
+  drop a batch over `max(5, 0.30 x` the board's size at the time`)`); the feed
+  does not. **Decision for the owner**: leave it as `null` and let consumers
+  judge (this build), or apply that check to the default walk, which would
+  narrow the default again (a new `apiVersion`) and needs a database reader,
+  because a batch spans pages and its size at the time lives in
+  `job_board_company_snapshots`.
 - **What the default walk reconciles with.** Drop rows with outcome `relisted`
   and rows with `closedAtIsObservation: true`, and a default walk is counted on
   the same rules as the daily takedown figure on the jobs board, except that the
@@ -104,7 +121,7 @@ saying closures reach 30 days on a free key; they reach 72 hours).
 
 ## Rollback
 
-- public-api: redeploy the parent commit's `supabase/functions/public-api/index.ts`
+- public-api: redeploy main's `supabase/functions/public-api/index.ts`
   (`public-api.2026-10-05.1`, `apiVersion` 2026-09-30.1). The feed serves suspect
   rows as `closed` again. If you do this, also re-apply the
   `COMMENT ON FUNCTION public.get_takedowns_today()` statement from
@@ -120,7 +137,8 @@ saying closures reach 30 days on a free key; they reach 72 hours).
 - Section 66: three builds, `apiVersion` 2026-10-08.1, `/data-api` crawler copy,
   42501 for the names reader with the publishable key. With `RB_API_KEY` in
   `.env.local`, also the default walk (`suspectBatchesIncluded: false`, every row
-  `suspectBatch: false`), `include_suspect=true` (marked rows) and
+  `suspectBatch: false` or `null`, never `true`; the `null` count is an INFO line
+  and is 0 in its 2-day window), `include_suspect=true` (marked rows) and
   `include_suspect=yes` (400).
 - `node scripts/api-contract-probe.mjs` (needs `RB_API_KEY`): the version pin and
   three new `/v1/changes` checks.
