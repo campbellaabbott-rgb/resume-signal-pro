@@ -6,7 +6,8 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // 52-market resume standards must run HERE to reach users (the non-stream
 // free-keyword-scan has copies but is never invoked by the client). Modules are
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
-import { detectCountryFromResume } from "./market-intelligence.ts";
+import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligence.ts";
+import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
@@ -967,8 +968,9 @@ function getParentIndustry(industry: string): string {
 }
 
 // Normalize industry to valid value
-function normalizeIndustry(raw: string | undefined | null): string {
-  if (!raw) return 'general';
+function normalizeIndustry(raw: unknown): string {
+  // Model JSON is untrusted: a number here used to throw (sweep S8-071).
+  if (!raw || typeof raw !== 'string') return 'general';
   const normalized = raw.toLowerCase().trim();
   
   // Direct match
@@ -6491,7 +6493,7 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-10-08.1: the improvement-potential
 // clamp (register L5-15), on fresh and cached reports.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-08.1";
+const FN_BUILD = "free-keyword-scan-stream.2026-10-09.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7516,29 +7518,6 @@ serve(async (req) => {
       } catch { /* anonymous */ }
       const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
 
-      // Rate limiting
-      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-        p_function: FUNCTION_NAME,
-        p_ip: clientIp,
-        p_max_requests: dailyScanLimit,
-        p_window_minutes: 24 * 60
-      });
-
-      if (rlError) {
-        send('error', { error: 'Service temporarily unavailable. Please try again shortly.' });
-        close();
-        return;
-      }
-      if (!allowed) {
-        send('error', {
-          error: 'Daily scan limit reached. Upgrade for unlimited access!',
-          rateLimited: true,
-          scansLimit: dailyScanLimit
-        });
-        close();
-        return;
-      }
-
       send('progress', PROGRESS_STAGES[1]);
 
       // ======================== Early Resume Type & Seniority Detection ========================
@@ -7593,7 +7572,11 @@ serve(async (req) => {
       const languageKey = typeof language === 'string' ? language.trim().toLowerCase().slice(0, 12) : '';
 
       // Create cache key from normalized content hash
-      const cacheInput = `v4|${normalizedResume}|${normalizedJob}|${validTargetCountry ?? ''}|${languageKey}`;
+      // The market the report is written for: with no confident location in
+      // the résumé the IP country decides it, so it is part of the key
+      // (sweep S8-070; the wave 2 notes' open follow-up).
+      const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
+      const cacheInput = `v5|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -7652,6 +7635,31 @@ serve(async (req) => {
       }
       
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
+
+      // The day's scan slot, counted only once the cache has missed: a
+      // rescan of the same text is a replay (sweep S8-068, as in the primary).
+      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+        p_function: FUNCTION_NAME,
+        p_ip: clientIp,
+        p_max_requests: dailyScanLimit,
+        p_window_minutes: 24 * 60
+      });
+
+      if (rlError) {
+        send('error', { error: 'Service temporarily unavailable. Please try again shortly.' });
+        close();
+        return;
+      }
+      if (!allowed) {
+        send('error', {
+          error: 'Daily scan limit reached. Upgrade for unlimited access!',
+          rateLimited: true,
+          scansLimit: dailyScanLimit
+        });
+        close();
+        return;
+      }
+
 
       // The primary's concurrency ceiling (2.05). Past it the primary serves
       // its instant rule-based report; this fork has none, so it asks for a
@@ -7880,7 +7888,7 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
       // non-English (mirrors the primary); the UI locale covers the rest.
       const reportLanguage = detectedResumeLanguage.language !== 'en'
         ? detectedResumeLanguage.languageName
-        : (language || "English");
+        : (resolveLanguageName(language) ?? "English");
       const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every string value in your JSON must be written in ${reportLanguage} (keys stay in English).
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
@@ -8048,6 +8056,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           },
           body: JSON.stringify({
             model,
+            temperature: 0,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
@@ -8595,9 +8604,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         const resumeGeo = detectCountryFromResume(resumeText);
         // Low-confidence resume detection (an exact evidence tie) defers to
         // IP geolocation — parity with the primary path, 2026-07-25.
-        const effectiveCountry = validTargetCountry
-          || (resumeGeo.confidence !== 'low' ? resumeGeo.country : null)
-          || ipCountry || resumeGeo.country || 'US';
+        const effectiveCountry = effectiveCountryOf(validTargetCountry, resumeGeo, ipCountry);
         countryStandardsResult = evaluateCountryStandards(resumeText, effectiveCountry);
         // Single basis derivation — same shape as the primary fork's geoBasis.
         const geoBasis = validTargetCountry ? 'target'

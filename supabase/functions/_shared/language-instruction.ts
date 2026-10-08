@@ -30,6 +30,21 @@ const LANGUAGE_NAMES: Record<string, string> = {
 const LOCALE_SHAPE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
 
 /**
+ * The language a prompt may name for `language`: a known locale's name, or a
+ * well-formed locale code, else null. Never the raw request value: the stream
+ * fork and both paid stream generators put the body's `language` into the
+ * system prompt at any length (sweep S8-064), and a 200,000-character
+ * "language" became a 409,518-character prompt.
+ */
+export function resolveLanguageName(language: unknown): string | null {
+  if (typeof language !== "string") return null;
+  const code = language.trim();
+  if (!code || code.length > 35) return null;
+  const base = code.split("-")[0];
+  return LANGUAGE_NAMES[code] ?? LANGUAGE_NAMES[base] ?? (LOCALE_SHAPE.test(code) ? code : null);
+}
+
+/**
  * Builds the instruction line to append to a system prompt so the AI responds
  * in the user's selected language. Returns an empty string for English (the
  * default/fallback), since prompts are already written in English and an
