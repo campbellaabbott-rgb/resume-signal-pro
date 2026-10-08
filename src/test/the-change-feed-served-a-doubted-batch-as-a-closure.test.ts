@@ -18,6 +18,13 @@
  * fake applies every filter the handler sends, so a row the handler forgets to
  * exclude comes back in the response exactly as it would from PostgREST.
  *
+ * A CLOSURE NOBODY ASSESSED WAS SERVED AS ONE THE COLLECTOR TRUSTED. Stamping
+ * began with 20260906090000 and nothing was backfilled: an older row has
+ * suspect = false by column default and batch_live_before NULL, and a paid walk
+ * reaches 180 days back into that history. The default kept those rows (no
+ * flag to filter on) and marked them suspectBatch:false, which says the batch
+ * was sized and passed. They are now suspectBatch:null, and the note says so.
+ *
  * The takedown ticker's own catalogue description said the same thing from the
  * other side ("the feed does not expose the flag ... will count higher"); its
  * correction (20261008140000) is applied in a real Postgres (pglite) after the
@@ -91,7 +98,9 @@ const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString
 const closure = (event_id: number, closedHoursAgo: number, extra: Row = {}): Row => ({
   event_id, posting_id: `greenhouse:acme:${event_id}`, source: "greenhouse", company_token: "acme", company: "Acme",
   title: `Role ${event_id}`, category: "engineering", first_seen: hoursAgo(400), posted_at: hoursAgo(400),
-  closed_at: hoursAgo(closedHoursAgo), superseded: false, absence_basis: "full_read", suspect: false, ...extra,
+  closed_at: hoursAgo(closedHoursAgo), superseded: false, absence_basis: "full_read", suspect: false,
+  // Sized by the collector: what every row written since 20260906090000 carries.
+  batch_live_before: 40, ...extra,
 });
 
 beforeAll(async () => {
@@ -185,6 +194,40 @@ describe("the change feed leaves out the batches its collector doubted", () => {
       expect(r.status, `include_suspect=${v}`).toBe(400);
       expect(r.body.error.code).toBe("invalid_value");
     }
+  });
+});
+
+describe("a closure written before the collector assessed its batches was served as one it had assessed and trusted", () => {
+  beforeEach(() => {
+    // Written before stamping: suspect is the column default, batch_live_before
+    // NULL. 92 is one a later repair marked suspect without sizing it.
+    closures.push(
+      closure(90, 40, { batch_live_before: null, company_token: "early", company: "Early Corp" }),
+      closure(91, 40, { batch_live_before: null, company_token: "early", company: "Early Corp" }),
+      closure(92, 39, { batch_live_before: null, suspect: true }),
+    );
+  });
+
+  it("a default walk serves the unassessed rows marked null, not false, and the rows the collector sized marked false", async () => {
+    const r = await changes("");
+    expect(r.status).toBe(200);
+    const rows = r.body.closed as Row[];
+    // Still served: there is no verdict to filter on, and dropping them would
+    // hide real takedowns along with any failed read.
+    expect(rows.map((c) => c.event_id)).toEqual([90, 91, 101, 104, 105]);
+    const mark = Object.fromEntries(rows.map((c) => [c.event_id, c.suspectBatch]));
+    expect(mark[90], "never assessed is not assessed and trusted").toBeNull();
+    expect(mark[91]).toBeNull();
+    expect([mark[101], mark[104], mark[105]]).toEqual([false, false, false]);
+    expect(rows.some((c) => "batch_live_before" in c), "the raw column is not served").toBe(false);
+    expect(String(r.body.note)).toMatch(/suspectBatch:null/);
+  });
+
+  it("include_suspect=true keeps all three states apart, and a repair's mark on an unsized row reads as suspect", async () => {
+    const r = await changes("&include_suspect=true");
+    expect(r.status).toBe(200);
+    const mark = Object.fromEntries((r.body.closed as Row[]).map((c) => [c.event_id, c.suspectBatch]));
+    expect(mark).toEqual({ 90: null, 91: null, 92: true, 101: false, 102: true, 103: true, 104: false, 105: false });
   });
 });
 

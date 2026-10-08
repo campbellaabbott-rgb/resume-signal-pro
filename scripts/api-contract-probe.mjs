@@ -243,11 +243,13 @@ let firstId = null;
   // 2026-10-08.1 (register 1.70): a default walk leaves the doubted closure
   // batches out and says so; include_suspect=true returns them, marked.
   const closed = Array.isArray(r.body?.closed) ? r.body.closed : [];
-  ok(r.body?.suspectBatchesIncluded === false && closed.every((c) => c.suspectBatch === false),
+  // suspectBatch is false (assessed, not doubted) or null (written before the
+  // collector assessed batches; 2026-10-08.2): never true on a default walk.
+  ok(r.body?.suspectBatchesIncluded === false && closed.every((c) => c.suspectBatch === false || c.suspectBatch === null),
     "/v1/changes leaves suspect batches out by default", `suspectBatchesIncluded=${r.body?.suspectBatchesIncluded}, ${closed.length} rows`);
   const all = await api(`/v1/changes?since=${since}&limit=5&include_suspect=true`);
   ok(all.status === 200 && all.body?.suspectBatchesIncluded === true
-    && (all.body?.closed ?? []).every((c) => typeof c.suspectBatch === "boolean"),
+    && (all.body?.closed ?? []).every((c) => typeof c.suspectBatch === "boolean" || c.suspectBatch === null),
     "/v1/changes?include_suspect=true marks every row", `HTTP ${all.status}`);
   const bad = await api(`/v1/changes?since=${since}&limit=1&include_suspect=yes`);
   ok(bad.status === 400 && bad.body?.error?.code === "invalid_value",

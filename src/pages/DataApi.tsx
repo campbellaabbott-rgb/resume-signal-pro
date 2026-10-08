@@ -59,6 +59,7 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     params: "since (ISO). opened reaches back 30 days on any key. closed reaches back 72 hours on a free key and 180 days on a paid one — a free since= further back is not refused, it is answered with 30 days of opened and 72 hours of closed, and closureWindowNarrowed says so. limit (max 100), opened_cursor, closed_cursor, include_suspect",
     notes: [
       "closed leaves out, by default, batches our own collector flagged as a possible failed read: a single pass that removed so much of one board that the takedown may be ours, not the employer's. include_suspect=true returns them too, each marked suspectBatch: true, and every response says which you got in suspectBatchesIncluded.",
+      "suspectBatch: false means the collector assessed the batch and did not doubt it. Closures written before it began assessing its batches carry suspectBatch: null instead: they were never assessed, so neither walk leaves a failed read of ours out of them. Only a paid key reaches back that far.",
       "A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as the board's daily takedown figure — except that figure also counts the hiring systems this API may not redistribute, so the feed can come out lower by those, never higher.",
     ],
   },

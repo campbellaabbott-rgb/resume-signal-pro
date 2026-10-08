@@ -85,7 +85,9 @@ import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../
 // outcome "closed", so a consumer marked live jobs closed. They are now left
 // out unless the caller passes include_suspect=true, which returns them marked
 // suspectBatch:true; every closed row carries suspectBatch and the response
-// says which it got (suspectBatchesIncluded).
+// says which it got (suspectBatchesIncluded). suspectBatch is null on a row
+// written before the collector assessed its batches (batch_live_before IS
+// NULL): never assessed, so the default does not filter it either.
 const API_VERSION = "2026-10-08.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
@@ -276,8 +278,9 @@ const LIST_FILTERS = [
 // max_age_days, 400 on an unparseable salary or date, Retry-After to midnight
 // UTC, a /v1/companies cursor that walks the whole directory once.
 // 2026-10-08.1: /v1/changes leaves suspect closure batches out unless
-// include_suspect=true, and marks them when it serves them.
-const FN_BUILD = "public-api.2026-10-08.1";
+// include_suspect=true, and marks them when it serves them. 2026-10-08.2:
+// suspectBatch is null, not false, on a closure nobody assessed.
+const FN_BUILD = "public-api.2026-10-08.2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -1526,13 +1529,16 @@ async function changes(
   // sources this feed may not redistribute, so the feed counts LOWER by those
   // and never higher.
   let closedQ = client.from("job_board_closures")
-    .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis,suspect")
+    .select("event_id,posting_id,source,company_token,company,title,category,first_seen,posted_at,closed_at,superseded,absence_basis,suspect,batch_live_before")
     // Same fence, same reason: a closure row carries the posting's title,
     // employer and dates. The closure LOG is ours, but the posting it
     // describes is still the vendor's data.
     .not("source", "in", NO_REDISTRIBUTION_IN)
     .gte("closed_at", closureSinceIso);
-  // suspect is NOT NULL DEFAULT false, so eq(false) misses no row.
+  // suspect is NOT NULL DEFAULT false, so eq(false) misses no row. It also
+  // keeps every row written before the collector stamped its batches
+  // (20260906090000: suspect false, batch_live_before NULL). Those were never
+  // assessed, and are served marked suspectBatch:null, not false.
   if (!includeSuspect) closedQ = closedQ.eq("suspect", false);
   if (closedAfter) {
     closedQ = closedQ.or(`closed_at.gt.${closedAfter.ep},and(closed_at.eq.${closedAfter.ep},event_id.gt.${closedAfter.id})`);
@@ -1561,16 +1567,19 @@ async function changes(
     apiVersion: API_VERSION,
     since: sinceIso,
     opened: openedRows,
-    closed: closedRows.map(({ suspect, ...c }: Record<string, unknown>) => ({
+    closed: closedRows.map(({ suspect, batch_live_before, ...c }: Record<string, unknown>) => ({
       ...c,
       // Named, not left as a bare boolean: `superseded` means the posting was
       // re-listed under a new id rather than genuinely closing, and a consumer
       // counting "roles filled" must not count those.
       outcome: (c as { superseded?: boolean }).superseded ? "relisted" : "closed",
       // TRUE only on an include_suspect=true walk: the row was written in a
-      // batch the collector doubted (see the select above). False on every
-      // row of a default walk, which leaves those batches out.
-      suspectBatch: suspect === true,
+      // batch the collector doubted (see the select above). FALSE: the
+      // collector sized the batch and did not doubt it. NULL: written before
+      // it sized batches at all (batch_live_before IS NULL), so suspect=false
+      // there is a column default, not a verdict, and no filter removed it.
+      // A repair can mark such a row suspect, hence suspect is read first.
+      suspectBatch: suspect === true ? true : batch_live_before == null ? null : false,
       // TRUE means closed_at is the date WE COULD FINALLY SEE the posting was
       // gone, not the date it went. It is set on boards over the page cap whose
       // first complete pass backfilled a window of takedowns at once, so the
@@ -1617,7 +1626,7 @@ async function changes(
     // against the site would otherwise find federal roles opening and closing
     // on the page and never here, and read that as dropped events.
     excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
-    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
+    note: "opened = first seen in the employer's feed since `since`. closed = gone from it. outcome distinguishes a genuine close from a re-list under a new id. closedAtIsObservation=true means closed_at is when we could first SEE the posting was gone, not when it went (a board over the page cap backfilling its first complete pass) -- the error is always late and bounded by the freshness window; exclude those rows from any time-to-close or per-day takedown series. By default closed[] leaves out batches our collector flagged as a possible failed read of its own (one pass that removed so much of a board that the takedown may be ours, not the employer's); include_suspect=true returns them too, each marked suspectBatch:true, and suspectBatchesIncluded says which you got. suspectBatch:false means the collector assessed the batch and did not doubt it; suspectBatch:null means the closure was written before the collector began assessing its batches, so it was never assessed and neither walk filters it -- a paid walk reaching that far back can still contain a failed read of ours served as outcome closed. A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as our published daily takedown figure, except that the figure also counts the hiring systems in excludedSources: this feed can count lower than it by those, never higher. Both lists are ordered OLDEST FIRST and page independently: follow page.opened.nextCursor as ?opened_cursor= and page.closed.nextCursor as ?closed_cursor= until hasMore is false.",
   }, 200, headers);
 }
 
