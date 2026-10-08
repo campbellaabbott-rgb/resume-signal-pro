@@ -4878,6 +4878,7 @@
     "includesPro": "Comprend tout le contenu de Pro ({{proPrice}} $/mois)",
     "perkAutoApply": "Postule automatiquement pour vous sur {{names}}",
     "perkOneClick": "Candidatures remplies et prêtes à envoyer sur {{names}}",
+    "perkMorningQueue": "File du matin : pendant la nuit, l'agent lance votre recherche et vous laisse une présélection dans votre compte pour le matin",
     "perkQueue": "Une file que vous pouvez vérifier d'abord, ou laisser tourner seule — à vous de choisir, modifiable à tout moment",
     "perkCap": "Une limite quotidienne que vous fixez, et jamais deux candidatures au même poste",
     "perkHonest": "Il n'invente jamais de réponse. Si une question vous revient, il s'arrête et vous demande.",

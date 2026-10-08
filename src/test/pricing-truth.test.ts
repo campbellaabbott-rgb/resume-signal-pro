@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PASS, SUBSCRIPTIONS } from "@/config/products";
+import { PRO_PERKS } from "@/config/pro-perks";
 import * as passModule from "../../supabase/functions/_shared/pass.ts";
 
 // The homepage FAQ answered "Is this a subscription?" with "There are no
@@ -250,5 +251,48 @@ describe("the Agent Pass mirrors _shared/pass.ts, number for number", () => {
     const skus = Object.values(PRODUCTS) as Array<{ name?: string; priceUsd?: number }>;
     expect(skus.some((p) => p.name === PASS.name)).toBe(false);
     expect(Object.keys(PRODUCTS)).not.toContain(PASS.key);
+  });
+});
+
+// THE PRO CARD SOLD WHAT ONLY THE AGENT'S PRICE UNLOCKS (platform sweep L3-04).
+// "Morning Queue — the Apply Agent triages the live job board overnight" led
+// the $45 Pro card, while the agent's entitlement is price-specific
+// (_shared/agent.ts matches AGENT_PRICE_CENTS and refuses the Pro price), so a
+// Pro buyer met the $99 paywall on /agent. The names of what the agent's
+// price unlocks are READ from config and copy, never typed here: the plan's
+// name, the agent's product name, the queue's title, the pass.
+describe("no Pro perk names a price-specific entitlement", () => {
+  const en = JSON.parse(readFileSync(resolve(root, "src/i18n/locales/en.json"), "utf8"));
+  const agentOnly: string[] = [SUBSCRIPTIONS.agent.name, en.agentPlan.name, en.agentQueue.title, PASS.name]
+    .filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+  const violations = (lines: readonly string[]): string[] =>
+    lines.flatMap((line) => agentOnly.filter((n) => line.toLowerCase().includes(n.toLowerCase())).map((n) => `"${line}" names ${n}`));
+  // The description Stripe shows on the page that takes the Pro money.
+  const proStripeDescription = (src: string): string => {
+    const m = src.match(/description:\s*\n?\s*"([^"]+)"/);
+    if (!m) throw new Error("create-subscription-checkout no longer describes its product inline -- re-anchor this guard");
+    return m[1];
+  };
+  const proCheckout = readFileSync(resolve(root, "supabase/functions/create-subscription-checkout/index.ts"), "utf8");
+
+  it("reads a name for every agent-only entitlement it guards", () => {
+    expect(agentOnly.length).toBe(4);
+  });
+
+  it("the Pro card's perks name none of them", () => {
+    expect(violations(PRO_PERKS)).toEqual([]);
+  });
+
+  it("nor does the Stripe page that takes the Pro money", () => {
+    expect(violations([proStripeDescription(proCheckout)])).toEqual([]);
+  });
+
+  it("teeth: the line the Pro card carried before L3-04 is caught, by the plan's own name", () => {
+    const before = [`${SUBSCRIPTIONS.agent.name} — the ${en.agentPlan.name} triages the live job board overnight`, ...PRO_PERKS];
+    expect(violations(before).length).toBeGreaterThan(0);
+  });
+
+  it("the agent plan's card is where that line now lives", () => {
+    expect(String(en.agentPlan.perkMorningQueue)).toContain(SUBSCRIPTIONS.agent.name);
   });
 });

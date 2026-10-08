@@ -4878,6 +4878,7 @@
     "includesPro": "Bevat alles uit Pro (${{proPrice}}/maand)",
     "perkAutoApply": "Solliciteert automatisch voor je op {{names}}",
     "perkOneClick": "Sollicitaties ingevuld en klaar om te versturen op {{names}}",
+    "perkMorningQueue": "Ochtendwachtrij: 's nachts voert de agent je zoekopdracht uit en zet hij een shortlist voor de ochtend in je account",
     "perkQueue": "Een wachtrij die je eerst kunt nakijken, of onbeheerd laten draaien — jouw keuze, altijd aan te passen",
     "perkCap": "Een daglimiet die jij instelt, en nooit twee keer op dezelfde vacature",
     "perkHonest": "Hij verzint nooit een antwoord. Heeft een vraag jou nodig, dan stopt hij en vraagt het.",

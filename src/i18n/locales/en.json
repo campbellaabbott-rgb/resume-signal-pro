@@ -4878,6 +4878,7 @@
     "includesPro": "Includes everything in Pro (${{proPrice}}/mo)",
     "perkAutoApply": "Applies for you automatically on {{names}}",
     "perkOneClick": "Applications filled in and ready to send on {{names}}",
+    "perkMorningQueue": "Morning Queue: overnight, the agent runs your search and leaves a shortlist in your account for the morning",
     "perkQueue": "A queue you can review first, or let it run unattended — your choice, changeable any time",
     "perkCap": "A daily limit you set, and it never applies to the same job twice",
     "perkHonest": "It never invents an answer. If a question needs you, it stops and asks.",

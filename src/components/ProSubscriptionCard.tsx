@@ -7,23 +7,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
+import { PRO_PERKS } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
 
-// Every line is a shipped, factual capability OF THIS PLAN. The Morning Queue
-// line that used to lead this list is the agent plan's (its entitlement is
-// price-specific: _shared/agent.ts refuses the Pro price), so a Pro buyer met the
-// agent's paywall on /agent after being sold it here (platform sweep L3-04).
-// It is described on the agent card beside this one. Whether the Full
-// Analysis belongs in Pro is an open owner decision (the $5 checkout still
-// charges a Pro member), recorded in the payments wave report.
-const PRO_PERKS = [
-  "Batch application prep — tailored answers drafted for every saved job at once (you always hit send yourself)",
-  "Unlimited scans — tailor a resume version to every job you apply to",
-  "Track every application against the exact resume version you sent",
-  "See which of your resume versions actually lands interviews",
-  "Every paid tool included — Full Analysis, Keyword Fix, Cover Letters, Interview Coach, and all future tools, automatically",
-  "Cancel anytime from your account",
-];
+// What the plan includes lives in src/config/pro-perks.ts, where the pricing
+// guards read it without mounting this card.
 
 /**
  * Resume Booster Pro card — the monthly all-access plan. Shown on /pricing and

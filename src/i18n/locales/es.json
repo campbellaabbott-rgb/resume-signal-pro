@@ -4878,6 +4878,7 @@
     "includesPro": "Incluye todo lo de Pro (${{proPrice}}/mes)",
     "perkAutoApply": "Se postula automáticamente por ti en {{names}}",
     "perkOneClick": "Solicitudes rellenadas y listas para enviar en {{names}}",
+    "perkMorningQueue": "Cola matinal: durante la noche, el agente ejecuta tu búsqueda y te deja una lista corta en tu cuenta para la mañana",
     "perkQueue": "Una cola que puedes revisar primero, o dejar que funcione sola: tú decides y puedes cambiarlo cuando quieras",
     "perkCap": "Un límite diario que tú fijas, y nunca se postula dos veces al mismo puesto",
     "perkHonest": "Nunca inventa una respuesta. Si una pregunta te necesita, se detiene y te consulta.",

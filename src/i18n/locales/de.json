@@ -4878,6 +4878,7 @@
     "includesPro": "Enthält alles aus Pro ({{proPrice}} $/Monat)",
     "perkAutoApply": "Bewirbt sich automatisch für Sie bei {{names}}",
     "perkOneClick": "Bewerbungen ausgefüllt und versandbereit bei {{names}}",
+    "perkMorningQueue": "Morgen-Queue: Über Nacht führt der Agent Ihre Suche aus und legt Ihnen für den Morgen eine Auswahl ins Konto",
     "perkQueue": "Eine Liste, die Sie erst prüfen können – oder unbeaufsichtigt laufen lassen. Ihre Entscheidung, jederzeit änderbar.",
     "perkCap": "Ein Tageslimit, das Sie festlegen, und nie zwei Bewerbungen auf dieselbe Stelle",
     "perkHonest": "Er erfindet nie eine Antwort. Braucht eine Frage Sie, hält er an und fragt.",

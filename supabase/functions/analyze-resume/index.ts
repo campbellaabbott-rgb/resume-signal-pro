@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
@@ -9,10 +9,13 @@ import {
   fullAnalysisRefusal,
   priorRedemptionOf,
 } from "../_shared/full-analysis.ts";
+import { proGrantRefusal } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-05.1";
+const FN_BUILD = "analyze-resume.2026-10-08.1";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -739,18 +742,57 @@ serve(async (req) => {
     
     let session;
     let customerEmail: string | null = null;
-    try {
-      session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['customer_details']
-      });
-      customerEmail = session.customer_details?.email || session.customer_email || null;
-      console.log(`[ANALYZE-RESUME] Customer email: ${customerEmail ? 'found' : 'not found'}`);
-    } catch (stripeError) {
-      console.error("[ANALYZE-RESUME] Invalid Stripe session:", stripeError);
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // A PRO MEMBER'S INCLUDED ANALYSIS (platform sweep L3-04): create-checkout
+    // mints a single-use pro_<grant> instead of a Stripe session. The grant
+    // row is the receipt; it is redeemed below exactly like a paid session --
+    // once, by the purchased_content insert -- and only while the ACCOUNT
+    // that minted it may still mint (the one rule, _shared/pro-standing.ts).
+    let proGrant: { id: string; email: string; user_id?: string | null; consumed_at?: string | null; revoked_at?: string | null } | null = null;
+    if (typeof sessionId === "string" && sessionId.startsWith("pro_")) {
+      const grantId = sessionId.slice(4);
+      if (!UUID_RE.test(grantId)) {
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: grant, error: grantError } = await supabase
+        .from('pro_grants')
+        .select('id, email, user_id, product_type, consumed_at, revoked_at')
+        .eq('id', grantId)
+        .maybeSingle();
+      if (grantError) {
+        console.error("[ANALYZE-RESUME] Grant lookup failed:", grantError);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!grant || grant.product_type !== FULL_ANALYSIS_PRODUCT_TYPE) {
+        console.warn(`[ANALYZE-RESUME] Grant ${grantId} is not a full-analysis grant`);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      proGrant = grant;
+      customerEmail = grant.email ?? null;
+      // The same shape a paid $0 session has, so everything below reads it unchanged.
+      session = { payment_status: "paid", amount_total: 0, currency: "usd", metadata: { product_type: FULL_ANALYSIS_PRODUCT_TYPE } };
+    } else {
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ['customer_details']
+        });
+        customerEmail = session.customer_details?.email || session.customer_email || null;
+        console.log(`[ANALYZE-RESUME] Customer email: ${customerEmail ? 'found' : 'not found'}`);
+      } catch (stripeError) {
+        console.error("[ANALYZE-RESUME] Invalid Stripe session:", stripeError);
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.PAYMENT_REQUIRED }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // WHAT THE SESSION BOUGHT, NOT WHAT IT COST.
@@ -808,6 +850,25 @@ serve(async (req) => {
         JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    // An undelivered Pro grant: spent nowhere else, not taken back, and the
+    // account that minted it still holds a plan that may mint. Refused before
+    // any AI spend; a refused grant is not spent.
+    if (proGrant) {
+      if (proGrant.consumed_at) {
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const grantRefusal = await proGrantRefusal(supabase, proGrant);
+      if (grantRefusal) {
+        console.warn(`[ANALYZE-RESUME] Grant ${proGrant.id} refused: ${grantRefusal.error}`);
+        return new Response(
+          JSON.stringify({ error: grantRefusal.error }),
+          { status: grantRefusal.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // NOTHING IS CLAIMED HERE. The claim used to be written at this point,
@@ -1126,6 +1187,17 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
           if (stampError) console.error("[ANALYZE-RESUME] Could not name the product on the existing claim:", stampError);
         } else if (claimError) {
           console.error("[ANALYZE-RESUME] Could not record the claim (reconcile-stripe may report this session):", claimError);
+        }
+
+        // A Pro grant is spent by the redemption above; this stamps it, so a
+        // replay is answered from the redemption and never mints again.
+        if (proGrant) {
+          const { error: spendError } = await supabase
+            .from('pro_grants')
+            .update({ consumed_at: new Date().toISOString() })
+            .eq('id', proGrant.id)
+            .is('consumed_at', null);
+          if (spendError) console.error("[ANALYZE-RESUME] Could not stamp the grant spent:", spendError);
         }
 
         // Close the webhook's delivery row if it opened one; open a delivered
