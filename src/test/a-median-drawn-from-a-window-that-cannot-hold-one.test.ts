@@ -542,8 +542,14 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // cohort and still published 0.9431 with sufficient_30 true). The day-14
     // chain and the seven-day-floor property are untouched by that change;
     // the pins follow the definitions that run.
-    const COMPANY_CURVE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
-    const CATEGORY_CURVE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+    // MOVED, NOT DROPPED, a seventh time, both curves together: on 2026-10-08
+    // a doubted closure (and its bad batch's age-out) whose posting was seen
+    // again leaves the risk set instead of being censored beside its own
+    // re-observation, and the company curve gained role-level counts beside
+    // its event counts. The seven-day-floor property is untouched; the pins
+    // follow the definitions that run.
+    const COMPANY_CURVE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
+    const CATEGORY_CURVE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });
