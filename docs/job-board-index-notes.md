@@ -10130,3 +10130,21 @@ Not changed: deep_cursor is still written whole at slice end (n137 keeps the
 cursor map out of the fold on purpose, because re-merging it moves rotation
 speed and needs its own measurement). With this rule a lost cursor write costs
 a re-read, never a closure.
+
+## n441-an-aged-row-on-a-windowed-board-leaves-its-exit-row
+
+Above: the truncated branch's `closeVanishedChunk(... aged ...)`.
+
+On a windowed board `vanished` holds only the ids the freshness cap aged out
+(nothing else is provable there), and every visit except the lap-proving one
+deleted them with no job_board_exits row, while a full read and the proving
+visit route the same ids through closeVanishedChunk, which writes the aged
+exit first and deletes only what was recorded (n416). The branch dates from
+d337de98 (July); sweep S8-084. job_board_exits keeps 90 days with no rollup,
+so a censoring row lost there is lost, and these are the largest employers.
+Now the truncated branch sends its aged ids through closeVanishedChunk too:
+an aged-out row is never a closure there (closeVanishedChunk reads
+agedOutIds), so it writes exactly the aged exit and deletes what landed. One
+extra read of the chunk's rows per visit that ages something out. Anything
+else in `vanished` can only be there before the missing_since column existed
+(the legacy path), and is deleted as before.

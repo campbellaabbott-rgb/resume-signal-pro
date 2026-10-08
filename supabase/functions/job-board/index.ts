@@ -5096,13 +5096,23 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             });
           }
         } else if (vanished.length) {
-          // Truncated fetch with NO completed lap behind it: prune without
-          // logging — this visit still cannot distinguish closed from
-          // displaced. On a windowed board `vanished` holds only ids the
-          // freshness cap aged out, which is our own rule and no employer
-          // event; everything else waited above for a wrap to speak for it.
-          for (let i = 0; i < vanished.length; i += 200) {
-            await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
+          // Truncated fetch with NO completed lap behind it: no closure — this
+          // visit still cannot distinguish closed from displaced. On a windowed
+          // board `vanished` holds only ids the freshness cap aged out, which
+          // is our own rule and no employer event; each leaves its exit row
+          // first, as on a full read, and only a recorded row goes (S8-084, n416).
+          const aged = vanished.filter((id) => agedOutIds.has(id));
+          const closedAt = new Date().toISOString();
+          for (let i = 0; i < aged.length; i += 200) {
+            await closeVanishedChunk(client, s, aged.slice(i, i + 200), {
+              closedAt, agedOutIds, freshCutoffMs, liveTitles: new Set(), recentSuperseded: new Set(), batchSuspect,
+              absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso,
+            });
+          }
+          // Only before the missing_since column existed can anything else be here; that path is unchanged.
+          const rest = vanished.filter((id) => !agedOutIds.has(id));
+          for (let i = 0; i < rest.length; i += 200) {
+            await client.from("job_board_postings").delete().in("id", rest.slice(i, i + 200));
           }
         }
         okKeys.push(boardKeyOf(s));
