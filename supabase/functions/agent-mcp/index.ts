@@ -234,7 +234,7 @@ const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Pas
 /** The JSON-RPC methods this server answers, for the error that names them. */
 const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
 /** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
-const FN_BUILD = "agent-mcp.2026-10-05.2";
+const FN_BUILD = "agent-mcp.2026-10-09.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -243,6 +243,9 @@ const PASS_URL = "https://resumebooster.work/agents/pass";
 const QUEUE_URL = "https://resumebooster.work/agent?tab=applications";
 /** A posting's address on the site: the board opens ?job= in its detail panel (Jobs.tsx jobHref). */
 const SITE_JOB_URL = (id: string) => `https://resumebooster.work/jobs?job=${encodeURIComponent(id)}`;
+/** The same page, tagged as a visit from this connector (utm_source=mcp). */
+const SITE_JOB_URL_TRACKED = (id: string, tool = "search") =>
+  `${SITE_JOB_URL(id)}&utm_source=mcp&utm_medium=connector&utm_campaign=${encodeURIComponent(tool)}`;
 
 // ── The unkeyed read tier ───────────────────────────────────────────────────
 //
@@ -516,10 +519,15 @@ async function board(body: Record<string, unknown>): Promise<Record<string, unkn
  * caps a query at 10,000 results, so even armed the feed is a bounded slice
  * and never a census of federal hiring.
  */
-const NO_REDISTRIBUTION_SOURCES = ["usajobs"] as const;
+// SMARTRECRUITERS, 2026-10-09 (owner decision 4 of 2026-10-08): withheld from
+// this connector and from /v1 until SmartRecruiters (SAP) grants permission,
+// as the federal feed is; they stay on the public board. The board has no
+// exclusion filter, so their rows are dropped on the way out (servableJobs)
+// and `total` still counts them: excludedSources says so on every search.
+const NO_REDISTRIBUTION_SOURCES = ["usajobs", "smartrecruiters"] as const;
 /** Said in every refusal this file makes about it. One wording, like /v1's. */
 const NO_REDISTRIBUTION_REASON =
-  "The U.S. federal job feed is readable on resumebooster.work but may not be redistributed as a data feed under its terms of use, so no tool here returns its rows.";
+  "Two hiring systems are shown on resumebooster.work but not handed on by this connector: the U.S. federal job feed, whose terms of use forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No tool here returns their rows; open the posting on the site instead.";
 const isNoRedistributionSource = (v: unknown): boolean =>
   (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
 /** A job id is `vendor:employer:externalId`, so its vendor is its first field. */
@@ -591,6 +599,12 @@ function compactJob(j: Record<string, unknown>): Record<string, unknown> {
   // relaying jobs to a person inherits the disclosure duty, so it must not
   // be dropped here the way salaryStatedOnly must not be swallowed.
   if (j.agency === true) out.agency = true;
+  // Which tier matched the row (S8-077): a description-only match is not a
+  // title match, and the card said nothing.
+  if (j.matchScope === "title" || j.matchScope === "description") out.matchScope = j.matchScope;
+  // The posting's own page on the site, tagged so a visit from a connector can
+  // be told from any other (the MCP directory listing's measure).
+  if (typeof j.id === "string" && j.id) out.siteUrl = SITE_JOB_URL_TRACKED(j.id);
   return out;
 }
 
@@ -603,6 +617,11 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       "ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean",
       "droppedTerms", "locationSplit", "coverage", "fuzzyExtra", "semanticExtra",
       "locationExpandedFrom", "locationSearched", "maxAgeClampedTo", "searchRoute",
+      // total counts TITLE matches; relatedTotal the description-only ones
+      // (S8-077). filterCoverage is the live share each applied filter can
+      // see, dated by filterCoverageAt (S8-079): the figure the descriptions
+      // used to hand-type.
+      "relatedTotal", "relatedCapped", "filterCoverage", "filterCoverageAt",
       // salaryStatedOnly is ROW-SELECTING, not cosmetic: a pay-sorted search
       // drops the ~76% of the board carrying no annualised figure in approximate
       // dollars (100 - 23.7, live 2026-09-27T03:29:32Z — the old ~87% here
@@ -663,7 +682,7 @@ const SEARCH_PROPERTIES = {
       "ISO-8601 instant; only postings the EMPLOYER dated after it. Undated rows fall out of this window " +
       "(unlike maxAgeDays, which falls back to when the board first saw a posting), so this is the strict form of 'new'.",
   },
-  salaryMin: { type: "number", description: "Annual USD-equivalent salary floor. Note: only ~13% of postings state pay." },
+  salaryMin: { type: "number", description: "Annual USD-equivalent salary floor. Many postings state no comparable pay; the response's filterCoverage gives the live share this floor can see, dated by filterCoverageAt." },
   salaryMax: { type: "number", description: "Annual USD-equivalent salary ceiling." },
   includeUnstatedPay: {
     type: "boolean",
@@ -680,7 +699,7 @@ const SEARCH_PROPERTIES = {
   hasStatedPay: {
     type: "boolean",
     description:
-      "Only postings whose pay field carries a figure the employer published — hourly and per-shift rates included, read from the `salary` field. About 28% of the board (2026-09-27). Narrower than it sounds only for RANKING: salaryFloor compares an annualised figure in approximate US dollars, which about 24% carry, so some rows this returns cannot be filtered by pay amount.",
+      "Only postings whose pay field carries a figure the employer published — hourly and per-shift rates included, read from the `salary` field. The response's filterCoverage gives the live share. Narrower than it sounds only for RANKING: salaryFloor compares an annualised figure in approximate US dollars, which fewer postings carry, so some rows this returns cannot be filtered by pay amount.",
   },
   payBasis: { type: "string", enum: ["hourly", "salaried"], description: "Restrict to hourly or salaried pay." },
   maxYears: { type: "number", description: "Only roles asking for at most N years of experience." },
@@ -725,10 +744,12 @@ const JOB_CARD_SCHEMA = {
     salary: { type: ["string", "null"], description: "The employer's own pay text, verbatim and unparsed." },
     salaryMinAnnual: { type: "number", description: "Annual USD-equivalent floor, parsed by the board. ABSENT when the posting states no pay — absence is not zero." },
     salaryMaxAnnual: { type: "number", description: "Annual USD-equivalent ceiling. ABSENT when unstated." },
-    salaryPeriod: { type: "string", description: "The period the employer stated: hour, month, year. ABSENT when unstated (~89% of the board)." },
+    salaryPeriod: { type: "string", description: "The period the employer stated: hour, month, year. ABSENT when unstated (most postings)." },
     salaryCurrency: { type: "string", description: "ISO-4217, as stated. ABSENT when unstated." },
     experienceBand: { type: "string", enum: ["entry", "mid", "senior", "expert"], description: "ABSENT when the posting's seniority could not be read." },
-    minYears: { type: "integer", description: "Years of experience the posting asks for. ABSENT when it names none (~71%)." },
+    minYears: { type: "integer", description: "Years of experience the posting asks for. ABSENT when it names none (most postings)." },
+    matchScope: { type: "string", enum: ["title", "description"], description: "Which part of the posting matched the query. ABSENT when the board's path did not say." },
+    siteUrl: { type: "string", description: "The posting's page on resumebooster.work." },
     postedAt: { type: ["string", "null"], description: "The employer's own date, ISO-8601. Null when the feed carries none — never the date we first saw it." },
     applyUrl: { type: ["string", "null"] },
     agentReady: { type: "boolean", description: "True when request_application can submit to this hiring system." },
@@ -743,6 +764,10 @@ const JOB_CARD_SCHEMA = {
 const DISCLOSURE_SCHEMA = {
   total: { type: ["integer", "null"], description: "Exact match count. ABSENT with countUnavailable:true when the board refuses to guess." },
   countUnavailable: { type: "boolean", description: "The board could not count this query exactly — do not report a total." },
+  relatedTotal: { type: "integer", description: "Further postings matched in the description only, beyond `total` (which counts title matches). Each card says which in matchScope." },
+  relatedCapped: { type: "boolean", description: "relatedTotal stopped counting at the board's cap; the true figure is higher." },
+  filterCoverage: { type: "object", additionalProperties: { type: "number" }, description: "For each filter applied, the live share (0-1) of the board that states the field it filters on; rows that state nothing are excluded." },
+  filterCoverageAt: { type: "string", description: "When filterCoverage was measured. ABSENT when a figure is a pinned fallback rather than a live reading." },
   hasMore: { type: "boolean" },
   nextOffset: { type: "integer", description: "Pass back as `offset` for the next page." },
   ignoredFilters: { type: "array", items: { type: "string" }, description: "Filters the board could NOT apply. Results answer a wider question than was asked." },
@@ -757,7 +782,7 @@ const DISCLOSURE_SCHEMA = {
   salaryStatedOnly: {
     type: "boolean",
     description:
-      "Row-selecting: this page excludes the ~76% of postings with no annualised figure in approximate US dollars (2026-09-27), including postings that publish an hourly rate.",
+      "Row-selecting: this page excludes the postings with no annualised figure in approximate US dollars, including postings that publish an hourly rate (filterCoverage, when present, gives the live share).",
   },
   agenciesExcluded: { type: "boolean", description: "Row-selecting: disclosed agency inventory is hidden from this page." },
 };
@@ -1491,9 +1516,9 @@ const TOOLS = [
             applicationsLeft: { type: ["integer", "null"] },
             applicationsTotal: { type: ["integer", "null"] },
             startsOn: { type: "string" },
-            buy: { type: "string", description: "Where a pass is bought, signed in." },
+            buy: { type: "string", description: "Where a pass is bought, signed in. ABSENT inside ChatGPT, whose app rules forbid purchase links." },
           },
-          required: ["state", "startsOn", "buy"],
+          required: ["state", "startsOn"],
           additionalProperties: true,
         },
         apply: {
@@ -1981,6 +2006,41 @@ const hedgeInBand = (params: Record<string, unknown>): boolean => {
   const meta = params._meta;
   return !!meta && typeof meta === "object" && Object.keys(meta as object).some((k) => k.startsWith(OPENAI_META_PREFIX));
 };
+/**
+ * NO PURCHASE LINKS INSIDE CHATGPT (MCP directory prep, commercial plan
+ * 2026-10-08, experiment 2). OpenAI's app rules forbid prices and checkout
+ * links in an app's output, and several refusals here end "buy a pass at
+ * <url>" or carry `buy`/`upgrade` fields. A tool result going back to ChatGPT
+ * (its `openai/` _meta, or its user agent) has every clause that sends the
+ * reader to buy or subscribe removed, and those two fields dropped; the
+ * requirement itself ("needs an Agent plan or a live pass") stays. Claude and
+ * Claude Code get the result unchanged.
+ */
+const isChatGptCaller = (headers: Headers, params: Record<string, unknown>): boolean =>
+  hedgeInBand(params) || /\b(openai|chatgpt)\b/i.test(headers.get("user-agent") ?? "");
+const PURCHASE_CLAUSE = /\b(buy|buying|bought|purchase|subscribe|subscription|upgrade)\b|\/agents\/pass\b|resumebooster\.work\/agent(?![\w/-])/i;
+function withoutPurchaseText(s: string): string {
+  const trimmed = s.trim();
+  if ((trimmed.startsWith("{") || trimmed.startsWith("[")) && trimmed.length > 1) {
+    try { return JSON.stringify(withoutPurchaseLinks(JSON.parse(trimmed)), null, 1); } catch { /* prose after all */ }
+  }
+  if (!PURCHASE_CLAUSE.test(s)) return s;
+  const kept = s.split(/(?<=[.;!?])\s+|\s+—\s+|,\s+or\s+/).filter((c) => !PURCHASE_CLAUSE.test(c));
+  return kept.join(" ").trim() || "This needs an Agent plan or a live pass on the account at resumebooster.work.";
+}
+function withoutPurchaseLinks(v: unknown): unknown {
+  if (typeof v === "string") return withoutPurchaseText(v);
+  if (Array.isArray(v)) return v.map(withoutPurchaseLinks);
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (k === "buy" || k === "upgrade") continue;
+      out[k] = withoutPurchaseLinks(x);
+    }
+    return out;
+  }
+  return v;
+}
 /** The caller's own `openai/subject` from _meta, when it is a non-empty string; logged hashed, never a key to anything. */
 const openaiSubjectOf = (params: Record<string, unknown>): string => {
   const meta = params._meta;
@@ -2133,6 +2193,11 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   }
   return {
     action: "list", limit, includeFacets: false,
+    // EVERY POSTING, NOT ONE CARD PER TITLE (S8-029): the board folds an
+    // employer's same-title postings into one card and skips nextOffset past
+    // the siblings; these cards carry no postingCount or otherLocations, so a
+    // multi-site employer's other postings were never delivered.
+    groupSimilar: false,
     ...(args.query ? { q: String(args.query) } : {}),
     ...(args.location ? { location: String(args.location) } : {}),
     ...(args.country ? { country: String(args.country) } : {}),
@@ -2506,8 +2571,7 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
 const aliasTitle = (card: Record<string, unknown>): string =>
   [card.title, card.company].filter((x) => typeof x === "string" && x).join(" — ") || String(card.id ?? "");
 /** The employer's own apply page when the board holds one, else the posting's page on the site. */
-const aliasUrl = (card: Record<string, unknown>): string =>
-  typeof card.applyUrl === "string" && card.applyUrl ? card.applyUrl : SITE_JOB_URL(String(card.id ?? ""));
+const aliasUrl = (card: Record<string, unknown>): string => SITE_JOB_URL_TRACKED(String(card.id ?? ""), "research");
 
 async function runSearchAlias(args: Record<string, unknown>): Promise<unknown> {
   const query = String(args.query ?? "").trim();
@@ -3597,7 +3661,29 @@ function initializeResult(
   });
 }
 
-Deno.serve(async (req) => {
+/**
+ * The one exit every answer leaves by. A tools/call from ChatGPT has its
+ * result passed through withoutPurchaseLinks; every other answer, and every
+ * other host, goes out exactly as the handler wrote it.
+ */
+function inChatGptWithoutPurchaseLinks(handler: (req: Request) => Promise<Response>): (req: Request) => Promise<Response> {
+  return async (req: Request) => {
+    const probe = req.method === "POST"
+      ? await req.clone().json().catch(() => null) as { method?: unknown; params?: unknown } | null
+      : null;
+    const res = await handler(req);
+    if (!probe || probe.method !== "tools/call") return res;
+    const params = probe.params && typeof probe.params === "object" ? probe.params as Record<string, unknown> : {};
+    if (!isChatGptCaller(req.headers, params)) return res;
+    const body = await res.clone().json().catch(() => null);
+    if (body === null) return res;
+    return new Response(JSON.stringify(withoutPurchaseLinks(body)), { status: res.status, headers: res.headers });
+  };
+}
+/** Every answer leaves through inChatGptWithoutPurchaseLinks. */
+const serveMcp = (handler: (req: Request) => Promise<Response>) => Deno.serve(inChatGptWithoutPurchaseLinks(handler));
+
+serveMcp(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") {
     // The protected-resource metadata — matched on the pathname AFTER the

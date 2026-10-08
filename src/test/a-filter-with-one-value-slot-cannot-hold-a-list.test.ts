@@ -120,7 +120,7 @@ describe("a filter with one value slot cannot hold a list", () => {
     // bundle, and a bundle over the size cliff deploys "successfully" while
     // serving the previous version. One list, two readers, still no retyping;
     // the re-export assertions below are what stop them drifting apart again.
-    expect(RAW).toMatch(/import \{ BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES \} from "\.\.\/_shared\/board-domains\.ts";/);
+    expect(RAW).toMatch(/import \{ BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES \} from "\.\.\/_shared\/board-domains\.ts";/);
     expect(RAW, "no domain may be imported from a job-board module").not.toMatch(/import \{[^}]*(BOARD_VENDORS|JOB_CATEGORIES|EXPERIENCE_BANDS|WORK_MODES)[^}]*\} from "\.\.\/job-board\//);
     for (const [file, name] of [
       ["supabase/functions/job-board/categories.ts", "JOB_CATEGORIES"],
