@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it.sql'));

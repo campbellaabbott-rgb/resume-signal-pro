@@ -736,6 +736,13 @@
       "when": 1791227054717,
       "tag": "0104_20261005100000_a_workday_slice_read_as_a_whole_board_wrote_closures_nobody_made",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1791420732246,
+      "tag": "0105_20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it",
+      "breakpoints": true
     }
   ]
 }
