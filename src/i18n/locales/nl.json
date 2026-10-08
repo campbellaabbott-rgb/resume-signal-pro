@@ -5226,12 +5226,14 @@
   },
   "affiliates": {
     "commission": {
-      "headline": "{{other}} per verkoop ({{small}} op kleinere tools)",
-      "detail": "Je verdient {{other}} voor elke verkoop die je aanbrengt, of {{small}} als het een van de kleinere tools is: keyword-fix, sollicitatiebrief, scanpakket, interviewcoach, loopbaansimulator of sollicitatieassistent.",
+      "tagline": "Verdien commissie op de tools die je verwijzingen kopen.",
+      "headline": "{{other}} per toolverkoop ({{small}} op kleinere tools)",
+      "detail": "Je verdient {{other}} als iemand die je aanbrengt het Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan of Freelance Boost koopt, of {{small}} voor een van de kleinere tools: keyword-fix, sollicitatiebrief, scanpakket, interviewcoach, loopbaansimulator of sollicitatieassistent.",
+      "excluded": "De Full Resume Analysis, bijgekocht scantegoed, Pro, Morning Queue en de Agent Pass leveren geen commissie op.",
       "bannerTitle": "Je commissie",
-      "banner": "{{other}} per aangebrachte verkoop, {{small}} op kleinere tools",
-      "linkHint": "Deel deze link en verdien {{other}} op elke verkoop die hij oplevert ({{small}} op kleinere tools), met een attributievenster van 30 dagen",
-      "howItWorks": "Als iemand op je link klikt en binnen 30 dagen koopt, verdien je {{other}}, of {{small}} als het een van de kleinere tools is"
+      "banner": "{{other}} per aangebrachte toolverkoop, {{small}} op kleinere tools",
+      "linkHint": "Deel deze link en verdien {{other}} op elke toolverkoop die hij oplevert ({{small}} op kleinere tools), met een attributievenster van 30 dagen",
+      "howItWorks": "Als iemand op je link klikt en binnen 30 dagen een van de tools koopt, verdien je {{other}}, of {{small}} voor een kleinere tool. De Full Resume Analysis, bijgekocht scantegoed en abonnementen leveren niets op."
     },
     "updates": {
       "title": "Updates zolang deze pagina open is",

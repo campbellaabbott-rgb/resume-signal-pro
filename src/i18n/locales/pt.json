@@ -5226,12 +5226,14 @@
   },
   "affiliates": {
     "commission": {
-      "headline": "{{other}} por venda ({{small}} nas ferramentas menores)",
-      "detail": "Você ganha {{other}} por cada venda que indicar, ou {{small}} quando a venda é uma das ferramentas menores: correção de palavras-chave, carta de apresentação, pacote de análises, coach de entrevista, simulador de carreira ou assistente de candidatura.",
+      "tagline": "Ganhe comissão pelas ferramentas que suas indicações comprarem.",
+      "headline": "{{other}} por venda de ferramenta ({{small}} nas ferramentas menores)",
+      "detail": "Você ganha {{other}} quando alguém que você indicou compra o Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan ou Freelance Boost, ou {{small}} por uma das ferramentas menores: correção de palavras-chave, carta de apresentação, pacote de análises, coach de entrevista, simulador de carreira ou assistente de candidatura.",
+      "excluded": "O Full Resume Analysis, as recargas de créditos de análise, Pro, Morning Queue e o Agent Pass não geram comissão.",
       "bannerTitle": "Sua comissão",
-      "banner": "{{other}} por venda indicada, {{small}} nas ferramentas menores",
-      "linkHint": "Compartilhe este link para ganhar {{other}} em cada venda que ele trouxer ({{small}} nas ferramentas menores), com janela de atribuição de 30 dias",
-      "howItWorks": "Quando alguém clica no seu link e compra em até 30 dias, você ganha {{other}}, ou {{small}} se comprar uma das ferramentas menores"
+      "banner": "{{other}} por venda de ferramenta indicada, {{small}} nas ferramentas menores",
+      "linkHint": "Compartilhe este link para ganhar {{other}} em cada venda de ferramenta que ele trouxer ({{small}} nas ferramentas menores), com janela de atribuição de 30 dias",
+      "howItWorks": "Quando alguém clica no seu link e compra uma das ferramentas em até 30 dias, você ganha {{other}}, ou {{small}} por uma ferramenta menor. O Full Resume Analysis, as recargas de créditos e as assinaturas não geram nada."
     },
     "updates": {
       "title": "Atualizações enquanto esta página estiver aberta",

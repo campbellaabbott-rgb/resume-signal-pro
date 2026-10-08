@@ -28,6 +28,25 @@ export const SMALL_TOOL_PRODUCT_TYPES = [
   "apply_assistant",
 ] as const;
 
+/**
+ * WHICH SALES EARN AT ALL. Only create-product-checkout puts the referral
+ * code on the Stripe session, so only its catalogue can be credited: the Full
+ * Resume Analysis (create-checkout), scan credit top-ups
+ * (create-scan-pack-checkout), Pro, Morning Queue and the Agent Pass earn
+ * nothing. The copy names these products and those exclusions; the affiliate
+ * test holds this list equal to that checkout's catalogue and the set of
+ * checkouts that carry the code to REFERRAL_CHECKOUTS.
+ */
+export const COMMISSIONED_PRODUCT_TYPES = {
+  /** Named in the copy, paid at AFFILIATE_COMMISSION_CENTS.other. */
+  other: ["premium_package", "ats_defense", "career_snapshot", "graduate_gameplan", "freelance_boost", "freelance_transition_pro"],
+  /** The smaller tools the copy lists, paid at AFFILIATE_COMMISSION_CENTS.smallTool. */
+  smallTool: ["basic_keyword_fix", "cover_letter", "scan_pack", "interview_coach", "career_path_simulator", "apply_assistant"],
+} as const;
+
+/** The checkout functions whose Stripe sessions carry referral_code. */
+export const REFERRAL_CHECKOUTS = ["create-product-checkout"] as const;
+
 /** The dashboard's payout minimum, in cents (affiliate-payout-request holds the same number). */
 export const AFFILIATE_MIN_PAYOUT_CENTS = 2500;
 

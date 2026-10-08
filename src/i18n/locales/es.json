@@ -5226,12 +5226,14 @@
   },
   "affiliates": {
     "commission": {
-      "headline": "{{other}} por venta ({{small}} en herramientas pequeñas)",
-      "detail": "Ganas {{other}} por cada venta que recomiendes, o {{small}} cuando la venta es una de las herramientas pequeñas: corrección de palabras clave, carta de presentación, paquete de escaneos, coach de entrevistas, simulador de trayectoria profesional o asistente de postulación.",
+      "tagline": "Gana una comisión por las herramientas que compren tus referidos.",
+      "headline": "{{other}} por venta de herramienta ({{small}} en herramientas pequeñas)",
+      "detail": "Ganas {{other}} cuando alguien que recomiendes compra el Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan o Freelance Boost, o {{small}} por una de las herramientas pequeñas: corrección de palabras clave, carta de presentación, paquete de escaneos, coach de entrevistas, simulador de trayectoria profesional o asistente de postulación.",
+      "excluded": "El Full Resume Analysis, las recargas de créditos de escaneo, Pro, Morning Queue y el Agent Pass no generan comisión.",
       "bannerTitle": "Tu comisión",
-      "banner": "{{other}} por venta recomendada, {{small}} en herramientas pequeñas",
-      "linkHint": "Comparte este enlace para ganar {{other}} por cada venta que traiga ({{small}} en herramientas pequeñas), con una ventana de atribución de 30 días",
-      "howItWorks": "Cuando alguien hace clic en tu enlace y compra en un plazo de 30 días, ganas {{other}}, o {{small}} si compra una de las herramientas pequeñas"
+      "banner": "{{other}} por venta de herramienta recomendada, {{small}} en herramientas pequeñas",
+      "linkHint": "Comparte este enlace para ganar {{other}} por cada venta de herramienta que traiga ({{small}} en herramientas pequeñas), con una ventana de atribución de 30 días",
+      "howItWorks": "Cuando alguien hace clic en tu enlace y compra una de las herramientas en un plazo de 30 días, ganas {{other}}, o {{small}} por una herramienta pequeña. El Full Resume Analysis, las recargas de créditos y las suscripciones no generan nada."
     },
     "updates": {
       "title": "Actualizaciones mientras esta página está abierta",

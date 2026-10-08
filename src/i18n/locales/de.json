@@ -5226,12 +5226,14 @@
   },
   "affiliates": {
     "commission": {
-      "headline": "{{other}} pro Verkauf ({{small}} bei kleineren Tools)",
-      "detail": "Sie verdienen {{other}} für jeden vermittelten Verkauf, oder {{small}}, wenn es eines der kleineren Tools ist: Keyword-Fix, Anschreiben, Scan-Paket, Interview-Coach, Karrierepfad-Simulator oder Bewerbungsassistent.",
+      "tagline": "Verdienen Sie eine Provision auf die Tools, die Ihre Empfehlungen kaufen.",
+      "headline": "{{other}} pro Tool-Verkauf ({{small}} bei kleineren Tools)",
+      "detail": "Sie verdienen {{other}}, wenn jemand über Ihre Empfehlung das Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan oder Freelance Boost kauft, oder {{small}} für eines der kleineren Tools: Keyword-Fix, Anschreiben, Scan-Paket, Interview-Coach, Karrierepfad-Simulator oder Bewerbungsassistent.",
+      "excluded": "Für die Full Resume Analysis, Aufladungen von Scan-Guthaben, Pro, Morning Queue und den Agent Pass gibt es keine Provision.",
       "bannerTitle": "Ihre Provision",
-      "banner": "{{other}} pro vermitteltem Verkauf, {{small}} bei kleineren Tools",
-      "linkHint": "Teilen Sie diesen Link und verdienen Sie {{other}} an jedem Verkauf, den er bringt ({{small}} bei kleineren Tools), mit 30 Tagen Zuordnungsfenster",
-      "howItWorks": "Wenn jemand Ihren Link anklickt und innerhalb von 30 Tagen kauft, verdienen Sie {{other}}, oder {{small}}, wenn es eines der kleineren Tools ist"
+      "banner": "{{other}} pro vermitteltem Tool-Verkauf, {{small}} bei kleineren Tools",
+      "linkHint": "Teilen Sie diesen Link und verdienen Sie {{other}} an jedem Tool-Verkauf, den er bringt ({{small}} bei kleineren Tools), mit 30 Tagen Zuordnungsfenster",
+      "howItWorks": "Wenn jemand Ihren Link anklickt und innerhalb von 30 Tagen eines der Tools kauft, verdienen Sie {{other}}, oder {{small}} bei einem kleineren Tool. Die Full Resume Analysis, Guthaben-Aufladungen und Abos bringen nichts."
     },
     "updates": {
       "title": "Aktualisierungen, solange diese Seite offen ist",

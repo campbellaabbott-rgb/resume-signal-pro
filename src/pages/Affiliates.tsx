@@ -202,16 +202,19 @@ export default function Affiliates() {
             <CardDescription>
               {isLoginMode 
                 ? 'Sign in to access your affiliate dashboard' 
-                : 'Earn rewards for every sale you refer!'}
+                : t('affiliates.commission.tagline', 'Earn a commission on the tools your referrals buy.')}
             </CardDescription>
             {/* Commission disclosure */}
             <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <span className="font-bold text-lg text-primary">{t('affiliates.commission.headline', '{{other}} per sale ({{small}} on smaller tools)', rate)}</span>
+                <span className="font-bold text-lg text-primary">{t('affiliates.commission.headline', '{{other}} per tool sale ({{small}} on smaller tools)', rate)}</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {t('affiliates.commission.detail', 'Earn {{other}} for each sale you refer, or {{small}} when the sale is one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.', rate)}
+                {t('affiliates.commission.detail', 'Earn {{other}} when someone you refer buys the Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan or Freelance Boost, or {{small}} for one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.', rate)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t('affiliates.commission.excluded', 'The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 30-day cookie • Paid monthly
@@ -295,7 +298,8 @@ export default function Affiliates() {
             </div>
             <div>
               <p className="font-semibold">{t('affiliates.commission.bannerTitle', 'Your commission')}</p>
-              <p className="text-sm text-muted-foreground">{t('affiliates.commission.banner', '{{other}} per referred sale, {{small}} on smaller tools', rate)}</p>
+              <p className="text-sm text-muted-foreground">{t('affiliates.commission.banner', '{{other}} per referred tool sale, {{small}} on smaller tools', rate)}</p>
+              <p className="text-xs text-muted-foreground">{t('affiliates.commission.excluded', 'The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.')}</p>
             </div>
           </div>
           <Badge variant="secondary" className="text-primary border-primary/30">
@@ -310,7 +314,7 @@ export default function Affiliates() {
               <div>
                 <h3 className="font-semibold mb-1">Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {t('affiliates.commission.linkHint', 'Share this link to earn {{other}} on each sale it brings ({{small}} on smaller tools), with a 30-day attribution window', rate)}
+                  {t('affiliates.commission.linkHint', 'Share this link to earn {{other}} on each tool sale it brings ({{small}} on smaller tools), with a 30-day attribution window', rate)}
                 </p>
                 <code className="text-xs bg-background px-2 py-1 rounded border break-all">
                   {getReferralLink()}
@@ -702,7 +706,7 @@ export default function Affiliates() {
               <div>
                 <p className="font-medium">Track Conversions</p>
                 <p className="text-sm text-muted-foreground">
-                  {t('affiliates.commission.howItWorks', 'When someone clicks your link and buys within 30 days, you earn {{other}}, or {{small}} if they buy one of the smaller tools', rate)}
+                  {t('affiliates.commission.howItWorks', 'When someone clicks your link and buys one of the tools within 30 days, you earn {{other}}, or {{small}} for a smaller tool. The Full Resume Analysis, scan credit top-ups and subscriptions earn nothing.', rate)}
                 </p>
               </div>
             </div>
