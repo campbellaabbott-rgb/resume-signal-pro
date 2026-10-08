@@ -158,8 +158,12 @@ const has = (s: string | null | undefined): s is string => !!s && s.trim().lengt
 const isPlaceholder = (o: string) =>
   !o.trim() || /^(please\s+)?(select|choose)\b|^-+$|^\s*—\s*$/i.test(o.trim());
 
-const YES_RE = /^\s*(yes|y|true|i\s+(am|do|have|will|confirm|agree)|affirmative)\b/i;
+const YES_RE = /^\s*(yes|y|true|i\s+(am|do|have|will|confirm|agree|accept|consent)|affirmative)\b/i;
 const NO_RE = /^\s*(no|n|false|i\s+(am|do|have|will)\s*not|i\s+don'?t|negative)\b/i;
+/** A first-person option that negates itself. YES_RE's boundary after
+ *  "I do" is satisfied by the space before "not", so "I do not require
+ *  sponsorship" and "I do not consent" read as yes (sweep S8-043). */
+const NEGATED_RE = /\b(not|never|cannot|decline|refuse)\b|n['’]t\b/i;
 const DECLINE_RE =
   /prefer\s+not|wish\s+not|don'?t\s+wish|do\s+not\s+wish|decline|choose\s+not|rather\s+not|not\s+to\s+(answer|say|disclose|specify)|no\s+response/i;
 
@@ -181,7 +185,19 @@ function chooseBoolean(q: DomQuestion, want: boolean, category: string): Resolut
       ? { kind: "check", category }
       : { kind: "unanswerable", category, why: "a single checkbox cannot express 'no'" };
   }
-  const opt = want ? pick(q.options, YES_RE) : pick(q.options, NO_RE);
+  let opt: string | null;
+  if (want) {
+    // A yes is an option that says yes and does not take it back. Two of them
+    // ("I am authorized", "I am authorized with sponsorship") is a choice
+    // between real alternatives, and guessing between them is refused.
+    const yes = q.options.filter((o) => !isPlaceholder(o) && YES_RE.test(o) && !NEGATED_RE.test(o));
+    if (yes.length > 1) {
+      return { kind: "unanswerable", category, why: `${yes.length} options mean yes (${yes.slice(0, 3).join(" / ")}) — ambiguous` };
+    }
+    opt = yes[0] ?? null;
+  } else {
+    opt = pick(q.options, NO_RE);
+  }
   if (opt) return { kind: "choose", category, option: opt };
   if (q.type === "text" || q.type === "textarea") {
     return { kind: "fill", category, value: want ? "Yes" : "No" };
