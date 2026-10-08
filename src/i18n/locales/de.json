@@ -5223,5 +5223,26 @@
     "missing": "Diese Seite braucht den Abmeldelink aus einer unserer E-Mails.",
     "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
     "home": "Zurück zu Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "headline": "{{other}} pro Verkauf ({{small}} bei kleineren Tools)",
+      "detail": "Sie verdienen {{other}} für jeden vermittelten Verkauf, oder {{small}}, wenn es eines der kleineren Tools ist: Keyword-Fix, Anschreiben, Scan-Paket, Interview-Coach, Karrierepfad-Simulator oder Bewerbungsassistent.",
+      "bannerTitle": "Ihre Provision",
+      "banner": "{{other}} pro vermitteltem Verkauf, {{small}} bei kleineren Tools",
+      "linkHint": "Teilen Sie diesen Link und verdienen Sie {{other}} an jedem Verkauf, den er bringt ({{small}} bei kleineren Tools), mit 30 Tagen Zuordnungsfenster",
+      "howItWorks": "Wenn jemand Ihren Link anklickt und innerhalb von 30 Tagen kauft, verdienen Sie {{other}}, oder {{small}}, wenn es eines der kleineren Tools ist"
+    },
+    "updates": {
+      "title": "Aktualisierungen, solange diese Seite offen ist",
+      "body": "Diese Seite prüft alle {{seconds}} Sekunden auf neue Klicks und Verkäufe, solange sie geöffnet ist, und zeigt eine Benachrichtigung, sobald einer eintrifft."
+    },
+    "payout": {
+      "received": "Auszahlungsanfrage erhalten. Wir melden uns per E-Mail, um die Zahlung abzustimmen.",
+      "already": "Es ist bereits eine Auszahlungsanfrage offen. Wir melden uns dazu per E-Mail.",
+      "failed": "Die Auszahlung konnte nicht angefragt werden. Bitte versuchen Sie es erneut.",
+      "requestedTitle": "Auszahlung angefragt",
+      "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
+    }
   }
 }

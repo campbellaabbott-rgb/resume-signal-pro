@@ -3,6 +3,10 @@ project_id = "bwhdazbotpblihdxcmho"
 [functions]
   [functions.admin-regenerate-delivery]
     verify_jwt = false
+  # The affiliate dashboard's custom session (affiliate_sessions) is not a
+  # Supabase JWT; the function checks that session itself before anything.
+  [functions.affiliate-payout-request]
+    verify_jwt = false
   [functions.application-fit]
     verify_jwt = false
   [functions.job-fit]

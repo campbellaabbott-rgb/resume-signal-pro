@@ -5223,5 +5223,26 @@
     "missing": "Esta página precisa do link para cancelar a inscrição de um dos nossos e-mails.",
     "error": "Não foi possível cancelar agora. Tente o botão novamente daqui a pouco.",
     "home": "Voltar ao Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "headline": "{{other}} por venda ({{small}} nas ferramentas menores)",
+      "detail": "Você ganha {{other}} por cada venda que indicar, ou {{small}} quando a venda é uma das ferramentas menores: correção de palavras-chave, carta de apresentação, pacote de análises, coach de entrevista, simulador de carreira ou assistente de candidatura.",
+      "bannerTitle": "Sua comissão",
+      "banner": "{{other}} por venda indicada, {{small}} nas ferramentas menores",
+      "linkHint": "Compartilhe este link para ganhar {{other}} em cada venda que ele trouxer ({{small}} nas ferramentas menores), com janela de atribuição de 30 dias",
+      "howItWorks": "Quando alguém clica no seu link e compra em até 30 dias, você ganha {{other}}, ou {{small}} se comprar uma das ferramentas menores"
+    },
+    "updates": {
+      "title": "Atualizações enquanto esta página estiver aberta",
+      "body": "Esta página verifica novos cliques e vendas a cada {{seconds}} segundos enquanto estiver aberta e mostra um aviso quando chega um."
+    },
+    "payout": {
+      "received": "Pedido de pagamento recebido. Vamos enviar um e-mail para combinar o pagamento.",
+      "already": "Já existe um pedido de pagamento aberto. Vamos enviar um e-mail sobre ele.",
+      "failed": "Não foi possível pedir o pagamento. Tente novamente.",
+      "requestedTitle": "Pagamento pedido",
+      "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
+    }
   }
 }

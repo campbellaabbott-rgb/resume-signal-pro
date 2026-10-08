@@ -5223,5 +5223,26 @@
     "missing": "Deze pagina heeft de afmeldlink uit een van onze e-mails nodig.",
     "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
     "home": "Terug naar Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "headline": "{{other}} per verkoop ({{small}} op kleinere tools)",
+      "detail": "Je verdient {{other}} voor elke verkoop die je aanbrengt, of {{small}} als het een van de kleinere tools is: keyword-fix, sollicitatiebrief, scanpakket, interviewcoach, loopbaansimulator of sollicitatieassistent.",
+      "bannerTitle": "Je commissie",
+      "banner": "{{other}} per aangebrachte verkoop, {{small}} op kleinere tools",
+      "linkHint": "Deel deze link en verdien {{other}} op elke verkoop die hij oplevert ({{small}} op kleinere tools), met een attributievenster van 30 dagen",
+      "howItWorks": "Als iemand op je link klikt en binnen 30 dagen koopt, verdien je {{other}}, of {{small}} als het een van de kleinere tools is"
+    },
+    "updates": {
+      "title": "Updates zolang deze pagina open is",
+      "body": "Deze pagina controleert elke {{seconds}} seconden op nieuwe klikken en verkopen zolang hij open is, en toont een melding zodra er een binnenkomt."
+    },
+    "payout": {
+      "received": "Uitbetalingsverzoek ontvangen. We mailen je om de betaling te regelen.",
+      "already": "Er staat al een uitbetalingsverzoek open. We mailen je erover.",
+      "failed": "De uitbetaling kon niet worden aangevraagd. Probeer het opnieuw.",
+      "requestedTitle": "Uitbetaling aangevraagd",
+      "requestedBody": "We mailen je om de betaling te regelen."
+    }
   }
 }

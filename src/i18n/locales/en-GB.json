@@ -5223,5 +5223,26 @@
     "missing": "This page needs the unsubscribe link from one of our emails.",
     "error": "Could not turn them off right now. Try the button again shortly.",
     "home": "Back to Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "headline": "{{other}} per sale ({{small}} on smaller tools)",
+      "detail": "Earn {{other}} for each sale you refer, or {{small}} when the sale is one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.",
+      "bannerTitle": "Your commission",
+      "banner": "{{other}} per referred sale, {{small}} on smaller tools",
+      "linkHint": "Share this link to earn {{other}} on each sale it brings ({{small}} on smaller tools), with a 30-day attribution window",
+      "howItWorks": "When someone clicks your link and buys within 30 days, you earn {{other}}, or {{small}} if they buy one of the smaller tools"
+    },
+    "updates": {
+      "title": "Updates while this page is open",
+      "body": "This page checks for new clicks and sales every {{seconds}} seconds while it is open, and shows a notification when one arrives."
+    },
+    "payout": {
+      "received": "Payout request received. We will email you to arrange payment.",
+      "already": "A payout request is already open. We will email you about it.",
+      "failed": "Could not request the payout. Please try again.",
+      "requestedTitle": "Payout requested",
+      "requestedBody": "We will email you to arrange payment."
+    }
   }
 }

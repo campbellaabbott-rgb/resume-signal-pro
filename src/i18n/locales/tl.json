@@ -5223,5 +5223,26 @@
     "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
     "home": "Bumalik sa Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "headline": "{{other}} bawat benta ({{small}} sa mas maliliit na tool)",
+      "detail": "Kumita ng {{other}} sa bawat benta na ini-refer mo, o {{small}} kung ang benta ay isa sa mas maliliit na tool: keyword fix, cover letter, scan pack, interview coach, career path simulator o apply assistant.",
+      "bannerTitle": "Ang komisyon mo",
+      "banner": "{{other}} bawat benta na ini-refer, {{small}} sa mas maliliit na tool",
+      "linkHint": "Ibahagi ang link na ito para kumita ng {{other}} sa bawat bentang dala nito ({{small}} sa mas maliliit na tool), na may 30-araw na attribution window",
+      "howItWorks": "Kapag may nag-click sa link mo at bumili sa loob ng 30 araw, kikita ka ng {{other}}, o {{small}} kung isa sa mas maliliit na tool ang binili"
+    },
+    "updates": {
+      "title": "Mga update habang bukas ang pahinang ito",
+      "body": "Tinitingnan ng pahinang ito ang mga bagong click at benta bawat {{seconds}} segundo habang bukas ito, at nagpapakita ng abiso kapag may dumating."
+    },
+    "payout": {
+      "received": "Natanggap ang payout request. Mag-e-email kami para ayusin ang bayad.",
+      "already": "May bukas nang payout request. Mag-e-email kami tungkol dito.",
+      "failed": "Hindi ma-request ang payout. Pakisubukang muli.",
+      "requestedTitle": "Na-request ang payout",
+      "requestedBody": "Mag-e-email kami para ayusin ang bayad."
+    }
   }
 }

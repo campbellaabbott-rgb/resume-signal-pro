@@ -5223,5 +5223,26 @@
     "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
     "home": "Retour à Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "headline": "{{other}} par vente ({{small}} sur les petits outils)",
+      "detail": "Vous gagnez {{other}} pour chaque vente recommandée, ou {{small}} quand il s'agit d'un des petits outils : correction de mots-clés, lettre de motivation, pack de scans, coach d'entretien, simulateur de parcours ou assistant de candidature.",
+      "bannerTitle": "Votre commission",
+      "banner": "{{other}} par vente recommandée, {{small}} sur les petits outils",
+      "linkHint": "Partagez ce lien pour gagner {{other}} sur chaque vente qu'il apporte ({{small}} sur les petits outils), avec une fenêtre d'attribution de 30 jours",
+      "howItWorks": "Quand quelqu'un clique sur votre lien et achète dans les 30 jours, vous gagnez {{other}}, ou {{small}} s'il achète un des petits outils"
+    },
+    "updates": {
+      "title": "Mises à jour tant que cette page est ouverte",
+      "body": "Cette page vérifie les nouveaux clics et ventes toutes les {{seconds}} secondes tant qu'elle est ouverte, et affiche une notification dès qu'il y en a un."
+    },
+    "payout": {
+      "received": "Demande de paiement reçue. Nous vous écrirons pour organiser le paiement.",
+      "already": "Une demande de paiement est déjà ouverte. Nous vous écrirons à son sujet.",
+      "failed": "Impossible de demander le paiement. Veuillez réessayer.",
+      "requestedTitle": "Paiement demandé",
+      "requestedBody": "Nous vous écrirons pour organiser le paiement."
+    }
   }
 }
