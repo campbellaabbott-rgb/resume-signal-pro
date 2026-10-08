@@ -7,7 +7,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 // Price identity for the $99 apply agent, and the entitlement writer.
 // Static import: the dynamic one inside the handler typechecked as `any`,
 // which is how a rename would have reached production silently.
-import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
 // The six-hour pass: identified by product_type ONLY (Freelance Boost bills
 // the same amount), granted through one idempotent RPC with every number
 // copied in from this module — never spelled here, never matched on.
@@ -25,7 +25,10 @@ import {
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 // The Pro cache, written when a Pro payment lands and on every subscription
 // change -- nothing wrote it before, so a new subscriber read as inactive.
-import { checkProByEmail } from "../_shared/pro.ts";
+import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
+// The mail a new subscriber is owed: terms, cancellation, the trial's end.
+import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, noticeMail, WITHDRAWAL_DAYS, type NoticeKind } from "../_shared/subscription-notice.ts";
+import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 // Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
@@ -311,6 +314,69 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
     passId: r?.granted_pass_id ?? null, duplicate: r?.was_duplicate === true,
   });
   return { granted: r?.granted_ok === true, reason, passId: r?.granted_pass_id ?? null };
+}
+
+/**
+ * SEND A SUBSCRIPTION NOTICE ONCE (wave 3; Cal. B&P 17602; the notices are
+ * described in _shared/subscription-notice.ts). The ledger row is claimed
+ * first, so a redelivered event, or the trial event arriving twice, sends
+ * nothing more; the mail goes into the transactional queue the drip uses. A
+ * claim whose enqueue fails is given back and the error thrown, so the
+ * handler answers 500 and Stripe redelivers the event.
+ */
+async function sendSubscriptionNotice(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  kind: NoticeKind,
+  sub: Stripe.Subscription,
+  email: string | null,
+): Promise<"queued" | "already" | "skipped"> {
+  const price = sub.items?.data?.[0]?.price;
+  if (!email || !price || typeof price.unit_amount !== "number") return "skipped";
+  const trialEnd = sub.status === "trialing" && sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+  if (kind === "trial_ending" && !trialEnd) return "skipped";
+  const env = (k: string) => Deno.env.get(k);
+  const loginUrl = env("STRIPE_PORTAL_LOGIN_URL") ?? "";
+  const mail = noticeMail(kind, {
+    planName: isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? AGENT_PRODUCT_NAME : PRO_PRODUCT_NAME,
+    amount: price.unit_amount,
+    currency: price.currency ?? "usd",
+    interval: price.recurring?.interval ?? "month",
+    trialEnd,
+    accountUrl: "https://resumebooster.work/account",
+    portalLoginUrl: /^https:\/\/billing\.stripe\.com\//.test(loginUrl) ? loginUrl : null,
+    withdrawal: kind === "confirmation" && euUkSalesOn(env)
+      ? { until: new Date(Date.now() + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
+      : null,
+  });
+  const { error: claimError } = await supabase.from("subscription_notices").insert({ subscription_id: sub.id, kind, email });
+  if (claimError) {
+    if (claimError.code === "23505") return "already";
+    throw new Error(`subscription_notices: ${claimError.message}`);
+  }
+  const { error: enqueueError } = await supabase.rpc("enqueue_email_delayed", {
+    queue_name: "transactional_emails",
+    payload: {
+      message_id: crypto.randomUUID(),
+      idempotency_key: noticeKey(sub.id, kind),
+      to: email,
+      from: NOTICE_FROM,
+      sender_domain: NOTICE_SENDER_DOMAIN,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      purpose: "transactional",
+      label: kind === "confirmation" ? "subscription-confirmation" : "trial-ending",
+      queued_at: new Date().toISOString(),
+    },
+    delay_seconds: 0,
+  });
+  if (enqueueError) {
+    await supabase.from("subscription_notices").delete().eq("subscription_id", sub.id).eq("kind", kind);
+    throw new Error(`enqueue_email_delayed: ${enqueueError.message}`);
+  }
+  logStep("Subscription notice queued", { kind, subscription: sub.id });
+  return "queued";
 }
 
 /** The id of a Stripe reference that may arrive expanded or as a bare id. */
@@ -919,6 +985,21 @@ serve(async (req) => {
             session.customer as string | { id?: string } | null,
             event.type,
           );
+          // THE CONFIRMATION A NEW SUBSCRIBER IS OWED (item 11): terms,
+          // renewal, the trial's end, how to cancel. Once per subscription;
+          // a failure answers 500 so Stripe redelivers, and everything above
+          // and below is safe to run again.
+          const subId = refId(session.subscription);
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subId);
+              await sendSubscriptionNotice(supabase, "confirmation", sub, buyerEmailOf(session));
+            } catch (err) {
+              processingError = String(err).slice(0, 500);
+              mustRetry = true;
+              logStep("Subscription confirmation not queued; Stripe will redeliver", { subscription: subId, error: processingError });
+            }
+          }
         }
 
         // The paid gate: 'paid', or a payment-mode session a promotion code
@@ -1181,6 +1262,29 @@ serve(async (req) => {
           sub.customer as string | { id?: string } | null,
           event.type,
         );
+        break;
+      }
+
+      // THREE DAYS BEFORE A TRIAL ENDS Stripe sends this (once the owner adds
+      // it to the endpoint): the subscriber is told the date and amount of
+      // the first charge and how to cancel before it. A trial already set to
+      // cancel is told nothing; a failure answers 500 so Stripe redelivers.
+      case "customer.subscription.trial_will_end": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (sub.status !== "trialing" || sub.cancel_at_period_end || sub.cancel_at) {
+          logStep("Trial ending: no reminder for a trial that will not convert", { sub: sub.id, status: sub.status });
+          break;
+        }
+        try {
+          const customerId = refId(sub.customer);
+          const customer = customerId ? await stripe.customers.retrieve(customerId) : null;
+          const email = customer && !(customer as { deleted?: boolean }).deleted ? (customer as Stripe.Customer).email ?? null : null;
+          await sendSubscriptionNotice(supabase, "trial_ending", sub, email);
+        } catch (err) {
+          processingError = String(err).slice(0, 500);
+          mustRetry = true;
+          logStep("Trial reminder not queued; Stripe will redeliver", { sub: sub.id, error: processingError });
+        }
         break;
       }
 
