@@ -10107,3 +10107,26 @@ board uses a custom host today; the `host` field is unused). A board of
 exactly 300 (or any multiple of 100 past it) ends each lap on an empty page,
 which proves it like a short page. Request cost: one GET for a board under
 100, two for exactly 100, up to three per visit above.
+
+## n440-a-replayed-lap-proof-closes-nothing-it-stamped
+
+Above: `lapOpenMs` and the `stampMs >= lapOpenMs` term of the vanish rule.
+
+n104's two-lap rule (the first proven wrap stamps, the second closes) assumed
+a lap is proven once. It can be proven twice: the proving visit drops its
+cursor in memory and deep_cursor is written once at slice end, so a failed
+write, a hop that dies, or an overlapping isolate writing its older cursor
+map (n137) leaves the cursor where it was; the next visit re-walks the tail
+in the same epoch and proves the same lap again. The rule compared only the
+stamp's age with the grace, so every row the first proof stamped was closed
+on one lap's evidence (sweep S8-031; no guard against a second proof in an
+epoch existed). Now a proof closes only a row stamped BEFORE the lap opened
+(LapState.t): the first proof's stamps are newer than its own lap's open
+time, so a replay changes nothing; the next lap opens after them and closes
+what is still missing. Stamps from before a board's first lap (lap_backfill)
+are older than the lap and close as before.
+
+Not changed: deep_cursor is still written whole at slice end (n137 keeps the
+cursor map out of the fold on purpose, because re-merging it moves rotation
+speed and needs its own measurement). With this rule a lost cursor write costs
+a re-read, never a closure.

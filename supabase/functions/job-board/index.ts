@@ -4577,13 +4577,16 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (bigShrink && shrinkNumerator) {
             console.warn(`[JOB-BOARD] ${s.token}: ${shrinkNumerator}/${existing.size} postings vanished in one ${partialRead ? "lap" : "pass"} — shrink ratchet holds closures for 6h`);
           }
+          // A stamp written since this lap opened is this lap's own first miss, even on a replayed proof (n440).
+          const lapOpenMs = lapMode ? Date.parse(deepLaps[lapKey]?.t ?? "") : NaN;
           // Rationale: docs/job-board-index-notes.md#n104-vanished
           vanished = [];
           for (const id of vanishedAll) {
             if (agedOutIds.has(id)) { vanished.push(id); continue; } // freshness cap — no grace, no log
             if (partialRead && !(lapMode && existingById.get(id)?.lap_epoch !== lapMark)) continue; // absence unprovable — do not stamp, do not delete
             const stamp = missingSinceById.get(id);
-            if (stamp && nowMs - new Date(stamp).getTime() >= needMs) vanished.push(id); // confirmed gone
+            const stampMs = stamp ? new Date(stamp).getTime() : NaN;
+            if (stamp && nowMs - stampMs >= needMs && !(lapMode && stampMs >= lapOpenMs)) vanished.push(id); // confirmed gone
             else if (!stamp) toStamp.push(id); // first miss — stamp only
             // recent stamp → still in grace, leave as-is
           }
