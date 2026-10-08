@@ -56,7 +56,11 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
   {
     path: "GET /v1/changes",
     body: "What opened and what closed since a timestamp — and for each close, whether the role genuinely came down or was re-listed under a new id. Almost nobody else can answer the second half. The two halves reach back different distances on a free key, and every response says how far each one went: closureHistoryDays, openedHistoryDays, and closureSince, the lower bound the closure query actually ran with.",
-    params: "since (ISO). opened reaches back 30 days on any key. closed reaches back 72 hours on a free key and 180 days on a paid one — a free since= further back is not refused, it is answered with 30 days of opened and 72 hours of closed, and closureWindowNarrowed says so. limit (max 100), opened_cursor, closed_cursor",
+    params: "since (ISO). opened reaches back 30 days on any key. closed reaches back 72 hours on a free key and 180 days on a paid one — a free since= further back is not refused, it is answered with 30 days of opened and 72 hours of closed, and closureWindowNarrowed says so. limit (max 100), opened_cursor, closed_cursor, include_suspect",
+    notes: [
+      "closed leaves out, by default, batches our own collector flagged as a possible failed read: a single pass that removed so much of one board that the takedown may be ours, not the employer's. include_suspect=true returns them too, each marked suspectBatch: true, and every response says which you got in suspectBatchesIncluded.",
+      "A default walk, with outcome relisted and closedAtIsObservation rows dropped, is counted on the same rules as the board's daily takedown figure — except that figure also counts the hiring systems this API may not redistribute, so the feed can come out lower by those, never higher.",
+    ],
   },
   { path: "GET /v1/companies", body: "Employers ranked by open postings, from the same cached facet the board itself renders. open_postings counts postings the employer has not taken down, dated inside the last 30 days — the same rule /v1/jobs serves, so the two join. Carries asOf and a basis line; open_postings is null, never a substitute number, when a pass could not compute it.", params: "q, limit (max 100), cursor" },
   {
