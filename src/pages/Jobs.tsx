@@ -9955,7 +9955,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     ? !orderClaimCurrent
                       ? ""
                       : data?.exactWordMatch
-                      ? t("jobsPage.orderExactWord2", "exact whole-word matches, by each employer's stated date — or, for a posting with no date, by when we first saw it")
+                      ? t("jobsPage.orderExactWord2", "exact whole-word matches: title matches first, then employer-name matches — within each group, by the employer's stated date, or by when we first saw a posting with no date")
                       : data?.sortScope === "matchSet"
                         ? data?.sortMatcher === "company"
                           ? t("jobsPage.orderNewestWholeSetCompany", "newest first across every posting from this employer")
@@ -11383,8 +11383,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       require the server's own sortScope, and the bound is printed
                       only where a number arrived. The exact-word tier concatenates
                       two `ORDER BY effective_posted DESC` reads whatever sort was
-                      requested, which is why its sentence names our date and not
-                      the employer's — `jobsPage.sortedExactWord` said "Sorted by
+                      requested (title read first, then the employer-name read),
+                      which is why its sentence names both groups and whose date
+                      orders each — `jobsPage.sortedExactWord` said "Sorted by
                       newest first" over exactly those rows and is RETIRED, not
                       edited, along with `jobsPage.sortedNewestFallback`, which
                       said it over the effective_posted fall-through. Both are
@@ -11392,7 +11393,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       an inline default, so an edited English string would have
                       left eight translated copies of the old claim rendering. */}
                   {data?.exactWordMatch
-                    ? t("jobsPage.sortedExactWordDiscovery2", "Exact whole-word matches, ordered by each employer's stated date — or, for a posting with no date, by when we first saw it — and not relevance-ranked")
+                    ? t("jobsPage.sortedExactWordDiscovery2", "Exact whole-word matches, not relevance-ranked: title matches first, then employer-name matches — within each group, by the employer's stated date, or by when we first saw a posting with no date")
                     : data?.sortScope === "matchSet"
                       ? data?.sortMatcher === "company"
                         ? t("jobsPage.sortedNewestWholeSetCompany", "Sorted by newest first — every posting from this employer, by the employer's own date, undated last")

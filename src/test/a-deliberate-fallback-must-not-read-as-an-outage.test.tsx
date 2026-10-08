@@ -149,12 +149,20 @@ describe("a deliberate fallback must not read as an outage", () => {
     // effective_posted is the employer's date where stated and our first-seen
     // stamp where not; "our date, not the employer's" was false for every dated
     // row, so the claim now names both halves (2026-10-08).
-    expect(exact, "the tier must name the order it actually has").toMatch(/each employer's stated date/i);
-    expect(exact, "and whose date an undated row carries").toMatch(/when we first saw it/i);
+    expect(exact, "the tier must name the order it actually has").toMatch(/employer's stated date/i);
+    expect(exact, "and whose date an undated row carries").toMatch(/when we first saw/i);
+    // TWO BLOCKS, NOT ONE ORDER. The tier concatenates a title read and an
+    // employer-name read, each date-ordered on its own, title first; one date
+    // order over the page was claimed and is not what the server sends.
+    expect(exact, "the claim states one date order over two concatenated reads")
+      .toMatch(/title matches first, then employer-name matches/i);
     expect(exact, "the retired half-truth is back").not.toMatch(/our date, not the employer's/i);
     expect(exact, "and that it is not relevance-ranked").toMatch(/not relevance-ranked/i);
     // ...and the page still names the tier itself, separately.
     expect(document.body.textContent).toMatch(/exact whole-word matches for/i);
+    // The short order line beside the results says the same two blocks.
+    await waitFor(() => expect(document.body.textContent, "the short order line claims one date order")
+      .toMatch(/exact whole-word matches: title matches first, then employer-name matches/), SLOW);
   });
 
   it("behaviour: a ranked page is unaffected — the new branch must not swallow it", async () => {
