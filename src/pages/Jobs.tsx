@@ -4594,6 +4594,26 @@ function JobsBoard({ boardId }: { boardId: string }) {
     }
     if (viaHistory) detailPushed.current = false;
   }, []);
+  /**
+   * Leave the board from inside the panel. closeDetail() closes a pushed panel
+   * with history.back(), which runs AFTER a link's push: the Back then landed
+   * on the old board's ?job= entry instead of the link's page. So the link
+   * takes the panel's own entry over (replace) when the panel pushed one, and
+   * a modified click (new tab) leaves the panel alone.
+   */
+  const leavePanelFor = (e: React.MouseEvent<HTMLAnchorElement>, to: string) => {
+    if (e.button !== 0 || e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    const overPushed = detailPushed.current && new URLSearchParams(window.location.search).has("job");
+    if (overPushed) {
+      detailPushed.current = false;
+      userClosed.current = true;
+      setDetailJob(null);
+    } else {
+      closeDetail(); // no pushed entry: it only rewrites this one, no traversal
+    }
+    navigate(to, { replace: overPushed });
+  };
   // S3 in-panel discovery: real similar-roles via the ranked search (title
   // stripped of seniority/location noise), not just same-category rows from
   // the currently loaded page. Same-company rows are excluded — the
@@ -7201,7 +7221,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
                 <p className="text-sm text-muted-foreground">
-                  <Link to={companyLanderPath(detailJob.token)} className="text-primary hover:underline" onClick={() => closeDetail()}>
+                  <Link to={companyLanderPath(detailJob.token)} className="text-primary hover:underline" onClick={(e) => leavePanelFor(e, companyLanderPath(detailJob.token))}>
                     {detailJob.company}
                   </Link>
                   {detailLoc.text ? <> · {detailLoc.text}</> : null}

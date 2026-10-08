@@ -12,7 +12,7 @@
 // three routes -- and judged by the request body the click causes and the
 // heading that follows, never by the address alone.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
@@ -168,6 +168,46 @@ describe("a link to another board page loads that board", () => {
     expect(new URLSearchParams(window.location.search).get("q")).toBe("engineer");
     expect(document.body.textContent).toContain("Globex Engineer 1");
   });
+
+  // The panel a click opened sits on a history entry of its own. Its employer
+  // link used to close the panel with a queued Back and then push the lander:
+  // the Back landed AFTER the push, on the old board's ?job= entry, and the
+  // board that came back was the full one with the panel reopened.
+  it("the posting panel's employer link reaches the employer when a click opened the panel", async () => {
+    // Chromium keeps a Back queued before a push in the same task and runs it
+    // after the push; jsdom's pushState cancels it. Deferring Back past the
+    // push reproduces the browser's order here.
+    const nativeBack = window.history.back.bind(window.history);
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => { setTimeout(nativeBack, 0); });
+    try {
+      await panelEmployerLink();
+    } finally {
+      back.mockRestore();
+    }
+  });
+  async function panelEmployerLink() {
+    mountBrowser("/jobs");
+    await waitFor(() => expect(document.body.textContent).toContain("Globex Engineer 1"), SLOW);
+    await act(async () => { fireEvent.click(screen.getAllByRole("link", { name: "Globex Engineer 1" })[0]); });
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("job")).toBe("greenhouse:globex:1001"), SLOW);
+    const before = listBodies().length;
+    const panel = await screen.findByRole("dialog");
+    await act(async () => { fireEvent.click(within(panel).getByRole("link", { name: "Globex" })); });
+    // Let every queued history traversal land before judging.
+    await act(async () => { await new Promise((r) => setTimeout(r, 600)); });
+    await waitFor(() => expect(h1()).toMatch(/Open roles at Globex/), SLOW);
+    expect(window.location.pathname, "the panel's employer link ended somewhere other than the employer").toBe("/jobs/company/globex");
+    expect(new URLSearchParams(window.location.search).has("job")).toBe(false);
+    const after = listBodies().slice(before);
+    expect(after.some((b) => JSON.stringify(b.companies) === JSON.stringify(["globex"]))).toBe(true);
+    expect(after.at(-1)!.companies, "the last read was not the employer's").toEqual(["globex"]);
+    // And Back from the employer returns to the board the panel was opened
+    // over, without the panel.
+    await act(async () => { window.history.back(); await new Promise((r) => setTimeout(r, 300)); });
+    await waitFor(() => expect(h1()).toBe("Live job board"), SLOW);
+    expect(window.location.pathname).toBe("/jobs");
+    expect(new URLSearchParams(window.location.search).has("job")).toBe(false);
+  }
 
   it("Back from an employer's lander returns to the full board", async () => {
     mountBrowser("/jobs");
