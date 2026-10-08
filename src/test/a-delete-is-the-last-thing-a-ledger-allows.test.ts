@@ -291,7 +291,7 @@ describe("a deep visit that failed twice running starts the next one from the to
     expect(cursorAfterFailure(5_200, 0)).toBe(5_200);
     expect(cursorAfterFailure(5_200, 1)).toBe(0);
     expect(cursorAfterFailure(0, 4)).toBe(0);
-    expect(CODE).toMatch(/if \(cursorAfterFailure\(cur, streak\) !== cur\) \{ deepCursors\.delete\(s\.token\); deepCursorsDirty = true; \}/);
+    expect(CODE).toMatch(/if \(cursorAfterFailure\(cur, streak, since, Date\.now\(\)\) !== cur\) \{ deepCursors\.delete\(s\.token\); deepCursorsDirty = true; \}/);
   });
 });
 

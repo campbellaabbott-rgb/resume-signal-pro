@@ -104,7 +104,7 @@ import {
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
 import { isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
-import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
+import { cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
@@ -3945,11 +3945,13 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           )).then(({ error }) => {
             if (error) console.warn(`[JOB-BOARD] board-state error write failed for ${s.token} (non-fatal):`, String(error.message ?? error).slice(0, 150));
           }).catch(() => {}));
-          // A deep visit that failed twice running starts the next from the top (n420).
+          // A deep visit failing for hours starts the next from the top (n420, S8-086).
           {
             const cur = deepCursors.get(s.token) ?? 0;
             const streak = Object.prototype.hasOwnProperty.call(boardFailures.streaks, boardKeyOf(s)) ? Number(boardFailures.streaks[boardKeyOf(s)]) || 0 : 0;
-            if (cursorAfterFailure(cur, streak) !== cur) { deepCursors.delete(s.token); deepCursorsDirty = true; }
+            const ff = boardFailures.firstFailedAt ?? {};
+            const since = Object.prototype.hasOwnProperty.call(ff, boardKeyOf(s)) ? Number(ff[boardKeyOf(s)]) : undefined;
+            if (cursorAfterFailure(cur, streak, since, Date.now()) !== cur) { deepCursors.delete(s.token); deepCursorsDirty = true; }
           }
           continue;
         }
@@ -4011,7 +4013,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const totalRef = Math.max(totalNow, 0);
             const tailSlack = Math.min(LAP_TAIL_SLACK, Math.floor((1 - LAP_COVERAGE_MIN) * totalRef));
             if (r.nextOffset === 0 && cursorBefore > 0 && rec.f === 0 &&
-                r.feedEnded === true &&
+                r.feedEnded === true && !emptyInsideLapTotal(cursorBefore, r.endOffset, rec.t0) &&
                 totalRef > 0 && totalNow >= LAP_COVERAGE_MIN * rec.t0 &&
                 lapSeen >= totalRef - tailSlack) {
               lapProven = true;

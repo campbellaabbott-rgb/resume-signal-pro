@@ -10167,3 +10167,28 @@ path removes exactly those (and nothing an age-out wrote: the aged ids of the
 same chunk are excluded). Best-effort, in waitUntil: a tombstone left behind
 costs one refusal, as before. Volume measured by the sweep: about 20
 re-admissions in total.
+
+## n443-an-empty-page-inside-the-laps-total-and-a-stranded-cursor
+
+Above: `emptyInsideLapTotal` in the lap-proof condition; `cursorAfterFailure`
+with the streak's first failure (both read-window.ts).
+
+Two halves of n420, sweep S8-086.
+
+1. A Workday tenant that states its total only at offset 0 answers total 0
+   past it, so an empty page at depth is "ended" to emptyFirstPage. When the
+   cursor sat inside LAP_TAIL_SLACK of the lap's own offset-0 total (t0), the
+   wrap proved the lap on that page (a scratch run: cursor 780, t0 831 ->
+   lapProven) and stamped the unread tail missing, which hides those rows at
+   once. Now an empty visit at or before its cursor, inside t0, cannot prove
+   a lap: the walk still wraps (as n420 wants, so a cursor past a shrunken
+   feed is not asked forever), the lap opens again from the top against the
+   new offset-0 total, and a short page that really ends the feed inside the
+   slack still proves. Vendors with no t0 (Teamtailor) are unaffected.
+2. cursorAfterFailure reset the cursor on the second consecutive failure.
+   The retry lane re-tries a failing board after about 15 minutes, so two
+   transient failures threw away a 16,000-deep cursor and its lap. Now the
+   reset needs the streak (board_failures.firstFailedAt) to have run
+   CURSOR_STRAND_MS (6h): still far inside the 40-hour dormancy floor the
+   reset exists to stay ahead of. With no first-failure time recorded, the
+   second failure resets as before.

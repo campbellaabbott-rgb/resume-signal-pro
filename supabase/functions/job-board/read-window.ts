@@ -84,14 +84,34 @@ export function emptyFirstPage(firstOffset: number, fetched: number, feedTotal: 
 }
 
 /**
+ * True when a visit that read nothing past the cursor stopped inside the total
+ * its lap opened on: the tenant says total 0 past the top (n413), so the
+ * fetcher calls that empty page "ended", but the lap's own offset-0 total says
+ * there is more. Not the feed's end, so no lap may be proven on it (S8-086):
+ * inside the tail slack it was, and the unread tail was stamped missing.
+ */
+export function emptyInsideLapTotal(cursorBefore: number, endOffset: number | null | undefined, lapT0: number | null | undefined): boolean {
+  const t0 = Math.max(0, Math.trunc(Number(lapT0) || 0));
+  return cursorBefore > 0 && typeof endOffset === "number" && endOffset <= cursorBefore && t0 > cursorBefore;
+}
+
+/** How long a deep board must have been failing before its cursor is called stranded. */
+export const CURSOR_STRAND_MS = 6 * 3_600_000;
+
+/**
  * The cursor a failed visit leaves behind. A failed visit does not advance the
  * cursor, so the next one asks the same page: right for a hiccup, fatal for a
  * cursor stranded where the vendor no longer answers (an HTTP error past a
  * result cap, a feed that moved under it). The first failure keeps the cursor;
- * a second in a row (`streakBefore` is the board's failure streak before this
- * visit) starts the next visit from the top, so a board that still answers
- * from the top never reaches the six-failure dormancy prune.
+ * a later one (`streakBefore` is the board's failure streak before this visit)
+ * starts the next visit from the top once the streak has run CURSOR_STRAND_MS
+ * (`failingSinceMs`, its first failure), so a board that still answers from
+ * the top never reaches the 40-hour dormancy prune, and two transient failures
+ * a retry-lane backoff apart no longer throw away a 16,000-deep cursor
+ * (S8-086). With no start recorded, the second failure resets, as before.
  */
-export function cursorAfterFailure(cursor: number, streakBefore: number): number {
-  return cursor > 0 && streakBefore >= 1 ? 0 : cursor;
+export function cursorAfterFailure(cursor: number, streakBefore: number, failingSinceMs?: number, nowMs: number = Date.now()): number {
+  if (cursor <= 0 || streakBefore < 1) return cursor;
+  if (typeof failingSinceMs === "number" && Number.isFinite(failingSinceMs) && nowMs - failingSinceMs < CURSOR_STRAND_MS) return cursor;
+  return 0;
 }
