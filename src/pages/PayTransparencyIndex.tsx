@@ -9,10 +9,15 @@
 // and the first 57014 of the 2026-08-12 incident) on every mount — ~20 seconds
 // of full-table scans per visitor. Both now run hourly under cron into
 // job_board_meta, and this page reads the row (get_transparency_cache, a PK
-// lookup). The direct calls remain ONLY as a fallback for the deploy window
-// where this frontend is live before the migration has been applied — once the
-// migration revokes them from anon, the fallback path returns nothing and the
-// cache is the only source.
+// lookup), and nothing else.
+//
+// NO FALLBACK, AND NO ENDLESS "LOADING". When the cache row was missing or the
+// read failed, this page fell back to the two aggregates directly -- which
+// 20260812174702 / 20260812201000 revoked from anon, so the fallback could
+// never answer -- and both sections then said "Loading…" for ever, a rejected
+// cache read swallowed by an empty catch (register L2-10). The fallback is
+// gone: a read that fails, or a row without the figure, renders a sentence
+// saying the figure could not be read, in the place the figure would be.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -49,30 +54,34 @@ export default function PayTransparencyIndex() {
   // The cache ships its own computed_at and the page was throwing it away, then
   // saying "Right now" over numbers up to an hour old. See the headline below.
   const [computedAt, setComputedAt] = useState<string | null>(null);
+  // Whether the one read this page makes has answered, either way. Until it
+  // has, a section without its figure says "Loading…"; after, it says the
+  // figure could not be read.
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
-    void Promise.resolve(rpc("get_transparency_cache")).then((r) => {
-      const c = r.data as { pay?: unknown; coverage?: unknown; computed_at?: unknown } | null;
-      // Object-shape checks, not truthiness: the row is NULL before the first
-      // refresh, and `typeof null === "object"` would put null into state.
-      const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
-      let served = false;
-      if (isObj(c?.pay)) { setPay(c!.pay as PayData); served = true; }
-      if (isObj(c?.coverage)) { setCov(c!.coverage as Coverage); served = true; }
-      if (typeof c?.computed_at === "string") setComputedAt(c.computed_at);
-      if (served) return;
-      // Deploy-window fallback only (cache RPC absent, or row not yet primed):
-      // the old direct calls. After the migration lands these are revoked from
-      // anon and return errors, which the catch swallows — by then the cache
-      // path above has already served.
-      void Promise.resolve(rpc("get_pay_transparency")).then((r2) => {
-        if (isObj(r2.data)) setPay(r2.data as PayData);
-      }).catch(() => {});
-      void Promise.resolve(rpc("get_transparency_coverage")).then((r2) => {
-        if (isObj(r2.data)) setCov(r2.data as Coverage);
-      }).catch(() => {});
-    }).catch(() => {});
+    let cancelled = false;
+    Promise.resolve(rpc("get_transparency_cache"))
+      .then((r) => {
+        if (cancelled) return;
+        const c = r.data as { pay?: unknown; coverage?: unknown; computed_at?: unknown } | null;
+        // Object-shape checks, not truthiness: the row is NULL before the first
+        // refresh, and `typeof null === "object"` would put null into state.
+        const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+        if (isObj(c?.pay)) setPay(c!.pay as PayData);
+        if (isObj(c?.coverage)) setCov(c!.coverage as Coverage);
+        if (typeof c?.computed_at === "string") setComputedAt(c.computed_at);
+      })
+      .catch(() => { /* rendered below as a figure we could not read */ })
+      .finally(() => { if (!cancelled) setSettled(true); });
+    return () => { cancelled = true; };
   }, []);
+
+  const unread = (
+    <p className="text-sm text-muted-foreground" data-unread="transparency">
+      We could not read this figure just now. It is recomputed every hour; try again in a few minutes.
+    </p>
+  );
 
   const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocaleString() : "—");
 
@@ -150,7 +159,7 @@ export default function PayTransparencyIndex() {
                   <span className="w-24 shrink-0 text-sm text-right tabular-nums">{c.pay_pct}% <span className="text-muted-foreground text-[11px]">of {fmt(c.total)}</span></span>
                 </div>
               ))}
-              {!pay && <p className="text-sm text-muted-foreground">Loading…</p>}
+              {!pay && (settled ? unread : <p className="text-sm text-muted-foreground">Loading…</p>)}
             </div>
           </div>
         </section>
@@ -202,7 +211,7 @@ export default function PayTransparencyIndex() {
                   ))}
                 </tbody>
               </table>
-              {!cov && <p className="text-sm text-muted-foreground mt-3">Loading…</p>}
+              {!cov && <div className="mt-3">{settled ? unread : <p className="text-sm text-muted-foreground">Loading…</p>}</div>}
             </div>
           </div>
         </section>
