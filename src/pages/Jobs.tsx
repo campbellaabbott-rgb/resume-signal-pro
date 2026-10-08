@@ -43,6 +43,7 @@ import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
 import { bakedCompanyPrimary } from "@/lib/prerendered-head";
+import { foldName } from "../../supabase/functions/job-board/search-routing";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -1810,13 +1811,16 @@ function mergeCompanyOptions(
   remote: Array<{ token: string; name: string; open?: number; tokens?: string[] }>,
   query: string,
 ): Array<{ token: string; name: string; open?: number; tokens?: string[] }> {
-  const q = query.toLowerCase();
+  // FOLDED, both sides: "dominos" found nothing although Domino's had 21,531
+  // open roles, because "domino's".includes("dominos") is false. foldName is
+  // the server's own rule (accents, case and punctuation dropped).
+  const q = foldName(query);
   // `tokens` travels with each option because `open` is the SUM across a
   // merged employer's sub-boards — see scopeTokensOf below.
   const out: Array<{ token: string; name: string; open?: number; tokens?: string[] }> = [];
   const seen = new Set<string>();
   for (const c of head) {
-    if (!c?.name || !c.name.toLowerCase().includes(q) || seen.has(c.token)) continue;
+    if (!c?.name || !foldName(c.name).includes(q) || seen.has(c.token)) continue;
     seen.add(c.token); out.push(c);
   }
   for (const c of remote) {
@@ -6409,7 +6413,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (companyTokens.length > 1) {
       f.push({ key: "company", label: t("jobsPage.companiesChip", "{{n}} companies", { n: companyTokens.length }), clear: () => setCompany("") });
     } else if (company) {
-      f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
+      // The head facet is the top 150 boards, so on nearly every lander the
+      // token itself ("Deloitte6", "emqk~ca3~CX_1") was the chip. The rows
+      // name their employer; the lander has its name; the token is last.
+      f.push({
+        key: "company",
+        label: companies.find((c) => c.token === company)?.name
+          ?? companyNames.current[company]
+          ?? (company === landerCompany ? landerCompanyName : undefined)
+          ?? company,
+        clear: () => setCompany(""),
+      });
     }
     if (country) {
       const cs = country.split(",").filter(Boolean);
@@ -6509,7 +6523,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // claiming it is active would name a filter the board is not applying.
     if (category && inclUncat && sortMode !== "salary") f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, landerCompany, landerCompanyName, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
