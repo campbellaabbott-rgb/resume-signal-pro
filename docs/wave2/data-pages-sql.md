@@ -1,0 +1,203 @@
+# Wave 2 — data pages and their SQL (deploy note)
+
+Group `data-pages-sql` of the 2026-10-04 platform sweep. Branch
+`wave2/data-pages-sql`. Twelve register items: eleven fixed, one fixed in part
+(see the table at the foot). Verifier: `scripts/verify-deploy.d/64-wave2-data-pages-sql.sh`.
+
+## What ships
+
+### Edge functions
+
+None. No edge function changed in this group, so no `FN_BUILD` moves and
+nothing is deployed through the functions path.
+
+### Migrations, in apply order
+
+All eight are new files; none edits an existing migration. Each re-issues one
+function (the hiring-trends file re-issues two, together, because a guard
+requires the weekly series and the ticker to move in one file), ends with a
+`DO` block that raises unless the change landed, and is safe to re-run.
+
+| # | file | function(s) | register |
+|---|------|-------------|----------|
+| 1 | `20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql` | `get_company_fill_curve(text[])` — drop by name + re-create (two columns appended) | L11-02, L13-12 |
+| 2 | `20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql` | `get_category_fill_curve(int,int)` — create or replace; withholds the cached field pool | L13-12 |
+| 3 | `20261008111000_a_week_the_fence_already_emptied_is_not_drawn_and_today_is_the_last_24_hours.sql` | `get_hiring_trends()` — drop by name + re-create (`live_new` appended); `get_takedowns_today()` — replace | L2-06, L2-21, L11-06 |
+| 4 | `20261008111500_a_field_is_compared_with_its_own_week_before_anything_closed.sql` | `get_trending_categories()` — replace, header 20s → 60s | L11-10 |
+| 5 | `20261008112000_the_real_users_score_benchmark_counts_only_real_users.sql` | `get_public_scan_insights()` — replace | L11-04 |
+| 6 | `20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned.sql` | `roll_up_and_prune_closures(int)` — replace, header 10min; rewrites the `job-board-closures-rollup-retention` cron command in place | L13-16 |
+| 7 | `20261008113000_the_exit_rollup_rolls_its_ended_months_when_nothing_is_pruned.sql` | `roll_up_and_prune_exits(int)` — replace, header 300s → 10min; rewrites the `job-board-exits-rollup-retention` command in place | L13-16 (same defect, same file as the closure rollup) |
+| 8 | `20261008113500_a_filing_month_is_rolled_whole_and_counted_once.sql` | `roll_up_and_prune_layoff_filings(int)` — replace | L13-16 |
+
+**Grants and census status.** Every re-issued function keeps the reachable set
+it has today: the six readers stay client-callable and allowlisted
+(`src/test/helpers/client-callable-allowlist.ts` is unchanged), the three
+rollups stay service-role only. Each file restates `REVOKE ALL … FROM PUBLIC,
+anon, authenticated` then `GRANT EXECUTE` to exactly the roles it had. One
+difference worth knowing: `get_hiring_trends` previously carried an implicit
+`PUBLIC` grant (its 20261002113617 drop/re-create never revoked it); it is now
+revoked from `PUBLIC` and granted to anon, authenticated and service_role by
+name — the census reads the same. **No new SECURITY DEFINER function** is
+added and nothing new becomes anon-callable.
+
+### Frontend
+
+`src/pages/Jobs.tsx`, `src/pages/Account.tsx`, `src/pages/HiringTrends.tsx`,
+`src/pages/PayTransparencyIndex.tsx`, `src/pages/EntryLevelIndex.tsx`,
+`src/components/jobs/CompanyIntelPanel.tsx`, `src/lib/hiring-trends-trust.ts`,
+`src/lib/tracked-employer-chip.ts` (new), `src/integrations/supabase/types.ts`
+(two columns, by hand), and `jobsPage.takedownsToday` → `jobsPage.takedownsLast24h`
+in all nine locales.
+
+## Deploy order
+
+1. **Migrations 1–8 first.** The board's hiring verdict now reads
+   `filled_roles_90d` / `relisted_roles_90d`; a frontend that lands before
+   migration 1 reads every employer's record as *unknown* ("No closure record")
+   until it applies. It fails safe — it says "we cannot say", never "not
+   hiring" — but it is a visible regression for the window.
+2. **Frontend publish.**
+3. **Wait for the next `:27` stats-cache run** (and the `:07` explore run).
+   Migration 2 removes the cached field pool (as 20261002121843 did), so the
+   pages that read the field curve say "not yet computed" until the `:27` run
+   writes it under the new rule; the weekly series gains `live_new` on the same
+   run.
+4. **Prerender rebuild after that run** — it reads the cache at build time.
+
+## What to tell the owner
+
+- **Employer pages count roles, not closure events.** Every "Filled N roles …
+  taken down for good", "we watched N of its roles come off the board and stay
+  off" and the account tracker's chip (which said "genuinely fills roles (N)";
+  it now uses the board's sentence) print `filled_roles_90d`. Johnson &
+  Johnson read 2,687 fill events on 2026-10-08; the register measured at most
+  1,799 roles that stayed down and 403 that came back. Some employers will
+  lose "Actively hiring" (more roles came back than stayed down); none gains
+  it from this change alone.
+- **The fill curves stop double-counting postings that survived a dark
+  batch.** A doubted closure (suspect or dark proxy) and the age-out its bad
+  batch logged now leave the risk set when the same posting_id was seen again
+  afterwards; only never-seen-again ids stay censored — the rule the owner
+  approved. Expect `dated_n` to fall and `fill_rate_14` to rise a little on
+  boards with Workday-flap batches; `still_open_30` falls on the same boards.
+  Fields move the same way.
+- **/hiring-trends** draws four weeks from Wednesday to Sunday (five on Monday
+  and Tuesday): a week whose Monday is past the 30-day fence is no longer
+  drawn, because it had already lost its aged-out postings (the 211,810 bar for
+  the week of 09-07 on 2026-10-08). Week labels no longer slip a day for
+  readers in the Americas. The remote tile is now the share of the week's
+  roles still on the board (`remote_new / live_new`), and says so.
+- **"Which fields are hiring"** stops reading nearly every field as up (14 of
+  15 on 2026-10-08): both windows now include their closed postings.
+- **The /jobs ticker** is the last 24 hours, not "today since 00:00 UTC".
+- **The ATS-score benchmark** drops our own synthetic test scans (about 22 of
+  375 rows).
+- **The closure, exit and layoff rollups** now actually roll. The first
+  closure run (03:17 UTC) and exit run (04:17 UTC) after apply read every
+  ended month since the ledgers' last final month — July, August and September
+  — once; after that each reads one month at most. Nothing is pruned: both
+  crons still pass `NULL`. Both jobs had been re-scheduled bare by
+  20261001090000 (applied after 20261004010000), so they were held to the
+  session's two minutes; the commands now set the ten-minute header.
+- **/pay-transparency** says "could not read this figure just now" instead of
+  "Loading…" for ever when its cache read fails; **/entry-level-index** prints
+  when it counted ("Counted <the cache's hour>, refreshed hourly"), names a
+  stale part, and no longer claims to count live at page load; the **company
+  lander's intel strip** no longer prints "+N net-new roles this week" (the
+  Hiring Health card's gated growth line is the reading).
+
+## What to measure
+
+Run `bash scripts/verify-deploy.sh` (section 64). Pre-deploy (2026-10-08
+~03:45Z) it printed FAIL on (a) (a2) (b) (c) (h ×2) and (i1–i7), INFO
+elsewhere, no crash. After the deploy and one `:27` tick every line should be
+PASS or INFO. Also watch:
+
+- `get_cron_health`: `refresh-stats-cache` ran 166 s last / 208 s max on
+  2026-10-08 (header 600 s). The field curve is about 2× its old body in a
+  465k-closure pglite model (3.5 s → 7.3 s); its share of the run was roughly
+  40–80 s, so expect the run to land near 210–290 s with zero timeouts.
+  `refresh-explore-cache` (95–131 s, header 900 s) also calls the curves.
+- The two rollup jobs: `ch_timeout = 10min`, and their first runs succeeding
+  (INFO lines (h2)). A failed first run leaves the rollup where it is and
+  deletes nothing.
+- J&J (`jj~wd5~JJ`) on the employer page: the "Filled N roles" figure should
+  sit well under the 2,687 events.
+
+## Rollback
+
+Every change is a function re-issue; rolling back is re-applying the previous
+definition, newest first. None of these migrations changes a table or deletes
+a row (the field-pool cache key is withheld, and is rewritten by the next
+`:27` run either way).
+
+- 8 → re-run the function block of `20260918100900_a_filing_is_pruned_only_after_its_month_is_counted.sql`.
+- 7, 6 → re-run the two function blocks of `20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it.sql`
+  (not its cron `DO` blocks, which re-schedule the jobs without a header).
+- 5 → re-run `20260727201433_b00cf43f-49dd-4bc6-aeca-43b15b9a5e5d.sql`.
+- 4 → re-run the `get_trending_categories` block of `20260909201000_the_same_late_date_in_thirteen_more_places.sql`.
+- 3 → re-run `20261002113617_a_week_of_takedowns_is_counted_on_the_filter_its_quarter_uses.sql` whole (it drops by name).
+- 2 → re-run `20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql` whole.
+- 1 → re-run `20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql`
+  whole (it drops by name), **and roll the frontend back with it**: without the
+  role columns the verdict reads every employer as unknown.
+- Frontend: restore the frontend files listed under "Frontend" (and the nine
+  locale files) to `acd64c4c`, the commit this branch started from.
+
+## For the integrator
+
+- **Same defect, outside this group's files, not changed:**
+  `supabase/functions/agent-runner/index.ts` still gives the apply queue a
+  `fills` reason from `fills_90d` (`{ k: "fills", n: h.fills_90d }`), and
+  `src/components/account/MorningQueuePanel.tsx` renders it as "we watched
+  {{n}} of its roles come off the board and stay off". The fix is one line
+  (`n: h.filled_roles_90d`, gated the same way) plus an agent-runner
+  `FN_BUILD` bump; it belongs with whichever group owns agent-runner.
+  `src/pages/Explore.tsx` `closureRecordOf` also counts closers from
+  `fills_90d` / `relists_90d` (event counts; the register did not name it).
+- **A third chain with the L13-12 shape, not changed:** `refresh_layoff_partition`
+  (20261002122309) builds its day-30 arms from the same closure / exit arms and
+  censors doubted rows the same way, without the seen-again test. The register
+  named the two fill curves; the partition is the layoff page's filed-vs-control
+  comparison, and applying the same rule there is a re-issue of that function
+  (and a move of the pins in a-day-thirty-share-needs-thirty-days-of-reading-in-full).
+- **agent-mcp needs no change**: `employer_hiring_record` reads
+  `get_company_hiring_health`, and its basis already says `closed_90d` counts
+  takedown events, not distinct postings.
+- **Locales**: `jobsPage.takedownsToday` is renamed `jobsPage.takedownsLast24h`
+  in all nine files; another group editing those files may conflict on that
+  line. `jobsPage.verdictFills` and `jobsPage.intel.net7d` are now unused and
+  were left in place.
+- **Guards whose pins moved** (MOVED, NOT DROPPED, each with its reason in
+  place): a-median-drawn-from-a-window-that-cannot-hold-one,
+  a-role-still-up-at-day-thirty-is-a-share-not-a-verdict,
+  a-day-thirty-share-needs-thirty-days-of-reading-in-full (its floor checks now
+  read the newest definition), a-week-of-takedowns-cannot-outnumber-its-own-quarter
+  (flagged era 25 → 22 days so the fenced series covers it on every weekday),
+  its page test (cache stamp moved to 09-29), instrument-recovery (pins the
+  fallback's absence), a-collection-failure-is-not-four-hundred-fills
+  (`get_trending_categories` added to its ledger with the reason it is not a
+  fill statistic), we-could-not-observe-it-is-not-they-are-not-hiring and four
+  Jobs render tests (fixtures carry the role columns).
+- **Section 7h / 4** of `scripts/verify-deploy.sh` read the cached field pool;
+  migration 2 withholds it until the next `:27` run, so a verifier run inside
+  that hour reads it absent.
+- **types.ts** was edited by hand for the two new columns; a Lovable
+  regeneration should produce the same lines.
+
+## Register items
+
+| id | outcome |
+|----|---------|
+| L11-02 | fixed: role columns (migration 1), Jobs.tsx lander / posting verdict / badge tip / compare drawer / card pace gate, `hiringRecordVerdict`, Account.tsx tracker chip. agent-runner + MorningQueuePanel listed above, not changed. |
+| L13-12 | fixed at both grains (migrations 1, 2), pglite invariance test. |
+| L2-06 | fixed: SQL fence (migration 3) and the page drops a cached week past the fence at the cache's stamp. |
+| L2-21 | fixed: `live_new` (migration 3), tile divides by it. |
+| L2-22 | fixed: `timeZone: "UTC"` in `weekLabel`. |
+| L11-10 | fixed (migration 4). |
+| L11-06 | fixed: rolling 24 h (migration 3) + copy in nine locales. |
+| L11-04 | fixed (migration 5) + guard on every published score statistic's allowlist. |
+| L13-16 | fixed for closures, exits and layoff filings (migrations 6–8); the live cron argument is confirmed by `get_cron_health` (both jobs bare, timeout null). |
+| L11-03 | fixed by not rendering `net_7d` (the RPC is unchanged). |
+| L2-10 | fixed: dead fallback removed, explicit unread state. |
+| L2-11 | fixed: stamp, stale parts, reworded claims. |
