@@ -517,11 +517,18 @@ describe("a card that shows nine chips shows nothing", () => {
     // branch's tooltip interpolates URGENT_FILL_MAX_DAYS too, so the old
     // anchor found the copy rather than the gate and an ordering assertion
     // against it was measuring the wrong thing.
-    // Since 20261008110000 the praise branch counts ROLES that stayed down,
-    // not closure events.
-    const iFast = slot.indexOf("(hh.filled_roles_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED");
+    // Since 20261008110000 the praise branch asks the closure VERDICT, which
+    // counts roles: a count gate alone (three roles down) let a card praise an
+    // employer whose roles came back faster than they stayed down while the
+    // detail pane warned. And the role caution the pane prints sits between
+    // the event caution and the praise.
+    const iFast = slot.indexOf('hiringRecordVerdict(hh) === "closes" && canStateFillRate');
+    const iRoles = slot.indexOf("relistCaution(hh)");
     const iActive = slot.indexOf("isActivelyHiring(job.token)");
     expect(iChurn, "the caution branch is missing").toBeGreaterThan(-1);
+    expect(iRoles, "the role caution branch is missing").toBeGreaterThan(-1);
+    expect(iRoles, "praise is read before the role caution").toBeLessThan(iFast);
+    expect(iRoles).toBeLessThan(iActive);
     // A vanished PRAISE branch must be reported as itself. Without these the
     // ordering assertions below would fail with "0 is not less than -1", which
     // reads as a precedence bug and sends the next reader to the wrong place.

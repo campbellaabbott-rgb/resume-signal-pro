@@ -218,7 +218,8 @@ a row (the field-pool cache key is withheld, and is rewritten by the next
 - **agent-mcp needs no change**: `employer_hiring_record` reads
   `get_company_hiring_health`, and its basis already says `closed_90d` counts
   takedown events, not distinct postings.
-- **Locales**: `jobsPage.takedownsToday` is renamed `jobsPage.takedownsLast24h`
+- **Locales**: `jobsPage.repostTipRoles` is new in all nine files (the card's
+  role-caution tooltip). `jobsPage.takedownsToday` is renamed `jobsPage.takedownsLast24h`
   in all nine files; another group editing those files may conflict on that
   line. `jobsPage.verdictFills` and `jobsPage.intel.net7d` are now unused and
   were left in place.
@@ -243,7 +244,7 @@ a row (the field-pool cache key is withheld, and is rewritten by the next
 
 | id | outcome |
 |----|---------|
-| L11-02 | fixed: role columns (migration 1), Jobs.tsx lander / posting verdict / badge tip / compare drawer / card pace gate, `hiringRecordVerdict`, Account.tsx tracker chip. agent-runner + MorningQueuePanel listed above, not changed. |
+| L11-02 | fixed: role columns (migration 1), Jobs.tsx lander / posting verdict / badge tip / compare drawer / card slot (the "Fills fast" branch asks `hiringRecordVerdict`, and the role caution `relistCaution` the pane prints takes the slot — new `jobsPage.repostTipRoles` in nine locales), `hiringRecordVerdict`, Account.tsx tracker chip. agent-runner + MorningQueuePanel listed above, not changed. |
 | L13-12 | fixed at both grains (migrations 1, 2), pglite invariance test. |
 | L2-06 | fixed: SQL fence (migration 3) and the page drops a cached week past the fence at the cache's stamp. |
 | L2-21 | fixed: `live_new` (migration 3), tile divides by it. |

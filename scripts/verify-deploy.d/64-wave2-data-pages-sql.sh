@@ -123,6 +123,7 @@ const num=(v)=>typeof v==="number"&&Number.isFinite(v);
     ok(jobs.src.includes("filled_roles_90d")&&jobs.src.includes("relisted_roles_90d"),"(i1) the deployed Jobs chunk ("+jobs.ch+") reads the role counts (L11-02)");
     ok(jobs.src.includes("takedownsLast24h")&&!/["\x27]jobsPage\.takedownsToday["\x27]/.test(jobs.src),"(i2) the Jobs chunk prints the takedown ticker as the last 24 hours, not today (L11-06)");
     ok(!jobs.src.includes("intel.net7d"),"(i3) the company intel strip no longer prints a net-new count (L11-03)");
+    ok(jobs.src.includes("jobsPage.repostTipRoles"),"(i8) the card slot carries the role caution the detail pane prints, so a card can no longer praise an employer its pane warns about (L11-02 follow-up)");
   }else info("(i1-3) the entry bundle names no Jobs chunk");
   const acc=await chunk("Account");
   if(acc)ok(acc.src.includes("filled_roles_90d")&&!acc.src.includes("verdictFills"),"(i4) the deployed Account chunk ("+acc.ch+") quotes roles that stayed down, never \"genuinely fills\" (L11-02)");else info("(i4) no Account chunk named");

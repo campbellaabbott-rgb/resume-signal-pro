@@ -474,6 +474,34 @@ export function hiringRecordVerdict(
   return "no-pattern";
 }
 
+/** The floor the role caution needs before it speaks: ten roles that came back. */
+export const RELIST_CAUTION_MIN = 10;
+
+/**
+ * THE ROLE CAUTION, READ ONCE. True when the roles that came back
+ * (relisted_roles_90d, a FLOOR) outnumber the roles that came down and stayed
+ * down (filled_roles_90d) and reach RELIST_CAUTION_MIN. The detail pane, the
+ * compare drawer and the card slot all ask this function, so no surface can
+ * praise an employer another surface is warning about: when it is true the
+ * verdict cannot be "closes" (relists > fills), so the card's praise branch,
+ * gated on that verdict, cannot fire beside it.
+ *
+ * WHY THE CARD NEEDED IT. The card's caution read relists_90d (same-title
+ * re-list EVENTS) and its "Fills fast" branch asked only for three filled
+ * roles, trusting arithmetic that held while both sides counted events (a
+ * caution at three events left fewer than three, so fills >= 3 implied
+ * relists <= fills). Once the verdict counted ROLES (20261008110000) a card
+ * with 5 roles down, 20 back and one re-list event printed "Fills fast" while
+ * its detail pane warned "re-lists roles often (at least 20x)".
+ */
+export function relistCaution(
+  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> | null | undefined,
+): boolean {
+  if (!h) return false;
+  const back = h.relisted_roles_90d ?? 0;
+  return back > (h.filled_roles_90d ?? 0) && back >= RELIST_CAUTION_MIN;
+}
+
 /**
  * WHAT A SURFACE IS ALLOWED TO DO WITH A VERDICT.
  *
@@ -7749,7 +7777,7 @@ export default function Jobs() {
                 if (dg && dgv === "unknown") clauses.push(t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(dg)) }));
                 // "at least": the collector logs a relisted title once a day per
                 // company, so this count is a floor and never an exact tally.
-                if (hh && churn > fills && churn >= 10) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
+                if (relistCaution(hh)) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
                 if (canStateFillRate(hh, hh?.tracking_days) && hh!.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                   // "up to", and the coverage share named when it is thin.
                   // The fill share is a CEILING for the same reason the relist
@@ -7772,7 +7800,7 @@ export default function Jobs() {
                   clauses.push(t("jobsPage.verdictSlowFill", "we never see half its roles come down inside {{d}} days", { d: FILL_SUPPORT_MAX_DAYS }));
                 }
                 if (clauses.length === 0) return null;
-                const caution = churn > fills && churn >= 10;
+                const caution = relistCaution(hh);
                 // `fills >= 3` was typed here too — a third spelling of the bar,
                 // in the condition that decides whether this panel's headline
                 // reads "Worth applying now". It reads the shared verdict now,
@@ -11794,7 +11822,11 @@ export default function Jobs() {
                                 Not one gate moved: REPOST_FLAG_MIN,
                                 ACTIVELY_HIRING_MIN_CLOSED and
                                 URGENT_FILL_MAX_DAYS are the same numbers, read
-                                in the same order they were read before. */}
+                                in the same order they were read before. One
+                                caution was added second (relistCaution, the
+                                one the detail pane prints), and the praise
+                                branch now asks the verdict, so the card and
+                                the pane can never disagree about an employer. */}
                             {job.token && (() => {
                               const hh = curveByToken[job.token];
                               // NO ROW YET IS NOT A VERDICT. The batch is in
@@ -11823,6 +11855,19 @@ export default function Jobs() {
                                   </span>
                                 );
                               }
+                              // The role caution the detail pane prints (see relistCaution).
+                              if (relistCaution(hh)) {
+                                const back = hh.relisted_roles_90d ?? 0;
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 whitespace-nowrap"
+                                    title={t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: back, f: hh.filled_roles_90d ?? 0 })}
+                                  >
+                                    <RefreshCw className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.repostChipFloor", "Re-lists roles often ({{n}}×+)", { n: back })}
+                                  </span>
+                                );
+                              }
                               // Urgency: a proven, FAST record from the lifecycle log —
                               // honest data-backed "apply early", not a fake scarcity badge.
                               //
@@ -11834,19 +11879,11 @@ export default function Jobs() {
                               // employer-stated dates to build on, and at least half the
                               // employer's roles gone inside the horizon.
                               //
-                              // THE COUNT GATE HERE IS NOT A SECOND READING OF THE BAR. It
-                              // asks only that a record exists: at least three ROLES that
-                              // came down and stayed down (20261008110000 -- it read the
-                              // closure-EVENT count before, which a role that closed twice
-                              // fed twice). The balance of re-listings against take-downs
-                              // is the rate's own: canStateFillRate requires the RPC's
-                              // `sufficient`, whose fourth term refuses a cohort whose
-                              // re-lists by day 14 outnumber its fills. It is a
-                              // POSITIVE-ONLY gate: a null or short count falls through to
-                              // the branches below, where the third state is named, so
-                              // nothing here can turn an unreadable record into a silent
-                              // negative.
-                              if ((hh.filled_roles_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED && canStateFillRate(hh, hh.tracking_days)
+                              // THE RECORD GATE IS THE VERDICT ITSELF (see relistCaution for
+                              // why a count gate stopped implying it). POSITIVE-ONLY: any
+                              // other verdict falls through to the branches below, where the
+                              // third state is named.
+                              if (hiringRecordVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
                                   <span
@@ -12981,7 +13018,7 @@ export default function Jobs() {
                         if (cg && cgv === "unknown") return <li className="text-muted-foreground">{t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(cg)) })}</li>;
                         return null;
                       })()}
-                      {hh && (hh.relisted_roles_90d ?? 0) > (hh.filled_roles_90d ?? 0) && (hh.relisted_roles_90d ?? 0) >= 10 && (
+                      {hh && relistCaution(hh) && (
                         <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relisted_roles_90d ?? 0 })}</li>
                       )}
                       {/* The pace, where the record can carry it. A share at a

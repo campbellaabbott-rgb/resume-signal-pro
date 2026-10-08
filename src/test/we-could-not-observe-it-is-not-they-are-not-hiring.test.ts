@@ -307,8 +307,22 @@ describe("we could not observe it is not they are not hiring", () => {
     // split; narrow enough that a site pasted into a different part of the
     // page has no handler in reach.
     const WINDOW = 2500;
+    // THE CARD'S ONE-SLOT CHAIN IS ONE SURFACE, AND IT IS LONGER THAN THE
+    // WINDOW: about 8,500 characters from its first caution to its third-state
+    // chip once the praise branch read the verdict itself (it read a role
+    // count before, so it was never a consumer here). Every consumer inside
+    // the chain is answered by that chip -- the pinned `=== "unreadable"`
+    // branch asserted below -- so the chain is matched as a range rather than
+    // by widening the window for every other site on the page. The range is
+    // bounded, so a site pasted far from the chain is still outside it.
+    const slotStart = JOBS.indexOf("const churn = hh.relists_90d;");
+    const slotEnd = JOBS.search(/hiringRecordSlot\(hiringRecordOf\(job\.token\)\) === "unreadable"/);
+    expect(slotStart, "the one-slot chain moved -- RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
+    expect(slotEnd, "the slot's third-state chip is missing").toBeGreaterThan(slotStart);
+    expect(slotEnd - slotStart, "the slot chain is no longer one surface").toBeLessThan(10_000);
     const unhandled: number[] = [];
     for (const i of sites) {
+      if (i > slotStart && i < slotEnd) continue;
       const near = JOBS.slice(Math.max(0, i - WINDOW), i + WINDOW);
       if (!/=== "unknown"|=== "unreadable"|"unknown" &&/.test(near)) unhandled.push(lineOf(JOBS, i));
     }
