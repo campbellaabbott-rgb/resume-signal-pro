@@ -471,8 +471,12 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // property THIS block exists to protect is asserted directly below rather
     // than assumed: if a future re-issue drops the lap_backfill exclusion, that
     // assertion fails even though the pin is satisfied.
-    const CLOSURE_KEEP_FIX = "20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it.sql";
-    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that turned its prune off").toBe(CLOSURE_KEEP_FIX);
+    // MOVED AGAIN ON 20261008112500: the rollup now reads whole ended months
+    // (it rolled by instant and overwrote the month, and on the NULL the cron
+    // passes it rolled nothing). The aggregates were carried verbatim; the two
+    // properties below are asserted against whatever body is live.
+    const CLOSURE_KEEP_FIX = "20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned.sql";
+    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that made its rollup read whole months").toBe(CLOSURE_KEEP_FIX);
     expect(
       LIVE.get("roll_up_and_prune_closures")?.code,
       "the re-issue must carry the late-closed_at fix forward: lap_backfill rows are excluded from the duration statistics",

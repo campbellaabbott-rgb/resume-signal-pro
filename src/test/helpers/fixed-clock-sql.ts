@@ -27,10 +27,13 @@ export function definitionOf(sql: string, fn: string): string {
   return sql.slice(m.index, close + tag[1].length) + ";";
 }
 
-/** The definition with every now() pinned to `at` (an ISO instant), and the function renamed with `suffix`. */
+/** The definition with every now() and current_date pinned to `at` (an ISO
+ *  instant, read in UTC), and the function renamed with `suffix`. */
 export function definitionAt(file: string, fn: string, at: string, suffix: string): string {
   const def = definitionOf(migFile(file), fn);
-  const pinned = def.split("now()").join(`'${at}'::timestamptz`);
-  if (pinned === def) throw new Error(`${file}: ${fn} never reads now(), so pinning the clock proves nothing`);
+  const pinned = def
+    .split("now()").join(`'${at}'::timestamptz`)
+    .replace(/\bcurrent_date\b/g, `('${at}'::timestamptz AT TIME ZONE 'UTC')::date`);
+  if (pinned === def) throw new Error(`${file}: ${fn} never reads the clock, so pinning it proves nothing`);
   return pinned.replace(new RegExp(`(FUNCTION\\s+public\\.${fn})(\\s*\\()`, "i"), `$1_${suffix}$2`);
 }

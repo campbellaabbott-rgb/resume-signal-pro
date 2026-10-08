@@ -16,7 +16,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
-import { definitionAt } from "./helpers/fixed-clock-sql";
+import { definitionAt, migFile } from "./helpers/fixed-clock-sql";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -95,5 +95,15 @@ describe("the field comparison", () => {
     expect(now.last7).toBe(7 * 30);
     expect(now.prior7).toBe(7 * 30);
     expect(delta(now)).toBe(0);
+  });
+
+  it("the migration applies whole, passes its own end-state check, and leaves the page's roles able to call it", async () => {
+    await db.exec(migFile(NOW));
+    const r = (await db.query<{ anon: boolean; pub: boolean; definer: boolean }>(`
+      SELECT has_function_privilege('anon', 'public.get_trending_categories()', 'EXECUTE') AS anon,
+             EXISTS (SELECT 1 FROM pg_proc p, aclexplode(p.proacl) a
+                      WHERE p.oid = 'public.get_trending_categories()'::regprocedure AND a.grantee = 0) AS pub,
+             (SELECT prosecdef FROM pg_proc WHERE oid = 'public.get_trending_categories()'::regprocedure) AS definer`)).rows[0];
+    expect(r).toEqual({ anon: true, pub: false, definer: true });
   });
 });
