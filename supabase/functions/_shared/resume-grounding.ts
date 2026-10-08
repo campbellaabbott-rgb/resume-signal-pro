@@ -98,7 +98,10 @@ const yearsIn = (s: string) => [...s.matchAll(/\b(19|20)\d{2}\b/g)].map((m) => m
 // flagging them would reject harmless drafts far more often than it would
 // catch lies. Years are already validated structurally where they matter.
 
-const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{2,}\b/g;
+// The grouped arm ("10,000", "1,000,000") runs before the bare-integer arm,
+// which would otherwise split "10,000" into "10" and "000", both dropped as
+// small counts, so an invented "10,000 users" passed (sweep S8-032).
+const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{1,3}(?:,\d{3})+\b|\b\d{2,}\b/g;
 
 /**
  * Canonical digit-string for matching: "1,200" == "1200", "32 %" == "32%",
@@ -112,9 +115,9 @@ const canonNum = (s: string) => s.replace(/[\s,]/g, "").toLowerCase().replace(/\
 const numClaims = (text: string): string[] =>
   [...(text.matchAll(NUM_CLAIM))].map((m) => m[0]).filter((raw) => {
     const bare = raw.replace(/[^0-9.]/g, "");
-    const isBareInt = /^\d+$/.test(raw.trim());
+    const isBareInt = /^\d{1,3}(?:,\d{3})+$|^\d+$/.test(raw.trim());
     if (isBareInt && Number(bare) < 13) return false;      // small counts: allowed
-    if (isBareInt && /^(19|20)\d{2}$/.test(raw.trim())) return false; // years: handled elsewhere
+    if (isBareInt && /^(19|20)\d{2}$/.test(bare)) return false; // years: handled elsewhere
     return true;
   });
 
