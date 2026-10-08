@@ -27,17 +27,26 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
-type Sub = { id: string; status: string; cancel_at_period_end?: boolean; items: { data: Array<{ price: { unit_amount: number }; current_period_end?: number }> } };
+type Sub = { id: string; status: string; cancel_at_period_end?: boolean; metadata?: Record<string, string>; items: { data: Array<{ price: { unit_amount: number }; current_period_end?: number }> } };
 
 const PRO = 4500;
 const AGENT = 9900;
+// Auth user ids are UUIDs; the plan is read by them (pro_entitlement_rows).
+const USER_IDS: Record<string, string> = {
+  "jwt-owner": "00000000-0000-4000-8000-0000000000e1",
+  "jwt-other": "00000000-0000-4000-8000-0000000000e2",
+};
+const OWNER_ID = USER_IDS["jwt-owner"];
+// A plan bought through the signed-in checkouts carries its buyer (wave 2).
 const sub = (status: string, cents: number, extra: Partial<Sub> = {}): Sub => ({
   id: `sub_${status}_${cents}`,
   status,
   items: { data: [{ price: { unit_amount: cents }, current_period_end: Math.floor(Date.now() / 1000) + 86400 * 20 }] },
+  metadata: { user_id: OWNER_ID },
   ...extra,
 });
 
@@ -100,6 +109,15 @@ beforeEach(() => {
   authCalls = [];
   db.rpcs.check_rate_limit = () => { rateCalls++; return { data: rateAllowed, error: null }; };
   db.rpcs.record_checkout_start = () => ({ data: true, error: null });
+  // The account's plan rows, as 20261008130000 answers them: rows BOUND to
+  // the account (these test accounts have proven no mailbox).
+  db.rpcs.pro_entitlement_rows = (a) => ({
+    data: [
+      ...db.rows("pro_subscribers").filter((r) => r.user_id === a.p_user_id).map((r) => ({ tier: "pro", status: r.status, current_period_end: r.current_period_end, bound: true })),
+      ...db.rows("agent_subscribers").filter((r) => r.user_id === a.p_user_id).map((r) => ({ tier: "agent", status: r.status, current_period_end: r.current_period_end, bound: true })),
+    ],
+    error: null,
+  });
   db.unique = { pro_subscribers: ["email"] };
   stripe = { customers: {}, subs: {}, sessions: {}, calls: [], created: [] };
   const g = globalThis as Record<string, unknown>;
@@ -112,7 +130,7 @@ beforeEach(() => {
         authCalls.push(jwt);
         const email = TOKENS[jwt];
         // A real auth user always carries an id; the agent checkout stamps it on the plan.
-        return email ? { data: { user: { id: `uid-${jwt}`, email } }, error: null } : { data: { user: null }, error: { message: "bad jwt" } };
+        return email ? { data: { user: { id: USER_IDS[jwt], email } }, error: null } : { data: { user: null }, error: { message: "bad jwt" } };
       },
     },
   };
@@ -170,7 +188,7 @@ describe("check-subscription answers only about the caller", () => {
     expect(body.active, "a ten-minute-old 'inactive' row was served over a live plan").toBe(true);
 
     stripe.calls = [];
-    db.rows("pro_subscribers").splice(0, 1, { email: "owner@example.com", status: "active", current_period_end: null, updated_at: tenMinutesAgo });
+    db.rows("pro_subscribers").splice(0, 1, { email: "owner@example.com", status: "active", current_period_end: null, updated_at: tenMinutesAgo, user_id: OWNER_ID });
     const cached = await (await post("check-subscription", {}, "jwt-owner")).json();
     expect(cached).toMatchObject({ active: true, cached: true });
     expect(stripe.calls, "a fresh live row should be served from the cache").toEqual([]);
@@ -272,7 +290,7 @@ describe("create-product-checkout tells a signed-out caller no more than it did 
   });
 
   it("signed in, the agent plan's owner gets the included tool without Stripe", async () => {
-    db.rows("agent_subscribers").push({ email: "owner@example.com", status: "active", current_period_end: null, stripe_customer_id: null });
+    db.rows("agent_subscribers").push({ email: "owner@example.com", status: "active", current_period_end: null, stripe_customer_id: null, user_id: OWNER_ID });
     const body = await buy("someone-else@example.com", "jwt-owner");
     expect(body.proIncluded).toBe(true);
     expect(db.rows("pro_grants")[0]).toMatchObject({ email: "owner@example.com", product_id: "coverLetter" });
@@ -354,7 +372,7 @@ describe("the subscription checkouts sell only to a signed-in account, and never
   it("every response of the four carries its build", async () => {
     for (const fn of Object.keys(handlers)) {
       const res = await handlers[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
-      expect(res.headers.get("x-fn-build")).toMatch(new RegExp(`^${fn}\\.2026-10-05\\.\\d+$`));
+      expect(buildIsAtLeast(res.headers.get("x-fn-build"), fn, "2026-10-05"), `${fn}: ${res.headers.get("x-fn-build")}`).toBe(true);
     }
   });
 });

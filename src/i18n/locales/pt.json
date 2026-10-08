@@ -3986,7 +3986,7 @@
     "tailorLimitTitle": "Limite por hora atingido",
     "tailorLimit": "Usou os ajustes de currículo desta hora — repõem-se dentro de uma hora. Tudo o que gerou fica guardado.",
     "savedMilestone": "Já são {{n}} vagas no seu pipeline",
-    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de 7 dias, e é sempre você quem envia.",
+    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de {{trialDays}} dias para novos assinantes, e é sempre você quem envia.",
     "sortRelevance": "Relevância",
     "companyNotHiring": "Agora não — a {{company}} não tem vagas abertas no seu portal neste momento. Siga a empresa abaixo e enviaremos um e-mail quando surgirem novas vagas.",
     "companyYesHiringCapped": "Sim — mais de {{n}} vagas abertas verificadas agora mesmo, diretamente do portal da {{company}}.",
@@ -4227,7 +4227,7 @@
     "fitRetry": "Tentar novamente",
     "dropTitleScoped": "Larga aqui o teu CV — encontramos as vagas que combinam e ordenamo-las por afinidade em segundos.",
     "agentPitchCounted": "O agente pode preencher e enviar {{n}} destas por ti — lê o teu CV, escreve cada candidatura separadamente e responde às perguntas de triagem do empregador.",
-    "agentPitchCta": "Ver como funciona — 7 dias grátis, depois 99 $/mês",
+    "agentPitchCta": "Ver como funciona — {{trialDays}} dias grátis para novos assinantes, depois {{agentPrice}} $/mês",
     "agentPitchScopeLive": "Candidata-se em {{n}} sistemas de recrutamento — cerca de {{pct}}% do quadro — e nunca em sites que colocam as candidaturas atrás de um CAPTCHA. Em todos os outros prepara a candidatura e você envia-a.",
     "agentPitchScopePlain": "Candidata-se nos sistemas de recrutamento que o permitem e nunca em sites que colocam as candidaturas atrás de um CAPTCHA. Em todos os outros prepara a candidatura e você envia-a.",
     "loadMoreFailed": "Não foi possível carregar mais agora — os teus resultados continuam aqui.",
@@ -4723,8 +4723,8 @@
     "badge": "Agente de candidatura",
     "subtitle": "Configure sua busca uma vez. Toda noite o agente varre as vagas novas, pontua contra seu currículo, pula empresas que republicam em ciclo e enfileira as melhores — cada uma com suas razões. Você revisa, você envia.",
     "payPitch": "Acorde com uma lista revisada em vez de mais uma hora de rolagem.",
-    "payBoundary": "O agente prepara, explica e nunca inventa uma resposta. No modo de revisão — o padrão — nada sai até você clicar em enviar. Mude para automático e ele envia as que consegue preencher sozinho, e deixa o resto com você. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser.",
-    "payCta": "Teste o Agente grátis por 7 dias",
+    "payBoundary": "O agente prepara, explica e nunca inventa uma resposta. No modo de revisão — o padrão — nada sai até você clicar em enviar. Mude para automático e ele envia as que consegue preencher sozinho, e deixa o resto com você. US$ {{agentPrice}}/mês, tudo do Pro incluído; novos assinantes começam com {{trialDays}} dias grátis, e as ferramentas pagas do Pro chegam com o primeiro pagamento. Cancele quando quiser.",
+    "payCta": "Comece com o Apply Agent — {{trialDays}} dias grátis para novos assinantes",
     "checkoutError": "Não foi possível abrir o checkout — tente novamente.",
     "needResume": "Salve primeiro um currículo para matching (acima) — o agente pontua cada vaga contra ele.",
     "saveError": "Não foi possível salvar — tente novamente.",
@@ -4758,7 +4758,7 @@
     "emailSaveError": "Não foi possível alterar — tente novamente.",
     "reasonSendable": "o agente pode enviar esta candidatura por si",
     "subtitleAuto": "Configure a sua pesquisa uma vez. Todas as noites o agente analisa novas vagas, pontua-as com o seu currículo, ignora empresas que republicam sem parar e coloca as melhores em fila, cada uma com os seus motivos. Envia as que consegue completar sozinho e entrega-lhe as restantes.",
-    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser.",
+    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. US$ {{agentPrice}}/mês, tudo do Pro incluído; novos assinantes começam com {{trialDays}} dias grátis, e as ferramentas pagas do Pro chegam com o primeiro pagamento. Cancele quando quiser.",
     "addSearch": "Adicionar outra busca",
     "deleteSearch": "Excluir",
     "untitledSearch": "Minha busca",
@@ -4879,6 +4879,7 @@
     "includesPro": "Inclui tudo o que está no Pro ({{proPrice}} $/mês)",
     "perkAutoApply": "Candidata-se automaticamente por si em {{names}}",
     "perkOneClick": "Candidaturas preenchidas e prontas a enviar em {{names}}",
+    "perkMorningQueue": "Fila da manhã: durante a noite, o agente faz a sua pesquisa e deixa uma lista curta na sua conta para a manhã",
     "perkQueue": "Uma fila que pode rever primeiro, ou deixar correr sozinha — a escolha é sua e pode mudá-la quando quiser",
     "perkCap": "Um limite diário definido por si, e nunca se candidata duas vezes à mesma vaga",
     "perkHonest": "Nunca inventa uma resposta. Se uma pergunta precisar de si, pára e pergunta.",
@@ -4892,6 +4893,10 @@
     "alreadySubscribed": "Você já tem o agente — vamos levá-lo até ele.",
     "needsPaymentUpdate": "O seu plano tem um pagamento pendente. Atualize o cartão em vez de iniciar um novo plano.",
     "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois."
+  },
+  "proPlan": {
+    "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",
+    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
@@ -5111,7 +5116,8 @@
     "connectorNoOauth2": "O login para este host ainda não está ativado, então daqui só respondem as ferramentas sem chave. Para gastar o passe, conecte-se a partir de {{headerHosts}} com sua chave de agente.",
     "connectorPassGate": "A partir de {{host}} o passe só poderá ser usado quando o login estiver ativado; hoje, use-o a partir de {{headerHosts}} com sua chave de agente.",
     "repairSecondPass": "Este pagamento não criou um segundo passe: uma conta tem um passe aberto de cada vez, e o seu aparece aqui sem alterações. Já fomos avisados e este pagamento será reembolsado — se não voltar ao seu cartão dentro de alguns dias, escreva para resumeboostersupp@gmail.com.",
-    "repairNotYours": "Esta compra pertence a uma conta diferente daquela em que tem sessão iniciada, e o passe está nessa conta. Inicie sessão na conta que pagou para o ver."
+    "repairNotYours": "Esta compra pertence a uma conta diferente daquela em que tem sessão iniciada, e o passe está nessa conta. Inicie sessão na conta que pagou para o ver.",
+    "repairRefunded": "Este pagamento foi reembolsado, por isso não abre nenhum passe."
   },
   "oauthConsent": {
     "title": "Ligue o seu agente",
@@ -5132,7 +5138,10 @@
     "passOpen": "O seu passe"
   },
   "agentPage": {
-    "connectInstead": "Já tem um agente? Conecte-o em vez disso — {{passHours}} horas por ${{passPrice}}, nunca renova; o plano Agent sim."
+    "connectInstead": "Já tem um agente? Conecte-o em vez disso — {{passHours}} horas por ${{passPrice}}, nunca renova; o plano Agent sim.",
+    "welcomeTitle": "Assinatura feita.",
+    "welcomeTitleTrial": "Assinatura feita — {{trialDays}} dias grátis antes da primeira cobrança.",
+    "welcomeBody": "Falta uma coisa: o agente precisa do seu currículo e de um mandato ativo antes de procurar qualquer coisa. A lista abaixo leva cerca de um minuto, e nada roda até ela estar concluída."
   },
   "agentConnect": {
     "rateLine": "Uma chave gratuita é limitada a {{ratePerMin}} solicitações por minuto e {{dailyQuota}} chamadas por dia; um passe ativo eleva ambos durante as suas horas.",

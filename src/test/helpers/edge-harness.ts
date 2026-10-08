@@ -228,6 +228,9 @@ function defaultsFor(table: string): Row {
       return { id: `pc-${seq}`, created_at: now };
     case "used_stripe_sessions":
       return { used_at: now, product_type: null, ip_address: null };
+    case "pro_grants":
+      // The real column defaults: a uuid id, unspent.
+      return { id: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, created_at: now, consumed_at: null, revoked_at: null };
     case "company_claims":
       return { id: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, verify_token: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, status: "pending", created_at: now, verified_at: null };
     default:

@@ -6,10 +6,11 @@ import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-ats-defense.2026-10-05.1";
+const FN_BUILD = "generate-ats-defense.2026-10-08.1";
 
 // The product_type create-product-checkout writes for this product; the
 // session's metadata must carry it, and the claim records it.
@@ -415,6 +416,16 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ error: "This session is not for ATS Defense" }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Stripe still answers 'paid' for a refunded or disputed session, and
+      // the claim below treats its existing (rewritten) row as proof (L6-18).
+      if (await sessionWasRefunded(supabase, sessionId)) {
+        console.log("[ATS-DEFENSE] Refunded session");
+        return new Response(
+          JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, refunded: true }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }

@@ -3986,7 +3986,7 @@
     "tailorLimitTitle": "Naabot na ang limitasyon kada oras",
     "tailorLimit": "Nagamit mo na ang mga resume-tailoring run ngayong oras — magre-reset ito sa loob ng isang oras. Naka-save ang lahat ng nagawa mo.",
     "savedMilestone": "{{n}} trabaho na sa pipeline mo",
-    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — 7-araw na libreng trial, at ikaw pa rin ang laging magpapadala.",
+    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — {{trialDays}}-araw na libreng trial para sa mga unang beses na subscriber, at ikaw pa rin ang laging magpapadala.",
     "sortRelevance": "Kaugnayan",
     "companyNotHiring": "Hindi sa ngayon — walang bukas na posisyon ang {{company}} sa kanilang job board. I-watch ang kumpanya sa ibaba at mag-eemail kami kapag may lumabas na bagong posisyon.",
     "companyYesHiringCapped": "Oo — mahigit {{n}} verified na bukas na posisyon ngayon mismo, direkta mula sa job board ng {{company}}.",
@@ -4227,7 +4227,7 @@
     "fitRetry": "Subukan ulit",
     "dropTitleScoped": "Ilagay dito ang iyong CV — hahanapin namin ang mga trabahong tugma at irarangko ayon sa tugma sa loob ng ilang segundo.",
     "agentPitchCounted": "Kayang punan at isumite ng apply agent ang {{n}} nito para sa iyo — binabasa nito ang iyong CV, sumusulat ng hiwalay na aplikasyon sa bawat isa, at sinasagot ang sariling screening questions ng employer.",
-    "agentPitchCta": "Tingnan kung paano ito gumagana — 7 araw libre, tapos $99/buwan",
+    "agentPitchCta": "Tingnan kung paano ito gumagana — {{trialDays}} araw libre para sa mga unang beses na subscriber, tapos ${{agentPrice}}/buwan",
     "agentPitchScopeLive": "Nag-a-apply ito sa {{n}} hiring system — mga {{pct}}% ng board — at hindi kailanman sa mga site na naglalagay ng aplikasyon sa likod ng CAPTCHA. Sa iba pa, inihahanda nito ang aplikasyon at ikaw ang magpapadala.",
     "agentPitchScopePlain": "Nag-a-apply ito sa mga hiring system na pumapayag, at hindi kailanman sa mga site na naglalagay ng aplikasyon sa likod ng CAPTCHA. Sa iba pa, inihahanda nito ang aplikasyon at ikaw ang magpapadala.",
     "loadMoreFailed": "Hindi makapag-load pa ngayon — nandiyan pa rin ang iyong mga resulta.",
@@ -4723,8 +4723,8 @@
     "badge": "Apply Agent",
     "subtitle": "Itakda ang paghahanap mo nang isang beses. Gabi-gabi, ini-scan ng agent ang mga bagong posting, sinusukat laban sa resume mo, nilalaktawan ang mga kumpanyang paulit-ulit nag-re-repost, at ipinipila ang pinakamahusay — bawat isa may dahilan. Ikaw ang magrerepaso, ikaw ang magpapadala.",
     "payPitch": "Gumising na may nirepasong shortlist sa halip na isa pang oras ng pag-scroll.",
-    "payBoundary": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent. Sa review mode — ang default — walang naipapadala hangga't hindi ka pumindot ng send. Ilipat mo ito sa auto at isusumite nito ang mga kaya nitong tapusin mag-isa, at sa iyo ibibigay ang iba. Libre ang 7 umaga, tapos $99/buwan — kasama ang lahat ng nasa Pro. Puwedeng kanselahin anumang oras.",
-    "payCta": "Subukan ang Apply Agent nang libre sa 7 araw",
+    "payBoundary": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent. Sa review mode — ang default — walang naipapadala hangga't hindi ka pumindot ng send. Ilipat mo ito sa auto at isusumite nito ang mga kaya nitong tapusin mag-isa, at sa iyo ibibigay ang iba. ${{agentPrice}}/buwan, kasama ang lahat ng nasa Pro; may {{trialDays}} araw na libre sa simula ang mga unang beses na subscriber, at kasama ang mga bayad na tool ng Pro mula sa unang bayad. Puwedeng kanselahin anumang oras.",
+    "payCta": "Simulan ang Apply Agent — {{trialDays}} araw libre para sa mga unang beses na subscriber",
     "checkoutError": "Hindi mabuksan ang checkout — subukang muli.",
     "needResume": "Mag-save muna ng resume para sa matching (sa itaas) — doon sinusukat ng agent ang bawat posting.",
     "saveError": "Hindi ma-save — subukang muli.",
@@ -4758,7 +4758,7 @@
     "emailSaveError": "Hindi na-update — subukan muli.",
     "reasonSendable": "kaya itong isumite ng agent para sa iyo",
     "subtitleAuto": "Isaayos ang iyong paghahanap nang minsanan. Gabi-gabi, sinusuri ng agent ang mga bagong trabaho, isinusukat ang mga ito sa iyong résumé, nilalaktawan ang mga kumpanyang paulit-ulit magpost, at pinipila ang pinakamahusay — may kasamang dahilan. Isinusumite niya ang kayang tapusin mag-isa at iniaabot sa iyo ang iba.",
-    "payBoundaryOffline": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent — handa nang ipadala mo ang bawat aplikasyon. Hindi tumatakbo ngayon ang awtomatikong pagpapadala. Libre ang 7 umaga, tapos $99/buwan — kasama ang lahat ng nasa Pro. Puwedeng kanselahin anumang oras.",
+    "payBoundaryOffline": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent — handa nang ipadala mo ang bawat aplikasyon. Hindi tumatakbo ngayon ang awtomatikong pagpapadala. ${{agentPrice}}/buwan, kasama ang lahat ng nasa Pro; may {{trialDays}} araw na libre sa simula ang mga unang beses na subscriber, at kasama ang mga bayad na tool ng Pro mula sa unang bayad. Puwedeng kanselahin anumang oras.",
     "addSearch": "Magdagdag ng ibang search",
     "deleteSearch": "Burahin",
     "untitledSearch": "Aking search",
@@ -4879,6 +4879,7 @@
     "includesPro": "Kasama ang lahat ng nasa Pro (${{proPrice}}/buwan)",
     "perkAutoApply": "Awtomatikong nag-a-apply para sa iyo sa {{names}}",
     "perkOneClick": "Mga aplikasyong napunan na at handang ipadala sa {{names}}",
+    "perkMorningQueue": "Morning Queue: sa magdamag, pinapatakbo ng agent ang iyong paghahanap at nag-iiwan ng shortlist sa iyong account para sa umaga",
     "perkQueue": "May listahang puwede mong suriin muna, o hayaang tumakbo mag-isa — ikaw ang pipili, mababago anumang oras",
     "perkCap": "Ikaw ang nagtatakda ng pang-araw-araw na limitasyon, at hindi ito mag-a-apply nang dalawang beses sa iisang trabaho",
     "perkHonest": "Hindi ito kailanman gumagawa-gawa ng sagot. Kung kailangan ka ng isang tanong, hihinto ito at magtatanong.",
@@ -4892,6 +4893,10 @@
     "alreadySubscribed": "Mayroon ka nang agent — dadalhin ka namin doon.",
     "needsPaymentUpdate": "May nakabinbing bayad ang iyong plano. I-update ang iyong card sa halip na magsimula ng bagong plano.",
     "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa."
+  },
+  "proPlan": {
+    "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
+    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
@@ -5111,7 +5116,8 @@
     "connectorNoOauth2": "Hindi pa naka-on ang sign-in para sa host na ito, kaya mula rito ay ang mga tool lang na walang key ang sumasagot. Para magamit ang pass, kumonekta mula sa {{headerHosts}} gamit ang iyong agent key.",
     "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key.",
     "repairSecondPass": "Hindi lumikha ng ikalawang pass ang bayad na ito: isang bukas na pass lang ang hawak ng isang account sa bawat pagkakataon, at nakikita rito ang sa iyo nang walang pagbabago. Naabisuhan na kami at ire-refund ang bayad na ito — kung hindi ito bumalik sa card mo sa loob ng ilang araw, sumulat sa resumeboostersupp@gmail.com.",
-    "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito."
+    "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito.",
+    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass."
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",
@@ -5132,7 +5138,10 @@
     "passOpen": "Ang iyong pass"
   },
   "agentPage": {
-    "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew."
+    "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew.",
+    "welcomeTitle": "Naka-subscribe ka na.",
+    "welcomeTitleTrial": "Naka-subscribe ka na — {{trialDays}} araw na libre bago ang unang singil.",
+    "welcomeBody": "Isa na lang: kailangan ng agent ang CV mo at isang aktibong mandate bago ito makapaghanap. Mga isang minuto lang ang checklist sa ibaba, at walang tatakbo hangga't hindi ito tapos."
   },
   "agentConnect": {
     "rateLine": "Ang libreng key ay limitado sa {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw; itinataas ng aktibong pass ang dalawa sa loob ng mga oras nito.",

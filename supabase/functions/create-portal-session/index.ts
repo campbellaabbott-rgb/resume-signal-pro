@@ -1,16 +1,25 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T13:00Z
 // Opens the Stripe customer billing portal so Pro subscribers can update
 // their card or cancel. Requires a signed-in user (JWT) — the portal exposes
 // billing details, so an email in the body is not enough.
+//
+// Its Stripe read (checkProByEmail) refreshes the Pro cache, which since
+// wave 2 also binds the row to the account a plan names (20261008130000).
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail } from "../_shared/pro.ts";
 
+// Provable from outside without an account: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-portal-session.2026-10-08.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
 serve(async (req) => {

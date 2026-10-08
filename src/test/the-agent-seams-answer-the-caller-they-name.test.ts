@@ -202,7 +202,10 @@ describe("every changed function answers its build on the preflight", () => {
   }
   it("agent-pass-status", () => {
     const src = code(read("supabase/functions/agent-pass-status/index.ts"));
-    expect(src).toMatch(/const FN_BUILD = `\$\{FN_NAME\}\.2026-10-05\.\d+`;/);
+    // 2026-10-05 or a later build (2026-10-08: a refunded payment opens no pass).
+    const m = /const FN_BUILD = `\$\{FN_NAME\}\.(\d{4}-\d{2}-\d{2})\.\d+`;/.exec(src);
+    expect(m, "agent-pass-status has no dated FN_BUILD").not.toBeNull();
+    expect(m![1] >= "2026-10-05").toBe(true);
     expect(src).toMatch(/"x-fn-build": FN_BUILD/);
   });
 });

@@ -29,6 +29,7 @@ import { parseCountries } from "../../../supabase/functions/_shared/mandate-reac
 // an uploaded CV", wrapping parse-pdf/parse-docx.
 import { resumeTextFrom } from "@/lib/resumeText";
 import { checkoutContext } from "@/lib/track-transport";
+import { SUBSCRIPTIONS } from "@/config/products";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -172,6 +173,9 @@ function CountryPicker({ value, onChange, options }: {
     </div>
   );
 }
+
+/** The paywall's figures, from the mirror of the checkout's own constants. */
+const agentTerms = { agentPrice: SUBSCRIPTIONS.agent.priceUsd, trialDays: SUBSCRIPTIONS.agent.trialDays };
 
 export function MorningQueuePanel({ userId, email, defaultResume }: {
   userId: string; email: string | null; defaultResume: string | null;
@@ -794,14 +798,18 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               auto-apply bullet behind `online` and swaps its footnote. Same
               rule here. When the sender is down the copy falls back to what is
               unambiguously true — prepared, ready for you to send. */}
+          {/* THE TRIAL IS FOR FIRST-TIME SUBSCRIBERS (L6-29): create-agent-
+              checkout offers it once per customer, so a returning one is
+              charged at once. Its length and the price come from the mirror
+              of the checkout's constants, never typed into the sentence. */}
           <p className="text-[12px] text-muted-foreground mb-3">
             {senderOnline
-              ? t("agentQueue.payBoundary", "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")
-              : t("agentQueue.payBoundaryOffline", "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.")}
+              ? t("agentQueue.payBoundary", "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.", agentTerms)
+              : t("agentQueue.payBoundaryOffline", "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.", agentTerms)}
           </p>
           <button onClick={() => void subscribe()} disabled={busy || !email}
             className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
-            <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Try the Apply Agent free for 7 days")}
+            <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Start the Apply Agent — {{trialDays}} days free for first-time subscribers", agentTerms)}
           </button>
         </div>
       )}

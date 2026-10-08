@@ -269,7 +269,9 @@ export function getPremiumProducts() {
 // so billing copy can never quietly describe a price we do not charge.
 export const SUBSCRIPTIONS = {
   pro: { key: 'pro', name: 'Pro', priceUsd: 45, interval: 'month' as const },
-  agent: { key: 'agent', name: 'Morning Queue', priceUsd: 99, interval: 'month' as const },
+  // trialDays mirrors AGENT_TRIAL_DAYS (_shared/agent.ts), offered to a
+  // first-time subscriber only; pricing-truth reads that declaration.
+  agent: { key: 'agent', name: 'Morning Queue', priceUsd: 99, interval: 'month' as const, trialDays: 7 },
 };
 
 // The six-hour Agent Pass. A third way to hold ONE entitlement (beside the two

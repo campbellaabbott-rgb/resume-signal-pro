@@ -69,12 +69,22 @@ export interface SubscriptionStanding {
    * customer the address has, else null (Stripe makes one at checkout).
    */
   reuseCustomerId: string | null;
+  /**
+   * ONE TRIAL PER CUSTOMER (owner decision 2026-10-04, L6-29): some customer
+   * of this address has EVER held an agent-priced subscription, in any status,
+   * or any subscription that had a trial. create-agent-checkout offers no
+   * trial when this (or the account's own record) says so.
+   */
+  hadTrialOrAgent: boolean;
 }
 
 export type SubscriptionLike = {
   status: string;
   cancel_at_period_end?: boolean | null;
   items?: { data?: ReadonlyArray<{ price?: unknown }> } | null;
+  /** Unix seconds; set on any subscription that ever had a trial. */
+  trial_start?: number | null;
+  trial_end?: number | null;
 };
 
 export type CustomerSubscriptions = { id: string; subscriptions: ReadonlyArray<SubscriptionLike> };
@@ -90,8 +100,12 @@ export function standingFrom(
 ): SubscriptionStanding {
   let pro: TierStanding | null = null;
   let agent: TierStanding | null = null;
+  let hadTrialOrAgent = false;
   for (const customer of customers) {
     for (const sub of customer.subscriptions) {
+      if (sub.status === "trialing" || sub.trial_start != null || sub.trial_end != null || isAgentPriced(sub.items?.data)) {
+        hadTrialOrAgent = true;
+      }
       const candidate: TierStanding = {
         status: sub.status,
         live: LIVE_SUBSCRIPTION_STATUSES.has(sub.status),
@@ -113,6 +127,7 @@ export function standingFrom(
     pro,
     agent,
     reuseCustomerId: strongest?.customerId ?? customers[0]?.id ?? null,
+    hadTrialOrAgent,
   };
 }
 

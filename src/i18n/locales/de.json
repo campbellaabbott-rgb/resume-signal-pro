@@ -3986,7 +3986,7 @@
     "tailorLimitTitle": "Stundenlimit erreicht",
     "tailorLimit": "Die Lebenslauf-Anpassungen dieser Stunde sind aufgebraucht — sie werden innerhalb der Stunde zurückgesetzt. Alles Erstellte bleibt gespeichert.",
     "savedMilestone": "Das sind {{n}} Jobs in deiner Pipeline",
-    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — 7 Tage kostenlos testen, abgeschickt wird immer von dir.",
+    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — {{trialDays}} Tage kostenlos testen für Neukunden, abgeschickt wird immer von dir.",
     "sortRelevance": "Relevanz",
     "companyNotHiring": "Gerade nicht — {{company}} hat aktuell keine offenen Stellen auf dem eigenen Jobportal. Beobachte das Unternehmen unten und wir mailen dir, sobald neue Stellen erscheinen.",
     "companyYesHiringCapped": "Ja — über {{n}} verifizierte offene Stellen, direkt vom Jobportal von {{company}}.",
@@ -4227,7 +4227,7 @@
     "fitRetry": "Erneut versuchen",
     "dropTitleScoped": "Lebenslauf hier ablegen — wir finden passende Stellen und sortieren sie in Sekunden nach Passung.",
     "agentPitchCounted": "Der Bewerbungs-Agent kann {{n}} davon für dich ausfüllen und absenden — er liest deinen Lebenslauf, schreibt jede Bewerbung einzeln und beantwortet die Fragen des Arbeitgebers.",
-    "agentPitchCta": "So funktioniert es — 7 Tage kostenlos, danach 99 $/Monat",
+    "agentPitchCta": "So funktioniert es — {{trialDays}} Tage kostenlos für Neukunden, danach {{agentPrice}} $/Monat",
     "agentPitchScopeLive": "Er bewirbt sich über {{n}} Bewerbungssysteme — etwa {{pct}} % des Boards — und nie auf Seiten, die Bewerbungen hinter einem CAPTCHA verbergen. Überall sonst bereitet er die Bewerbung vor und Sie senden sie ab.",
     "agentPitchScopePlain": "Er bewirbt sich über die Systeme, die das zulassen, und nie auf Seiten, die Bewerbungen hinter einem CAPTCHA verbergen. Überall sonst bereitet er die Bewerbung vor und Sie senden sie ab.",
     "loadMoreFailed": "Mehr laden ging gerade nicht — deine Ergebnisse sind noch da.",
@@ -4723,8 +4723,8 @@
     "badge": "Bewerbungs-Agent",
     "subtitle": "Suche einmal einstellen. Jede Nacht scannt der Agent neue Stellen, bewertet sie gegen deinen Lebenslauf, überspringt Unternehmen mit Dauer-Neueinstellungen und stellt die besten in die Queue — jede mit Begründung. Du prüfst, du sendest.",
     "payPitch": "Wach mit einer geprüften Auswahl auf statt einer weiteren Stunde Scrollen.",
-    "payBoundary": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort. Im Prüfmodus — der Voreinstellung — geht nichts raus, bevor du auf Senden drückst. Stell ihn auf Automatik, und er reicht die ein, die er allein ausfüllen kann, und übergibt dir den Rest. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
-    "payCta": "Agent 7 Tage gratis testen",
+    "payBoundary": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort. Im Prüfmodus — der Voreinstellung — geht nichts raus, bevor du auf Senden drückst. Stell ihn auf Automatik, und er reicht die ein, die er allein ausfüllen kann, und übergibt dir den Rest. {{agentPrice}} $/Monat, alles aus Pro inklusive; Neukunden starten mit {{trialDays}} Tagen gratis, und die kostenpflichtigen Pro-Tools gibt es ab der ersten Zahlung. Jederzeit kündbar.",
+    "payCta": "Apply Agent starten — {{trialDays}} Tage gratis für Neukunden",
     "checkoutError": "Checkout konnte nicht geöffnet werden — bitte erneut versuchen.",
     "needResume": "Speichere zuerst einen Lebenslauf fürs Matching (oben) — der Agent bewertet jede Stelle dagegen.",
     "saveError": "Speichern fehlgeschlagen — bitte erneut versuchen.",
@@ -4758,7 +4758,7 @@
     "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen.",
     "reasonSendable": "Diese Bewerbung kann der Agent für Sie absenden",
     "subtitleAuto": "Suche einmal einrichten. Jede Nacht sichtet der Agent neue Stellen, bewertet sie anhand Ihres Lebenslaufs, überspringt Firmen mit ständigen Neuausschreibungen und stellt die besten in die Warteschlange – jeweils mit Begründung. Was er allein ausfüllen kann, sendet er; den Rest übergibt er Ihnen.",
-    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
+    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. {{agentPrice}} $/Monat, alles aus Pro inklusive; Neukunden starten mit {{trialDays}} Tagen gratis, und die kostenpflichtigen Pro-Tools gibt es ab der ersten Zahlung. Jederzeit kündbar.",
     "addSearch": "Weitere Suche hinzufügen",
     "deleteSearch": "Löschen",
     "untitledSearch": "Meine Suche",
@@ -4879,6 +4879,7 @@
     "includesPro": "Enthält alles aus Pro ({{proPrice}} $/Monat)",
     "perkAutoApply": "Bewirbt sich automatisch für Sie bei {{names}}",
     "perkOneClick": "Bewerbungen ausgefüllt und versandbereit bei {{names}}",
+    "perkMorningQueue": "Morgen-Queue: Über Nacht führt der Agent Ihre Suche aus und legt Ihnen für den Morgen eine Auswahl ins Konto",
     "perkQueue": "Eine Liste, die Sie erst prüfen können – oder unbeaufsichtigt laufen lassen. Ihre Entscheidung, jederzeit änderbar.",
     "perkCap": "Ein Tageslimit, das Sie festlegen, und nie zwei Bewerbungen auf dieselbe Stelle",
     "perkHonest": "Er erfindet nie eine Antwort. Braucht eine Frage Sie, hält er an und fragt.",
@@ -4892,6 +4893,10 @@
     "alreadySubscribed": "Du hast den Agenten bereits – wir bringen dich hin.",
     "needsPaymentUpdate": "Für deinen Plan ist eine Zahlung offen. Aktualisiere deine Karte, statt einen neuen Plan zu starten.",
     "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides."
+  },
+  "proPlan": {
+    "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",
+    "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen."
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
@@ -5111,7 +5116,8 @@
     "connectorNoOauth2": "Die Anmeldung für diesen Host ist noch nicht eingeschaltet, daher antworten von hier aus nur die Werkzeuge ohne Schlüssel. Um den Pass zu nutzen, verbinden Sie sich von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
     "connectorPassGate": "Von {{host}} aus lässt sich der Pass erst nutzen, wenn die Anmeldung eingeschaltet ist; nutzen Sie ihn heute von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
     "repairSecondPass": "Diese Zahlung hat keinen zweiten Pass erzeugt: Ein Konto hat immer nur einen offenen Pass, und deiner wird hier unverändert angezeigt. Wir sind informiert, und diese Zahlung wird erstattet — falls sie nicht innerhalb weniger Tage auf deiner Karte zurück ist, schreib an resumeboostersupp@gmail.com.",
-    "repairNotYours": "Dieser Kauf gehört zu einem anderen Konto als dem, mit dem du angemeldet bist, und sein Pass liegt auf jenem Konto. Melde dich mit dem Konto an, das bezahlt hat, um ihn zu sehen."
+    "repairNotYours": "Dieser Kauf gehört zu einem anderen Konto als dem, mit dem du angemeldet bist, und sein Pass liegt auf jenem Konto. Melde dich mit dem Konto an, das bezahlt hat, um ihn zu sehen.",
+    "repairRefunded": "Diese Zahlung wurde erstattet, deshalb öffnet sie keinen Pass."
   },
   "oauthConsent": {
     "title": "Verbinde deinen Agenten",
@@ -5132,7 +5138,10 @@
     "passOpen": "Dein Pass"
   },
   "agentPage": {
-    "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon."
+    "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon.",
+    "welcomeTitle": "Du hast abonniert.",
+    "welcomeTitleTrial": "Du hast abonniert — {{trialDays}} Tage gratis vor der ersten Abbuchung.",
+    "welcomeBody": "Eins fehlt noch: Der Agent braucht deinen Lebenslauf und ein aktives Mandat, bevor er nach etwas suchen kann. Die Checkliste unten dauert etwa eine Minute, und bis sie erledigt ist, läuft nichts."
   },
   "agentConnect": {
     "rateLine": "Ein kostenloser Schlüssel ist auf {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag begrenzt; ein laufender Pass hebt beides für seine Stunden an.",

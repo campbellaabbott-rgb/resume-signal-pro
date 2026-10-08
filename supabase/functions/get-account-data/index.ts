@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T12:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 // Account data for the signed-in user: scan credits and purchase history.
 // Both are keyed by email in service-role tables, so this function verifies
 // the caller's JWT and reads on their behalf.
@@ -22,7 +22,7 @@ import { isAuthUserId, scanCreditBalance, type CreditDb } from "../_shared/scan-
 
 // Provable from outside: every response, the CORS preflight included, carries
 // this in x-fn-build.
-const FN_BUILD = "get-account-data.2026-10-05.1";
+const FN_BUILD = "get-account-data.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +46,10 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userErr } = await service.auth.getUser(jwt);
     if (userErr || !user?.email || !isAuthUserId(user.id)) return json({ error: "Not authenticated" }, 401);
 
+    // The switch is the mailbox_proof_settings row; the secret only answers
+    // when that row cannot be read.
     const provenEmail = await provenMailbox(user, jwt, {
+      db: service,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,
       supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
       anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",

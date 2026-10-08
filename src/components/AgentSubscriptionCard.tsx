@@ -163,6 +163,14 @@ export function AgentSubscriptionCard() {
             })}
           </span>
         </li>
+        {/* THE MORNING QUEUE IS THIS PLAN'S (platform sweep L3-04). Its
+            entitlement is price-specific -- _shared/agent.ts refuses the Pro
+            price -- so it is sold here and never on the Pro card. Ungated:
+            the nightly run queues roles whether or not a sender is online. */}
+        <li className="flex items-start gap-2 text-sm">
+          <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+          <span>{t("agentPlan.perkMorningQueue", "Morning Queue: overnight, the agent runs your search and leaves a shortlist in your account for the morning")}</span>
+        </li>
         <li className="flex items-start gap-2 text-sm">
           <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
           <span>{t("agentPlan.perkQueue", "A queue you can review first, or let it run unattended — your choice, changeable any time")}</span>

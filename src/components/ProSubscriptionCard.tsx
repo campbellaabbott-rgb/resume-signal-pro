@@ -1,4 +1,5 @@
 import { Crown, Check, Loader2, Sparkles, Settings2, CreditCard } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,23 +7,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
+import { PRO_PERKS } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
 
-// Every line is a shipped, factual capability OF THIS PLAN. The Morning Queue
-// line that used to lead this list is the agent plan's (its entitlement is
-// price-specific: _shared/agent.ts refuses the Pro price), so a Pro buyer met the
-// agent's paywall on /agent after being sold it here (platform sweep L3-04).
-// It is described on the agent card beside this one. Whether the Full
-// Analysis belongs in Pro is an open owner decision (the $5 checkout still
-// charges a Pro member), recorded in the payments wave report.
-const PRO_PERKS = [
-  "Batch application prep — tailored answers drafted for every saved job at once (you always hit send yourself)",
-  "Unlimited scans — tailor a resume version to every job you apply to",
-  "Track every application against the exact resume version you sent",
-  "See which of your resume versions actually lands interviews",
-  "Every paid tool included — Full Analysis, Keyword Fix, Cover Letters, Interview Coach, and all future tools, automatically",
-  "Cancel anytime from your account",
-];
+// What the plan includes lives in src/config/pro-perks.ts, where the pricing
+// guards read it without mounting this card.
 
 /**
  * Resume Booster Pro card — the monthly all-access plan. Shown on /pricing and
@@ -39,6 +28,7 @@ const PRO_PERKS = [
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
   const { pro, subscribe, manage, actionLoading } = useProSubscription();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,7 +87,12 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-success">
             <Check className="w-4 h-4" />
-            You're a Pro member — every tool is unlocked.
+            {/* A trial unlocks the plan's ongoing features and mints no paid
+                one-off tool (the one rule, _shared/pro-standing.ts), so it
+                is never told "every tool". */}
+            {pro.trialing
+              ? t("proPlan.trialing", "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.")
+              : "You're a Pro member — every tool is unlocked."}
             {pro.currentPeriodEnd && (
               <span className="text-muted-foreground font-normal">
                 Renews {new Date(pro.currentPeriodEnd).toLocaleDateString()}
@@ -121,6 +116,11 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         </div>
       ) : (
         <div className="space-y-3">
+          {pro.linkPending && (
+            <p className="text-sm text-muted-foreground">
+              {t("proPlan.linkPending", "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here.")}
+            </p>
+          )}
           <Button
             className="w-full gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
             onClick={goPro}

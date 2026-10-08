@@ -3986,7 +3986,7 @@
     "tailorLimitTitle": "Hourly limit reached",
     "tailorLimit": "You’ve used this hour’s résumé-tailoring runs — they reset within the hour. Everything you’ve generated is saved.",
     "savedMilestone": "That's {{n}} jobs in your pipeline",
-    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself.",
+    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers, and you always hit send yourself.",
     "sortRelevance": "Relevance",
     "companyNotHiring": "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.",
     "companyYesHiringCapped": "Yes — {{n}}+ verified open roles right now, straight from {{company}}'s own job board.",
@@ -4227,7 +4227,7 @@
     "fitRetry": "Try again",
     "dropTitleScoped": "Drop your résumé here — we'll find the roles it matches and rank them by fit in seconds.",
     "agentPitchCounted": "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.",
-    "agentPitchCta": "See how it works — 7 days free, then $99/mo",
+    "agentPitchCta": "See how it works — {{trialDays}} days free for first-time subscribers, then ${{agentPrice}}/mo",
     "agentPitchScopeLive": "It applies on {{n}} hiring systems — about {{pct}}% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.",
     "agentPitchScopePlain": "It applies on the hiring systems that allow it, and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.",
     "loadMoreFailed": "Couldn't load more just now — your results are still here.",
@@ -4723,8 +4723,8 @@
     "badge": "Apply Agent",
     "subtitle": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.",
     "payPitch": "Wake up to a reviewed shortlist instead of another hour of scrolling.",
-    "payBoundary": "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
-    "payCta": "Try the Apply Agent free for 7 days",
+    "payBoundary": "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.",
+    "payCta": "Start the Apply Agent — {{trialDays}} days free for first-time subscribers",
     "checkoutError": "Couldn't open checkout — please try again.",
     "needResume": "Save a résumé for matching first (above) — the agent scores every posting against it.",
     "saveError": "Couldn't save — please try again.",
@@ -4758,7 +4758,7 @@
     "emailSaveError": "Couldn't change that — please try again.",
     "reasonSendable": "the agent can submit this one for you",
     "subtitleAuto": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest.",
-    "payBoundaryOffline": "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
+    "payBoundaryOffline": "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.",
     "addSearch": "Add another search",
     "deleteSearch": "Delete",
     "untitledSearch": "My search",
@@ -4879,6 +4879,7 @@
     "includesPro": "Includes everything in Pro (${{proPrice}}/mo)",
     "perkAutoApply": "Applies for you automatically on {{names}}",
     "perkOneClick": "Applications filled in and ready to send on {{names}}",
+    "perkMorningQueue": "Morning Queue: overnight, the agent runs your search and leaves a shortlist in your account for the morning",
     "perkQueue": "A queue you can review first, or let it run unattended — your choice, changeable any time",
     "perkCap": "A daily limit you set, and it never applies to the same job twice",
     "perkHonest": "It never invents an answer. If a question needs you, it stops and asks.",
@@ -4892,6 +4893,10 @@
     "alreadySubscribed": "You already have the agent — taking you to it.",
     "needsPaymentUpdate": "Your plan has a payment due. Update your card instead of starting a new plan.",
     "hasPro": "You're on Pro, which the agent includes. Cancel Pro in Manage subscription first, then start the agent — so you're never billed for both."
+  },
+  "proPlan": {
+    "trialing": "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.",
+    "linkPending": "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here."
   },
   "atsCoverage": {
     "heading": "Built for the systems employers actually use",
@@ -5111,7 +5116,8 @@
     "connectorNoOauth2": "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from {{headerHosts}} with your agent key.",
     "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.",
     "repairSecondPass": "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
-    "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it."
+    "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.",
+    "repairRefunded": "This payment was refunded, so it does not open a pass."
   },
   "oauthConsent": {
     "title": "Connect your agent",
@@ -5132,7 +5138,10 @@
     "passOpen": "Your pass"
   },
   "agentPage": {
-    "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does."
+    "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.",
+    "welcomeTitle": "You're subscribed.",
+    "welcomeTitleTrial": "You're subscribed — {{trialDays}} days free before the first charge.",
+    "welcomeBody": "One thing left: the agent needs your CV and an active mandate before it can look for anything. The checklist below takes about a minute, and nothing runs until it is done."
   },
   "agentConnect": {
     "rateLine": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.",

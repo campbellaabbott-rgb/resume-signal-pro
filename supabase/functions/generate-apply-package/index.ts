@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -10,11 +10,12 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
-import { isProCached } from "../_shared/pro.ts";
+import { accountProStanding } from "../_shared/pro.ts";
+import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-apply-package.2026-10-05.1";
+const FN_BUILD = "generate-apply-package.2026-10-08.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,9 +62,6 @@ function callAIWithFallback(
     context: `GENERATE-APPLY-PACKAGE ${context}`,
   });
 }
-
-/** The statuses this path counts as Pro (see the JWT branch of the gate). */
-const PRO_ACTIVE_ONLY: ReadonlySet<string> = new Set(["active"]);
 
 /** An aborted or timed-out model call: the one failure a retry may fix. */
 const isTimeout = (error: unknown): boolean =>
@@ -128,7 +126,8 @@ serve(async (req) => {
     //   2. a Pro grant session (pro_...) that verify-product-purchase consumed
     //      and claimed for a product that includes the kit -- the same claim
     //      row every other paid generator gates on (assertPaidSession);
-    //   3. an active Pro subscription, proven by the caller's JWT.
+    //   3. a Pro plan held by the caller's verified ACCOUNT (the one rule in
+    //      _shared/pro-standing.ts).
     //
     // THE ALLOW-LIST USED TO BE WRITTEN IN THE FRONTEND'S SPELLING. It named
     // the camelCase product keys; Stripe metadata carries create-product-
@@ -139,6 +138,7 @@ serve(async (req) => {
     // now lives in _shared/apply-kit.ts, in the spelling Stripe carries, and a
     // guard checks it against what every checkout mints.
     let entitled = false;
+    let refunded = false;
     if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
       try {
         const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -150,6 +150,12 @@ serve(async (req) => {
           entitled = checkoutSessionSettled(session) && APPLY_KIT_PRODUCT_TYPES.includes(productType);
           if (!entitled) {
             console.warn(`[GENERATE-APPLY-PACKAGE] session ${sessionId} does not include the kit: ${session.payment_status} / ${productType || "no product"}`);
+          }
+          // Stripe still answers 'paid' for a refunded or disputed session
+          // (L6-18); a plan on the account may still open the tool below.
+          if (entitled && supabase && await sessionWasRefunded(supabase, sessionId)) {
+            entitled = false;
+            refunded = true;
           }
         }
       } catch (e) {
@@ -172,20 +178,26 @@ serve(async (req) => {
             global: { headers: { Authorization: authHeader } },
           });
           const { data: { user } } = await authed.auth.getUser();
-          const admin = user?.email ? getServiceClient() : null;
-          if (user?.email && admin) {
-            // BOTH caches, through the shared reader: a $99 agent plan (or a
-            // comped one) includes Pro, and this path read only
-            // pro_subscribers, so an agent subscriber was refused batch prep
-            // (L6-08). The rule this path applies is unchanged -- `active`
-            // only, no grace past the period end; whether a trial counts is
-            // an open owner decision (L6-08 / L6-29).
-            entitled = await isProCached(admin, user.email, { statuses: PRO_ACTIVE_ONLY, graceMs: 0 });
+          const admin = user?.id ? getServiceClient() : null;
+          if (user?.id && admin) {
+            // THE ONE RULE (L6-08, L6-29): the verified account's plan, both
+            // caches, by its user id -- never its address. Batch prep is an
+            // ongoing feature of the plan, not a minted consumable, so a
+            // trial unlocks it: this path counted `active` only, and every
+            // trialing Agent subscriber the Account page called a Pro member
+            // got 402 here.
+            entitled = (await accountProStanding(admin, user.id)).pro;
           }
         } catch (e) {
           console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
         }
       }
+    }
+    if (!entitled && refunded) {
+      return new Response(
+        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, refunded: true, requiresPurchase: true }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     if (!entitled) {
       return new Response(

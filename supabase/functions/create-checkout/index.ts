@@ -1,13 +1,17 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { accountProStanding } from "../_shared/pro.ts";
+import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-10-05.1";
+const FN_BUILD = "create-checkout.2026-10-08.1";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -394,6 +398,71 @@ serve(async (req) => {
 
     const stripe = getStripe(stripeKey);
     const origin = req.headers.get("origin") || "https://lovable.dev";
+
+    // THE FULL ANALYSIS IS PART OF PRO (owner decision 2026-10-04, platform
+    // sweep L3-04). The Pro card and Pro's own Stripe page said "every paid
+    // tool included -- Full Analysis", and this function charged a Pro member
+    // $5 for it anyway: it had no signed-in path at all. A signed-in account
+    // whose plan may mint consumables (the one rule, _shared/pro-standing.ts:
+    // both caches, by the VERIFIED account, never an address on the session,
+    // and not a trial) gets a single-use grant instead of a Stripe session,
+    // exactly as create-product-checkout mints one, and the success page
+    // redeems it through analyze-resume like a paid session. A trial, or no
+    // plan, buys at the price below.
+    const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    if (bearer && bearer !== (Deno.env.get("SUPABASE_ANON_KEY") ?? "")) {
+      let member: { id: string; email: string } | null = null;
+      try {
+        const { data: authData } = await supabase.auth.getUser(bearer);
+        const u = authData?.user;
+        if (u?.id && typeof u.email === "string" && u.email.includes("@")) member = { id: u.id, email: u.email.trim().toLowerCase() };
+      } catch (authErr) {
+        // A token the auth server refuses is an anonymous buyer, nothing more.
+        logStep("Token check failed; continuing as an anonymous checkout", { error: String(authErr).slice(0, 120) });
+      }
+      if (member) {
+        const standing = await accountProStanding(supabase, member.id);
+        if (!standing.known) {
+          // Charging a member for a tool their plan includes is worse than a retry.
+          return new Response(
+            JSON.stringify({ error: "We couldn't check your plan just now. Please try again in a minute." }),
+            { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (standing.consumables) {
+          const tempSessionId = typeof requestBody?.tempSessionId === "string" && UUID_RE.test(requestBody.tempSessionId)
+            ? requestBody.tempSessionId : null;
+          const { data: grant, error: grantError } = await supabase
+            .from("pro_grants")
+            .insert({
+              email: member.email,
+              user_id: member.id,
+              product_id: "fullAnalysis",
+              product_type: FULL_ANALYSIS_PRODUCT_TYPE,
+              product_name: FULL_ANALYSIS_PRODUCT_NAME,
+              resume_session_id: tempSessionId,
+            })
+            .select("id")
+            .single();
+          if (!grantError && grant?.id) {
+            logStep("Pro grant issued for the full analysis", { grant: grant.id });
+            trackPerformance(requestStartTime, 'create-checkout', true, { proIncluded: true }, clientIp);
+            return new Response(JSON.stringify({
+              url: `${origin}/success?session_id=pro_${grant.id}`,
+              sessionId: `pro_${grant.id}`,
+              proIncluded: true,
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+          }
+          // Never a charge for an included tool: a failed mint is a retry.
+          logStep("Pro grant insert failed", { error: grantError?.message ?? "no id returned" });
+          return new Response(
+            JSON.stringify({ error: "We couldn't unlock your included analysis just now. Please try again in a minute." }),
+            { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (standing.trialing) logStep("Trialing plan: the full analysis is bought, not minted, while the trial runs");
+      }
+    }
 
     // Optional coupon code (normalize to UPPERCASE)
     const normalizedPromoCode =

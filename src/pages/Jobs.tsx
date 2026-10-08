@@ -52,6 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers, REAL_QUESTION_PREFIXES } from "@/components/apply/ApplicationAnswers";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
+import { SUBSCRIPTIONS } from "@/config/products";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
@@ -3513,13 +3514,14 @@ export default function Jobs() {
     // Milestone moments: save #1 and save #12 are different situations — by
     // the 5th/12th save the user is assembling a PIPELINE, which is exactly
     // the workload batch prep and the Morning Queue exist for. The claims are
-    // factual (the trial is a real 7-day trial; the agent never auto-submits)
-    // and Pro users never see the pitch. Counts land on 5 and 12 once each.
+    // factual (the trial is real, offered once per customer, its length read
+    // from the checkout's own constant; the agent never auto-submits) and Pro
+    // users never see the pitch. Counts land on 5 and 12 once each.
     const savedCount = savedIds.size + 1;
     if (!isPro && (savedCount === 5 || savedCount === 12)) {
       toast({
         title: t("jobsPage.savedMilestone", "That's {{n}} jobs in your pipeline", { n: savedCount }),
-        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself."),
+        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers, and you always hit send yourself.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
       });
     } else {
       toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
@@ -10948,7 +10950,7 @@ export default function Jobs() {
                     <Sparkles className="inline w-3 h-3 text-primary -mt-0.5" aria-hidden />{" "}
                     {t("jobsPage.agentPitchCounted", "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.", { n: agentReadyOnPage })}{" "}
                     <Link to="/agent" className="text-primary underline underline-offset-2">
-                      {t("jobsPage.agentPitchCta", "See how it works — 7 days free, then $99/mo")}
+                      {t("jobsPage.agentPitchCta", "See how it works — {{trialDays}} days free for first-time subscribers, then ${{agentPrice}}/mo", { trialDays: SUBSCRIPTIONS.agent.trialDays, agentPrice: SUBSCRIPTIONS.agent.priceUsd })}
                     </Link>
                     <span className="block text-[11px] opacity-80 mt-0.5">
                       {/* BOTH NUMBERS WERE WRONG, IN ALL NINE LOCALES. This said
