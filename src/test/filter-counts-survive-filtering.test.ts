@@ -76,7 +76,9 @@ describe("filtered category counts are computed, not guessed or dropped", () => 
 
   it("skips the request entirely when nothing is filtered", () => {
     // Unfiltered, the cached board-wide facet is already correct and free.
-    expect(UI).toMatch(/if \(!activeFilters\) \{ setFilteredCats\(null\); return; \}/);
+    // (The branch also retires a probe still in flight -- the race is held by
+    // behaviour in a-cleared-search-cannot-keep-its-field-counts.test.tsx.)
+    expect(UI).toMatch(/if \(!activeFilters\) \{ \+\+catFacetSeq\.current; setFilteredCats\(null\); return; \}/);
   });
 
   it("prefers the filter-aware count but still falls back to the board-wide one", () => {

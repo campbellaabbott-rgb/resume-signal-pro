@@ -257,8 +257,11 @@ describe("one definition of 'open roles', on every surface that says it", () => 
     expect(cte).toMatch(/missing_since IS NULL/);
     expect(cte).toMatch(/effective_posted >= now\(\) - interval '30 days'/);
 
-    // And /explore still renders open_roles, not anything else.
-    expect(code(EXPLORE)).toMatch(/const open = numOr\(h\.open_roles\);/);
+    // And /explore still renders open_roles, not anything else -- now only when
+    // the link under it serves the whole group the figure was summed over
+    // (the behaviour is held in explore-states-what-its-links-open-and-what-
+    // paused-it.test.tsx).
+    expect(code(EXPLORE)).toMatch(/const open = scope\.complete \? numOr\(h\.open_roles\) : null;/);
   });
 
   it("the servable count can never exceed the facet count, by construction", () => {
