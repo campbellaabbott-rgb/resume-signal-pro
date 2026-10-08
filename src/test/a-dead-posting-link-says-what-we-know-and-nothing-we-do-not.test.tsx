@@ -99,7 +99,8 @@ describe("a dead posting link says what we know and nothing we do not", () => {
     detail = () => ({ data: { job: null, closed: { title: "Senior Welder", company: "Acme", closedAt: new Date().toISOString() } }, error: null });
     mount(`/jobs?job=${DEAD}`);
     await waitFor(() => expect(text()).toMatch(/“Senior Welder” at Acme is no longer live — it was filled or taken down/), SLOW);
-    expect(noindex()).toBe(true);
+    // The robots tag is a passive effect after the paint above: waited for.
+    await waitFor(() => expect(noindex()).toBe(true), SLOW);
   });
 
   it("a bare 404 is no longer listed HERE, with no claim about the employer", async () => {
@@ -108,7 +109,7 @@ describe("a dead posting link says what we know and nothing we do not", () => {
     await waitFor(() => expect(text()).toMatch(/no longer listed on this board/), SLOW);
     expect(text(), "a 404 was published as the employer filling the role").not.toMatch(/filled or taken down/);
     // Still a dead URL for this board, so still noindex.
-    expect(noindex()).toBe(true);
+    await waitFor(() => expect(noindex()).toBe(true), SLOW);
   });
 
   it("a description-only reply is unlisted and offers the description it carried", async () => {
@@ -127,6 +128,7 @@ describe("a dead posting link says what we know and nothing we do not", () => {
     detail = () => (++n <= 2 ? httpError(503, { error: "unavailable" }) : { data: { job: { ...row(9), id: DEAD, title: "Pipe Welder" }, description: "x".repeat(300) }, error: null });
     mount(`/jobs?job=${DEAD}`);
     await waitFor(() => expect(text()).toMatch(/couldn't load the posting in that link/), SLOW);
+    await settle(50); // an absence is only meaningful once the effects have run
     expect(noindex(), "a failed read marked a possibly-live posting noindex").toBe(false);
     expect(text()).not.toMatch(/filled or taken down|no longer listed/);
     const before = detailCalls();
