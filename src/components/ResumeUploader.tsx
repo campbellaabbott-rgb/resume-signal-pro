@@ -485,7 +485,11 @@ export function ResumeUploader({
     onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
   };
 
-  const canProceed = resumeMode === "upload" ? !!selectedFile : !!textInput.trim();
+  // A résumé the page restored (reload, the board's "Check my fit", Account's
+  // rescan link) is shown as loaded and is what the scan sends, so it counts
+  // as content even though no file was picked in this mount.
+  const restoredResume = !!hasContent && resumeText.trim().length >= 100;
+  const canProceed = resumeMode === "upload" ? (!!selectedFile || restoredResume) : !!textInput.trim();
   const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
   const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
