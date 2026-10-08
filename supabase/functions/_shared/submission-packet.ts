@@ -171,7 +171,7 @@ function identityValue(label: string, p: Profile): string {
  */
 const SALARY_CURRENT =
   /\b(current|present|existing|latest|most\s+recent)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|earnings|wage)|(salary|compensation|package|ctc|remuneration|earnings)\b[^?]{0,20}\b(current|present)\b/;
-const SPONSOR_INVERTED =
+export const SPONSOR_INVERTED =
   /without\s+(the\s+need\s+for\s+|needing\s+(any\s+)?|requiring\s+(any\s+)?)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/;
 const START_DATE =
   /notice\s+period|when\s+(can|could|are|would)\s+you\s+(be\s+able\s+to\s+)?(start|commence|be\s+available\s+to\s+start)|start\s+date|date\s+(that\s+)?you\s+(could|can|would\s+be\s+able\s+to)\s+start|available\s+to\s+(start|commence|begin)|availability\s+to\s+start|earliest[^?]{0,30}(start|begin|commence)|how\s+soon\s+(can|could)\s+you/;

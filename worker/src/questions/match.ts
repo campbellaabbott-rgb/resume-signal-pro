@@ -228,9 +228,15 @@ const RE_SPONSORSHIP =
   /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(require|need)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
 /** "…without sponsorship" / "…able to work without needing sponsorship" flips
  *  the sense of the answer. Missing this states the exact opposite of the
- *  truth, on a question employers filter hard on. */
-const RE_SPONSOR_INVERTED =
-  /without\s+(the\s+need\s+for\s+)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+ *  truth, on a question employers filter hard on.
+ *
+ *  MIRRORED, character for character, by SPONSOR_INVERTED in
+ *  supabase/functions/_shared/submission-packet.ts (the review sheet). The
+ *  sheet was widened alone once and the two then answered the same label in
+ *  opposite directions (sweep S8-006); a cross-runtime test now feeds both the
+ *  same labels. */
+export const RE_SPONSOR_INVERTED =
+  /without\s+(the\s+need\s+for\s+|needing\s+(any\s+)?|requiring\s+(any\s+)?)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
 
 /**
  * CONTACT DETAILS BY LABEL.
