@@ -31,7 +31,8 @@ describe("a flickering ring must not duplicate or hole", () => {
     // to the title-prefix predicate (the exact ILIKE the ring runs) so every
     // possible collision is dropped rather than re-served.
     expect(BOARD).toMatch(/const ringIds = ringResolved/);
-    expect(BOARD).toMatch(/String\(r\.title \?\? ""\)\.toLowerCase\(\)\.startsWith\(ringPrefix\)/);
+    // The ring's predicate is word-bounded since .91 (L8-05), so the fallback is too.
+    expect(BOARD).toMatch(/startsWithWord\(String\(r\.title \?\? ""\)\.toLowerCase\(\), ringPrefix\)/);
   });
 
   it("sub-seam pool exhaustion anchors to the SQL-rank boundary when the ring missed", () => {
@@ -46,7 +47,8 @@ describe("counts and disclosures stay self-consistent", () => {
   it("the related segment stands down whenever the exact total was withdrawn", () => {
     // relatedTotal beside a totalUnderstated-nulled total made the client
     // render "0 exact" over a page of exact matches.
-    expect(BOARD).toMatch(/augmented \|\| totalUnderstated \|\| related === null \|\| related === 0/);
+    expect(BOARD).toMatch(/const countWithheld = augmented \|\| totalUnderstated \|\| symbolQuery;/);
+    expect(BOARD).toMatch(/countWithheld \|\| related === null \|\| related === 0/);
   });
 
   it("the carried-facets marker rides the SERVED row, not only the fat one", () => {
@@ -55,8 +57,12 @@ describe("counts and disclosures stay self-consistent", () => {
     expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarried: true, facetsCarriedAt: v\.refreshedAt \} : \{\}\)/);
   });
 
-  it("the facet rail uses the list's matcher for multi-word queries", () => {
-    expect(BOARD).toMatch(/const facetUseRpc = qText && facetQ\.length <= 1;/);
+  it("the facet rail never counts a text query with a matcher the list does not use (.91, L13-24)", () => {
+    // It used count_jobs_capped's contiguous ILIKE for one-term queries while
+    // the list matched by FTS: q=rn legal 1,159 over a list of 8. A text query
+    // now withholds the chips, except an employer query, counted by its tokens.
+    expect(BOARD).not.toMatch(/facetUseRpc/);
+    expect(BOARD).toMatch(/if \(!facetTokens && qText\) \{/);
   });
 
   it("the router's stand-down gate is mechanical, so future filters count", () => {

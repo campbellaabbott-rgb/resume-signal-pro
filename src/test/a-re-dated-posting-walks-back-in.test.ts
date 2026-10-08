@@ -219,8 +219,8 @@ describe("index.ts applies those rules", () => {
 
   it("ingest reads the tombstone's date and splits with the shared rule", () => {
     expect(CODE).toMatch(/import \{ splitTombstoned, type Tombstone \} from "\.\/tombstone\.ts";/);
-    expect(ingest).toMatch(/\.select\("id, posted_at"\)/);
-    expect(ingest).toMatch(/const verdict = splitTombstoned\(newRows, tombs\);/);
+    expect(ingest).toMatch(/\.select\("id, posted_at(, aged_at)?"\)/);
+    expect(ingest).toMatch(/const verdict = splitTombstoned\(newRows, tombs(, \{ cutoffMs: freshCutoffMs \})?\);/);
     expect(ingest).toMatch(/const blocked = verdict\.refused;/);
     expect(ingest).toMatch(/readmitted = verdict\.readmitted;/);
     // A failed read still degrades to "insert everything", never to an empty board.

@@ -65,7 +65,7 @@ describe("a slice with no clock", () => {
 
   it("a wall stop is a DEFERRAL, never a failure", () => {
     expect(CODE).toMatch(/const budgetSkippedSet = new Set\(budgetSkipped\);/);
-    expect(CODE).toMatch(/!budgetSkippedSet\.has\(tk\)/);
+    expect(CODE).toMatch(/!budgetSkippedSet\.has\(s\.token\)/);
   });
 
   it("elapsed time rides the breadcrumbs and the stop rides the status row", () => {

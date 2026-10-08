@@ -329,7 +329,7 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   };
 
   it("imports the module and never re-implements it", () => {
-    expect(IDX).toMatch(/import \{ STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict \} from "\.\/stale-lane\.ts";/);
+    expect(IDX).toMatch(/import \{ STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict \} from "\.\/stale-lane\.ts";/);
     // The exclusion set is the module's, not a copy: no second Object.prototype enumeration, no second cap.
     expect(IDX).not.toMatch(/getOwnPropertyNames\(Object\.prototype\)/);
     expect(IDX).not.toMatch(/const STALE_EXCLUDE_MAX\b/);
@@ -385,8 +385,8 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
     const tries = new Map([["gone", STALE_TRIES_MAX], ["retrying", 1]]);
     expect(
       laneExpr<string[]>(decl![1], { staleTries: tries }),
-      "p_exclude takes tokens: the registry's board keys go as their tokens, beside the unresolved and prototype names",
-    ).toEqual(staleExclusion({ oversize: ["pulse", "bigco"], tries }));
+      "p_exclude takes board keys since .91: get_stalest_boards matches a stamp's key exactly (n428)",
+    ).toEqual(staleExclusion({ oversize: ["greenhouse:pulse", "bigco"], tries }));
     expect(IDX).toMatch(/let rpc = await askStale\(staleExclude\);/);
     expect(IDX).toMatch(/let excluded = staleExclude\.length;/);
     // The tries map is read BEFORE the exclusion is built (unresolved comes from it).
@@ -413,16 +413,17 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   });
 
   it("builds the context from Sets and Maps the hop already holds — never a token-keyed Record", () => {
-    expect(IDX).toMatch(/const CATALOGUE_TOKENS: ReadonlySet<string> = new Set\(JOB_SOURCES\.map\(\(s\) => s\.token\)\);/);
-    expect(IDX).toMatch(/catalogued: CATALOGUE_TOKENS,/);
-    const ctx = IDX.slice(IDX.indexOf("classifyStale(rows, {"));
-    const over = /^classifyStale\(rows, \{\s*catalogued: CATALOGUE_TOKENS,\s*quarantinedVendors,\s*oversize: ([^\n]+),\n/.exec(ctx);
+    // .91 (n428): the rows name boards, so every set the classifier compares is a set of board keys.
+    expect(IDX).toMatch(/const CATALOGUE_KEYS: ReadonlySet<string> = new Set\(JOB_SOURCES\.map\(boardKeyOf\)\);/);
+    expect(IDX).toMatch(/catalogued: CATALOGUE_KEYS,/);
+    const ctx = IDX.slice(IDX.indexOf("classifyStale(laneRows(rows, SHARED_TOKENS), {"));
+    const over = /^classifyStale\(laneRows\(rows, SHARED_TOKENS\), \{\s*catalogued: CATALOGUE_KEYS,\s*quarantinedVendors,\s*oversize: ([^\n]+),\n/.exec(ctx);
     expect(over, "the classifier's oversize member").toBeTruthy();
     const overSet = laneExpr<ReadonlySet<string>>(over![1], {});
     expect(overSet instanceof Set, "a Set, never a token-keyed Record").toBe(true);
-    expect([...overSet].sort(), "classifyStale compares row tokens, so the registry reaches it as tokens").toEqual(["bigco", "pulse"]);
-    expect(IDX).toMatch(/dormant: tokensOf\(boardFailures\.dormant\),/);
-    expect(IDX).toMatch(/failing: new Set\(\[\.\.\.tokensOf\(boardFailures\.failedAt\), \.\.\.tokensOf\(boardFailures\.streaks\)\]\),/);
+    expect([...overSet].sort(), "classifyStale compares board keys").toEqual(["bigco", "greenhouse:pulse"]);
+    expect(IDX).toMatch(/dormant: keysOf\(boardFailures\.dormant\),/);
+    expect(IDX).toMatch(/failing: new Set\(\[\.\.\.keysOf\(boardFailures\.failedAt\), \.\.\.keysOf\(boardFailures\.streaks\)\]\),/);
     expect(IDX).toMatch(/tries: staleTries,/);
     expect(IDX).toMatch(/staleTries = readStaleTries\(slMeta\?\.v\);/);
     // The quarantine set is read BEFORE the slice is sealed, or the context is empty by construction.
@@ -431,7 +432,7 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   });
 
   it("takes up to STALE_PER_SLICE 'unexplained' tokens not already in the slice, through the ordinary fetch path", () => {
-    expect(IDX).toMatch(/const taken = new Set\(\[\.\.\.baseSlice, \.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.deepBoards\]\.map\(\(s\) => s\.token\)\);\s*staleBoards = selectStaleLane\(verdicts, \{ perSlice: effStalePerSlice, exclude: taken \}\)/);
+    expect(IDX).toMatch(/const taken = new Set\(\[\.\.\.baseSlice, \.\.\.demandBoards, \.\.\.bootstrapBoards, \.\.\.retryBoards, \.\.\.deepBoards\]\.map\(boardKeyOf\)\);\s*staleBoards = selectStaleLane\(verdicts, \{ perSlice: effStalePerSlice, exclude: taken \}\)\s*\.map\(boardByKey\)/);
     // In the composed slice ahead of the base rotation, behind retry — the ordinary loop fetches it. Run, not spelled.
     const slice = runCompose({ demand: [], bootstrap: [], retry: ["r"], stale: ["s"], deep: [], base: ["k"] });
     expect([slice.indexOf("r") < slice.indexOf("s"), slice.indexOf("s") < slice.indexOf("k")], "retry, then stale, then base").toEqual([true, true]);
@@ -442,13 +443,13 @@ describe("the lane is WIRED into index.ts the way the header planned it (2026-09
   });
 
   it("folds tries at hop end: a stamped board leaves the map, an attempted one counts, a budget-deferred one is untouched", () => {
-    expect(IDX).toMatch(/const attempted = staleBoards\.map\(\(s\) => s\.token\)\.filter\(\(tk\) => !budgetSkippedSet\.has\(tk\)\);/);
-    expect(IDX).toMatch(/const resolved = attempted\.filter\(\(tk\) => okSet\.has\(tk\)\)\.length;/);
-    expect(IDX).toMatch(/const nextTries = bumpStaleTries\(staleTries, attempted, okSet\);/);
-    // okSet is EVERY stamp the slice landed, so the fold forgets a recovered
-    // board the rotation stamped, not only one this lane fetched — the only
-    // way an entry at STALE_TRIES_MAX (excluded from the window) can clear.
-    expect(IDX).toMatch(/const okSet = new Set\(okTokens\);/);
+    expect(IDX).toMatch(/const attempted = staleBoards\.filter\(\(s\) => !budgetSkippedSet\.has\(s\.token\)\)\.map\(boardKeyOf\);/);
+    expect(IDX).toMatch(/const resolved = attempted\.filter\(\(k\) => okKeySet\.has\(k\)\)\.length;/);
+    expect(IDX).toMatch(/const nextTries = bumpStaleTries\(staleTries, attempted, okKeySet\);/);
+    // okKeySet is EVERY stamp the slice landed (by board key since .91), so the
+    // fold forgets a recovered board the rotation stamped, not only one this
+    // lane fetched — the only way an entry at STALE_TRIES_MAX can clear.
+    expect(IDX).toMatch(/const okKeySet = new Set\(okKeys\);/);
     expect(IDX).not.toMatch(/bumpStaleTries\(staleTries, attempted, new Set\(/);
     expect(IDX).toMatch(/\{ k: "stale_lane", v: \{ \.\.\.staleLane, tries: writeStaleTries\(nextTries\) \}, updated_at: new Date\(\)\.toISOString\(\) \}/);
     expect((IDX.match(/k: "stale_lane"/g) ?? []).length, "one writer, one key").toBe(1);
@@ -674,7 +675,9 @@ describe("20260909222000 — get_stalest_boards takes p_exclude, inside the capp
     expect(FILE2, "the migration is missing").toBeTruthy();
     const defining = readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort()
       .filter((f) => /FUNCTION public\.get_stalest_boards\s*\(/.test(readFileSync(resolve(MIG_DIR, f), "utf8")));
-    expect(defining.at(-1)).toBe(FILE2);
+    // 20261008100100 (.91, n428) redefined the body in place to resolve board
+    // keys; it is run in pglite by a-twins-read-kept-a-deferred-boards-rows-out-of-the-48h-sweep.test.ts.
+    expect(defining.slice(-2)).toEqual([FILE2, "20261008100100_the_stale_window_reads_a_board_stamp_by_its_board.sql"]);
     const defs = SQL2.match(/CREATE (?:OR REPLACE )?FUNCTION\s+public\.\w+/g) ?? [];
     expect(defs).toEqual(["CREATE OR REPLACE FUNCTION public.get_stalest_boards"]);
   });

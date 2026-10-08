@@ -83,8 +83,10 @@ describe("the index can see the words people search for", () => {
     // A new matcher with its own filter binding is the mistake that produced
     // five defects in two days. skipTerms swaps only the text predicate.
     expect(/buildQuery\("effective_posted", false, undefined, \{ skipTerms: true \}\)/.test(FN)).toBe(true);
-    expect(/if \(!opts\?\.skipTerms\) for \(const t of terms\)/.test(FN),
+    // Since .91 the text predicate is bound per OR group (L8-07); skipTerms gates both forms.
+    expect(/if \(!opts\?\.skipTerms && groups\.length === 1\) for \(const t of groups\[0\]\)/.test(FN),
       "skipTerms must suppress ONLY the free-text predicate").toBe(true);
+    expect(/else if \(!opts\?\.skipTerms && groups\.length > 1\)/.test(FN)).toBe(true);
   });
 
   it("fires only on an already-empty page, so it cannot slow a working query", () => {

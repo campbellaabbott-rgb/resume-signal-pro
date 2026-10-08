@@ -218,7 +218,7 @@ describe("a sort claim must name the set it ordered", () => {
     // 3. And the OTHER retrievers stand down for a date sort rather than serving
     //    one silently: there the rows go through rerankWindow, and the ranked path
     //    below already answers that body with its real seam.
-    expect(FN).toContain('const routedServesThisOrder = routedRetriever === "company" || !newestFirst;');
+    expect(FN).toContain('const routedServesThisOrder = body.sort !== "salary" && (routedRetriever === "company" || !newestFirst);');
     expect(
       FN,
       "the routed block runs for a date sort on a retriever that does not date-order it",

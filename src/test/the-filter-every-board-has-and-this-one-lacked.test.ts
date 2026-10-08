@@ -78,10 +78,13 @@ describe("the value reaches storage and every query path", () => {
     // and the six-lens sweep proved that whole block dead code (its gate
     // `!newestFirst && !scoreRanked` is unsatisfiable inside the ranked block)
     // — it was deleted rather than revived, taking its RPC site with it. The
-    // remaining six are ranked search, cappedCount, facet counts, the countOnly
-    // probe, and the two rescue tiers.
+    // remaining six were ranked search, cappedCount, facet counts, the countOnly
+    // probe, and the two rescue tiers. FIVE since .91: the facet rail no longer
+    // calls an RPC (a text query's chips are withheld or counted by buildQuery,
+    // which binds employmentType itself; L13-24).
     const sites = BOARD.match(/p_employment_type: applied\.employmentType/g) ?? [];
-    expect(sites.length, "a ranked/count/rescue site dropped the filter — the five-filters incident").toBe(6);
+    expect(sites.length, "a ranked/count/rescue site dropped the filter — the five-filters incident").toBe(5);
+    expect(BOARD, "the facet rail binds every filter through buildQuery").toMatch(/buildQuery\("effective_posted", true, c\)/);
   });
 
   it("filters.ts validates the closed domain and names junk in ignoredFilters", () => {

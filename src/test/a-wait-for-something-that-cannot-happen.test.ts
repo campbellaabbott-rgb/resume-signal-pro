@@ -66,6 +66,6 @@ describe("a wait for something that cannot happen", () => {
     // The escape defers; deferrals must stay out of failure accounting or a
     // board nobody attempted feeds the retry lane and, sustained, the prune.
     expect(CODE).toMatch(/const budgetSkippedSet = new Set\(budgetSkipped\);/);
-    expect(CODE).toMatch(/!budgetSkippedSet\.has\(tk\)/);
+    expect(CODE).toMatch(/!budgetSkippedSet\.has\(s\.token\)/);
   });
 });

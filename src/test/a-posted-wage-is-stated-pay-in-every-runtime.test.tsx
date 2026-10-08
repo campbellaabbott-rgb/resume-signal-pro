@@ -515,10 +515,13 @@ describe("the count and the page cannot describe different populations across th
     // AFTER the read, or the capped case it must preserve never happens.
     expect(fn.indexOf("const row = data[0]"), "the stand-down runs before the RPC's answer is read, so it also discards the capped answer it is supposed to keep")
       .toBeLessThan(fn.indexOf("applied.hasStatedPay && row.capped"));
-    // The category rail answers with the same RPC and must not print numbers
-    // taken over the other population either.
-    expect(BOARD, "the category rail still numbers a stated-pay text search from the RPC, so its chips can disagree with the page by ~16% during the window")
-      .toMatch(/if \(facetUseRpc && facetPayWindow\) return \[c, null, false\] as const;/);
+    // The category rail must not print numbers taken over the other population
+    // either. Since .91 it asks no RPC at all: a text query's chips are withheld
+    // and the filter-only rail counts through buildQuery (L13-24).
+    const rail = BOARD.slice(BOARD.indexOf("if (body.facetCounts === true) {"), BOARD.indexOf("facetSource: facetTokens ?"));
+    expect(rail, "the category rail is missing").not.toBe("");
+    expect(rail, "the category rail numbers a text search from the RPC again, so its chips can disagree with the page")
+      .not.toMatch(/rpc\(/);
   });
 });
 

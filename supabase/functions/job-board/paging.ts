@@ -128,3 +128,34 @@ export function planRankedPage(opts: {
     sliceEnd: deepPage ? undefined : windowed && opts.deepPageable ? seam : undefined,
   };
 }
+
+/**
+ * How many distinct rows this walk has provably reached: the only floor to set
+ * against the count (L8-16). Below the seam every pool position is a distinct
+ * row, so it is the positions served, never past the pool's end. On a deep page
+ * the offset is NOT rows: a pool that ran out jumps to the 400 seam, and q=nurse
+ * GB published totalAtLeast 460 after 207 rows. There it is the SQL rank
+ * reached, and only when SQL answered at that rank (an OFFSET returns rows only
+ * when that many exist). Rationale: docs/job-board-index-notes.md#n431-a-floor-counts-rows-not-positions
+ */
+export function rowsReached(o: {
+  deepPage: boolean;
+  pOffset: number;
+  offset: number;
+  rawConsumed: number;
+  poolLength: number;
+  sqlRowsOnPage: number;
+}): number {
+  if (o.deepPage) return o.sqlRowsOnPage > 0 ? o.pOffset + o.rawConsumed : 0;
+  return Math.min(o.poolLength, o.offset + o.rawConsumed);
+}
+
+/** Rows whose title carries every symbol token of the query ("c#", "c++"): a symbol query's only countable rows (L8-17). */
+export function symbolLiteralRows(rows: ReadonlyArray<{ title?: unknown }>, q: string): number {
+  const toks = q.toLowerCase().split(/\s+/).filter((t) => /[+#]/.test(t));
+  if (toks.length === 0) return 0;
+  return rows.filter((r) => {
+    const t = String(r.title ?? "").toLowerCase();
+    return toks.every((k) => t.includes(k));
+  }).length;
+}

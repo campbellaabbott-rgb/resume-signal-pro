@@ -32,7 +32,8 @@ const SHARED = readFileSync(resolve(ROOT, "supabase/functions/_shared/location-t
 
 describe("four ways to lose a board", () => {
   it("every or() value is quoted, and the sanitiser strips the character that could escape it", () => {
-    expect(CODE).toMatch(/q = q\.or\(`title\.ilike\."%\$\{t\}%",company\.ilike\."%\$\{t\}%",department\.ilike\."%\$\{t\}%"`\)/);
+    // Since .91 the per-term branch is termOr (OR groups, L8-07); still quoted.
+    expect(CODE).toMatch(/const termOr = \(t: string\) => `title\.ilike\."%\$\{t\}%",company\.ilike\."%\$\{t\}%",department\.ilike\."%\$\{t\}%"`;/);
     // The quoting is only safe while sanitizeTerm removes the double quote.
     expect(SHARED).toMatch(/sanitizeTerm = \(t: string\) => t\.replace\(\/\[%_\\\\\|"\]\/g, ""\)/);
     // No unquoted ilike survives inside an or() list anywhere in the file.

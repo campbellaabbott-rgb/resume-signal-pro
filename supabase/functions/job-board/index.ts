@@ -78,15 +78,15 @@ import {
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
-import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
+import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY, WIDENING_FILTERS } from "./filters.ts";
-import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
-import { planRankedPage, RANKED_WINDOW, RING_WINDOW } from "./paging.ts";
+import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
+import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
+import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
@@ -101,8 +101,10 @@ import {
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
+import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
+import { isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
 import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
-import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens } from "./oversize-registry.ts";
+import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 import { selectDeepLane } from "./deep-lane.ts";
@@ -132,7 +134,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.90"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.91"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
@@ -557,7 +559,7 @@ const RETRY_PER_SLICE = 5;
 // Rationale: docs/job-board-index-notes.md#n016-stale-rpc-limit
 const STALE_RPC_LIMIT = 60;
 const STALE_RPC_DEADLINE_MS = 4_000;
-/** Every catalogued token, once: the stale lane's 'uncatalogued' test. A Set, so a token named 'constructor' is a real member. */
+/** Every catalogued token, once: the demand lane's test. A Set, so a token named 'constructor' is a real member. */
 const CATALOGUE_TOKENS: ReadonlySet<string> = new Set(JOB_SOURCES.map((s) => s.token));
 /** Tokens carried by more than one vendor (139 on 2026-10-05): their boards are failure-tracked by `source:token` (n417). */
 const SHARED_TOKENS: ReadonlySet<string> = (() => {
@@ -574,6 +576,8 @@ const boardByKey = (key: string): JobSource | undefined => {
   boardsByKey ??= new Map(JOB_SOURCES.map((s) => [boardKeyOf(s), s]));
   return boardsByKey.get(key);
 };
+/** Every catalogued board's key, once: the stale lane's 'uncatalogued' test (n428). */
+const CATALOGUE_KEYS: ReadonlySet<string> = new Set(JOB_SOURCES.map(boardKeyOf));
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -595,6 +599,8 @@ interface StaleLaneRun {
 }
 /** The slice's stale-lane outcome, written onto slice_stats by recordSliceStats beside the budget note. */
 let sliceStaleNote: { tries: number; resolved: number } | null = null;
+/** This cold slice's cursor bookkeeping: admitted by the whole base slice, then corrected to the boards started (n434). */
+let sliceCursorNote: { from: number; admitted: number; to: number; base: number; started: number } | null = null;
 const HEADLINE_MAX_AGE_MS = 15 * 60_000; // how stale the published board total may get before it is recounted; the count itself measured 0.63s, so this is cadence, not cost
 const SLICE_LOCK_MS = 3 * 60_000; // min gap between slices
 const DESC_CAP = 14_000; // matches the scanner's own input bounds
@@ -780,6 +786,31 @@ async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
     );
     if (error) console.warn("[JOB-BOARD] oversize registry persist failed (non-fatal):", error.message?.slice(0, 120));
   } catch { /* diagnostic — never blocks a slice */ }
+}
+
+// Once per isolate: a board on a shared token with no stamp of its own gets the token's (n428).
+let BOARD_STAMPS_SEEDED = false;
+async function seedBoardStamps(client: SupabaseClient): Promise<void> {
+  if (BOARD_STAMPS_SEEDED) return;
+  try {
+    const read = <T,>(q: PromiseLike<T>) => withDeadline(q, 3_000) as Promise<{ data: unknown[] | null; error?: unknown }>;
+    const keyed = await read(client.from("job_board_verifications").select("company_token").like("company_token", "%:%"));
+    if (keyed.error || !Array.isArray(keyed.data)) return;
+    const have = keyed.data.map((r) => String((r as { company_token?: unknown }).company_token ?? ""));
+    const bare = SHARED_TOKENS.size ? await read(client.from("job_board_verifications").select("company_token,verified_at").in("company_token", [...SHARED_TOKENS])) : { data: [] };
+    if (bare.error || !Array.isArray(bare.data)) return;
+    const plan = stampPlan(have, bare.data, JOB_SOURCES, SHARED_TOKENS);
+    if (plan.seed.length) {
+      const { error: wErr } = await client.from("job_board_verifications").upsert(plan.seed, { onConflict: "company_token", ignoreDuplicates: true });
+      if (wErr) { console.warn("[JOB-BOARD] board stamp seed failed (retries next slice):", wErr.message?.slice(0, 120)); return; }
+    }
+    if (plan.remove.length) {
+      const { error: dErr } = await client.from("job_board_verifications").delete().in("company_token", plan.remove.slice(0, 200));
+      if (dErr) { console.warn("[JOB-BOARD] stale board stamps not removed (retries next slice):", dErr.message?.slice(0, 120)); return; }
+    }
+    if (plan.seed.length || plan.remove.length) console.log(`[JOB-BOARD] board stamps: ${plan.seed.length} seeded from the token's stamp, ${plan.remove.length} removed (token no longer shared)`);
+    BOARD_STAMPS_SEEDED = true;
+  } catch { /* the stamps seed on the next slice */ }
 }
 
 /**
@@ -3099,6 +3130,8 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The budget outcome rides on the row status already exposes.
         ...(sliceBudgetNote ? { budgetFetched: sliceBudgetNote.fetched, budgetSkipped: sliceBudgetNote.skipped, budgetHit: sliceBudgetNote.hit, heapStopped: sliceBudgetNote.heapStopped, wallStopped: sliceBudgetNote.wallStopped, sizeStopped: sliceBudgetNote.sizeStopped, boardBudget: sliceBudgetNote.boardBudget, lastUpsertError: sliceBudgetNote.lastUpsertError ? sliceBudgetNote.lastUpsertError.slice(0, 200) : null } : {}),
         stampError: sliceStampError,
+        // null on a hot slice, so a cold slice's step never outlives it on the row.
+        cursorStep: sliceCursorNote,
         // Saturation of the persisted light set, whose own row anon cannot read (n019).
         lightSet: DYNAMIC_LIGHT.size,
         lightCap: AUTO_LIGHT_CAP,
@@ -3178,6 +3211,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // stale lane's fold, so an isolate that served a cold hop and then a hot one
   // would otherwise write the cold hop's staleTries onto the hot hop's row.
   sliceStaleNote = null;
+  sliceCursorNote = null;
   sliceLightReread = null;
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
@@ -3185,6 +3219,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // sweep reads it: a board we are too small to hold must not have its live
   // postings written into the closure log as an employer's closures.
   await loadOversizeBoards(client);
+  await seedBoardStamps(client);
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
@@ -3547,8 +3582,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     try {
       const { data: slMeta } = await client.from("job_board_meta").select("v").eq("k", "stale_lane").maybeSingle();
       staleTries = readStaleTries(slMeta?.v);
+      // By board key since .91 (n428): a shared token's bare entry names no board.
+      for (const k of [...staleTries.keys()]) if (SHARED_TOKENS.has(k)) staleTries.delete(k);
       // Rationale: docs/job-board-index-notes.md#n072-staleexclude
-      const staleExclude = staleExclusion({ oversize: oversizeTokens(OVERSIZE_BOARDS), tries: staleTries });
+      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
       const askStale = (exclude: readonly string[] | null) => withDeadline(
         client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
@@ -3576,17 +3613,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         console.warn(`[JOB-BOARD] stale lane: get_stalest_boards unavailable — no lane this hop (${why})`);
         staleLane = { at: new Date().toISOString(), rpc: rpcErr ? "error" : "timeout", asked: 0, windowFull: false, excluded: 0, classes: null, selected: [], fetched: 0, resolved: 0, unresolved: [], prototypeNames: [] };
       } else {
-        const verdicts: StaleVerdict[] = classifyStale(rows, {
-          catalogued: CATALOGUE_TOKENS,
+        // Rows and every set by board key (n428): a stamp row names a board, not a token.
+        const verdicts: StaleVerdict[] = classifyStale(laneRows(rows, SHARED_TOKENS), {
+          catalogued: CATALOGUE_KEYS,
           quarantinedVendors,
-          oversize: new Set(oversizeTokens(OVERSIZE_BOARDS)),
-          dormant: tokensOf(boardFailures.dormant),
-          failing: new Set([...tokensOf(boardFailures.failedAt), ...tokensOf(boardFailures.streaks)]),
+          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          dormant: keysOf(boardFailures.dormant),
+          failing: new Set([...keysOf(boardFailures.failedAt), ...keysOf(boardFailures.streaks)]),
           tries: staleTries,
         });
-        const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...deepBoards].map((s) => s.token));
+        const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...deepBoards].map(boardKeyOf));
         staleBoards = selectStaleLane(verdicts, { perSlice: effStalePerSlice, exclude: taken })
-          .map((t) => JOB_SOURCES.find((s) => s.token === t))
+          .map(boardByKey)
           .filter((s): s is JobSource => !!s);
         const classes = countByClass(verdicts);
         staleLane = {
@@ -3602,7 +3640,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           windowFull: rows.length >= STALE_RPC_LIMIT && classes.unexplained === 0 && staleBoards.length === 0,
           excluded,
           classes,
-          selected: staleBoards.map((s) => s.token),
+          selected: staleBoards.map(boardKeyOf),
           fetched: 0,
           resolved: 0,
           unresolved: verdicts.filter((v) => v.cls === "unresolved").map((v) => v.token),
@@ -3670,8 +3708,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
 
   const queue = [...slice];
-  const okTokens: string[] = [];
-  // The same boards by board key (n417), for the failure state; okTokens stays token-keyed for the stale lane.
+  // Boards that read, by board key (n417): the failure state and, since .91, the stale lane (n428).
   const okKeys: string[] = [];
   const failed: string[] = [];
   let sliceTotal = 0;
@@ -4389,12 +4426,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             for (let i = 0; i < ids.length; i += 200) {
               const { data: tomb, error: tErr } = await client
                 .from("job_board_aged_out")
-                .select("id, posted_at")
+                .select("id, posted_at, aged_at")
                 .in("id", ids.slice(i, i + 200));
               if (tErr) throw tErr;
               tombs.push(...((tomb ?? []) as Tombstone[]));
             }
-            const verdict = splitTombstoned(newRows, tombs);
+            const verdict = splitTombstoned(newRows, tombs, { cutoffMs: freshCutoffMs });
             const blocked = verdict.refused;
             readmitted = verdict.readmitted;
             if (blocked.size > 0) {
@@ -4989,7 +5026,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
           }
         }
-        okTokens.push(s.token);
         okKeys.push(boardKeyOf(s));
         // A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
         // greenhouse giant reads fine on its very next visit, and a vendor
@@ -5009,13 +5045,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // must never be lost to a new optional column (country-column rule).
           // A mid-feed zero is the tenant not saying, never "0 open": the lap's t0, else the last stated total stands (n413).
           const stampTotal = stampFeedTotal(r.feedTotal, cursorBefore, deepLaps[lapKey]?.t0);
+          // The board's own key, and the bare token too on a shared one (n428).
           let { error: stampErr } = await client.from("job_board_verifications").upsert(
-            { company_token: s.token, verified_at: new Date().toISOString(), ...(stampTotal === undefined ? {} : { feed_total: stampTotal }) },
+            stampRows(s, SHARED_TOKENS, { verified_at: new Date().toISOString(), ...(stampTotal === undefined ? {} : { feed_total: stampTotal }) }),
             { onConflict: "company_token" },
           );
           if (stampErr?.message?.includes("feed_total")) {
             ({ error: stampErr } = await client.from("job_board_verifications").upsert(
-              { company_token: s.token, verified_at: new Date().toISOString() },
+              stampRows(s, SHARED_TOKENS, { verified_at: new Date().toISOString() }),
               { onConflict: "company_token" },
             ));
           }
@@ -5099,6 +5136,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     baseSliceLen: baseAttempted,
   });
   hot = progressAfter.hot;
+  // Admitted at +base, written back at +started: a "step back" a poll sees is this correction (n434).
+  if (!inHotPhase) {
+    const len = Math.max(1, COLD_LIST.length);
+    sliceCursorNote = { from: progressBefore.cold, admitted: (progressBefore.cold + baseSlice.length) % len, to: progressAfter.cold, base: baseSlice.length, started: baseAttempted };
+  }
   cold = progressAfter.cold;
   coldDone = progressAfter.coldDone;
   // The cold cursor just wrapped past the end → the ENTIRE cold tail has now
@@ -5137,7 +5179,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
 
   // Rationale: docs/job-board-index-notes.md#n135-
   {
-    const okSet = new Set(okTokens);
     // A DEFERRED BOARD WAS NEVER ATTEMPTED. Budget-deferred tokens were
     // counted here as consecutive failures — streak, failedAt and
     // firstFailedAt advanced for boards no fetch ever touched, feeding the
@@ -5217,9 +5258,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // Rationale: docs/job-board-index-notes.md#n138-stalelane
     if (staleLane) {
       try {
-        const attempted = staleBoards.map((s) => s.token).filter((tk) => !budgetSkippedSet.has(tk));
-        const resolved = attempted.filter((tk) => okSet.has(tk)).length;
-        const nextTries = bumpStaleTries(staleTries, attempted, okSet);
+        const attempted = staleBoards.filter((s) => !budgetSkippedSet.has(s.token)).map(boardKeyOf);
+        const resolved = attempted.filter((k) => okKeySet.has(k)).length;
+        const nextTries = bumpStaleTries(staleTries, attempted, okKeySet);
         staleLane.fetched = attempted.length;
         staleLane.resolved = resolved;
         sliceStaleNote = { tries: attempted.length, resolved };
@@ -7070,8 +7111,9 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   { re: /\bhome[- ]based\b/i, label: "home based", patch: { workMode: "remote" } },
   { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { workMode: "remote" } },
   // The bare work-mode words, per the measurement above.
-  { re: /\bremote(?:ly)?\b/i, label: "remote", patch: { workMode: "remote" } },
-  { re: /\bhybrid\b/i, label: "hybrid", patch: { workMode: "hybrid" } },
+  // Not the first word of a trade term: "Remote Sensing Analyst", "Hybrid Vehicle Technician" (L8-06).
+  { re: /\bremote(?:ly)?\b(?!\s+(?:sensing|pilots?|patient|monitoring|operated)\b)/i, label: "remote", patch: { workMode: "remote" } },
+  { re: /\bhybrid\b(?!\s+(?:vehicles?|electric|cars?|cloud|powertrains?|engines?)\b)/i, label: "hybrid", patch: { workMode: "hybrid" } },
   { re: /\bon[- ]?site\b/i, label: "onsite", patch: { workMode: "onsite" } },
   // Seniority phrases map onto the experience band the board already stores.
   { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
@@ -7130,8 +7172,11 @@ function liftIntentFilters(
   body: Record<string, unknown>,
 ): { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null {
   const q = String(rawQ ?? "");
-  if (!q.trim()) return null;
-  let residual = q;
+  // noIntent: the caller (the page's undo) asked for every word as search text (L8-06).
+  if (!q.trim() || body.noIntent === true) return null;
+  // A balanced "…" pair is an exact phrase, never a filter: masked while the rules run.
+  const quoted: string[] = [];
+  let residual = q.replace(/"[^"]*"/g, (m) => `\u0001${quoted.push(m) - 1}\u0001`);
   const patch: Record<string, unknown> = {};
   const labels: string[] = [];
   for (const { re, label, patch: p } of INTENT_FILTERS) {
@@ -7153,7 +7198,7 @@ function liftIntentFilters(
     if (!restates) labels.push(label);
   }
   if (labels.length === 0) return null;
-  residual = residual.replace(/\s+/g, " ").trim();
+  residual = residual.replace(/\u0001(\d+)\u0001/g, (_m, i) => quoted[Number(i)] ?? "").replace(/\s+/g, " ").trim();
   return { patch, labels, residualQ: residual };
 }
 
@@ -7247,16 +7292,39 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
   // The money token is lifted into the salary filter by normalizeFilters, so
   // it must not also be ANDed against every title — that returned zero for
   // "100k engineer".
-  const money = salaryFromQueryText(raw) !== null
-    ? String(raw ?? "").toLowerCase().split(/\s+/).find((t) => SALARY_IN_QUERY.test(t)) ?? null
-    : null;
-  const kept = all.filter((t) => !QUERY_FILLER.has(t) && t !== money);
+  // Exactly the token the floor came from, never the first bare number before it (L8-03).
+  const money = salaryTokenInQuery(raw)?.token ?? null;
+  // "or" between two real words is the searcher's OR, not filler: "welder or fabricator" (L8-07).
+  const real = (t: string | undefined) => t !== undefined && !QUERY_FILLER.has(t) && t !== money;
+  const isOr = (t: string, i: number) => t === "or" && real(all[i - 1]) && real(all[i + 1]);
+  const kept = all.filter((t, i) => (!QUERY_FILLER.has(t) && t !== money) || isOr(t, i));
   if (kept.length === 0) {
     // Rationale: docs/job-board-index-notes.md#n190-money-null-return-terms-drop
     if (money !== null) return { terms: [], dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: true };
     return { terms: all, dropped: [], liftedSalary: false };
   }
-  return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: money !== null };
+  return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
+}
+
+/**
+ * Words that qualify a place in a location string but name none on their own,
+ * so a trailing one is never tried as the location-split's place (L8-09):
+ * "united" matches every "United States/Kingdom" row. Not a gazetteer (n358):
+ * a closed list of qualifiers, every real place name still passes.
+ */
+const PLACE_QUALIFIERS: ReadonlySet<string> = new Set([
+  "united", "states", "state", "kingdom", "county", "remote", "republic", "city", "north", "south",
+  "east", "west", "new", "greater", "central", "area", "region", "metro", "district", "province",
+]);
+
+/** Terms as OR groups: "welder or fabricator" is [[welder], [fabricator]] (L8-07). */
+function orGroups(terms: readonly string[]): string[][] {
+  const groups: string[][] = [[]];
+  for (const t of terms) {
+    if (t === "or") groups.push([]);
+    else groups[groups.length - 1].push(t);
+  }
+  return groups.filter((g) => g.length > 0);
 }
 
 /**
@@ -8209,11 +8277,13 @@ Deno.serve(async (req) => {
           };
         })(),
         filterAudit: (() => {
-          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number; throttledCases?: number };
+          const v = (faMeta.data?.v ?? {}) as { at?: string; clean?: boolean; incomplete?: boolean; cases?: number; findings?: unknown[]; p95Ms?: number | null; slowCases?: number; throttledCases?: number };
           return {
             at: v.at ?? null,
             ageMin: faMeta.data?.updated_at ? Math.round((Date.now() - new Date(faMeta.data.updated_at).getTime()) / 60000) : null,
             clean: v.clean ?? null,
+            // Every finding a refusal: not measured, rather than measured broken (L1-07; absent before .91).
+            incomplete: v.incomplete ?? null,
             cases: v.cases ?? null,
             findings: Array.isArray(v.findings) ? v.findings.slice(0, 12) : null,
             findingCount: Array.isArray(v.findings) ? v.findings.length : null,
@@ -8472,14 +8542,21 @@ Deno.serve(async (req) => {
             headers: { "content-type": "application/json", apikey: svc, Authorization: `Bearer ${svc}` },
             body,
           });
-          let res = await send();
-          if (res.status === 429) {
-            const ra = Number(res.headers.get("retry-after"));
+          // The runtime refuses a self-call by THROWING RateLimitError, and answers
+          // 503/546 under load: throttling, not a board defect (L1-07).
+          const attempt = () => send().then((res) => ({ res, err: null as unknown }), (err: unknown) => ({ res: null, err }));
+          const refused = (a: { res: Response | null; err: unknown }) =>
+            a.res ? [429, 503, 546].includes(a.res.status) : /RateLimitError|rate limit/i.test(`${(a.err as Error)?.name ?? ""} ${String(a.err)}`);
+          let a = await attempt();
+          if (refused(a)) {
+            const ra = Number(a.res?.headers.get("retry-after"));
+            await a.res?.body?.cancel().catch(() => {});
             await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(ra) && ra > 0 ? ra * 1000 : 2_000, 5_000)));
-            res = await send();
+            a = await attempt();
           }
-          const j = await boundBody(res, SELF_RESPONSE_BYTES).json().catch(() => ({}));
-          return { ok: res.ok, throttled: res.status === 429, ms: Date.now() - started, body: j as Record<string, unknown> };
+          if (!a.res) return { ok: false, throttled: refused(a), ms: Date.now() - started, body: { error: String(a.err).slice(0, 80) } };
+          const j = await boundBody(a.res, SELF_RESPONSE_BYTES).json().catch(() => ({}));
+          return { ok: a.res.ok, throttled: refused(a), ms: Date.now() - started, body: j as Record<string, unknown> };
         } catch (e) {
           return { ok: false, throttled: false, ms: Date.now() - started, body: { error: String(e).slice(0, 80) } };
         }
@@ -8611,6 +8688,8 @@ Deno.serve(async (req) => {
 
       await inBatches(IGNORE_CASES, BATCH, async (c) => {
         const r = await probe(c.body);
+        // A refused probe measured nothing; it is not a silent drop.
+        if (!r.ok) { findings.push({ case: c.name, kind: r.throttled ? "throttled" : "request-failed", detail: String(r.body.error ?? "").slice(0, 80) }); return; }
         const ig = Array.isArray(r.body.ignoredFilters) ? r.body.ignoredFilters as string[] : [];
         if (!ig.includes(c.expect)) {
           findings.push({ case: c.name, kind: "silent-drop", detail: `expected "${c.expect}" in ignoredFilters, got [${ig.join(",")}]` });
@@ -8635,12 +8714,14 @@ Deno.serve(async (req) => {
       // PAGINATION INTEGRITY — the interleave regression duplicated rows onto
       // page 2 and dropped others forever, and no unit test could see it because
       // it only exists across two requests.
-      // Offsets within one shape must stay ordered; the three shapes are
-      // independent, so they walk concurrently.
-      await Promise.all([{}, { category: "design" }, { q: "nurse" }].map(async (shape) => {
+      // Offsets within one shape must stay ordered. The three shapes walk ONE
+      // AT A TIME, paced: walked together they burst twelve self-calls and the
+      // runtime refused them every day as RateLimitError (L1-07).
+      for (const shape of [{}, { category: "design" }, { q: "nurse" }] as Array<Record<string, unknown>>) {
         const seen: string[] = [];
         const label = Object.keys(shape).length ? JSON.stringify(shape) : "no-filter";
         for (let off = 0; off < 240; off += 60) {
+          if (off > 0 || seen.length > 0) await new Promise((r) => setTimeout(r, 500));
           const r = await probe({ ...shape, offset: off });
           // Fail LOUD, not open. Without this an outage reads as a clean walk:
           // every request errors, jobs is [], the loop breaks at offset 0, the
@@ -8656,7 +8737,7 @@ Deno.serve(async (req) => {
         }
         const dupes = seen.length - new Set(seen).size;
         if (dupes > 0) findings.push({ case: `paging ${label}`, kind: "duplicate-rows", detail: `${dupes} of ${seen.length} repeated across pages` });
-      }));
+      }
 
       const slow = timings.filter((t) => t.ms > 15_000);
       const payload = {
@@ -8669,6 +8750,8 @@ Deno.serve(async (req) => {
         // the paced retry. clean stays false (the audit did not finish), but
         // "could not measure" and "measured broken" are different alarms.
         throttledCases: findings.filter((f) => f.kind === "throttled").length,
+        // Nothing measured broken, something not measured: the audit did not finish (L1-07).
+        incomplete: findings.length > 0 && findings.every((f) => f.kind === "throttled"),
         p95Ms: (() => {
           const xs = timings.map((t) => t.ms).sort((a, b) => a - b);
           return xs.length ? xs[Math.min(xs.length - 1, Math.floor(xs.length * 0.95))] : null;
@@ -10486,13 +10569,16 @@ Deno.serve(async (req) => {
           ? facet.map((c) => ({ ...c, open: typeof c.token === "string" && Object.prototype.hasOwnProperty.call(openMap, c.token) ? openMap[c.token] : 0 }))
           : facet,
       );
-      const hit = merged.filter((c) => String(c.name ?? "").toLowerCase().includes(q));
+      // Folded both sides: "dominos" finds Domino's, "att" AT&T, "당근" 당근마켓 (L8-08).
+      const fq = foldTypeahead(q);
+      if (!fq) return json({ companies: [] });
+      const hit = merged.filter((c) => foldTypeahead(String(c.name ?? "")).includes(fq));
       // A name that STARTS with what was typed is what the reader meant; the
       // servable count breaks ties beneath that (the raw facet count only when
       // there is no servable one to rank by, and it is never published).
       hit.sort((a, b) => {
-        const ap = String(a.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
-        const bp = String(b.name ?? "").toLowerCase().startsWith(q) ? 0 : 1;
+        const ap = foldTypeahead(String(a.name ?? "")).startsWith(fq) ? 0 : 1;
+        const bp = foldTypeahead(String(b.name ?? "")).startsWith(fq) ? 0 : 1;
         return ap - bp || (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0);
       });
       return json({
@@ -10820,24 +10906,25 @@ async function attachRecheckedAtInner(
   jobs: Array<Record<string, unknown>>,
 ): Promise<Array<Record<string, unknown>>> {
   // Rationale: docs/job-board-index-notes.md#n278-tokens
-  const tokens = [...new Set(jobs.map((j) => String(j.token ?? "")).filter(Boolean))].slice(0, 80);
-  if (tokens.length === 0) return jobs;
+  // By board key: a shared token's job reads its own board's stamp, never its twin's (n428).
+  const keys = [...new Set(jobs.map((j) => stampKeyOfJob(j, SHARED_TOKENS)).filter(Boolean))].slice(0, 80);
+  if (keys.length === 0) return jobs;
   // Rationale: docs/job-board-index-notes.md#n279-const-data-error-await-withdeadline
   const { data, error } = await withDeadline(
-    client.from("job_board_verifications").select("company_token,verified_at").in("company_token", tokens),
+    client.from("job_board_verifications").select("company_token,verified_at").in("company_token", keys),
     1_500,
   ) as { data: unknown[] | null; error?: unknown };
   // On failure leave the field ABSENT. Falling back to last_seen would restore
   // the exact bug this removes.
   if (error || !Array.isArray(data)) return jobs;
-  const byToken = new Map<string, string>();
+  const byKey = new Map<string, string>();
   for (const r of data) {
     const t = (r as { company_token?: string }).company_token;
     const v = (r as { verified_at?: string }).verified_at;
-    if (t && v) byToken.set(t, v);
+    if (t && v) byKey.set(t, v);
   }
   for (const j of jobs) {
-    const v = byToken.get(String(j.token ?? ""));
+    const v = byKey.get(stampKeyOfJob(j, SHARED_TOKENS));
     // verified_at says the FEED was fetched, not that this posting was in it.
     if (v && !j.missingSince) j.recheckedAt = v;
   }
@@ -10866,15 +10953,15 @@ function preferMatchedLocation(
   jobs: Array<Record<string, unknown>>,
   locTerms: string[],
 ): Array<Record<string, unknown>> {
-  if (locTerms.length === 0) return jobs;
-  const needles = locTerms.map((t) => t.toLowerCase().replace(/^,\s*/, "")).filter(Boolean);
+  // The filter's own rule: a ", XX" code at a boundary, never "or" inside "New York" (n429).
+  const needles = locTerms.filter((t) => t.trim().length > 0);
   if (needles.length === 0) return jobs;
   for (const j of jobs) {
     const loc = typeof j.location === "string" ? j.location : "";
     // Multi-location postings use ";" or "/" — measured on live rows.
     const parts = loc.split(/\s*[;/]\s*/).map((x) => x.trim()).filter(Boolean);
     if (parts.length < 2) continue;
-    const hit = parts.findIndex((part) => needles.some((n) => part.toLowerCase().includes(n)));
+    const hit = parts.findIndex((part) => needles.some((n) => partMatchesTerm(part, n)));
     if (hit <= 0) continue; // already first, or this row matched on something else
     j.location = [parts[hit], ...parts.filter((_, i) => i !== hit)].join("; ");
     j.locationMatchedIndex = hit;
@@ -11264,19 +11351,24 @@ async function serveList(
       .is("missing_since", null);
     const terms = queryTerms(body.q).terms.slice(0, 8);
     // Rationale: docs/job-board-index-notes.md#n298-opts-skipterms-for-const-t-of-terms
-    if (!opts?.skipTerms) for (const t of terms) q = q.or(`title.ilike."%${t}%",company.ilike."%${t}%",department.ilike."%${t}%"`);
+    const termOr = (t: string) => `title.ilike."%${t}%",company.ilike."%${t}%",department.ilike."%${t}%"`;
+    const groups = orGroups(terms);
+    // One group: every term ANDed, as always. Several: the searcher's OR (L8-07).
+    if (!opts?.skipTerms && groups.length === 1) for (const t of groups[0]) q = q.or(termOr(t));
+    else if (!opts?.skipTerms && groups.length > 1) q = q.or(groups.map((g) => g.length === 1 ? termOr(g[0]) : `and(${g.map((t) => `or(${termOr(t)})`).join(",")})`).join(","));
     // Metro shorthand expands to the names that actually appear in the data,
     // and a noisy two-letter form is REPLACED rather than ORed in — searching
     // %LA% returns Plain City, Ohio.
     const locTerms = locationTerms(body.location).terms;
-    if (locTerms.length === 1) q = q.ilike("location", `%${locTerms[0]}%`);
+    // A state code binds at a boundary, on a US/CA/unplaced row (n429).
+    if (locTerms.length === 1 && !isStateCodeAlias(locTerms[0])) q = q.ilike("location", `%${locTerms[0]}%`);
     // QUOTED, because a state alias contains a comma. PostgREST separates
     // or() branches on commas, so an unquoted `location.ilike.%, TX%` splits
     // into two malformed branches — the filter would silently stop meaning
     // what it says. Quoting the value is the documented escape for exactly
     // this, and sanitizeTerm already removes the characters that could close
     // the quote early.
-    else if (locTerms.length > 1) q = q.or(locTerms.map((t) => `location.ilike."%${t}%"`).join(","));
+    else if (locTerms.length > 0) q = q.or(locTerms.map(locationBranch).join(","));
     // Rationale: docs/job-board-index-notes.md#n299-applied-remote
     if (applied.remote) {
       q = q.eq("remote", true);
@@ -11435,6 +11527,21 @@ async function serveList(
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
 
   if (body.facetCounts === true) {
+    // A text query's chips were counted by substring (the capped-count RPC, or the
+    // ILIKE terms of buildQuery) while the list matches by FTS: q=rn US showed
+    // legal 1,159 over a legal list of 8 (L13-24). An employer query counts the
+    // list's own matcher, its tokens; any other text query withholds the numbers
+    // rather than publish a different population's (n433).
+    const facetRoute = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
+    const facetTokens = facetRoute?.route === "EMPLOYER" && facetRoute.tokens?.length ? facetRoute.tokens : null;
+    if (!facetTokens && qText) {
+      return json({
+        categories: {},
+        facetSource: "withheld",
+        appliedSignature: JSON.stringify(applied),
+        ...(ignoredFilters.length ? { ignoredFilters } : {}),
+      });
+    }
     // Rationale: docs/job-board-index-notes.md#n312-facet-chunk
     const FACET_CHUNK = 6;
     // Rationale: docs/job-board-index-notes.md#n313-facet-deadline
@@ -11447,47 +11554,12 @@ async function serveList(
       const chunk = cats.slice(i, i + FACET_CHUNK);
       // Rationale: docs/job-board-index-notes.md#n314-chunkbudget
       const chunkBudget = Math.max(250, FACET_DEADLINE - Date.now());
-      // Rationale: docs/job-board-index-notes.md#n315-facetq
-      const facetQ = queryTerms(body.q).terms;
-      const facetUseRpc = qText && facetQ.length <= 1;
-      // Rationale: docs/job-board-index-notes.md#n316-facetpaywindow
-      const facetPayWindow = applied.hasStatedPay === true;
       const chunkWork = Promise.all(chunk.map(async (c) => {
         try {
-          if (facetUseRpc && facetPayWindow) return [c, null, false] as const;
-          if (facetUseRpc) {
-            // Rationale: docs/job-board-index-notes.md#n317-t-count-jobs-capped-5
-            const t_count_jobs_capped_5 = Date.now();
-            const { data, error } = await client.rpc("count_jobs_capped", {
-              p_fresh_cutoff: freshCutoffIso,
-              // count_jobs_capped is a contiguous ILIKE, which already reads a
-              // phrase as adjacent words; the quotes are tsquery syntax and
-              // would be matched as literal characters here. Same text as
-              // facetQ[0] for a one-term query — the branch this gate admits.
-              p_q: qText.replace(/"/g, ""),
-              ...(applied.location ? { p_location: rankedLocationParam(applied.location) } : {}),
-              ...(applied.remote ? { p_remote: true } : {}),
-              ...(applied.country ? { p_country: applied.country } : {}),
-              p_category: c,
-              ...sendableSourcesParam(applied),
-              ...(applied.experience.length ? { p_experience: applied.experience } : {}),
-              ...(applied.salaryFloor !== null ? { p_salary_floor: applied.salaryFloor } : {}),
-              ...(applied.companies.length ? { p_companies: applied.companies } : {}),
-              p_posted_after: applied.postedAfter,
-              p_max_age_days: applied.maxAgeDays,
-              ...payParams(applied),
-              ...extraFilterParams(applied),
-              ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
-              ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
-              ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
-              p_cap: COUNT_CAP,
-            });
-            markFrom("count_jobs_capped_settle", t_count_jobs_capped_5);
-            if (error) return [c, null, false] as const;
-            const row = Array.isArray(data) ? data[0] as { n?: number; capped?: boolean } : null;
-            return [c, Number(row?.n ?? 0), !!row?.capped] as const;
-          }
-          const r = await buildQuery("effective_posted", true, c).range(0, 0);
+          const base = facetTokens
+            ? buildQuery("effective_posted", true, c, { skipTerms: true }).in("company_token", facetTokens)
+            : buildQuery("effective_posted", true, c);
+          const r = await base.range(0, 0);
           if (r.error) return [c, null, false] as const;
           // Capped to the SAME ceiling the list uses, so the two numbers on
           // screen are the same kind of number.
@@ -11512,9 +11584,8 @@ async function serveList(
       // Said out loud for the same reason the list says it: a capped figure
       // presented as exact is a number that cannot be checked.
       ...(facetCapped ? { countCapped: true } : {}),
-      // Which matcher produced these. With a query they come from the same
-      // count the list uses; without one, from the filter query directly.
-      facetSource: qText ? "ranked" : "filters",
+      // Which matcher produced these: the employer's tokens (the list's own), or the filters alone.
+      facetSource: facetTokens ? "employer" : "filters",
       // Says which filters these counts are FOR, so a stale response arriving
       // after the visitor changed a filter can be discarded rather than
       // painted over the new selection.
@@ -11527,7 +11598,10 @@ async function serveList(
   const qClass = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
   const qClassRetriever = qClass ? RETRIEVER_FOR[qClass.route] : null;
   const onlyQuery = isUnfiltered({ ...applied, q: "" });
-  const routeDecision = qText && onlyQuery && qClass
+  // Routed with or without filters: buildQuery binds every filter in SQL BEFORE
+  // the routed window, so a filter no longer sends "IT manager" to the english
+  // tsquery that drops "it" (L8-04, n432).
+  const routeDecision = qText && qClass
     ? qClass
     : { route: "BROWSE" as const, reason: "not routable", tokens: undefined as string[] | undefined, matchedName: undefined as string | undefined };
   const routedRetriever = RETRIEVER_FOR[routeDecision.route];
@@ -11553,6 +11627,9 @@ async function serveList(
     };
     if (!wantCount) return json({ total: safeMetaTotal, ...(safeMetaTotal === null ? { countUnavailable: true } : {}), ...countHonesty }); // unfiltered — the maintained catalog total, degraded to null when the cache is unreadable
     // Rationale: docs/job-board-index-notes.md#n321-qtext-body-sort-salary-rout
+    // The pay-ordered list publishes no total (stated pay only), so neither does its count;
+    // it fell to the substring count, which the list no longer uses (L8-01).
+    if (body.sort === "salary" && qText) return json({ total: null, countUnavailable: true, ...countHonesty });
     if (qText && body.sort !== "salary" && (routedRetriever === "company" || routedRetriever === "simple")) {
       try {
         let rqC = buildQuery("effective_posted", false, undefined, { skipTerms: true });
@@ -11634,6 +11711,8 @@ async function serveList(
           // tier-sniff branch is deploy-window cover only — delete it after the
           // SQL is verified.
           const cappedC = relC === null ? tC >= (tier2C ? 3_000 : 10_000) : tC >= 10_000;
+          // "c#" and "c++" parse to the bare letter: that count is not this query's (L8-17, n430).
+          if (qClass?.route === "SYMBOL") return json({ total: null, countUnavailable: true, ...countHonesty });
           return json({
             total: tC,
             ...(cappedC ? { countCapped: true } : {}),
@@ -11740,23 +11819,36 @@ async function serveList(
   }
 
   // Rationale: docs/job-board-index-notes.md#n330-salarytextsort
-  const salaryTextSort = !countOnly && !!qText && body.sort === "salary" && onlyQuery;
+  // Every text query under the pay order, filtered or not: the recency path's
+  // ILIKE served "rn" as NorthwesteRN (L8-01). An employer route binds its
+  // tokens, never the name as title text (L8-02); the title match takes the
+  // same alias expansion the other title tiers do.
+  const salaryTextSort = !countOnly && !!qText && body.sort === "salary";
+  const salaryEmployer = qClass?.route === "EMPLOYER" && !!qClass.tokens?.length ? qClass.tokens : null;
+  const salaryExpand = salaryEmployer ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
 
-  if (salaryTextSort) try {
+  if (salaryTextSort) {
     const t_salary_sorted = Date.now();
-    const { data: salRows, error: salErr } = await withDeadline(
-      buildQuery("effective_posted", false, undefined, { skipTerms: true })
-        .textSearch("title", ftsQuery(qText), { type: "websearch", config: "simple" })
-        .not("salary_rank_usd", "is", null)
-        .order("salary_rank_usd", { ascending: false })
-        .order("id", { ascending: true })
-        .range(offset, offset + limit - 1),
-      7_000,
-    ) as { data: unknown[] | null; error?: unknown };
+    let salRows: unknown[] | null = null;
+    try {
+      const salBase = buildQuery("effective_posted", false, undefined, { skipTerms: true });
+      const res = await withDeadline(
+        (salaryEmployer
+          ? salBase.in("company_token", salaryEmployer)
+          : salBase.textSearch("title", salaryExpand.expansions.length ? ftsSafe(salaryExpand.q) : ftsQuery(qText), { type: "websearch", config: "simple" }))
+          .not("salary_rank_usd", "is", null)
+          .order("salary_rank_usd", { ascending: false })
+          .order("id", { ascending: true })
+          .range(offset, offset + limit - 1),
+        7_000,
+      ) as { data: unknown[] | null; error?: unknown };
+      if (!res.error && Array.isArray(res.data)) salRows = res.data;
+    } catch { /* answered below as unavailable, never by the substring path */ }
     markFrom("salary_sorted", t_salary_sorted);
-    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search hit its deadline for q=${JSON.stringify(qText)}`);
-    if (!salErr && Array.isArray(salRows) && salRows.length > 0) {
-      const salJobs = (salRows as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
+    if (salRows === null) console.warn(`[JOB-BOARD] salary-sorted search failed or hit its deadline for q=${JSON.stringify(qText)}`);
+    {
+      // No pay-ordered row on page one is said out loud; the recency ILIKE never stands in (L8-01, L8-02).
+      const salJobs = ((salRows ?? []) as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
       const salGrouped = groupSimilar
         ? collapseClusters(salJobs, limit)
         : { jobs: salJobs.slice(0, limit), rawConsumed: Math.min(salJobs.length, limit) };
@@ -11777,7 +11869,12 @@ async function serveList(
         hasMore: salJobs.length >= limit,
         nextOffset: offset + salGrouped.rawConsumed,
         searchRoute: "SALARY",
-        searchRouteReason: "salary-sorted text search, ordered on the indexed pay column",
+        searchRouteReason: salaryEmployer
+          ? "salary-sorted employer search, ordered on the indexed pay column"
+          : "salary-sorted text search, ordered on the indexed pay column",
+        ...(salaryExpand.expansions.length ? { aliases: salaryExpand.expansions } : {}),
+        ...(salaryEmployer && qClass?.matchedName ? { companyMatched: qClass.matchedName } : {}),
+        ...(salJobs.length === 0 && offset === 0 ? { sortUnavailable: salRows === null ? "unavailable" : "no-stated-pay" } : {}),
         // Said out loud: this page deliberately shows only postings that state
         // pay, which is about an eighth of the board.
         salaryStatedOnly: true,
@@ -11799,7 +11896,7 @@ async function serveList(
         refreshedAt: (metaV.refreshedAt as string) ?? null,
       });
     }
-  } catch { /* fall through to the substring path this query used before */ }
+  }
 
   // Rationale: docs/job-board-index-notes.md#n333-newesttextsort
   const newestTextSort = !countOnly && !!qText && newestFirst
@@ -11880,7 +11977,7 @@ async function serveList(
   } catch { /* fall through to the ranked path, which owns the description tier and the rescue ladder */ }
 
   // Rationale: docs/job-board-index-notes.md#n338-routedservesthisorder
-  const routedServesThisOrder = routedRetriever === "company" || !newestFirst;
+  const routedServesThisOrder = body.sort !== "salary" && (routedRetriever === "company" || !newestFirst);
   if (!countOnly && routedServesThisOrder && (routedRetriever === "company" || routedRetriever === "simple")) try {
     // Rationale: docs/job-board-index-notes.md#n339-blockstart
     const blockStart = Math.floor(offset / ROUTE_WINDOW) * ROUTE_WINDOW;
@@ -12044,6 +12141,8 @@ async function serveList(
           ? (withDeadline(
               buildQuery("effective_posted", false, undefined, { skipTerms: true })
                 .ilike("title", `${sanitizeTerm(qText)}%`)
+                // The prefix ends at a word: "nurse" is not "Nursery" (L8-05).
+                .filter("title", "imatch", ringWordPattern(sanitizeTerm(qText).toLowerCase()))
                 .order("effective_posted", { ascending: false })
                 .order("id", { ascending: true })
                 .range(0, 199),
@@ -12249,6 +12348,8 @@ async function serveList(
               // A tail with digits or symbols is not a city and probing it is
               // a wasted round trip.
               if (!/^[\p{L}][\p{L}\s.'-]*$/u.test(place)) continue;
+              // A word that qualifies a place never names one: "pilot united" became pilots anywhere "United" appears (L8-09).
+              if (n === 1 && PLACE_QUALIFIERS.has(place.toLowerCase())) continue;
               splits.push({ head: words.slice(0, -n).join(" "), place });
             }
             if (splits.length > 0) {
@@ -12697,7 +12798,7 @@ async function serveList(
           const excluded = (r: Record<string, unknown>) =>
             ringIds
               ? ringIds.has(String(r.id ?? ""))
-              : ringPrefix.length > 0 && String(r.title ?? "").toLowerCase().startsWith(ringPrefix);
+              : ringPrefix.length > 0 && startsWithWord(String(r.title ?? "").toLowerCase(), ringPrefix);
           const rawIndexOfSurvivor: number[] = [];
           mergedRows = rankedRows.filter((r, i) => {
             const keep = !excluded(r as Record<string, unknown>);
@@ -12792,7 +12893,7 @@ async function serveList(
                 .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
               if (extra.length > 0) {
                 // Rationale: docs/job-board-index-notes.md#n383-terms
-                const terms = queryTerms(qText).terms.map((t) => t.toLowerCase()).filter(Boolean);
+                const terms = queryTerms(qText).terms.map((t) => t.toLowerCase()).filter((t) => t && t !== "or");
                 const inTitle = (r: unknown) => {
                   const t = String((r as Record<string, unknown>).title ?? "").toLowerCase();
                   return terms.length > 0 && terms.some((term) => t.includes(term));
@@ -12848,8 +12949,16 @@ async function serveList(
         // The count and the retriever do not always share a predicate — see
         // the note on `total` below. Computed once here so every field in this
         // response argues from the same row count.
-        const shownRowCount = rankedGrouped.jobs.length;
-        const totalUnderstated = !augmented && typeof total === "number" && (offset + shownRowCount) > total;
+        // Rows reached, not a pool position past the seam jump (L8-16, n431); against both segments.
+        const countedReached = rowsReached({
+          deepPage, pOffset: pagePlan.pOffset, offset, rawConsumed: rankedGrouped.rawConsumed,
+          poolLength: rankedScored.length, sqlRowsOnPage: rankedRows.length,
+        });
+        const totalUnderstated = !augmented && typeof pageTotal === "number" && countedReached > pageTotal;
+        // "c#" and "c++" parse to the bare letter, so search_jobs' count is not this query's (L8-17).
+        const symbolQuery = qClass?.route === "SYMBOL";
+        const symbolFloor = symbolQuery ? symbolLiteralRows(rankedScored, qText) : 0;
+        const countWithheld = augmented || totalUnderstated || symbolQuery;
         // Rationale: docs/job-board-index-notes.md#n385-earneddym
         let earnedDym: string | null = null;
         if (
@@ -12887,7 +12996,7 @@ async function serveList(
 
         // Rationale: docs/job-board-index-notes.md#n387-rankedserved
         const rankedServed = preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
-        logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total, null, rankedServed);
+        logSearch("ranked", rankedGrouped.jobs.length, countWithheld ? null : total, null, rankedServed);
         return json({
           jobs: rankedServed,
           searchId,
@@ -12897,7 +13006,8 @@ async function serveList(
           ...exclusionDisclosure(excludedTerms),
           ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
-          ...(augmented ? { countUnavailable: true } : {}),
+          ...(augmented || symbolQuery ? { countUnavailable: true } : {}),
+          ...(symbolQuery && !totalUnderstated && symbolFloor > 0 ? { totalAtLeast: symbolFloor } : {}),
           // Rationale: docs/job-board-index-notes.md#n388-newestfirst
           ...(newestFirst
             ? { sortScope: "relevanceWindow", sortScopeRows: ringMerged ? RING_WINDOW : RANKED_WINDOW }
@@ -12919,16 +13029,16 @@ async function serveList(
               || (deepPageable && pageTotal !== null && offset + rankedGrouped.rawConsumed < pageTotal))
             : (rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit),
           // Rationale: docs/job-board-index-notes.md#n390-total-augmented-totalunderstated-null-to
-          total: augmented || totalUnderstated ? null : total,
-          ...(totalUnderstated ? { countUnavailable: true, totalAtLeast: offset + shownRowCount } : {}),
+          total: countWithheld ? null : total,
+          ...(totalUnderstated ? { countUnavailable: true, totalAtLeast: countedReached } : {}),
           // Rationale: docs/job-board-index-notes.md#n391-augmented-totalunderstated-related
-          ...(augmented || totalUnderstated || related === null || related === 0
+          ...(countWithheld || related === null || related === 0
             ? {}
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
-          ...(rankedCapped ? { countCapped: true } : {}),
+          ...(rankedCapped && !symbolQuery ? { countCapped: true } : {}),
           ...exclusionCountsCaveat(excludedTerms),
           // Rationale: docs/job-board-index-notes.md#n392-augmented-totalunderstated-exclusi
-          ...(augmented || totalUnderstated ? {} : exclusionCeiling(excludedTerms, total)),
+          ...(countWithheld ? {} : exclusionCeiling(excludedTerms, total)),
           totalAllCompanies: safeMetaTotal ?? total,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0

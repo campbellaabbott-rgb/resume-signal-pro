@@ -62,7 +62,8 @@ describe("a date filter must mean the employer's date", () => {
     // maxAgeDays 30, 90 and 365 all returned identical results with nothing in
     // the body saying the window had been cut. ignoredFilters cannot fire,
     // because a clamped value is non-null and therefore counts as honoured.
-    expect(/const maxAgeClamped = Number\.isFinite\(ageN\) && ageN > 30;/.test(FILTERS)).toBe(true);
+    // Number.isInteger since .91: a fraction is refused and named, not clamped (L13-68).
+    expect(/const maxAgeClamped = Number\.isInteger\(ageN\) && ageN > 30;/.test(FILTERS)).toBe(true);
     // Carried BESIDE applied, not inside it. board-filter-contract counts every
     // field of AppliedFilters as a filter and isUnfiltered() treats any truthy
     // value as one — so putting a notice in there would make a clamped request
