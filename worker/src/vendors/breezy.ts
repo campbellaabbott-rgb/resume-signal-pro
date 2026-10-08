@@ -28,7 +28,10 @@ const KEYS: Partial<Record<PacketFieldKey, string>> = {
   phone: "cPhoneNumber",
   address: "cAddress",
   salaryExpectation: "cSalary",
-  coverNote: "cSummary",
+  // The cover note goes in the Cover Letter box. cSummary is labelled "Work
+  // History" on every observed form (required on one) and is a question for the
+  // matcher and the draft path, not a place for the note (sweep S8-082).
+  coverNote: "cCoverLetter",
 };
 const RESUME_KEY = "cResume";
 
@@ -39,7 +42,7 @@ const FIELDS: Partial<Record<PacketFieldKey, string>> = {
   phone: 'input[name="cPhoneNumber"]',
   address: 'input[name="cAddress"]',
   salaryExpectation: 'input[name="cSalary"]',
-  coverNote: 'textarea[name="cSummary"]',
+  coverNote: 'textarea[name="cCoverLetter"]',
 };
 
 export const breezy: VendorAdapter = {
