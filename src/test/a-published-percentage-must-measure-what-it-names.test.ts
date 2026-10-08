@@ -283,7 +283,9 @@ describe("a phase mark must measure what the request waited on", () => {
     // Worth having — it is how you see an RPC that is slow but deadlined —
     // but it must never be summed with critical-path phases.
     expect(CODE).toMatch(/markFrom\("count_jobs_capped_settle", t_count_jobs_capped_6\);/);
-    expect(CODE).toMatch(/markFrom\("count_jobs_capped_settle", t_count_jobs_capped_5\);/);
+    // The facet rail's count_jobs_capped call (t_count_jobs_capped_5) is gone
+    // since .91: a text query's chips are withheld or counted by buildQuery (L13-24).
+    expect(CODE).not.toMatch(/t_count_jobs_capped_5/);
   });
 
   it("the unraced call site still measures its own wait", () => {

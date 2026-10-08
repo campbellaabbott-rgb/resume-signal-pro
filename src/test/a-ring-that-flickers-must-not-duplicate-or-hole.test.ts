@@ -57,8 +57,12 @@ describe("counts and disclosures stay self-consistent", () => {
     expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarried: true, facetsCarriedAt: v\.refreshedAt \} : \{\}\)/);
   });
 
-  it("the facet rail uses the list's matcher for multi-word queries", () => {
-    expect(BOARD).toMatch(/const facetUseRpc = qText && facetQ\.length <= 1;/);
+  it("the facet rail never counts a text query with a matcher the list does not use (.91, L13-24)", () => {
+    // It used count_jobs_capped's contiguous ILIKE for one-term queries while
+    // the list matched by FTS: q=rn legal 1,159 over a list of 8. A text query
+    // now withholds the chips, except an employer query, counted by its tokens.
+    expect(BOARD).not.toMatch(/facetUseRpc/);
+    expect(BOARD).toMatch(/if \(qText && !facetTokens\) \{/);
   });
 
   it("the router's stand-down gate is mechanical, so future filters count", () => {

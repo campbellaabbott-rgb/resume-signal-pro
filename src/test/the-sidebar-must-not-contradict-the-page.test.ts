@@ -32,38 +32,35 @@ const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/i
 const FACET = /if \(body\.facetCounts === true\) \{[\s\S]*?\n  \}\n/.exec(FN)?.[0] ?? "";
 
 describe("the sidebar must not contradict the page", () => {
-  it("counts facets with the SAME engine the list uses when there is a query", () => {
+  it("never counts a text query's chips with a matcher the list does not use (.91, L13-24)", () => {
     expect(FACET, "the facetCounts block is missing").not.toBe("");
-    // A SINGLE-TERM text query is counted by count_jobs_capped — the same RPC
-    // the list total uses. A MULTI-WORD query is NOT: count_jobs_capped treats
-    // p_q as one contiguous ILIKE while the list ANDs each term (title OR
-    // company OR department, per term), so "senior nurse" would undercount and
-    // the chip would promise fewer than clicking delivers (2026-08-29 sweep #2).
-    // Multi-term falls through to buildQuery, the list's own matcher — the same
-    // stand-down cappedCount already does.
-    expect(/facetUseRpc = qText && facetQ\.length <= 1/.test(FACET),
-      "multi-word queries must not use count_jobs_capped's contiguous ILIKE").toBe(true);
-    expect(/if \(facetUseRpc\) \{[\s\S]*?count_jobs_capped/.test(FACET),
-      "a single-term text query must be counted by the same RPC that serves the rows").toBe(true);
-    // The filter-only AND multi-word cases use buildQuery — the list's matcher.
+    // count_jobs_capped (one term) and buildQuery's ILIKE terms (several) were
+    // both substring matchers while the list matches by FTS: q=rn US showed
+    // legal 1,159 over a legal list of 8. A text query now withholds the
+    // numbers, except an employer query, counted by its tokens (the routed
+    // list's own matcher). Run end to end in
+    // the-chips-counted-a-different-population-than-the-list.test.ts.
+    expect(/if \(qText && !facetTokens\) \{/.test(FACET)).toBe(true);
+    expect(/facetSource: "withheld",/.test(FACET)).toBe(true);
+    expect(/count_jobs_capped/.test(FACET), "no substring RPC count").toBe(false);
+    // The filter-only and employer cases use buildQuery, the list's own binder.
     expect(/buildQuery\("effective_posted", true, c\)/.test(FACET)).toBe(true);
+    expect(/\.in\("company_token", facetTokens\)/.test(FACET)).toBe(true);
   });
 
   it("caps facet counts to the same ceiling as the list", () => {
     expect(/Math\.min\(n, COUNT_CAP\)/.test(FACET), "an uncapped facet beside a capped list is the contradiction").toBe(true);
-    expect(/p_cap: COUNT_CAP,/.test(FACET), "the RPC path must use the same cap").toBe(true);
     expect(/countCapped: true/.test(FACET), "a capped figure presented as exact cannot be checked").toBe(true);
   });
 
   it("names which matcher produced the counts", () => {
-    expect(/facetSource: qText \? "ranked" : "filters",/.test(FACET)).toBe(true);
+    expect(/facetSource: facetTokens \? "employer" : "filters",/.test(FACET)).toBe(true);
   });
 
   it("binds the SAME filters into the facet count as the list", () => {
-    // A facet counted without the active filters answers for the whole board.
-    for (const f of ["p_country", "p_experience", "p_salary_floor", "p_companies", "p_work_mode", "p_remote"]) {
-      expect(FACET, `the facet count must bind ${f}`).toContain(f);
-    }
+    // A facet counted without the active filters answers for the whole board;
+    // buildQuery is the one place the list binds them.
+    expect((FACET.match(/buildQuery\("effective_posted", true, c/g) ?? []).length).toBe(2);
   });
 
   it("derives qText ONCE, above the facet block", () => {

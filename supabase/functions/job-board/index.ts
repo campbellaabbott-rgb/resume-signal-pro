@@ -11467,6 +11467,21 @@ async function serveList(
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
 
   if (body.facetCounts === true) {
+    // A text query's chips were counted by substring (the capped-count RPC, or the
+    // ILIKE terms of buildQuery) while the list matches by FTS: q=rn US showed
+    // legal 1,159 over a legal list of 8 (L13-24). An employer query counts the
+    // list's own matcher, its tokens; any other text query withholds the numbers
+    // rather than publish a different population's (n433).
+    const facetRoute = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
+    const facetTokens = facetRoute?.route === "EMPLOYER" && facetRoute.tokens?.length ? facetRoute.tokens : null;
+    if (qText && !facetTokens) {
+      return json({
+        categories: {},
+        facetSource: "withheld",
+        appliedSignature: JSON.stringify(applied),
+        ...(ignoredFilters.length ? { ignoredFilters } : {}),
+      });
+    }
     // Rationale: docs/job-board-index-notes.md#n312-facet-chunk
     const FACET_CHUNK = 6;
     // Rationale: docs/job-board-index-notes.md#n313-facet-deadline
@@ -11479,47 +11494,12 @@ async function serveList(
       const chunk = cats.slice(i, i + FACET_CHUNK);
       // Rationale: docs/job-board-index-notes.md#n314-chunkbudget
       const chunkBudget = Math.max(250, FACET_DEADLINE - Date.now());
-      // Rationale: docs/job-board-index-notes.md#n315-facetq
-      const facetQ = queryTerms(body.q).terms;
-      const facetUseRpc = qText && facetQ.length <= 1;
-      // Rationale: docs/job-board-index-notes.md#n316-facetpaywindow
-      const facetPayWindow = applied.hasStatedPay === true;
       const chunkWork = Promise.all(chunk.map(async (c) => {
         try {
-          if (facetUseRpc && facetPayWindow) return [c, null, false] as const;
-          if (facetUseRpc) {
-            // Rationale: docs/job-board-index-notes.md#n317-t-count-jobs-capped-5
-            const t_count_jobs_capped_5 = Date.now();
-            const { data, error } = await client.rpc("count_jobs_capped", {
-              p_fresh_cutoff: freshCutoffIso,
-              // count_jobs_capped is a contiguous ILIKE, which already reads a
-              // phrase as adjacent words; the quotes are tsquery syntax and
-              // would be matched as literal characters here. Same text as
-              // facetQ[0] for a one-term query — the branch this gate admits.
-              p_q: qText.replace(/"/g, ""),
-              ...(applied.location ? { p_location: rankedLocationParam(applied.location) } : {}),
-              ...(applied.remote ? { p_remote: true } : {}),
-              ...(applied.country ? { p_country: applied.country } : {}),
-              p_category: c,
-              ...sendableSourcesParam(applied),
-              ...(applied.experience.length ? { p_experience: applied.experience } : {}),
-              ...(applied.salaryFloor !== null ? { p_salary_floor: applied.salaryFloor } : {}),
-              ...(applied.companies.length ? { p_companies: applied.companies } : {}),
-              p_posted_after: applied.postedAfter,
-              p_max_age_days: applied.maxAgeDays,
-              ...payParams(applied),
-              ...extraFilterParams(applied),
-              ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
-              ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
-              ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
-              p_cap: COUNT_CAP,
-            });
-            markFrom("count_jobs_capped_settle", t_count_jobs_capped_5);
-            if (error) return [c, null, false] as const;
-            const row = Array.isArray(data) ? data[0] as { n?: number; capped?: boolean } : null;
-            return [c, Number(row?.n ?? 0), !!row?.capped] as const;
-          }
-          const r = await buildQuery("effective_posted", true, c).range(0, 0);
+          const base = facetTokens
+            ? buildQuery("effective_posted", true, c, { skipTerms: true }).in("company_token", facetTokens)
+            : buildQuery("effective_posted", true, c);
+          const r = await base.range(0, 0);
           if (r.error) return [c, null, false] as const;
           // Capped to the SAME ceiling the list uses, so the two numbers on
           // screen are the same kind of number.
@@ -11544,9 +11524,8 @@ async function serveList(
       // Said out loud for the same reason the list says it: a capped figure
       // presented as exact is a number that cannot be checked.
       ...(facetCapped ? { countCapped: true } : {}),
-      // Which matcher produced these. With a query they come from the same
-      // count the list uses; without one, from the filter query directly.
-      facetSource: qText ? "ranked" : "filters",
+      // Which matcher produced these: the employer's tokens (the list's own), or the filters alone.
+      facetSource: facetTokens ? "employer" : "filters",
       // Says which filters these counts are FOR, so a stale response arriving
       // after the visitor changed a filter can be discarded rather than
       // painted over the new selection.
