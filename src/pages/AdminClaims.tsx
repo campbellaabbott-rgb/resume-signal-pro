@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { BadgeCheck, Building2, Check, ExternalLink, Loader2, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { SEO } from "@/components/seo/SEO";
@@ -134,7 +135,7 @@ function ClaimsDashboard() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <Link
-                    to={`/jobs/company/${claim.company_token}`}
+                    to={companyLanderPath(claim.company_token)}
                     className="font-semibold hover:text-primary inline-flex items-center gap-1"
                   >
                     {claim.company_name ?? claim.company_token}

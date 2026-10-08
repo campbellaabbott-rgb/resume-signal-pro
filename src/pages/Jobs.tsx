@@ -41,6 +41,7 @@ import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -4162,7 +4163,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({ rbBoard: boardId }, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
+      window.history.replaceState({ rbBoard: boardId }, "", companyLanderPath(landerCompany, landerQs));
       return;
     }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
@@ -7122,7 +7123,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
                 <p className="text-sm text-muted-foreground">
-                  <Link to={`/jobs/company/${detailJob.token}`} className="text-primary hover:underline" onClick={() => closeDetail()}>
+                  <Link to={companyLanderPath(detailJob.token)} className="text-primary hover:underline" onClick={() => closeDetail()}>
                     {detailJob.company}
                   </Link>
                   {detailLoc.text ? <> · {detailLoc.text}</> : null}
@@ -8212,7 +8213,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           : landerCompany
           ? t("jobsPage.companySeoDescription", "Is {{company}} hiring right now? See {{company}}'s verified open roles, pulled straight from their own job board and re-checked today — no aggregators, no ghost postings. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
-        path={landerCompany ? `/jobs/company/${landerCompany}` : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
+        path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
@@ -11575,7 +11576,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           </Link>
                           <p className="text-[13px] text-muted-foreground mt-0.5">
                             {job.token
-                              ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
+                              ? <Link to={companyLanderPath(job.token)} className="hover:text-primary hover:underline">{job.company}</Link>
                               : job.company}
                             {/* The tidied place, with the employer's own string
                                 one hover away whenever the two differ. A span

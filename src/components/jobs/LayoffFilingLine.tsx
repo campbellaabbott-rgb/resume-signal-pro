@@ -41,6 +41,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -388,7 +389,7 @@ function FilingSentence({ row, t }: { row: LayoffFiling; t: T }) {
       {row.moreN > 0 && (
         <>
           {" · "}
-          <Link to={`/jobs/company/${row.companyToken}`} className="text-primary hover:underline" onClick={stop}>
+          <Link to={companyLanderPath(row.companyToken)} className="text-primary hover:underline" onClick={stop}>
             {t("jobsPage.layoffMore", "+{{more}} more on the employer page", { more: fmtCount(row.moreN) })}
           </Link>
         </>

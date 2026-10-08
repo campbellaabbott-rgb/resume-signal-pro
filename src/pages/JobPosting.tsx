@@ -28,6 +28,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Building2, ExternalLink, Loader2, MapPin } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -296,7 +297,7 @@ export default function JobPosting() {
                   <span className="inline-flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5" />
                     {job.token
-                      ? <Link to={`/jobs/company/${job.token}`} className="text-primary hover:underline">{company}</Link>
+                      ? <Link to={companyLanderPath(job.token)} className="text-primary hover:underline">{company}</Link>
                       : company}
                   </span>
                 )}

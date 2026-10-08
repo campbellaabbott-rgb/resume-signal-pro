@@ -175,8 +175,10 @@ describe("the lander rewrite keeps the way back", () => {
     // which is a guard that passes by matching zero things.
     const landers = CODE.split("\n")
       .map((l) => l.trim())
-      // Any state object: the board stamps its entries with its id (2026-10-08).
-      .filter((l) => /replaceState\(\{[^}]*\}, "", `\/jobs\/(?:field|company)\//.test(l));
+      // Any state object: the board stamps its entries with its id; and the
+      // company form is built by companyLanderPath, which keeps the trailing
+      // slash a dotted token needs (both 2026-10-08).
+      .filter((l) => /replaceState\(\{[^}]*\}, "", (?:`\/jobs\/(?:field|company)\/|companyLanderPath\()/.test(l));
     expect(landers.length, "expected exactly the two lander rewrites").toBe(2);
     for (const l of landers) {
       expect(l, `a lander rewrite still hand-builds its query string: ${l}`)
