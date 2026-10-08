@@ -4607,7 +4607,8 @@
     "deleteAccountBody": "Verwijdert je account, scangeschiedenis, checklist, doel, sollicitaties en elk cv dat je voor de agent hebt geüpload definitief, en zegt elk abonnement op dat dit account betaalt, zodat er niets meer wordt afgeschreven. Aankoopgegevens bewaren we voor de boekhouding. Dit kan niet ongedaan worden gemaakt.",
     "deleteUnlinkedPlan": "Dit adres heeft een abonnement dat niet aan dit account is gekoppeld. Zeg het eerst op via de factuurpagina van Stripe en verwijder daarna het account. Er is niets verwijderd.",
     "deleteRetry": "Er is niets verwijderd: we konden je abonnement niet opzeggen of je bestanden niet verwijderen. Probeer het over een minuut opnieuw.",
-    "deleteFailed": "Het verwijderen van het account is mislukt. Neem contact op met support."
+    "deleteFailed": "Het verwijderen van het account is mislukt. Neem contact op met support.",
+    "lifecycleGoingDown": "Bij onze laatste controle stond deze vacature niet meer op de site van de werkgever. We geven een datum zodra vaststaat dat ze is verwijderd."
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",

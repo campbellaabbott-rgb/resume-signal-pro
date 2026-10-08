@@ -524,6 +524,9 @@ export default function Account() {
       for (const r of rows) {
         if (!r.closed_at) continue;
         if (r.closed_at_is_observation === true) continue;
+        // Only a takedown that stayed down (L13-14): a relisted role, or one
+        // the log no longer trusts, must not acquire a date nothing can undo.
+        if (r.outcome !== "came_down") continue;
         await appsTable.update({ posting_closed_at: r.closed_at, posting_checked_at: new Date().toISOString() })
           .eq("job_id", r.job_id).is("posting_closed_at", null);
       }
@@ -1518,6 +1521,15 @@ export default function Account() {
                             {t("accountPage.lifecycleCameDown", "⚠ Came down on {{when}}{{stood}}. It has not reappeared.", {
                               when, stood: days != null ? t("accountPage.lifecycleStood", ", after at least {{d}} days posted", { d: days }) : "",
                             })}
+                          </p>
+                        );
+                      }
+                      // Stamped missing on our last read and not yet closed
+                      // (L11-08): neither "still posted" nor a date.
+                      if (outcome === "going_down") {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                            {t("accountPage.lifecycleGoingDown")}
                           </p>
                         );
                       }

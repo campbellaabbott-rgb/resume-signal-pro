@@ -4607,7 +4607,8 @@
     "deleteAccountBody": "Exclui para sempre a sua conta, o histórico de análises, a lista de tarefas, o objetivo, as candidaturas e qualquer CV enviado para o agente, e cancela qualquer assinatura paga por esta conta, para que nada mais seja cobrado. Os registos de compra são mantidos para fins contabilísticos. Não pode ser desfeito.",
     "deleteUnlinkedPlan": "Este endereço tem uma assinatura que não está ligada a esta conta. Cancele-a primeiro na página de faturação da Stripe e depois exclua a conta. Nada foi excluído.",
     "deleteRetry": "Nada foi excluído: não conseguimos terminar de cancelar a sua assinatura ou remover os seus ficheiros. Tente novamente daqui a um minuto.",
-    "deleteFailed": "A exclusão da conta falhou. Contacte o suporte."
+    "deleteFailed": "A exclusão da conta falhou. Contacte o suporte.",
+    "lifecycleGoingDown": "Na nossa última verificação, esta vaga já não estava no site da empresa. Vamos datá-la quando for confirmado que foi retirada."
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",

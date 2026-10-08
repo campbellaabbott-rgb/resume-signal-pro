@@ -4607,7 +4607,8 @@
     "deleteAccountBody": "Permanently deletes your account, scan history, checklist, goal, applications and any CV you uploaded for the agent, and cancels any subscription this account pays for, so nothing more is charged. Purchase records are retained for accounting. This cannot be undone.",
     "deleteUnlinkedPlan": "This address has a subscription that isn't linked to this account. Cancel it from Stripe's billing page first, then delete the account. Nothing was deleted.",
     "deleteRetry": "Nothing was deleted: we couldn't finish cancelling your subscription or removing your files. Please try again in a minute.",
-    "deleteFailed": "Account deletion failed. Please contact support."
+    "deleteFailed": "Account deletion failed. Please contact support.",
+    "lifecycleGoingDown": "Our last check did not find this posting on the employer's board. We'll date it once it is confirmed down."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",

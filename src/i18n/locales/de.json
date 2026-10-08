@@ -4607,7 +4607,8 @@
     "deleteAccountBody": "Löscht Ihr Konto, Ihren Scanverlauf, Ihre Checkliste, Ihr Ziel, Ihre Bewerbungen und jeden für den Agenten hochgeladenen Lebenslauf endgültig und kündigt jedes Abonnement, das dieses Konto bezahlt, sodass nichts mehr berechnet wird. Kaufbelege werden für die Buchhaltung aufbewahrt. Dies kann nicht rückgängig gemacht werden.",
     "deleteUnlinkedPlan": "Für diese Adresse besteht ein Abonnement, das nicht mit diesem Konto verknüpft ist. Kündigen Sie es zuerst auf der Abrechnungsseite von Stripe und löschen Sie dann das Konto. Es wurde nichts gelöscht.",
     "deleteRetry": "Es wurde nichts gelöscht: Wir konnten Ihr Abonnement nicht kündigen oder Ihre Dateien nicht entfernen. Bitte versuchen Sie es in einer Minute erneut.",
-    "deleteFailed": "Das Löschen des Kontos ist fehlgeschlagen. Bitte wenden Sie sich an den Support."
+    "deleteFailed": "Das Löschen des Kontos ist fehlgeschlagen. Bitte wenden Sie sich an den Support.",
+    "lifecycleGoingDown": "Bei unserer letzten Prüfung war diese Stelle nicht mehr auf der Karriereseite des Arbeitgebers. Ein Datum nennen wir erst, wenn feststeht, dass sie entfernt wurde."
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",

@@ -50,6 +50,7 @@ const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const MIG_DIR = resolve(ROOT, "supabase/migrations");
 const CENSUS_FILE = readdirSync(MIG_DIR).find((f) => f.startsWith("20261004110000_"))!;
+const LIFECYCLE_FILE = readdirSync(MIG_DIR).find((f) => f.startsWith("20261009131000_"))!;
 const CENSUS_SQL = CENSUS_FILE ? read(`supabase/migrations/${CENSUS_FILE}`) : "";
 
 const nameOf = (sig: string) => sig.slice("public.".length, sig.indexOf("("));
@@ -669,7 +670,9 @@ describe("the tracker's lifecycle answers only for the caller's own tracker", ()
   });
 
   it("intersects the ids with user_applications for auth.uid() before reading either ledger", () => {
-    expect(f.file).toBe(CENSUS_FILE);
+    // Redefined by wave 3 (S8-018: metered by the day; L13-14, L11-08), the
+    // census shape kept.
+    expect([CENSUS_FILE, LIFECYCLE_FILE]).toContain(f.file);
     expect(f.body).toMatch(/FROM public\.user_applications a\s+WHERE a\.user_id = auth\.uid\(\)\s+AND a\.job_id = ANY \(p_job_ids\[1:500\]\)/);
     // Both ledgers are read only through the intersected ids.
     expect(f.body).toMatch(/c\.posting_id IN \(SELECT ids\.jid FROM ids\)/);
