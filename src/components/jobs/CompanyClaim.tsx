@@ -51,7 +51,8 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
     if (!token) return;
     params.delete("claim_verify");
     const qs = params.toString();
-    window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    // Keeps the entry's state: the board stamps its own entries (see Jobs).
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke("company-claim", {

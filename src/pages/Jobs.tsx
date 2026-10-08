@@ -40,7 +40,7 @@ import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -2337,7 +2337,42 @@ function JobAgentHandoff({ job, compact, track }: {
   );
 }
 
+/** A fresh id per mounted board, written into every history entry the board
+ *  writes, so a Back/Forward can tell its own entries from another page's. */
+const newBoardId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+/**
+ * ONE ADDRESS, ONE BOARD.
+ *
+ * /jobs, /jobs/company/:token and /jobs/field/:category all render this page,
+ * and React Router reuses the instance across them. Every filter is seeded
+ * once, in a useState initialiser, so an in-app link from one to another (a
+ * card's employer, the panel's employer, "Also hiring in", the header's Jobs)
+ * changed the address and nothing else: no request, no lander panels, and the
+ * URL-sync effect then wrote the OLD board's filters back over the new address.
+ *
+ * So the board remounts on every navigation the app makes (push/replace), and
+ * on a Back/Forward that lands on an entry this board did not write. A pop
+ * onto its OWN entry (closing the detail panel, the stale-survivor rewrite)
+ * keeps the instance: the board stamps each entry it writes with its id.
+ */
 export default function Jobs() {
+  const location = useLocation();
+  const navType = useNavigationType();
+  const mounted = useRef<{ loc: typeof location; n: number; id: string } | null>(null);
+  if (mounted.current === null) {
+    mounted.current = { loc: location, n: 0, id: newBoardId() };
+  } else if (mounted.current.loc !== location) {
+    const st = typeof window !== "undefined" ? (window.history.state as { rbBoard?: unknown } | null) : null;
+    const ownEntry = navType === "POP" && st?.rbBoard === mounted.current.id;
+    mounted.current = ownEntry
+      ? { ...mounted.current, loc: location }
+      : { loc: location, n: mounted.current.n + 1, id: newBoardId() };
+  }
+  return <JobsBoard key={mounted.current.n} boardId={mounted.current.id} />;
+}
+
+function JobsBoard({ boardId }: { boardId: string }) {
   const { t, i18n } = useTranslation();
   // The FX vintage as a reader sees it, once per language rather than five times
   // per render. The constant itself stays ISO — it is the page's half of a mirror
@@ -4121,15 +4156,15 @@ export default function Jobs() {
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({}, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
+      window.history.replaceState({ rbBoard: boardId }, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({}, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
+      window.history.replaceState({ rbBoard: boardId }, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
-    window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany]);
+    window.history.replaceState({ rbBoard: boardId }, "", qs ? `/jobs?${qs}` : "/jobs");
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany, boardId]);
 
   // THE PER-SOURCE INVENTORY FOR THE VENDOR DROPDOWN, read once on mount from
   // the same stored facet row /explore's tiles come from (src/lib/board-facets).
@@ -4435,10 +4470,10 @@ export default function Jobs() {
       p.set("job", job.id);
       const url = `${window.location.pathname}?${p.toString()}`;
       if (urlMode === "push" && !detailPushed.current) {
-        window.history.pushState({ job: job.id }, "", url);
+        window.history.pushState({ job: job.id, rbBoard: boardId }, "", url);
         detailPushed.current = true;
       } else {
-        window.history.replaceState({ job: job.id }, "", url);
+        window.history.replaceState({ job: job.id, rbBoard: boardId }, "", url);
       }
     }
     // Verify-on-view: a posting not re-checked in 24h+ gets a background live
@@ -4512,7 +4547,7 @@ export default function Jobs() {
         const p = new URLSearchParams(window.location.search);
         p.delete("job");
         const qs = p.toString();
-        window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+        window.history.replaceState({ rbBoard: boardId }, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
       }
     }
     if (viaHistory) detailPushed.current = false;
