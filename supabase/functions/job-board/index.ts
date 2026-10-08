@@ -86,7 +86,7 @@ import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
-import { planRankedPage, RANKED_WINDOW, RING_WINDOW } from "./paging.ts";
+import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
@@ -11666,6 +11666,8 @@ async function serveList(
           // tier-sniff branch is deploy-window cover only — delete it after the
           // SQL is verified.
           const cappedC = relC === null ? tC >= (tier2C ? 3_000 : 10_000) : tC >= 10_000;
+          // "c#" and "c++" parse to the bare letter: that count is not this query's (L8-17, n430).
+          if (qClass?.route === "SYMBOL") return json({ total: null, countUnavailable: true, ...countHonesty });
           return json({
             total: tC,
             ...(cappedC ? { countCapped: true } : {}),
@@ -12880,8 +12882,16 @@ async function serveList(
         // The count and the retriever do not always share a predicate — see
         // the note on `total` below. Computed once here so every field in this
         // response argues from the same row count.
-        const shownRowCount = rankedGrouped.jobs.length;
-        const totalUnderstated = !augmented && typeof total === "number" && (offset + shownRowCount) > total;
+        // Rows reached, not a pool position past the seam jump (L8-16, n431); against both segments.
+        const countedReached = rowsReached({
+          deepPage, pOffset: pagePlan.pOffset, offset, rawConsumed: rankedGrouped.rawConsumed,
+          poolLength: rankedScored.length, sqlRowsOnPage: rankedRows.length,
+        });
+        const totalUnderstated = !augmented && typeof pageTotal === "number" && countedReached > pageTotal;
+        // "c#" and "c++" parse to the bare letter, so search_jobs' count is not this query's (L8-17).
+        const symbolQuery = qClass?.route === "SYMBOL";
+        const symbolFloor = symbolQuery ? symbolLiteralRows(rankedScored, qText) : 0;
+        const countWithheld = augmented || totalUnderstated || symbolQuery;
         // Rationale: docs/job-board-index-notes.md#n385-earneddym
         let earnedDym: string | null = null;
         if (
@@ -12919,7 +12929,7 @@ async function serveList(
 
         // Rationale: docs/job-board-index-notes.md#n387-rankedserved
         const rankedServed = preferMatchedLocation(await attachRecheckedAt(client, rankedGrouped.jobs, excludedTerms), locationTerms(body.location).terms);
-        logSearch("ranked", rankedGrouped.jobs.length, augmented ? null : total, null, rankedServed);
+        logSearch("ranked", rankedGrouped.jobs.length, countWithheld ? null : total, null, rankedServed);
         return json({
           jobs: rankedServed,
           searchId,
@@ -12929,7 +12939,8 @@ async function serveList(
           ...exclusionDisclosure(excludedTerms),
           ...coverageDisclosure(applied, meta),
           ...honesty(rankedGrouped.jobs),
-          ...(augmented ? { countUnavailable: true } : {}),
+          ...(augmented || symbolQuery ? { countUnavailable: true } : {}),
+          ...(symbolQuery && !totalUnderstated && symbolFloor > 0 ? { totalAtLeast: symbolFloor } : {}),
           // Rationale: docs/job-board-index-notes.md#n388-newestfirst
           ...(newestFirst
             ? { sortScope: "relevanceWindow", sortScopeRows: ringMerged ? RING_WINDOW : RANKED_WINDOW }
@@ -12951,16 +12962,16 @@ async function serveList(
               || (deepPageable && pageTotal !== null && offset + rankedGrouped.rawConsumed < pageTotal))
             : (rankedSequence.length > rankedGrouped.rawConsumed || rankedSequence.length >= fetchLimit),
           // Rationale: docs/job-board-index-notes.md#n390-total-augmented-totalunderstated-null-to
-          total: augmented || totalUnderstated ? null : total,
-          ...(totalUnderstated ? { countUnavailable: true, totalAtLeast: offset + shownRowCount } : {}),
+          total: countWithheld ? null : total,
+          ...(totalUnderstated ? { countUnavailable: true, totalAtLeast: countedReached } : {}),
           // Rationale: docs/job-board-index-notes.md#n391-augmented-totalunderstated-related
-          ...(augmented || totalUnderstated || related === null || related === 0
+          ...(countWithheld || related === null || related === 0
             ? {}
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
-          ...(rankedCapped ? { countCapped: true } : {}),
+          ...(rankedCapped && !symbolQuery ? { countCapped: true } : {}),
           ...exclusionCountsCaveat(excludedTerms),
           // Rationale: docs/job-board-index-notes.md#n392-augmented-totalunderstated-exclusi
-          ...(augmented || totalUnderstated ? {} : exclusionCeiling(excludedTerms, total)),
+          ...(countWithheld ? {} : exclusionCeiling(excludedTerms, total)),
           totalAllCompanies: safeMetaTotal ?? total,
           ...(trackedTotal !== null ? { trackedTotal } : {}),
           companies: includeFacets0

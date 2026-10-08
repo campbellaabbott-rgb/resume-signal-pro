@@ -46,7 +46,8 @@ describe("counts and disclosures stay self-consistent", () => {
   it("the related segment stands down whenever the exact total was withdrawn", () => {
     // relatedTotal beside a totalUnderstated-nulled total made the client
     // render "0 exact" over a page of exact matches.
-    expect(BOARD).toMatch(/augmented \|\| totalUnderstated \|\| related === null \|\| related === 0/);
+    expect(BOARD).toMatch(/const countWithheld = augmented \|\| totalUnderstated \|\| symbolQuery;/);
+    expect(BOARD).toMatch(/countWithheld \|\| related === null \|\| related === 0/);
   });
 
   it("the carried-facets marker rides the SERVED row, not only the fat one", () => {

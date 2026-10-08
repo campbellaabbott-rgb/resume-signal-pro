@@ -134,7 +134,9 @@ describe("a page that holds a number must say it", () => {
     // The ranked exit withholds it when the page already disproved the count
     // or holds appended close matches — a ceiling of the exact segment over a
     // mixed page is the "Showing 40 of 18" contradiction again.
-    expect(CODE).toMatch(/\.\.\.\(augmented \|\| totalUnderstated \? \{\} : exclusionCeiling\(excludedTerms, total\)\),/);
+    // countWithheld is augmented || totalUnderstated || a symbol query (.91, L8-17).
+    expect(CODE).toMatch(/const countWithheld = augmented \|\| totalUnderstated \|\| symbolQuery;/);
+    expect(CODE).toMatch(/\.\.\.\(countWithheld \? \{\} : exclusionCeiling\(excludedTerms, total\)\),/);
   });
 
   it("the ceiling rides BESIDE the withdrawal, never in place of it", () => {

@@ -573,7 +573,8 @@ describe("the countOnly exit is not exempt from the honesty contract", () => {
     // of 3 above 60 delivered rows, 57 of them "Camarero/a"). The invariant
     // this test defends — an augmented page never publishes a total — is
     // unchanged; the condition it rides on simply widened.
-    expect(code).toMatch(/total: augmented \|\| totalUnderstated \? null : total/);
+    expect(code).toMatch(/const countWithheld = augmented \|\| totalUnderstated \|\| symbolQuery;/);
+    expect(code).toMatch(/total: countWithheld \? null : total/);
   });
 });
 
