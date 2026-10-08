@@ -14,6 +14,14 @@
  * every queued mail carries due_at = the moment it becomes visible (what the
  * queue now ages from, one-refused-sender-must-not-starve-the-queue-behind-it),
  * and a refused enqueue is a logged 503, never {queued: true}.
+ *
+ * AND THE RETRY IT ASKS FOR CAN WORK (review of the fix). The once-a-month
+ * slot (mail_door_take) is taken before the four enqueues, so a refused
+ * enqueue answered "try the button again" while the retry could only answer
+ * "already started", and a refusal of the second enqueue left the first
+ * queued. Now the sequence is all or none: the mails queued before a refusal
+ * are deleted (delete_email), the slot is given back, and only then does the
+ * answer ask for another press; an attempt it could not undo says retry:false.
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -23,6 +31,10 @@ const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
 const db = new FakeDb();
 const enqueued: Array<Record<string, unknown>> = [];
 let refuse = false;
+/** Refuse only the Nth enqueue of a press (1-based). */
+let refuseAt: number | null = null;
+let deleteFails = false;
+let nextMsg = 1;
 let handler: EdgeHandler;
 
 beforeAll(async () => {
@@ -36,15 +48,32 @@ beforeAll(async () => {
   });
 }, 60_000);
 
-afterEach(() => { enqueued.length = 0; refuse = false; db.tables = {}; db.writes = []; db.rpcs = {}; });
+afterEach(() => { enqueued.length = 0; refuse = false; refuseAt = null; deleteFails = false; db.tables = {}; db.writes = []; db.rpcs = {}; });
 
 function install() {
-  db.rpcs.mail_door_take = () => ({ data: true, error: null });
-  db.rpcs.enqueue_email_delayed = (a) => {
-    if (refuse) return { data: null, error: { message: "permission denied for function enqueue_email_delayed" } };
-    enqueued.push(a);
-    return { data: 1, error: null };
+  // A counting door like mail_door_take: one row per (door, bucket).
+  db.rpcs.mail_door_take = (a) => {
+    const rows = db.rows("mail_door_counts");
+    let row = rows.find((r) => r.door === a.p_door && r.bucket === a.p_bucket);
+    if (!row) { row = { door: a.p_door, bucket: a.p_bucket, hits: 0 }; rows.push(row); }
+    row.hits = Number(row.hits) + 1;
+    return { data: Number(row.hits) <= Number(a.p_max), error: null };
   };
+  let n = 0;
+  db.rpcs.enqueue_email_delayed = (a) => {
+    n++;
+    if (refuse || refuseAt === n) return { data: null, error: { message: "permission denied for function enqueue_email_delayed" } };
+    const id = nextMsg++;
+    enqueued.push({ ...a, msg_id: id });
+    return { data: id, error: null };
+  };
+  db.rpcs.delete_email = (a) => {
+    if (deleteFails) return { data: null, error: { message: "queue unavailable" } };
+    const i = enqueued.findIndex((e) => e.msg_id === a.message_id);
+    if (i >= 0) enqueued.splice(i, 1);
+    return { data: i >= 0, error: null };
+  };
+  return () => { n = 0; };
 }
 const press = async () => {
   const token = await signDripLink(SERVICE, { email: "jane@example.com", score: 64, reportId: "A1B2C3D4E5F6", steps: [{ step: "Add numbers", minutes: 10, scoreImpact: 6 }] });
@@ -66,6 +95,30 @@ describe("the four mails are due on their days", () => {
       expect(Math.abs(Date.parse(p.due_at!) - (t0 + delayMs))).toBeLessThan(5_000);
       expect(Math.abs(Date.parse(p.queued_at!) - t0)).toBeLessThan(5_000);
     }
+  });
+});
+
+describe("a refused enqueue leaves nothing behind, so the retry it asks for can work", () => {
+  it("a refused second mail takes back the first and the month's slot; the next press starts all four", async () => {
+    const resetPress = install();
+    refuseAt = 2;
+    const res = await press();
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ success: false, error: "Could not start it right now. Try the button again shortly." });
+    expect(enqueued, "the day-2 mail stayed queued from a sequence that never started").toEqual([]);
+    refuseAt = null;
+    resetPress();
+    expect(await (await press()).json(), "the retry the page asked for answered already started").toEqual({ success: true, queued: true });
+    expect(enqueued).toHaveLength(4);
+  });
+
+  it("an attempt it could not take back does not ask for another press", async () => {
+    install();
+    refuseAt = 3;
+    deleteFails = true;
+    const res = await press();
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ success: false, error: "Could not start the whole sequence.", retry: false });
   });
 });
 

@@ -5210,6 +5210,7 @@
     "invalid": "Este enlace caducó o no es válido. Envíate un informe nuevo desde tu próximo escaneo para obtener otro.",
     "missing": "Esta página necesita el botón de tu correo del informe.",
     "error": "No se pudo iniciar ahora. Vuelve a pulsar el botón en un momento.",
+    "errorFinal": "No se pudo iniciar la secuencia completa, y volver a pulsar el botón no la reiniciará este mes.",
     "home": "Volver a Resume Booster"
   },
   "emailUnsubscribe": {

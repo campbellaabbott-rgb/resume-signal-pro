@@ -5210,6 +5210,7 @@
     "invalid": "Deze link is verlopen of ongeldig. Mail jezelf een nieuw rapport bij je volgende scan om een nieuwe te krijgen.",
     "missing": "Deze pagina heeft de knop uit je rapportmail nodig.",
     "error": "Starten lukt nu niet. Probeer de knop zo meteen opnieuw.",
+    "errorFinal": "De hele reeks kon niet worden gestart, en opnieuw op de knop drukken start hem deze maand niet opnieuw.",
     "home": "Terug naar Resume Booster"
   },
   "emailUnsubscribe": {

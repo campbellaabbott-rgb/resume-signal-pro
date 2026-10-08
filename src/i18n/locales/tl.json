@@ -5210,6 +5210,7 @@
     "invalid": "Expired na o hindi valid ang link na ito. I-email ang bagong report sa iyong susunod na scan para makakuha ng bago.",
     "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
     "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
+    "errorFinal": "Hindi nasimulan ang buong sequence, at hindi ito mauulit ngayong buwan kahit pindutin ulit ang button.",
     "home": "Bumalik sa Resume Booster"
   },
   "emailUnsubscribe": {

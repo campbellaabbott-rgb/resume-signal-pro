@@ -19,7 +19,7 @@ import { SEO } from "@/components/seo/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { dripTokenFromHash, forgetConfirmFragment } from "@/lib/confirm-link";
 
-type State = "ready" | "confirming" | "done" | "already" | "optedOut" | "invalid" | "error" | "missing";
+type State = "ready" | "confirming" | "done" | "already" | "optedOut" | "invalid" | "error" | "errorFinal" | "missing";
 
 export default function FixPlanConfirm() {
   const { t } = useTranslation();
@@ -41,8 +41,13 @@ export default function FixPlanConfirm() {
         setState(d.queued ? "done" : d.reason === "opted_out" ? "optedOut" : "already");
         return;
       }
-      const status = (error as { context?: { status?: number } } | null)?.context?.status;
-      setState(status === 410 || status === 400 ? "invalid" : "error");
+      const ctx = (error as { context?: Response } | null)?.context;
+      const status = ctx?.status;
+      // A failed start the server could not fully undo: the month's slot is
+      // spent, so another press could only answer "already started".
+      let retry = true;
+      try { retry = ((await ctx?.clone().json()) as { retry?: boolean } | undefined)?.retry !== false; } catch { /* no body */ }
+      setState(status === 410 || status === 400 ? "invalid" : retry ? "error" : "errorFinal");
     } catch {
       setState("error");
     }
@@ -98,6 +103,9 @@ export default function FixPlanConfirm() {
         )}
         {state === "error" && (
           <p className="text-sm text-destructive">{t("fixPlanConfirm.error", "Could not start it right now. Try the button again shortly.")}</p>
+        )}
+        {state === "errorFinal" && (
+          <p className="text-sm text-destructive">{t("fixPlanConfirm.errorFinal", "Could not start the whole sequence, and pressing the button again will not restart it this month.")}</p>
         )}
 
         <p className="mt-6">

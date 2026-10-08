@@ -227,10 +227,17 @@ async function take(admin: Admin, door: string, bucket: string, max: number, win
 const recipientBucket = async (serviceKey: string, email: string) =>
   (await sha256Hex(`${serviceKey}:scan-report-recipient:${email}`)).slice(0, 32);
 
+/** A refused enqueue, and whether the mails queued before it were taken back. */
+class DripNotQueued extends Error {
+  constructor(message: string, readonly undone: boolean) { super(message); }
+}
+
 /**
  * THE FIX-PLAN SEQUENCE, queued for `plan.email` -- called only from the
  * confirm-drip action, after the inbox's owner pressed the button the report
- * mail carried. Four mails, days 2/4/6/14 from the click.
+ * mail carried. Four mails, days 2/4/6/14 from the click. All four or none:
+ * a refused enqueue deletes the ones already queued (DripNotQueued.undone
+ * says whether every delete held).
  */
 async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
   const email = plan.email;
@@ -283,10 +290,12 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
     { html: day6, subject: "Day 6: did the fixes work? Verify free", delay: 6 * DAY },
     { html: day14, subject: "One question: did the new resume get interviews?", delay: 14 * DAY },
   ];
+  const queued: number[] = [];
   for (const d of drips) {
-    // An enqueue the database refused is a sequence that never starts: thrown,
-    // so confirm-drip answers 503 and logs it instead of saying "queued".
-    const { error: enqErr } = await admin.rpc("enqueue_email_delayed", {
+    // An enqueue the database refused is a sequence that never starts: the
+    // ones before it are taken back and confirm-drip answers 503, never
+    // "queued".
+    const { data: msgId, error: enqErr } = await admin.rpc("enqueue_email_delayed", {
       queue_name: "transactional_emails",
       payload: {
         message_id: crypto.randomUUID(),
@@ -307,7 +316,16 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
       },
       delay_seconds: d.delay,
     });
-    if (enqErr) throw new Error(`enqueue_email_delayed refused: ${String((enqErr as { message?: string }).message ?? enqErr).slice(0, 160)}`);
+    if (enqErr) {
+      let undone = true;
+      for (const id of queued) {
+        const { error: delErr } = await admin.rpc("delete_email", { queue_name: "transactional_emails", message_id: id });
+        if (delErr) undone = false;
+      }
+      throw new DripNotQueued(`enqueue_email_delayed refused: ${String((enqErr as { message?: string }).message ?? enqErr).slice(0, 160)}`, undone);
+    }
+    if (typeof msgId === "number" && Number.isFinite(msgId)) queued.push(msgId);
+    else if (typeof msgId === "string" && /^\d+$/.test(msgId)) queued.push(Number(msgId));
   }
 }
 
@@ -366,14 +384,28 @@ Deno.serve(async (req) => {
       if (supErr) return reply({ success: false, error: "Could not start it right now. Try the button again shortly." }, 503);
       if (suppressed) return reply({ success: true, queued: false, reason: "opted_out" });
       // ONE SEQUENCE PER ADDRESS PER 30 DAYS, however many buttons are pressed.
-      const due = await take(admin, "send-scan-report:drip", await recipientBucket(serviceKey, plan.email), 1, DRIP_ONCE_PER_DAYS * 1440);
+      const dripBucket = await recipientBucket(serviceKey, plan.email);
+      const due = await take(admin, "send-scan-report:drip", dripBucket, 1, DRIP_ONCE_PER_DAYS * 1440);
       if (due === "error") return reply({ success: false, error: "Could not start it right now. Try the button again shortly." }, 503);
       if (due === "full") return reply({ success: true, queued: false, reason: "already_started" });
       try {
         await queueDrip(admin, plan);
       } catch (e) {
         console.error("[SEND-SCAN-REPORT] drip enqueue failed:", e instanceof Error ? e.message.slice(0, 160) : String(e));
-        return reply({ success: false, error: "Could not start it right now. Try the button again shortly." }, 503);
+        // The month's slot was taken above. A retry can work only if nothing
+        // of this attempt is left queued AND the slot is given back; then,
+        // and only then, the page says to press the button again.
+        const undone = e instanceof DripNotQueued ? e.undone : false;
+        const { error: slotErr } = undone
+          ? await admin.from("mail_door_counts").delete().eq("door", "send-scan-report:drip").eq("bucket", dripBucket)
+          : { error: { message: "not attempted: queued mails could not all be taken back" } };
+        if (undone && !slotErr) {
+          return reply({ success: false, error: "Could not start it right now. Try the button again shortly." }, 503);
+        }
+        console.error("[SEND-SCAN-REPORT] drip attempt not fully undone:", (slotErr as { message?: string } | null)?.message ?? "");
+        // retry:false -- the page must not ask for a press that can only
+        // answer "already started".
+        return reply({ success: false, error: "Could not start the whole sequence.", retry: false }, 503);
       }
       console.log("[SEND-SCAN-REPORT] fix-plan drip queued after its button was pressed (4 emails)");
       return reply({ success: true, queued: true });

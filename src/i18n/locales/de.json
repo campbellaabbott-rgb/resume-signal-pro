@@ -5210,6 +5210,7 @@
     "invalid": "Dieser Link ist abgelaufen oder ungültig. Senden Sie sich beim nächsten Scan einen neuen Bericht, um einen neuen zu erhalten.",
     "missing": "Diese Seite benötigt den Button aus Ihrer Bericht-E-Mail.",
     "error": "Start gerade nicht möglich. Versuchen Sie den Button gleich noch einmal.",
+    "errorFinal": "Die Serie konnte nicht vollständig gestartet werden, und ein erneuter Klick startet sie diesen Monat nicht neu.",
     "home": "Zurück zu Resume Booster"
   },
   "emailUnsubscribe": {

@@ -5210,6 +5210,7 @@
     "invalid": "This link has expired or is not valid. Email yourself a fresh report from your next scan to get a new one.",
     "missing": "This page needs the button from your report email.",
     "error": "Could not start it right now. Try the button again shortly.",
+    "errorFinal": "Could not start the whole sequence, and pressing the button again will not restart it this month.",
     "home": "Back to Resume Booster"
   },
   "emailUnsubscribe": {

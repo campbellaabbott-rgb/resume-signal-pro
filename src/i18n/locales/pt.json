@@ -5210,6 +5210,7 @@
     "invalid": "Este link expirou ou não é válido. Envie para você um novo relatório na próxima análise para receber outro.",
     "missing": "Esta página precisa do botão do e-mail do seu relatório.",
     "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
+    "errorFinal": "Não foi possível iniciar a sequência completa, e tocar no botão de novo não vai reiniciá-la este mês.",
     "home": "Voltar para o Resume Booster"
   },
   "emailUnsubscribe": {
