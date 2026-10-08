@@ -37,9 +37,13 @@ describe("the per-posting freshness stamp reaches the page", () => {
     // would have silently passed against a two-line function.
     const fn = /async function attachRecheckedAtInner\([\s\S]*?\n}/.exec(FN)?.[0] ?? "";
     expect(fn, "attachRecheckedAtInner not found").not.toBe("");
-    // Both the token-collection and the per-row lookup must use `token`.
-    expect(fn).toMatch(/jobs\.map\(\(j\) => String\(j\.token \?\? ""\)\)/);
-    expect(fn).toMatch(/byToken\.get\(String\(j\.token \?\? ""\)\)/);
+    // Both the key collection and the per-row lookup go through stampKeyOfJob,
+    // which reads `token` (and `source`, for a shared token's board key since
+    // .91; run in a-twins-read-kept-a-deferred-boards-rows-out-of-the-48h-sweep).
+    expect(fn).toMatch(/jobs\.map\(\(j\) => stampKeyOfJob\(j, SHARED_TOKENS\)\)/);
+    expect(fn).toMatch(/byKey\.get\(stampKeyOfJob\(j, SHARED_TOKENS\)\)/);
+    const vs = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/verification-stamp.ts"), "utf8");
+    expect(vs).toMatch(/const token = String\(j\.token \?\? ""\);/);
     // The dead field must not come back at either site. Scoped to CODE:
     // the doc comment above deliberately names `j.companyToken` to record what
     // the bug was, and an assertion that forbids the word forbids the

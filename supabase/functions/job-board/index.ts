@@ -78,7 +78,7 @@ import {
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
 import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
-import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, readStaleTries, selectStaleLane, staleExclusion, tokensOf, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
+import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
@@ -101,8 +101,9 @@ import {
   REPORT_PER_ADDRESS_HOUR, stampDemandServed, summariseIncidents, takeDemand, VERIFY_PER_ADDRESS_HOUR, writeIncidents,
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
+import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
 import { cursorAfterFailure, emptyFirstPage, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
-import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows, oversizeTokens } from "./oversize-registry.ts";
+import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 import { selectDeepLane } from "./deep-lane.ts";
@@ -557,7 +558,7 @@ const RETRY_PER_SLICE = 5;
 // Rationale: docs/job-board-index-notes.md#n016-stale-rpc-limit
 const STALE_RPC_LIMIT = 60;
 const STALE_RPC_DEADLINE_MS = 4_000;
-/** Every catalogued token, once: the stale lane's 'uncatalogued' test. A Set, so a token named 'constructor' is a real member. */
+/** Every catalogued token, once: the demand lane's test. A Set, so a token named 'constructor' is a real member. */
 const CATALOGUE_TOKENS: ReadonlySet<string> = new Set(JOB_SOURCES.map((s) => s.token));
 /** Tokens carried by more than one vendor (139 on 2026-10-05): their boards are failure-tracked by `source:token` (n417). */
 const SHARED_TOKENS: ReadonlySet<string> = (() => {
@@ -574,6 +575,8 @@ const boardByKey = (key: string): JobSource | undefined => {
   boardsByKey ??= new Map(JOB_SOURCES.map((s) => [boardKeyOf(s), s]));
   return boardsByKey.get(key);
 };
+/** Every catalogued board's key, once: the stale lane's 'uncatalogued' test (n428). */
+const CATALOGUE_KEYS: ReadonlySet<string> = new Set(JOB_SOURCES.map(boardKeyOf));
 /** One cold hop's stale-lane run, as persisted under meta k = "stale_lane" beside `tries`, and as status reads it. */
 interface StaleLaneRun {
   at: string;
@@ -780,6 +783,31 @@ async function persistOversizeBoards(client: SupabaseClient): Promise<void> {
     );
     if (error) console.warn("[JOB-BOARD] oversize registry persist failed (non-fatal):", error.message?.slice(0, 120));
   } catch { /* diagnostic — never blocks a slice */ }
+}
+
+// Once per isolate: a board on a shared token with no stamp of its own gets the token's (n428).
+let BOARD_STAMPS_SEEDED = false;
+async function seedBoardStamps(client: SupabaseClient): Promise<void> {
+  if (BOARD_STAMPS_SEEDED) return;
+  try {
+    const read = <T,>(q: PromiseLike<T>) => withDeadline(q, 3_000) as Promise<{ data: unknown[] | null; error?: unknown }>;
+    const keyed = await read(client.from("job_board_verifications").select("company_token").like("company_token", "%:%"));
+    if (keyed.error || !Array.isArray(keyed.data)) return;
+    const have = keyed.data.map((r) => String((r as { company_token?: unknown }).company_token ?? ""));
+    const bare = SHARED_TOKENS.size ? await read(client.from("job_board_verifications").select("company_token,verified_at").in("company_token", [...SHARED_TOKENS])) : { data: [] };
+    if (bare.error || !Array.isArray(bare.data)) return;
+    const plan = stampPlan(have, bare.data, JOB_SOURCES, SHARED_TOKENS);
+    if (plan.seed.length) {
+      const { error: wErr } = await client.from("job_board_verifications").upsert(plan.seed, { onConflict: "company_token", ignoreDuplicates: true });
+      if (wErr) { console.warn("[JOB-BOARD] board stamp seed failed (retries next slice):", wErr.message?.slice(0, 120)); return; }
+    }
+    if (plan.remove.length) {
+      const { error: dErr } = await client.from("job_board_verifications").delete().in("company_token", plan.remove.slice(0, 200));
+      if (dErr) { console.warn("[JOB-BOARD] stale board stamps not removed (retries next slice):", dErr.message?.slice(0, 120)); return; }
+    }
+    if (plan.seed.length || plan.remove.length) console.log(`[JOB-BOARD] board stamps: ${plan.seed.length} seeded from the token's stamp, ${plan.remove.length} removed (token no longer shared)`);
+    BOARD_STAMPS_SEEDED = true;
+  } catch { /* the stamps seed on the next slice */ }
 }
 
 /**
@@ -3185,6 +3213,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // sweep reads it: a board we are too small to hold must not have its live
   // postings written into the closure log as an employer's closures.
   await loadOversizeBoards(client);
+  await seedBoardStamps(client);
   const pv = (prog?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
   let hot = Math.max(0, Number(pv.hot) || 0);
   let cold = Math.max(0, Number(pv.cold) || 0) % Math.max(1, COLD_LIST.length);
@@ -3547,8 +3576,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     try {
       const { data: slMeta } = await client.from("job_board_meta").select("v").eq("k", "stale_lane").maybeSingle();
       staleTries = readStaleTries(slMeta?.v);
+      // By board key since .91 (n428): a shared token's bare entry names no board.
+      for (const k of [...staleTries.keys()]) if (SHARED_TOKENS.has(k)) staleTries.delete(k);
       // Rationale: docs/job-board-index-notes.md#n072-staleexclude
-      const staleExclude = staleExclusion({ oversize: oversizeTokens(OVERSIZE_BOARDS), tries: staleTries });
+      const staleExclude = staleExclusion({ oversize: OVERSIZE_BOARDS.keys(), tries: staleTries });
       const askStale = (exclude: readonly string[] | null) => withDeadline(
         client.rpc("get_stalest_boards", { p_limit: STALE_RPC_LIMIT, p_min_age_hours: STALE_LANE_MIN_AGE_H, ...(exclude ? { p_exclude: exclude } : {}) })
           .abortSignal(AbortSignal.timeout(STALE_RPC_DEADLINE_MS + 500))
@@ -3576,17 +3607,18 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         console.warn(`[JOB-BOARD] stale lane: get_stalest_boards unavailable — no lane this hop (${why})`);
         staleLane = { at: new Date().toISOString(), rpc: rpcErr ? "error" : "timeout", asked: 0, windowFull: false, excluded: 0, classes: null, selected: [], fetched: 0, resolved: 0, unresolved: [], prototypeNames: [] };
       } else {
-        const verdicts: StaleVerdict[] = classifyStale(rows, {
-          catalogued: CATALOGUE_TOKENS,
+        // Rows and every set by board key (n428): a stamp row names a board, not a token.
+        const verdicts: StaleVerdict[] = classifyStale(laneRows(rows, SHARED_TOKENS), {
+          catalogued: CATALOGUE_KEYS,
           quarantinedVendors,
-          oversize: new Set(oversizeTokens(OVERSIZE_BOARDS)),
-          dormant: tokensOf(boardFailures.dormant),
-          failing: new Set([...tokensOf(boardFailures.failedAt), ...tokensOf(boardFailures.streaks)]),
+          oversize: new Set(OVERSIZE_BOARDS.keys()),
+          dormant: keysOf(boardFailures.dormant),
+          failing: new Set([...keysOf(boardFailures.failedAt), ...keysOf(boardFailures.streaks)]),
           tries: staleTries,
         });
-        const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...deepBoards].map((s) => s.token));
+        const taken = new Set([...baseSlice, ...demandBoards, ...bootstrapBoards, ...retryBoards, ...deepBoards].map(boardKeyOf));
         staleBoards = selectStaleLane(verdicts, { perSlice: effStalePerSlice, exclude: taken })
-          .map((t) => JOB_SOURCES.find((s) => s.token === t))
+          .map(boardByKey)
           .filter((s): s is JobSource => !!s);
         const classes = countByClass(verdicts);
         staleLane = {
@@ -3602,7 +3634,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           windowFull: rows.length >= STALE_RPC_LIMIT && classes.unexplained === 0 && staleBoards.length === 0,
           excluded,
           classes,
-          selected: staleBoards.map((s) => s.token),
+          selected: staleBoards.map(boardKeyOf),
           fetched: 0,
           resolved: 0,
           unresolved: verdicts.filter((v) => v.cls === "unresolved").map((v) => v.token),
@@ -3670,8 +3702,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   if (demandTaken.length) await stampDemandServed(client, demandTaken, Date.now()).catch(() => {});
 
   const queue = [...slice];
-  const okTokens: string[] = [];
-  // The same boards by board key (n417), for the failure state; okTokens stays token-keyed for the stale lane.
+  // Boards that read, by board key (n417): the failure state and, since .91, the stale lane (n428).
   const okKeys: string[] = [];
   const failed: string[] = [];
   let sliceTotal = 0;
@@ -4989,7 +5020,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             await client.from("job_board_postings").delete().in("id", vanished.slice(i, i + 200));
           }
         }
-        okTokens.push(s.token);
         okKeys.push(boardKeyOf(s));
         // A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
         // greenhouse giant reads fine on its very next visit, and a vendor
@@ -5009,13 +5039,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // must never be lost to a new optional column (country-column rule).
           // A mid-feed zero is the tenant not saying, never "0 open": the lap's t0, else the last stated total stands (n413).
           const stampTotal = stampFeedTotal(r.feedTotal, cursorBefore, deepLaps[lapKey]?.t0);
+          // The board's own key, and the bare token too on a shared one (n428).
           let { error: stampErr } = await client.from("job_board_verifications").upsert(
-            { company_token: s.token, verified_at: new Date().toISOString(), ...(stampTotal === undefined ? {} : { feed_total: stampTotal }) },
+            stampRows(s, SHARED_TOKENS, { verified_at: new Date().toISOString(), ...(stampTotal === undefined ? {} : { feed_total: stampTotal }) }),
             { onConflict: "company_token" },
           );
           if (stampErr?.message?.includes("feed_total")) {
             ({ error: stampErr } = await client.from("job_board_verifications").upsert(
-              { company_token: s.token, verified_at: new Date().toISOString() },
+              stampRows(s, SHARED_TOKENS, { verified_at: new Date().toISOString() }),
               { onConflict: "company_token" },
             ));
           }
@@ -5137,7 +5168,6 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
 
   // Rationale: docs/job-board-index-notes.md#n135-
   {
-    const okSet = new Set(okTokens);
     // A DEFERRED BOARD WAS NEVER ATTEMPTED. Budget-deferred tokens were
     // counted here as consecutive failures — streak, failedAt and
     // firstFailedAt advanced for boards no fetch ever touched, feeding the
@@ -5217,9 +5247,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     // Rationale: docs/job-board-index-notes.md#n138-stalelane
     if (staleLane) {
       try {
-        const attempted = staleBoards.map((s) => s.token).filter((tk) => !budgetSkippedSet.has(tk));
-        const resolved = attempted.filter((tk) => okSet.has(tk)).length;
-        const nextTries = bumpStaleTries(staleTries, attempted, okSet);
+        const attempted = staleBoards.filter((s) => !budgetSkippedSet.has(s.token)).map(boardKeyOf);
+        const resolved = attempted.filter((k) => okKeySet.has(k)).length;
+        const nextTries = bumpStaleTries(staleTries, attempted, okKeySet);
         staleLane.fetched = attempted.length;
         staleLane.resolved = resolved;
         sliceStaleNote = { tries: attempted.length, resolved };
@@ -10820,24 +10850,25 @@ async function attachRecheckedAtInner(
   jobs: Array<Record<string, unknown>>,
 ): Promise<Array<Record<string, unknown>>> {
   // Rationale: docs/job-board-index-notes.md#n278-tokens
-  const tokens = [...new Set(jobs.map((j) => String(j.token ?? "")).filter(Boolean))].slice(0, 80);
-  if (tokens.length === 0) return jobs;
+  // By board key: a shared token's job reads its own board's stamp, never its twin's (n428).
+  const keys = [...new Set(jobs.map((j) => stampKeyOfJob(j, SHARED_TOKENS)).filter(Boolean))].slice(0, 80);
+  if (keys.length === 0) return jobs;
   // Rationale: docs/job-board-index-notes.md#n279-const-data-error-await-withdeadline
   const { data, error } = await withDeadline(
-    client.from("job_board_verifications").select("company_token,verified_at").in("company_token", tokens),
+    client.from("job_board_verifications").select("company_token,verified_at").in("company_token", keys),
     1_500,
   ) as { data: unknown[] | null; error?: unknown };
   // On failure leave the field ABSENT. Falling back to last_seen would restore
   // the exact bug this removes.
   if (error || !Array.isArray(data)) return jobs;
-  const byToken = new Map<string, string>();
+  const byKey = new Map<string, string>();
   for (const r of data) {
     const t = (r as { company_token?: string }).company_token;
     const v = (r as { verified_at?: string }).verified_at;
-    if (t && v) byToken.set(t, v);
+    if (t && v) byKey.set(t, v);
   }
   for (const j of jobs) {
-    const v = byToken.get(String(j.token ?? ""));
+    const v = byKey.get(stampKeyOfJob(j, SHARED_TOKENS));
     // verified_at says the FEED was fetched, not that this posting was in it.
     if (v && !j.missingSince) j.recheckedAt = v;
   }
