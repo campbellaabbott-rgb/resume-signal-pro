@@ -4389,12 +4389,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             for (let i = 0; i < ids.length; i += 200) {
               const { data: tomb, error: tErr } = await client
                 .from("job_board_aged_out")
-                .select("id, posted_at")
+                .select("id, posted_at, aged_at")
                 .in("id", ids.slice(i, i + 200));
               if (tErr) throw tErr;
               tombs.push(...((tomb ?? []) as Tombstone[]));
             }
-            const verdict = splitTombstoned(newRows, tombs);
+            const verdict = splitTombstoned(newRows, tombs, { cutoffMs: freshCutoffMs });
             const blocked = verdict.refused;
             readmitted = verdict.readmitted;
             if (blocked.size > 0) {
