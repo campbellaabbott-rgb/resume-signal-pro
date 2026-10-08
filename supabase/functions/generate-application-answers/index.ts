@@ -21,12 +21,12 @@ import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { classifyQuestion, selectDraftable, roleGuidance, type AppQuestion } from "../_shared/application-questions.ts";
+import { classifyQuestion, selectDraftable, roleGuidance, shapeModelAnswers, type AppQuestion } from "../_shared/application-questions.ts";
 import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-application-answers.2026-10-10.1";
+const FN_BUILD = "generate-application-answers.2026-10-10.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -236,19 +236,11 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
     catch { try { parsed = JSON.parse(content.match(/\{[\s\S]*\}/)?.[0] ?? "{}"); } catch { parsed = {}; } }
 
     const draftLabels = new Set(draftable.map((q) => (q.label ?? "").trim()));
-    const answers = (parsed.answers ?? [])
-      .filter((a) => typeof a?.answer === "string" && a.answer.trim() && typeof a?.question === "string" && a.question.trim())
-      .map((a) => ({
-        question: String(a.question).trim(),
-        answer: String(a.answer).trim(),
-        supported: a.supported !== false,
-        note: a.supported === false ? String(a.note ?? "Add specifics from your own experience.").trim() : "",
-        anticipated: inferred,
-      }))
-      // In explicit mode, drop anything the model answered that we didn't ask
-      // (or that we filtered as non-draftable). In inferred mode, keep its list.
-      .filter((a) => inferred || draftLabels.has(a.question))
-      .slice(0, 12);
+    // Support is a literal true, and an invented question is classified before
+    // it is answered (S8-008): see shapeModelAnswers.
+    const shaped = shapeModelAnswers(parsed.answers, { inferred, askedLabels: draftLabels, limit: 12 });
+    const answers = shaped.answers;
+    skipped.push(...shaped.skipped);
 
     console.log(`[APPLICATION-ANSWERS] mode=${inferred ? "inferred" : "explicit"}; drafted ${answers.length}; ${answers.filter((a) => !a.supported).length} gaps; ${skipped.length} for candidate`);
     return json({ answers, skipped, inferred });

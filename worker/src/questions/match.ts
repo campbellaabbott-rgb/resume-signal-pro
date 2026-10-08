@@ -96,6 +96,7 @@
 import type { DomQuestion } from "../vendors/enumerate-dom.js";
 import { fromLearned, isLearnable, type LearnedAnswers } from "./learned.js";
 import { coverage } from "./countries.js";
+import { isProtectedQuestion } from "./protected.js";
 
 /** What the candidate has told us. Booleans are TRINARY: null = never stated. */
 export type StandingAnswers = {
@@ -672,8 +673,13 @@ export function matchQuestion(
     }
   }
 
-  // LAST, AND ONLY FOR `unrecognised`. See PreparedAnswers.
+  // LAST, AND ONLY FOR `unrecognised`. See PreparedAnswers. Never for a
+  // protected question (criminal record, age, citizenship, pay, health): those
+  // stop for the candidate even when a "supported" draft arrived (S8-008).
   if (standing.category === "unrecognised") {
+    if (isProtectedQuestion(q.label)) {
+      return { ...standing, why: `"${q.label.slice(0, 80)}" is the candidate's to answer; a drafted answer is never sent for it` };
+    }
     const drafted = fromPrepared(q, prepared);
     if (drafted) return { kind: "fill", category: "unrecognised", value: drafted };
   }

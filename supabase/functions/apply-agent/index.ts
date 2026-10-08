@@ -48,7 +48,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // wake is asked AFTER the run, so it sees this run's releases; a posting that
 // already has a packet is never refunded as a refusal; the subscription is
 // read by the account's user id (agent_subscription_rows), never an address.
-const BUILD_VERSION = "2026-10-05.2";
+const BUILD_VERSION = "2026-10-09.1";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

@@ -165,6 +165,25 @@ const CONSENT_ATTEST =
 const FACTUAL = /(authoriz\w*\s*to\s*work|work\s*authoriz|legal\s*authoriz\w*|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|require|hold|have)\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*can\s*you\s*start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authorized)|do\s*you\s*now\s*or\s*in\s*the\s*future|earliest\s*(?:possible\s*)?(?:date|start)|date\s*you\s*(?:could|can|would)\s*start|over\s*18|18\s*(?:years\s*)?(?:or\s*(?:older|above)|of\s*age)|legal\s*working\s*age|days\s*(?:are\s*)?you\s*available|what\s*days\s*[\w\s]{0,24}available|willing\s*to\s*travel|willing\s*to\s*work\s*(?:in|at)\s*(?:another|a\s*different)|licen[sc]e|security\s*clearance|dbs\s*check|background\s*check|criminal\s*(?:record|convict\w*)|referred\s*you|who\s*referred|close\s*relative|family\s*member|related\s*to\s*(?:any\s*)?(?:current\s*)?(?:employee|staff)|how\s*did\s*you\s*(?:hear|learn)\s*about|how\s*you\s*(?:heard|learned)\s*about|name\s*of\s*the\s*[\w\/]{0,24}\s*(?:staff|contractor|consultant|employee|colleague|relative|referrer)|able\s*to\s*start\s*(?:work|by|on)|start\s*working\s*(?:with|for)\s*us)/i;
 
 /**
+ * PROTECTED TOPICS the patterns above missed (sweep S8-008, 2026-10-08). A
+ * classifyQuestion run over 90 labels called these `draftable`: criminal 6/6,
+ * age 4/5, immigration 9/10, salary 8/8, medical 4/4, protected traits 7/7.
+ * `draftable` sends them to the model, and the worker filled a supported draft
+ * into a required box, so the only barrier between an LLM and an employer on
+ * "Have you ever been convicted?" was the model's own supported flag.
+ *
+ * Each arm is narrowed to the question's shape, not the bare noun: "medical
+ * setting", "Medical Terminology", "close rate" and "hotel accommodations" are
+ * résumé questions and stay draftable (classifier-real-labels.test.ts).
+ *
+ * MIRRORED in worker/src/questions/protected.ts, which refuses a prepared draft
+ * for any label these match; a cross-runtime test holds the two to one source.
+ */
+export const PROTECTED_FACTUAL = /(convict\w*|felon\w*|misdemeanou?r|criminal\s+(?:case|charge|investigation|history|offen[cs]e|background|proceeding|record)s?|pending\s+(?:criminal\s+)?(?:charges?|cases?)|(?:been|ever\s+been)\s+(?:arrested|charged|convicted|indicted|cautioned)|plead(?:ed)?\s+guilty|drug\s+(?:test|screen)\w*|(?:at\s+least|over|older\s+than|aged?)\s+(?:1[4-9]|2[0-5])\s*(?:years?\s+(?:of\s+age|old)|yrs?\s+old|\?|\)|$)|how\s+old\b|your\s+age\b|minimum\s+age|legal\s+age|\bcitizen\b|permanent\s+resident|green\s+card|immigration|visa\s+(?:status|type|holder|category)|current\s+visa|\bh-?1b\b|\bf-?1\s+(?:visa|status|student)|\bstem\s+opt\b|\bopt\s+(?:status|extension|ead)|\bon\s+opt\b|\bead\b|passport|right\s+to\s+(?:live\s+(?:and|&)\s+)?work|legally\s+(?:able\s+to\s+)?(?:live\s+(?:and|&)\s+)?work|eligible\s+to\s+(?:live\s+(?:and|&)\s+)?work|work\s+rights|residen(?:cy|ce)\s+(?:status|permit)|settled\s+status|indefinite\s+leave|\bwages?\b|hourly\s+(?:rate|pay)|rate\s+of\s+pay|pay\s+(?:rate|range|requirements?)|day\s+rate|\bote\b|\bctc\b|cost\s+to\s+(?:the\s+)?company|remuneration|medical\s+(?:condition|history|exam\w*|issue|reason|restriction|clearance|certificate|questionnaire|leave|assessment)s?|health\s+(?:condition|issue|problem|declaration|questionnaire|assessment)s?|physical(?:ly)?\s+(?:able|capable|fit|exam\w*|requirements?)|pregnan\w*|(?:need|require|request)\w*\s+(?:any\s+|an?\s+)?(?:reasonable\s+)?accommodat\w*|reasonable\s+accommodat\w*|accommodat\w*\s+(?:during|for|in)\s+(?:the\s+)?(?:interview|hiring|application|recruit\w*|selection)|essential\s+functions|vaccinat\w*|(?:able|willing|available|open)\s+to\s+work\s+(?:[\w,/-]+\s+){0,4}?(?:weekends?|nights?|evenings?|overtime|shifts?|holidays?|on[-\s]?call|rotating)\b|(?:can|could|will|would)\s+you\s+(?:be\s+(?:able|willing|available)\s+to\s+)?work\s+(?:[\w,/-]+\s+){0,4}?(?:weekends?|nights?|evenings?|overtime|shifts?|holidays?|on[-\s]?call)\b|which\s+shifts?|shift\s+(?:preference|availability|pattern)s?|your\s+availability|relatives?\s+(?:who\s+)?(?:work|employed|currently)|know\s+(?:anyone|someone)\s+(?:who\s+)?(?:works?|employed|currently)|tax\s+(?:id|identification|number|file\s+number|code|reference)|\btin\b|\bnif\b|\bdni\b|\bnie\b|\bssn\b|social\s+security|national\s+insurance)/i;
+/** Protected self-identification the DEMOGRAPHIC list missed (S8-008). */
+export const PROTECTED_DEMOGRAPHIC = /(lgbt\w*|transgender|\btrans\s+(?:man|woman|person)|\bcaste\b|aboriginal|torres\s+strait|\bindigenous\b|first\s+nations|military\s+(?:service|status|spouse|member|background|affiliation)|served\s+in\s+the\s+(?:military|armed\s+forces)|armed\s+forces|\bage\s+(?:range|group|bracket|band))/i;
+
+/**
  * Real vendor question labels are not always plain text.
  *
  * 2 of 127 live Recruitee labels arrived as HTML — `<p>` wrappers and `<a>`
@@ -234,7 +253,7 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   const l = cleanQuestionLabel(label);
   const t = (fieldType ?? "").toLowerCase();
   // Protected self-ID wins over everything — even if phrased oddly.
-  if (DEMOGRAPHIC.test(l) || DEMOGRAPHIC_INTL.test(l)) return "demographic";
+  if (DEMOGRAPHIC.test(l) || DEMOGRAPHIC_INTL.test(l) || PROTECTED_DEMOGRAPHIC.test(l)) return "demographic";
   // BEFORE `file` AND `identity`, deliberately — see CONSENT_DOC. Both of those
   // classes were measured stealing real consent questions and answering them
   // with a phone number and a résumé URL respectively.
@@ -272,6 +291,9 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // AFTER factual, so "I acknowledge that I am at least 18 years of age" keeps
   // the standing answer it already has instead of becoming a blocker.
   if (CONSENT_ATTEST.test(l)) return "consent";
+  // After the attestations: "I confirm to have a valid DNI" is the candidate's
+  // own declaration either way, and stays one.
+  if (PROTECTED_FACTUAL.test(l)) return "factual";
   if (IDENTITY_IF_FIELD.test(l) && (bare.split(" ").length <= 4 || OWN_ATTRIBUTE.test(l))) {
     return "identity";
   }
@@ -282,6 +304,47 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
  *  the candidate or is autofilled). */
 export function selectDraftable(questions: readonly AppQuestion[]): AppQuestion[] {
   return questions.filter((q) => classifyQuestion(q.label ?? "", q.type) === "draftable");
+}
+
+export type ShapedAnswer = { question: string; answer: string; supported: boolean; note: string; anticipated: boolean };
+
+/**
+ * The model's reply, turned into answers we will show or send (S8-008).
+ *
+ * Two holes closed here. A missing `supported` flag used to count as true, so
+ * a reply that forgot the field became a grounded answer; only a literal true
+ * is support now. And in INFERRED mode the model invents the questions itself,
+ * which were never classified: it could ask and answer "Are you a U.S.
+ * citizen?" with nothing checking. Every invented question is classified, and
+ * one that is not draftable moves to `skipped` for the candidate.
+ */
+export function shapeModelAnswers(
+  raw: unknown,
+  opts: { inferred: boolean; askedLabels: ReadonlySet<string>; limit?: number },
+): { answers: ShapedAnswer[]; skipped: Array<{ question: string; class: QuestionClass }> } {
+  const skipped: Array<{ question: string; class: QuestionClass }> = [];
+  const answers: ShapedAnswer[] = [];
+  for (const a of Array.isArray(raw) ? raw : []) {
+    if (!a || typeof a !== "object") continue;
+    const r = a as { question?: unknown; answer?: unknown; supported?: unknown; note?: unknown };
+    if (typeof r.answer !== "string" || !r.answer.trim() || typeof r.question !== "string" || !r.question.trim()) continue;
+    const question = r.question.trim();
+    // Explicit mode: only what we asked (which was classified on the way in).
+    if (!opts.inferred && !opts.askedLabels.has(question)) continue;
+    if (opts.inferred) {
+      const cls = classifyQuestion(question);
+      if (cls !== "draftable") { skipped.push({ question, class: cls }); continue; }
+    }
+    const supported = r.supported === true;
+    answers.push({
+      question,
+      answer: r.answer.trim(),
+      supported,
+      note: supported ? "" : String(r.note ?? "Add specifics from your own experience.").trim(),
+      anticipated: opts.inferred,
+    });
+  }
+  return { answers: answers.slice(0, opts.limit ?? 12), skipped };
 }
 
 // ── Role-aware drafting guidance ────────────────────────────────────────────
