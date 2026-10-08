@@ -28,8 +28,12 @@
 
 /** Canonical code -> the ways forms and people actually write it. */
 const COUNTRIES: Record<string, string[]> = {
-  US: ["united states", "usa", "u.s.a.", "u.s.", "us", "america", "the states"],
-  GB: ["united kingdom", "uk", "u.k.", "great britain", "britain", "england", "scotland", "wales"],
+  // Dotted spellings ("U.S.", "U.S.A.", "U.K.") are not listed: norm() takes
+  // the dots out of an initialism first, so they arrive here as "us"/"usa"/"uk".
+  // The bare "us" is ALSO the pronoun; countriesIn() reads it as the country
+  // only where the label says so (see usAsCountry).
+  US: ["united states", "usa", "us", "america", "the states"],
+  GB: ["united kingdom", "uk", "great britain", "britain", "england", "scotland", "wales"],
   IE: ["ireland", "republic of ireland", "eire"],
   CA: ["canada"],
   AU: ["australia"],
@@ -104,7 +108,30 @@ const REGION_ALIASES: Array<[string, RegExp]> = [
   ["EU_EEA", /\b(eu|e\.u\.|european union|eea|e\.e\.a\.|europe)\b/i],
 ];
 
-const norm = (s: string) => s.toLowerCase().replace(/[.,;:!?]/g, " ").replace(/\s+/g, " ").trim();
+/**
+ * Initialisms lose their dots BEFORE punctuation becomes space. The old order
+ * turned "U.S." into "u s" and "U.K." into "u k", so no alias could ever match
+ * and the commonest spelling on a US form read as "no country" — answered from
+ * the candidate's home-country boolean (sweep S8-007).
+ */
+const undot = (s: string) => s.replace(/\b(?:[A-Za-z]\.){1,3}[A-Za-z]\b\.?/g, (m) => m.replace(/\./g, ""));
+const norm = (s: string) =>
+  undot(s).toLowerCase().replace(/[.,;:!?()/]/g, " ").replace(/\s+/g, " ").trim();
+
+/**
+ * "us" the country, not "us" the pronoun. "Would you work for us in Germany?"
+ * is a question about Germany; reading the pronoun as the United States made
+ * it [US, DE] and let a US candidate answer it. The capitalised initialism is
+ * the country (unless the whole label is shouted, when case says nothing); in
+ * lower case only a place phrase ("in the us", "the us", "in us") is.
+ */
+function usAsCountry(label: string): boolean {
+  const u = undot(label);
+  if (/[a-z]/.test(u) && /(^|[^A-Za-z])US(?![A-Za-z])/.test(u)) return true;
+  return /\b(?:(?:in|within|outside(?:\s+of)?|across|throughout)\s+(?:the\s+)?|the\s+)us\b/i.test(u);
+}
+/** "Latin America" and "South America" are not the United States. */
+const NOT_THE_US_AMERICA = /\b(latin|south|central|north)\s+america\b/;
 
 /**
  * The codes this module can reason about. Exported so the account UI cannot
@@ -123,10 +150,15 @@ export function countriesIn(label: string): string[] {
       // Whole-token match. Substring matching turns "us" into a hit on
       // "industry", "discuss" and "customer" — which would silently attach a
       // country to questions that name none.
+      if (code === "US" && a === "us") {
+        if (t.includes(" us ") && usAsCountry(label)) { hits.add(code); break; }
+        continue;
+      }
+      if (code === "US" && a === "america" && NOT_THE_US_AMERICA.test(t)) continue;
       if (t.includes(` ${a} `)) { hits.add(code); break; }
     }
   }
-  for (const [code, re] of REGION_ALIASES) if (re.test(label)) hits.add(code);
+  for (const [code, re] of REGION_ALIASES) if (re.test(undot(label))) hits.add(code);
   return [...hits];
 }
 
@@ -163,16 +195,22 @@ export function coverage(
   const have = new Set(authorised);
   if (own) have.add(own);
 
+  // EVERY named country must be covered. One match used to be enough, so
+  // "authorised to work in the US and Canada?" was a Yes for a candidate who
+  // had stated only the US: a claim about Canada nobody made (S8-007).
+  let first: string | null = null;
   for (const a of asked) {
     if (a === "EU_EEA") {
       // Covered only by a country actually in the bloc. The whole reason this
       // is a list rather than a guess is that "Europe" and "the EU" stopped
       // being interchangeable with "the UK" in 2020.
       const inBloc = [...have].find((c) => EU_EEA.has(c));
-      if (inBloc) return { kind: "covered", country: inBloc };
+      if (!inBloc) return { kind: "not-covered", asked };
+      first = first ?? inBloc;
       continue;
     }
-    if (have.has(a)) return { kind: "covered", country: a };
+    if (!have.has(a)) return { kind: "not-covered", asked };
+    first = first ?? a;
   }
-  return { kind: "not-covered", asked };
+  return { kind: "covered", country: first ?? asked[0]! };
 }
