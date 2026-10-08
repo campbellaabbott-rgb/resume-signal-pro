@@ -15,8 +15,12 @@
  *
  * OWNER DECISION 2026-10-04: refunds and disputes revoke. Held here end to
  * end -- the shipped stripe-webhook handler, with Stripe faked, calling the
- * real payment_revoke (20261008131000) in pglite -- and at the two deliverers
- * that read Stripe themselves.
+ * real payment_revoke (20261008131000) in pglite -- and at every function
+ * that reads Stripe itself, where Stripe still answers 'paid' after a refund:
+ * the two deliverers, the three generators that verify a cs_ session with
+ * Stripe rather than the claim (review of this branch: each regenerated a
+ * refunded purchase), and the pass page's repair, which granted a pass from
+ * a refunded second-pass payment once the first pass closed.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -32,6 +36,7 @@ vi.setConfig({ testTimeout: 60_000, hookTimeout: 240_000 });
 const MIG = (f: string) => readFileSync(resolve(__dirname, "../../supabase/migrations", f), "utf8");
 const BUYER = "00000000-0000-4000-8000-00000000e101";
 const SUBSCRIBER = "00000000-0000-4000-8000-00000000e102";
+const SECOND_PASS_BUYER = "00000000-0000-4000-8000-00000000e103";
 
 const STAND_INS = `
   CREATE TABLE public.pro_subscribers (
@@ -55,7 +60,12 @@ const STAND_INS = `
     session_hash text PRIMARY KEY, email text NOT NULL, product_type text NOT NULL DEFAULT '',
     credits_bought integer NOT NULL, credits_used integer NOT NULL DEFAULT 0, claimed_by uuid,
     created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
-  INSERT INTO auth.users (id, email) VALUES ('${BUYER}', 'buyer@example.com'), ('${SUBSCRIBER}', 'sub@example.com');
+  INSERT INTO auth.users (id, email) VALUES ('${BUYER}', 'buyer@example.com'), ('${SUBSCRIBER}', 'sub@example.com'),
+    ('${SECOND_PASS_BUYER}', 'second@example.com');
+  -- What the real agent_passes carries and agent_pass_grant / agent-pass-status read.
+  ALTER TABLE public.agent_passes ADD COLUMN activated_via text;
+  ALTER TABLE public.agent_passes ADD CONSTRAINT agent_passes_stripe_session_id_key UNIQUE (stripe_session_id);
+  ALTER TABLE public.agent_passes ADD CONSTRAINT agent_passes_stripe_payment_intent_id_key UNIQUE (stripe_payment_intent_id);
 `;
 
 type World = {
@@ -83,10 +93,26 @@ export default class Stripe {
   }
 }`;
 
+const ENV: Record<string, string> = {
+  STRIPE_WEBHOOK_SECRET: "whsec_harness",
+  STRIPE_SECRET_KEY: "sk_test_harness",
+  SUPABASE_URL: "https://harness.supabase.co",
+  SUPABASE_SERVICE_ROLE_KEY: "service_harness",
+  SUPABASE_ANON_KEY: "anon_harness",
+  LOVABLE_API_KEY: "lovable_harness",
+};
+/** Deno as these handlers see it; another harness in this file may replace it, so each test restores it. */
+const harnessDeno = () => ({
+  env: { get: (k: string) => ENV[k] },
+  serve: (h: unknown) => { (globalThis as Record<string, unknown>).__edgeHandler = h; },
+});
+
 let db: PGlite;
 let client: PgSupabase;
 let webhook: EdgeHandler;
+let passStatus: EdgeHandler;
 let world: World;
+let aiCalls = 0;
 
 beforeAll(async () => {
   db = await agentDb({ seed: STAND_INS });
@@ -94,24 +120,38 @@ beforeAll(async () => {
   await db.exec(MIG("20261008131000_a_refunded_payment_takes_back_what_it_bought.sql"));
   // The close a refund makes is a close like any other: the settlement runs too.
   await db.exec(MIG("20261008132000_a_closed_pass_gives_back_every_application_it_never_sent.sql"));
+  // The grant the pass page's repair calls, as its only file defines it.
+  await db.exec(MIG("20260917110000_agent_pass_grant.sql"));
   client = new PgSupabase(db);
-  const env: Record<string, string> = {
-    STRIPE_WEBHOOK_SECRET: "whsec_harness",
-    STRIPE_SECRET_KEY: "sk_test_harness",
-    SUPABASE_URL: "https://harness.supabase.co",
-    SUPABASE_SERVICE_ROLE_KEY: "service_harness",
-    SUPABASE_ANON_KEY: "anon_harness",
-  };
   const g = globalThis as Record<string, unknown>;
-  g.Deno = { env: { get: (k: string) => env[k] } };
+  g.Deno = harnessDeno();
   g.EdgeRuntime = { waitUntil: (p: Promise<unknown>) => { void Promise.resolve(p).catch(() => undefined); } };
-  g.fetch = async () => new Response("{}", { status: 200 });
+  // Every model call the generators make goes through the gateway: counted, and stopped.
+  g.fetch = async (url: unknown) => {
+    if (String(url).includes("ai.gateway.lovable.dev")) {
+      aiCalls++;
+      return new Response(JSON.stringify({ error: "harness stops at the model" }), { status: 400 });
+    }
+    return new Response("{}", { status: 200 });
+  };
   g.__refundClient = client;
   webhook = await loadEdgeHandler("stripe-webhook", {
     "https://deno.land/std@0.190.0/http/server.ts": "export function serve(h) { globalThis.__edgeHandler = h; }",
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__refundClient; export class SupabaseClient {}",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async () => ({ data: null, error: null }) }; } }",
+  });
+  // The pass page's function: a client made with the caller's header answers
+  // getUser for it; the service client is the pglite database.
+  passStatus = await loadEdgeHandler("agent-pass-status", {
+    "https://esm.sh/stripe@18.5.0":
+      "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => { const s = globalThis.__refundStripe.sessions[id]; if (!s) throw new Error('No such checkout.session'); return s; } } }; } }",
+    "https://esm.sh/@supabase/supabase-js@2.45.0": `export function createClient(_u, _k, opts) {
+      const c = globalThis.__refundClient;
+      const h = opts?.global?.headers?.Authorization;
+      if (h === undefined) return c;
+      return { auth: { getUser: () => c.auth.getUser(String(h).replace(/^Bearer\\s+/i, "")) } };
+    }`,
   });
 }, 240_000);
 
@@ -121,6 +161,8 @@ beforeEach(() => {
   world = { sessions: {}, charges: {}, invoices: {}, subs: {}, cancelled: [] };
   (globalThis as Record<string, unknown>).__refundStripe = world;
   client.rpcFaults.clear();
+  aiCalls = 0;
+  (globalThis as Record<string, unknown>).Deno = harnessDeno();
 });
 
 let seq = 0;
@@ -209,6 +251,46 @@ describe("a refunded Agent Pass closes, and nothing more goes out on it", () => 
     expect(await deliver("charge.refunded", { id: "ch_second", payment_intent: "pi_second", amount: 2900, amount_refunded: 2900, refunded: true })).toBe(200);
     expect((await one<{ closed: boolean }>(`SELECT closed_at IS NOT NULL AS closed FROM public.agent_passes WHERE id = '${open}'`)).closed).toBe(false);
   });
+
+  it("the refunded second pass is never granted by the pass page once the first pass has closed", async () => {
+    const first = (await one<{ id: string }>(`
+      INSERT INTO public.agent_passes (user_id, stripe_session_id, stripe_payment_intent_id, activated_at, expires_at)
+      VALUES ('${SECOND_PASS_BUYER}', 'cs_first_e103', 'pi_first_e103', now(), now() + interval '5 hours') RETURNING id`)).id;
+    world.sessions.cs_second_e103 = {
+      id: "cs_second_e103", payment_intent: "pi_second_e103", payment_status: "paid", mode: "payment", amount_total: 2900,
+      client_reference_id: SECOND_PASS_BUYER, metadata: { product_type: "agent_pass" },
+    };
+    // The owner refunds the payment that opened no pass; the receipt is all it writes.
+    expect(await deliver("charge.refunded", { id: "ch_second_e103", payment_intent: "pi_second_e103", amount: 2900, amount_refunded: 2900, refunded: true })).toBe(200);
+    // The first pass closes; the buyer reopens the second checkout's success URL.
+    await db.exec(`UPDATE public.agent_passes SET closed_at = now(), close_reason = 'session_ended' WHERE id = '${first}'`);
+    client.tokens["jwt-e103"] = { id: SECOND_PASS_BUYER, email: "second@example.com" };
+    const res = await passStatus(new Request("https://harness.supabase.co/functions/v1/agent-pass-status?session_id=cs_second_e103", {
+      headers: { authorization: "Bearer jwt-e103" },
+    }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { repair?: string; repairTerminal?: boolean; pass: { state: string } };
+    expect(await one(`SELECT count(*)::int AS n FROM public.agent_passes WHERE stripe_session_id = 'cs_second_e103'`)).toEqual({ n: 0 });
+    expect(body.repair).toBe("payment_revoked");
+    expect(body.repairTerminal).toBe(true);
+    expect(body.pass.state).toBe("closed");
+    expect(client.rpcCalls("agent_pass_grant")).toEqual([]);
+  });
+
+  it("the pass page still grants a paid pass the webhook has not reached yet", async () => {
+    world.sessions.cs_late_e103 = {
+      id: "cs_late_e103", payment_intent: "pi_late_e103", payment_status: "paid", mode: "payment", amount_total: 2900,
+      client_reference_id: SECOND_PASS_BUYER, metadata: { product_type: "agent_pass" },
+    };
+    client.tokens["jwt-e103"] = { id: SECOND_PASS_BUYER, email: "second@example.com" };
+    await db.exec(`UPDATE public.agent_passes SET closed_at = now() WHERE user_id = '${SECOND_PASS_BUYER}' AND closed_at IS NULL`);
+    const res = await passStatus(new Request("https://harness.supabase.co/functions/v1/agent-pass-status?session_id=cs_late_e103", {
+      headers: { authorization: "Bearer jwt-e103" },
+    }));
+    const body = (await res.json()) as { repair?: string; pass: { state: string } };
+    expect(body.repair).toBeUndefined();
+    expect(await one(`SELECT count(*)::int AS n FROM public.agent_passes WHERE stripe_session_id = 'cs_late_e103'`)).toEqual({ n: 1 });
+  });
 });
 
 describe("a disputed subscription payment cancels the plan and takes back what it minted", () => {
@@ -282,5 +364,72 @@ describe("the deliverers that read Stripe themselves refuse a refunded session",
              has_function_privilege('anon', 'public.payment_revoke(text,text,text,text,text,text,uuid,integer,text,timestamptz)', 'EXECUTE')
           OR has_function_privilege('authenticated', 'public.payment_revoke(text,text,text,text,text,text,uuid,integer,text,timestamptz)', 'EXECUTE') AS f`);
     expect(acl).toEqual({ t: false, f: false });
+  });
+});
+
+describe("the generators that verify a cs_ session with Stripe refuse a refunded one", () => {
+  const SERVER = "export function serve(h) { globalThis.__edgeHandler = h; }";
+  const CLIENT = "export function createClient() { const db = globalThis.__genDb; return { from: (t) => db.from(t), rpc: (n, a) => db.rpc(n, a), auth: { getUser: async () => ({ data: { user: null }, error: null }) } }; }";
+  const STUBS: Record<string, string> = {
+    "https://deno.land/std@0.190.0/http/server.ts": SERVER,
+    "https://deno.land/std@0.168.0/http/server.ts": SERVER,
+    "https://esm.sh/stripe@18.5.0":
+      "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => { const s = globalThis.__genSessions[id]; if (!s) throw new Error('No such checkout.session'); return s; } } }; } }",
+    "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT,
+    "https://esm.sh/@supabase/supabase-js@2": CLIENT,
+    "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__genDb;",
+  };
+  const RESUME_TEXT = "Jane Doe -- Senior software engineer with ten years of TypeScript, Postgres and payments work. ".repeat(3);
+
+  /** Stripe calls the session paid; the webhook wrote the receipt and rewrote the claim. */
+  function refundedWorld(sessionId: string, productType: string): FakeDb {
+    const fake = new FakeDb({ used_stripe_sessions: ["session_id"] });
+    fake.rpcs.check_rate_limit = () => ({ data: true, error: null });
+    fake.rows("used_stripe_sessions").push({ session_id: sessionId, product_type: "refunded" });
+    fake.rows("payment_revocations").push({ payment_intent_id: `pi_${sessionId}`, reason: "refunded", stripe_session_id: sessionId });
+    const g = globalThis as Record<string, unknown>;
+    g.__genDb = fake;
+    g.__genSessions = {
+      [sessionId]: { id: sessionId, payment_status: "paid", mode: "payment", amount_total: 2900, metadata: { product_type: productType }, customer_details: { email: "buyer@example.com" } },
+    };
+    return fake;
+  }
+  const post = (handler: EdgeHandler, fn: string, body: Record<string, unknown>) =>
+    handler(new Request(`https://harness.supabase.co/functions/v1/${fn}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer anon_harness", "cf-connecting-ip": "198.51.100.72" },
+      body: JSON.stringify(body),
+    }));
+
+  it("generate-freelance-boost answers 402 before any model call", async () => {
+    refundedWorld("cs_refunded_boost", "freelance_boost");
+    const h = await loadEdgeHandler("generate-freelance-boost", STUBS);
+    const res = await post(h, "generate-freelance-boost", {
+      sessionId: "cs_refunded_boost", targetRole: "Product designer",
+      projects: [{ clientType: "Startup", problem: "No design system", deliverable: "A component library", toolsSkills: "Figma", outcome: "Shipped", duration: "3 months" }],
+    });
+    expect(res.status).toBe(402);
+    expect(((await res.json()) as { refunded?: boolean }).refunded).toBe(true);
+    expect(aiCalls).toBe(0);
+  });
+
+  it("generate-ats-defense answers 402 and does not read the rewritten claim as proof", async () => {
+    refundedWorld("cs_refunded_ats_defense", "ats_defense");
+    const h = await loadEdgeHandler("generate-ats-defense", STUBS);
+    const res = await post(h, "generate-ats-defense", { sessionId: "cs_refunded_ats_defense", resumeText: RESUME_TEXT, jobDescription: "Senior engineer, payments." });
+    expect(res.status).toBe(402);
+    expect(aiCalls).toBe(0);
+  });
+
+  it("generate-apply-package answers 402 to a refunded kit with no plan behind it", async () => {
+    refundedWorld("cs_refunded_kit", "apply_assistant");
+    const h = await loadEdgeHandler("generate-apply-package", STUBS);
+    const res = await post(h, "generate-apply-package", {
+      sessionId: "cs_refunded_kit", resumeText: RESUME_TEXT,
+      jobPostingText: "We are hiring a senior engineer to own our checkout and fulfilment services end to end.",
+    });
+    expect(res.status).toBe(402);
+    expect(((await res.json()) as { refunded?: boolean }).refunded).toBe(true);
+    expect(aiCalls).toBe(0);
   });
 });

@@ -5115,7 +5115,8 @@
     "connectorNoOauth2": "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from {{headerHosts}} with your agent key.",
     "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.",
     "repairSecondPass": "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
-    "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it."
+    "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.",
+    "repairRefunded": "This payment was refunded, so it does not open a pass."
   },
   "oauthConsent": {
     "title": "Connect your agent",

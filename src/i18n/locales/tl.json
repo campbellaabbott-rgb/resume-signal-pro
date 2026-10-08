@@ -5115,7 +5115,8 @@
     "connectorNoOauth2": "Hindi pa naka-on ang sign-in para sa host na ito, kaya mula rito ay ang mga tool lang na walang key ang sumasagot. Para magamit ang pass, kumonekta mula sa {{headerHosts}} gamit ang iyong agent key.",
     "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key.",
     "repairSecondPass": "Hindi lumikha ng ikalawang pass ang bayad na ito: isang bukas na pass lang ang hawak ng isang account sa bawat pagkakataon, at nakikita rito ang sa iyo nang walang pagbabago. Naabisuhan na kami at ire-refund ang bayad na ito — kung hindi ito bumalik sa card mo sa loob ng ilang araw, sumulat sa resumeboostersupp@gmail.com.",
-    "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito."
+    "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito.",
+    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass."
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",

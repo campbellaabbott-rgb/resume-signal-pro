@@ -229,6 +229,10 @@ export default function AgentPass() {
                   <p className="text-sm text-warning mb-2">
                     {t("agentPass.repairNotYours", "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.")}
                   </p>
+                ) : status.repair === "payment_revoked" ? (
+                  <p className="text-sm text-warning mb-2">
+                    {t("agentPass.repairRefunded", "This payment was refunded, so it does not open a pass.")}
+                  </p>
                 ) : status.repair ? (
                   <p className="text-sm text-warning mb-2">
                     {t("agentPass.repairPending", "This checkout is not matched to a pass yet ({{reason}}). If you just paid, give it a minute and retry — the receipt arrives on its own.", { reason: status.repair })}{" "}

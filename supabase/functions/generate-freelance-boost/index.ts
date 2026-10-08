@@ -20,10 +20,11 @@ import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shar
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
+import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-freelance-boost.2026-10-08.1";
+const FN_BUILD = "generate-freelance-boost.2026-10-08.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,6 +170,12 @@ serve(async (req) => {
       paid = checkoutSessionSettled(session) && VALID_TYPES.includes(session.metadata?.product_type ?? "");
       productType = session.metadata?.product_type ?? "freelance_boost";
       buyerEmail = buyerEmailOf(session);
+      // Stripe still answers 'paid' for a refunded or disputed session (L6-18).
+      if (paid && await sessionWasRefunded(supabase, body.sessionId)) {
+        return new Response(JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, refunded: true }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
     // Transition Pro ($59) adds two career-change deliverables on top of the
     // base resume section — generated in the same call, same grounding rules.

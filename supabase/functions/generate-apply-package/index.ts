@@ -11,10 +11,11 @@ import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
+import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-apply-package.2026-10-08.1";
+const FN_BUILD = "generate-apply-package.2026-10-08.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -137,6 +138,7 @@ serve(async (req) => {
     // now lives in _shared/apply-kit.ts, in the spelling Stripe carries, and a
     // guard checks it against what every checkout mints.
     let entitled = false;
+    let refunded = false;
     if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
       try {
         const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -148,6 +150,12 @@ serve(async (req) => {
           entitled = checkoutSessionSettled(session) && APPLY_KIT_PRODUCT_TYPES.includes(productType);
           if (!entitled) {
             console.warn(`[GENERATE-APPLY-PACKAGE] session ${sessionId} does not include the kit: ${session.payment_status} / ${productType || "no product"}`);
+          }
+          // Stripe still answers 'paid' for a refunded or disputed session
+          // (L6-18); a plan on the account may still open the tool below.
+          if (entitled && supabase && await sessionWasRefunded(supabase, sessionId)) {
+            entitled = false;
+            refunded = true;
           }
         }
       } catch (e) {
@@ -184,6 +192,12 @@ serve(async (req) => {
           console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
         }
       }
+    }
+    if (!entitled && refunded) {
+      return new Response(
+        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, refunded: true, requiresPurchase: true }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     if (!entitled) {
       return new Response(

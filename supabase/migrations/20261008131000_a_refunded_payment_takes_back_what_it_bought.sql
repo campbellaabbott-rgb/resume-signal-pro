@@ -16,10 +16,13 @@
 --     redelivered event (or a dispute after a refund) changes nothing twice;
 --   - a one-time product's Checkout session: its claim in
 --     used_stripe_sessions is rewritten to the product 'refunded' (written
---     if it did not exist), so no paid generator accepts the session again
---     (assertPaidSession compares the claim's product with the ones it
---     sells) and no verifier can claim it as a first use; its delivery row
---     leaves the retry sweeper's selection (status 'refunded');
+--     if it did not exist), so a generator that gates on the claim
+--     (assertPaidSession compares its product with the ones it sells)
+--     refuses it and no verifier can claim it as a first use; its delivery
+--     row leaves the retry sweeper's selection (status 'refunded'). Stripe
+--     still answers 'paid' for the session, so every function that reads
+--     Stripe itself also asks payment_revocations
+--     (_shared/payment-revocation.ts);
 --   - an Agent Pass: closed with close_reason 'refunded', after every queued
 --     or prepared application it paid for and never sent is stopped (queue
 --     rows dismissed, packets failed with the reason) -- the money is back,
@@ -63,7 +66,7 @@ ALTER TABLE public.payment_revocations ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.payment_revocations FROM PUBLIC, anon, authenticated;
 GRANT ALL ON TABLE public.payment_revocations TO service_role;
 COMMENT ON TABLE public.payment_revocations IS
-  'One row per refunded (in full) or disputed payment intent: what payment_revoke took back. Read by verify-product-purchase and analyze-resume, which refuse a session named here. service_role only.';
+  'One row per refunded (in full) or disputed payment intent: what payment_revoke took back. Read by every function that verifies a session with Stripe (verify-product-purchase, analyze-resume, generate-freelance-boost, generate-ats-defense, generate-apply-package, agent-pass-status), which refuse a session or payment named here. service_role only.';
 
 -- Takes the given number of unspent credits out of an address's pool; never
 -- below zero. Answers how many it took. Internal to payment_revoke.

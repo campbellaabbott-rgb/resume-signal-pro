@@ -5115,7 +5115,8 @@
     "connectorNoOauth2": "El inicio de sesión para este host aún no está activado, así que desde aquí solo responden las herramientas sin clave. Para gastar el pase, conéctate desde {{headerHosts}} con tu clave de agente.",
     "connectorPassGate": "Desde {{host}} el pase solo podrá usarse cuando el inicio de sesión esté activado; hoy, úsalo desde {{headerHosts}} con tu clave de agente.",
     "repairSecondPass": "Este pago no creó un segundo pase: una cuenta tiene un solo pase abierto a la vez, y el tuyo se muestra aquí sin cambios. Ya nos han avisado y este pago se reembolsará; si no vuelve a tu tarjeta en unos días, escribe a resumeboostersupp@gmail.com.",
-    "repairNotYours": "Esta compra pertenece a una cuenta distinta de aquella con la que has iniciado sesión, y su pase está en esa cuenta. Inicia sesión con la cuenta que pagó para verlo."
+    "repairNotYours": "Esta compra pertenece a una cuenta distinta de aquella con la que has iniciado sesión, y su pase está en esa cuenta. Inicia sesión con la cuenta que pagó para verlo.",
+    "repairRefunded": "Este pago fue reembolsado, así que no abre ningún pase."
   },
   "oauthConsent": {
     "title": "Conecta tu agente",

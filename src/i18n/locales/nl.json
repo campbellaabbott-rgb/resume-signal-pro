@@ -5115,7 +5115,8 @@
     "connectorNoOauth2": "Inloggen voor deze host staat nog niet aan, dus vanaf hier antwoorden alleen de tools zonder sleutel. Om de pas te gebruiken, verbind je vanuit {{headerHosts}} met je agentsleutel.",
     "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel.",
     "repairSecondPass": "Deze betaling heeft geen tweede pass gemaakt: een account heeft steeds één open pass, en de jouwe staat hier ongewijzigd. We zijn op de hoogte en deze betaling wordt terugbetaald — staat hij over een paar dagen niet terug op je kaart, mail dan naar resumeboostersupp@gmail.com.",
-    "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien."
+    "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien.",
+    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee."
   },
   "oauthConsent": {
     "title": "Verbind je agent",
