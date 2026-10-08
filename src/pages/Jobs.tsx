@@ -42,6 +42,7 @@ import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRe
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
+import { bakedCompanyPrimary } from "@/lib/prerendered-head";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -2527,6 +2528,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // with the board-wide total presented as Foo's (bug sweep 2026-07-26).
   const landerCompany = routeCompany && company === routeCompany ? routeCompany : undefined;
   const landerCategory = routeCategory && category === routeCategory ? routeCategory : undefined;
+  // A secondary board's lander consolidates into the employer's primary board:
+  // the bake says so in this address's own canonical, read before React writes
+  // over it, so the rendered head names the same page (prerendered-head.ts).
+  const [bakedPrimary] = useState(() => (routeCompany ? bakedCompanyPrimary(routeCompany) : null));
   // Arrived from the Explore page? Captured once on mount (the URL-sync effect
   // strips unknown params), so we can offer a "Back to Explore" link instead
   // of leaving the user on a filtered board with no way back.
@@ -8217,6 +8222,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           ? t("jobsPage.companySeoDescription", "Is {{company}} hiring right now? See {{company}}'s verified open roles, pulled straight from their own job board and re-checked today — no aggregators, no ghost postings. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
+        canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
