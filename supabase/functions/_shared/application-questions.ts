@@ -30,6 +30,27 @@ export interface AppQuestion {
 // "linkedin" or "postal code". These mean identity wherever they appear.
 const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|legal\s*name|preferred\s*name|middle\s*name|e-?mail|phone|mobile|telephone|contact\s*number|street|zip|postal|linkedin|github|portfolio|personal\s*website|twitter|url)\b/i;
 
+/**
+ * THE SAME TOKENS IN AN ESSAY ARE NOT A FIELD (sweep S8-044). "mobile",
+ * "email" and "portfolio" sit in ordinary questions ("experience with mobile
+ * app development", "portfolio management experience"), and IDENTITY made
+ * them profile fields, so the packet filled a phone number or a LinkedIn URL
+ * without any model call. Identity now needs a label that IS a field: one that
+ * says whose detail it is, or a short label that is neither a question nor a
+ * prose prompt nor a textarea. Mirrored by isContactField in
+ * worker/src/questions/match.ts.
+ */
+const PROSE_PROMPT = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+const QUESTION_SHAPE = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
+const SOMEONE_ELSES_CONTACT = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
+const OWN_CONTACT =
+  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|github|twitter|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website|github)\s+(?:url|link)/i;
+function contactIsAField(l: string, words: number, fieldType: string): boolean {
+  if (OWN_CONTACT.test(l)) return true;
+  if (fieldType.includes("textarea") || fieldType === "longtext" || PROSE_PROMPT.test(l) || QUESTION_SHAPE.test(l)) return false;
+  return words <= 6;
+}
+
 // ORDINARY ENGLISH NOUNS that are identity only when the label is a FIELD, not
 // prose. Found by the real-label corpus on 2026-08-01: "Describe a time you
 // coordinated with government stakeholders, donors, or country partners" was
@@ -278,7 +299,13 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // verb and ends on "of". The three-word cap stops a long prompt that happens
   // to trail off on the word name from being autofilled.
   if (/\bname$/.test(bare) && bare.split(" ").length <= 3) return "identity";
-  if (IDENTITY.test(l) || IDENTITY_INTL.test(l)) return "identity";
+  if (IDENTITY.test(l)) {
+    // Somebody else's phone or email is not the candidate's to fill, and not
+    // the model's to invent: it stops for the candidate, like a referrer's name.
+    if (SOMEONE_ELSES_CONTACT.test(l)) return "factual";
+    if (contactIsAField(l, bare.split(" ").length, t)) return "identity";
+  }
+  if (IDENTITY_INTL.test(l)) return "identity";
   // Geographic/contact words that are also ordinary English. Identity only when
   // the label reads as a FIELD — a short one ("Country", "Current City, State")
   // or one that says whose it is ("What is your country of residence?"). In a

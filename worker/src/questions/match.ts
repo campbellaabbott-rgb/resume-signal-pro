@@ -235,8 +235,11 @@ const RE_PREFERRED_NAME = /preferred\s+(first\s+)?name|name\s+you\s+(go\s+by|pre
  */
 const RE_SALARY_CURRENT =
   /\b(current|present|existing|latest|most\s+recent)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|earnings|wage)|(salary|compensation|package|ctc|remuneration|earnings)\b[^?]{0,20}\b(current|present)\b/i;
+// A bare "rate" is pay only right after the word that makes it one ("expected
+// rate", "desired hourly rate"); "What is your target close rate?" is a sales
+// question and was answered with the salary expectation (S8-044).
 const RE_SALARY_EXPECTED =
-  /\b(desired|expected|expectation|expectations|required|requirement|target|minimum|asking|anticipated)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|rate|wage)|\b(salary|compensation|package|ctc|remuneration|pay|rate)\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b/i;
+  /\b(desired|expected|expectation|expectations|required|requirement|target|minimum|asking|anticipated)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|wage)|\b(desired|expected|required|minimum|asking)\s+(?:(?:hourly|daily|day)\s+)?rate\b|\b(?:hourly|daily|day)\s+rate\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b|\b(salary|compensation|package|ctc|remuneration|pay)\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b/i;
 
 const RE_WORK_AUTH =
   /legally\s+(authori[sz]ed|entitled|eligible|permitted)|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
@@ -271,7 +274,35 @@ export const RE_SPONSOR_INVERTED =
 const RE_EMAIL = /\be-?mail\b/i;
 const RE_PHONE = /\b(phone|mobile|cell|telephone)\b|contact\s+number|\btel\b/i;
 const RE_LINKEDIN = /linkedin/i;
-const RE_PORTFOLIO = /portfolio|personal\s+(web)?site|your\s+website|social\s+media\s+profile/i;
+const RE_PORTFOLIO = /portfolio(?!\s+(?:management|manager|analy|optimi|construct|strateg|review|compan))|personal\s+(web)?site|your\s+website|social\s+media\s+profile/i;
+
+/**
+ * WHICH LABELS ARE CONTACT FIELDS AT ALL (sweep S8-044). The patterns above
+ * are ordinary words, and they ran before the prepared draft was consulted:
+ * "How would you address a conflict" got the home address, "experience with
+ * mobile app development" the phone number, "portfolio management experience"
+ * the LinkedIn URL, and "Emergency contact" the candidate's own phone.
+ *
+ * A contact pattern now counts only on a label that IS a field: one that says
+ * whose detail it wants ("your phone number", "your home address", "LinkedIn
+ * profile URL"), or a short label that is not a question, not a prose prompt
+ * and not a textarea. Somebody else's details are never the candidate's.
+ * Mirrored by the classifier's IDENTITY gate in _shared/application-questions.ts.
+ */
+const RE_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+const RE_QUESTION_SHAPE = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
+const RE_OTHER_PERSON = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
+const RE_OWN_CONTACT =
+  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website)\s+(?:url|link)/i;
+function isContactField(q: DomQuestion, label: string): boolean {
+  if (RE_OTHER_PERSON.test(label)) return false;
+  if (RE_OWN_CONTACT.test(label)) return true;
+  if (q.type === "textarea" || RE_PROSE.test(label) || RE_QUESTION_SHAPE.test(label)) return false;
+  return label.split(/\s+/).filter(Boolean).length <= 5;
+}
+/** Sponsorship is an immigration question only in an immigration sentence:
+ *  "sponsorship and partnership programs" got "No" (S8-044). */
+const RE_SPONSOR_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition/i;
 const RE_CITY = /^(city|town)$|city\s*\/\s*town|which\s+city|city\s+of\s+residence|^city\b/i;
 const RE_POSTCODE = /zip\s*code|zipcode|^zip\b|post(al)?\s*code/i;
 const RE_ADDRESS = /\baddress\b/i;
@@ -487,37 +518,38 @@ function matchStanding(
   // --- Contact details, by label ---------------------------------------
   // Email FIRST: "Email Address" contains "address", and a street address in an
   // email field is a submitted application nobody can reply to.
-  if (RE_EMAIL.test(label)) {
+  const contact = isContactField(q, label);
+  if (contact && RE_EMAIL.test(label)) {
     return has(a.email) ? { kind: "fill", category: "email", value: a.email }
                         : text("email", "no email on file");
   }
-  if (RE_PHONE.test(label)) {
+  if (contact && RE_PHONE.test(label)) {
     return has(a.phone) ? { kind: "fill", category: "phone", value: a.phone }
                         : text("phone", "no phone number on file");
   }
-  if (RE_LINKEDIN.test(label)) {
+  if (contact && RE_LINKEDIN.test(label)) {
     return has(a.linkedin) ? { kind: "fill", category: "linkedin", value: a.linkedin }
                            : text("linkedin", "no LinkedIn profile on file");
   }
-  if (RE_PORTFOLIO.test(label)) {
+  if (contact && RE_PORTFOLIO.test(label)) {
     // A personal site and a LinkedIn profile are both honest answers to "your
     // online presence"; the website is preferred and LinkedIn is the fallback.
     const url = has(a.website) ? a.website : a.linkedin;
     return has(url) ? { kind: "fill", category: "portfolio", value: url }
                     : text("portfolio", "no website or profile URL on file");
   }
-  if (RE_POSTCODE.test(label)) {
+  if (contact && RE_POSTCODE.test(label)) {
     // NOT derived from the address. Parsing a postcode out of free text is a
     // guess, and a wrong postcode on an application is worse than a blank —
     // so an empty field refuses rather than improvising one.
     return has(a.postcode) ? { kind: "fill", category: "postcode", value: a.postcode }
                            : text("postcode", "no postcode on file — it is not parsed out of the address");
   }
-  if (RE_CITY.test(label)) {
+  if (contact && RE_CITY.test(label)) {
     return has(a.city) ? { kind: "fill", category: "city", value: a.city }
                        : text("city", "no city on file");
   }
-  if (RE_ADDRESS.test(label)) {
+  if (contact && RE_ADDRESS.test(label)) {
     return has(a.address) ? { kind: "fill", category: "address", value: a.address }
                           : text("address", "no address on file");
   }
@@ -547,8 +579,10 @@ function matchStanding(
   // practice — "authorized to work in the US", "require sponsorship for a UK
   // visa" — and a single global boolean answering them produced false claims
   // about a real person's immigration status. See ./countries.ts.
-  if (RE_SPONSORSHIP.test(label) || RE_WORK_AUTH.test(label)) {
-    const isSponsor = RE_SPONSORSHIP.test(label);
+  const sponsorQ = RE_SPONSORSHIP.test(label) && !RE_PROSE.test(label)
+    && (RE_SPONSOR_CONTEXT.test(label) || label.split(/\s+/).length <= 3);
+  if (sponsorQ || RE_WORK_AUTH.test(label)) {
+    const isSponsor = sponsorQ;
     const category = isSponsor ? "sponsorship" : "work-authorization";
     const stated = isSponsor ? a.requiresSponsorship : a.workAuthorized;
     if (stated === null) {
