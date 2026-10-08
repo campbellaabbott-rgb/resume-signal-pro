@@ -28,6 +28,8 @@
 -- to re-run.
 
 ALTER TABLE public.affiliate_payout_requests ADD COLUMN IF NOT EXISTS conversion_ids uuid[];
+-- The function reads the approved conversions with the service role.
+GRANT SELECT ON public.affiliate_conversions TO service_role;
 
 DO $$
 BEGIN
