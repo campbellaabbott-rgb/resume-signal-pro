@@ -3796,6 +3796,7 @@
     "nlInterpreted": "Compris comme :",
     "nlDismiss": "ignorer",
     "nlNotMapped": "Impossible de filtrer par : {{terms}} — pas encore de filtre pour cela, donc non appliqué.",
+    "nlDropped": "Impossible d'appliquer : {{filters}} — la valeur demandée n'est pas acceptée par ce filtre, donc non appliqué.",
     "nlFailed": "Impossible de comprendre — utilisez les filtres ci-dessous.",
     "backToExplore": "Retour à Explorer",
     "orientTitle": "{{total}} offres vérifiées — par où voulez-vous commencer ?",
@@ -4192,7 +4193,11 @@
       "vendor": "source",
       "employmentType": "type d'emploi",
       "excludeAgencies": "masquer les agences",
-      "includeUnstatedPay": "offres sans rémunération indiquée"
+      "includeUnstatedPay": "offres sans rémunération indiquée",
+      "q": "mots recherchés",
+      "location": "lieu",
+      "activelyHiring": "historique d'embauche de l'employeur",
+      "sort": "ordre de tri"
     },
     "companiesChip": "{{n}} entreprises",
     "firstSeenToday": "vue pour la première fois aujourd'hui",

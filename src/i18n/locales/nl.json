@@ -3796,6 +3796,7 @@
     "nlInterpreted": "Gelezen als:",
     "nlDismiss": "sluiten",
     "nlNotMapped": "Kon niet filteren op: {{terms}} — daar is nog geen filter voor, dus niet toegepast.",
+    "nlDropped": "Kon niet toepassen: {{filters}} — wat werd gevraagd is geen waarde die dat filter accepteert, dus niet toegepast.",
     "nlFailed": "Kon dat niet lezen — gebruik de filters hieronder.",
     "backToExplore": "Terug naar Ontdek",
     "orientTitle": "{{total}} geverifieerde vacatures — waar wil je beginnen?",
@@ -4192,7 +4193,11 @@
       "vendor": "bron",
       "employmentType": "dienstverband",
       "excludeAgencies": "bureaus verbergen",
-      "includeUnstatedPay": "vacatures zonder vermeld salaris"
+      "includeUnstatedPay": "vacatures zonder vermeld salaris",
+      "q": "zoekwoorden",
+      "location": "locatie",
+      "activelyHiring": "wervingsgeschiedenis van de werkgever",
+      "sort": "sortering"
     },
     "companiesChip": "{{n}} bedrijven",
     "firstSeenToday": "voor het eerst gezien vandaag",

@@ -3796,6 +3796,7 @@
     "nlInterpreted": "Verstanden als:",
     "nlDismiss": "verwerfen",
     "nlNotMapped": "Konnte nicht filtern nach: {{terms}} — dafür gibt es noch keinen Filter, also nicht angewendet.",
+    "nlDropped": "Konnte nicht anwenden: {{filters}} — der gewünschte Wert ist für diesen Filter nicht zulässig, also nicht angewendet.",
     "nlFailed": "Konnte das nicht lesen — nutze die Filter unten.",
     "backToExplore": "Zurück zu Entdecken",
     "orientTitle": "{{total}} verifizierte Stellen — wo willst du anfangen?",
@@ -4192,7 +4193,11 @@
       "vendor": "Quelle",
       "employmentType": "Anstellungsart",
       "excludeAgencies": "Personaldienstleister ausblenden",
-      "includeUnstatedPay": "Anzeigen ohne Gehaltsangabe"
+      "includeUnstatedPay": "Anzeigen ohne Gehaltsangabe",
+      "q": "Suchbegriffe",
+      "location": "Ort",
+      "activelyHiring": "Einstellungsbilanz des Arbeitgebers",
+      "sort": "Sortierung"
     },
     "companiesChip": "{{n}} Unternehmen",
     "firstSeenToday": "zuerst gesehen: heute",

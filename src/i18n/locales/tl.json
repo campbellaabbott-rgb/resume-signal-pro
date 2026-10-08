@@ -3796,6 +3796,7 @@
     "nlInterpreted": "Binasa bilang:",
     "nlDismiss": "i-dismiss",
     "nlNotMapped": "Hindi ma-filter ayon sa: {{terms}} — wala pang filter para diyan, kaya hindi na-apply.",
+    "nlDropped": "Hindi ma-apply: {{filters}} — ang hiniling ay hindi halagang tinatanggap ng filter na iyon, kaya hindi na-apply.",
     "nlFailed": "Hindi ito nabasa — subukan ang mga filter sa ibaba.",
     "backToExplore": "Bumalik sa Tuklasin",
     "orientTitle": "{{total}} beripikadong bakante — saan mo gustong magsimula?",
@@ -4192,7 +4193,11 @@
       "vendor": "pinagmulan",
       "employmentType": "uri ng trabaho",
       "excludeAgencies": "itago ang mga ahensya",
-      "includeUnstatedPay": "mga anunsyong walang nakasaad na sahod"
+      "includeUnstatedPay": "mga anunsyong walang nakasaad na sahod",
+      "q": "mga salitang hinahanap",
+      "location": "lokasyon",
+      "activelyHiring": "rekord ng pagkuha ng employer",
+      "sort": "pagkakaayos"
     },
     "companiesChip": "{{n}} kumpanya",
     "firstSeenToday": "unang nakita ngayong araw",

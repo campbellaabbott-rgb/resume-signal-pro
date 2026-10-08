@@ -2807,7 +2807,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const [nlOpen, setNlOpen] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlLoading, setNlLoading] = useState(false);
-  const [nlResult, setNlResult] = useState<{ interpreted: string[]; notMapped: string[] } | null>(null);
+  // `applied` / `dropped`: the filters nl-search kept and the ones its
+  // validator REFUSED, by wire name (null from a build that sends neither).
+  const [nlResult, setNlResult] = useState<{ interpreted: string[]; notMapped: string[]; applied: string[] | null; dropped: string[] } | null>(null);
   const applyNlSearch = useCallback(async (override?: string) => {
     const raw = (override ?? nlQuery).trim();
     if (raw.length < 3 || nlLoading) return;
@@ -2882,8 +2884,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
       // paying first" → salary sort. Reset like the other fields.
       setActivelyHiringOnly(f.activelyHiring === true);
       setSortMode(f.sort === "salary" ? "salary" : "newest");
-      const d = data as { interpreted?: string[]; notMapped?: string[] };
-      setNlResult({ interpreted: Array.isArray(d.interpreted) ? d.interpreted : [], notMapped: Array.isArray(d.notMapped) ? d.notMapped : [] });
+      const d = data as { interpreted?: string[]; notMapped?: string[]; applied?: unknown; dropped?: unknown };
+      const names = (v: unknown): string[] | null =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x !== "") : null;
+      setNlResult({
+        interpreted: Array.isArray(d.interpreted) ? d.interpreted : [],
+        notMapped: Array.isArray(d.notMapped) ? d.notMapped : [],
+        applied: names(d.applied),
+        dropped: names(d.dropped) ?? [],
+      });
       setNlOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch { toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") }); }
@@ -11200,13 +11209,26 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {/* NL-search interpretation: show exactly how the plain-language
                   query was read (chips = applied filters) and disclose anything
                   we couldn't map — never silently drop a concept. */}
-              {nlResult && (nlResult.interpreted.length > 0 || nlResult.notMapped.length > 0) && (
+              {/* A REFUSED FILTER IS NAMED AS REFUSED. nl-search's validator
+                  leaves an out-of-list or out-of-range filter out of `filters`
+                  and names it in `dropped`, but the model's own chip for it
+                  stayed in `interpreted` — so "Read as:" stated a filter the
+                  board never applied. When anything was dropped the chips are
+                  built from `applied` (the filters that survived) instead, and
+                  the refused ones get their own line. */}
+              {nlResult && (() => {
+                const nlLabel = (k: string) => t(`jobsPage.filterName.${k}`, k);
+                const chips = nlResult.dropped.length > 0 && nlResult.applied
+                  ? nlResult.applied.map(nlLabel)
+                  : nlResult.interpreted;
+                if (chips.length === 0 && nlResult.notMapped.length === 0 && nlResult.dropped.length === 0) return null;
+                return (
                 <div className="mb-2 -mt-1 text-xs">
-                  {nlResult.interpreted.length > 0 && (
+                  {chips.length > 0 && (
                     <p className="text-muted-foreground flex flex-wrap items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
                       <span>{t("jobsPage.nlInterpreted", "Read as:")}</span>
-                      {nlResult.interpreted.map((c) => (
+                      {chips.map((c) => (
                         <span key={c} className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5">{c}</span>
                       ))}
                       <button type="button" className="text-muted-foreground hover:text-foreground underline ml-1" onClick={() => setNlResult(null)}>
@@ -11219,8 +11241,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       {t("jobsPage.nlNotMapped", "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.", { terms: nlResult.notMapped.join(", ") })}
                     </p>
                   )}
+                  {nlResult.dropped.length > 0 && (
+                    <p className="text-warning/90 mt-1">
+                      {t("jobsPage.nlDropped", "Couldn't apply: {{filters}} — what was asked for isn't a value that filter takes, so it wasn't applied.", { filters: nlResult.dropped.map(nlLabel).join(", ") })}
+                    </p>
+                  )}
                 </div>
-              )}
+                );
+              })()}
               {/* Typo fallback disclosure: never pass fuzzy matches off as
                   exact — say plainly these are the closest titles we found. */}
               {data?.fuzzy && (

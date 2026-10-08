@@ -3796,6 +3796,7 @@
     "nlInterpreted": "Interpretado como:",
     "nlDismiss": "dispensar",
     "nlNotMapped": "Não foi possível filtrar por: {{terms}} — ainda não há filtro para isso, então não foi aplicado.",
+    "nlDropped": "Não foi possível aplicar: {{filters}} — o que foi pedido não é um valor que esse filtro aceite, então não foi aplicado.",
     "nlFailed": "Não foi possível interpretar — use os filtros abaixo.",
     "backToExplore": "Voltar a Explorar",
     "orientTitle": "{{total}} vagas verificadas — por onde você quer começar?",
@@ -4192,7 +4193,11 @@
       "vendor": "fonte",
       "employmentType": "tipo de emprego",
       "excludeAgencies": "ocultar agências",
-      "includeUnstatedPay": "vagas sem remuneração indicada"
+      "includeUnstatedPay": "vagas sem remuneração indicada",
+      "q": "palavras de pesquisa",
+      "location": "localização",
+      "activelyHiring": "histórico de contratação do empregador",
+      "sort": "ordenação"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista pela primeira vez hoje",
