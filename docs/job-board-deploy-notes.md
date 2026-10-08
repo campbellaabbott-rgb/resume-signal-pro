@@ -8,6 +8,86 @@ earlier are still in `index.ts` around the constant. New notes go here, newest f
 `BUILD_VERSION` itself still moves with every deploy, and `src/test/build-version-guard.test.ts`
 still pins it.
 
+## 2026-09-09.91
+
+WAVE 2 OF THE 2026-10-04 PLATFORM SWEEP, JOB-BOARD GROUP. job-board only (index.ts, filters.ts, paging.ts, search-routing.ts, stale-lane.ts, tombstone.ts, NEW verification-stamp.ts, NEW location-match.ts), plus THREE MIGRATIONS (20261008100000, 20261008100100, 20261008100200) and the verifier (NEW scripts/verify-deploy.d/61-wave2-job-board.sh). No other function, no frontend, sources.ts and _shared/location-terms.ts UNCHANGED. Register items (~/.config/resumebooster/platform-debug-2026-10-04/register.json): L13-01, L8-14, L8-04, L8-01, L8-02, L8-17, L8-03, L8-16, L8-05, L8-06 (part), L8-07, L8-08, L8-09, L8-10, L13-68, L13-24, L1-07, L13-49 (verification stamp only); follow-ups (a) SNOWFLAKE-3 (hypothesis refuted; a related latent tombstone defect fixed), (b) per-board stamps, (c) the cold cursor (instrumentation + finding), (d) SmartRecruiters whole reads (decided against, below). Rationale: docs/job-board-index-notes.md n427-n435.
+
+### A TOMBSTONE A RE-ADMISSION WROTE (follow-up (a); NOT SNOWFLAKE-3'S CAUSE)
+
+THE HYPOTHESIS, TESTED. Three ashby:snowflake postings published 2026-10-06 20:59-21:07Z were not stored by the reads at 10-07 02:05Z and 19:54Z. (1) A tombstone with posted_at NULL is impossible by code: every writer of job_board_aged_out writes a date (the seed and the sweep write effective_posted of rows selected by `effective_posted < cutoff`; a re-admission writes the date it just parsed). (2) REFUTED as the cause by a read-only probe on .90 at 2026-10-08 ~08:00Z: all three are now stored, `lastSeen` (first insert) 2026-10-08T02:00:57Z, `postedAt` EXACTLY the feed's 10-06 dates, recheckedAt 07:58Z. A tombstone refuses the same id with the same date on every read until it expires (180 days) or the employer re-dates past it, so whatever kept them out on 10-07 was transient and was not a tombstone. Most likely the rows were not in the feed .90 read on 10-07 (an Ashby posting-API lag or a brief unlisting); not established.
+
+WHAT WOULD SETTLE IT (owner, service role, read-only; give Lovable's agent the statement VERBATIM). Expect NO tombstone row for any of the three; any row there means the refusal was a tombstone after all and this note is wrong.
+`SELECT a.id, a.posted_at, a.aged_at FROM public.job_board_aged_out a WHERE a.id IN ('ashby:snowflake:66eeda70-4d91-43a4-bb84-998c26f329f5', 'ashby:snowflake:37033502-bd37-4f77-a92e-9b7934998857', 'ashby:snowflake:132a2e95-7ec0-488c-94d2-b0917c597ef9') ORDER BY a.id;`
+Then the function logs for `snowflake` around 2026-10-07 02:05Z and 19:54Z: an `aged-out posting(s) refused re-entry` line, an `insert failed for snowflake` line, or neither (neither = the feed did not carry them).
+
+WHAT WAS FIXED ANYWAY (a latent defect found while testing it). A tombstone holding a date INSIDE the window, which only a re-admission writes (n412 moves the tombstone to the feed's date), refused the same id's next appearance within 3 days of that date, or on it, if the re-admitted row had left by a closure or a prune in between, until it aged out. `splitTombstoned` now takes the pass's cutoff: on any vendor whose stored date never moves after insert (all but Workday), a tombstone dated inside the window lets in a row dated no older than it; a tombstone with no date (no current writer, but the column is nullable) lets in a row dated more than 3 days past its write (`aged_at`, now read with it). Undated rows never come back; Workday's filler loop stays closed (one re-entry, as n412). No live case is known. n427.
+
+### A STAMP PER BOARD ON A SHARED TOKEN (follow-up (b), L13-49 part)
+
+WHAT WAS WRONG. job_board_verifications was one row per company_token; on the 139 shared tokens one vendor's read kept the other board "rechecked" (greenhouse:lush deferred, personio:lush reading: 19 closed postings served with a fresh recheckedAt, never swept by the 48h sweep).
+
+WHAT IT DOES. A board on a shared token stamps `source:token` (boardKeyOf) AND the bare token (every legacy reader keeps its meaning). Once per isolate the refresh seeds a key for each shared board that has none, at the token's bare stamp (ignoreDuplicates), and deletes keys whose token is no longer shared (log `board stamps: N seeded ..., N removed`). recheckedAt is read by board key, never from the twin. The stale lane classifies, excludes (p_exclude = registry KEYS, matched exactly) and folds tries by board key; a shared token's bare row is dropped from its window. Migration 20261008100000 changes the 48h sweep's command in place (cron.alter_job: same job id, owner, active flag, minute): a row is judged by its own board's key when one exists AND some key was written in the last 48h, else by the bare token exactly as before; it reads the stamp table once instead of probing it per posting. 20261008100100 redefines get_stalest_boards in place to resolve a key to its vendor's rows (closed to client roles, as the census left it). n428.
+
+NOT DONE: job_board_board_state is still keyed by company_token, and the orphan prune's token-level facet is unchanged (L13-49 remainder; schema + reader work).
+
+### STATE CODES, THE PAY ORDER, ROUTES, COUNTS (search and serving)
+
+- L13-01 / L8-14: a ", XX" state/province alias matched ", Mexico", ", India", "Berlin, DE". Now case-sensitive, followed by the end or a non-letter, on a US/CA/unplaced row, in search_jobs, count_jobs_capped and fuzzy_title_search (migration 20261008100200, each body = its 20260927034117 definition with only the location clause changed), on browse (`locationBranch`) and in preferMatchedLocation. n429.
+- L8-04: a filter no longer stands the router down (buildQuery binds every filter before the routed window): "it manager" + GB is the SIMPLE route, not the english tsquery that drops "it". n432.
+- L8-01 / L8-02: sort=salary on a text query is always the SALARY branch (filtered or not, with alias expansion; an employer route binds its tokens and names companyMatched) and never falls through to the substring ILIKE; nothing pay-ordered on page one is `sortUnavailable` ("no-stated-pay" | "unavailable"). countOnly under sort=salary returns no total (mirrors the list) instead of a substring count. n432.
+- L8-17 / L8-03: only an unambiguous figure is a pay floor ($, thousands comma, trailing +, k but never 401k, or six+ bare digits); the word removed is the token the floor came from. A SYMBOL query ("c#", "c++") withholds its count (total null, countUnavailable, totalAtLeast = fetched rows whose title carries the symbol) in the list and countOnly. n430.
+- L8-16: the ranked exit withdraws `total` only when the rows provably reached exceed total + related (deep pages: the SQL rank reached, never the 400 seam jump). n431.
+- L13-24: a text query's category chips are withheld (facetSource "withheld"); an employer query counts its own tokens ("employer"). n433.
+- L8-05 (ring and +45 word-bounded), L8-06 (quoted spans and trade terms not lifted; noIntent:true), L8-07 ("or" between words is OR), L8-08 (employer typeahead folded), L8-09 (a qualifier word is never the split's place), L8-10 (ISO country, UK = GB, unknown named), L13-68 (whole-day maxAgeDays), L1-07 (the audit's RateLimitError is a refusal; walks sequential; `incomplete`). n435.
+
+FRONTEND HANDOFFS (frontend-board group): render `sortUnavailable`, `facetSource: "withheld"`, an Undo for `intentFilters` that re-sends with `noIntent: true`, and an undo for a lifted pay figure (the server still lifts it; no flag for that yet); Jobs.tsx mergeCompanyOptions has L8-08's lowercase-substring defect client-side.
+
+### THE COLD CURSOR (follow-up (c)): A FINDING, PLUS A RECORD
+
+From code: every cold slice writes the cursor at admission by the whole base slice (80) and, if it survives, corrected to the base boards it started, so a poll between reads a step back of 80 - started (the 2026-10-06 readings: 137 -> 104 = 47 started, 285 -> 212 = 7). Nothing is skipped or repeated. The 6-7 minute stills are (1) the pass's last slice (coldDone 160) returning without chaining, so the next pass waits for the :x4/:x9 cron past the 3-minute lock (19:42:49 -> 19:50 on 10-06), and (2) chain deaths waiting the same way (19:33 -> 19:39:40). NOT CHANGED: chaining the next pass directly would remove ~7 min a pass (~12% of the rotation) and add load (the pass-end tail and the hot phase back to back): the owner's decision. NEW: `status.sliceStats.cursorStep {from, admitted, to, base, started}` on every cold slice (null on a hot one). MEASURE: poll status once a minute through a cold stretch; every step back must equal `admitted - to` of a cursorStep with `to = from + started`; a step back that no cursorStep explains is a real regression (two chains), and `coldDone` going DOWN is its signature. n434.
+
+### SMARTRECRUITERS WHOLE-BOARD READS (follow-up (d)): DECIDED AGAINST, CAP KEPT
+
+An honest reservation for a whole read is min(feed total, SR_CAP) up to 2,000, against SLICE_POSTING_BUDGET 1,500. The start gate admits a board whenever landed + in-flight < 1,500, so a 1,867-posting reservation (AbbVie, the motivating board) would let a slice hold ~3,400 postings: past the budget by construction, and the heap note behind MAX_POSTINGS_PER_VISIT measured 2,002 postings in flight at 206 MB against a ~256 MB ceiling. Boards of 251-1,500 could only be admitted honestly by a gate that waits until landed + in-flight + reservation <= 1,500, which in cold slices that land 1,500-1,950 is only the slice's first board: other workers would idle and the base rotation would slow (the measure every lane is held to). The feed total is also unknown before the first page (a prior visit's lap t0 would have to stand in). So the 250 cap stays; SR boards of 251-2,000 still read whole over a lap of ceil(N/250) visits with closures at the proven wrap. Revisit only with a posting budget that is a hard ceiling (reserve-before-start) or a per-vendor heap measurement of SR list pages.
+
+### ORDER, DEPLOY, MIGRATIONS
+
+1. DEPLOY. Ask Lovable, after pulling main: deploy the edge function job-board. Judge only by `status.version = 2026-09-09.91` and the preflight `x-fn-build: job-board.2026-09-09.91` (over the ~4.5 MB raw-source cap the old bundle keeps serving and the deploy still reports success). job-board plus _shared .ts source 4,082,931 -> 4,103,471 bytes (+20,540), ~0.4 MB under the cap.
+2. THEN apply, in order (each is safe before or after the bundle, and re-runnable):
+   - 20261008100000_a_twins_read_kept_a_deferred_boards_rows_out_of_the_48h_sweep.sql (the sweep's command; until .91 has written a key in the last 48h it behaves exactly as before)
+   - 20261008100100_the_stale_window_reads_a_board_stamp_by_its_board.sql (get_stalest_boards body; harmless with no keys)
+   - 20261008100200_a_state_code_matched_a_country_that_starts_with_its_letters.sql (the three search RPCs; the bundle's browse binding already applies the rule, so apply it promptly or browse and ranked disagree on state filters)
+   Each RAISEs on its own failure. No anon/authenticated SECURITY DEFINER function is added or opened.
+3. TELL THE OWNER: run the SNOWFLAKE-3 read above (expect no rows); the pass-end chaining decision in (c); (d) was decided against with the reason; the frontend handoffs.
+
+### ROLLBACK
+
+- The bundle: redeploy the .90 source (origin/main before this branch). What .90 does with what .91 wrote: per-board stamp rows (`source:token`) are invisible to .90's readers (no posting carries that company_token); bare rows are still written by .91, so .90 finds them current. The sweep (if 20261008100000 is applied) stops reading keys once none has been written for 48h; until then the keys .91 wrote age normally (a deferred twin's rows may be swept in that window, which is the intended behaviour).
+- 20261008100000: re-run the command block of 20260827182000 (it unschedules and reschedules the old command).
+- 20261008100100: re-apply 20260909222000's function definition (CREATE OR REPLACE on the same signature) followed by the census grants (service_role only).
+- 20261008100200: re-apply 20260927034117 (it drops and recreates the three functions with service_role grants).
+- Tombstone rule: no constant; the whole release.
+
+### MEASURE AFTER DEPLOY (read-only)
+
+- `{action:"list", location:"Maine", groupSimilar:false, limit:60}`: no row whose country is MX (before: 32 of 60); total well under 6,375. Same for Indiana (no IN-country rows) and Delaware (no DE-country rows).
+- `{q:"it manager", country:"GB"}`: `searchRoute: "SIMPLE"`, first rows titled IT ...
+- `{q:"rn", country:"US", sort:"salary"}`: `searchRoute: "SALARY"`, no "Orthopedic Surgeon"/"Vice President" on page one unless the title carries RN/registered nurse; `{q:"dominos", sort:"salary"}`: `companyMatched: "Domino's"`.
+- `{q:"c#"}` and `{q:"c++"}`: `total: null, countUnavailable: true`, different `totalAtLeast` (before: both 2,067 exact).
+- `{q:"new grad 2026"}`: no `salaryFromQuery`; `{q:"401k"}`: none either.
+- `{q:"nurse", country:"GB", offset:400}`: total not withdrawn for a totalAtLeast above it.
+- `{q:"rn", country:"US", facetCounts:true}`: `facetSource: "withheld"`.
+- `{q:"welder OR fabricator"}`: no `droppedTerms`, total near welder + fabricator (684 + 547 less overlap), not 54.
+- `{action:"company-suggest", q:"dominos"}`: Domino's.
+- `{q:"nurse", country:"UK"}`: same total as GB, no `ignoredFilters`; `{country:"XX"}`: `ignoredFilters` ["country"].
+- `status.filterAudit` after the next daily run: no `request-failed` paging findings; `incomplete` present.
+- `status.sliceStats.cursorStep` present on cold slices (see (c)).
+- 48h after the migration: greenhouse:pulse's / any deferred shared twin's served rows that its feed no longer lists carry no recheckedAt newer than the board's own last read.
+
+### VERIFY
+
+`bash scripts/verify-deploy.sh` (section 61, scripts/verify-deploy.d/61-wave2-job-board.sh). Read-only: status and preflight version lines (FAIL before the deploy), then one line per serving claim above via `list` with `x-rb-budget: probe`, `company-suggest`, and status fields; every .91 behaviour line is INFO until `status.version` is .91 or later. Run pre-deploy on 2026-10-08: FAIL on version and x-fn-build, the rest INFO with the .90 values.
+
 ## 2026-09-09.90
 
 A BOARD THE INGEST MEANT TO REVISIT BEFORE ITS NEXT COLD TURN IS REVISITED. job-board only (index.ts, slim-stream.ts, filters.ts, NEW oversize-registry.ts, NEW start-gate.ts, NEW light-reread.ts, NEW deep-lane.ts), plus the verifier (scripts/verify-deploy.d/89-job-board-ingest.sh corrected, NEW 90-job-board-light-and-deep.sh). No migration, no other function, no frontend, sources.ts UNCHANGED. From the .90 diagnosis of 2026-10-06 (fixes F1-F7; F6 is the verifier). The cold-cursor measurement in F7 is MANDATORY and starts BEFORE the deploy: see ORDER below.
