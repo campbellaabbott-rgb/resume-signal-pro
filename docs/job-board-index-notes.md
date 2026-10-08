@@ -10068,3 +10068,42 @@ walk ends there and resumes next visit.
 
 The in-flight bound the slice wall relies on is now 2 x FETCH_TIMEOUT_MS per
 request instead of unbounded.
+
+## n439-teamtailor-pages
+
+Above: `fetchTeamtailor`, TT_PAGE; teamtailor in CAPPED_VISIT_VENDORS and
+DERIVED_FEED_TOTAL_SOURCES.
+
+A Teamtailor jobs.rss serves 100 items a page and pages with `?offset=N`
+(groupeetam on 2026-10-08: 100, 100, 54, then an empty channel at 300). One
+GET was read as the whole board with no `windowed` flag (sweep S8-002), so on
+a board over 100 postings every item past 100 was never stored, and each new
+posting pushed a stored row to item 101, where it was stamped missing, closed
+after the grace as an unsuspect `full_read` takedown, and deleted. batchSuspect
+could not catch it: the feed served a full 100. A probe of the 2,274
+catalogued Teamtailor boards (offset=100 non-empty) found 58 such boards
+before Teamtailor began answering 403 to the burst (eutalents 2,600,
+anicuraglobal 642, academee 592, tutoringjobs 534, temporing 451, ...).
+
+Now a visit pages from the cursor in steps of 100, up to
+MAX_POSTINGS_PER_VISIT (three pages), like Oracle. A walk from the top that
+ends on a short or empty page is a whole read (the full-read prune stays on
+for every board of 299 or fewer). Anything else is windowed and resumes from
+nextOffset; absence on it is proven only by a lap (n104). The feed states no
+total, so the visit that finds the end of a RESUMED walk reports where it
+ended (`feedTotal = endOffset`), which is what lapTotal judges the wrap
+against; LapState.t0 is 0 for these boards, so the coverage ratio cannot
+fail a lap, and a lap is proven only by a walk that reached an end the feed
+itself served (a short page, or an empty channel, never a refusal: a refused
+or non-RSS later page is a window, a refused or non-RSS first page fails the
+board; before .92 a 200 that was not RSS read as an empty board). From the top
+the feed states no total and the stamp keeps null (n130); the board_state
+history keeps null too (DERIVED_FEED_TOTAL_SOURCES).
+
+A host that ignores ?offset serves its first page again; when every id on
+page 2 was on page 1 the visit is one window with no cursor and no claimed
+end, which is the immediate guard the register asked for (no catalogued
+board uses a custom host today; the `host` field is unused). A board of
+exactly 300 (or any multiple of 100 past it) ends each lap on an empty page,
+which proves it like a short page. Request cost: one GET for a board under
+100, two for exactly 100, up to three per visit above.

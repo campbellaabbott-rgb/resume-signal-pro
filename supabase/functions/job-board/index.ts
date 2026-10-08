@@ -529,7 +529,7 @@ const MIN_BOARDS_PER_SLICE = 80;
 // stops a slice made entirely of tiny boards from running long.
 const MAX_BOARDS_PER_SLICE = 80;
 const BOARDS_RAMP_STEP = 8;
-const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs"]);
+const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs", "teamtailor"]);
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=5 is 16 sequential rounds, and SLICE_POSTING_BUDGET stops the loop near 51 boards long before the list is exhausted — the list size is a ceiling, not a plan. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // Rationale: docs/job-board-index-notes.md#n013-
@@ -950,8 +950,8 @@ async function fetchSmartRecruiters(s: JobSource, startOffset = 0): Promise<{ co
  * largest response in flight. The memory is whole HTTP response bodies, and
  * until this constant nothing bounded them:
  *
- *   - MAX_POSTINGS_PER_VISIT binds only CAPPED_VISIT_VENDORS — six of twenty (usajobs joined in .89).
- *     The other fifteen fetch an entire board in ONE request.
+ *   - MAX_POSTINGS_PER_VISIT binds only CAPPED_VISIT_VENDORS — seven of twenty (usajobs .89, teamtailor .92).
+ *     The other thirteen fetch an entire board in ONE request.
  *   - greenhouse asks for ?content=true, which inlines every description.
  *   - AUTO_LIGHT_THRESHOLD_CHARS measures contentChars AFTER the body is
  *     parsed, so it can only ever protect the NEXT pass. The one volume guard
@@ -1934,6 +1934,53 @@ async function fetchUsajobs(s: JobSource, startOffset: number, key: string, ua: 
   return { items: all, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedUs };
 }
 
+/** Items on one page of a Teamtailor jobs.rss; `?offset=N` pages it (S8-002). */
+const TT_PAGE = 100;
+// A page of exactly TT_PAGE is never the whole board. Rationale: docs/job-board-index-notes.md#n439-teamtailor-pages
+async function fetchTeamtailor(s: JobSource, startOffset = 0): Promise<{ jobs: JobPosting[]; raw: string; windowed: boolean; feedTotal?: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
+  const url = listUrl(s);
+  const pageCap = Math.max(1, s.pages ?? Math.ceil(MAX_POSTINGS_PER_VISIT / TT_PAGE));
+  const jobs: JobPosting[] = [];
+  const pages: string[] = [];
+  const seen = new Set<string>();
+  let read = 0, ended = false, ignored = false;
+  for (let p = 0; p < pageCap; p++) {
+    const offset = startOffset + p * TT_PAGE;
+    let rss: string;
+    try {
+      const res = await fetchWithTimeout(offset ? `${url}?offset=${offset}` : url);
+      if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
+      rss = await res.text();
+    } catch (e) {
+      if (p === 0) throw e;
+      break; // a later page refused (403 when throttled) or late: a window
+    }
+    // A 200 that is not the feed (a bot wall) is a failed fetch, never an empty board or the feed's end.
+    if (!/<channel[\s>]/.test(rss)) { if (p === 0) throw new Error("teamtailor answer is not an RSS channel"); break; }
+    const count = xmlBlocks(rss, "item").length;
+    const batch = normalizeTeamtailor(rss, s.name, s.token);
+    // A host that ignores ?offset serves its first page again.
+    if (p > 0 && batch.length > 0 && batch.every((j) => seen.has(j.id))) { ignored = true; break; }
+    for (const j of batch) seen.add(j.id);
+    jobs.push(...batch);
+    pages.push(rss);
+    read += count;
+    if (count < TT_PAGE) { ended = true; break; }
+    if (jobs.length >= MAX_POSTINGS_PER_VISIT) break;
+  }
+  const endOffset = startOffset + read;
+  return {
+    jobs,
+    raw: pages.join("\n"),
+    windowed: ignored || !ended || startOffset > 0,
+    // The feed states no total; where a resumed walk found its end is the lap's measure (lapTotal). From the top, none (n130).
+    feedTotal: ended && startOffset > 0 ? endOffset : undefined,
+    nextOffset: ended || ignored ? 0 : endOffset,
+    feedEnded: ended,
+    endOffset,
+  };
+}
+
 // Rationale: docs/job-board-index-notes.md#n411-streamed-oversize-read
 async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs: number): Promise<{ jobs: JobPosting[]; raw: unknown } | null> {
   const spec = SLIM_SPECS[s.source];
@@ -2044,12 +2091,7 @@ async function fetchBoard(
       const { xml, host } = await fetchPersonio(s);
       return { jobs: normalizePersonio(xml, s.name, s.token, host), raw: xml };
     }
-    if (s.source === "teamtailor") {
-      const res = await fetchWithTimeout(listUrl(s));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rss = await res.text();
-      return { jobs: normalizeTeamtailor(rss, s.name, s.token), raw: rss };
-    }
+    if (s.source === "teamtailor") return await fetchTeamtailor(s, startOffset);
     const raw = s.source === "smartrecruiters" ? await fetchSmartRecruiters(s, startOffset) : await (async () => {
       const res = await fetchWithTimeout(listUrl(s));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2424,7 +2466,7 @@ function lifecycleFacets(r: Record<string, unknown>): Record<string, unknown> {
  * The live verification stamp keeps whatever it always kept; this rule applies
  * to the append-only history, where a number is permanent.
  */
-const DERIVED_FEED_TOTAL_SOURCES = new Set(["rippling", "jazzhr"]);
+const DERIVED_FEED_TOTAL_SOURCES = new Set(["rippling", "jazzhr", "teamtailor"]);
 
 /** The widened posting select both delete paths now read before pruning. */
 const LIFECYCLE_SELECT =
