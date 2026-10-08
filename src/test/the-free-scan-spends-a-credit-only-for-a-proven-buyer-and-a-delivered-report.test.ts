@@ -25,6 +25,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
@@ -395,6 +396,6 @@ describe("a malformed body is the caller's mistake", () => {
 
   it("every answer carries the build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^free-keyword-scan\.2026-10-05\.\d+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "free-keyword-scan", "2026-10-08")).toBe(true);
   });
 });

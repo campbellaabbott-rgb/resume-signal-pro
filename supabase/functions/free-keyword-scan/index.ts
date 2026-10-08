@@ -442,7 +442,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-05.2";
+const FN_BUILD = "free-keyword-scan.2026-10-08.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1530,7 +1530,10 @@ serve(async (req) => {
       // 1. Pro, for the signed-in account's address, once its mailbox is
       //    proven. A password sign-up as a subscriber's address is not.
       if (authedUser) {
+        // The switch is the mailbox_proof_settings row; the secret only
+        // answers when that row cannot be read.
         provenEmail = await provenMailbox(authedUser, authedJwt, {
+          db: supabase,
           confirmedSince: Deno.env.get('EMAIL_CONFIRMED_SINCE') ?? null,
           supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
           anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
