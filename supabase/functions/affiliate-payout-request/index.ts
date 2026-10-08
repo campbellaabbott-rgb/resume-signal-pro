@@ -11,10 +11,15 @@
 //   - an unknown or expired session is a 401;
 //   - a balance under the minimum is a 400 naming the minimum;
 //   - one open request per affiliate (a unique index): a second is a 409;
-//   - otherwise one affiliate_payout_requests row for the whole pending
-//     balance, and a mail to the owner through the same Resend path every
-//     owner note uses. The answer is {status:"requested"} only once the row
-//     exists; a mail that fails is logged and said in the answer, never hidden.
+//   - otherwise one affiliate_payout_requests row naming the affiliate's
+//     APPROVED conversions and their sum -- what the dashboard's Pending and
+//     its button count, never affiliates.pending_payout, which holds every
+//     unpaid commission and which nothing used to reduce, so a paid balance
+//     could be requested again. Marking the row paid settles it in the same
+//     statement (20261008126000). Then a mail to the owner through the same
+//     Resend path every owner note uses. The answer is {status:"requested"}
+//     only once the row exists; a mail that fails is logged and said in the
+//     answer, never hidden.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
@@ -72,22 +77,30 @@ Deno.serve(async (req) => {
     }
 
     const { data: affiliate, error: aErr } = await admin
-      .from("affiliates").select("id, email, status, pending_payout")
+      .from("affiliates").select("id, email, status")
       .eq("id", session.affiliate_id).maybeSingle();
     if (aErr) return json({ error: "Please try again in a moment." }, 503);
     if (!affiliate) return json({ error: "Please sign in again." }, 401);
     if (affiliate.status !== "active") return json({ error: "This affiliate account is not active." }, 403);
-    const amount = Number(affiliate.pending_payout) || 0;
+    const { data: approved, error: cErr } = await admin
+      .from("affiliate_conversions").select("id, commission_amount")
+      .eq("affiliate_id", affiliate.id).eq("status", "approved");
+    if (cErr || !Array.isArray(approved)) return json({ error: "Please try again in a moment." }, 503);
+    const conversionIds = approved.map((c: { id: string }) => c.id);
+    const amount = approved.reduce((t: number, c: { commission_amount: number | string }) => t + (Number(c.commission_amount) || 0), 0);
     if (amount < MIN_PAYOUT_CENTS) {
       return json({ error: `The minimum payout is ${dollars(MIN_PAYOUT_CENTS)}.`, minimumCents: MIN_PAYOUT_CENTS }, 400);
     }
 
     const { data: row, error: insErr } = await admin
       .from("affiliate_payout_requests")
-      .insert({ affiliate_id: affiliate.id, amount_cents: amount })
+      .insert({ affiliate_id: affiliate.id, amount_cents: amount, conversion_ids: conversionIds })
       .select("id, requested_at").single();
     if (insErr) {
       if ((insErr as { code?: string }).code === "23505") return json({ status: "already_requested" }, 409);
+      // The settlement trigger re-adds the conversions: one changed between
+      // the read and the write.
+      if ((insErr as { code?: string }).code === "23514") return json({ error: "Your balance changed while we recorded the request. Please try again." }, 409);
       console.error("[AFFILIATE-PAYOUT] request insert failed:", insErr.message);
       return json({ error: "Could not record the request. Please try again." }, 500);
     }
@@ -103,10 +116,10 @@ Deno.serve(async (req) => {
         to: [OWNER_EMAIL],
         subject: `Affiliate payout request: ${dollars(amount)}`,
         html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111">
-          <p>An affiliate asked to be paid <b>${escapeHtml(dollars(amount))}</b>, their whole pending balance.</p>
+          <p>An affiliate asked to be paid <b>${escapeHtml(dollars(amount))}</b> for ${conversionIds.length} approved conversion${conversionIds.length === 1 ? "" : "s"}.</p>
           <p>Affiliate: ${escapeHtml(affiliate.email)} (id ${escapeHtml(affiliate.id)})</p>
           <p>Request: ${escapeHtml(row.id)}, ${escapeHtml(row.requested_at)}</p>
-          <p style="font-size:12px;color:#64748b">Recorded in affiliate_payout_requests (status requested). Pay it, then mark the row paid or rejected.</p>
+          <p style="font-size:12px;color:#64748b">Recorded in affiliate_payout_requests (status requested). Pay it, then set the row's status to paid: that marks its conversions paid and moves the amount out of the affiliate's pending balance in the same statement. Or set it to rejected.</p>
         </div>`,
       });
       if (sendErr) console.error(`[AFFILIATE-PAYOUT] request ${row.id} recorded, but the owner mail was refused:`, (sendErr as { message?: string }).message ?? sendErr);

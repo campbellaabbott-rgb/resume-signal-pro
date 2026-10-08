@@ -71,6 +71,11 @@ export const BEFORE = `
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), affiliate_id uuid NOT NULL REFERENCES public.affiliates(id) ON DELETE CASCADE,
     session_token text NOT NULL UNIQUE DEFAULT md5(random()::text), expires_at timestamptz NOT NULL DEFAULT now() + interval '30 days',
     created_at timestamptz NOT NULL DEFAULT now());
+  CREATE TABLE public.affiliate_conversions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), affiliate_id uuid NOT NULL REFERENCES public.affiliates(id) ON DELETE CASCADE,
+    stripe_session_id text NOT NULL UNIQUE, product_name text, sale_amount integer NOT NULL, commission_amount integer NOT NULL,
+    status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'paid', 'rejected')),
+    created_at timestamptz NOT NULL DEFAULT now(), paid_at timestamptz);
 `;
 
 export async function bootEmailOpsDb(opts: { cron?: boolean; apply?: string[]; seed?: string } = {}): Promise<PGlite> {
