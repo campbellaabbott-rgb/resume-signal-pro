@@ -92,6 +92,8 @@ let underLimit: boolean;
 let grants: Map<string, { email: string; left: number; claimedBy: string | null }>;
 let settingsReads: number;
 let autoconfirm: boolean;
+/** POSTs to notify-owner: the URL's headers and body (wave 2 email-ops, register L10-13). */
+const notifyCalls: Array<{ headers: Record<string, string>; body: Record<string, unknown> }> = [];
 const env: Record<string, string> = {
   SUPABASE_URL: "https://harness.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-harness-key-0123456789abcdef",
@@ -210,7 +212,11 @@ beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.EdgeRuntime = { waitUntil: (p: unknown) => { void Promise.resolve(p).catch(() => {}); } };
-  g.fetch = async (url: string) => {
+  g.fetch = async (url: string, init?: { headers?: Record<string, string>; body?: string }) => {
+    if (String(url).endsWith("/functions/v1/notify-owner")) {
+      notifyCalls.push({ headers: init?.headers ?? {}, body: JSON.parse(init?.body ?? "{}") });
+      return new Response("{}", { status: 200 });
+    }
     if (String(url).endsWith("/auth/v1/settings")) {
       settingsReads++;
       return new Response(JSON.stringify({ mailer_autoconfirm: autoconfirm, disable_signup: false }), { status: 200 });
@@ -383,6 +389,35 @@ describe("a proven buyer's credit is spent only when a full report is delivered"
   });
 });
 
+describe("the owner's note for a scan (wave 2 email-ops, register L10-13)", () => {
+  const settled = () => new Promise((r) => setTimeout(r, 20));
+  it("carries the service key, and is never sent for the heartbeat's or a script's synthetic scan", async () => {
+    env.NOTIFY_SCANS = "true";
+    env.HEARTBEAT_SECRET = "hb-secret";
+    notifyCalls.length = 0;
+    try {
+      underLimit = true;
+      expect((await scan({ resumeText: RESUME })).status).toBe(200);
+      await settled();
+      expect(notifyCalls, "a real scan stopped telling the owner").toHaveLength(1);
+      expect(notifyCalls[0].headers.Authorization, "notify-owner refuses a note without the service key").toBe(`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`);
+      notifyCalls.length = 0;
+      expect((await scan({ resumeText: `${RESUME}\nsynthetic run`, synthetic: true })).status).toBe(200);
+      const hb = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer anon_harness", "x-heartbeat-secret": "hb-secret", "cf-connecting-ip": "198.51.100.41" },
+        body: JSON.stringify({ resumeText: `${RESUME}\nheartbeat run` }),
+      }));
+      expect(hb.status).toBe(200);
+      await settled();
+      expect(notifyCalls, "every heartbeat scan mailed the owner").toEqual([]);
+    } finally {
+      env.NOTIFY_SCANS = "false";
+      delete env.HEARTBEAT_SECRET;
+    }
+  });
+});
+
 describe("a malformed body is the caller's mistake", () => {
   it("answers 400, not a 500 incident", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", {
@@ -395,6 +430,6 @@ describe("a malformed body is the caller's mistake", () => {
 
   it("every answer carries the build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^free-keyword-scan\.2026-10-05\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^free-keyword-scan\.2026-10-(0[5-9]|[1-3]\d)\.\d+$/);
   });
 });

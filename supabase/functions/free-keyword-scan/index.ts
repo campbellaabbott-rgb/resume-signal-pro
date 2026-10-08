@@ -19,6 +19,7 @@ import {
   type CreditHold,
 } from "../_shared/scan-credits.ts";
 import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
+import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 import {
   detectCountryFromResume,
   getMarketInsight,
@@ -442,7 +443,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-05.2";
+const FN_BUILD = "free-keyword-scan.2026-10-08.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1147,17 +1148,9 @@ function calculateRuleBasedAtsScore(
 // Retry helper for AI API calls with exponential backoff
 const MAX_AI_RETRIES = 2;
 const AI_RETRY_DELAY_MS = 2000;
-// Flash-first: production logs showed both parallel calls bound by
-// gemini-2.5-pro's 45-95s tail latency on heavy structured output. Flash is
-// several times faster on the same workload, and the post-call safety nets
-// (rule-based score clamp, claim grounding, consistency validation, schema
-// coercion) were built precisely so model choice can't corrupt the report.
-// Pro stays second as the quality fallback.
-const MODEL_FALLBACK_ORDER = [
-  'google/gemini-2.5-flash',
-  'google/gemini-2.5-pro',
-  'openai/gpt-4o-mini',
-];
+// Flash-first, then pro, then cross-provider: the rationale lives with the
+// list in _shared/scan-models.ts, which test-ai-fallback reads too.
+const MODEL_FALLBACK_ORDER: string[] = [...SCAN_MODEL_CHAIN];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -4503,12 +4496,16 @@ ${resumeText.substring(0, 20000)}
     trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry }, clientIp);
 
     // Owner notification for each completed scan (fire and forget).
-    // Disable by setting NOTIFY_SCANS=false in function secrets.
-    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false') {
+    // Disable by setting NOTIFY_SCANS=false in function secrets. Never for our
+    // own probes: the heartbeat now runs an uncached scan every 10 minutes.
+    // notify-owner answers only the service role or the cron key since
+    // 2026-10-08 (register L10-13), so the call carries the service key.
+    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false' && !isHeartbeatProbe && !isSyntheticScan) {
+      const notifyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
       EdgeRuntime.waitUntil(
         fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-owner`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${notifyKey}`, apikey: notifyKey },
           body: JSON.stringify({
             type: 'scan',
             score: analysis.atsScoreEstimate,

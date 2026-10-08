@@ -1,21 +1,30 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 // Owner notifications: emails the site owner when a new account is created
 // (fired by a DB trigger on auth.users) or a scan completes (fired by
-// free-keyword-scan). Recipient is fixed server-side, so the worst abuse case
-// is noise to the owner inbox; a per-instance rate cap bounds even that.
-
+// free-keyword-scan). Recipient is fixed server-side.
+//
+// IT ANSWERED ANYONE (register L10-13). Any script could POST {type:'signup',
+// email:'ceo@bigco.com'} in a loop: a forgeable "New account" signal (and this
+// project has a recorded fake-audience history), and every send spent the
+// Resend quota paid delivery shares, bounded only by a per-isolate counter.
+// Now it answers only our own callers -- the auth.users trigger sends the
+// vault's cron key as x-email-cron (20261008123000), free-keyword-scan sends
+// the service role -- and the hourly ceiling is counted in the database
+// (mail_door_take), not in one isolate's memory.
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
+
+const FN_BUILD = "notify-owner.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 const OWNER_EMAIL = Deno.env.get("OWNER_NOTIFY_EMAIL") ?? "resumeboostersupp@gmail.com";
-
-// Cheap flood guard: max sends per instance per hour.
-let sentThisWindow = 0;
-let windowStart = Date.now();
+/** Owner notes an hour, all kinds together, counted in the database. */
 const MAX_PER_HOUR = 100;
 
 function escapeHtml(text: string | number | undefined | null): string {
@@ -25,22 +34,27 @@ function escapeHtml(text: string | number | undefined | null): string {
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
+/** One line for a subject: no control characters, no line breaks, clipped. */
+const subjectSafe = (s: string, max = 120): string =>
+  s.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (Date.now() - windowStart > 3600_000) { windowStart = Date.now(); sentThisWindow = 0; }
-    if (sentThisWindow >= MAX_PER_HOUR) {
-      return new Response(JSON.stringify({ skipped: "rate-capped" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
+    if (!(await isScheduledCaller(req.headers, admin, serviceKey))) {
+      return json({ error: "Owner notes come from our own servers only." }, 401);
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
-      return new Response(JSON.stringify({ error: "email not configured" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("[NOTIFY-OWNER] RESEND_API_KEY not configured; note not sent");
+      return json({ error: "email not configured" }, 503);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -52,31 +66,37 @@ Deno.serve(async (req) => {
 
     if (body.type === "INSERT" && body.record?.email) {
       kind = "signup";
-      subject = `🎉 New account: ${body.record.email}`;
+      subject = `🎉 New account: ${subjectSafe(String(body.record.email))}`;
       lines = [
         `<b>${escapeHtml(body.record.email)}</b> just created an account.`,
         `Signed up at: ${escapeHtml(body.record.created_at ?? new Date().toISOString())}`,
       ];
     } else if (body.type === "signup" && body.email) {
       kind = "signup";
-      subject = `🎉 New account: ${body.email}`;
+      subject = `🎉 New account: ${subjectSafe(String(body.email))}`;
       lines = [`<b>${escapeHtml(body.email)}</b> just created an account.`];
     } else if (body.type === "scan") {
       kind = "scan";
-      subject = `📄 New scan: ${body.score ?? "?"}/100 (${body.industry ?? "unknown"})`;
+      subject = subjectSafe(`📄 New scan: ${body.score ?? "?"}/100 (${body.industry ?? "unknown"})`);
       lines = [
         `Score: <b>${escapeHtml(body.score ?? "?")}</b>/100`,
-        `Industry: <b>${escapeHtml((body.industry ?? "unknown").replace(/_/g, " "))}</b>`,
+        `Industry: <b>${escapeHtml(String(body.industry ?? "unknown").replace(/_/g, " "))}</b>`,
         body.country ? `Country: ${escapeHtml(body.country)}` : "",
         body.authed != null ? `Signed-in user: ${body.authed ? "yes" : "no"}` : "",
       ].filter(Boolean);
     }
 
-    if (!kind) {
-      return new Response(JSON.stringify({ error: "unrecognized payload" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!kind) return json({ error: "unrecognized payload" }, 400);
+
+    // The ceiling, counted where every isolate sees the same number.
+    const { data: allowed, error: doorErr } = await admin.rpc("mail_door_take", {
+      p_door: "notify-owner", p_bucket: "all", p_max: MAX_PER_HOUR, p_window_minutes: 60,
+    });
+    if (doorErr) {
+      console.error("[NOTIFY-OWNER] the hourly count could not be taken; note not sent:", doorErr.message?.slice(0, 160));
+      return json({ error: "try again later" }, 503);
     }
+    if (allowed !== true) return json({ skipped: "rate-capped" });
 
     const resend = new Resend(RESEND_API_KEY);
     const { error } = await resend.emails.send({
@@ -87,19 +107,12 @@ Deno.serve(async (req) => {
     });
     if (error) {
       console.error("[NOTIFY-OWNER] send failed:", error);
-      return new Response(JSON.stringify({ error: "send failed" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "send failed" }, 502);
     }
 
-    sentThisWindow++;
-    return new Response(JSON.stringify({ success: true, kind }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ success: true, kind });
   } catch (e) {
     console.error("[NOTIFY-OWNER] Uncaught:", e);
-    return new Response(JSON.stringify({ error: "unexpected" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "unexpected" }, 500);
   }
 });

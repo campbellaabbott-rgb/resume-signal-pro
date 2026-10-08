@@ -1,9 +1,16 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 import { getServiceClient } from "../_shared/supabase-client.ts";
+
+// A KEY THAT IS REFUSED IS NOT A HEALTHY SERVICE (register L13-67): the same
+// change as health-check. Stripe passes only on a 200; a missing key or a
+// 401/402/403 from Stripe or the AI gateway is unhealthy.
+const FN_BUILD = "scheduled-health-probe.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
 interface ProbeResult {
@@ -75,9 +82,9 @@ async function probeDatabase(): Promise<ProbeResult> {
 // Ultra-fast AI gateway check
 async function probeAIGateway(): Promise<ProbeResult> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
+
   if (!LOVABLE_API_KEY) {
-    return { service: 'ai-gateway', status: 'healthy', latency_ms: 0 };
+    return { service: 'ai-gateway', status: 'unhealthy', latency_ms: 0, error: 'LOVABLE_API_KEY is not set' };
   }
 
   const start = Date.now();
@@ -102,6 +109,10 @@ async function probeAIGateway(): Promise<ProbeResult> {
     if (response.status >= 500) {
       return { service: 'ai-gateway', status: 'degraded', latency_ms: latency, error: `Status ${response.status}` };
     }
+    // The probe's empty message list is a 400 for a working key; these mean the key itself is refused.
+    if (response.status === 401 || response.status === 402 || response.status === 403) {
+      return { service: 'ai-gateway', status: 'unhealthy', latency_ms: latency, error: response.status === 402 ? 'AI credits exhausted (HTTP 402)' : `AI key refused (HTTP ${response.status})` };
+    }
     
     const status = latency < THRESHOLDS.ai_gateway.healthy ? 'healthy' 
       : latency < THRESHOLDS.ai_gateway.degraded ? 'degraded' : 'degraded';
@@ -120,9 +131,9 @@ async function probeAIGateway(): Promise<ProbeResult> {
 // Fast Stripe check
 async function probeStripe(): Promise<ProbeResult> {
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
-  
+
   if (!stripeKey) {
-    return { service: 'stripe', status: 'healthy', latency_ms: 0 };
+    return { service: 'stripe', status: 'unhealthy', latency_ms: 0, error: 'STRIPE_SECRET_KEY is not set' };
   }
 
   const start = Date.now();
@@ -131,15 +142,23 @@ async function probeStripe(): Promise<ProbeResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     
-    await fetch('https://api.stripe.com/v1/balance', {
+    const response = await fetch('https://api.stripe.com/v1/balance', {
       headers: { 'Authorization': `Bearer ${stripeKey}` },
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
-    
-    const status = latency < THRESHOLDS.stripe.healthy ? 'healthy' 
+    await response.body?.cancel().catch(() => {});
+
+    if (response.status >= 500) {
+      return { service: 'stripe', status: 'degraded', latency_ms: latency, error: `Stripe answered HTTP ${response.status}` };
+    }
+    if (response.status !== 200) {
+      return { service: 'stripe', status: 'unhealthy', latency_ms: latency, error: `Stripe refused the secret key (HTTP ${response.status})` };
+    }
+
+    const status = latency < THRESHOLDS.stripe.healthy ? 'healthy'
       : latency < THRESHOLDS.stripe.degraded ? 'degraded' : 'degraded';
     
     return { service: 'stripe', status, latency_ms: latency };

@@ -1,9 +1,19 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 import { getServiceClient } from "../_shared/supabase-client.ts";
+
+// A KEY THAT IS REFUSED IS NOT A HEALTHY SERVICE (register L13-67). The Stripe
+// check discarded the response and read a missing key as "ok", so a rolled or
+// absent STRIPE_SECRET_KEY failed every checkout while this page said Stripe
+// was fine; the AI check counted only a 5xx, so a 401 (bad key) or a 402
+// (credits exhausted) read healthy. Stripe now passes only on a 200 from its
+// balance endpoint; a missing key or a 401/402/403 from either is an error.
+const FN_BUILD = "health-check.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
 interface HealthCheckResult {
@@ -62,7 +72,7 @@ async function checkDatabase(): Promise<CheckResult> {
 async function checkAIGateway(): Promise<CheckResult> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
-    return { status: 'ok', latency_ms: 0 }; // No key = skip, don't fail
+    return { status: 'error', latency_ms: 0, message: 'LOVABLE_API_KEY is not set' };
   }
 
   const start = Date.now();
@@ -81,6 +91,9 @@ async function checkAIGateway(): Promise<CheckResult> {
     const latency = Date.now() - start;
     
     if (response.status >= 500) return { status: 'slow', latency_ms: latency, message: `Status ${response.status}` };
+    // The probe's empty message list is a 400 for a working key; these mean the key itself is refused.
+    if (response.status === 401 || response.status === 403) return { status: 'error', latency_ms: latency, message: `AI key refused (HTTP ${response.status})` };
+    if (response.status === 402) return { status: 'error', latency_ms: latency, message: 'AI credits exhausted (HTTP 402)' };
     
     return { 
       status: latency < THRESHOLDS.ai_gateway.ok ? 'ok' : 'slow', 
@@ -94,7 +107,7 @@ async function checkAIGateway(): Promise<CheckResult> {
 async function checkStripe(): Promise<CheckResult> {
   const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
   if (!stripeKey) {
-    return { status: 'ok', latency_ms: 0 }; // No key = skip
+    return { status: 'error', latency_ms: 0, message: 'STRIPE_SECRET_KEY is not set' };
   }
 
   const start = Date.now();
@@ -102,17 +115,20 @@ async function checkStripe(): Promise<CheckResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
     
-    await fetch('https://api.stripe.com/v1/balance', {
+    const response = await fetch('https://api.stripe.com/v1/balance', {
       headers: { 'Authorization': `Bearer ${stripeKey}` },
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
     const latency = Date.now() - start;
-    
-    return { 
-      status: latency < THRESHOLDS.stripe.ok ? 'ok' : 'slow', 
-      latency_ms: latency 
+    await response.body?.cancel().catch(() => {});
+
+    if (response.status >= 500) return { status: 'slow', latency_ms: latency, message: `Stripe answered HTTP ${response.status}` };
+    if (response.status !== 200) return { status: 'error', latency_ms: latency, message: `Stripe refused the secret key (HTTP ${response.status})` };
+    return {
+      status: latency < THRESHOLDS.stripe.ok ? 'ok' : 'slow',
+      latency_ms: latency
     };
   } catch (e) {
     return { status: 'slow', latency_ms: Date.now() - start, message: 'Timeout' };
