@@ -94,6 +94,7 @@ import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
+import { vendorDefaultHeaders } from "./request-headers.ts";
 import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
 import {
@@ -1192,7 +1193,8 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
       return await fetch(url, {
         ...init,
         signal: ctrl.signal,
-        headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)", ...(init?.headers ?? {}) },
+        // A vendor's own defaults (Workday names a language, S8-003), then the caller's.
+        headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)", ...vendorDefaultHeaders(url), ...(init?.headers ?? {}) },
       });
     } finally {
       clearTimeout(t);

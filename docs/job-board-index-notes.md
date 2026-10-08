@@ -10019,3 +10019,25 @@ listed resumebooster.lovable.app since .87, which let a Turnstile token solved
 on that foreign page mint a board pass here. It is removed in .91; the test
 now lists it among the hosts that must FAIL. The paid-product and Full
 Analysis emails had linked buyers to the same host until 2026-10-08 (PR #19).
+
+## n437-workday-accept-language
+
+Above: `vendorDefaultHeaders` (request-headers.ts), merged under the caller's
+headers in fetchWithTimeout.
+
+Deno's fetch, like Node's undici, sends `Accept-Language: *` when a request
+names no language, and job-board named none. Some Workday tenants answer that
+with `{"errorCode":"HTTP_500"}` and answer the same POST under `en-US` with
+their list. Measured from Node on 2026-10-08 against the public CXS lists:
+truist~wd1~careers 500 -> 200 (total 1,497), geico~wd1~External 500 -> 200
+(321), 7eleven~wd3~7eleven 500 -> 200 (72), wvumedicine~wd1~UHA 500 -> 200
+(742); nvidia~wd5~NVIDIAExternalCareerSite 200 either way. Page 0 threw, the
+failure streak grew, and after DEAD_BOARD_THRESHOLD over
+DEAD_BOARD_MIN_FAILING_MS the dormancy prune deleted what the board held.
+
+Scoped by host to `*.myworkdayjobs.com`, so the list POST, verify's search
+POST and the CXS detail GETs (verify and the description lane) all carry it,
+and no other vendor does: a named language may switch another vendor's
+descriptions. A caller that names its own language keeps it. Recovery needs
+no data edit: a dormant board is re-probed every DORMANT_RECHECK_MS (12h) and
+a failing one by the retry lane, and the first 200 clears its entry.
