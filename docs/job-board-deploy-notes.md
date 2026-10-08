@@ -38,7 +38,7 @@ NOT DONE: job_board_board_state is still keyed by company_token, and the orphan 
 - L8-17 / L8-03: only an unambiguous figure is a pay floor ($, thousands comma, trailing +, k but never 401k, or six+ bare digits); the word removed is the token the floor came from. A SYMBOL query ("c#", "c++") withholds its count (total null, countUnavailable, totalAtLeast = fetched rows whose title carries the symbol) in the list and countOnly. n430.
 - L8-16: the ranked exit withdraws `total` only when the rows provably reached exceed total + related (deep pages: the SQL rank reached, never the 400 seam jump). n431.
 - L13-24: a text query's category chips are withheld (facetSource "withheld"); an employer query counts its own tokens ("employer"). n433.
-- L8-05 (ring and +45 word-bounded), L8-06 (quoted spans and trade terms not lifted; noIntent:true), L8-07 ("or" between words is OR), L8-08 (employer typeahead folded), L8-09 (a qualifier word is never the split's place), L8-10 (ISO country, UK = GB, unknown named), L13-68 (whole-day maxAgeDays), L1-07 (the audit's RateLimitError is a refusal; walks sequential; `incomplete`). n435.
+- L8-05 (ring and +45 word-bounded), L8-06 (quoted spans and trade terms not lifted; noIntent:true), L8-07 ("or" between words is OR), L8-08 (employer typeahead folded to letters and digits of every script, so "당근" and "ΒΙΚΟΣ" still find their employers), L8-09 (a qualifier word is never the split's place), L8-10 (ISO country, UK = GB, unknown named), L13-68 (whole-day maxAgeDays), L1-07 (the audit's RateLimitError is a refusal; walks sequential; `incomplete`). n435.
 
 FRONTEND HANDOFFS (frontend-board group): render `sortUnavailable`, `facetSource: "withheld"`, an Undo for `intentFilters` that re-sends with `noIntent: true`, and an undo for a lifted pay figure (the server still lifts it; no flag for that yet); Jobs.tsx mergeCompanyOptions has L8-08's lowercase-substring defect client-side.
 
@@ -52,7 +52,7 @@ An honest reservation for a whole read is min(feed total, SR_CAP) up to 2,000, a
 
 ### ORDER, DEPLOY, MIGRATIONS
 
-1. DEPLOY. Ask Lovable, after pulling main: deploy the edge function job-board. Judge only by `status.version = 2026-09-09.91` and the preflight `x-fn-build: job-board.2026-09-09.91` (over the ~4.5 MB raw-source cap the old bundle keeps serving and the deploy still reports success). Bundle source: the local module graph goes 3,698,636 -> 3,719,176 bytes (+20,540; 42 -> 44 modules; same walk as the .90 figure); job-board plus _shared .ts source 4,082,931 -> 4,103,471 bytes, ~0.4 MB under the cap.
+1. DEPLOY. Ask Lovable, after pulling main: deploy the edge function job-board. Judge only by `status.version = 2026-09-09.91` and the preflight `x-fn-build: job-board.2026-09-09.91` (over the ~4.5 MB raw-source cap the old bundle keeps serving and the deploy still reports success). Bundle source: the local module graph goes 3,698,636 -> 3,719,601 bytes (+20,965; 42 -> 44 modules; same walk as the .90 figure); job-board plus _shared .ts source 4,082,931 -> 4,103,896 bytes, ~0.4 MB under the cap.
 2. THEN apply, in order (each is safe before or after the bundle, and re-runnable):
    - 20261008100000_a_twins_read_kept_a_deferred_boards_rows_out_of_the_48h_sweep.sql (the sweep's command; until .91 has seeded keys it behaves exactly as before)
    - 20261008100100_the_stale_window_reads_a_board_stamp_by_its_board.sql (get_stalest_boards body; harmless with no keys)

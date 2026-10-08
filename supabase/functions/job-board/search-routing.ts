@@ -31,6 +31,12 @@
 export const foldName = (s: string): string =>
   s.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 
+/** The employer typeahead's fold: letters and digits of EVERY script, final
+ *  sigma read as sigma. foldName keeps a-z0-9 for the router; here it folded a
+ *  Korean, Greek or Thai name or query to nothing (n435). */
+export const foldTypeahead = (s: string): string =>
+  s.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/ς/g, "σ").replace(/[^\p{L}\p{N}]+/gu, "");
+
 /**
  * Occupations and ordinary words that must NEVER resolve to an employer.
  *

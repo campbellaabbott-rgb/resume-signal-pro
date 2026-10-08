@@ -9954,7 +9954,7 @@ lets a poll tell the correction from any real regression.
 
 Above: ringWordPattern / startsWithWord (search-routing.ts), INTENT_FILTERS'
 trade-term lookaheads and liftIntentFilters' quoted-span mask and noIntent,
-queryTerms' "or" and orGroups, company-suggest's foldName, PLACE_QUALIFIERS,
+queryTerms' "or" and orGroups, company-suggest's foldTypeahead, PLACE_QUALIFIERS,
 ISO_ALPHA2 / COUNTRY_ALIASES and the whole-day maxAgeDays (filters.ts), and the
 filter audit's `refused` probe. One build of small readings, each measured in
 the platform-debug register of 2026-10-04:
@@ -9972,7 +9972,9 @@ the platform-debug register of 2026-10-04:
   684 + 547). Between two real words it is a term: the tsquery tiers read OR,
   the substring path binds OR groups.
 - L8-08: the employer typeahead compared lowercase substrings ("dominos" found
-  nothing); both sides are folded.
+  nothing); both sides are folded to letters and digits of every script
+  (foldTypeahead). The router's foldName (a-z0-9) was tried first and folded a
+  Korean, Greek, Thai or Hindi query, and four catalogue names, to nothing.
 - L8-09: a one-word tail that only qualifies a place ("united", "county") is not
   tried as the location-split's place.
 - L8-10: country takes ISO 3166-1 alpha-2 (plus XK), reads UK as GB, and names

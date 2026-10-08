@@ -80,6 +80,12 @@ for(const q of ["new grad 2026","401k","1099 sales"]){const r=await list({q,limi
 {const r=await call({action:"company-suggest",q:"dominos"});
   const n=Array.isArray(r&&r.companies)?r.companies.map((c)=>c.name):[];
   late(n.some((x)=>/domino/i.test(String(x))),"L8-08 company-suggest q=dominos: "+JSON.stringify(n.slice(0,3))+" (want Domino\x27s)")}
+// L8-08 must not lose a non-Latin name: .90 found these by lowercase substring.
+for(const [q,want] of [["당근","당근마켓"],["ΒΙΚΟΣ","ΒΙΚΟΣ"],["ขอนแก่น","ขอนแก่น"]]){
+  const r=await call({action:"company-suggest",q});
+  const n=Array.isArray(r&&r.companies)?r.companies.map((c)=>String(c.name)):[];
+  const ok=n.some((x)=>x.includes(want));
+  console.log((ok?"PASS":(v91?"FAIL":"INFO"))+"  L8-08 company-suggest q="+q+": "+JSON.stringify(n.slice(0,2))+" (want a name containing "+want+"; .90 found it, the first .91 fold did not; INFO before .91 means the employer left the catalogue)")}
 // L8-10 / L13-68: values named, not answered with zero.
 {const uk=await list({q:"nurse",country:"UK",limit:1});const gb=await list({q:"nurse",country:"GB",limit:1});const xx=await list({q:"nurse",country:"XX",limit:1});
   const ig=(r)=>Array.isArray(r&&r.ignoredFilters)?r.ignoredFilters:[];

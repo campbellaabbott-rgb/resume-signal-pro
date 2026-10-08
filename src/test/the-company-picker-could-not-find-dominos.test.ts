@@ -25,8 +25,14 @@ beforeAll(async () => {
           { token: "chilis", name: "Chili's", count: 1094 },
           { token: "att", name: "AT&T", count: 900 },
           { token: "dominion", name: "Dominion Energy", count: 300 },
+          { token: "daangn", name: "당근마켓", count: 40 },
+          { token: "vikos", name: "Ηπειρωτική Βιομηχανία Εμφιαλώσεων Α.Ε. (ΒΙΚΟΣ)", count: 12 },
+          { token: "eoppep", name: "Εθνικός Οργανισμός Πρόληψης & Αντιμετώπισης των Εξαρτήσεων", count: 9 },
+          { token: "kku", name: "มหาวิทยาลัยขอนแก่น", count: 7 },
+          { token: "gekterna", name: "ΟΜΙΛΟΣ ΓΕΚ ΤΕΡΝΑ / GEK TERNA GROUP", count: 30 },
+          { token: "tatamotors", name: "टाटा मोटर्स", count: 25 },
         ],
-        companiesOpen: { dominos: 21531, chilis: 1094, att: 900, dominion: 300 },
+        companiesOpen: { dominos: 21531, chilis: 1094, att: 900, dominion: 300, daangn: 40, vikos: 12, eoppep: 9, kku: 7, gekterna: 30, tatamotors: 25 },
       },
       error: null,
     }
@@ -46,6 +52,20 @@ describe("the employer typeahead reads names the way people type them", () => {
 
   it("a prefix still ranks first, by open roles beneath", async () => {
     expect(await names("domin")).toEqual(["Domino's", "Dominion Energy"]);
+  });
+
+  it("a name in another script is found by what is typed in it, as the lowercase match before the fold found it", async () => {
+    expect(await names("당근")).toEqual(["당근마켓"]);
+    expect(await names("ΒΙΚΟΣ")).toEqual(["Ηπειρωτική Βιομηχανία Εμφιαλώσεων Α.Ε. (ΒΙΚΟΣ)"]);
+    expect(await names("ขอนแก่น")).toEqual(["มหาวิทยาลัยขอนแก่น"]);
+    expect(await names("टाटा")).toEqual(["टाटा मोटर्स"]);
+    expect(await names("ΤΕΡΝΑ")).toEqual(["ΟΜΙΛΟΣ ΓΕΚ ΤΕΡΝΑ / GEK TERNA GROUP"]);
+    expect(await names("terna")).toEqual(["ΟΜΙΛΟΣ ΓΕΚ ΤΕΡΝΑ / GEK TERNA GROUP"]);
+  });
+
+  it("Greek reads without its accents and with either sigma, the way Domino's reads without its apostrophe", async () => {
+    expect(await names("εθνικος οργανισμος")).toEqual(["Εθνικός Οργανισμός Πρόληψης & Αντιμετώπισης των Εξαρτήσεων"]);
+    expect(await names("εθνικοσοργ")).toEqual(["Εθνικός Οργανισμός Πρόληψης & Αντιμετώπισης των Εξαρτήσεων"]);
   });
 
   it("a query of nothing but punctuation matches nothing, not everything", async () => {

@@ -85,7 +85,7 @@ import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { foldName, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
+import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
@@ -10569,16 +10569,16 @@ Deno.serve(async (req) => {
           ? facet.map((c) => ({ ...c, open: typeof c.token === "string" && Object.prototype.hasOwnProperty.call(openMap, c.token) ? openMap[c.token] : 0 }))
           : facet,
       );
-      // Folded both sides: "dominos" finds Domino's, "chilis" Chili's, "att" AT&T (L8-08).
-      const fq = foldName(q);
+      // Folded both sides: "dominos" finds Domino's, "att" AT&T, "당근" 당근마켓 (L8-08).
+      const fq = foldTypeahead(q);
       if (!fq) return json({ companies: [] });
-      const hit = merged.filter((c) => foldName(String(c.name ?? "")).includes(fq));
+      const hit = merged.filter((c) => foldTypeahead(String(c.name ?? "")).includes(fq));
       // A name that STARTS with what was typed is what the reader meant; the
       // servable count breaks ties beneath that (the raw facet count only when
       // there is no servable one to rank by, and it is never published).
       hit.sort((a, b) => {
-        const ap = foldName(String(a.name ?? "")).startsWith(fq) ? 0 : 1;
-        const bp = foldName(String(b.name ?? "")).startsWith(fq) ? 0 : 1;
+        const ap = foldTypeahead(String(a.name ?? "")).startsWith(fq) ? 0 : 1;
+        const bp = foldTypeahead(String(b.name ?? "")).startsWith(fq) ? 0 : 1;
         return ap - bp || (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0);
       });
       return json({
