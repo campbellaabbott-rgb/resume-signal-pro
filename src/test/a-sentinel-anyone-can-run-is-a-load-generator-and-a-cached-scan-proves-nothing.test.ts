@@ -245,4 +245,26 @@ describe("the migration, applied to pglite (20261008123000)", () => {
     const [acl] = await rows<{ anon: boolean; svc: boolean }>(pg, "SELECT has_function_privilege('anon', 'public.get_recent_heartbeats(integer)', 'EXECUTE') AS anon, has_function_privilege('service_role', 'public.get_recent_heartbeats(integer)', 'EXECUTE') AS svc");
     expect(acl).toEqual({ anon: false, svc: true });
   }, 60_000);
+
+  it("the history reader (20261008127000) gives the panels their window, newest first, closed to the client roles", async () => {
+    const { bootEmailOpsDb, migration, rows } = await import("./helpers/email-ops-db");
+    const pg = await bootEmailOpsDb({ apply: ["20261008127000"] });
+    await pg.exec(`INSERT INTO public.heartbeat_results (function_name, status, response_time_ms, test_passed, error_message, checks_passed, metadata, created_at) VALUES
+      ('free-keyword-scan', 'healthy', 900, true, NULL, '{"e2e_scan":{"passed":true,"time_ms":900}}', '{"ai_model":"m"}', now() - interval '20 minutes'),
+      ('scheduled-health-probe', 'healthy', 50, true, NULL, '{"database":true}', '{"probes":[{"service":"database","latency_ms":40}]}', now() - interval '10 minutes'),
+      ('free-keyword-scan', 'down', 75000, false, repeat('x', 400), '{}', NULL, now() - interval '5 minutes'),
+      ('free-keyword-scan', 'healthy', 800, true, NULL, '{}', NULL, now() - interval '30 hours')`);
+    const day = await rows<Record<string, unknown>>(pg, "SELECT * FROM public.get_heartbeat_history(24, NULL, 5000)");
+    expect(day.map((r) => r.function_name), "the 30-hour-old row is outside the window").toEqual(["free-keyword-scan", "scheduled-health-probe", "free-keyword-scan"]);
+    expect(String(day[0].error_message)).toHaveLength(300);
+    expect(day[1].probes).toEqual([{ service: "database", latency_ms: 40 }]);
+    const scan = await rows<Record<string, unknown>>(pg, "SELECT status FROM public.get_heartbeat_history(168, 'free-keyword-scan', 10)");
+    expect(scan.map((r) => r.status)).toEqual(["down", "healthy", "healthy"]);
+    const [acl] = await rows<{ anon: boolean; auth: boolean; svc: boolean }>(pg, `SELECT
+      has_function_privilege('anon', 'public.get_heartbeat_history(integer,text,integer)', 'EXECUTE') AS anon,
+      has_function_privilege('authenticated', 'public.get_heartbeat_history(integer,text,integer)', 'EXECUTE') AS auth,
+      has_function_privilege('service_role', 'public.get_heartbeat_history(integer,text,integer)', 'EXECUTE') AS svc`);
+    expect(acl).toEqual({ anon: false, auth: false, svc: true });
+    await pg.exec(migration("20261008127000"));
+  }, 60_000);
 });

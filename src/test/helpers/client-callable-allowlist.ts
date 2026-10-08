@@ -160,6 +160,7 @@ export const CREATED_CLOSED: Array<{ sig: string; why: string }> = [
  */
 export const ADMIN_READERS_CREATED_CLOSED: Array<{ sig: string; why: string; served: string }> = [
   { sig: "public.get_recent_heartbeats(integer)", why: "scan-heartbeat results; heartbeat_results is closed to the client roles (20260627121655)", served: "admin-ops proxy for /health-check (20261008123000, wave 2 email-ops)" },
+  { sig: "public.get_heartbeat_history(integer,text,integer)", why: "24h heartbeat and probe history with per-check results and error text; heartbeat_results is closed to the client roles", served: "admin-ops proxy for HealthHistoryChart and /scan-metrics (20261008127000, wave 2 email-ops)" },
 ];
 
 /**

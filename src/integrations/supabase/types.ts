@@ -5838,6 +5838,20 @@ export type Database = {
           total_open: number
         }[]
       }
+      get_heartbeat_history: {
+        Args: { p_function?: string; p_hours?: number; p_limit?: number }
+        Returns: {
+          checks_passed: Json
+          created_at: string
+          error_message: string
+          function_name: string
+          id: string
+          probes: Json
+          response_time_ms: number
+          status: string
+          test_passed: boolean
+        }[]
+      }
       get_hiring_trends: {
         Args: never
         Returns: {
