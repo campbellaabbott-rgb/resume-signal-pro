@@ -1699,8 +1699,10 @@ serve(async (req) => {
         // free-keyword-scan's 7-day report cache, which answers before any
         // AI work or scan_metrics write, so ~177 heartbeats in a row recorded
         // no completion while e2e_scan read green. The run's own reference
-        // makes every scan a cache miss; synthetic keeps it out of the
-        // published score statistics and the owner's per-scan note.
+        // makes every scan a cache miss. free-keyword-scan types the run
+        // 'heartbeat' (the secret wins over synthetic; synthetic covers an
+        // unset secret) and counts neither in "scanned today", the owner's
+        // note, the detection logs nor the cache.
         body: JSON.stringify({ resumeText: heartbeatResume(), synthetic: true }),
         signal: controller.signal,
       });

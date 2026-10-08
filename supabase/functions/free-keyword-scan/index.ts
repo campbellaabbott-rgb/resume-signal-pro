@@ -1310,6 +1310,9 @@ serve(async (req) => {
   // (cache hit, rule-based or load-shed report, busy gateway, any error).
   let creditHold: CreditHold | null = null;
   let creditDelivered = false;
+  // The scan_type an error metric is logged under: our own probes' failures
+  // are not a real visitor's failed scan.
+  let metricScanType = 'free';
   // The model calls' clock, counted from the request's start.
   const aiDeadlineAt = requestStartTime + AI_DEADLINE_MS;
 
@@ -1346,6 +1349,14 @@ serve(async (req) => {
     // get_real_score_distribution filter to real scan types). No secret
     // needed: spoofing the flag only removes a scan from our own stats.
     const isSyntheticScan = body.synthetic === true;
+    // OUR OWN PROBE IS NOT A RESUME ANYONE SCANNED. Since the heartbeat's scan
+    // stopped being a cache hit (2026-10-08) it runs the whole pipeline every
+    // 10 minutes, so everything below that counts a visitor's scan skips it:
+    // the public "scanned today" counter, the owner's per-scan mail, the
+    // detection logs, the industry pin and the report cache.
+    const isOwnProbe = isHeartbeatProbe || isSyntheticScan;
+    // The heartbeat's row stays 'heartbeat' even when it also says synthetic.
+    metricScanType = isHeartbeatProbe ? 'heartbeat' : isSyntheticScan ? 'synthetic' : 'free';
     // Optional per-scan context the user stated or confirmed — beats inference.
     const userContext: {
       situation?: string; targetRole?: string;
@@ -1483,7 +1494,7 @@ serve(async (req) => {
     const metricCtx: ScanMetricContext = {
       supabase,
       startTime: requestStartTime,
-      scanType: isSyntheticScan ? 'synthetic' : isHeartbeatProbe ? 'heartbeat' : 'free',
+      scanType: metricScanType,
       cacheHit: false,
       ipCountry: country || null,
       visitorId: clientIp,
@@ -3295,7 +3306,7 @@ ${resumeText.substring(0, 20000)}
 
     // Write a new pin for future rescans of this resume (high confidence only,
     // and never from the rule-based fallback path — that's a degraded signal).
-    if (!pinnedIndustry && finalConfidence === 'high' && !usedRuleBasedFallback && finalIndustry !== 'general') {
+    if (!isOwnProbe && !pinnedIndustry && finalConfidence === 'high' && !usedRuleBasedFallback && finalIndustry !== 'general') {
       EdgeRuntime.waitUntil(
         (async () => {
           try {
@@ -3429,7 +3440,7 @@ ${resumeText.substring(0, 20000)}
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country || "Unknown"}, industry: ${analysis.industry}`);
 
     // Log industry detection metrics for monitoring/improvement (non-blocking)
-    EdgeRuntime.waitUntil(
+    if (!isOwnProbe) EdgeRuntime.waitUntil(
       (async () => {
         try {
           await supabase.rpc('log_industry_detection', {
@@ -3461,7 +3472,7 @@ ${resumeText.substring(0, 20000)}
     );
 
     // Increment daily scan counter in background
-    EdgeRuntime.waitUntil(
+    if (!isOwnProbe) EdgeRuntime.waitUntil(
       (async () => {
         try {
           await supabase.rpc('increment_free_scan_count');
@@ -3473,7 +3484,7 @@ ${resumeText.substring(0, 20000)}
     );
 
     // Send admin notification email for every free scan
-    EdgeRuntime.waitUntil(
+    if (!isOwnProbe) EdgeRuntime.waitUntil(
       (async () => {
         try {
           const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -4087,7 +4098,7 @@ ${resumeText.substring(0, 20000)}
     // Detection observability: one row per scan, fire-and-forget. Trends in
     // source distribution / tiebreaker rate / grounding drops show accuracy
     // drifting long before users complain.
-    EdgeRuntime.waitUntil((async () => {
+    if (!isOwnProbe) EdgeRuntime.waitUntil((async () => {
       try {
         await supabase.from('detection_telemetry').insert({
           industry: finalIndustry,
@@ -4500,7 +4511,7 @@ ${resumeText.substring(0, 20000)}
     // own probes: the heartbeat now runs an uncached scan every 10 minutes.
     // notify-owner answers only the service role or the cron key since
     // 2026-10-08 (register L10-13), so the call carries the service key.
-    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false' && !isHeartbeatProbe && !isSyntheticScan) {
+    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false' && !isOwnProbe) {
       const notifyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
       EdgeRuntime.waitUntil(
         fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-owner`, {
@@ -4519,7 +4530,7 @@ ${resumeText.substring(0, 20000)}
     
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).
-    if (!usedRuleBasedFallback && !responseData.partialResults) {
+    if (!isOwnProbe && !usedRuleBasedFallback && !responseData.partialResults) {
       EdgeRuntime.waitUntil(
         supabase.from('scan_report_cache').upsert({
           cache_key: reportCacheKey,
@@ -4568,7 +4579,7 @@ ${resumeText.substring(0, 20000)}
         (async () => {
           try {
             await supabase.rpc('log_scan_metric', {
-              p_scan_type: 'free',
+              p_scan_type: metricScanType,
               p_status: 'failed',
               p_duration_ms: Date.now() - requestStartTime,
               p_cache_hit: false,
