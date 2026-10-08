@@ -6316,14 +6316,19 @@ function JobsBoard({ boardId }: { boardId: string }) {
    *  the board refuses to show. This reads the facet the LIST RESPONSE carries,
    *  computed over the serving population — the same integer the field landers
    *  have been printing since, and the same one /explore's tiles print. */
+  //  THE LANDER GETS NO EXEMPTION FROM THOSE CONDITIONS. It returned
+  //  landerCategory unconditionally, so /jobs/field/healthcare with "night
+  //  shift" typed (568 matches) printed "96,826 live Healthcare openings" —
+  //  the facet the server still sends board-wide on a filtered request —
+  //  above "Showing 60 of 568 matching openings". The lander's category is the
+  //  same single filter as anyone's, and the same rule decides.
   const countCategory = useMemo(() => {
-    if (landerCategory) return landerCategory;
     const cats = category.split(",").filter(Boolean);
     if (cats.length !== 1) return undefined;
     if (activeFilterCount !== 1) return undefined;
     if (q.trim() || location.trim()) return undefined;
     return cats[0];
-  }, [landerCategory, category, activeFilterCount, q, location]);
+  }, [category, activeFilterCount, q, location]);
 
   /** "IS {COMPANY} HIRING?" IS ANSWERED ONLY FROM THE LANDER'S OWN QUESTION.
    *
@@ -8370,7 +8375,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   })(),
                   category: t(`jobsPage.categories.${countCategory}`, countCategory),
                 })
-              : !countCategory && data?.totalAllCompanies
+              // A NARROWED FIELD LANDER PRINTS NO NUMBER: its H1 names a field,
+              // so the board-wide line below would read as that field's, and
+              // the results line already states the narrowed count.
+              : !countCategory && !landerCategory && data?.totalAllCompanies
               // A SERVING-FILTERED NUMERATOR NEEDS A SERVING-FILTERED
               // DENOMINATOR. companiesCount is the length of the UNFILTERED
               // token grouping — it counts boards whose every posting has been
