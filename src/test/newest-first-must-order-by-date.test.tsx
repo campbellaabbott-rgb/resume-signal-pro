@@ -224,7 +224,7 @@ const CLAIMS: ReadonlyArray<{ phrase: string; sorts: ReadonlyArray<string | unde
     why: "the company/lander claim — the arm that shipped asserting the inverse of what it served",
   },
   {
-    phrase: "when we first saw each posting",
+    phrase: "ordered by each employer's stated date",
     sorts: ["discovered", undefined],
     why: "the discovery order — our crawl stamp, effective_posted, which is also what a body with NO sort key gets",
   },
@@ -285,7 +285,7 @@ describe("newest first must order by date, and the sentence under it must be tru
         go: async () => {
           mount();
           await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-          fireEvent.click(screen.getByRole("button", { name: "See them in the order we found them" }));
+          fireEvent.click(screen.getByRole("button", { name: "Mix them in by when we first saw them" }));
           await waitFor(() => expect(lastBody().sort).toBe("discovered"), SLOW);
         },
       },
@@ -404,12 +404,13 @@ describe("newest first must order by date, and the sentence under it must be tru
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     expect(text()).toContain("Postings whose employer states no date sort after every dated one.");
-    const link = screen.getByRole("button", { name: "See them in the order we found them" });
+    const link = screen.getByRole("button", { name: "Mix them in by when we first saw them" });
     fireEvent.click(link);
     await waitFor(() => expect(lastBody().sort).toBe("discovered"), SLOW);
     // The claim changes with the order, and it names WHOSE date this one is.
-    expect(text()).toContain("when we first saw each posting");
-    expect(text()).toContain("our date, not the employer's");
+    expect(text()).toContain("ordered by each employer's stated date");
+    // Both halves of the order are named: the undated rows are placed by ours.
+    expect(text()).toContain("for a posting with no date, by when we first saw it");
     // The weave runs in this order too (it is a no-query browse), so this arm
     // discloses it as well — an order claim that omits a permutation the page
     // performs is the same defect in a smaller font.
@@ -426,7 +427,7 @@ describe("newest first must order by date, and the sentence under it must be tru
     // reload) applied to the third order.
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-    fireEvent.click(screen.getByRole("button", { name: "See them in the order we found them" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mix them in by when we first saw them" }));
     await waitFor(() => expect(search().get("sort")).toBe("discovered"), SLOW);
     expect(sortSelect().value, "the select must show the order being served").toBe("discovered");
   });
@@ -440,7 +441,7 @@ describe("newest first must order by date, and the sentence under it must be tru
     await waitFor(() => expect(lastBody().q).toBe("engineer"), SLOW);
     expect(Array.from(sortSelect().options).map((o) => o.value)).not.toContain("discovered");
     expect(lastBody().sort, "a query page must not ask for an order the ranked path ignores").not.toBe("discovered");
-    expect(text()).not.toContain("when we first saw each posting");
+    expect(text()).not.toContain("ordered by each employer's stated date");
   });
 
   it("a query of nothing but spaces cannot split the order claim from the body", async () => {
@@ -479,7 +480,7 @@ describe("newest first must order by date, and the sentence under it must be tru
     mount("/jobs?q=%20%20&sort=discovered");
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
     expect(lastBody().sort).toBe("discovered");
-    expect(text()).toContain("when we first saw each posting");
+    expect(text()).toContain("ordered by each employer's stated date");
   });
 
   it("an order search_jobs cannot express is not handed to an agent as one it can", async () => {
@@ -492,7 +493,7 @@ describe("newest first must order by date, and the sentence under it must be tru
     hookClipboard();
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-    fireEvent.click(screen.getByRole("button", { name: "See them in the order we found them" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mix them in by when we first saw them" }));
     await waitFor(() => expect(lastBody().sort).toBe("discovered"), SLOW);
     fireEvent.click(screen.getByRole("button", { name: "Send this search to my agent" }));
     await waitFor(() => expect(clipboard().length).toBe(1), SLOW);
@@ -517,9 +518,12 @@ describe("newest first must order by date, and the sentence under it must be tru
     expect(FN).toMatch(/\.gte\(dateCol, freshCutoffIso\)/);
   });
 
-  it("the order the page calls 'discovered' is the server's own crawl order", () => {
-    // The client's claim is "when we first saw each posting". That is
-    // effective_posted = coalesce(posted_at, first_seen), and the value
+  it("the order the page calls 'discovered' is the server's effective_posted walk", () => {
+    // The order is effective_posted = coalesce(posted_at, last_seen), and
+    // last_seen is written at insert only, so it is the EMPLOYER'S date where
+    // they state one and our first-seen stamp where they do not. The claim
+    // used to say "our date, not the employer's" -- false for every dated
+    // posting -- and now names both halves (2026-10-08). The value
     // "discovered" reaches it by being neither of the two sorts the ordering
     // branches on. Both halves are pinned: the fall-through orders by dateCol,
     // and dateCol at the page call site is effective_posted.
@@ -708,11 +712,17 @@ describe("newest first must order by date, and the sentence under it must be tru
     for (const f of files) {
       const j = JSON.parse(readFileSync(join(dir, f), "utf8")) as { jobsPage?: Record<string, string> };
       const page = j.jobsPage ?? {};
-      for (const k of ["orderNewestWovenDated", "orderDiscovered", "orderDiscoveredWoven", "orderUndatedTail", "orderUndatedShow", "sortDiscovered"]) {
+      for (const k of ["orderNewestWovenDated", "orderDiscovered2", "orderDiscoveredWoven2", "orderUndatedTail", "orderUndatedShow2", "sortDiscovered2"]) {
         expect(typeof page[k], `${f} is missing jobsPage.${k}`).toBe("string");
         expect(page[k]!.length, `${f}: jobsPage.${k} is empty`).toBeGreaterThan(0);
       }
       expect("orderNewestWoven" in page, `${f} still carries the retired unqualified claim`).toBe(false);
+      // The "our date, not the employer's" family was false for every dated
+      // posting (the order is coalesce(posted_at, first-seen)); retired the
+      // same way, 2026-10-08.
+      for (const k of ["orderDiscovered", "orderDiscoveredWoven", "orderUndatedShow", "sortDiscovered"]) {
+        expect(k in page, `${f} still carries the retired jobsPage.${k}`).toBe(false);
+      }
     }
   });
 });

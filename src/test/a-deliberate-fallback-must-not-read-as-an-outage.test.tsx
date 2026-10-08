@@ -146,8 +146,12 @@ describe("a deliberate fallback must not read as an outage", () => {
     const exact = await search({ exactWordMatch: "nurse" });
     expect(exact, "the retired claim is back: these rows are not in the employer's date order")
       .not.toMatch(/newest first/i);
-    expect(exact, "the tier must name the order it actually has").toMatch(/when we first saw each posting/i);
-    expect(exact, "and say the date is ours, not the employer's").toMatch(/our date, not the employer's/i);
+    // effective_posted is the employer's date where stated and our first-seen
+    // stamp where not; "our date, not the employer's" was false for every dated
+    // row, so the claim now names both halves (2026-10-08).
+    expect(exact, "the tier must name the order it actually has").toMatch(/each employer's stated date/i);
+    expect(exact, "and whose date an undated row carries").toMatch(/when we first saw it/i);
+    expect(exact, "the retired half-truth is back").not.toMatch(/our date, not the employer's/i);
     expect(exact, "and that it is not relevance-ranked").toMatch(/not relevance-ranked/i);
     // ...and the page still names the tier itself, separately.
     expect(document.body.textContent).toMatch(/exact whole-word matches for/i);
@@ -172,17 +176,22 @@ describe("a deliberate fallback must not read as an outage", () => {
       // carry.
       expect(jp.sortedExactWord, `${f} still carries the retired jobsPage.sortedExactWord`).toBeUndefined();
       expect(jp.sortedNewestFallback, `${f} still carries the retired jobsPage.sortedNewestFallback`).toBeUndefined();
-      expect(typeof jp.sortedExactWordDiscovery, `${f}: jobsPage.sortedExactWordDiscovery is missing`).toBe("string");
-      expect(String(jp.sortedExactWordDiscovery).trim().length, `${f}: jobsPage.sortedExactWordDiscovery is empty`).toBeGreaterThan(0);
-      expect(typeof jp.sortedDiscoveryFallback, `${f}: jobsPage.sortedDiscoveryFallback is missing`).toBe("string");
+      // ...and the *Discovery keys were retired the same way on 2026-10-08
+      // ("our date, not the employer's" was false for dated rows): the *2 keys
+      // name both halves of the effective_posted order.
+      expect(jp.sortedExactWordDiscovery, `${f} still carries the retired jobsPage.sortedExactWordDiscovery`).toBeUndefined();
+      expect(jp.sortedDiscoveryFallback, `${f} still carries the retired jobsPage.sortedDiscoveryFallback`).toBeUndefined();
+      expect(typeof jp.sortedExactWordDiscovery2, `${f}: jobsPage.sortedExactWordDiscovery2 is missing`).toBe("string");
+      expect(String(jp.sortedExactWordDiscovery2).trim().length, `${f}: jobsPage.sortedExactWordDiscovery2 is empty`).toBeGreaterThan(0);
+      expect(typeof jp.sortedDiscoveryFallback2, `${f}: jobsPage.sortedDiscoveryFallback2 is missing`).toBe("string");
       // Distinct from the outage sentence in EVERY language, not just English —
       // a translator who reused the fallback string would undo the whole fix.
-      expect(jp.sortedExactWordDiscovery, `${f}: the deliberate tier and the outage read identically`).not.toBe(jp.sortedDiscoveryFallback);
+      expect(jp.sortedExactWordDiscovery2, `${f}: the deliberate tier and the outage read identically`).not.toBe(jp.sortedDiscoveryFallback2);
     }
     for (const f of ["de.json", "es.json", "fr.json", "nl.json", "pt.json", "hi.json", "tl.json"]) {
       const jp = JSON.parse(readFileSync(resolve(LOCALE_DIR, f), "utf8")).jobsPage;
-      expect(jp.sortedExactWordDiscovery, `${f} still holds the English text`).not.toBe(en.sortedExactWordDiscovery);
-      expect(jp.sortedDiscoveryFallback, `${f} still holds the English text`).not.toBe(en.sortedDiscoveryFallback);
+      expect(jp.sortedExactWordDiscovery2, `${f} still holds the English text`).not.toBe(en.sortedExactWordDiscovery2);
+      expect(jp.sortedDiscoveryFallback2, `${f} still holds the English text`).not.toBe(en.sortedDiscoveryFallback2);
     }
   });
 });

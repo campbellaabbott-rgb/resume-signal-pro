@@ -5081,7 +5081,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     const args = toSearchJobsArgs(boardFilterBody(filterState), discoveredView ? undefined : shownSort);
     const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly })
       + (discoveredView
-        ? " The board is showing them in the order we first saw each posting, which search_jobs has no argument for, so the order is not included here."
+        ? " The board is showing them by each employer's stated date, or for an undated posting by when we first saw it, which search_jobs has no argument for, so the order is not included here."
         : "");
     trackBoard("agent_handoff_search", { keys: Object.keys(args), host: rememberedHostName() });
     void copyText(prompt).then((ok) => toast({
@@ -6410,6 +6410,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if ((data.total ?? 0) + (data.relatedTotal ?? 0) > 0) return "yes";
     return refreshing ? null : "no";
   }, [landerCompany, activelyHiringOnly, error, loading, data, filterState, dataFilterSig, currentFilterSig, refreshing]);
+  // Whether the reply on screen answers the request now on screen — the
+  // search order claim reads `data` and may speak only for that reply.
+  const orderClaimCurrent = !loading && !refreshing && !!data && dataFilterSig === currentFilterSig;
 
   // Removable chips for every active filter — what's narrowing your results
   // should be visible and one click to undo, not buried in the controls.
@@ -6638,8 +6641,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
     { id: "saved", label: t("jobsPage.paSaved", "My saved jobs & tracker"), run: () => { window.location.href = "/account"; } },
     { id: "ghost", label: t("jobsPage.paGhost", "Ghost Job Index"), run: () => { window.location.href = "/ghost-job-index"; } },
     // The uploader's anchor is #upload (ResumeUploader, and Index's hash
-    // handler reads only that). "/#scan" named no element and landed at the
-    // top of the homepage; navigate() also skips the full reload.
+    // handler reads only that). The old "scan" anchor named no element and
+    // landed at the top of the homepage; navigate() also skips the reload.
     { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => navigate("/#upload") },
     { id: "help", label: t("jobsPage.paHelp", "Keyboard shortcuts"), hint: "?", run: () => setHelpOpen(true) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -9796,7 +9799,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   path orders by relevance and no date order is applied, so an
                   option that cannot happen is not shown — and the caption for it
                   says whose date it is, because ours is not the employer's. */}
-              {!q.trim() && <option value="discovered">{t("jobsPage.sortDiscovered", "Recently found by us")}</option>}
+              {!q.trim() && <option value="discovered">{t("jobsPage.sortDiscovered2", "Newest, undated by our date")}</option>}
             </select>
             {/* "SEND THIS SEARCH TO MY AGENT" — the board's own request body,
                 renamed into search_jobs arguments (src/lib/agent-handoff.ts;
@@ -9898,8 +9901,16 @@ function JobsBoard({ boardId }: { boardId: string }) {
                        two effective_posted reads and scores nothing, whatever
                        sort was requested — names its own order first, because it
                        is the one thing on this page that is true of it. */
-                    ? data?.exactWordMatch
-                      ? t("jobsPage.orderExactWord", "exact whole-word matches, in the order we first saw each posting — our date, not the employer's")
+                    /* NO CLAIM UNTIL THE REPLY FOR THIS SEARCH IS ON SCREEN.
+                       Every arm below reads `data`, which is null before the
+                       first reply and is the PREVIOUS request's reply while a
+                       new one loads, so a fresh search fell through to the
+                       date-order arm and printed it over results about to be
+                       ranked by relevance (root of the newest-first flake). */
+                    ? !orderClaimCurrent
+                      ? ""
+                      : data?.exactWordMatch
+                      ? t("jobsPage.orderExactWord2", "exact whole-word matches, by each employer's stated date — or, for a posting with no date, by when we first saw it")
                       : data?.sortScope === "matchSet"
                         ? data?.sortMatcher === "company"
                           ? t("jobsPage.orderNewestWholeSetCompany", "newest first across every posting from this employer")
@@ -9917,7 +9928,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                both is false half the time. */
                             : searchNewestFirst
                               ? t("jobsPage.orderNewest", "newest first, company-stated dates before undated")
-                              : t("jobsPage.orderDiscovered", "ordered by when we first saw each posting — our date, not the employer's")
+                              : t("jobsPage.orderDiscovered2", "ordered by each employer's stated date — or, for a posting with no date, by when we first saw it")
                     /* WHOSE DATE, NAMED, IN EVERY ARM — and until this build the
                        two arms below were printed over rows ordered by OUR crawl
                        stamp. The no-query browse sent no `sort`, so the server
@@ -9941,8 +9952,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                        agentPitchScope lesson). */
                     : discoveredView
                       ? (interleaveEmployers
-                        ? t("jobsPage.orderDiscoveredWoven", "ordered by when we first saw each posting — our date, not the employer's — spread across employers so one company can't fill the page")
-                        : t("jobsPage.orderDiscovered", "ordered by when we first saw each posting — our date, not the employer's"))
+                        ? t("jobsPage.orderDiscoveredWoven2", "ordered by each employer's stated date — or, for a posting with no date, by when we first saw it — spread across employers so one company can't fill the page")
+                        : t("jobsPage.orderDiscovered2", "ordered by each employer's stated date — or, for a posting with no date, by when we first saw it"))
                       : interleaveEmployers
                         ? t("jobsPage.orderNewestWovenDated", "newest by the date each employer states, spread across employers so one company can't fill the page")
                         : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
@@ -9987,7 +9998,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   onClick={() => { setSortMode("discovered"); setSearchNewestFirst(false); }}
                   className="underline underline-offset-2 hover:text-foreground transition-colors"
                 >
-                  {t("jobsPage.orderUndatedShow", "See them in the order we found them")}
+                  {t("jobsPage.orderUndatedShow2", "Mix them in by when we first saw them")}
                 </button>
               </span>
             )}
@@ -11317,7 +11328,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       an inline default, so an edited English string would have
                       left eight translated copies of the old claim rendering. */}
                   {data?.exactWordMatch
-                    ? t("jobsPage.sortedExactWordDiscovery", "Exact whole-word matches, ordered by when we first saw each posting — our date, not the employer's, and not relevance-ranked")
+                    ? t("jobsPage.sortedExactWordDiscovery2", "Exact whole-word matches, ordered by each employer's stated date — or, for a posting with no date, by when we first saw it — and not relevance-ranked")
                     : data?.sortScope === "matchSet"
                       ? data?.sortMatcher === "company"
                         ? t("jobsPage.sortedNewestWholeSetCompany", "Sorted by newest first — every posting from this employer, by the employer's own date, undated last")
@@ -11340,10 +11351,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                              and it blinded the one sentence that makes a real
                              ranked-path outage visible. */
                           : data?.companyMatched
-                            ? t("jobsPage.sortedEmployerDiscovery", "Ordered by when we first saw each posting — our date, not the employer's. These aren't relevance-ranked: every one of them is {{company}}.", { company: data.companyMatched })
+                            ? t("jobsPage.sortedEmployerDiscovery2", "Ordered by each employer's stated date — or, for a posting with no date, by when we first saw it. These aren't relevance-ranked: every one of them is {{company}}.", { company: data.companyMatched })
                             : searchNewestFirst
                               ? t("jobsPage.sortedNewestDatedFallback", "Sorted by newest first, by the date each employer states, undated last (relevance ranking briefly unavailable)")
-                              : t("jobsPage.sortedDiscoveryFallback", "Ordered by when we first saw each posting — our date, not the employer's (relevance ranking briefly unavailable)")}
+                              : t("jobsPage.sortedDiscoveryFallback2", "Ordered by each employer's stated date — or, for a posting with no date, by when we first saw it (relevance ranking briefly unavailable)")}
                   {" · "}
                   <button type="button" className="text-primary hover:underline" onClick={() => setSearchNewestFirst((v) => !v)}>
                     {searchNewestFirst
