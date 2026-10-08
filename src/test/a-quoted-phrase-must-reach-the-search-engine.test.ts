@@ -166,7 +166,9 @@ describe("the wiring: phraseText feeds BOTH query derivations and the RPC, and o
     // count_jobs_capped binds p.title ILIKE '%' || $10 || '%' — verified in
     // pglite: '"registered nurse"' counts 0, 'registered nurse' counts the
     // adjacent titles. The other ILIKE caller sends qTerms[0], already unquoted.
-    expect(BOARD).toMatch(/client\.rpc\("count_jobs_capped", \{\s*p_fresh_cutoff: freshCutoffIso,\s*p_q: qText\.replace\(\/"\/g, ""\),/);
+    // The facet rail's ILIKE count is gone since .91 (a text query's chips are
+    // withheld, L13-24); the one remaining ILIKE caller sends qTerms[0], unquoted.
+    expect(BOARD).not.toMatch(/p_q: qText\.replace\(\/"\/g, ""\),/);
     expect(BOARD).toMatch(/p_q: qTerms\.length === 1 \? qTerms\[0\] : null,/);
   });
 

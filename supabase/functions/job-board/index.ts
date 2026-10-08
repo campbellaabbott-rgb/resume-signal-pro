@@ -7101,8 +7101,9 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   { re: /\bhome[- ]based\b/i, label: "home based", patch: { workMode: "remote" } },
   { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { workMode: "remote" } },
   // The bare work-mode words, per the measurement above.
-  { re: /\bremote(?:ly)?\b/i, label: "remote", patch: { workMode: "remote" } },
-  { re: /\bhybrid\b/i, label: "hybrid", patch: { workMode: "hybrid" } },
+  // Not the first word of a trade term: "Remote Sensing Analyst", "Hybrid Vehicle Technician" (L8-06).
+  { re: /\bremote(?:ly)?\b(?!\s+(?:sensing|pilots?|patient|monitoring|operated)\b)/i, label: "remote", patch: { workMode: "remote" } },
+  { re: /\bhybrid\b(?!\s+(?:vehicles?|electric|cars?|cloud|powertrains?|engines?)\b)/i, label: "hybrid", patch: { workMode: "hybrid" } },
   { re: /\bon[- ]?site\b/i, label: "onsite", patch: { workMode: "onsite" } },
   // Seniority phrases map onto the experience band the board already stores.
   { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
@@ -7161,8 +7162,11 @@ function liftIntentFilters(
   body: Record<string, unknown>,
 ): { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null {
   const q = String(rawQ ?? "");
-  if (!q.trim()) return null;
-  let residual = q;
+  // noIntent: the caller (the page's undo) asked for every word as search text (L8-06).
+  if (!q.trim() || body.noIntent === true) return null;
+  // A balanced "…" pair is an exact phrase, never a filter: masked while the rules run.
+  const quoted: string[] = [];
+  let residual = q.replace(/"[^"]*"/g, (m) => `\u0001${quoted.push(m) - 1}\u0001`);
   const patch: Record<string, unknown> = {};
   const labels: string[] = [];
   for (const { re, label, patch: p } of INTENT_FILTERS) {
@@ -7184,7 +7188,7 @@ function liftIntentFilters(
     if (!restates) labels.push(label);
   }
   if (labels.length === 0) return null;
-  residual = residual.replace(/\s+/g, " ").trim();
+  residual = residual.replace(/\u0001(\d+)\u0001/g, (_m, i) => quoted[Number(i)] ?? "").replace(/\s+/g, " ").trim();
   return { patch, labels, residualQ: residual };
 }
 
@@ -7280,13 +7284,26 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
   // "100k engineer".
   // Exactly the token the floor came from, never the first bare number before it (L8-03).
   const money = salaryTokenInQuery(raw)?.token ?? null;
-  const kept = all.filter((t) => !QUERY_FILLER.has(t) && t !== money);
+  // "or" between two real words is the searcher's OR, not filler: "welder or fabricator" (L8-07).
+  const real = (t: string | undefined) => t !== undefined && !QUERY_FILLER.has(t) && t !== money;
+  const isOr = (t: string, i: number) => t === "or" && real(all[i - 1]) && real(all[i + 1]);
+  const kept = all.filter((t, i) => (!QUERY_FILLER.has(t) && t !== money) || isOr(t, i));
   if (kept.length === 0) {
     // Rationale: docs/job-board-index-notes.md#n190-money-null-return-terms-drop
     if (money !== null) return { terms: [], dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: true };
     return { terms: all, dropped: [], liftedSalary: false };
   }
-  return { terms: kept, dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: money !== null };
+  return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
+}
+
+/** Terms as OR groups: "welder or fabricator" is [[welder], [fabricator]] (L8-07). */
+function orGroups(terms: readonly string[]): string[][] {
+  const groups: string[][] = [[]];
+  for (const t of terms) {
+    if (t === "or") groups.push([]);
+    else groups[groups.length - 1].push(t);
+  }
+  return groups.filter((g) => g.length > 0);
 }
 
 /**
@@ -11295,7 +11312,11 @@ async function serveList(
       .is("missing_since", null);
     const terms = queryTerms(body.q).terms.slice(0, 8);
     // Rationale: docs/job-board-index-notes.md#n298-opts-skipterms-for-const-t-of-terms
-    if (!opts?.skipTerms) for (const t of terms) q = q.or(`title.ilike."%${t}%",company.ilike."%${t}%",department.ilike."%${t}%"`);
+    const termOr = (t: string) => `title.ilike."%${t}%",company.ilike."%${t}%",department.ilike."%${t}%"`;
+    const groups = orGroups(terms);
+    // One group: every term ANDed, as always. Several: the searcher's OR (L8-07).
+    if (!opts?.skipTerms && groups.length === 1) for (const t of groups[0]) q = q.or(termOr(t));
+    else if (!opts?.skipTerms && groups.length > 1) q = q.or(groups.map((g) => g.length === 1 ? termOr(g[0]) : `and(${g.map((t) => `or(${termOr(t)})`).join(",")})`).join(","));
     // Metro shorthand expands to the names that actually appear in the data,
     // and a noisy two-letter form is REPLACED rather than ORed in — searching
     // %LA% returns Plain City, Ohio.
@@ -12831,7 +12852,7 @@ async function serveList(
                 .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
               if (extra.length > 0) {
                 // Rationale: docs/job-board-index-notes.md#n383-terms
-                const terms = queryTerms(qText).terms.map((t) => t.toLowerCase()).filter(Boolean);
+                const terms = queryTerms(qText).terms.map((t) => t.toLowerCase()).filter((t) => t && t !== "or");
                 const inTitle = (r: unknown) => {
                   const t = String((r as Record<string, unknown>).title ?? "").toLowerCase();
                   return terms.length > 0 && terms.some((term) => t.includes(term));
