@@ -18,6 +18,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { companyLanderPath } from "@/lib/public-href";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { HBarList } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
@@ -194,7 +195,7 @@ export default function EntryLevelIndex() {
               {leaders.map((c, i) => (
                 <Link
                   key={c.company_token}
-                  to={`/jobs/company/${c.company_token}?experience=entry`}
+                  to={companyLanderPath(c.company_token, "experience=entry")}
                   className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors ${i > 0 ? "border-t border-border/60" : ""}`}
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>

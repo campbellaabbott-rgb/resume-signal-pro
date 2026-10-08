@@ -10007,3 +10007,15 @@ the platform-debug register of 2026-10-04:
 - L1-07: the runtime refuses a self-call by THROWING RateLimitError; the audit
   now calls that (and 429/503/546) a refusal, walks its pages one at a time, and
   says incomplete when every finding is a refusal.
+
+## n436-a-host-we-do-not-own-is-not-a-pass-host
+
+resumebooster.lovable.app is not this project. Fetched 2026-10-08 it serves
+"ResumeBoost AI", a different app on a different Supabase backend
+(nhtepkgxdhollkjakdfy), with no /success route; nothing named either appears
+in this repository's history. This project's own Lovable host,
+resume-signal-pro.lovable.app, redirects to resumebooster.work. BOARD_PASS_HOSTS
+listed resumebooster.lovable.app since .87, which let a Turnstile token solved
+on that foreign page mint a board pass here. It is removed in .91; the test
+now lists it among the hosts that must FAIL. The paid-product and Full
+Analysis emails had linked buyers to the same host until 2026-10-08 (PR #19).

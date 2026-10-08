@@ -26,6 +26,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { companyLanderPath } from "@/lib/public-href";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -172,7 +173,7 @@ export default function PayTransparencyIndex() {
               {(pay?.top_companies ?? []).map((c) => (
                 <Link
                   key={c.company_token}
-                  to={`/jobs/company/${encodeURIComponent(c.company_token)}`}
+                  to={companyLanderPath(c.company_token)}
                   className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:border-primary/50 transition-colors"
                 >
                   <span className="text-sm font-semibold truncate">{c.company}</span>

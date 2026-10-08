@@ -10,6 +10,8 @@ still pins it.
 
 ## 2026-09-09.91
 
+ALSO IN .91 (integration, 2026-10-08). From wave 2 email-ops: `newSince` on list and count, the saved-search digest's discovery window (posted_at OR first_seen after X), RPC-blind and echoed on both answers (n306b). From the integrator: `resumebooster.lovable.app` -- someone else's app, see n436 -- is no longer a board-pass host (board-pass.ts BOARD_PASS_HOSTS); a Turnstile token solved there is refused like any foreign host.
+
 WAVE 2 OF THE 2026-10-04 PLATFORM SWEEP, JOB-BOARD GROUP. job-board only (index.ts, filters.ts, paging.ts, search-routing.ts, stale-lane.ts, tombstone.ts, NEW verification-stamp.ts, NEW location-match.ts), plus THREE MIGRATIONS (20261008100000, 20261008100100, 20261008100200) and the verifier (NEW scripts/verify-deploy.d/61-wave2-job-board.sh). No other function, no frontend, sources.ts and _shared/location-terms.ts UNCHANGED. Register items (~/.config/resumebooster/platform-debug-2026-10-04/register.json): L13-01, L8-14, L8-04, L8-01, L8-02, L8-17, L8-03, L8-16, L8-05, L8-06 (part), L8-07, L8-08, L8-09, L8-10, L13-68, L13-24, L1-07, L13-49 (verification stamp only); follow-ups (a) SNOWFLAKE-3 (hypothesis refuted; a related latent tombstone defect fixed), (b) per-board stamps, (c) the cold cursor (instrumentation + finding), (d) SmartRecruiters whole reads (decided against, below). Rationale: docs/job-board-index-notes.md n427-n435.
 
 ### A TOMBSTONE A RE-ADMISSION WROTE (follow-up (a); NOT SNOWFLAKE-3'S CAUSE)
