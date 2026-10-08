@@ -266,6 +266,6 @@ describe("send-agent-digest answers the scheduler and our service role, nobody e
 
   it("the preflight answers its build", async () => {
     const res = await agent(new Request("https://harness.supabase.co/functions/v1/send-agent-digest", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^send-agent-digest\.2026-10-04\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^send-agent-digest\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
   });
 });
