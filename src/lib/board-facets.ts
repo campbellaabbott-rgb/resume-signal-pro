@@ -1,4 +1,5 @@
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } from "@/lib/board-budget";
 
 /**
  * THE ONE READ OF THE BOARD'S STORED FACET ROW, shared by every page that
@@ -79,12 +80,18 @@ function countMap(raw: unknown): Record<string, number> | null {
  */
 export async function readBoardFacets(deadlineMs: number = FACET_DEADLINE_MS): Promise<BoardFacetsReply | null> {
   try {
+    // A standing budget refusal: no request until the reset (board-budget.ts).
+    if (boardBudgetRefusal()) return null;
     const { data, error } = await Promise.race([
       invokeJobBoard({ body: { action: "facets" } }),
       new Promise<{ data: null; error: true }>((res) =>
         setTimeout(() => res({ data: null, error: true }), deadlineMs)),
     ]);
-    if (error) return null;
+    if (error) {
+      const refused = await readBoardBudgetRefusal(error);
+      if (refused) markBoardBudgetRefused(refused);
+      return null;
+    }
     if (!isPlainObject(data)) return null;
     const r = data as {
       categories?: unknown; refreshedAt?: unknown; facetsCarried?: unknown; facetsCarriedAt?: unknown;

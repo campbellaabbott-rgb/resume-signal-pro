@@ -141,6 +141,8 @@
 //     leave seven languages rendering the claim this page stopped making.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
+import { companyRowScope } from "@/pages/Companies";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Bookmark, Briefcase, Layers, LucideIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -152,6 +154,8 @@ import { HowWeMeasure } from "@/components/HowWeMeasure";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
+import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { readBoardFacets } from "@/lib/board-facets";
 // THE SKIP-LINK RECOVERY, FROM src/lib RATHER THAN FROM Jobs.tsx. It was
 // declared in Jobs.tsx and importing it from there would pull that 10.6k-line
@@ -1253,6 +1257,10 @@ const FAILED: Priced = { total: null, capped: false, atLeast: null, ignored: [],
  *  for the count only. */
 async function priceSlice(params: JobSearchParams): Promise<Priced> {
   try {
+    // A BUDGET REFUSAL IS NEVER RE-ASKED (board-budget.ts): once one lands,
+    // every further probe in the batch is answered here with no request, and
+    // the page shows the notice instead of "our instrument failing".
+    if (boardBudgetRefusal()) return FAILED;
     const { data, error } = await invokeJobBoard({
       // `limit: 1`, NOT `countOnly: true`, AND THE REASON IS MEASURED.
       //
@@ -1273,7 +1281,11 @@ async function priceSlice(params: JobSearchParams): Promise<Priced> {
       // server does the same work either way.
       body: { action: "list", limit: 1, includeFacets: false, ...searchToBoardBody(params) },
     });
-    if (error) return FAILED;
+    if (error) {
+      const refused = await readBoardBudgetRefusal(error);
+      if (refused) markBoardBudgetRefused(refused);
+      return FAILED;
+    }
     const r = (data ?? null) as BoardCountReply | null;
     if (!r) return FAILED;
     const total = typeof r.total === "number" ? r.total : null;
@@ -1378,6 +1390,9 @@ function freshEntry<T extends { at: number }>(m: Map<string, T>, key: string): T
 export default function Explore() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
+  // A board-budget refusal is the BOARD pausing this connection, not this
+  // page failing: one notice, no "our instrument failing", no retry advice.
+  const budgetRefusal = useBoardBudgetRefusal();
 
   // THE DEFAULT VIEW. Consumes DEFAULT_INTENT rather than repeating its value,
   // so the constant above is the single place the page's entry point is
@@ -2003,6 +2018,12 @@ export default function Explore() {
     if (closureAsked.current === sig) return;
     closureAsked.current = sig;
     let live = true;
+    // AN UNSETTLED READ IS RELEASED ON THE WAY OUT. Switching to "Check an
+    // employer" before the read answered ran this cleanup: success and giveUp
+    // both returned early on !live, closureAsked kept the signature and
+    // closurePending stayed true, so coming back found the slice "asked" and
+    // the panel read "Reading the closure record…" forever.
+    let settled = false;
     setClosure(null);
     setClosureFailed(false);
     setClosurePending(true);
@@ -2012,19 +2033,25 @@ export default function Explore() {
       // one 404 as "no employer closes roles here".
       const giveUp = () => {
         if (!live) return;
+        settled = true;
         closureAsked.current = "";
         setClosureFailed(true);
         setClosurePending(false);
       };
       let page: BoardCountReply | null = null;
       try {
+        if (boardBudgetRefusal()) { giveUp(); return; }
         const { data, error } = await invokeJobBoard({
           // includeFacets FALSE, deliberately: the facet this call would return
           // is the board-wide employer list, and asking for it would put a
           // number on the page that answers a different question.
           body: { action: "list", limit: CLOSURE_ROWS, includeFacets: false, ...searchToBoardBody({ category: openField, ...(role ? { q: role } : {}) }) },
         });
-        if (error) { giveUp(); return; }
+        if (error) {
+          const refused = await readBoardBudgetRefusal(error);
+          if (refused) markBoardBudgetRefused(refused);
+          giveUp(); return;
+        }
         page = (data ?? null) as BoardCountReply | null;
       } catch { giveUp(); return; }
       if (!live) return;
@@ -2035,6 +2062,7 @@ export default function Explore() {
         .filter(Boolean))];
       if (tokens.length === 0) {
         // NO EMPLOYER COUNT IS INVENTED HERE. See the note on ClosureRecord.
+        settled = true;
         setClosure({ rowsRead: rows.length, asked: 0, readable: 0, unanswered: 0, closers: 0, tokens: [], capped: false });
         setClosurePending(false);
         return;
@@ -2044,10 +2072,14 @@ export default function Explore() {
         .catch(() => ({ data: null, error: true }));
       if (!live) return;
       if (curveErr || !Array.isArray(curve)) { giveUp(); return; }
+      settled = true;
       setClosure(closureRecordOf(rows.length, tokens, curve as CompanyCurveRow[]));
       setClosurePending(false);
     })();
-    return () => { live = false; };
+    return () => {
+      live = false;
+      if (!settled) { closureAsked.current = ""; setClosurePending(false); }
+    };
   }, [openField, role, intent]);
 
   /** The churn warning for one employer, or null — POSITIVE FORM ONLY.
@@ -2166,6 +2198,7 @@ export default function Explore() {
           translucent blur. A published statistic has to name its date basis
           somewhere a reader can read it. */}
       <main id="main-content" tabIndex={-1} className="max-w-4xl mx-auto px-4 pt-24 pb-10 focus:outline-none">
+        {budgetRefusal && <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />}
         {/* ABOVE THE FOLD: AN H1 AND ONE SENTENCE.
             197 words became 39. What was here explained what a filter over a
             column employers often leave blank does to a result set, and how a
@@ -2318,7 +2351,7 @@ export default function Explore() {
           {/* A FAILED READ IS SAID, NOT MIMED. Eighteen rows with no numbers
               and no explanation reads as a broken page; the links all still
               work, and the sentence says both halves of that. */}
-          {facetFailed && (
+          {facetFailed && !budgetRefusal && (
             <>
               <p className="text-base text-muted-foreground max-w-2xl">
                 {t("explore.basisNone", "We could not read the board's field counts just now, so these rows carry no numbers. That is our measurement failing, not the board emptying — every row still opens its field.")}
@@ -2714,7 +2747,7 @@ export default function Explore() {
                               const rows = counted
                                 .filter((r) => r.p!.capped || (r.p!.total ?? 0) >= ROLE_ROW_MIN)
                                 .sort((a, b) => (b.p!.total ?? 0) - (a.p!.total ?? 0));
-                              const partial = failed > 0 && (
+                              const partial = failed > 0 && !budgetRefusal && (
                                 <p className="mt-2 text-[12px] text-warning">
                                   {t("explore.rolesPartial", "{{n}} of the {{total}} names we tried could not be counted just now. That is our instrument failing, not the field — reopen it to try again.", { n: nf(failed), total: nf(names.length) })}
                                 </p>
@@ -2844,7 +2877,7 @@ export default function Explore() {
                           {(() => {
                             const all = [...CONSTRAINT_CHIPS.map((c) => chipPrices[c.id]), ...COUNTRY_CHIPS.map((c) => countryPrices[c.id])];
                             const failed = all.filter((p) => p?.failed).length;
-                            if (failed === 0) return null;
+                            if (failed === 0 || budgetRefusal) return null;
                             return (
                               <p className="mt-2 text-[12px] text-warning">
                                 {t("explore.chipsPartial", "{{n}} of the {{total}} narrowings could not be counted just now — our instrument, not the field.", { n: nf(failed), total: nf(all.length) })}
@@ -2931,7 +2964,7 @@ export default function Explore() {
                           <p className="mt-4 text-[12px] font-semibold text-foreground">
                             {t("explore.closureTitle", "What our closure record says about the employers here")}
                           </p>
-                          {closureFailed ? (
+                          {closureFailed && budgetRefusal ? null : closureFailed ? (
                             <p className="mt-1 text-[12px] text-warning">
                               {t("explore.closureFailed", "We could not read our closure record just now. That is our measurement failing, and it says nothing about the employers in this slice.")}
                             </p>
@@ -3166,8 +3199,20 @@ export default function Explore() {
                     .filter((tk) => Array.isArray(repostIndex[tk]))
                     .sort((a, b) => (repostIndex[b]![0] ?? 0) - (repostIndex[a]![0] ?? 0))[0];
                   const worst = worstToken ? repostWarn(worstToken) : null;
-                  const open = numOr(h.open_roles);
                   const single = h.tokens.length === 1;
+                  // THE NUMBER HAS TO SURVIVE THE CLICK. open_roles is summed
+                  // across ALL the employer's boards (Deloitte: 95 + 19 = 114),
+                  // and the card linked the lander for tokens[0] alone, which
+                  // served 95. A group now links the board scoped to the whole
+                  // group, the same scope /companies links; a group past what
+                  // that link can carry prints no number rather than one the
+                  // destination contradicts.
+                  const scope = companyRowScope({ token: h.tokens[0], tokens: h.tokens });
+                  const backTo = backHere(null, null, "check");
+                  const href = single
+                    ? companyLanderPath(h.tokens[0], new URLSearchParams({ from: "explore", back: backTo }).toString())
+                    : toBoard({ company: scope.tokens.join(",") }, backTo);
+                  const open = scope.complete ? numOr(h.open_roles) : null;
                   // ONE GUARD, TWO CALL SITES. `single` is checked here as well
                   // as in the SQL: a later change that started summing several
                   // boards' advertised totals would otherwise reach the screen
@@ -3186,7 +3231,7 @@ export default function Explore() {
                   return (
                   <Link
                     key={h.name}
-                    to={`/jobs/company/${encodeURIComponent(h.tokens[0])}?from=explore&back=${encodeURIComponent(backHere(null, null, "check"))}`}
+                    to={href}
                     className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
                   >
                     <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">

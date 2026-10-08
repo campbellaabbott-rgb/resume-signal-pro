@@ -1850,7 +1850,8 @@ describe("the page says when it was measured", () => {
     // facet.at exists on this branch -- which makes the stamp's presence a
     // type-level fact on the one sentence obliged to carry it.
     expect(CODE).toMatch(/\{reach && facet && \(/);
-    expect(CODE).toMatch(/\{facetFailed && \(/);
+    // Under a board-budget refusal the board's own notice says it instead.
+    expect(CODE).toMatch(/\{facetFailed && !budgetRefusal && \(/);
     expect(CODE).toMatch(/t\("explore\.basisNone"/);
   });
 
