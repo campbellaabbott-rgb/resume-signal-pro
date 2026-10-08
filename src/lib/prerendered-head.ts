@@ -3,10 +3,11 @@
  *
  * Every prerendered file ships its own <link rel="canonical"> and
  * <meta name="description">. React 19 hoists the ones <SEO> renders into the
- * same head and, in a client render, inserts them BESIDE the baked ones —
- * measured in jsdom on react-dom 19.2.3 it adopted neither, even with an
- * identical href and content. So every rendered page carried two canonicals
- * and two descriptions, and where they differed the head contradicted itself:
+ * same head and, in a client render, inserts them BESIDE the baked ones: it
+ * adopts an unowned head tag only while hydrating, and this app mounts with
+ * createRoot (react-dom 19.2.3, production build: identical href and content
+ * still left 2 and 2). So every baked page carried two canonicals and two
+ * descriptions, and where they differed the head contradicted itself:
  * the secondary-board company landers, whose bake points the canonical at the
  * employer's primary board while the page pointed it at itself
  * (pwc~wd3~crm_experienced_careers_site, maersk~wd3~Maersk_Manual).

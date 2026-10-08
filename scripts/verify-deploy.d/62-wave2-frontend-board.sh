@@ -24,7 +24,10 @@ else
 
   # L2-17: the board stamps its own history entries and remounts on navigation.
   # Same chunk carries L2-01 (lander answer), L2-02 (field count), L2-03 (facet
-  # race), L2-12 (chip name), L8-08 (folded typeahead), L12-05 (order claim).
+  # race), L2-12 (chip name), L8-08 (folded typeahead, non-Latin queries kept),
+  # L12-05 (order claim), the panel's employer link (replaces the panel's own
+  # entry) and the skip-link jump that keeps the board -- logic with no
+  # literal of its own.
   if fb_has "$JOBSJS" "rbBoard"; then echo "PASS  $FB_JOBS stamps board history entries (rbBoard): links between board pages load the new board"
   else echo "FAIL  $FB_JOBS has no rbBoard stamp: the wave-2 board bundle is not serving (in-app links still leave the old board on screen)"; fi
 
@@ -50,8 +53,12 @@ else
 
   # L2-19 / L2-07 / L2-20: the posting page.
   if [ -z "$FB_POST" ]; then echo "FAIL  no JobPosting chunk named by the live entry"
-  elif fb_has "$POSTJS" "jobPostingPage.noPayFound"; then echo "PASS  $FB_POST says WE found no pay figure (never 'this employer states no pay'); the 404 and gone-only-on-gone fixes ride this chunk"
-  else echo "FAIL  $FB_POST still reads jobPostingPage.noPay: the posting-page fixes (404 as gone, head kept while loading) are not serving"; fi
+  elif fb_has "$POSTJS" "jobPostingPage.noPayFound"; then echo "PASS  $FB_POST says WE found no pay figure (never 'this employer states no pay'); the gone-only-on-gone fixes ride this chunk"
+  else echo "FAIL  $FB_POST still reads jobPostingPage.noPay: the posting-page fixes (404 retracted, head kept while loading) are not serving"; fi
+  # A 404 (no row, no recorded closure) is retracted as 'no longer listed on
+  # this board', never as the employer's board dropping it.
+  if [ -n "$FB_POST" ] && fb_has "$POSTJS" "jobPostingPage.unlistedMeta"; then echo "PASS  $FB_POST retracts a 404 as 'no longer listed on this board' (unlistedMeta), with no claim about the employer's board"
+  else echo "FAIL  $FB_POST has no jobPostingPage.unlistedMeta: a 404 posting page tells crawlers the employer's own board dropped it"; fi
 
   # L2-04 / L2-05 / L2-09: /explore. The old employer-check link was a template
   # literal for tokens[0]'s lander ("/jobs/company/${...}?from=explore"); the
@@ -69,15 +76,20 @@ else
   else echo "FAIL  $FB_EXPL does not import the board-budget notice: a refused /explore still blames itself and re-fires probes"; fi
 
   # The English strings the browser loads carry the retired-and-reminted keys.
-  FB_EN_OK=0
+  FB_EN_OK=0; FB_EN_EXACT=0
   for CH in $(printf '%s' "$FB_MAINJS" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
     FB_EN=$(curl -s -m 30 "$SITE/assets/$CH")
     printf '%s' "$FB_EN" | grep -q "sortDiscovered2" || continue
     if printf '%s' "$FB_EN" | grep -q "Newest, undated by our date" && ! printf '%s' "$FB_EN" | grep -q "Recently found by us"; then FB_EN_OK=1; fi
+    printf '%s' "$FB_EN" | grep -q "title matches first, then employer-name matches" && FB_EN_EXACT=1
     break
   done
   if [ "$FB_EN_OK" = 1 ]; then echo "PASS  the English strings name the discovery order truthfully ('Newest, undated by our date')"
   else echo "FAIL  the English strings the browser loads still say 'Recently found by us' (or carry no sortDiscovered2)"; fi
+  # The exact-word tier serves title matches, then employer-name matches, each
+  # block date-ordered on its own; its sentence names the two blocks.
+  if [ "${FB_EN_EXACT:-0}" = 1 ]; then echo "PASS  the exact-word tier's order sentence names its two blocks (title matches first, then employer-name matches)"
+  else echo "FAIL  the English strings claim one date order over the exact-word tier's two concatenated reads"; fi
 fi
 
 # What a bake cannot show: the pages' crawler HTML is the prerender's, which
