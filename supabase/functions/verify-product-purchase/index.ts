@@ -7,10 +7,11 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
+import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-08.1";
+const FN_BUILD = "verify-product-purchase.2026-10-08.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -269,6 +270,15 @@ serve(async (req) => {
           status: session.payment_status
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // A refunded or disputed payment delivers nothing more (L6-18). Stripe
+    // still answers 'paid' for it; the webhook's record is what says so.
+    if (await sessionWasRefunded(supabaseEarly, sessionId)) {
+      return new Response(
+        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE, refunded: true }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

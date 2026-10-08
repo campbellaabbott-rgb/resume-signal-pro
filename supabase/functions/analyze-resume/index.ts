@@ -10,10 +10,11 @@ import {
   priorRedemptionOf,
 } from "../_shared/full-analysis.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
+import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-08.1";
+const FN_BUILD = "analyze-resume.2026-10-08.2";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -816,6 +817,15 @@ serve(async (req) => {
     }
     const paidTotal: number | null = session.amount_total ?? null;
     console.log(`[ANALYZE-RESUME] Payment verified: ${paidTotal} ${session.currency} for session: ${sessionId}`);
+
+    // A refunded or disputed payment is analysed no more (L6-18): Stripe still
+    // answers 'paid' for it, so the webhook's record is asked.
+    if (await sessionWasRefunded(supabase, sessionId)) {
+      return new Response(
+        JSON.stringify({ error: REFUNDED_PURCHASE_MESSAGE }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // HAS THIS SESSION ALREADY HAD ITS ANALYSIS? Asked before any AI spend.
     //
