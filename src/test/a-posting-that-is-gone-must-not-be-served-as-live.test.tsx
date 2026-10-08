@@ -172,10 +172,11 @@ describe("a live posting is served as itself", () => {
     expect(jobEntities()[0].title).toBe("Staff Nurse");
   });
 
-  it("says the employer stated no pay rather than showing a figure it does not have", async () => {
+  it("says WE found no pay rather than showing a figure it does not have, or blaming the employer", async () => {
     invoke.mockResolvedValue({ data: { job: row(), description: DESC }, error: null });
     at(PATH);
-    expect(await screen.findByText(/states no pay/)).toBeTruthy();
+    expect(await screen.findByText(/found no pay figure on this posting/)).toBeTruthy();
+    expect(screen.queryByText(/states no pay/)).toBeNull();
     await waitFor(() => expect(jobEntities().length).toBe(1));
     expect(jobEntities()[0].baseSalary).toBeUndefined();
   });

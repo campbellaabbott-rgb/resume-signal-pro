@@ -80,22 +80,14 @@ describe("a zero exact count is not an empty page", () => {
     expect(FN).not.toMatch(/relatedTotal: 0,/);
   });
 
-  it("the company lander decides emptiness from BOTH segments", () => {
-    // The ship-blocker. Both branches, or the page contradicts itself.
-    // A THIRD CONDITION JOINED BOTH BRANCHES 2026-09-01. The two segments still
-    // decide emptiness together — that rule is unchanged and still pinned below —
-    // but a WITHDRAWN count (total:null + countUnavailable) coerced through
-    // `?? 0` was reading as a real zero, so the lander printed the definitive
-    // "not hiring" on the page that ranks for "is X hiring?". Unknown now leaves
-    // the question unanswered instead of answering it wrongly.
-    expect(JOBS).toMatch(/data\?\.countUnavailable !== true\s*\n\s*&& \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) > 0 &&/);
-    expect(JOBS).toMatch(/data\?\.countUnavailable !== true\s*\n\s*&& \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) === 0 &&/);
-    // The countUnavailable guard joined this branch too — see the note above.
-    expect(JOBS).toMatch(/&& \(\(data\?\.total \?\? 0\) \+ \(data\?\.relatedTotal \?\? 0\)\) === 0 &&/);
-    // And no branch may go back to reading the exact segment as "any results".
-    expect(JOBS).not.toMatch(/landerCompany && data\?\.total === 0 &&/);
-    expect(JOBS).not.toMatch(/landerCompany && typeof data\?\.total === "number" && data\.total > 0/);
-  });
+  // THE COMPANY LANDER'S EMPTINESS RULE IS NOW HELD BY BEHAVIOUR, NOT BY A
+  // REGEX. The case that stood here matched the render expression's spelling,
+  // so it stayed green while the lander printed "not hiring" after a failed
+  // read, a refusal and an in-company search, and it would have failed the
+  // fix (2026-10-04 register, L2-01). The rules it named -- both segments
+  // decide emptiness, and a withdrawn count answers nothing -- are mounted and
+  // read off the screen in is-x-hiring-is-answered-only-from-the-landers-own-
+  // reply.test.tsx, beside the failure, refusal and narrowed cases.
 
   it("every headline branch shares one definition of how many", () => {
     // Four branches, one meaning. Patching one and leaving three is how the

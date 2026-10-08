@@ -17,6 +17,7 @@ import { Bookmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } from "@/lib/board-budget";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchToQuery, searchToBoardBody, type JobSearchParams } from "@/lib/job-search-params";
 
@@ -44,9 +45,14 @@ export function SavedSearchPills() {
         // only for searches that HAVE a watermark (a never-opened search
         // showing "573k new" would be noise, not signal).
         const counts: Record<string, number> = {};
-        await Promise.all((data as SavedSearch[]).filter((s) => s.last_seen_at).map(async (s) => {
+        // ONE AT A TIME, AND NONE UNDER A BUDGET REFUSAL. These are counted
+        // board reads; a refusal cannot clear before its reset, so the first
+        // one stops the rest and the host page's notice says why
+        // (src/lib/board-budget.ts). The pills themselves still open.
+        for (const s of (data as SavedSearch[]).filter((x) => x.last_seen_at)) {
+          if (cancelled || boardBudgetRefusal()) break;
           try {
-            const { data: res } = await invokeJobBoard({
+            const { data: res, error: probeErr } = await invokeJobBoard({
               body: {
                 action: "list", countOnly: true, includeFacets: false,
                 // THE SAVED FILTER SET, WHOLE — via the one mapper, never a
@@ -72,10 +78,15 @@ export function SavedSearchPills() {
                 postedAfter: s.last_seen_at,
               },
             });
+            if (probeErr) {
+              const refused = await readBoardBudgetRefusal(probeErr);
+              if (refused) { markBoardBudgetRefused(refused); break; }
+              continue;
+            }
             const n = (res as { total?: number | null } | null)?.total;
             if (typeof n === "number" && n > 0) counts[s.id] = n;
           } catch { /* badge is sugar — the pill works without it */ }
-        }));
+        }
         if (!cancelled) setNewCounts(counts);
       } catch { /* pills are optional sugar */ }
     })();

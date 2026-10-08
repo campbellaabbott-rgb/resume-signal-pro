@@ -147,7 +147,7 @@ describe("a paused board says so, and never calls a live posting closed", () => 
     await waitFor(() => expect(calls.some((c) => c.action === "detail")).toBe(true), SLOW);
     await waitFor(() => expect(screen.getByText(PAUSED)).toBeInTheDocument(), SLOW);
     await settle(400);
-    expect(screen.queryByText(/no longer live/)).toBeNull();
+    expect(screen.queryByText(/no longer live|no longer listed/)).toBeNull();
     expect(noindex(), "a live posting must not be told to crawlers as gone").toBeNull();
     expect(calls.filter((c) => c.action === "detail"), "and the refused detail is not retried").toHaveLength(1);
     first.unmount();
@@ -156,7 +156,8 @@ describe("a paused board says so, and never calls a live posting closed", () => 
     clearBoardBudgetRefusal(); calls = [];
     refuse = (c) => (c.action === "detail" ? httpError(404, { error: "Posting not found (it may have closed)" }) : null);
     mount("/jobs?job=greenhouse:acme:6666");
-    await waitFor(() => expect(screen.getByText(/no longer live/)).toBeInTheDocument(), SLOW);
+    // A 404 with no closure recorded is "no longer listed on this board" (2026-10-08).
+    await waitFor(() => expect(screen.getByText(/no longer listed on this board/)).toBeInTheDocument(), SLOW);
     expect(noindex(), "a real dead link is still marked for crawlers").not.toBeNull();
     expect(screen.queryByText(PAUSED)).toBeNull();
   });

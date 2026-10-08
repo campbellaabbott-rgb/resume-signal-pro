@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { Building2, Landmark, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
@@ -111,7 +112,7 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
         </p>
       )}
       <Link
-        to={`/jobs/company/${encodeURIComponent(companyToken)}`}
+        to={companyLanderPath(companyToken)}
         className="inline-flex items-center gap-1 text-[12px] text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
       >
         {t("jobsPage.employerCtx.companyPage", "Full {{company}} hiring profile", { company: companyName })}

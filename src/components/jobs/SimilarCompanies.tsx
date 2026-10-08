@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { ArrowRight, Compass } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +52,7 @@ export function SimilarCompanies({ companyToken }: { companyToken: string }) {
         {rows.map((r) => (
           <Link
             key={r.company_token}
-            to={`/jobs/company/${encodeURIComponent(r.company_token)}`}
+            to={companyLanderPath(r.company_token)}
             className="group flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-primary/50 hover:bg-card transition-colors"
           >
             <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-sm shrink-0">
