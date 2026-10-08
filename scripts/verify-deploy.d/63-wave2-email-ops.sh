@@ -16,7 +16,7 @@ echo "== 63. wave 2 email-ops: digest window and schedule, unsubscribe by button
 # Builds: date part 2026-10-08 or later (a later deploy carries this too).
 for FN63 in send-search-digest industry-corrections-digest send-market-pulse send-scan-report process-email-queue auth-email-hook \
   company-claim scan-heartbeat admin-ops check-alerts notify-owner free-keyword-scan test-ai-fallback health-check \
-  scheduled-health-probe get-analytics get-error-telemetry affiliate-payout-request send-agent-digest; do
+  scheduled-health-probe get-analytics get-error-telemetry affiliate-payout-request send-agent-digest check-error-spikes; do
   H63=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN63" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$H63" ]; then echo "FAIL  $FN63 preflight carries no x-fn-build (not deployed, or the previous bundle is still serving)"
   elif build_ge "$FN63" "$H63" 2026-10-08 1; then echo "PASS  $FN63 preflight x-fn-build = $H63 (2026-10-08.1 or later)"
@@ -63,10 +63,13 @@ for T63 in search_digest_sent affiliate_payout_requests; do
   case "$C63" in 42501) echo "PASS  anon GET $T63 -> 42501 (exists, closed by name)";; PGRST205) echo "FAIL  $T63 does not exist (its migration has not applied)";;
     *) echo "FAIL  anon GET $T63 -> $C63 (want 42501)";; esac
 done
+C63=$(curl -s -m 30 "$B/rest/v1/affiliate_payout_requests?select=conversion_ids&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K" | vd63_code)
+case "$C63" in 42501) echo "PASS  affiliate_payout_requests carries conversion_ids (42501 on the column, not 42703): a paid request settles its conversions";; 42703) echo "FAIL  affiliate_payout_requests lacks conversion_ids (20261008126000 not applied; affiliate-payout-request .10-08 writes it)";;
+  PGRST205) echo "FAIL  affiliate_payout_requests does not exist (20261008124000 not applied)";; *) echo "INFO  affiliate_payout_requests column probe -> $C63";; esac
 C63=$(curl -s -m 30 "$B/rest/v1/company_claims?select=owner_approved_at,last_sent_at&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K" | vd63_code)
 case "$C63" in 42501) echo "PASS  company_claims carries owner_approved_at and last_sent_at (42501 on the columns, not 42703)";; 42703) echo "FAIL  company_claims lacks owner_approved_at/last_sent_at (20261008122000 not applied; company-claim .10-08 needs it)";;
   *) echo "INFO  company_claims column probe -> $C63";; esac
-for P63 in 'get_recent_heartbeats|{"p_limit":1}' 'search_digest_record_sent|{"p_search_id":"00000000-0000-4000-8000-000000000000","p_posting_ids":[]}' 'email_delivery_health|{"p_hours":1}'; do
+for P63 in 'get_recent_heartbeats|{"p_limit":1}' 'get_heartbeat_history|{"p_hours":1,"p_limit":1}' 'search_digest_record_sent|{"p_search_id":"00000000-0000-4000-8000-000000000000","p_posting_ids":[]}' 'email_delivery_health|{"p_hours":1}'; do
   N63=${P63%%|*}; A63=${P63#*|}
   C63=$(R "$N63" "$A63" | vd63_code)
   case "$C63" in 42501) echo "PASS  $N63 as anon -> 42501 (closed)";; PGRST202) echo "FAIL  $N63 -> PGRST202 (not created: its migration has not applied)";; *) echo "FAIL  $N63 as anon -> $C63 (want 42501)";; esac
@@ -80,9 +83,9 @@ node -e '
 const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_63_cron.json","utf8"))}catch{j=null}
 if(!Array.isArray(j)){console.log("INFO  get_cron_health unreadable: "+JSON.stringify(j).slice(0,140));process.exit(0)}
 const job=(n)=>j.find((x)=>x.ch_jobname===n);
-for(const [n,s] of [["send-search-digest","23 14 * * *"],["industry-corrections-digest","15 9 * * 1"]]){
+for(const [n,s,m] of [["send-search-digest","23 14 * * *","20261008125000"],["industry-corrections-digest","15 9 * * 1","20261008125000"],["check-error-spikes","7-59/15 * * * *","20261008128000"]]){
   const r=job(n);
-  if(!r){console.log("FAIL  no "+n+" cron job (20261008125000 has not applied; apply it LAST, after job-board .91 and send-search-digest .10-08 serve)");continue}
+  if(!r){console.log("FAIL  no "+n+" cron job ("+m+" has not applied; apply it LAST, after its function\x27s 2026-10-08 build serves)");continue}
   console.log((r.ch_schedule===s&&r.ch_active?"PASS":"FAIL")+"  "+n+" cron: schedule "+r.ch_schedule+", active "+r.ch_active);
   console.log("INFO  "+n+" last 48h: runs "+r.ch_runs+", failed "+r.ch_failed+", last "+r.ch_last_status+" at "+r.ch_last_start+" (a 401 in the function log means the job is not sending the key)");}
 const hb=job("scan-heartbeat-sentinel");
@@ -94,6 +97,9 @@ console.log(q?"INFO  process-email-queue cron: schedule "+q.ch_schedule+", activ
 R get_scan_health_status '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{}const r=Array.isArray(j)?j[0]:j;if(!r){console.log("INFO  get_scan_health_status unreadable: "+s.slice(0,120));return}
 const age=r.last_heartbeat_time?Math.round((Date.now()-Date.parse(r.last_heartbeat_time))/60000):null;
 console.log((age!==null&&age<=20?"PASS":"FAIL")+"  the sentinel ran "+(age===null?"never":age+" min ago")+", status "+r.last_heartbeat_status+" (a run older than 20 min after the deploy means its cron is refused: check the key)");
-console.log("INFO  last_successful_scan "+r.last_successful_scan+", scans_last_hour "+r.scans_last_hour+" (the heartbeat now runs an uncached synthetic scan every 10 min)");})'
+console.log("INFO  last_successful_scan "+r.last_successful_scan+", scans_last_hour "+r.scans_last_hour+" (the heartbeat now runs an uncached scan every 10 min, typed heartbeat)");})'
+# The heartbeat's uncached scan is not a resume anyone scanned: the public counter must not climb 6 an hour by itself.
+R get_today_scan_count '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const n=Number(s);const h=new Date().getUTCHours()+new Date().getUTCMinutes()/60;
+console.log(Number.isFinite(n)?"INFO  get_today_scan_count = "+n+" at "+new Date().toISOString().slice(11,16)+" UTC; the heartbeat alone would add about "+Math.floor(h*6)+" by now if free-keyword-scan .10-08 counted it (it must not: compare day over day after the deploy)":"INFO  get_today_scan_count unreadable: "+s.slice(0,120))})'
 echo "INFO  OWNER: notify.resumebooster.work has no DNS (register L10-01): auth mails and the fix-plan drip are refused by the provider. process-email-queue now dead-letters each refused message with the sender named and keeps going; re-verify the domain in Lovable Cloud or restore its delegation, then send one magic link and check a pending+sent pair"
-echo "INFO  OWNER: affiliate payout requests now arrive by email and sit in affiliate_payout_requests (status requested); mark each paid or rejected after paying"
+echo "INFO  OWNER: affiliate payout requests now arrive by email and sit in affiliate_payout_requests (status requested). A request covers APPROVED conversions only (nothing in the code approves one: set a conversion approved once its refund window has passed). Setting a request paid settles it: its conversions become paid and the amount leaves pending_payout for paid_out, in that one update"
