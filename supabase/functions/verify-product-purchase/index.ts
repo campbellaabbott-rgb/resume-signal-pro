@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -11,7 +11,7 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-08.2";
+const FN_BUILD = "verify-product-purchase.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -656,7 +656,9 @@ serve(async (req) => {
       // premium-tier commission, leaving only ~$2 to cover the Stripe fee and two
       // AI generation calls on every affiliate-referred sale.
       const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-      const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
+      // A checkout the affiliate page promises nothing for marks its referral
+      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid.
+      const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
         amount: session.amount_total,
@@ -685,7 +687,7 @@ serve(async (req) => {
             .eq('referral_code', referralCode)
             .single();
           
-          if (affiliateData?.email) {
+          if (affiliateData?.email && commissionCents > 0) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
             // The service-role key: the commission mailer is internal and
             // refuses the publishable key, which every visitor holds.

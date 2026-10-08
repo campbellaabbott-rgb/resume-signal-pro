@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -38,7 +38,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-08.2";
+const FN_BUILD = "stripe-webhook.2026-10-09.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -981,7 +981,10 @@ serve(async (req) => {
               // career_path_simulator entirely, and would have defaulted
               // apply_assistant to the $5 tier on a $7 sale).
               const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-              const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
+              // Every checkout now carries the code; the ones the affiliate
+              // page promises nothing for mark it "none" and are recorded at
+              // $0 (_shared/checkout-policy.ts policyMetadata).
+              const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommission.includes(productType || '') ? 100 : 500;
               
               // verify-product-purchase (triggered from the success page) can also
               // record this same conversion — the table's UNIQUE constraint on

@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 // Opens the Stripe customer billing portal so Pro subscribers can update
 // their card or cancel. Requires a signed-in user (JWT) — the portal exposes
 // billing details, so an email in the body is not enough.
@@ -11,10 +11,11 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail } from "../_shared/pro.ts";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
+import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-portal-session.2026-10-08.2";
+const FN_BUILD = "create-portal-session.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,7 +90,8 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const origin = req.headers.get("origin") || "https://resumebooster.work";
+    // Only our own hosts get the subscriber back (S8-060).
+    const origin = checkoutOrigin(req.headers.get("origin"), (k) => Deno.env.get(k));
     const portal = await stripe.billingPortal.sessions.create({
       customer: status.stripeCustomerId,
       return_url: `${origin}/account`,

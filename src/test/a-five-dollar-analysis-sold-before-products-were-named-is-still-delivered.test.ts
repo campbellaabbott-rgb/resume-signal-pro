@@ -34,6 +34,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { assertPaidSession } from "../../supabase/functions/_shared/paid-session";
+import { policyMetadata, TERMS_VERSION } from "../../supabase/functions/_shared/checkout-policy";
 import {
   analyzeResumeHarness,
   fullAnalysisSession,
@@ -221,6 +222,12 @@ function balanced(src: string, start: number): string {
   throw new Error("unbalanced");
 }
 
+/** Every key the shared policy can put on a session: Terms shown, a referral, both EU/UK consents. */
+const POLICY_KEYS = Object.keys(policyMetadata(
+  { termsVersion: TERMS_VERSION, referralCode: "ab12", withdrawalWaiver: true, serviceStartConsent: true },
+  (k) => (k === "EU_UK_SALES" ? "on" : undefined),
+));
+
 /** Top-level `key: value` (or shorthand `key`) entries of an object literal. */
 function entriesOf(obj: string): Array<[string, string]> {
   const body = obj.slice(1, -1);
@@ -235,10 +242,12 @@ function entriesOf(obj: string): Array<[string, string]> {
     else if (ch === "," && depth === 0) { parts.push(body.slice(last, i)); last = i + 1; }
   }
   parts.push(body.slice(last));
-  return parts.map((p) => p.trim()).filter(Boolean).map((p) => {
+  return parts.map((p) => p.trim()).filter(Boolean).flatMap((p): Array<[string, string]> => {
+    // The shared checkout policy's spread (wave 3): every key it can add.
+    if (p === "...policy") return POLICY_KEYS.map((k) => [k, `policy.${k}`]);
     const m = /^([A-Za-z_]\w*)\s*(?::\s*([\s\S]*))?$/.exec(p);
     if (!m) throw new Error(`unreadable metadata entry: ${p}`);
-    return [m[1], (m[2] ?? m[1]).trim()];
+    return [[m[1], (m[2] ?? m[1]).trim()]];
   });
 }
 

@@ -63,6 +63,9 @@ function passNumbersSpelled(code: string): string[] {
   const hits: string[] = [];
   for (const line of code.split("\n")) {
     if (!PASS_LINE.test(line)) continue;
+    // A build stamp is a date: create-pass-checkout.2026-10-09.1 carries a 10
+    // that is October, not the pass's application count.
+    if (/\bFN_BUILD\s*=\s*"[a-z-]+\.\d{4}-\d{2}-\d{2}\.\w+"/.test(line)) continue;
     for (const m of line.matchAll(/(?<![\w.$])(\d+)(?![\w.])/g)) {
       const name = values.get(Number(m[1]));
       if (name) hits.push(`${name} on: ${line.trim().slice(0, 100)}`);

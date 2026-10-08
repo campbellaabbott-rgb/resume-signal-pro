@@ -35,7 +35,7 @@
 // the same Stripe read the double-billing guard makes). A read that fails
 // offers no trial.
 
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -45,10 +45,11 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
+import { checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-08.2";
+const FN_BUILD = "create-agent-checkout.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,6 +95,9 @@ serve(async (req) => {
       return json({ error: "Sign in to start the agent, so it is attached to your account.", signInRequired: true }, 401);
     }
     const body = await req.json().catch(() => ({}));
+    const env = (k: string) => Deno.env.get(k);
+    const consentMissing = euConsentRefusal(env, "subscription", body);
+    if (consentMissing) return json({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }, 400);
 
     // An account granted the agent by hand already has it.
     if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });
@@ -110,7 +114,9 @@ serve(async (req) => {
     // as Stripe holds them, and the account's own record.
     const trialOffered = !standing.hadTrialOrAgent && !(await agentPlanEverHeld(supabase, user.id, email));
 
-    const origin = req.headers.get("origin") || "https://resumebooster.work";
+    // Only our own hosts get the buyer back (S8-060).
+    const origin = checkoutOrigin(req.headers.get("origin"), env);
+    const policy = policyMetadata(body, env);
     // The buyer's user id ON THE SUBSCRIPTION — the copy checkAgentByEmail
     // reads to bind agent_subscribers.user_id, on every later refresh.
     const subscriptionBuyer = { user_id: user.id };
@@ -180,7 +186,13 @@ serve(async (req) => {
       // and the guard rejected it within a minute, because nothing reads it.
       // Someone who backed out of a payment needs no banner about it.
       cancel_url: `${origin}/agent`,
-      metadata: { product_type: "apply_agent", customer_email: email, user_id: user.id },
+      metadata: { product_type: "apply_agent", customer_email: email, user_id: user.id, ...policy },
+      // The trial and renewal terms beside Stripe's pay button, from what this
+      // session carries (item 11); tax only with the EU/UK switch on.
+      ...sessionPolicy({
+        mode: "subscription", env, hasCustomer: !!standing.reuseCustomerId,
+        renewal: renewalTerms(AGENT_PRICE_CENTS, trialOffered ? AGENT_TRIAL_DAYS : null),
+      }),
     });
 
     // The start is on record before the browser has the url, so no
@@ -196,7 +208,7 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(body),
-      metadata: { planCents: AGENT_PRICE_CENTS, trial: trialOffered },
+      metadata: { planCents: AGENT_PRICE_CENTS, trial: trialOffered, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null },
     });
 
     console.log(`[CREATE-AGENT-CHECKOUT] Session ${session.id} created`);
