@@ -5,6 +5,7 @@
 // structure decision happens server-side, deterministically.
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams, Link } from "react-router-dom";
 import { Briefcase, Plus, Trash2, Loader2, Check, Copy, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -37,6 +38,22 @@ interface BoostResult {
 }
 
 const DRAFT_KEY = "freelanceBoostIntake";
+/**
+ * THE PURCHASE THIS BROWSER MADE (sweep S8-016). It existed only in the
+ * success URL: back on /freelance-boost without it, a $29 or $59 buyer was
+ * shown the buy buttons again and the result they had was regenerated on
+ * every reload. The id is kept here on arrival; the saved result is read back
+ * (recover-purchase) before anything is generated.
+ */
+export const PURCHASE_KEY = "freelanceBoostPurchase";
+const readPurchase = (): string | null => {
+  try {
+    const v = localStorage.getItem(PURCHASE_KEY);
+    return v && /^(cs_live_|cs_test_|pro_)[A-Za-z0-9_-]{6,250}$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+};
 
 type Situation = "primary" | "alongside" | "returning";
 type WorkMode = "freelance" | "fractional";
@@ -77,6 +94,7 @@ const draftIsComplete = (d: Partial<IntakeDraft> | null): d is IntakeDraft =>
   !!d && Array.isArray(d.projects) && d.projects.some((p) => p?.deliverable?.trim()) && typeof d.targetRole === "string" && d.targetRole.trim().length > 0;
 
 export default function FreelanceBoost() {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const { purchaseProduct, isLoading: checkoutLoading } = useProductCheckout();
   const { toast } = useToast();
@@ -109,8 +127,20 @@ export default function FreelanceBoost() {
     } catch { /* storage blocked: the form still works for this visit */ }
   }, [projects, targetRole, jobPosting, employmentTimeline, situation, workMode]);
 
-  // Returned from checkout with a paid session (or a Pro grant) → generate.
-  const sessionId = params.get("session_id");
+  // Returned from checkout with a paid session (or a Pro grant), or this
+  // browser bought one before → the purchase, never the buy buttons.
+  const urlSession = params.get("session_id");
+  const [storedSession, setStoredSession] = useState(readPurchase);
+  const sessionId = urlSession ?? storedSession;
+  useEffect(() => {
+    if (!urlSession) return;
+    try { localStorage.setItem(PURCHASE_KEY, urlSession); } catch { /* storage blocked: the link still works */ }
+  }, [urlSession]);
+  const startNewPurchase = () => {
+    try { localStorage.removeItem(PURCHASE_KEY); } catch { /* nothing kept */ }
+    setStoredSession(null);
+    setResult(null);
+  };
   const generate = async (d: IntakeDraft) => {
     if (!sessionId) return;
     setGenerating(true);
@@ -143,11 +173,21 @@ export default function FreelanceBoost() {
   useEffect(() => {
     if (!sessionId || autoRunRef.current) return;
     autoRunRef.current = true;
-    if (draftIsComplete(saved)) {
-      void generate(saved);
-    } else {
-      setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
-    }
+    void (async () => {
+      // The result already made for this purchase, read back rather than
+      // made again (S8-016).
+      try {
+        const { data } = await supabase.functions.invoke("recover-purchase", { body: { sessionId } });
+        const hit = ((data as { purchases?: Array<{ productType?: string; generatedContent?: unknown }> } | null)?.purchases ?? [])
+          .find((p) => String(p.productType ?? "").startsWith("freelance") && p.generatedContent);
+        if (hit) { setResult(hit.generatedContent as BoostResult); return; }
+      } catch { /* nothing saved, or unreadable: generate */ }
+      if (draftIsComplete(saved)) {
+        void generate(saved);
+      } else {
+        setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
@@ -482,6 +522,11 @@ export default function FreelanceBoost() {
                   </Button>
                   {!intakeComplete && (
                     <p className="text-[11px] text-muted-foreground mt-2">Add your target role and at least one project (who it was for + what you delivered).</p>
+                  )}
+                  {!urlSession && storedSession && (
+                    <button type="button" onClick={startNewPurchase} className="block mx-auto mt-3 text-[11px] text-muted-foreground underline">
+                      {t("freelanceBoost.startNewPurchase")}
+                    </button>
                   )}
                 </div>
               ) : (

@@ -104,7 +104,7 @@ describe("the paid streaming page", () => {
     streamEvents = [{ type: "complete" }];
     invoke.mockImplementation(async () => ({ data: { success: true, verified: true, isFirstUse: true, customerEmail: null, generatedContent: { keywords: [] } }, error: null }));
     render(
-      <MemoryRouter initialEntries={["/product-success?session_id=cs_test_kw&product=careerSnapshot"]}>
+      <MemoryRouter initialEntries={["/product-success?session_id=cs_test_kw&product=basicKeywordFix"]}>
         <ProductSuccess />
       </MemoryRouter>,
     );

@@ -175,9 +175,10 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
     localStorage.setItem("freelanceBoostIntake", JSON.stringify(DRAFT));
     invoke.mockResolvedValue({ data: { success: true, data: { structure: "projects_section", structureNote: "", header: "Freelance Projects", scopeStatement: "", projects: [{ clientLabel: "dental", relevance: 8, bullets: ["Shipped a booking site"], keywordsCovered: [] }], transitionParagraph: "", gapHandling: "", keywordCoverage: null } }, error: null });
     at("/freelance-boost?session_id=cs_test_paid_boost", <FreelanceBoost />);
-    await waitFor(() => expect(invoke).toHaveBeenCalled(), SLOW);
-    const [fn, opts] = invoke.mock.calls[0] as [string, { body: { sessionId: string; targetRole: string } }];
-    expect(fn).toBe("generate-freelance-boost");
+    // The saved result is asked for first (wave 3, S8-016); none here, so it is generated.
+    await waitFor(() => expect(invoke.mock.calls.some(([f]) => f === "generate-freelance-boost")).toBe(true), SLOW);
+    expect(invoke.mock.calls[0][0]).toBe("recover-purchase");
+    const [, opts] = invoke.mock.calls.find(([f]) => f === "generate-freelance-boost") as [string, { body: { sessionId: string; targetRole: string } }];
     expect(opts.body).toMatchObject({ sessionId: "cs_test_paid_boost", targetRole: "Product Manager" });
     expect(await screen.findByText("Shipped a booking site", {}, SLOW)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("freelanceBoostIntake") ?? "{}").targetRole, "the saved intake was overwritten").toBe("Product Manager");
@@ -189,7 +190,7 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
     expect(await screen.findByRole("button", { name: /generate my section \(already paid\)/i }, SLOW)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /boost my experience/i }), "a paid buyer was offered the $29 checkout again").toBeNull();
     expect(screen.queryByRole("button", { name: /full transition kit/i })).toBeNull();
-    expect(invoke).not.toHaveBeenCalled();
+    expect(invoke.mock.calls.filter(([f]) => f === "generate-freelance-boost"), "generated with no intake").toHaveLength(0);
   });
 
   it("without a purchase, still sells", () => {

@@ -5290,5 +5290,8 @@
     "waiver": "Quero receber minha compra agora e entendo que perco meu direito de desistência de {{days}} dias depois da entrega.",
     "serviceStart": "Peço que o serviço comece agora. Se eu desistir em até {{days}} dias, pago pelos dias já usados.",
     "consentNeeded": "Marque a caixa acima do botão para continuar."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra."
   }
 }

@@ -5290,5 +5290,8 @@
     "waiver": "Ik wil mijn aankoop nu geleverd krijgen en begrijp dat ik mijn herroepingsrecht van {{days}} dagen verlies zodra die is geleverd.",
     "serviceStart": "Ik vraag om de dienst nu te laten starten. Herroep ik binnen {{days}} dagen, dan betaal ik voor de dagen die al zijn gebruikt.",
     "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop."
   }
 }

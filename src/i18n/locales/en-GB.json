@@ -5290,5 +5290,8 @@
     "waiver": "I want my purchase delivered now, and I understand that I lose my {{days}}-day right to withdraw once it has been delivered.",
     "serviceStart": "I ask for the service to start now. If I withdraw within {{days}} days, I pay for the days already used.",
     "consentNeeded": "Please tick the box above the button to continue."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Buying for a different role? Start a new purchase."
   }
 }

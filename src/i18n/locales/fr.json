@@ -5290,5 +5290,8 @@
     "waiver": "Je veux recevoir mon achat maintenant et je comprends que je perds mon droit de rétractation de {{days}} jours une fois qu'il a été livré.",
     "serviceStart": "Je demande que le service commence maintenant. Si je me rétracte dans les {{days}} jours, je paie les jours déjà utilisés.",
     "consentNeeded": "Cochez la case au-dessus du bouton pour continuer."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vous achetez pour un autre poste ? Commencer un nouvel achat."
   }
 }

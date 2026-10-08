@@ -5290,5 +5290,8 @@
     "waiver": "Ich möchte, dass mein Kauf sofort geliefert wird, und mir ist bekannt, dass ich mein {{days}}-tägiges Widerrufsrecht mit der Lieferung verliere.",
     "serviceStart": "Ich verlange, dass die Leistung sofort beginnt. Widerrufe ich innerhalb von {{days}} Tagen, zahle ich für die bereits genutzten Tage.",
     "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Kaufen Sie für eine andere Stelle? Neuen Kauf beginnen."
   }
 }

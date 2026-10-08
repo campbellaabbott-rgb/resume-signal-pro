@@ -5290,5 +5290,8 @@
     "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
     "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
     "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili."
   }
 }

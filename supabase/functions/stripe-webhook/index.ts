@@ -571,6 +571,25 @@ async function triggerProductDelivery(
   // generation-failed retry queue. The intake page owns delivery.
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
+    // THE ONLY WAY BACK TO A $29 / $59 PURCHASE (S8-016). It existed only in
+    // the success URL: no mail was sent, so a buyer who closed the tab before
+    // the intake, or whose generation failed, had nothing to return with and
+    // was shown the buy buttons again. The mail carries the link that reopens
+    // it on any device. Background: the payment is already recorded.
+    if (customerEmail) {
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          const r = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({ email: customerEmail, productType, productName: productName || 'Freelance Boost', sessionId }),
+          });
+          if (!r.ok) logStep("Freelance purchase link not mailed", { status: r.status });
+        } catch (e) {
+          logStep("Freelance purchase link not mailed", { error: String(e).slice(0, 200) });
+        }
+      })());
+    }
     return { success: true, productType, deferred: 'freelance_intake' };
   }
 
@@ -821,7 +840,7 @@ async function triggerProductDelivery(
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
             },
-            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
+            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent, sessionId })
           });
 
           if (emailResponse.ok) {
