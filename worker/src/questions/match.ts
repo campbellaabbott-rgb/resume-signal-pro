@@ -769,7 +769,20 @@ export function matchQuestion(
       return { ...standing, why: `"${q.label.slice(0, 80)}" is the candidate's to answer; a drafted answer is never sent for it` };
     }
     const drafted = fromPrepared(q, prepared);
-    if (drafted) return { kind: "fill", category: "unrecognised", value: drafted };
+    if (drafted) {
+      // Prose goes into prose boxes only (S8-047). A draft "filled" into a
+      // radio or select is refused by Playwright, the stage was read as a
+      // control refusal that nothing ever lifts, and the posting was lost for
+      // good, exactly when the model said the candidate qualifies. A draft that
+      // opens with a plain yes/no is put onto the form's own options; anything
+      // else keeps the refusal, so the question goes to the candidate.
+      if (q.type === "text" || q.type === "textarea") return { kind: "fill", category: "unrecognised", value: drafted };
+      const lead = /^\s*(yes|no)\b/i.exec(drafted);
+      if (lead && (q.type === "radio" || q.type === "select" || q.type === "checkbox")) {
+        const r = chooseBoolean(q, lead[1]!.toLowerCase() === "yes", "unrecognised");
+        if (r.kind !== "unanswerable" && r.kind !== "fill") return r;
+      }
+    }
   }
   return standing;
 }
