@@ -16,29 +16,81 @@
 -- A buyer paid for applications that were never sent, against the page.
 --
 -- OWNER DECISION 2026-10-04: refund all never-sent pass applications at pass
--- close. When a pass closes -- however it closes: the clock, the shelf, a
--- refund; every closer only ever sets closed_at -- agent_pass_settle gives
--- back, once, every application the pass paid for that is not in flight and
--- was never sent:
---   - packets blocked (any reason), failed, or ready and either never
---     released or at three attempts or more, not yet given back;
---   - queue rows with no packet, not yet given back;
--- each stamped pass_refunded_at, and the pass's applications_used reduced by
--- that count. A released packet still under three attempts is in flight and
--- is left alone: the page also promises "sends already requested finish even
--- after the clock ends".
+-- close. The same page also promises "sends already requested finish even
+-- after the clock ends", so a close gives back only what will not go out on
+-- its own, and leaves every request that can still finish to finish:
 --
--- AND THE COUNT STAYS TRUE IF ONE GOES AFTER ALL. A blocked packet can be
--- unblocked by its owner after the close, and a queued row prepared. Such a
--- packet carries the stamp (a queue row's stamp is carried to the packet made
--- from it), and when it is SENT the application is charged again: the
--- refund was for a send that had not happened, and now it has.
+--   GIVEN BACK AT CLOSE (agent_pass_settle, once per pass, settled_at):
+--     - a packet no worker holds that is failed, stale, blocked (unless a
+--       learned answer can still send it again), ready and exhausted at three
+--       attempts, or ready and held for a release (the owner's approval, or a
+--       re-decision): agent_pass_packet_gives_back;
+--     - a queue row with no packet that the preparer will not prepare: one
+--       dismissed or expired (status not approved or ready).
+--   LEFT TO FINISH:
+--     - a queue row still approved or ready with no packet. A pass-only
+--       mandate's preparer reads exactly these through agent_queue_unprepared,
+--       which refuses a stamped row (20261005133000), and does not re-check
+--       the pass window ("the row is the receipt"). The first version of this
+--       file stamped them, so a request made before the clock ran out was
+--       silently never prepared (review of this file);
+--     - a released packet still under three attempts or held by a worker;
+--     - a blocked packet a learned answer would send again
+--       (agent_retry_after_learned_answer skips a stamped packet).
+--   GIVEN BACK LATER, whenever one of those ends unsent after the close: a
+--   trigger on each table applies the same rule to a closed pass's rows as
+--   they change (a row prepared after the close that lands blocked or held, a
+--   packet back from its third attempt unsent, an owner's cancel or dismissal,
+--   a queue row deleted unprepared by retention). Once only: the stamp.
 --
--- settled_at is the once-only receipt. Nothing here is callable by a client.
+-- NOTHING ON THE SEND PATH READS A PACKET'S STAMP. A held packet given back
+-- at close can still be approved (agent_packet_decide), re-released by the
+-- preparer and claimed (agent_claim_submission). When a given-back
+-- application is SENT after all, it is charged again: the refund was for a
+-- send that had not happened, and now it has. A queue row's stamp is carried
+-- to a packet later prepared from it, so the refund trigger never returns the
+-- same application twice.
+--
+-- Not covered: a worker that dies holding a packet on its third attempt
+-- leaves it ready with a lapsed lease and writes nothing more, so no trigger
+-- fires; a close that comes after the lease lapsed settles it.
+--
+-- Nothing here is callable by a client.
 
 ALTER TABLE public.agent_passes ADD COLUMN IF NOT EXISTS settled_at timestamptz;
 COMMENT ON COLUMN public.agent_passes.settled_at IS
-  'When agent_pass_settle gave back the applications this closed pass paid for and never sent (20261008132000). Set once.';
+  'When agent_pass_settle gave back the applications this closed pass paid for that will not go out on their own (20261008132000). Set once; later ones are given back as they end.';
+
+-- The one rule for a pass packet: true when it will not be sent unless
+-- someone acts, and no worker holds it now.
+CREATE OR REPLACE FUNCTION public.agent_pass_packet_gives_back(s public.agent_submissions)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
+  SELECT s.submitted_at IS NULL
+     AND (s.claimed_at IS NULL OR s.claimed_at <= now() - interval '10 minutes')
+     AND CASE s.status
+           WHEN 'failed' THEN true
+           WHEN 'stale' THEN true
+           WHEN 'ready' THEN s.released_at IS NULL OR s.attempts >= 3
+           WHEN 'blocked' THEN NOT (
+                 s.released_at IS NOT NULL
+             AND NOT (s.attempts >= 99)
+             AND coalesce(s.release_refusal, '') <> 'cancelled-by-you'
+             AND jsonb_typeof(s.blockers) = 'array'
+             AND jsonb_array_length(s.blockers) > 0
+             AND NOT EXISTS (
+               SELECT 1 FROM jsonb_array_elements(s.blockers) AS b(v)
+                WHERE NOT (b.v->>'kind' = 'worker' AND b.v->>'stage' = 'question-unanswerable')
+                   OR coalesce(b.v->>'unlearnable', '0') !~ '^0*$'))
+           ELSE false
+         END;
+$$;
+
+REVOKE ALL ON FUNCTION public.agent_pass_packet_gives_back(public.agent_submissions) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.agent_pass_packet_gives_back(public.agent_submissions) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.agent_pass_settle(p_pass_id uuid)
 RETURNS integer
@@ -63,15 +115,14 @@ BEGIN
      SET pass_refunded_at = now()
    WHERE s.pass_id = p_pass_id
      AND s.pass_refunded_at IS NULL
-     AND s.submitted_at IS NULL
-     AND (s.status IN ('blocked', 'failed')
-          OR (s.status = 'ready' AND (s.released_at IS NULL OR s.attempts >= 3)));
+     AND public.agent_pass_packet_gives_back(s);
   GET DIAGNOSTICS v_packets = ROW_COUNT;
 
   UPDATE public.agent_queue q
      SET pass_refunded_at = now()
    WHERE q.pass_id = p_pass_id
      AND q.pass_refunded_at IS NULL
+     AND q.status NOT IN ('approved', 'ready')
      AND NOT EXISTS (
        SELECT 1 FROM public.agent_submissions s
         WHERE s.user_id = q.user_id AND s.posting_id = q.posting_id
@@ -112,6 +163,96 @@ CREATE TRIGGER agent_pass_settle_on_close_trg
   FOR EACH ROW
   WHEN (NEW.closed_at IS NOT NULL AND NEW.settled_at IS NULL)
   EXECUTE FUNCTION public.agent_pass_settle_on_close();
+
+-- After the close, a packet that comes to the same rule is given back then.
+-- Named to fire after agent_pass_refund_trg on the same write (triggers on
+-- one event fire in name order), and the stamp is taken conditionally, so a
+-- packet that trigger already gave back is not given back again.
+CREATE OR REPLACE FUNCTION public.agent_pass_settle_late_packet()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.agent_passes ap WHERE ap.id = NEW.pass_id AND ap.settled_at IS NOT NULL) THEN
+    RETURN NULL;
+  END IF;
+  IF NOT public.agent_pass_packet_gives_back(NEW) THEN
+    RETURN NULL;
+  END IF;
+  UPDATE public.agent_submissions s
+     SET pass_refunded_at = now()
+   WHERE s.id = NEW.id AND s.pass_refunded_at IS NULL AND s.submitted_at IS NULL;
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+  UPDATE public.agent_passes ap
+     SET applications_used = greatest(ap.applications_used - 1, 0)
+   WHERE ap.id = NEW.pass_id;
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.agent_pass_settle_late_packet() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.agent_pass_settle_late_packet() TO service_role;
+
+DROP TRIGGER IF EXISTS agent_pass_settle_late_packet_trg ON public.agent_submissions;
+CREATE TRIGGER agent_pass_settle_late_packet_trg
+  AFTER INSERT OR UPDATE OF status, attempts, claimed_at, released_at ON public.agent_submissions
+  FOR EACH ROW
+  WHEN (NEW.pass_id IS NOT NULL AND NEW.pass_refunded_at IS NULL AND NEW.submitted_at IS NULL)
+  EXECUTE FUNCTION public.agent_pass_settle_late_packet();
+
+-- After the close, a queue row that leaves approved/ready with no packet
+-- (dismissed by its owner, expired) or is deleted unprepared is given back.
+CREATE OR REPLACE FUNCTION public.agent_pass_settle_late_row()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  r public.agent_queue;
+BEGIN
+  IF TG_OP = 'DELETE' THEN r := OLD; ELSE r := NEW; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.agent_passes ap WHERE ap.id = r.pass_id AND ap.settled_at IS NOT NULL) THEN
+    RETURN NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.agent_submissions s WHERE s.user_id = r.user_id AND s.posting_id = r.posting_id) THEN
+    RETURN NULL;
+  END IF;
+  IF TG_OP <> 'DELETE' THEN
+    UPDATE public.agent_queue q
+       SET pass_refunded_at = now()
+     WHERE q.id = r.id AND q.pass_refunded_at IS NULL;
+    IF NOT FOUND THEN
+      RETURN NULL;
+    END IF;
+  END IF;
+  UPDATE public.agent_passes ap
+     SET applications_used = greatest(ap.applications_used - 1, 0)
+   WHERE ap.id = r.pass_id;
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.agent_pass_settle_late_row() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.agent_pass_settle_late_row() TO service_role;
+
+DROP TRIGGER IF EXISTS agent_pass_settle_late_row_trg ON public.agent_queue;
+CREATE TRIGGER agent_pass_settle_late_row_trg
+  AFTER UPDATE OF status ON public.agent_queue
+  FOR EACH ROW
+  WHEN (NEW.pass_id IS NOT NULL AND NEW.pass_refunded_at IS NULL AND NEW.status NOT IN ('approved', 'ready'))
+  EXECUTE FUNCTION public.agent_pass_settle_late_row();
+
+DROP TRIGGER IF EXISTS agent_pass_settle_late_row_gone_trg ON public.agent_queue;
+CREATE TRIGGER agent_pass_settle_late_row_gone_trg
+  AFTER DELETE ON public.agent_queue
+  FOR EACH ROW
+  WHEN (OLD.pass_id IS NOT NULL AND OLD.pass_refunded_at IS NULL)
+  EXECUTE FUNCTION public.agent_pass_settle_late_row();
 
 -- A packet prepared from a queue row the close already gave back carries
 -- that stamp, so the refund trigger never gives the same application back a
@@ -188,10 +329,16 @@ END $$;
 DO $$
 DECLARE
   v_fn oid;
+  v_triggers text[] := ARRAY['agent_pass_settle_on_close_trg', 'agent_pass_settle_late_packet_trg',
+                             'agent_pass_settle_late_row_trg', 'agent_pass_settle_late_row_gone_trg',
+                             'agent_submission_carry_pass_refund_trg', 'agent_pass_recharge_on_send_trg'];
 BEGIN
   FOR v_fn IN SELECT unnest(ARRAY[
+    to_regprocedure('public.agent_pass_packet_gives_back(public.agent_submissions)'),
     to_regprocedure('public.agent_pass_settle(uuid)'),
     to_regprocedure('public.agent_pass_settle_on_close()'),
+    to_regprocedure('public.agent_pass_settle_late_packet()'),
+    to_regprocedure('public.agent_pass_settle_late_row()'),
     to_regprocedure('public.agent_submission_carry_pass_refund()'),
     to_regprocedure('public.agent_pass_recharge_on_send()')
   ]) LOOP
@@ -203,8 +350,7 @@ BEGIN
     END IF;
   END LOOP;
   IF (SELECT count(*) FROM pg_trigger t
-       WHERE NOT t.tgisinternal
-         AND t.tgname IN ('agent_pass_settle_on_close_trg', 'agent_submission_carry_pass_refund_trg', 'agent_pass_recharge_on_send_trg')) <> 3 THEN
+       WHERE NOT t.tgisinternal AND t.tgname = ANY (v_triggers)) <> cardinality(v_triggers) THEN
     RAISE EXCEPTION 'self-check: a pass settlement trigger is missing';
   END IF;
   IF EXISTS (SELECT 1 FROM public.agent_passes ap WHERE ap.closed_at IS NOT NULL AND ap.settled_at IS NULL) THEN
@@ -238,37 +384,53 @@ BEGIN
     -- supabase/functions/_shared/pass.ts).
     INSERT INTO public.agent_passes (user_id, stripe_session_id, amount_cents, session_hours, applications_total,
                                      applications_used, rate_per_min, daily_quota, shelf_expires_at, activated_at, expires_at)
-    VALUES (v_uid, 'cs_self_check_settle_' || v_tag, 1, 1, 8, 8, 1, 1, now() + interval '1 day', now(), now() + interval '1 hour')
+    VALUES (v_uid, 'cs_self_check_settle_' || v_tag, 1, 1, 9, 9, 1, 1, now() + interval '1 day', now(), now() + interval '1 hour')
     RETURNING id INTO v_pass;
     INSERT INTO public.agent_queue (user_id, posting_id, status, pass_id) VALUES
       (v_uid, 'settle:' || v_tag || ':queued', 'approved', v_pass),
+      (v_uid, 'settle:' || v_tag || ':dismissed', 'dismissed', v_pass),
       (v_uid, 'settle:' || v_tag || ':held', 'approved', v_pass),
       (v_uid, 'settle:' || v_tag || ':blocked', 'approved', v_pass),
       (v_uid, 'settle:' || v_tag || ':inflight', 'approved', v_pass),
       (v_uid, 'settle:' || v_tag || ':sent', 'approved', v_pass),
       (v_uid, 'settle:' || v_tag || ':exhausted', 'approved', v_pass);
-    INSERT INTO public.agent_submissions (user_id, posting_id, company, status, pass_id, released_at, attempts, submitted_at, submitted_via, blockers) VALUES
-      (v_uid, 'settle:' || v_tag || ':held', 'Self-check Co', 'ready', v_pass, NULL, 0, NULL, NULL, '[]'),
-      (v_uid, 'settle:' || v_tag || ':blocked', 'Self-check Co', 'blocked', v_pass, NULL, 0, NULL, NULL, '["unanswerable"]'),
-      (v_uid, 'settle:' || v_tag || ':inflight', 'Self-check Co', 'ready', v_pass, now(), 1, NULL, NULL, '[]'),
-      (v_uid, 'settle:' || v_tag || ':sent', 'Self-check Co', 'submitted', v_pass, now(), 1, now(), 'worker', '[]'),
-      (v_uid, 'settle:' || v_tag || ':exhausted', 'Self-check Co', 'ready', v_pass, now(), 3, NULL, NULL, '[]');
+    INSERT INTO public.agent_submissions (user_id, posting_id, company, status, pass_id, released_at, attempts, claimed_at, submitted_at, submitted_via, blockers) VALUES
+      (v_uid, 'settle:' || v_tag || ':held', 'Self-check Co', 'ready', v_pass, NULL, 0, NULL, NULL, NULL, '[]'),
+      (v_uid, 'settle:' || v_tag || ':blocked', 'Self-check Co', 'blocked', v_pass, NULL, 0, NULL, NULL, NULL, '["unanswerable"]'),
+      (v_uid, 'settle:' || v_tag || ':inflight', 'Self-check Co', 'ready', v_pass, now(), 1, now(), NULL, NULL, '[]'),
+      (v_uid, 'settle:' || v_tag || ':sent', 'Self-check Co', 'submitted', v_pass, now(), 1, NULL, now(), 'worker', '[]'),
+      (v_uid, 'settle:' || v_tag || ':exhausted', 'Self-check Co', 'ready', v_pass, now(), 3, NULL, NULL, NULL, '[]');
 
     UPDATE public.agent_passes SET closed_at = now(), close_reason = 'session_ended' WHERE id = v_pass;
     SELECT ap.applications_used INTO v_used FROM public.agent_passes ap WHERE ap.id = v_pass;
-    -- Given back: queued (no packet), held, blocked, exhausted. Kept: in flight, sent.
-    IF v_used <> 4 THEN
-      RAISE EXCEPTION 'self-check: a closed pass with four never-sent applications shows % used, want 4', v_used;
+    -- Given back: dismissed, held, blocked, exhausted. Left to finish: queued,
+    -- in flight. Kept: sent.
+    IF v_used <> 5 THEN
+      RAISE EXCEPTION 'self-check: a closed pass with four applications that will not go shows % used, want 5', v_used;
+    END IF;
+    IF EXISTS (SELECT 1 FROM public.agent_queue q WHERE q.pass_id = v_pass AND q.posting_id = 'settle:' || v_tag || ':queued' AND q.pass_refunded_at IS NOT NULL) THEN
+      RAISE EXCEPTION 'self-check: the close stamped a request the preparer would still send';
     END IF;
     UPDATE public.agent_passes SET closed_at = now(), close_reason = 'refunded' WHERE id = v_pass;
-    IF (SELECT ap.applications_used FROM public.agent_passes ap WHERE ap.id = v_pass) <> 4 THEN
+    IF (SELECT ap.applications_used FROM public.agent_passes ap WHERE ap.id = v_pass) <> 5 THEN
       RAISE EXCEPTION 'self-check: a pass was settled twice';
+    END IF;
+
+    -- After the close: the queued request is prepared and lands blocked at
+    -- preparation; the packet in flight comes back from its third attempt
+    -- unsent. Each is given back as it ends.
+    INSERT INTO public.agent_submissions (user_id, posting_id, company, status, pass_id, blockers)
+    VALUES (v_uid, 'settle:' || v_tag || ':queued', 'Self-check Co', 'blocked', v_pass, '["needs-you"]');
+    UPDATE public.agent_submissions SET status = 'ready', attempts = 3, claimed_at = NULL, claimed_by = ''
+     WHERE user_id = v_uid AND posting_id = 'settle:' || v_tag || ':inflight';
+    IF (SELECT ap.applications_used FROM public.agent_passes ap WHERE ap.id = v_pass) <> 3 THEN
+      RAISE EXCEPTION 'self-check: an application that ended unsent after the close was not given back';
     END IF;
 
     -- The held packet is approved and sent after the close: charged again.
     UPDATE public.agent_submissions SET status = 'submitted', submitted_at = now(), submitted_via = 'worker', released_at = now()
      WHERE user_id = v_uid AND posting_id = 'settle:' || v_tag || ':held';
-    IF (SELECT ap.applications_used FROM public.agent_passes ap WHERE ap.id = v_pass) <> 5 THEN
+    IF (SELECT ap.applications_used FROM public.agent_passes ap WHERE ap.id = v_pass) <> 4 THEN
       RAISE EXCEPTION 'self-check: a given-back application that was sent after all was not charged again';
     END IF;
 
