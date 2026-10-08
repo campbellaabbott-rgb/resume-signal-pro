@@ -91,6 +91,9 @@ serve(async (req) => {
     if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 
     const origin = req.headers.get("origin") || "https://resumebooster.work";
+    // The buyer's user id ON THE SUBSCRIPTION: the copy checkProByEmail reads
+    // to bind pro_subscribers.user_id, on every later refresh.
+    const subscriptionBuyer = { user_id: buyer.id };
     const session = await stripe.checkout.sessions.create({
       ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
       mode: "subscription",
@@ -110,10 +113,9 @@ serve(async (req) => {
         },
       ],
       allow_promotion_codes: true,
-      // THE BUYER, three ways; the subscription's copy is the one
-      // checkProByEmail reads to bind pro_subscribers.user_id.
+      // THE BUYER, three ways (the session, its metadata, the subscription).
       client_reference_id: buyer.id,
-      subscription_data: { metadata: { user_id: buyer.id } },
+      subscription_data: { metadata: subscriptionBuyer },
       success_url: `${origin}/account?pro=success`,
       cancel_url: `${origin}/pricing?pro=cancelled`,
       metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id },
