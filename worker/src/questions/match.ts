@@ -95,7 +95,7 @@
  */
 import type { DomQuestion } from "../vendors/enumerate-dom.js";
 import { fromLearned, isLearnable, type LearnedAnswers } from "./learned.js";
-import { coverage } from "./countries.js";
+import { coverage, toCode } from "./countries.js";
 import { isProtectedQuestion } from "./protected.js";
 
 /** What the candidate has told us. Booleans are TRINARY: null = never stated. */
@@ -293,7 +293,7 @@ const RE_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|
 const RE_QUESTION_SHAPE = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
 const RE_OTHER_PERSON = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
 const RE_OWN_CONTACT =
-  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website)\s+(?:url|link)/i;
+  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website)\s+(?:url|link)|\bwhich\s+(?:city|town)\b|(?:city|town)\s+of\s+residence/i;
 function isContactField(q: DomQuestion, label: string): boolean {
   if (RE_OTHER_PERSON.test(label)) return false;
   if (RE_OWN_CONTACT.test(label)) return true;
@@ -352,7 +352,21 @@ const RE_NOTICE =
 const RE_ROLE_LOCATION =
   /which\s+(office|location|site|branch|region|country|city)|location[^?]{0,20}(applying|apply|prefer|interested)|preferred\s+(office|location|work\s+location|site)/i;
 
-const RE_RELOCATE = /willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
+const RE_RESIDENCE_COUNTRY =
+  /(?:which|what)\s+country\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:based|live|living|located|reside|residing)|country\s+of\s+(?:residence|residency)|(?:your|current)\s+country\s+of\s+(?:residence|residency)|^\s*(?:your\s+)?(?:current\s+)?country\s*[:*?]?\s*$/i;
+
+/** A place, compared as a whole: lower case, no dots, no generic office words. */
+const GENERIC_PLACE = new Set(["office", "hq", "headquarters", "campus", "hub", "site", "area", "metro", "metropolitan", "region", "greater", "hybrid", "remote", "onsite", "on-site", "city", "downtown"]);
+function placeKey(s: string): string {
+  return String(s ?? "").toLowerCase().replace(/\./g, "").split(/\s+/)
+    .filter((w) => w && !GENERIC_PLACE.has(w)).join(" ").trim();
+}
+/** "New York, NY (Hybrid)" -> ["new york", "ny"]: the parts a city must equal. */
+function placeParts(option: string): string[] {
+  return option.split(/[,()|/–—-]+/).map(placeKey).filter(Boolean);
+}
+
+const RE_RELOCATE =/willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
 
 /** "Are you an internal applicant?" / "Are you a current employee?"
  *
@@ -625,6 +639,24 @@ function matchStanding(
     return chooseBoolean(q, false, "internal-applicant");
   }
 
+  // --- Where the candidate lives (not which office) ---------------------
+  // "Which country are you based in?" is about the candidate, and the role-
+  // location rule below used to take it (S8-045). It is the identity country.
+  if (RE_RESIDENCE_COUNTRY.test(label)) {
+    const own = has(a.country) ? toCode(a.country) : null;
+    const real = q.options.filter((o) => !isPlaceholder(o));
+    if (!real.length) {
+      return has(a.country) ? { kind: "fill", category: "country-of-residence", value: a.country }
+                            : text("country-of-residence", "no country on file");
+    }
+    const hits = own ? real.filter((o) => toCode(o) === own) : [];
+    return hits.length === 1
+      ? { kind: "choose", category: "country-of-residence", option: hits[0]! }
+      : text("country-of-residence", hits.length
+          ? `"${a.country}" matches ${hits.length} of the offered countries — ambiguous`
+          : `none of the offered countries is the candidate's stated country`);
+  }
+
   // --- Which advertised location ---------------------------------------
   // This asks which posting/office the candidate wants, NOT where they live.
   // The two coincide often enough to be worth answering and not always, so an
@@ -642,12 +674,18 @@ function matchStanding(
     if (q.required && real.length === 1) {
       return { kind: "choose", category: "role-location", option: real[0]! };
     }
-    for (const mine of [a.city, a.country]) {
-      if (!has(mine)) continue;
-      const hits = real.filter((o) => {
-        const lo = o.toLowerCase(), lm = mine.toLowerCase();
-        return lo.includes(lm) || lm.includes(lo);
-      });
+    // WHOLE PLACES, never substrings (sweep S8-045). Two-way containment chose
+    // "Ukraine" for "UK", "New York, NY" for York, "LA" for Atlanta and
+    // "Australia" for "US". A city matches an option only when one of the
+    // option's comma/bracket parts IS that city; a country only through
+    // toCode() on both sides, so "UK" is the United Kingdom and nothing else.
+    const city = placeKey(a.city);
+    const own = has(a.country) ? toCode(a.country) : null;
+    const tries: Array<[string, (o: string) => boolean]> = [];
+    if (city) tries.push([a.city, (o) => placeParts(o).includes(city)]);
+    if (own) tries.push([a.country, (o) => toCode(o) === own]);
+    for (const [mine, matches] of tries) {
+      const hits = real.filter(matches);
       if (hits.length === 1) return { kind: "choose", category: "role-location", option: hits[0]! };
       if (hits.length > 1) {
         return text("role-location", `"${mine}" matches ${hits.length} of the offered locations — ambiguous`);

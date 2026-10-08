@@ -60,6 +60,7 @@ const LEARNABLE = new Set([
   "full-name",
   "relocation",
   "role-location",
+  "country-of-residence",
 ]);
 
 /**
