@@ -222,6 +222,15 @@ export type AppliedFilters = {
   maxAgeDays: number | null;
   postedAfter: string | null;
   /**
+   * "New to the board since X": posted_at > X OR first_seen > X. The saved-
+   * search digest's window (send-search-digest is its only sender): a posting
+   * the employer dated three days ago and we first read today is new to the
+   * person who saved the search, and an undated one can never pass postedAfter.
+   * RPC-blind on purpose (no search RPC takes it), so buildQuery binds it. No
+   * per-row self-check: list rows do not carry first_seen.
+   */
+  newSince: string | null;
+  /**
    * "Hide staffing agencies" -> agency = false. OPT-IN, and a NARROWING only:
    * the 2026-08-31 charter carries agency boards (disclosed with a badge, the
    * flag riding the catalog entry), and this is the reader's way to decline
@@ -895,6 +904,9 @@ export function normalizeFilters(
   const paRaw = body.postedAfter;
   const postedAfter = canonicalInstant(paRaw);
   if (sent(paRaw) && !postedAfter) ignored.push("postedAfter");
+  const nsRaw = body.newSince;
+  const newSince = canonicalInstant(nsRaw);
+  if (sent(nsRaw) && !newSince) ignored.push("newSince");
 
   return {
     applied: {
@@ -924,6 +936,7 @@ export function normalizeFilters(
       companies,
       maxAgeDays,
       postedAfter,
+      newSince,
       excludeAgencies,
       hasDescription,
     },

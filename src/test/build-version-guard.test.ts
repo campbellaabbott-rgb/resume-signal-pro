@@ -1407,7 +1407,11 @@ const PINNED = {
   // deep lane runs ahead of the base rotation, one board a slice out of the
   // bootstrap take, its start mapped from the cold cursor's place (n426).
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.90",
+  // 2026-09-09.91 (wave 2 email-ops; the job-board group's .91 rides the same
+  // number): newSince, the saved-search digest's discovery window (posted_at
+  // OR first_seen after X), RPC-blind, echoed on list and count answers (n306b).
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.91",
 };
 
 /**

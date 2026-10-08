@@ -146,6 +146,8 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       companies: ["tok"],
       maxAgeDays: 7,
       postedAfter: "2026-07-01T00:00:00Z",
+      // Added 2026-10-08: the saved-search digest's discovery window.
+      newSince: "2026-07-01T00:00:00.000Z",
       // Added 2026-08-31: the agency opt-out (charter change). The literal
       // failing the typecheck the day AppliedFilters grew is this tripwire
       // doing its job again; the loop below proves isUnfiltered counts it —
