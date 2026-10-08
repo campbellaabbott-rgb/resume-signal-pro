@@ -4722,8 +4722,8 @@
     "badge": "Bewerbungs-Agent",
     "subtitle": "Suche einmal einstellen. Jede Nacht scannt der Agent neue Stellen, bewertet sie gegen deinen Lebenslauf, überspringt Unternehmen mit Dauer-Neueinstellungen und stellt die besten in die Queue — jede mit Begründung. Du prüfst, du sendest.",
     "payPitch": "Wach mit einer geprüften Auswahl auf statt einer weiteren Stunde Scrollen.",
-    "payBoundary": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort. Im Prüfmodus — der Voreinstellung — geht nichts raus, bevor du auf Senden drückst. Stell ihn auf Automatik, und er reicht die ein, die er allein ausfüllen kann, und übergibt dir den Rest. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
-    "payCta": "Agent 7 Tage gratis testen",
+    "payBoundary": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort. Im Prüfmodus — der Voreinstellung — geht nichts raus, bevor du auf Senden drückst. Stell ihn auf Automatik, und er reicht die ein, die er allein ausfüllen kann, und übergibt dir den Rest. {{agentPrice}} $/Monat, alles aus Pro inklusive; Neukunden starten mit {{trialDays}} Tagen gratis, und die kostenpflichtigen Pro-Tools gibt es ab der ersten Zahlung. Jederzeit kündbar.",
+    "payCta": "Apply Agent starten — {{trialDays}} Tage gratis für Neukunden",
     "checkoutError": "Checkout konnte nicht geöffnet werden — bitte erneut versuchen.",
     "needResume": "Speichere zuerst einen Lebenslauf fürs Matching (oben) — der Agent bewertet jede Stelle dagegen.",
     "saveError": "Speichern fehlgeschlagen — bitte erneut versuchen.",
@@ -4757,7 +4757,7 @@
     "emailSaveError": "Änderung fehlgeschlagen – bitte erneut versuchen.",
     "reasonSendable": "Diese Bewerbung kann der Agent für Sie absenden",
     "subtitleAuto": "Suche einmal einrichten. Jede Nacht sichtet der Agent neue Stellen, bewertet sie anhand Ihres Lebenslaufs, überspringt Firmen mit ständigen Neuausschreibungen und stellt die besten in die Warteschlange – jeweils mit Begründung. Was er allein ausfüllen kann, sendet er; den Rest übergibt er Ihnen.",
-    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. 7 Morgen gratis, danach 99 $/Monat — alles aus Pro inklusive. Jederzeit kündbar.",
+    "payBoundaryOffline": "Der Agent bereitet vor, begründet und erfindet nie eine Antwort — jede Bewerbung kommt fertig zum Absenden bei dir an. Der unbeaufsichtigte Versand läuft derzeit nicht. {{agentPrice}} $/Monat, alles aus Pro inklusive; Neukunden starten mit {{trialDays}} Tagen gratis, und die kostenpflichtigen Pro-Tools gibt es ab der ersten Zahlung. Jederzeit kündbar.",
     "addSearch": "Weitere Suche hinzufügen",
     "deleteSearch": "Löschen",
     "untitledSearch": "Meine Suche",
@@ -5137,7 +5137,10 @@
     "passOpen": "Dein Pass"
   },
   "agentPage": {
-    "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon."
+    "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon.",
+    "welcomeTitle": "Du hast abonniert.",
+    "welcomeTitleTrial": "Du hast abonniert — {{trialDays}} Tage gratis vor der ersten Abbuchung.",
+    "welcomeBody": "Eins fehlt noch: Der Agent braucht deinen Lebenslauf und ein aktives Mandat, bevor er nach etwas suchen kann. Die Checkliste unten dauert etwa eine Minute, und bis sie erledigt ist, läuft nichts."
   },
   "agentConnect": {
     "rateLine": "Ein kostenloser Schlüssel ist auf {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag begrenzt; ein laufender Pass hebt beides für seine Stunden an.",

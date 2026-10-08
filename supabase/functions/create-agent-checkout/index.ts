@@ -48,7 +48,7 @@ import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-08.1";
+const FN_BUILD = "create-agent-checkout.2026-10-08.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -167,10 +167,13 @@ serve(async (req) => {
       // names the three prerequisites (CV/consent, exclusions, active mandate)
       // with the consequence of skipping each.
       //
-      // `welcome=1` IS READ — see src/pages/Agent.tsx. Do not add a parameter
+      // `welcome` IS READ — see src/pages/Agent.tsx. Do not add a parameter
       // here without wiring the reader; a redirect carrying a flag nobody
-      // consumes is precisely the bug this replaced.
-      success_url: `${origin}/agent?welcome=1`,
+      // consumes is precisely the bug this replaced. Its value says whether
+      // THIS checkout carried a trial ("trial") or charged at once ("1"):
+      // the welcome banner told every subscriber, a returning one just
+      // charged included, that the first charge was days away.
+      success_url: `${origin}/agent?welcome=${trialOffered ? "trial" : "1"}`,
       // Cancel returns to the agent page too, where the pitch and the retry
       // path live — not to an account page that says nothing about why they
       // came. NO FLAG: the first draft of this line carried `?checkout=cancelled`

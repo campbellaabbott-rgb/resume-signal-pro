@@ -4722,8 +4722,8 @@
     "badge": "Sollicitatie-agent",
     "subtitle": "Stel je zoekopdracht één keer in. Elke nacht scant de agent nieuwe vacatures, scoort ze tegen je cv, slaat bedrijven over die herplaatsingen rondpompen en zet de beste klaar — elk met redenen. Jij beoordeelt, jij verstuurt.",
     "payPitch": "Word wakker met een beoordeelde shortlist in plaats van nóg een uur scrollen.",
-    "payBoundary": "De agent bereidt voor, legt uit en verzint nooit een antwoord. In beoordelingsmodus — de standaard — gaat er niets weg tot jij op verzenden drukt. Zet hem op automatisch en hij dient de sollicitaties in die hij zelf kan afronden, en laat de rest aan jou. 7 ochtenden gratis, daarna $99/maand — alles uit Pro inbegrepen. Altijd opzegbaar.",
-    "payCta": "Probeer de Agent 7 dagen gratis",
+    "payBoundary": "De agent bereidt voor, legt uit en verzint nooit een antwoord. In beoordelingsmodus — de standaard — gaat er niets weg tot jij op verzenden drukt. Zet hem op automatisch en hij dient de sollicitaties in die hij zelf kan afronden, en laat de rest aan jou. $ {{agentPrice}}/maand, alles uit Pro inbegrepen; nieuwe abonnees beginnen met {{trialDays}} dagen gratis, en de betaalde Pro-tools komen met de eerste betaling. Altijd opzegbaar.",
+    "payCta": "Start de Apply Agent — {{trialDays}} dagen gratis voor nieuwe abonnees",
     "checkoutError": "Checkout kon niet openen — probeer opnieuw.",
     "needResume": "Sla eerst een cv op voor matching (hierboven) — de agent scoort elke vacature ertegen.",
     "saveError": "Opslaan mislukt — probeer opnieuw.",
@@ -4757,7 +4757,7 @@
     "emailSaveError": "Wijzigen is niet gelukt — probeer het opnieuw.",
     "reasonSendable": "deze kan de agent voor je versturen",
     "subtitleAuto": "Stel je zoekopdracht één keer in. Elke nacht bekijkt de agent nieuwe vacatures, scoort ze tegen je cv, slaat bedrijven over die eindeloos herplaatsen en zet de beste in de wachtrij — elk met redenen. Wat hij zelf kan afronden verstuurt hij; de rest geeft hij aan jou.",
-    "payBoundaryOffline": "De agent bereidt voor, legt uit en verzint nooit een antwoord — elke sollicitatie komt klaar om door jou verstuurd te worden. Onbeheerd versturen werkt op dit moment niet. 7 ochtenden gratis, daarna $99/maand — alles uit Pro inbegrepen. Altijd opzegbaar.",
+    "payBoundaryOffline": "De agent bereidt voor, legt uit en verzint nooit een antwoord — elke sollicitatie komt klaar om door jou verstuurd te worden. Onbeheerd versturen werkt op dit moment niet. $ {{agentPrice}}/maand, alles uit Pro inbegrepen; nieuwe abonnees beginnen met {{trialDays}} dagen gratis, en de betaalde Pro-tools komen met de eerste betaling. Altijd opzegbaar.",
     "addSearch": "Nog een zoekopdracht toevoegen",
     "deleteSearch": "Verwijderen",
     "untitledSearch": "Mijn zoekopdracht",
@@ -5137,7 +5137,10 @@
     "passOpen": "Je pas"
   },
   "agentPage": {
-    "connectInstead": "Heb je al een agent? Verbind die dan — {{passHours}} uur voor ${{passPrice}}, verlengt nooit; het Agent-abonnement wel."
+    "connectInstead": "Heb je al een agent? Verbind die dan — {{passHours}} uur voor ${{passPrice}}, verlengt nooit; het Agent-abonnement wel.",
+    "welcomeTitle": "Je bent geabonneerd.",
+    "welcomeTitleTrial": "Je bent geabonneerd — {{trialDays}} dagen gratis vóór de eerste afschrijving.",
+    "welcomeBody": "Nog één ding: de agent heeft je cv en een actief mandaat nodig voordat hij iets kan zoeken. De checklist hieronder kost ongeveer een minuut, en niets draait tot die af is."
   },
   "agentConnect": {
     "rateLine": "Een gratis sleutel is begrensd op {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag; een actieve pas verhoogt beide voor de duur van zijn uren.",

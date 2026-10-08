@@ -4722,8 +4722,8 @@
     "badge": "Apply Agent",
     "subtitle": "Itakda ang paghahanap mo nang isang beses. Gabi-gabi, ini-scan ng agent ang mga bagong posting, sinusukat laban sa resume mo, nilalaktawan ang mga kumpanyang paulit-ulit nag-re-repost, at ipinipila ang pinakamahusay — bawat isa may dahilan. Ikaw ang magrerepaso, ikaw ang magpapadala.",
     "payPitch": "Gumising na may nirepasong shortlist sa halip na isa pang oras ng pag-scroll.",
-    "payBoundary": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent. Sa review mode — ang default — walang naipapadala hangga't hindi ka pumindot ng send. Ilipat mo ito sa auto at isusumite nito ang mga kaya nitong tapusin mag-isa, at sa iyo ibibigay ang iba. Libre ang 7 umaga, tapos $99/buwan — kasama ang lahat ng nasa Pro. Puwedeng kanselahin anumang oras.",
-    "payCta": "Subukan ang Apply Agent nang libre sa 7 araw",
+    "payBoundary": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent. Sa review mode — ang default — walang naipapadala hangga't hindi ka pumindot ng send. Ilipat mo ito sa auto at isusumite nito ang mga kaya nitong tapusin mag-isa, at sa iyo ibibigay ang iba. ${{agentPrice}}/buwan, kasama ang lahat ng nasa Pro; may {{trialDays}} araw na libre sa simula ang mga unang beses na subscriber, at kasama ang mga bayad na tool ng Pro mula sa unang bayad. Puwedeng kanselahin anumang oras.",
+    "payCta": "Simulan ang Apply Agent — {{trialDays}} araw libre para sa mga unang beses na subscriber",
     "checkoutError": "Hindi mabuksan ang checkout — subukang muli.",
     "needResume": "Mag-save muna ng resume para sa matching (sa itaas) — doon sinusukat ng agent ang bawat posting.",
     "saveError": "Hindi ma-save — subukang muli.",
@@ -4757,7 +4757,7 @@
     "emailSaveError": "Hindi na-update — subukan muli.",
     "reasonSendable": "kaya itong isumite ng agent para sa iyo",
     "subtitleAuto": "Isaayos ang iyong paghahanap nang minsanan. Gabi-gabi, sinusuri ng agent ang mga bagong trabaho, isinusukat ang mga ito sa iyong résumé, nilalaktawan ang mga kumpanyang paulit-ulit magpost, at pinipila ang pinakamahusay — may kasamang dahilan. Isinusumite niya ang kayang tapusin mag-isa at iniaabot sa iyo ang iba.",
-    "payBoundaryOffline": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent — handa nang ipadala mo ang bawat aplikasyon. Hindi tumatakbo ngayon ang awtomatikong pagpapadala. Libre ang 7 umaga, tapos $99/buwan — kasama ang lahat ng nasa Pro. Puwedeng kanselahin anumang oras.",
+    "payBoundaryOffline": "Naghahanda, nagpapaliwanag, at hindi kailanman gumagawa-gawa ng sagot ang agent — handa nang ipadala mo ang bawat aplikasyon. Hindi tumatakbo ngayon ang awtomatikong pagpapadala. ${{agentPrice}}/buwan, kasama ang lahat ng nasa Pro; may {{trialDays}} araw na libre sa simula ang mga unang beses na subscriber, at kasama ang mga bayad na tool ng Pro mula sa unang bayad. Puwedeng kanselahin anumang oras.",
     "addSearch": "Magdagdag ng ibang search",
     "deleteSearch": "Burahin",
     "untitledSearch": "Aking search",
@@ -5137,7 +5137,10 @@
     "passOpen": "Ang iyong pass"
   },
   "agentPage": {
-    "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew."
+    "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew.",
+    "welcomeTitle": "Naka-subscribe ka na.",
+    "welcomeTitleTrial": "Naka-subscribe ka na — {{trialDays}} araw na libre bago ang unang singil.",
+    "welcomeBody": "Isa na lang: kailangan ng agent ang CV mo at isang aktibong mandate bago ito makapaghanap. Mga isang minuto lang ang checklist sa ibaba, at walang tatakbo hangga't hindi ito tapos."
   },
   "agentConnect": {
     "rateLine": "Ang libreng key ay limitado sa {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw; itinataas ng aktibong pass ang dalawa sa loob ng mga oras nito.",

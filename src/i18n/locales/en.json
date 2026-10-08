@@ -4722,8 +4722,8 @@
     "badge": "Apply Agent",
     "subtitle": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.",
     "payPitch": "Wake up to a reviewed shortlist instead of another hour of scrolling.",
-    "payBoundary": "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
-    "payCta": "Try the Apply Agent free for 7 days",
+    "payBoundary": "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.",
+    "payCta": "Start the Apply Agent — {{trialDays}} days free for first-time subscribers",
     "checkoutError": "Couldn't open checkout — please try again.",
     "needResume": "Save a résumé for matching first (above) — the agent scores every posting against it.",
     "saveError": "Couldn't save — please try again.",
@@ -4757,7 +4757,7 @@
     "emailSaveError": "Couldn't change that — please try again.",
     "reasonSendable": "the agent can submit this one for you",
     "subtitleAuto": "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest.",
-    "payBoundaryOffline": "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. 7 mornings free, then $99/month — everything in Pro included. Cancel anytime.",
+    "payBoundaryOffline": "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.",
     "addSearch": "Add another search",
     "deleteSearch": "Delete",
     "untitledSearch": "My search",
@@ -5137,7 +5137,10 @@
     "passOpen": "Your pass"
   },
   "agentPage": {
-    "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does."
+    "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.",
+    "welcomeTitle": "You're subscribed.",
+    "welcomeTitleTrial": "You're subscribed — {{trialDays}} days free before the first charge.",
+    "welcomeBody": "One thing left: the agent needs your CV and an active mandate before it can look for anything. The checklist below takes about a minute, and nothing runs until it is done."
   },
   "agentConnect": {
     "rateLine": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.",

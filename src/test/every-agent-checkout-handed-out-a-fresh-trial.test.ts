@@ -117,6 +117,17 @@ describe("the agent trial is offered once per customer", () => {
     expect((await start()).session?.subscription_data?.trial_period_days).toBeUndefined();
   });
 
+  it("the page the buyer lands on is told whether this checkout carried a trial", async () => {
+    // The welcome banner said "7 days free before the first charge" to every
+    // subscriber, a returning one just charged included (review of this branch).
+    const first = await start();
+    expect(new URL(String(first.session?.success_url)).searchParams.get("welcome")).toBe("trial");
+    stripe.customers[USER.email] = [{ id: "cus_old" }];
+    stripe.subs.cus_old = [subOf("canceled", 9900)];
+    const returning = await start();
+    expect(new URL(String(returning.session?.success_url)).searchParams.get("welcome")).toBe("1");
+  });
+
   it("when the account's record cannot be read, no trial is offered", async () => {
     db.faults.push({ table: "agent_subscribers", op: "select", error: { message: "boom" } }, { table: "agent_subscribers", op: "select", error: { message: "boom" } });
     const r = await start();

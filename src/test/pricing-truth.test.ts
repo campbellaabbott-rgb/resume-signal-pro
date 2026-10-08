@@ -59,6 +59,33 @@ describe("subscription prices match the checkout functions", () => {
       }
     }
   });
+
+  // The paywall that starts the checkout, and the banner after it, promised
+  // "free for 7 days" to everyone while the checkout offers it once per
+  // customer (review of L6-29): a returning customer was charged at once.
+  it("no locale types a trial length or a price into the agent paywall, and only the trial banner names a trial", () => {
+    const localeDir = resolve(root, "src/i18n/locales");
+    for (const file of readdirSync(localeDir).filter((f) => f.endsWith(".json"))) {
+      const j = JSON.parse(readFileSync(resolve(localeDir, file), "utf8"));
+      const trialSentences: Array<[string, string]> = [
+        ["agentQueue.payCta", j.agentQueue?.payCta],
+        ["agentQueue.payBoundary", j.agentQueue?.payBoundary],
+        ["agentQueue.payBoundaryOffline", j.agentQueue?.payBoundaryOffline],
+        ["agentPage.welcomeTitleTrial", j.agentPage?.welcomeTitleTrial],
+      ];
+      for (const [key, raw] of trialSentences) {
+        const v = String(raw ?? "");
+        expect(v.split("{{trialDays}}").length - 1, `${file} ${key}`).toBe(1);
+        expect(v, `${file} ${key} types a number`).not.toMatch(/\d/);
+      }
+      for (const key of ["payBoundary", "payBoundaryOffline"]) {
+        expect(String(j.agentQueue?.[key]), `${file} agentQueue.${key} types its price`).toContain("{{agentPrice}}");
+      }
+      const charged = String(j.agentPage?.welcomeTitle ?? "");
+      expect(charged.length, `${file} agentPage.welcomeTitle`).toBeGreaterThan(0);
+      expect(charged, `${file} agentPage.welcomeTitle names a trial to a subscriber who was charged`).not.toMatch(/\{\{trialDays\}\}|\d/);
+    }
+  });
 });
 
 describe("the subscription FAQ tells the truth in every language", () => {

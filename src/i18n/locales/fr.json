@@ -4722,8 +4722,8 @@
     "badge": "Agent de candidature",
     "subtitle": "Configurez votre recherche une fois. Chaque nuit, l'agent analyse les nouvelles offres, les note contre votre CV, écarte les entreprises qui republient en boucle et met en file les meilleures — chacune avec ses raisons. Vous relisez, vous envoyez.",
     "payPitch": "Réveillez-vous avec une sélection déjà triée plutôt qu'une heure de défilement.",
-    "payBoundary": "L'agent prépare, explique et n'invente jamais de réponse. En mode révision — le mode par défaut — rien ne part tant que vous n'appuyez pas sur envoyer. Passez-le en automatique et il soumet celles qu'il peut remplir seul, et vous laisse le reste. 7 matins gratuits, puis 99 $/mois — tout Pro inclus. Annulable à tout moment.",
-    "payCta": "Essayez l'Agent gratuitement 7 jours",
+    "payBoundary": "L'agent prépare, explique et n'invente jamais de réponse. En mode révision — le mode par défaut — rien ne part tant que vous n'appuyez pas sur envoyer. Passez-le en automatique et il soumet celles qu'il peut remplir seul, et vous laisse le reste. {{agentPrice}} $/mois, tout Pro inclus ; un premier abonnement commence par {{trialDays}} jours gratuits, et les outils payants de Pro arrivent avec le premier paiement. Annulable à tout moment.",
+    "payCta": "Lancer l'Apply Agent — {{trialDays}} jours gratuits pour un premier abonnement",
     "checkoutError": "Impossible d'ouvrir le paiement — réessayez.",
     "needResume": "Enregistrez d'abord un CV pour le matching (ci-dessus) — l'agent note chaque offre contre lui.",
     "saveError": "Enregistrement impossible — réessayez.",
@@ -4757,7 +4757,7 @@
     "emailSaveError": "Modification impossible — réessayez.",
     "reasonSendable": "l'agent peut envoyer cette candidature pour vous",
     "subtitleAuto": "Configurez votre recherche une fois. Chaque nuit, l'agent parcourt les nouvelles offres, les note face à votre CV, écarte les entreprises qui republient en boucle et met en file les meilleures, chacune avec ses raisons. Il envoie celles qu'il peut compléter seul et vous laisse les autres.",
-    "payBoundaryOffline": "L'agent prépare, explique et n'invente jamais de réponse — chaque candidature arrive prête à être envoyée par vous. L'envoi automatique ne fonctionne pas en ce moment. 7 matins gratuits, puis 99 $/mois — tout Pro inclus. Annulable à tout moment.",
+    "payBoundaryOffline": "L'agent prépare, explique et n'invente jamais de réponse — chaque candidature arrive prête à être envoyée par vous. L'envoi automatique ne fonctionne pas en ce moment. {{agentPrice}} $/mois, tout Pro inclus ; un premier abonnement commence par {{trialDays}} jours gratuits, et les outils payants de Pro arrivent avec le premier paiement. Annulable à tout moment.",
     "addSearch": "Ajouter une recherche",
     "deleteSearch": "Supprimer",
     "untitledSearch": "Ma recherche",
@@ -5137,7 +5137,10 @@
     "passOpen": "Votre pass"
   },
   "agentPage": {
-    "connectInstead": "Vous avez déjà un agent ? Connectez-le plutôt — {{passHours}} heures pour {{passPrice}} $, sans renouvellement ; le plan Agent, lui, se renouvelle."
+    "connectInstead": "Vous avez déjà un agent ? Connectez-le plutôt — {{passHours}} heures pour {{passPrice}} $, sans renouvellement ; le plan Agent, lui, se renouvelle.",
+    "welcomeTitle": "Vous êtes abonné.",
+    "welcomeTitleTrial": "Vous êtes abonné — {{trialDays}} jours gratuits avant le premier prélèvement.",
+    "welcomeBody": "Il reste une chose : l'agent a besoin de votre CV et d'un mandat actif avant de pouvoir chercher quoi que ce soit. La liste ci-dessous prend environ une minute, et rien ne tourne tant qu'elle n'est pas terminée."
   },
   "agentConnect": {
     "rateLine": "Une clé gratuite est limitée à {{ratePerMin}} requêtes par minute et {{dailyQuota}} appels par jour ; un pass actif relève les deux pendant ses heures.",

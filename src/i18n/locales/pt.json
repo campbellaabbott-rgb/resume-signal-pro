@@ -4722,8 +4722,8 @@
     "badge": "Agente de candidatura",
     "subtitle": "Configure sua busca uma vez. Toda noite o agente varre as vagas novas, pontua contra seu currículo, pula empresas que republicam em ciclo e enfileira as melhores — cada uma com suas razões. Você revisa, você envia.",
     "payPitch": "Acorde com uma lista revisada em vez de mais uma hora de rolagem.",
-    "payBoundary": "O agente prepara, explica e nunca inventa uma resposta. No modo de revisão — o padrão — nada sai até você clicar em enviar. Mude para automático e ele envia as que consegue preencher sozinho, e deixa o resto com você. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser.",
-    "payCta": "Teste o Agente grátis por 7 dias",
+    "payBoundary": "O agente prepara, explica e nunca inventa uma resposta. No modo de revisão — o padrão — nada sai até você clicar em enviar. Mude para automático e ele envia as que consegue preencher sozinho, e deixa o resto com você. US$ {{agentPrice}}/mês, tudo do Pro incluído; novos assinantes começam com {{trialDays}} dias grátis, e as ferramentas pagas do Pro chegam com o primeiro pagamento. Cancele quando quiser.",
+    "payCta": "Comece com o Apply Agent — {{trialDays}} dias grátis para novos assinantes",
     "checkoutError": "Não foi possível abrir o checkout — tente novamente.",
     "needResume": "Salve primeiro um currículo para matching (acima) — o agente pontua cada vaga contra ele.",
     "saveError": "Não foi possível salvar — tente novamente.",
@@ -4757,7 +4757,7 @@
     "emailSaveError": "Não foi possível alterar — tente novamente.",
     "reasonSendable": "o agente pode enviar esta candidatura por si",
     "subtitleAuto": "Configure a sua pesquisa uma vez. Todas as noites o agente analisa novas vagas, pontua-as com o seu currículo, ignora empresas que republicam sem parar e coloca as melhores em fila, cada uma com os seus motivos. Envia as que consegue completar sozinho e entrega-lhe as restantes.",
-    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. 7 manhãs grátis, depois US$ 99/mês — tudo do Pro incluído. Cancele quando quiser.",
+    "payBoundaryOffline": "O agente prepara, explica e nunca inventa uma resposta — cada candidatura chega pronta para você enviar. O envio automático não está em funcionamento no momento. US$ {{agentPrice}}/mês, tudo do Pro incluído; novos assinantes começam com {{trialDays}} dias grátis, e as ferramentas pagas do Pro chegam com o primeiro pagamento. Cancele quando quiser.",
     "addSearch": "Adicionar outra busca",
     "deleteSearch": "Excluir",
     "untitledSearch": "Minha busca",
@@ -5137,7 +5137,10 @@
     "passOpen": "O seu passe"
   },
   "agentPage": {
-    "connectInstead": "Já tem um agente? Conecte-o em vez disso — {{passHours}} horas por ${{passPrice}}, nunca renova; o plano Agent sim."
+    "connectInstead": "Já tem um agente? Conecte-o em vez disso — {{passHours}} horas por ${{passPrice}}, nunca renova; o plano Agent sim.",
+    "welcomeTitle": "Assinatura feita.",
+    "welcomeTitleTrial": "Assinatura feita — {{trialDays}} dias grátis antes da primeira cobrança.",
+    "welcomeBody": "Falta uma coisa: o agente precisa do seu currículo e de um mandato ativo antes de procurar qualquer coisa. A lista abaixo leva cerca de um minuto, e nada roda até ela estar concluída."
   },
   "agentConnect": {
     "rateLine": "Uma chave gratuita é limitada a {{ratePerMin}} solicitações por minuto e {{dailyQuota}} chamadas por dia; um passe ativo eleva ambos durante as suas horas.",

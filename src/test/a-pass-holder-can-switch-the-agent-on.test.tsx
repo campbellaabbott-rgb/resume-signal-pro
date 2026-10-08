@@ -81,7 +81,7 @@ describe("a pass-only account sees its pass, not the $99 paywall, and can activa
     state.access = { active: true, tier: "pass", status: "pass", pass: { state: "live", usable: true, applicationsLeft: 7 } };
     render(<MemoryRouter><MorningQueuePanel userId="u-1" email="ana@example.com" defaultResume={RESUME} /></MemoryRouter>);
     await screen.findByText(/Your Agent Pass funds this agent: 7 applications left/);
-    expect(screen.queryByText(/Try the Apply Agent free for 7 days/)).toBeNull();
+    expect(screen.queryByText(/Start the Apply Agent — \d+ days free for first-time subscribers/)).toBeNull();
     const activate = await screen.findByRole("button", { name: /Activate mandate/ });
     expect(activate).not.toBeDisabled();
   });
@@ -89,7 +89,7 @@ describe("a pass-only account sees its pass, not the $99 paywall, and can activa
   it("an account with neither plan nor pass still sees the paywall, and Activate stays off", async () => {
     state.access = { active: false, tier: "none", status: "inactive", pass: { state: "none", usable: false } };
     render(<MemoryRouter><MorningQueuePanel userId="u-2" email="bo@example.com" defaultResume={RESUME} /></MemoryRouter>);
-    await screen.findByText(/Try the Apply Agent free for 7 days/);
+    await screen.findByText(/Start the Apply Agent — \d+ days free for first-time subscribers/);
     expect(await screen.findByRole("button", { name: /Activate mandate/ })).toBeDisabled();
   });
 });
