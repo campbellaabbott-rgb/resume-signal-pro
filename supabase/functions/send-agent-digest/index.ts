@@ -33,13 +33,13 @@
 // gives the claim back, so the cursor is exactly where it was.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
+import { ACCOUNT_SUBSCRIPTION_RPC, entitledAccounts } from "../_shared/agent-entitlement.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-agent-digest.2026-10-08.1";
+const FN_BUILD = "send-agent-digest.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -153,15 +153,18 @@ Deno.serve(async (req) => {
     const giveBack = (m: { user_id: string; email_last_sent_at: string | null }) =>
       supabase.from("agent_mandates").update({ email_last_sent_at: m.email_last_sent_at }).eq("user_id", m.user_id);
 
-    // Entitlement at SEND time — a lapsed subscriber stops receiving.
-    const emails = [...new Set(list.map((m) => normalizeEmail(m.email)).filter(Boolean))];
+    // Entitlement at SEND time, BY ACCOUNT (sweep S8-076): the plan
+    // agent_subscription_rows answers for each claimed user id, the read every
+    // other agent gate makes since 20261005130000. The digest used to look the
+    // plan up by the mandate's address, so after an account or Stripe email
+    // change it skipped a paying subscriber, or kept mailing a cancelled one.
+    // A failed read entitles nobody, and every claim is given back.
     let entitled = new Set<string>();
-    if (emails.length) {
-      const { data: subs } = await supabase
-        .from("agent_subscribers")
-        .select(ENTITLEMENT_COLUMNS)
-        .in("email", emails);
-      entitled = entitledFromRows(subs);
+    {
+      const ids = [...new Set(list.map((m) => m.user_id).filter(Boolean))];
+      const { data: subs, error: subErr } = await supabase.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: ids });
+      if (subErr) console.warn("[AGENT-DIGEST] subscription read failed; nobody is mailed this run:", String(subErr.message ?? "").slice(0, 120));
+      else entitled = entitledAccounts(subs);
     }
 
     // What each agent actually does, for the footer. A failed read leaves the
@@ -181,11 +184,8 @@ Deno.serve(async (req) => {
 
     let sent = 0, skipped = 0;
     for (const m of list) {
-      // isEntitled normalises before asking, because entitledFromRows normalised
-      // before storing. This line used to ask with the raw address while the
-      // suppression check beside it lowercased — so a subscriber whose mandate
-      // stored a capitalised address was silently counted as `skipped`.
-      if (!m.email || !isEntitled(entitled, m.email) || suppressed.has(m.email.toLowerCase())) { await giveBack(m); skipped++; continue; }
+      // The set holds user ids; the address is only where the mail goes.
+      if (!m.email || !entitled.has(m.user_id) || suppressed.has(m.email.toLowerCase())) { await giveBack(m); skipped++; continue; }
 
       // Only picks the user hasn't been told about. Still 'ready' = not yet
       // approved or dismissed in the UI, so the mail never re-surfaces a
