@@ -11632,8 +11632,7 @@ async function serveList(
       const row = data[0] as { n?: number | string; capped?: boolean };
       const n = Number(row.n);
       if (!Number.isFinite(n)) return null;
-      // Rationale: docs/job-board-index-notes.md#n310-applied-hasstatedpay-row-capped-t
-      if (applied.hasStatedPay && row.capped !== true) return null;
+      // The .77 stated-pay stand-down is gone: 20260927034117 is live (n310, S8-089).
       return { n, capped: row.capped === true };
     } catch {
       return null; // RPC missing — caller keeps the old exact-count behaviour

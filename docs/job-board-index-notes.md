@@ -6663,6 +6663,14 @@ the ranked search (which carries its own total) has already failed.
 
 Above: `if (applied.hasStatedPay && row.capped !== true) return null;`
 
+DELETED IN .92 (sweep S8-089). 20260927034117 is live: on .90, 2026-10-08,
+the ranked tier answered `{q:"assistant", country:"IE", hasStatedPay:true}` with
+7 of 50 rows printing a rate with no annual figure, which only the migrated
+search_jobs serves (verify 5y(b)), and 20261008100200 carries the predicate
+forward. A stated-pay count is the capped count again. The rail gate of n316
+was removed in .91 (3827e271), when a text query's chips became withheld.
+The history below stands as the record of why it existed.
+
 DEPLOY-WINDOW COVER FOR THE ONE PREDICATE THAT MOVED IN TWO RUNTIMES.
 Delete this block, and the same gate in the category rail below, once
 verify-deploy 5y(c) reports the migration live (its own header says how).
