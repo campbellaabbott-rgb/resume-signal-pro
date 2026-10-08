@@ -50,7 +50,7 @@ beforeAll(async () => {
   });
 }, 60_000);
 
-afterEach(() => { sent.length = 0; db.tables = {}; db.writes = []; db.rpcs = {}; });
+afterEach(() => { sent.length = 0; db.tables = {}; db.writes = []; db.rpcs = {}; db.faults = []; });
 
 function install() {
   db.rpcs.mail_door_take = () => ({ data: true, error: null });
@@ -110,6 +110,34 @@ describe("the handler", () => {
     const claim = claimFor("savills", "hr@savills.co.uk");
     expect(claim.domain_match).toBe(true);
     expect(await (await post({ action: "verify", token: claim.verify_token })).json()).toEqual({ status: "verified" });
+  });
+
+  it("a claim still pending from the old rule is not verified by the flag that rule stored", async () => {
+    install();
+    // Requested before the deploy: the substring rule wrote domain_match = true.
+    db.rows("company_claims").push({ id: "33333333-3333-4333-8333-333333333333", company_token: "anthropic", work_email: "x@nth.io", status: "pending", domain_match: true, verify_token: "44444444-4444-4444-8444-444444444444", created_at: "2026-10-01T00:00:00Z" });
+    expect(await (await post({ action: "verify", token: "44444444-4444-4444-8444-444444444444" })).json(),
+      "a pre-deploy pending claim's stored flag made x@nth.io a Verified employer of Anthropic").toEqual({ status: "email_confirmed" });
+    const row = db.rows("company_claims")[0];
+    expect(row.status).toBe("email_confirmed");
+    expect(row.verified_at ?? null).toBeNull();
+    expect(row.domain_match, "the owner's review list still said the domain matched").toBe(false);
+  });
+
+  it("a pending claim the board's hosts do prove verifies at its click even if the row said otherwise", async () => {
+    install();
+    db.rows("company_claims").push({ id: "55555555-5555-4555-8555-555555555555", company_token: "savills", work_email: "hr@savills.co.uk", status: "pending", domain_match: false, verify_token: "66666666-6666-4666-8666-666666666666", created_at: "2026-10-01T00:00:00Z" });
+    expect(await (await post({ action: "verify", token: "66666666-6666-4666-8666-666666666666" })).json()).toEqual({ status: "verified" });
+    expect(db.rows("company_claims")[0].domain_match).toBe(true);
+  });
+
+  it("a board that cannot be read at the click verifies nothing and promotes nothing", async () => {
+    install();
+    db.rows("company_claims").push({ id: "77777777-7777-4777-8777-777777777777", company_token: "savills", work_email: "hr@savills.co.uk", status: "pending", domain_match: true, verify_token: "88888888-8888-4888-8888-888888888888", created_at: "2026-10-01T00:00:00Z" });
+    db.faults.push({ table: "job_board_postings", op: "select", error: { message: "statement timeout" } });
+    const res = await post({ action: "verify", token: "88888888-8888-4888-8888-888888888888" });
+    expect(res.status).toBe(503);
+    expect(db.rows("company_claims")[0].status).toBe("pending");
   });
 
   it("the owner's approval is what shows the website; a revoke withdraws it", async () => {

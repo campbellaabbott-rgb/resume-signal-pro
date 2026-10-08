@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
       if (!/^[0-9a-f-]{36}$/i.test(token)) return json({ error: "Invalid verification token." }, 400);
 
       const { data: claim } = await supabase
-        .from("company_claims").select("id, status, domain_match")
+        .from("company_claims").select("id, status, company_token, work_email")
         .eq("verify_token", token).maybeSingle();
       if (!claim) return json({ error: "Verification link not recognized." }, 404);
 
@@ -229,9 +229,18 @@ Deno.serve(async (req) => {
       }
       if (claim.status === "rejected") return json({ error: "This claim was declined." }, 410);
 
-      const next = claim.domain_match ? "verified" : "email_confirmed";
+      // The proof is taken again at the click, never read from the row: a
+      // claim still pending from before 2026-10-08 carries the old substring
+      // rule's domain_match = true (x@nth.io for Anthropic).
+      const { data: hostRows, error: hErr } = await supabase
+        .from("job_board_postings").select("apply_url")
+        .eq("company_token", String(claim.company_token ?? "")).limit(APPLY_HOSTS_READ);
+      if (hErr) return json({ error: "We could not check this claim right now. Please try the link again in a moment." }, 503);
+      const proven = domainProven(String(claim.work_email ?? ""),
+        employerDomains((hostRows ?? []).map((r: { apply_url?: string | null }) => r.apply_url)));
+      const next = proven ? "verified" : "email_confirmed";
       await supabase.from("company_claims")
-        .update({ status: next, verified_at: next === "verified" ? new Date().toISOString() : null })
+        .update({ status: next, domain_match: proven, verified_at: next === "verified" ? new Date().toISOString() : null })
         .eq("id", claim.id);
       console.log(`[COMPANY-CLAIM] claim ${claim.id} -> ${next}`);
       return json({ status: next });
