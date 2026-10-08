@@ -142,9 +142,13 @@ PASS or INFO. Also watch:
   11:27Z. The curve call inside it (≤ 200 tokens) grows by the same
   1.4–1.6×; watch `refresh-stats-cache` and `refresh-explore-cache` below.
 - `get_cron_health`: `refresh-stats-cache` ran 166 s last / 208 s max on
-  2026-10-08 (header 600 s). The field curve is about 2× its old body in a
-  465k-closure pglite model (3.5 s → 7.3 s); its share of the run was roughly
-  40–80 s, so expect the run to land near 210–290 s with zero timeouts.
+  2026-10-08 (header 600 s). The field curve costs 1.2× its old body in a
+  660k-closure pglite model with 156k doubted rows (3.0 s → 3.7 s; the first
+  draft of migration 2 was 4.3 s, and 2× in an earlier 465k-closure model),
+  1.15× with none (2.2 s → 2.6 s); its share of the run was roughly 40–80 s,
+  so expect the run to land near 175–230 s with zero timeouts. Migration 2
+  withholds the cached field pool, so the first `:27` run after apply must
+  succeed for the pages to leave "not yet computed".
   `refresh-explore-cache` (95–131 s, header 900 s) also calls the curves.
 - The two rollup jobs: `ch_timeout = 10min`, and their nightly runs
   succeeding (INFO lines (h2)), one ended month each. A failed run rolls back
@@ -180,6 +184,15 @@ doubted rows never seen again). It also joined the doubted rows back on
 16.4 million rows (4.4 s against the old body's 0.1 s). What remains of the
 overhead is the role counts themselves (one aggregate per posting) and the
 seen-again aggregate on boards that have a doubted batch.
+
+**The field curve (migration 2) had the same three costs and the same
+join**, and is restructured the same way: under a plan without hash joins its
+first draft discarded 9.0 million rows on two small flap boards (2.5 s)
+where the previous body discarded 9 thousand (0.06 s). Same guard file,
+second `describe`. The first drafts and the shipped bodies return identical
+rows when run in one statement (same `now()`) over a 28-board model that
+includes never-seen-again doubted rows and postings stored again then
+stamped missing.
 
 **Not measured: `EXPLAIN ANALYZE` in production.** No service key is
 available to this group. If the owner can run SQL, the statement to run

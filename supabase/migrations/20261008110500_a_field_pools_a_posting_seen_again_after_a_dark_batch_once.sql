@@ -20,13 +20,21 @@
 -- src/test/a-posting-seen-again-after-a-dark-batch-is-one-observation.test.ts
 -- executes the invariance at both grains.
 --
--- WHAT IT COSTS. One hash aggregate per ledger over the doubted posting ids
--- in the window and a key lookup on job_board_postings, inside the five
--- minutes the header already allows and the cron command already pays
--- (20261003220000). The cost was measured in pglite against the previous
--- body on a synthetic window (docs/wave2/data-pages-sql.md gives the figure);
--- production's runtime is read after deploy from get_cron_health and the
--- stats cache's fill_curve stamp, and the rollback is the previous body.
+-- WHAT IT COSTS, AND WHY THIS SHAPE. The ledgers are read exactly as the
+-- previous body read them, once each, into `arms`; only boards with a doubted
+-- batch aggregate their held rows by posting, joined back on the whole
+-- (board, posting) key; the one key lookup left is a scalar seek for a
+-- doubted row that is its posting's latest observation. The first draft of
+-- this file re-read both ledgers over the whole window, looked up the posting
+-- key for every doubted row -- the Workday flap writes them by the million --
+-- and joined the doubted rows back on (board, posting, instant), which a
+-- plan without a hash join merged on (board, instant) alone: 2.5s and nine
+-- million discarded rows on two small flap boards where the previous body
+-- took 0.06s. It runs inside the five minutes the header allows and the cron
+-- command pays (20261003220000); the measured cost is in
+-- docs/wave2/data-pages-sql.md, production's runtime is read after deploy
+-- from get_cron_health and the stats cache's fill_curve stamp, and the
+-- rollback is the previous body.
 --
 -- EVERYTHING ELSE IS THE 20261002121843 TEXT -- the signature, the thirty
 -- columns, the watch floor, the gate, the five-minute header, the grants and
@@ -296,52 +304,6 @@ AS $$
     UNION
     SELECT d.tok, d.at FROM dark d
   ),
-  -- A DOUBTED ROW WHOSE POSTING WAS SEEN AGAIN NEVER CAME DOWN (20261008110500),
-  -- the company grain's rule (20261008110000) at the grain the figure is
-  -- pooled at, spelled the same way. bad_obs is every doubted observation in
-  -- the window -- a closure stamped suspect or caught by the dark proxy, and
-  -- an age-out logged in a bad batch; seen_again keeps those whose posting_id
-  -- was observed after that instant (stored again, closed again or exited
-  -- again). Such a row leaves raw; a doubted row never seen again stays,
-  -- censored. last_obs is one hash aggregate per ledger over the doubted ids
-  -- only, and seen_again a join on it and on the posting key: linear in the
-  -- rows read.
-  bad_obs AS (
-    SELECT c.company_token AS tok, c.posting_id AS pid, c.closed_at AS at
-    FROM public.job_board_closures c
-    LEFT JOIN dark dk ON dk.tok = c.company_token AND dk.at = c.closed_at
-    WHERE c.closed_at >= now() - make_interval(days => (SELECT w.d FROM win w))
-      AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
-      AND (COALESCE(c.suspect, false) OR dk.tok IS NOT NULL)
-    UNION
-    SELECT e.company_token, e.posting_id, e.exited_at
-    FROM public.job_board_exits e
-    JOIN bad_batch bb ON bb.tok = e.company_token AND bb.at = e.exited_at
-    WHERE e.exited_at >= now() - make_interval(days => (SELECT w.d FROM win w))
-      AND e.exit_reason IN ('aged_out', 'board_dormant', 'untracked')
-  ),
-  last_obs AS (
-    SELECT x.tok, x.pid, max(x.at) AS last_at
-    FROM (
-      SELECT c2.company_token AS tok, c2.posting_id AS pid, c2.closed_at AS at
-      FROM public.job_board_closures c2
-      WHERE c2.closed_at >= now() - make_interval(days => (SELECT w.d FROM win w))
-        AND c2.posting_id IN (SELECT b.pid FROM bad_obs b)
-      UNION ALL
-      SELECT e2.company_token, e2.posting_id, e2.exited_at
-      FROM public.job_board_exits e2
-      WHERE e2.exited_at >= now() - make_interval(days => (SELECT w.d FROM win w))
-        AND e2.posting_id IN (SELECT b.pid FROM bad_obs b)
-    ) x
-    GROUP BY x.tok, x.pid
-  ),
-  seen_again AS (
-    SELECT b.tok, b.pid, b.at
-    FROM bad_obs b
-    LEFT JOIN last_obs l ON l.tok = b.tok AND l.pid = b.pid
-    LEFT JOIN public.job_board_postings p2 ON p2.id = b.pid
-    WHERE l.last_at > b.at OR p2.first_seen > b.at
-  ),
   -- THE COHORT IS SELECTED ON ORIGIN, NOT ON EXIT TIME. See the same CTE in
   -- 20260906091000 for the measurement: gathering events over a window of exit
   -- times while taking the live censored arm from a single instant of the board
@@ -392,7 +354,17 @@ AS $$
   -- specifically, and a caveat for it must come from the disclosure function,
   -- not from cov. Nothing is wrong TODAY: deepCursor.laps is 0, so no
   -- lap_backfill row exists yet. This comment is for the first proven lap.
-  raw AS (
+  --
+  -- arms IS THAT PASS, HELD ONCE (20261008110500), plus the rows and columns
+  -- only the seen-again test reads, as at the company grain (20261008110000):
+  -- seen_at is the row's instant (a served role's is its first_seen); kept is
+  -- false on a lap_backfill closure, a backdated exit and a row with no
+  -- field, which are observations of their posting and never part of a pool;
+  -- bad marks a doubted row. A 'removed' exit is not read: the collector
+  -- writes it only beside a closure at the same instant. raw below is arms
+  -- with the kept rows only, less the doubted rows whose posting was seen
+  -- again.
+  arms AS MATERIALIZED (
     SELECT
       c.category AS cat,
       c.company_token AS tok,
@@ -415,17 +387,17 @@ AS $$
       CASE WHEN COALESCE(c.suspect, false) OR dk.tok IS NOT NULL THEN 0
            WHEN c.superseded THEN 1 ELSE 0 END AS is_relist,
       true AS in_cov,
-      (c.posted_at IS NOT NULL) AS dated
+      (c.posted_at IS NOT NULL) AS dated,
+      c.posting_id AS pid,
+      c.closed_at AS seen_at,
+      (c.category <> '' AND c.absence_basis IS DISTINCT FROM 'lap_backfill') AS kept,
+      (COALESCE(c.suspect, false) OR dk.tok IS NOT NULL) AS bad
     FROM public.job_board_closures c
     -- `dark` is one row per (tok, closed_at) by construction, so this cannot
     -- multiply rows; dk.tok IS NOT NULL is the flag, not a filter.
     LEFT JOIN dark dk ON dk.tok = c.company_token AND dk.at = c.closed_at
     LEFT JOIN obs ob ON ob.tok = c.company_token
-    LEFT JOIN seen_again sa ON sa.tok = c.company_token AND sa.pid = c.posting_id AND sa.at = c.closed_at
     WHERE c.closed_at >= now() - make_interval(days => (SELECT d FROM win))
-      AND c.category <> ''
-      AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
-      AND NOT ((COALESCE(c.suspect, false) OR dk.tok IS NOT NULL) AND sa.tok IS NOT NULL)
 
     UNION ALL
 
@@ -453,17 +425,18 @@ AS $$
       0 AS is_fill,
       0 AS is_relist,
       true AS in_cov,
-      (e.posted_at IS NOT NULL) AS dated
+      (e.posted_at IS NOT NULL) AS dated,
+      e.posting_id AS pid,
+      e.exited_at AS seen_at,
+      (e.category <> '' AND e.exit_reason IN ('aged_out', 'board_dormant', 'untracked')) AS kept,
+      (bb.tok IS NOT NULL) AS bad
     FROM public.job_board_exits e
     -- bad_batch is DISTINCT on (tok, at) by construction, so this cannot
     -- multiply rows; bb.tok IS NOT NULL is the flag, not a filter.
     LEFT JOIN bad_batch bb ON bb.tok = e.company_token AND bb.at = e.exited_at
     LEFT JOIN obs ob ON ob.tok = e.company_token
-    LEFT JOIN seen_again sa ON sa.tok = e.company_token AND sa.pid = e.posting_id AND sa.at = e.exited_at
     WHERE e.exited_at >= now() - make_interval(days => (SELECT d FROM win))
-      AND e.category <> ''
-      AND e.exit_reason IN ('aged_out', 'board_dormant', 'untracked')
-      AND NOT (bb.tok IS NOT NULL AND sa.tok IS NOT NULL)
+      AND e.exit_reason <> 'removed'
 
     UNION ALL
 
@@ -485,11 +458,55 @@ AS $$
       0 AS is_fill,
       0 AS is_relist,
       true AS in_cov,
-      (p.posted_at IS NOT NULL) AS dated
+      (p.posted_at IS NOT NULL) AS dated,
+      p.id AS pid,
+      p.first_seen AS seen_at,
+      (p.category <> '') AS kept,
+      false AS bad
     FROM public.job_board_postings p
     LEFT JOIN obs ob ON ob.tok = p.company_token
     WHERE p.missing_since IS NULL
-      AND p.category <> ''
+  ),
+  -- A DOUBTED ROW WHOSE POSTING WAS SEEN AGAIN NEVER CAME DOWN (20261008110500),
+  -- the company grain's rule (20261008110000) at the grain the figure is
+  -- pooled at, in the same shape. A doubted row is SEEN AGAIN when its posting
+  -- was observed at a later instant: closed again (any basis), exited again,
+  -- or stored again (a later first_seen). Such a row leaves raw; a doubted row
+  -- never seen again stays, censored at its instant.
+  --
+  -- Only a board with a doubted batch (dirty) can hold such a row, so only its
+  -- held rows are aggregated: seen_last is the latest observation of each of
+  -- its postings that has a doubted row, one row per (board, posting), joined
+  -- back on that whole key from a held scan with no sort order of its own, so
+  -- a merge join must sort on the whole key. Joined on (board, posting,
+  -- instant) instead, a plan without a hash join merged on (board, instant)
+  -- alone and compared every row of a doubted batch with every other: two
+  -- boards of two 1,500-row batches discarded nine million rows. The scalar
+  -- seek is the one observation the held rows cannot make -- a posting stored
+  -- again and not served now -- and the CASE reaches it only for a doubted row
+  -- that is its posting's latest observation (an OR there would be lifted
+  -- below the join and run the seek for every doubted row). The COALESCE is
+  -- load-bearing: a doubted row whose posting has no row at all must be KEPT.
+  dirty AS (
+    SELECT DISTINCT bb.tok FROM bad_batch bb
+  ),
+  seen_last AS (
+    SELECT a.tok, a.pid, max(a.seen_at) AS last_at
+    FROM arms a
+    WHERE a.tok IN (SELECT d.tok FROM dirty d)
+    GROUP BY a.tok, a.pid
+    HAVING bool_or(a.bad AND a.kept)
+  ),
+  raw AS MATERIALIZED (
+    SELECT a.cat, a.tok, a.tt, a.in_cohort, a.in_cohort30, a.is_ageout, a.admitted,
+           a.is_fill, a.is_relist, a.in_cov, a.dated
+    FROM arms a
+    LEFT JOIN seen_last l ON l.tok = a.tok AND l.pid = a.pid
+    WHERE a.kept
+      AND NOT (a.bad
+               AND CASE WHEN l.last_at > a.seen_at THEN true
+                        ELSE COALESCE((SELECT p2.first_seen FROM public.job_board_postings p2 WHERE p2.id = a.pid) > a.seen_at, false)
+                   END)
   ),
   -- Coverage over the WHOLE risk-set population, exit-ledger rows included.
   -- job_board_exits.posted_at is stamped only from 2026-09-06 and cannot be
@@ -1181,7 +1198,9 @@ BEGIN
     RAISE EXCEPTION 'get_category_fill_curve: the watch floor is running under a contract that does not state it';
   END IF;
   -- 20261008110500: the seen-again rule in the body and in the contract.
-  IF body NOT LIKE '%seen_again%' OR body NOT LIKE '%p2.first_seen > b.at%' THEN
+  IF body NOT LIKE '%HAVING bool_or(a.bad AND a.kept)%'
+     OR body NOT LIKE '%CASE WHEN l.last_at > a.seen_at THEN true%'
+     OR body NOT LIKE '%WHERE p2.id = a.pid) > a.seen_at%' THEN
     RAISE EXCEPTION 'get_category_fill_curve: re-issued without the seen-again rule';
   END IF;
   IF COALESCE(obj_description('public.get_category_fill_curve(int, int)'::regprocedure, 'pg_proc'), '')

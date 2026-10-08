@@ -16,7 +16,10 @@
  * rows compares n x n: two Workday-sized boards ran 4.4s where the old body
  * ran 0.1s.
  *
- * Two properties, executed against the migration's own SQL:
+ * The field curve's re-issue (20261008110500) was written the same way and
+ * degenerated the same way, so both grains are held to both properties.
+ *
+ * Two properties, executed against the migrations' own SQL:
  *   1. ONE CALL READS EACH LEDGER NO MORE THAN THE BODY IT REPLACED, and looks
  *      up job_board_postings' key only for doubted rows never seen again --
  *      counted from Postgres's own per-table statistics, so a plan that
@@ -37,14 +40,21 @@ const DIR = resolve(__dirname, "../../supabase/migrations");
 const mig = (f: string) => readFileSync(resolve(DIR, f), "utf8");
 const WAS = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
 const NOW = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
+const WAS_FIELD = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+const NOW_FIELD = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
 
-/** The function's body as a plain statement over $1, so EXPLAIN can see inside it. */
+/** A function's body as a plain statement, so EXPLAIN can see inside it: the
+ *  company curve over $1, the field curve at its defaults' shape (90 days, 25). */
 function body(file: string): string {
   const src = mig(file);
-  const at = src.indexOf("CREATE OR REPLACE FUNCTION public.get_company_fill_curve");
+  const field = file === WAS_FIELD || file === NOW_FIELD;
+  const at = src.indexOf(field ? "CREATE OR REPLACE FUNCTION public.get_category_fill_curve" : "CREATE OR REPLACE FUNCTION public.get_company_fill_curve");
   const open = src.indexOf("AS $$", at) + "AS $$".length;
   const close = src.indexOf("$$;", open);
-  return src.slice(open, close).replace(/\bp_tokens\b/g, "$1::text[]").trim().replace(/;$/, "");
+  const sql = src.slice(open, close).trim().replace(/;$/, "");
+  return field
+    ? sql.replace(/\bp_days\b/g, "90").replace(/\bp_min_n\b/g, "25")
+    : sql.replace(/\bp_tokens\b/g, "$1::text[]");
 }
 
 type Reads = { closures: number; exits: number; postings: number; postingKeyScans: number };
@@ -62,9 +72,10 @@ async function reads(db: PGlite): Promise<Reads> {
   return { closures: of("job_board_closures"), exits: of("job_board_exits"), postings: of("job_board_postings"), postingKeyScans: Number(k.n) };
 }
 
-async function readsOfOneCall(db: PGlite, toks: string[]): Promise<Reads> {
+async function readsOfOneCall(db: PGlite, toks: string[] | null): Promise<Reads> {
   const before = await reads(db);
-  await db.query(`SELECT * FROM public.get_company_fill_curve($1::text[])`, [toks]);
+  if (toks) await db.query(`SELECT * FROM public.get_company_fill_curve($1::text[])`, [toks]);
+  else await db.query(`SELECT * FROM public.get_category_fill_curve(90, 25)`);
   const after = await reads(db);
   return {
     closures: after.closures - before.closures,
@@ -85,11 +96,11 @@ function removedByJoinFilter(plan: unknown): number {
   return n;
 }
 
-async function discardedUnderMergeJoins(db: PGlite, file: string, toks: string[]): Promise<number> {
+async function discardedUnderMergeJoins(db: PGlite, file: string, toks: string[] | null): Promise<number> {
   await db.exec(`SET enable_hashjoin = off`);
   try {
     const r = (await db.query<{ "QUERY PLAN": Array<{ Plan: unknown }> }>(
-      `EXPLAIN (ANALYZE, COSTS OFF, FORMAT JSON) ${body(file)}`, [toks])).rows[0];
+      `EXPLAIN (ANALYZE, COSTS OFF, FORMAT JSON) ${body(file)}`, toks ? [toks] : [])).rows[0];
     return removedByJoinFilter(r["QUERY PLAN"][0].Plan);
   } finally {
     await db.exec(`RESET enable_hashjoin`);
@@ -124,6 +135,10 @@ let was: Reads;
 let now: Reads;
 let flapWas: number;
 let flapNow: number;
+let fieldWas: Reads;
+let fieldNow: Reads;
+let fieldFlapWas: number;
+let fieldFlapNow: number;
 const dbs: PGlite[] = [];
 
 beforeAll(async () => {
@@ -137,6 +152,12 @@ beforeAll(async () => {
   await db.exec(mig(NOW));
   await readsOfOneCall(db, TOKENS);
   now = await readsOfOneCall(db, TOKENS);
+  await db.exec(mig(WAS_FIELD));
+  await readsOfOneCall(db, null);
+  fieldWas = await readsOfOneCall(db, null);
+  await db.exec(mig(NOW_FIELD));
+  await readsOfOneCall(db, null);
+  fieldNow = await readsOfOneCall(db, null);
 
   const flap = new PGlite();
   dbs.push(flap);
@@ -147,6 +168,10 @@ beforeAll(async () => {
   await flap.exec(mig(NOW));
   flapWas = await discardedUnderMergeJoins(flap, WAS, ["W"]);
   flapNow = await discardedUnderMergeJoins(flap, NOW, ["W"]);
+  await flap.exec(mig(WAS_FIELD));
+  await flap.exec(mig(NOW_FIELD));
+  fieldFlapWas = await discardedUnderMergeJoins(flap, WAS_FIELD, null);
+  fieldFlapNow = await discardedUnderMergeJoins(flap, NOW_FIELD, null);
 });
 
 afterAll(async () => { for (const db of dbs) { try { await db.close(); } catch { /* best effort */ } } });
@@ -182,5 +207,26 @@ describe("no join in the body grows with the square of a doubted batch", () => {
     // The first draft discarded 1,200 x 600 rows here: every suspect row of a
     // batch compared with every seen-again row of the same batch.
     expect(flapNow).toBeLessThanOrEqual(Math.max(2 * flapWas, 5_000));
+  });
+});
+
+describe("the field curve holds to the same two properties", () => {
+  it("found the reads at all (guards the guard)", () => {
+    expect(fieldWas.closures).toBeGreaterThan(0);
+    expect(fieldWas.postings).toBeGreaterThan(0);
+  });
+
+  it("reads the closure log and the exit ledger no more than the body it replaced", () => {
+    expect(fieldNow.closures).toBeLessThanOrEqual(fieldWas.closures);
+    expect(fieldNow.exits).toBeLessThanOrEqual(fieldWas.exits);
+  });
+
+  it("looks up a posting's key only for a doubted row never seen again", () => {
+    expect(fieldNow.postingKeyScans).toBeLessThanOrEqual(5);
+    expect(fieldNow.postings).toBeLessThanOrEqual(fieldWas.postings + 5);
+  });
+
+  it("discards, under merge joins, about what the old body discards -- not batch x batch", () => {
+    expect(fieldFlapNow).toBeLessThanOrEqual(Math.max(2 * fieldFlapWas, 5_000));
   });
 });
