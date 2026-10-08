@@ -2353,6 +2353,17 @@ function JobAgentHandoff({ job, compact, track }: {
  *  writes, so a Back/Forward can tell its own entries from another page's. */
 const newBoardId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 
+/** The address the mounted board last wrote, so a fragment jump on it (the
+ *  skip link) reads as the board's own entry, not another page's. */
+let boardAddress: { id: string; at: string } | null = null;
+/** Every history entry the board writes: stamped with its id, and recorded. */
+function writeBoardEntry(mode: "push" | "replace", boardId: string, url: string, job?: string) {
+  const state = job ? { job, rbBoard: boardId } : { rbBoard: boardId };
+  if (mode === "push") window.history.pushState(state, "", url);
+  else window.history.replaceState(state, "", url);
+  boardAddress = { id: boardId, at: `${window.location.pathname}${window.location.search}` };
+}
+
 /**
  * ONE ADDRESS, ONE BOARD.
  *
@@ -2366,7 +2377,9 @@ const newBoardId = () => `${Date.now().toString(36)}${Math.random().toString(36)
  * So the board remounts on every navigation the app makes (push/replace), and
  * on a Back/Forward that lands on an entry this board did not write. A pop
  * onto its OWN entry (closing the detail panel, the stale-survivor rewrite)
- * keeps the instance: the board stamps each entry it writes with its id.
+ * keeps the instance: the board stamps each entry it writes with its id. So
+ * does a fragment jump on the address the board last wrote (index.html's skip
+ * link): a stateless entry that differs only by its hash.
  */
 export default function Jobs() {
   const location = useLocation();
@@ -2379,7 +2392,10 @@ export default function Jobs() {
     // A navigation OFF the board (the free scan at /#upload, /auth) is the
     // router's to unmount, not a new board to start.
     const offBoard = !/^\/jobs(?:\/(?:field|company)\/[^/]+)?\/?$/.test(location.pathname);
-    const ownEntry = offBoard || (navType === "POP" && st?.rbBoard === mounted.current.id);
+    const pop = navType === "POP";
+    const fragmentJump = pop && st == null && location.hash !== ""
+      && boardAddress?.id === mounted.current.id && boardAddress.at === `${location.pathname}${location.search}`;
+    const ownEntry = offBoard || fragmentJump || (pop && st?.rbBoard === mounted.current.id);
     mounted.current = ownEntry
       ? { ...mounted.current, loc: location }
       : { loc: location, n: mounted.current.n + 1, id: newBoardId() };
@@ -4187,14 +4203,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({ rbBoard: boardId }, "", companyLanderPath(landerCompany, landerQs));
+      writeBoardEntry("replace", boardId, companyLanderPath(landerCompany, landerQs));
       return;
     }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({ rbBoard: boardId }, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
+      writeBoardEntry("replace", boardId, `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
-    window.history.replaceState({ rbBoard: boardId }, "", qs ? `/jobs?${qs}` : "/jobs");
+    writeBoardEntry("replace", boardId, qs ? `/jobs?${qs}` : "/jobs");
   }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany, boardId]);
 
   // THE PER-SOURCE INVENTORY FOR THE VENDOR DROPDOWN, read once on mount from
@@ -4512,10 +4528,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
       p.set("job", job.id);
       const url = `${window.location.pathname}?${p.toString()}`;
       if (urlMode === "push" && !detailPushed.current) {
-        window.history.pushState({ job: job.id, rbBoard: boardId }, "", url);
+        writeBoardEntry("push", boardId, url, job.id);
         detailPushed.current = true;
       } else {
-        window.history.replaceState({ job: job.id, rbBoard: boardId }, "", url);
+        writeBoardEntry("replace", boardId, url, job.id);
       }
     }
     // Verify-on-view: a posting not re-checked in 24h+ gets a background live
@@ -4589,7 +4605,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
         const p = new URLSearchParams(window.location.search);
         p.delete("job");
         const qs = p.toString();
-        window.history.replaceState({ rbBoard: boardId }, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+        writeBoardEntry("replace", boardId, `${window.location.pathname}${qs ? `?${qs}` : ""}`);
       }
     }
     if (viaHistory) detailPushed.current = false;
@@ -4682,7 +4698,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (!p.has("job")) return;
     p.delete("job");
     const qs = p.toString();
-    window.history.replaceState({ rbBoard: boardId }, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    writeBoardEntry("replace", boardId, `${window.location.pathname}${qs ? `?${qs}` : ""}`);
   }, [boardId]);
 
   // GSC "Soft 404" (2026-08-07): a dead ?job= deep link renders this banner
