@@ -48,6 +48,11 @@ const FIXTURE = [
   closure("r1", 18, { suspect: true }), closure("r1", 6),
   ...Array.from({ length: 40 }, (_, i) => stored(`live${i}`, 20)),
   `INSERT INTO public.job_board_company_snapshots VALUES ('R', current_date - 30, 100);`,
+  // G: ten roles down once, and four postings each re-listed under the same
+  // title three times. As events that is 12 re-lists against 10 fills; as
+  // roles it is 4 against 10.
+  ...Array.from({ length: 10 }, (_, i) => closure(`f${i}`, 12).replace(/'R:/g, "'G:").replace(/'R',/g, "'G',")),
+  ...Array.from({ length: 4 }, (_, i) => [20, 14, 8].map((d) => closure(`s${i}`, d, { superseded: true }).replace(/'R:/g, "'G:").replace(/'R',/g, "'G',"))).flat(),
   `INSERT INTO public.job_board_board_observability (company_token, bucket) VALUES ('R', 'full_read');`,
   `INSERT INTO public.job_board_board_watch (company_token, first_observed_on, first_observed_basis) VALUES ('R', current_date - 80, 'company_snapshot');`,
 ].join("\n");
@@ -78,6 +83,16 @@ describe("get_company_fill_curve counts roles beside its events", () => {
 
   it("counts every role that came back as one re-listed role", () => {
     expect(row.relisted_roles_90d).toBe(7);
+  });
+
+  it("can move an employer either way: twelve re-list events against ten fills are four re-listed roles against ten", async () => {
+    // The deploy note said no employer gains the verdict from this change.
+    // One that re-lists the same postings repeatedly does: the event counts
+    // read 12 re-lists over 10 fills, the role counts 4 re-listed roles under
+    // 10 filled ones.
+    const g = (await db.query<Record<string, unknown>>(`SELECT * FROM public.get_company_fill_curve(ARRAY['G'])`)).rows[0];
+    expect([g.fills_90d, g.relists_90d]).toEqual([10, 12]);
+    expect([g.filled_roles_90d, g.relisted_roles_90d]).toEqual([10, 4]);
   });
 
   it("answers zero, not null, for a token it holds nothing for", async () => {

@@ -118,6 +118,14 @@ describe("the card and the detail pane say the same thing about an employer whos
     expect(relistCaution({ filled_roles_90d: null, relisted_roles_90d: null }), "a row without role columns is not a caution").toBe(false);
   });
 
+  it("the verdict moves both ways once it reads roles: 10 down and 4 back closes, where 12 re-list events did not", () => {
+    // The counts get_company_fill_curve returns for a board with 10 roles down
+    // once and 4 postings re-listed three times each (executed in
+    // a-role-that-closed-twice-is-one-relisted-role-not-two-fills).
+    expect(hiringRecordVerdict({ filled_roles_90d: 10, relisted_roles_90d: 4 })).toBe("closes");
+    expect(hiringRecordVerdict({ filled_roles_90d: 10, relisted_roles_90d: 12 })).toBe("no-pattern");
+  });
+
   it("the card of an employer with 20 roles back and 5 down carries the caution, not 'Fills fast'", async () => {
     mount();
     // The control row proves the praise branch is alive on this page.

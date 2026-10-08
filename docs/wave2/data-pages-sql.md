@@ -20,7 +20,7 @@ requires the weekly series and the ticker to move in one file), ends with a
 
 | # | file | function(s) | register |
 |---|------|-------------|----------|
-| 1 | `20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql` | `get_company_fill_curve(text[])` — drop by name + re-create (two columns appended) | L11-02, L13-12 |
+| 1 | `20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql` | `get_company_fill_curve(text[])` — drop by name + re-create (two columns appended); appends one sentence to `get_actively_hiring_companies`' COMMENT (no code change) | L11-02, L13-12 |
 | 2 | `20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql` | `get_category_fill_curve(int,int)` — create or replace; withholds the cached field pool | L13-12 |
 | 3 | `20261008111000_a_week_the_fence_already_emptied_is_not_drawn_and_today_is_the_last_24_hours.sql` | `get_hiring_trends()` — drop by name + re-create (`live_new` appended); `get_takedowns_today()` — replace | L2-06, L2-21, L11-06 |
 | 4 | `20261008111500_a_field_is_compared_with_its_own_week_before_anything_closed.sql` | `get_trending_categories()` — replace, header 20s → 60s | L11-10 |
@@ -71,9 +71,14 @@ in all nine locales.
   off" and the account tracker's chip (which said "genuinely fills roles (N)";
   it now uses the board's sentence) print `filled_roles_90d`. Johnson &
   Johnson read 2,687 fill events on 2026-10-08; the register measured at most
-  1,799 roles that stayed down and 403 that came back. Some employers will
-  lose "Actively hiring" (more roles came back than stayed down); none gains
-  it from this change alone.
+  1,799 roles that stayed down and 403 that came back. **Employers can move
+  either way on "Actively hiring".** Some lose it: more of their roles came
+  back than stayed down, which the event counts never showed (J&J read 0
+  same-title re-list events). Some gain it: a posting re-listed under the same
+  title three times was three re-list events against its fills and is one
+  re-listed role now, so an employer with 10 roles down and 4 postings
+  superseded three times each moves from "no pattern" (12 events against 10)
+  to a closer (4 roles against 10).
 - **Two pages can print two filled-role counts for one employer.** On a
   board with dark batches the employer page counts a role that flapped and
   then came down for real; /explore and the hiring index (the leaderboard)
@@ -114,9 +119,9 @@ in all nine locales.
 ## What to measure
 
 Run `bash scripts/verify-deploy.sh` (section 64). Pre-deploy (2026-10-08
-~03:45Z, and again ~12:00Z with the latency lines) it printed FAIL on (a)
-(a2) (b) (c) (h ×2) and (i1–i7), PASS on (a4) (a5), INFO elsewhere, no
-crash. After the deploy and one `:27` tick every line should be
+~03:45Z, and again ~12:40Z with the latency and role-caution lines) it
+printed FAIL on (a) (a2) (b) (c) (h ×2) and (i1–i8), PASS on (a4) (a5), INFO
+elsewhere, no crash. After the deploy and one `:27` tick every line should be
 PASS or INFO. Also watch:
 
 - **The company curve's latency, on the board and in the cache.**
@@ -199,7 +204,10 @@ a row (the field-pool cache key is withheld, and is rewritten by the next
 - 2 → re-run `20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql` whole.
 - 1 → re-run `20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql`
   whole (it drops by name), **and roll the frontend back with it**: without the
-  role columns the verdict reads every employer as unknown.
+  role columns the verdict reads every employer as unknown. The sentence
+  migration 1 appended to `get_actively_hiring_companies`' COMMENT would then
+  describe columns that no longer exist: re-run that function's `COMMENT ON`
+  statement from `20260909201000_the_same_late_date_in_thirteen_more_places.sql`.
 - Frontend: restore the frontend files listed under "Frontend" (and the nine
   locale files) to `acd64c4c`, the commit this branch started from.
 
@@ -276,7 +284,7 @@ a row (the field-pool cache key is withheld, and is rewritten by the next
 | L11-10 | fixed (migration 4). |
 | L11-06 | fixed: rolling 24 h (migration 3) + copy in nine locales. |
 | L11-04 | fixed (migration 5) + guard on every published score statistic's allowlist. |
-| L13-16 | fixed for closures, exits and layoff filings (migrations 6–8); the live cron argument is confirmed by `get_cron_health` (both jobs bare, timeout null). |
+| L13-16 | fixed for closures, exits and layoff filings (migrations 6–8). The `NULL` argument both crons pass is written by 20261008112500 / 20261008113000 into the job commands and checked by their own `DO` blocks after apply; `get_cron_health` cannot confirm it (it reports the header, `ch_timeout`, and never the command text) — it confirms only that both jobs ran bare before apply (timeout null) and carry `10min` after. |
 | L11-03 | fixed by not rendering `net_7d` (the RPC is unchanged). |
 | L2-10 | fixed: dead fallback removed, explicit unread state. |
 | L2-11 | fixed: stamp, stale parts, reworded claims. |

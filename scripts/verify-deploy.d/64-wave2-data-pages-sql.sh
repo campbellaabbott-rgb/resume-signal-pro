@@ -2,7 +2,7 @@
 # ── 64. WAVE 2, DATA PAGES AND THEIR SQL (platform sweep 2026-10-04,
 # data-pages-sql group; deploy note docs/wave2/data-pages-sql.md).
 #
-# Nine migrations (20261008110000 .. 20261008113500) and a frontend build:
+# Eight migrations (20261008110000 .. 20261008113500) and a frontend build:
 #   L13-12  both fill curves drop a doubted closure whose posting was seen again
 #   L11-02  get_company_fill_curve gains filled_roles_90d / relisted_roles_90d;
 #           the board and the account tracker print and judge on them
