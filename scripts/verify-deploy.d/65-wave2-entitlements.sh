@@ -10,8 +10,10 @@
 #     (20261008131000), agent_pass_settle (20261008132000), each present and
 #     closed to the publishable key by name;
 #   - the browser's English strings carry the new copy: the Morning Queue on
-#     the agent plan's card, the trial named for first-time subscribers, the
-#     Pro card's trial line;
+#     the agent plan's card, the trial named for first-time subscribers (the
+#     board and the agent paywall), the trial-only welcome banner, the pass
+#     page's refunded line, the Pro card's trial line;
+#   - the crawler's /agent names the trial for first-time subscribers;
 #   - the owner steps that no read can prove are named as INFO.
 #
 # READ-ONLY. OPTIONS preflights and the webhook's GET (405) run no function
@@ -27,11 +29,15 @@ vd65_build() { # $1 fn, $2 method -> the x-fn-build header value
   curl -s -m 30 -D - -o /dev/null -X "${2:-OPTIONS}" "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
 
+# generate-ats-defense and agent-pass-status (and the .2 builds) came with the
+# review: a refunded session refused where Stripe still answers 'paid', the
+# welcome URL saying whether the checkout carried a trial.
 for PAIR in \
   "scan-credits|1" "get-account-data|1" "free-keyword-scan|2" "check-subscription|1" \
   "create-product-checkout|1" "create-subscription-checkout|1" "create-portal-session|1" \
-  "verify-product-purchase|2" "generate-apply-package|1" "generate-freelance-boost|1" \
-  "create-agent-checkout|1" "create-checkout|1" "analyze-resume|2"; do
+  "verify-product-purchase|2" "generate-apply-package|2" "generate-freelance-boost|2" \
+  "generate-ats-defense|1" "agent-pass-status|1" \
+  "create-agent-checkout|2" "create-checkout|1" "analyze-resume|2"; do
   FN=${PAIR%%|*}; N=${PAIR#*|}
   H=$(vd65_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving)"
@@ -78,6 +84,9 @@ if [ -z "$EN65" ]; then
 else
   for PAIR in "perkMorningQueue|the agent plan's card lists the Morning Queue (L3-04)" \
               "first-time subscribers|the board names the trial for first-time subscribers only (L6-29)" \
+              "first-time subscribers start with|the agent paywall names the trial for first-time subscribers only (L6-29)" \
+              "welcomeTitleTrial|the welcome banner names a trial only when the checkout gave one (L6-29)" \
+              "repairRefunded|the pass page says a refunded payment opens no pass (L6-18)" \
               "Your trial is on|the Pro card tells a trial what is on now (L6-08)"; do
     S=${PAIR%%|*}; WHY=${PAIR#*|}
     if printf '%s' "$EN65" | grep -qF "$S"; then echo "PASS  English strings carry \"$S\": $WHY"
@@ -85,7 +94,14 @@ else
   done
 fi
 
+# The page a crawler reads for /agent (Googlebot UA, read-only GET).
+AG65=$(curl -s -m 30 -A "$UA" "$SITE/agent")
+if printf '%s' "$AG65" | grep -qF "days free for first-time subscribers"; then echo "PASS  /agent as served to a crawler names the trial for first-time subscribers (L6-29)"
+elif printf '%s' "$AG65" | grep -qE "[0-9]+ days free"; then echo "FAIL  /agent as served to a crawler still promises free days to everyone (the prerender with this wave is not published)"
+else echo "FAIL  /agent as served to a crawler names no trial at all ($(printf '%s' "$AG65" | wc -c | tr -d ' ') bytes)"; fi
+
 # The owner steps no read can prove.
 echo "INFO  OWNER STEP (L6-18): subscribe the Stripe webhook endpoint to charge.refunded and charge.dispute.created; until then Stripe sends neither and no refund revokes anything"
 echo "INFO  OWNER STEP (mailbox switch): after turning on email confirmation, run UPDATE public.mailbox_proof_settings SET confirmation_required_since = now(); -- one row now switches the scanner, the Account page and the agent gates alike (EMAIL_CONFIRMED_SINCE is read only if that row cannot be read)"
+echo "INFO  MEASURE (L9-13): every closed agent_passes row has settled_at; applications_used drops at close by the packets that will not go (failed, stale, blocked past any answer, exhausted, held) and dismissed/expired rows, and again later as a waiting request ends unsent; approved queue rows with no packet keep pass_refunded_at NULL after a close"
 echo "INFO  MEASURE: pro_grants rows with user_id IS NULL and consumed_at IS NULL minted before the deploy are refused at redemption (the member mints a new one); payment_revocations rows appear only after the two Stripe events are subscribed"

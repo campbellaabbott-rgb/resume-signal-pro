@@ -6,17 +6,17 @@ Branch `wave2/entitlements`. These are the owner decisions approved on 2026-10-0
 | --- | --- |
 | **L3-04** (with L6-24, L13-08) | The Full Analysis is now part of Pro. A signed-in member whose plan can mint gets it with no $5 charge: create-checkout mints a `pro_` grant and analyze-resume redeems it once. The Morning Queue line moves to the Agent plan card. Pricing-truth now fails if a Pro perk names something only the agent's price unlocks. |
 | **L6-08** | There is now one "is Pro" rule, `_shared/pro-standing.ts`, re-exported from `_shared/pro.ts`. It reads both caches by the verified account. A row is live while its status is active or trialing, with one day of grace. Every caller uses it: create-product-checkout, verify-product-purchase, generate-freelance-boost, generate-apply-package, free-keyword-scan, check-subscription, create-checkout and analyze-resume. `isProCached` is gone. |
-| **L6-29** (with L13-43) | A trial unlocks the plan's ongoing features (unlimited scans, batch prep), but mints no consumables: no `pro_` grant, no scan pack. The agent trial is offered once per customer, checked by account id, by address, and by every Stripe customer behind the address. The board's two trial sentences say "for first-time subscribers" and interpolate the trial length (`AGENT_TRIAL_DAYS`). create-subscription-checkout offers no trial. |
-| **L6-18** | A refund in full, or any dispute, takes back what the payment bought. Each of these happens once per payment intent: the session's claim, the Agent Pass and its unsent applications, unspent scan credits, and the Pro grants a subscription payment minted. A refunded or disputed subscription is cancelled immediately. A partial refund is reported to the owner and revokes nothing. |
-| **L9-13** | When an Agent Pass closes, every application it paid for and never sent is given back. That covers packets that are prep-blocked, failed, held, or exhausted at three attempts, and queue rows that never became a packet. A given-back application that is sent later is charged again. |
+| **L6-29** (with L13-43) | A trial unlocks the plan's ongoing features (unlimited scans, batch prep), but mints no consumables: no `pro_` grant, no scan pack. The agent trial is offered once per customer, checked by account id, by address, and by every Stripe customer behind the address. Every surface that sells the agent says the trial is "for first-time subscribers" and takes its length and price from the mirror of the checkout's constants: the board's two sentences, the Morning Queue paywall and its checkout button, and the prerendered /agent page. The welcome banner after checkout names a trial only when that checkout carried one (create-agent-checkout puts `welcome=trial` or `welcome=1` on the success URL). create-subscription-checkout offers no trial. |
+| **L6-18** | A refund in full, or any dispute, takes back what the payment bought. Each of these happens once per payment intent: the session's claim, the Agent Pass and its unsent applications, unspent scan credits, and the Pro grants a subscription payment minted. A refunded or disputed subscription is cancelled immediately. A partial refund is reported to the owner and revokes nothing. Stripe keeps calling a refunded session "paid", so every function that verifies a session with Stripe refuses one named in `payment_revocations`: verify-product-purchase, analyze-resume, generate-freelance-boost, generate-ats-defense, generate-apply-package, and agent-pass-status (which would otherwise grant a pass from a refunded second-pass payment once the first pass closed). |
+| **L9-13** | When an Agent Pass closes, every application it paid for that will not go out on its own is given back: packets that are failed, stale, blocked (unless a learned answer can still send them), held for a release, or exhausted at three attempts, and dismissed or expired queue rows that never became a packet. A request that can still finish is left to finish, as the pass page promises: an approved queue row with no packet (the preparer still prepares it after the clock), a released packet under three attempts, a block an answer can lift. When one of those later ends unsent, its application is given back then. A given-back application that is sent later is charged again. |
 | **Mailbox switch** | `mailbox_proof_settings.confirmation_required_since` is now the one switch, for the scan side and the agent gates alike. `EMAIL_CONFIRMED_SINCE` is read only when that row cannot be read. |
 
 ## Apply the migrations first, in this order
 
-Apply all three migrations before deploying the functions. Each one checks itself and is safe to re-run.
+Apply all three migrations before deploying the functions. Each one checks itself and is safe to re-run: 130000 binds Pro rows to accounts only in the run that adds the column, so a re-run binds nothing (a plan left unbound on purpose stays unbound).
 
 1. `20261008130000_a_plan_is_read_by_the_account_that_bought_it_by_one_rule.sql`
-   - Adds `pro_subscribers.user_id` and binds existing rows to the account that holds each address now.
+   - Adds `pro_subscribers.user_id` and, in that same run only, binds existing rows to the account that holds each address now.
    - Adds `pro_entitlement_rows(uuid)`.
    - Adds `pro_grants.user_id` and `pro_grants.revoked_at`.
    - Depends on `account_mailbox_proven` and `agent_subscription_rows` from 20261005130000. Both were confirmed present in production on 2026-10-07: they answer anon with 42501.
@@ -24,8 +24,8 @@ Apply all three migrations before deploying the functions. Each one checks itsel
    - Adds the `payment_revocations` table, `payment_revoke(...)` and `payment_revoke_credits(text, integer)`.
    - Uses `scan_credit_session_grants` from 20261005120000, which is present.
 3. `20261008132000_a_closed_pass_gives_back_every_application_it_never_sent.sql`
-   - Adds `agent_passes.settled_at`, `agent_pass_settle(uuid)` and three triggers.
-   - Settles any pass that is already closed.
+   - Adds `agent_passes.settled_at`, `agent_pass_packet_gives_back(agent_submissions)` (the one rule), `agent_pass_settle(uuid)` and five triggers: the settle on close, the two that give back a settled pass's packet or queue row when it later ends unsent (including a retention delete), the stamp carried from a given-back queue row to a packet, and the re-charge on a late send.
+   - Settles any pass that is already closed, leaving its approved requests to finish.
 
 None of these functions can be called by a client role. Every one is SECURITY DEFINER, revoked from PUBLIC, anon and authenticated, and granted only to service_role. There is nothing to add to the client-callable census allowlist.
 
@@ -49,9 +49,11 @@ Anonymous checkouts are unaffected.
 | create-subscription-checkout | `create-subscription-checkout.2026-10-08.1` | Stamps the buyer's user id on the Pro subscription |
 | create-portal-session | `create-portal-session.2026-10-08.1` | First build stamp; its cache refresh binds `user_id` |
 | verify-product-purchase | `verify-product-purchase.2026-10-08.2` | Grant re-check by account (`proGrantRefusal`); refuses refunded sessions |
-| generate-apply-package | `generate-apply-package.2026-10-08.1` | Batch prep for every live plan, trial included |
-| generate-freelance-boost | `generate-freelance-boost.2026-10-08.1` | Grant re-check by account |
-| create-agent-checkout | `create-agent-checkout.2026-10-08.1` | One trial per customer |
+| generate-apply-package | `generate-apply-package.2026-10-08.2` | Batch prep for every live plan, trial included; refuses a refunded session |
+| generate-freelance-boost | `generate-freelance-boost.2026-10-08.2` | Grant re-check by account; refuses a refunded session |
+| generate-ats-defense | `generate-ats-defense.2026-10-08.1` | Refuses a refunded session (it read the rewritten claim as proof) |
+| agent-pass-status | `agent-pass-status.2026-10-08.1` | Grants no pass from a refunded payment |
+| create-agent-checkout | `create-agent-checkout.2026-10-08.2` | One trial per customer; the success URL says whether this checkout carried one |
 | create-checkout | `create-checkout.2026-10-08.1` | A Pro member's Full Analysis grant |
 | analyze-resume | `analyze-resume.2026-10-08.2` | Redeems the `pro_` grant once; refuses refunded sessions |
 | stripe-webhook | `stripe-webhook.2026-10-08.2` | Refunds and disputes revoke; binds `user_id` on the Pro cache |
@@ -59,7 +61,7 @@ Anonymous checkouts are unaffected.
 The shared modules also changed: `_shared/pro.ts`, `pro-standing.ts`, `mailbox-proof.ts`, `signed-in-email.ts`, `subscription-standing.ts`, `agent.ts` and the new `payment-revocation.ts`.
 
 - agent-access and create-pass-checkout import `agent.ts`. They only gained new exports and behave the same, so a redeploy is optional.
-- Deploy the frontend with the same commit. It carries the Pro card copy, the Agent card's Morning Queue line, the board's trial sentences and the Success page tracking change.
+- Deploy the frontend with the same commit. It carries the Pro card copy, the Agent card's Morning Queue line, the trial sentences (board, Morning Queue paywall and button, welcome banner), the pass page's refunded line, the Success page tracking change, and the prerendered /agent page.
 
 ## Tell the owner
 
@@ -92,13 +94,15 @@ Migrations:
 
 - **Do not drop** `payment_revocations`. It is the record of what was taken back.
 - To stop revocation, redeploy the old stripe-webhook. It ignores the table.
-- To stop settling passes on close, run `DROP TRIGGER agent_pass_settle_on_close_trg ON public.agent_passes;`. The re-charge and carry-over triggers are harmless without it.
+- To stop settling passes, run `DROP TRIGGER agent_pass_settle_on_close_trg ON public.agent_passes; DROP TRIGGER agent_pass_settle_late_packet_trg ON public.agent_submissions; DROP TRIGGER agent_pass_settle_late_row_trg ON public.agent_queue; DROP TRIGGER agent_pass_settle_late_row_gone_trg ON public.agent_queue;`. The re-charge and carry-over triggers are harmless without them.
 - `pro_subscribers.user_id` is only read by the new builds.
 
 ## What to measure after the deploy
 
-- **`bash scripts/verify-deploy.sh`, section 65.** Every line should be PASS. The fourteen build lines need the functions deployed. The four `42501` lines and the table line need the migrations applied. The three English-strings lines need the frontend published.
+- **`bash scripts/verify-deploy.sh`, section 65.** Every line should be PASS. The sixteen build lines need the functions deployed. The four `42501` lines and the table line need the migrations applied. The six English-strings lines and the crawler's /agent line need the frontend published.
 - **Section 45:** the build lines for the functions above now read 2026-10-08. This is still a PASS, because build_ge accepts later builds.
 - **Agent trial:** `checkout_starts.metadata->>'trial'` on `create-agent-checkout` rows. Expect `false` for a returning customer.
 - **First refund after the Stripe events are subscribed:** a `payment_revocations` row, and an owner email whose subject starts "Refund issued" or "Dispute opened" and lists what was taken back.
-- **Agent Passes:** `agent_passes.settled_at` is set on every closed pass, and `applications_used` falls on close by the number of never-sent applications.
+- **Agent Passes:** `agent_passes.settled_at` is set on every closed pass. `applications_used` falls on close by the applications that will not go out on their own, and again later as a waiting request ends unsent. An approved `agent_queue` row with no packet keeps `pass_refunded_at` NULL after its pass closes, and is still prepared (apply-agent's `prepared` count for pass-only mandates).
+- **Not covered:** a worker that dies holding a packet on its third attempt leaves it `ready` with a lapsed lease and writes nothing more, so nothing gives that application back unless the close came after the lease lapsed.
+- **Refunded sessions:** a generator call with a refunded session answers 402 with `refunded: true`; the pass page shows "This payment was refunded, so it does not open a pass."
