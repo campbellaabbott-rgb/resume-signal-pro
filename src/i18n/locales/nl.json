@@ -5190,6 +5190,8 @@
     "goneTitle": "Deze vacature is niet meer actief",
     "goneMeta": "Het vacaturesysteem van de werkgever zelf toont deze vacature niet meer. Zoek op het live bord naar vergelijkbare vacatures.",
     "goneBody": "Of het vacaturesysteem van de werkgever zelf toont hem niet meer, of hij is voorbij de {{days}} dagen die dit bord een gedateerde vacature toont. Daarna wordt hier niets actief gehouden.",
+    "unlistedMeta": "Staat niet meer op dit bord — dat zegt niets over de werkgever, op hun eigen site kan ze nog openstaan. Zoek vergelijkbare vacatures op het live bord.",
+    "unlistedBody": "Dit bord toont deze vacature niet meer. Dat zegt niets over de werkgever — op hun eigen site kan ze nog openstaan.",
     "goneCta": "Zoek op het live bord",
     "remote": "Remote",
     "postedLabel": "Geplaatst",

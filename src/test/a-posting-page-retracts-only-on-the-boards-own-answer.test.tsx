@@ -106,6 +106,37 @@ describe("a posting page retracts only on the board's own answer", () => {
     expect(jobEntities()).toEqual([]);
   });
 
+  // A 404 is the row gone with no closure recorded (our cap, a dedupe exit, a
+  // mistyped id); a description-only reply is a row we hide while the
+  // employer still serves it. Neither is evidence about the employer's own
+  // board, and the crawler-facing description said it was.
+  for (const [what, reply] of [
+    ["the board's bare 404", () => httpError(404, { error: "Posting not found (it may have closed)" })],
+    ["a reply carrying only the employer's description", () => ({ data: { job: null, description: "Night shifts. ".repeat(30) }, error: null })],
+  ] as const) {
+    it(`${what} says the posting is no longer listed here, and nothing about the employer`, async () => {
+      const { robots } = seedBakedHead();
+      invoke.mockResolvedValue(reply());
+      at(PATH);
+      expect(await screen.findByRole("heading", { level: 1, name: /no longer live/i })).toBeTruthy();
+      await waitFor(() => expect(robots.getAttribute("content")).toBe("noindex"));
+      await waitFor(() => expect(descriptions().join(" | ")).toMatch(/No longer listed on this board/));
+      expect(descriptions().join(" | "), "the crawler was told the employer's board dropped it").not.toMatch(/employer's own job board/);
+      expect(document.body.textContent, "the page told the reader the employer's board dropped it").not.toMatch(/employer's own job board/);
+      expect(document.body.textContent).toMatch(/says nothing about the employer/);
+      expect(jobEntities()).toEqual([]);
+    });
+  }
+
+  it("positive control: a closure the board watched still names the employer's board", async () => {
+    const { robots } = seedBakedHead();
+    invoke.mockResolvedValue({ data: { job: null, closed: { title: "Staff Nurse", company: "Acme Health", closedAt: new Date().toISOString() } }, error: null });
+    at(PATH);
+    expect(await screen.findByRole("heading", { level: 1, name: /no longer live/i })).toBeTruthy();
+    await waitFor(() => expect(robots.getAttribute("content")).toBe("noindex"));
+    await waitFor(() => expect(descriptions().join(" | ")).toMatch(/no longer served by the employer's own job board/));
+  });
+
   it("while loading, the baked head stands: its title, its description, its job markup", async () => {
     seedBakedHead();
     invoke.mockImplementation(() => new Promise(() => { /* never answers */ }));

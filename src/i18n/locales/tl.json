@@ -5190,6 +5190,8 @@
     "goneTitle": "Hindi na aktibo ang posting na ito",
     "goneMeta": "Hindi na inilalabas ng sariling job board ng employer ang bakanteng ito. Maghanap ng katulad na bakante sa live na board.",
     "goneBody": "Maaaring tinanggal na ito ng sariling job board ng employer, o lumampas na ito sa {{days}} araw na ipinapakita ng board na ito ang isang posting na may petsa. Wala nang pinapanatiling aktibo rito pagkatapos noon.",
+    "unlistedMeta": "Hindi na nakalista sa board na ito — wala itong sinasabi tungkol sa employer; maaaring bukas pa ito sa site nila. Maghanap ng katulad sa live na board.",
+    "unlistedBody": "Hindi na inililista ng board na ito ang posting na ito. Wala itong sinasabi tungkol sa employer — maaaring bukas pa rin ito sa sarili nilang site.",
     "goneCta": "Maghanap sa live na board",
     "remote": "Remote",
     "postedLabel": "Nai-post",

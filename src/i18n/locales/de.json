@@ -5190,6 +5190,8 @@
     "goneTitle": "Diese Stelle ist nicht mehr aktiv",
     "goneMeta": "Das eigene Stellenportal des Arbeitgebers spielt diese Stelle nicht mehr aus. Suchen Sie auf dem Live-Board nach ähnlichen Stellen.",
     "goneBody": "Entweder hat das eigene Stellenportal des Arbeitgebers sie zurückgezogen, oder sie hat die {{days}} Tage überschritten, die dieses Board für eine datierte Anzeige ausspielt. Danach wird hier nichts aktiv gehalten.",
+    "unlistedMeta": "Auf diesem Board nicht mehr gelistet — über den Arbeitgeber sagt das nichts, auf dessen Seite kann die Stelle noch offen sein. Ähnliche Stellen im Live-Board.",
+    "unlistedBody": "Dieses Board listet die Stelle nicht mehr. Über den Arbeitgeber sagt das nichts — auf dessen eigener Seite kann sie noch offen sein.",
     "goneCta": "Live-Board durchsuchen",
     "remote": "Remote",
     "postedLabel": "Veröffentlicht",

@@ -5190,6 +5190,8 @@
     "goneTitle": "Esta vaga já não está ativa",
     "goneMeta": "O portal de empregos do próprio empregador já não apresenta esta vaga. Procure vagas semelhantes no quadro ao vivo.",
     "goneBody": "Ou o portal de empregos do próprio empregador deixou de a apresentar, ou ultrapassou os {{days}} dias durante os quais este quadro apresenta uma vaga datada. Depois disso nada é mantido ativo aqui.",
+    "unlistedMeta": "Já não está listada neste quadro — isso não diz nada sobre o empregador, e pode continuar aberta no site dele. Procure vagas semelhantes no quadro ao vivo.",
+    "unlistedBody": "Este quadro já não lista esta vaga. Isso não diz nada sobre o empregador — pode continuar aberta no site dele.",
     "goneCta": "Procurar no quadro ao vivo",
     "remote": "Remoto",
     "postedLabel": "Publicada",

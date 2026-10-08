@@ -5190,6 +5190,8 @@
     "goneTitle": "This vacancy is no longer live",
     "goneMeta": "This vacancy is no longer served by the employer's own job board. Search the live board for openings like it.",
     "goneBody": "Either the employer's own job board stopped serving it, or it passed the {{days}} days this board serves a dated posting for. Nothing here is kept live after that.",
+    "unlistedMeta": "No longer listed on this board — that says nothing about the employer, and it may still be open on their own site. Search the live board for similar vacancies.",
+    "unlistedBody": "This board no longer lists this vacancy. That says nothing about the employer — it may still be open on their own site.",
     "goneCta": "Search the live board",
     "remote": "Remote",
     "postedLabel": "Posted",

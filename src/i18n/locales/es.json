@@ -5190,6 +5190,8 @@
     "goneTitle": "Esta vacante ya no está activa",
     "goneMeta": "El portal de empleo del propio empleador ya no publica esta vacante. Busca vacantes similares en el tablero en vivo.",
     "goneBody": "O el portal de empleo del propio empleador dejó de publicarla, o superó los {{days}} días que este tablero mantiene una vacante con fecha. Después de eso aquí no se mantiene nada activo.",
+    "unlistedMeta": "Ya no figura en este portal: eso no dice nada del empleador, y puede seguir abierta en su propio sitio. Busca vacantes similares en el tablero en vivo.",
+    "unlistedBody": "Este portal ya no muestra esta oferta. Eso no dice nada del empleador: puede seguir abierta en su propio sitio.",
     "goneCta": "Buscar en el tablero en vivo",
     "remote": "Remoto",
     "postedLabel": "Publicada",

@@ -61,8 +61,11 @@ const SITE = "https://resumebooster.work";
  */
 const LD_TAG_ID = POSTING_LD_TAG_ID;
 
-/** "budget": the board's daily allowance for this connection is spent -- never "gone", never retried. */
-type LoadState = "loading" | "ready" | "gone" | "failed" | "budget";
+/** "budget": the board's daily allowance for this connection is spent -- never "gone", never retried.
+ *  "gone": the row we hold says it is not live, or the closure log saw it go.
+ *  "unlisted": no row and no recorded closure (a 404, past our cap, a hidden row) --
+ *  retracted all the same, but with no claim about the employer's own board. */
+type LoadState = "loading" | "ready" | "gone" | "unlisted" | "failed" | "budget";
 
 /**
  * Take every JobPosting entity out of the head — the one this page wrote under
@@ -125,32 +128,34 @@ export default function JobPosting() {
         // may have closed)". Retrying it was a second counted read, and
         // rendering it as a retryable "couldn't load" kept a soft 404 indexed.
         if (httpStatusOf(res.error) === 404) {
-          if (seq.current === mine) setState("gone");
+          if (seq.current === mine) setState("unlisted");
           return;
         }
         await new Promise((r) => setTimeout(r, 1200));
         res = await invokeJobBoard({ body: { action: "detail", id } });
       }
       if (seq.current !== mine) return;
-      const data = res.data as { job?: PostingRow | null; description?: string | null } | null;
+      const data = res.data as { job?: PostingRow | null; description?: string | null; closed?: unknown } | null;
       if (res.error || !data) {
         const refused = await readBoardBudgetRefusal(res.error);
         if (refused) { refusedWith(refused); return; }
-        setState(httpStatusOf(res.error) === 404 ? "gone" : "failed");
+        setState(httpStatusOf(res.error) === 404 ? "unlisted" : "failed");
         return;
       }
       const row = data.job ?? null;
       setJob(row);
       setDescription(typeof data.description === "string" ? data.description : null);
       // A row we cannot find, and a row that is no longer live, are the same
-      // answer to the only question this URL asks.
-      setState(row && isPostingLive(row) ? "ready" : "gone");
+      // answer to the only question this URL asks -- but only a watched
+      // closure says anything about the employer's own board.
+      setState(row ? (isPostingLive(row) ? "ready" : "gone") : data.closed ? "gone" : "unlisted");
     })().catch(() => {
       if (seq.current === mine) setState("failed");
     });
   }, [id, attempt]);
 
   const live = state === "ready" && !!job;
+  const retracted = state === "gone" || state === "unlisted";
 
   // THE MARKUP LIVES IN ONE ELEMENT, WHOEVER WROTE IT.
   // The baked file already carries a block in the head under this id. Writing a
@@ -175,7 +180,7 @@ export default function JobPosting() {
   // then told every early renderer it was not — so the head is left exactly
   // as the bake wrote it until there is an answer either way.
   useEffect(() => {
-    if (state === "gone") { clearJobMarkup(); return; }
+    if (retracted) { clearJobMarkup(); return; }
     if (!ld) return;
     clearJobMarkup();
     const tag = document.createElement("script");
@@ -184,7 +189,7 @@ export default function JobPosting() {
     tag.textContent = JSON.stringify(ld);
     document.head.appendChild(tag);
     return () => { clearJobMarkup(); };
-  }, [ld, state]);
+  }, [ld, retracted]);
   // Leaving the page takes any posting markup with it, baked or ours.
   useEffect(() => () => { clearJobMarkup(); }, []);
 
@@ -199,7 +204,7 @@ export default function JobPosting() {
   // choose — which is not a choice to hand away on a page we deliberately want
   // dropped. The previous value is restored on the way out.
   useEffect(() => {
-    if (state !== "gone") return;
+    if (!retracted) return;
     const tag = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     if (!tag) {
       const added = document.createElement("meta");
@@ -211,7 +216,7 @@ export default function JobPosting() {
     const previous = tag.getAttribute("content");
     tag.setAttribute("content", "noindex");
     return () => { if (previous !== null) tag.setAttribute("content", previous); };
-  }, [state]);
+  }, [retracted]);
 
   if (legacyId) {
     return legacyTarget
@@ -232,16 +237,21 @@ export default function JobPosting() {
   const seoTitle = live && job ? postingPageTitle(job) : t("jobPostingPage.goneTitle", "This posting is no longer live");
   const seoDescription = live && job
     ? postingPageDescription(job)
-    : t(
-        "jobPostingPage.goneMeta",
-        "This opening is no longer served by the employer's own job board. Search the live board for openings like it.",
-      );
+    : state === "unlisted"
+      ? t(
+          "jobPostingPage.unlistedMeta",
+          "No longer listed on this board — that says nothing about the employer, and it may still be open on their own site. Search the live board for similar openings.",
+        )
+      : t(
+          "jobPostingPage.goneMeta",
+          "This opening is no longer served by the employer's own job board. Search the live board for openings like it.",
+        );
 
   return (
     <>
       {/* The crawl directive for a gone posting is set on the tag the bake
           already wrote (see the effect above), never as a second one here. */}
-      {(live || state === "gone") && <SEO title={seoTitle} description={seoDescription} path={path} />}
+      {(live || retracted) && <SEO title={seoTitle} description={seoDescription} path={path} />}
       <Header />
       <main className="min-h-screen pt-24 pb-20">
         <div className="container max-w-3xl">
@@ -270,17 +280,19 @@ export default function JobPosting() {
             </div>
           )}
 
-          {state === "gone" && (
+          {retracted && (
             <div className="rounded-xl border border-border bg-card p-6">
               <h1 className="text-2xl font-bold mb-3">
                 {t("jobPostingPage.goneTitle", "This posting is no longer live")}
               </h1>
               <p className="text-sm text-muted-foreground mb-4">
-                {t("jobPostingPage.goneBody", {
-                  defaultValue:
-                    "Either the employer's own job board stopped serving it, or it passed the {{days}} days this board serves a dated posting for. Nothing here is kept live after that.",
-                  days: BOARD_FRESH_WINDOW_DAYS,
-                })}
+                {state === "unlisted"
+                  ? t("jobPostingPage.unlistedBody", "This board no longer lists this posting. That says nothing about the employer — it may still be open on their own site.")
+                  : t("jobPostingPage.goneBody", {
+                    defaultValue:
+                      "Either the employer's own job board stopped serving it, or it passed the {{days}} days this board serves a dated posting for. Nothing here is kept live after that.",
+                    days: BOARD_FRESH_WINDOW_DAYS,
+                  })}
               </p>
               <Button asChild size="sm">
                 <Link to="/jobs">{t("jobPostingPage.goneCta", "Search the live board")}</Link>

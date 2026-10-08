@@ -5190,6 +5190,8 @@
     "goneTitle": "Cette offre n'est plus active",
     "goneMeta": "Le site carrières de l'employeur ne diffuse plus cette offre. Cherchez des offres similaires sur le tableau en direct.",
     "goneBody": "Soit le site carrières de l'employeur a cessé de la diffuser, soit elle a dépassé les {{days}} jours pendant lesquels ce tableau diffuse une offre datée. Passé ce délai, rien n'est maintenu actif ici.",
+    "unlistedMeta": "N'est plus listée sur ce tableau — cela ne dit rien de l'employeur, l'offre peut être encore ouverte sur son site. Offres similaires sur le tableau en direct.",
+    "unlistedBody": "Ce tableau ne liste plus cette offre. Cela ne dit rien de l'employeur — elle peut être encore ouverte sur son propre site.",
     "goneCta": "Chercher sur le tableau en direct",
     "remote": "Télétravail",
     "postedLabel": "Publiée",
