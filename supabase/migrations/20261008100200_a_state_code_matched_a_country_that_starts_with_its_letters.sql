@@ -15,11 +15,24 @@
 --   * case-sensitively, followed by the end of the field or a non-letter
 --     (", ME" then ", " or " 04101" or end; never ", Mexico", ", MEXICO"), and
 --   * on a row whose country is the United States, Canada, or not known
---     ("Berlin, DE" carries country DE and is out; a row we could not place
---     keeps its old chance, since no code there says otherwise).
+--     (a row we could not place keeps its old chance, since no code there
+--     says otherwise).
 -- The ILIKE stays in front of it, so the trigram index still does the finding
 -- and the regex only refines what it found. Every other alias (a spelled-out
 -- name, a metro name, a raw place) is matched exactly as before.
+--
+-- WHAT IT DOES NOT FIX. The country is the STORED one, and when the vendor
+-- states none, ingest derives it from the same text (detectPlace ->
+-- detectCountry), which reads ", DE" and ", IN" as US state codes before it
+-- looks at the city: a text-derived "Berlin, DE", "Munich, DE", "Pune, IN" or
+-- "Chennai, IN" is stored as US and still matches Delaware or Indiana here.
+-- Removed are the rows a code cannot be confused for (", Mexico", ", India",
+-- every spelled-out country) and the rows whose vendor states the country. On
+-- .90, 2026-10-08, the first page of {location:"Munich, DE"} held 12 rows
+-- ending in ", DE", all stored as US; "Berlin, DE" 10 of 12; "Pune, IN" 2 of
+-- 2; "Chennai, IN" 3 of 3. The rest of the fix is in detectCountry (a known
+-- foreign city before a trailing code, with a COUNTRY_MAP_VERSION bump), a
+-- follow-up.
 --
 -- THE THREE FUNCTIONS MOVE IN ONE FILE, for the reason 20260927034117 gives:
 -- the ranked search, its count and the rescue tier must answer the same

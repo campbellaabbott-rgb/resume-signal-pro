@@ -21,6 +21,7 @@ import { resolve } from "node:path";
 import ts from "typescript";
 import { locationTerms } from "../../supabase/functions/_shared/location-terms";
 import { isStateCodeAlias, locationBranch, partMatchesTerm } from "../../supabase/functions/job-board/location-match.ts";
+import { detectPlace } from "../../supabase/functions/job-board/normalize.ts";
 
 vi.setConfig({ testTimeout: 90_000 });
 
@@ -29,6 +30,9 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const PREV = read("supabase/migrations/20260927034117_a_wage_on_the_card_is_a_stated_wage_in_every_path.sql");
 const MIG = read("supabase/migrations/20261008100200_a_state_code_matched_a_country_that_starts_with_its_letters.sql");
 
+// The country each row carries is the one ingest stores: a vendor-stated
+// country where the vendor states one, else detectPlace's read of the text.
+const stored = (loc: string, stated?: string) => detectPlace(loc, stated).country;
 const ROWS: Array<[string, string, string | null]> = [
   ["mx", "San Pedro Garza Garcia, N.L., Mexico", "MX"],
   ["mx-upper", "Monterrey, MEXICO", "MX"],
@@ -37,10 +41,13 @@ const ROWS: Array<[string, string, string | null]> = [
   ["me-name", "Augusta, Maine", "US"],
   ["me-multi", "Boston, MA; Portland, ME, United States", "US"],
   ["me-unplaced", "Lewiston, ME", null],
-  ["in-india", "Pune, IN", "IN"],
-  ["in-us", "Indianapolis, IN", "US"],
-  ["de-germany", "Berlin, DE", "DE"],
-  ["de-us", "Wilmington, DE", "US"],
+  ["in-india-stated", "Pune, IN", stored("Pune, IN", "IN")],
+  ["in-india-text", "Chennai, IN", stored("Chennai, IN")],
+  ["in-india-word", "Pune, India", stored("Pune, India")],
+  ["in-us", "Indianapolis, IN", stored("Indianapolis, IN")],
+  ["de-germany-stated", "Berlin, DE", stored("Berlin, DE", "DE")],
+  ["de-germany-text", "Munich, DE", stored("Munich, DE")],
+  ["de-us", "Wilmington, DE", stored("Wilmington, DE")],
   ["on-canada", "Toronto, ON", "CA"],
 ];
 
@@ -94,14 +101,34 @@ describe("the three search functions, before and after 20261008100200", { timeou
     await db.close();
   });
 
-  it("Indiana and Delaware keep their own and lose India and Germany; a province code still finds Canada", async () => {
+  it("Indiana and Delaware keep their own and lose a spelled-out India and a vendor-stated India or Germany; a province code still finds Canada", async () => {
     const db = await boot();
+    const before = await three(db, param("Indiana"));
+    expect(before.ranked, "the defect: ', IN' read as a substring").toEqual(expect.arrayContaining(["in-india-stated", "in-india-word"]));
     await db.exec(MIG);
-    expect((await three(db, param("Indiana"))).ranked).toEqual(["in-us"]);
-    expect((await three(db, param("Delaware"))).ranked).toEqual(["de-us"]);
+    const indiana = (await three(db, param("Indiana"))).ranked;
+    const delaware = (await three(db, param("Delaware"))).ranked;
+    expect(indiana).toContain("in-us");
+    expect(indiana).not.toContain("in-india-stated");
+    expect(indiana).not.toContain("in-india-word");
+    expect(delaware).toContain("de-us");
+    expect(delaware).not.toContain("de-germany-stated");
     expect((await three(db, param("Ontario"))).ranked).toEqual(["on-canada"]);
     // A spelled-out place is untouched: "Mexico" still finds Mexico.
     expect((await three(db, "Mexico")).ranked).toEqual(["mx", "mx-upper"]);
+    await db.close();
+  });
+
+  it("a text-derived 'Munich, DE' or 'Chennai, IN' is stored as US and still matches Delaware or Indiana: the residual this file does not fix", async () => {
+    // detectCountry reads ', DE' and ', IN' as US state codes before it looks
+    // at the city, and the gate reads the stored country. When the follow-up
+    // teaches detectCountry the city first, this test fails and is flipped.
+    expect(stored("Munich, DE")).toBe("US");
+    expect(stored("Chennai, IN")).toBe("US");
+    const db = await boot();
+    await db.exec(MIG);
+    expect((await three(db, param("Indiana"))).ranked).toEqual(["in-india-text", "in-us"]);
+    expect((await three(db, param("Delaware"))).ranked).toEqual(["de-germany-text", "de-us"]);
     await db.close();
   });
 

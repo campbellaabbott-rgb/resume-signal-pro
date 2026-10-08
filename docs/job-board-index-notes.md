@@ -9858,6 +9858,14 @@ so "or" matched inside "New York" and the searched state never moved first; it
 now applies partMatchesTerm. The three RPC bodies are their 20260927034117
 definitions with only the location clause changed.
 
+RESIDUAL. The country gate reads the stored country, and with no vendor-stated
+country ingest derives it from the same text: detectCountry tests
+P_US_STATE_CODE before cityCountry, so "Berlin, DE", "Munich, DE", "Pune, IN",
+"Chennai, IN" are stored as US and still match Delaware and Indiana. Removed
+are spelled-out countries and vendor-stated ones. The rest is a detectCountry
+change (a known foreign city before a trailing code; COUNTRY_MAP_VERSION bump
+and backfill), not done here; verifier section 61 counts what is still served.
+
 ## n430-a-pay-figure-must-be-unambiguous
 
 Above: filters.ts (`salaryTokenInQuery`, `unambiguousMoney`), queryTerms' money

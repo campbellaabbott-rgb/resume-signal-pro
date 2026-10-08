@@ -34,6 +34,14 @@ for(const [place,foreign,was] of [["Maine","MX","32 of 60 on .87, 21 on .90 2026
   const f=rows(r).filter((j)=>j.country===foreign).length;
   late(f===0,"L13-01 browse location="+place+": "+f+" of "+rows(r).length+" rows carry country "+foreign+" (want 0; was "+was+"), total "+r.total);
 }
+// L13-01 residual: a text-derived "Munich, DE" / "Pune, IN" is stored US and still matches (detectCountry follow-up).
+{const city={DE:/\b(berlin|munich|münchen|hamburg|frankfurt|cologne|köln|stuttgart|düsseldorf|dusseldorf|leipzig|dresden)\b/i,IN:/\b(bangalore|bengaluru|pune|chennai|hyderabad|mumbai|gurgaon|gurugram|noida|delhi|kolkata|ahmedabad)\b/i};
+  const resid=(j,c)=>{const l=String(j.location||"");const m=new RegExp(", "+c+"($|[^A-Za-z])").exec(l);return !!m&&city[c].test(l.slice(0,m.index))&&j.country!==c};
+  for(const [q,place,c] of [["Berlin","Delaware","DE"],["Munich","Delaware","DE"],["Pune","Indiana","IN"],["Chennai","Indiana","IN"]]){
+    const r=await list({q,location:place});
+    if(bad(r)){info("L13-01 residual q="+q+" location="+place+": unreadable");continue}
+    const hit=rows(r).filter((j)=>resid(j,c));
+    info("L13-01 residual q="+q+" location="+place+": "+hit.length+" of "+rows(r).length+" rows read \""+q+"..., "+c+"\" stored as "+JSON.stringify([...new Set(hit.map((j)=>j.country))])+" (text-derived country; nonzero until detectCountry reads the city before the code), e.g. "+JSON.stringify(hit.slice(0,2).map((j)=>j.location)))}}
 {const r=await list({q:"nurse",location:"Maine"});
   if(bad(r))info("L13-01 ranked q=nurse location=Maine: unreadable");
   else{const f=rows(r).filter((j)=>j.country==="MX").length;
