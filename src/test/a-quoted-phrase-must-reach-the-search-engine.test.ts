@@ -25,7 +25,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { sanitizeTerm } from "../../supabase/functions/_shared/location-terms";
-import { salaryFromQueryText, SALARY_IN_QUERY } from "../../supabase/functions/job-board/filters.ts";
+import { salaryTokenInQuery } from "../../supabase/functions/job-board/filters.ts";
 import { expandQuery } from "../../supabase/functions/job-board/search-alias";
 import { scoreTitle, splitExclusions } from "../../supabase/functions/job-board/search-routing";
 
@@ -56,8 +56,8 @@ const pipeline = (() => {
     "return { ftsSafe, ftsQuery, queryTerms, phraseText };",
   ].join("\n");
   const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return new Function("sanitizeTerm", "salaryFromQueryText", "SALARY_IN_QUERY", js)(
-    sanitizeTerm, salaryFromQueryText, SALARY_IN_QUERY,
+  return new Function("sanitizeTerm", "salaryTokenInQuery", js)(
+    sanitizeTerm, salaryTokenInQuery,
   ) as {
     ftsSafe: (t: string) => string;
     ftsQuery: (t: string) => string;

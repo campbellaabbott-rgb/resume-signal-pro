@@ -444,18 +444,48 @@ export function canonicalInstant(raw: unknown): string | null {
  * salary, and guessing wrong hides the entire board behind a filter nobody
  * asked for.
  */
-export const SALARY_IN_QUERY = /^\$?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?k?)\+?$/i;
+/** ISO 3166-1 alpha-2, the 249 assigned codes, plus XK (Kosovo, in common use). */
+export const ISO_ALPHA2: ReadonlySet<string> = new Set(
+  ("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
+    "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
+    "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
+    "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT " +
+    "MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
+    "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG " +
+    "UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW").split(" "),
+);
+/** The usual wrong spelling, read as the code it means. */
+export const COUNTRY_ALIASES: ReadonlyMap<string, string> = new Map([["UK", "GB"]]);
 
-export function salaryFromQueryText(raw: unknown): number | null {
+export const SALARY_IN_QUERY =/^\$?(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?k?)\+?$/i;
+
+/**
+ * Only a figure that cannot be anything else is money: a $, a thousands
+ * comma, a trailing +, or a k (never 401k), or a bare number of six digits or
+ * more. "new grad 2026", "1099 sales", "rtx 4090" and a zip code are not pay
+ * floors (2,026 / 1,099 / 4,090 / 94,105). Rationale: docs/job-board-index-notes.md#n430-a-pay-figure-must-be-unambiguous
+ */
+function unambiguousMoney(t: string, b: string): boolean {
+  if (t.startsWith("$") || t.endsWith("+") || b.includes(",")) return true;
+  if (b.endsWith("k")) return b !== "401k";
+  return /^\d{6,}$/.test(b);
+}
+
+/** The pay figure in the search box: the floor, and exactly the token it came from (L8-03). */
+export function salaryTokenInQuery(raw: unknown): { floor: number; token: string } | null {
   for (const t of String(raw ?? "").toLowerCase().split(/\s+/)) {
     const m = SALARY_IN_QUERY.exec(t);
-    if (!m) continue;
+    if (!m || !unambiguousMoney(t, m[1])) continue;
     const b = m[1];
     const n = b.endsWith("k") ? Number(b.slice(0, -1)) * 1_000 : Number(b.replace(/,/g, ""));
     if (!Number.isFinite(n) || n < 1_000 || n > 2_000_000) continue;
-    return n;
+    return { floor: n, token: t };
   }
   return null;
+}
+
+export function salaryFromQueryText(raw: unknown): number | null {
+  return salaryTokenInQuery(raw)?.floor ?? null;
 }
 
 export function normalizeFilters(
@@ -471,20 +501,24 @@ export function normalizeFilters(
   // Five. Country is cheap by comparison (an indexed equality per member) but
   // US-heavy sets are not, and nothing on screen will offer more than a handful.
   const COUNTRY_LIMIT = 5;
-  const countryList = (Array.isArray(body.country) ? body.country : String(body.country ?? "").split(","))
-    .map((c) => String(c ?? "").trim())
-    .filter((c) => /^[A-Za-z]{2}$/.test(c))
-    .map((c) => c.toUpperCase());
+  // ISO-3166 alpha-2, with "UK" read as GB: "XX" or "UK" matched no row and
+  // answered 0 jobs with nothing named (L8-10). An unknown code is dropped and named.
+  const countrySent = (Array.isArray(body.country) ? body.country : String(body.country ?? "").split(","))
+    .map((c) => String(c ?? "").trim().toUpperCase())
+    .filter(Boolean)
+    .map((c) => COUNTRY_ALIASES.get(c) ?? c);
+  const countryList = countrySent.filter((c) => ISO_ALPHA2.has(c));
   const countryAsked = [...new Set(countryList)];
   const country = countryAsked.length
     ? countryAsked.slice(0, COUNTRY_LIMIT).join(",")
     : null;
+  if (countryList.length !== countrySent.length) ignored.push("country");
   // The vendor rule, not the silent slice: a truncated list is REPORTED. Asking
   // for six countries, getting five, and being told all six applied reads as
   // "the board carries nothing in the sixth" — the same shape as the
   // maxAgeDays clamp incident. Only API/URL callers can exceed the cap (the UI
   // stops at five), and the API caller is exactly who ignoredFilters exists for.
-  if (sent(body.country) && (!country || countryAsked.length > COUNTRY_LIMIT)) ignored.push("country");
+  if (sent(body.country) && (!country || countryAsked.length > COUNTRY_LIMIT) && !ignored.includes("country")) ignored.push("country");
 
   // MULTI-SELECT, and the trimming is load-bearing rather than tidy: the SQL
   // splits on a BARE comma and does not trim, so " design , legal " matched
@@ -779,7 +813,8 @@ export function normalizeFilters(
   if (sent(body.vendors) && !sent(body.vendor)) ignored.push("vendors");
 
   const ageN = Number(body.maxAgeDays);
-  const maxAgeDays = Number.isFinite(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;
+  // Whole days only: the RPC binds an integer, and 1.5 dropped relevance ranking with 22P02 (L13-68).
+  const maxAgeDays = Number.isInteger(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;
   if (sent(body.maxAgeDays) && maxAgeDays === null && ageN !== 0) ignored.push("maxAgeDays");
   // A CLAMP IS A NARROWING AND HAS TO BE SAID. maxAgeDays:90, :365 and :30 all
   // returned identical results with nothing in the body admitting the window
@@ -787,7 +822,7 @@ export function normalizeFilters(
   // value is non-null and therefore "honoured". A caller asking for 90 days is
   // told nothing and reasonably concludes the board has no older postings,
   // rather than that it declined to look.
-  const maxAgeClamped = Number.isFinite(ageN) && ageN > 30;
+  const maxAgeClamped = Number.isInteger(ageN) && ageN > 30;
 
   // An unknown company token is not invalid — it matches nothing, and a truthful
   // empty result is the correct answer to "jobs at a company we don't carry".

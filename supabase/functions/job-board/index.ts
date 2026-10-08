@@ -84,7 +84,7 @@ import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, SALARY_IN_QUERY, WIDENING_FILTERS } from "./filters.ts";
+import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
 import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -7278,9 +7278,8 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
   // The money token is lifted into the salary filter by normalizeFilters, so
   // it must not also be ANDed against every title — that returned zero for
   // "100k engineer".
-  const money = salaryFromQueryText(raw) !== null
-    ? String(raw ?? "").toLowerCase().split(/\s+/).find((t) => SALARY_IN_QUERY.test(t)) ?? null
-    : null;
+  // Exactly the token the floor came from, never the first bare number before it (L8-03).
+  const money = salaryTokenInQuery(raw)?.token ?? null;
   const kept = all.filter((t) => !QUERY_FILLER.has(t) && t !== money);
   if (kept.length === 0) {
     // Rationale: docs/job-board-index-notes.md#n190-money-null-return-terms-drop
