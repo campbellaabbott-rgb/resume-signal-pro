@@ -17,16 +17,32 @@
 import { bearerOf } from "./service-caller.ts";
 
 type AuthLike = {
-  getUser: (jwt: string) => Promise<{ data?: { user?: { email?: string | null } | null } | null; error?: unknown }>;
+  getUser: (jwt: string) => Promise<{ data?: { user?: { id?: string | null; email?: string | null } | null } | null; error?: unknown }>;
 };
 
 export async function signedInEmail(auth: AuthLike, headers: Headers, publishableKey: string): Promise<string | null> {
+  return (await signedInUser(auth, headers, publishableKey))?.email ?? null;
+}
+
+/**
+ * The same verified caller, with the auth user id beside the address: the id
+ * is what entitlement is read by (pro_entitlement_rows, agent_subscription_rows)
+ * and what a subscription checkout stamps on the plan it sells. null for an
+ * anonymous request or a token the auth server refuses.
+ */
+export async function signedInUser(
+  auth: AuthLike,
+  headers: Headers,
+  publishableKey: string,
+): Promise<{ id: string; email: string } | null> {
   const token = bearerOf(headers);
   if (!token || (publishableKey && token === publishableKey)) return null;
   try {
     const { data } = await auth.getUser(token);
     const email = data?.user?.email;
-    return typeof email === "string" && email.includes("@") ? email.trim().toLowerCase() : null;
+    const id = data?.user?.id;
+    if (typeof email !== "string" || !email.includes("@")) return null;
+    return { id: typeof id === "string" ? id : "", email: email.trim().toLowerCase() };
   } catch {
     return null;
   }

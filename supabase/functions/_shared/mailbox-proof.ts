@@ -23,8 +23,9 @@
  *
  *   2. Email confirmation, once the owner has really turned it on. Two
  *      conditions, both required:
- *        - the owner set EMAIL_CONFIRMED_SINCE (an ISO time: the moment
- *          confirmation was switched on), and
+ *        - the switch is set: mailbox_proof_settings.confirmation_required_since
+ *          holds the moment confirmation was switched on (see
+ *          confirmationRequiredSince below), and
  *        - the auth server says so itself: /auth/v1/settings answers
  *          mailer_autoconfirm = false (read here, cached ten minutes; any
  *          failure to read it is "still auto-confirming").
@@ -33,8 +34,17 @@
  *      invite, email_change), is at or after that moment. Accounts that were
  *      auto-confirmed before it stay unproven until they sign in with a link.
  *
+ * ONE SWITCH FOR EVERY CALLER (wave 2, 2026-10-08). There used to be two:
+ * this module read an EMAIL_CONFIRMED_SINCE secret, while the agent gates
+ * (account_mailbox_proven, 20261005130000) read the database row. An owner who
+ * set one and not the other turned the proof on for half the platform. The
+ * row is now the switch here too. The secret is read ONLY when the row cannot
+ * be read at all (no client, an error, no row); a row that answers NULL means
+ * "not switched on", whatever the secret says.
+ *
  * THE CLOSING STEP IS THE OWNER'S: turn on "Confirm email" in the project's
- * auth settings, then set the EMAIL_CONFIRMED_SINCE secret to that time.
+ * auth settings, then run
+ *   UPDATE public.mailbox_proof_settings SET confirmation_required_since = now();
  * Until both happen, a password account spends only purchases it holds or
  * claimed (see _shared/scan-credits.ts), never an address's pool.
  *
@@ -124,13 +134,47 @@ export function confirmedSinceEnforcement(
   return sessionAuthMethods(jwt).some((m) => MAILBOX_AMR_METHODS.has(m.method) && m.at != null && m.at * 1000 >= since);
 }
 
+/** A service-role client: only .from(t).select(c).eq(k, v).maybeSingle() is used. */
+// deno-lint-ignore no-explicit-any
+export type MailboxSwitchDb = { from: (table: string) => any };
+
 export type MailboxEnv = {
-  /** EMAIL_CONFIRMED_SINCE: when the owner switched email confirmation on. */
+  /** The client whose mailbox_proof_settings row IS the switch. */
+  db?: MailboxSwitchDb | null;
+  /**
+   * EMAIL_CONFIRMED_SINCE: the documented FALLBACK, read only when the row
+   * cannot be read. Never consulted when the row answers, even NULL.
+   */
   confirmedSince?: string | null;
   supabaseUrl?: string;
   anonKey?: string;
   fetchImpl?: typeof fetch;
 };
+
+/**
+ * WHEN SIGN-UP CONFIRMATION WAS SWITCHED ON, from the one row every caller
+ * reads (public.mailbox_proof_settings, id = true). A row that answers is the
+ * answer, NULL included. Only a read that fails -- no client, an error, the
+ * row missing -- falls back to `env.confirmedSince`. Read on every call (one
+ * primary-key row), so the owner's UPDATE takes effect on the next request.
+ */
+export async function confirmationRequiredSince(env: MailboxEnv): Promise<string | null> {
+  const fallback = typeof env.confirmedSince === "string" && env.confirmedSince.trim() ? env.confirmedSince.trim() : null;
+  if (!env.db) return fallback;
+  try {
+    const { data, error } = await env.db
+      .from("mailbox_proof_settings")
+      .select("confirmation_required_since")
+      .eq("id", true)
+      .maybeSingle();
+    if (error || !data) return fallback;
+    const raw = (data as { confirmation_required_since?: unknown }).confirmation_required_since;
+    const iso = raw instanceof Date ? raw.toISOString() : typeof raw === "string" ? raw : "";
+    return Number.isFinite(Date.parse(iso)) ? iso : null;
+  } catch {
+    return fallback;
+  }
+}
 
 let autoconfirmCache: { off: boolean; at: number } | null = null;
 const AUTOCONFIRM_TTL_MS = 10 * 60 * 1000;
@@ -179,6 +223,7 @@ export async function provenMailbox(
   const email = normalize(user?.email);
   if (!user?.id || !email.includes("@")) return null;
   if (verifiedByProvider(user, jwt)) return email;
-  if (confirmedSinceEnforcement(user, jwt, env.confirmedSince) && await autoconfirmIsOff(env)) return email;
+  const since = await confirmationRequiredSince(env);
+  if (confirmedSinceEnforcement(user, jwt, since) && await autoconfirmIsOff(env)) return email;
   return null;
 }

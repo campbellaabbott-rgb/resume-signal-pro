@@ -1,8 +1,15 @@
 // The Entry-Level Index — a public page ranking who's actually hiring people
-// early in their careers, computed live from the board's own postings (the
+// early in their careers, counted from the board's own postings (the
 // experience band each posting's title/description states, from companies'
 // official ATS feeds). Every number is real; when a figure can't be computed
 // yet the section explains itself instead of showing a fake.
+//
+// IT SAYS WHEN IT COUNTED. The page told readers its counts were "computed
+// live from the board" and "from the live posting table at page load" while it
+// served the hourly stats cache and never read the cache's computed_at or
+// stale_parts (register L2-11). It now prints the hour the figures were
+// counted, names any part the last refresh could not recompute, and says
+// "counted when this page loaded" only on the path where that is true.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -11,6 +18,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { companyLanderPath } from "@/lib/public-href";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { HBarList } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
@@ -49,9 +57,21 @@ const CAT_LABELS: Record<string, string> = {
   admin: "Administrative", other: "Other",
 };
 
+/** The cache parts this page reads, and how a stale one is named to a reader. */
+const ENTRY_PARTS: Record<string, string> = {
+  entry_stats: "the early-career totals",
+  entry_companies: "the board ranking",
+};
+
+/** Where the figures on the page came from: the hourly cache (with its stamp
+ *  and any part the last run could not recompute), or a live count made when
+ *  the page loaded. Null until something has been read. */
+type Basis = { kind: "cache"; at: string | null; stale: string[] } | { kind: "live" };
+
 export default function EntryLevelIndex() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [basis, setBasis] = useState<Basis | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -63,6 +83,10 @@ export default function EntryLevelIndex() {
         if (cache && cache.entry_stats && Array.isArray(cache.entry_companies)) {
           setStats(cache.entry_stats as Stats);
           setLeaders(cache.entry_companies as Leader[]);
+          const stale = Array.isArray(cache.stale_parts)
+            ? (cache.stale_parts as unknown[]).filter((x): x is string => typeof x === "string" && x in ENTRY_PARTS)
+            : [];
+          setBasis({ kind: "cache", at: typeof cache.computed_at === "string" ? cache.computed_at : null, stale });
           return;
         }
         const [s, l] = await Promise.all([
@@ -78,6 +102,7 @@ export default function EntryLevelIndex() {
         }
         if (srow) setStats(srow);
         if (Array.isArray(l.data)) setLeaders(l.data as Leader[]);
+        if (srow || Array.isArray(l.data)) setBasis({ kind: "live" });
       } catch {
         /* RPCs not deployed yet — page still renders its explainer */
       }
@@ -117,9 +142,20 @@ export default function EntryLevelIndex() {
               the same defect, which is that this sentence held its own copy of
               a list. It interpolates now, and what it interpolates is the
               serving set, so neither direction can come back. */}
-          Counted live from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — never an aggregator
+          Counted from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — never an aggregator
           or a scrape, and no dated posting older than 30 days.
         </p>
+        {basis?.kind === "cache" && basis.at && (
+          <p className="text-xs text-muted-foreground -mt-6 mb-8" data-basis="cache">
+            Counted {new Date(basis.at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}, refreshed hourly.
+            {basis.stale.length > 0 && (
+              <> The last refresh could not recompute {basis.stale.map((k) => ENTRY_PARTS[k]).join(" or ")}, so {basis.stale.length > 1 ? "those are" : "that is"} from an earlier hour.</>
+            )}
+          </p>
+        )}
+        {basis?.kind === "live" && (
+          <p className="text-xs text-muted-foreground -mt-6 mb-8" data-basis="live">Counted when this page loaded.</p>
+        )}
 
         {/* Headline stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
@@ -159,7 +195,7 @@ export default function EntryLevelIndex() {
               {leaders.map((c, i) => (
                 <Link
                   key={c.company_token}
-                  to={`/jobs/company/${c.company_token}?experience=entry`}
+                  to={companyLanderPath(c.company_token, "experience=entry")}
                   className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors ${i > 0 ? "border-t border-border/60" : ""}`}
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
@@ -221,7 +257,7 @@ export default function EntryLevelIndex() {
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
             <li>· A role counts as entry-level when its own title or stated requirements say so — internship, junior, graduate, or ≤2 years' experience. We classify from the posting's text; we never guess from the salary or the team.</li>
             <li>· Every posting comes straight from the company's official applicant-tracking feed, is dropped after 30 days, and is re-checked live when you click Apply.</li>
-            <li>· Numbers on this page are computed live from the board — the same postings you can browse and apply to.</li>
+            <li>· Numbers on this page are counted from the board once an hour — the same postings you can browse and apply to — and the time of the last count is printed at the top.</li>
           </ul>
           <div className="mt-4 flex flex-wrap gap-4">
             <Link to="/jobs?experience=entry" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
@@ -239,7 +275,7 @@ export default function EntryLevelIndex() {
           items={[
             { term: "Entry-level classification", method: "Detected from each posting's own title and description (explicit level markers and stated year requirements). Postings that can't be placed are labeled 'unspecified' and never counted as entry-level." },
             { term: "Daily label audit", method: "Every day we sample postings and cross-check the entry label against the posting's own text — an 'entry' posting whose description demands 3+ years is a contradiction: it's demoted on the spot and the rate is tracked, so this page's counts can't quietly drift." },
-            { term: "Counts", method: "Exact counts from the live posting table at page load — the same rows the job board serves, under the same 30-day freshness cap." },
+            { term: "Counts", method: "Exact counts from the posting table, recounted every hour — the same rows the job board serves, under the same 30-day freshness cap. The hour of the last count is printed at the top of the page, and a figure the last refresh could not recompute is named there." },
           ]}
         />
       </main>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,11 @@ interface PayoutRequestProps {
   pendingPayout: number;
   totalPaidOut: number;
   minimumPayout?: number;
-  onRequestPayout?: () => Promise<void>;
+  /**
+   * Files the request on the server. Resolves 'requested' when a record was
+   * written, 'already' when one is open; throws with the reason otherwise.
+   */
+  onRequestPayout?: () => Promise<'requested' | 'already'>;
 }
 
 export function PayoutRequest({ 
@@ -26,6 +31,7 @@ export function PayoutRequest({
   minimumPayout = 2500, // $25 minimum
   onRequestPayout 
 }: PayoutRequestProps) {
+  const { t } = useTranslation();
   const [isRequesting, setIsRequesting] = useState(false);
   const [hasRequestedThisMonth, setHasRequestedThisMonth] = useState(false);
 
@@ -39,18 +45,20 @@ export function PayoutRequest({
     }).format(cents / 100);
   };
 
+  // A REQUEST IS SAID TO BE MADE ONLY WHEN THE SERVER MADE IT (register
+  // L13-63). This toasted "submitted, payment within 5-7 business days" with
+  // no handler at all -- nothing was recorded and nobody was told.
   const handleRequestPayout = async () => {
-    if (!canRequestPayout) return;
-    
+    if (!canRequestPayout || !onRequestPayout) return;
+
     setIsRequesting(true);
     try {
-      if (onRequestPayout) {
-        await onRequestPayout();
-      }
+      const outcome = await onRequestPayout();
       setHasRequestedThisMonth(true);
-      toast.success('Payout request submitted! You\'ll receive payment within 5-7 business days.');
+      if (outcome === 'already') toast.info(t('affiliates.payout.already', 'A payout request is already open. We will email you about it.'));
+      else toast.success(t('affiliates.payout.received', 'Payout request received. We will email you to arrange payment.'));
     } catch (error) {
-      toast.error('Failed to request payout. Please try again.');
+      toast.error(error instanceof Error && error.message ? error.message : t('affiliates.payout.failed', 'Could not request the payout. Please try again.'));
     } finally {
       setIsRequesting(false);
     }
@@ -106,8 +114,8 @@ export function PayoutRequest({
             <div className="flex items-center gap-2 p-3 bg-blue-500/10 rounded-lg text-blue-600">
               <CheckCircle className="h-5 w-5" />
               <div>
-                <p className="font-medium">Payout Requested</p>
-                <p className="text-sm opacity-80">Processing within 5-7 business days</p>
+                <p className="font-medium">{t('affiliates.payout.requestedTitle', 'Payout requested')}</p>
+                <p className="text-sm opacity-80">{t('affiliates.payout.requestedBody', 'We will email you to arrange payment.')}</p>
               </div>
             </div>
           ) : canRequestPayout ? (

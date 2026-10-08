@@ -40,7 +40,10 @@ import { MultiSelectFilter } from "@/components/board/MultiSelectFilter";
 import { markDeadForRobots, clearDeadForRobots } from "@/lib/seo-robots";
 import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
+import { bakedCompanyPrimary } from "@/lib/prerendered-head";
+import { foldName } from "../../supabase/functions/job-board/search-routing";
 import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
@@ -52,6 +55,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers, REAL_QUESTION_PREFIXES } from "@/components/apply/ApplicationAnswers";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
+import { SUBSCRIPTIONS } from "@/config/products";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
@@ -343,10 +347,22 @@ interface FillCurve {
   dated_n: number;
   undated_n: number;
   open_roles: number;
-  /** Roles taken down for good in the trailing 90 days (not relistings). */
+  /** Closure EVENTS in the trailing 90 days that were not re-listings. NOT a
+   *  count of roles: a posting that closed twice is two of them, and one that
+   *  closed and is serving again today is one. Never printed as "roles". */
   fills_90d: number;
-  /** Relistings in the trailing 90 days. A FLOOR, for the reason above. */
+  /** Same-title re-listing EVENTS in the trailing 90 days. A FLOOR, for the
+   *  reason above; printed only as "re-listed the same title N times". */
   relists_90d: number;
+  /** ROLES taken down in the trailing 90 days and not brought back: closed
+   *  exactly once, not superseded, not serving again today (20261008110000).
+   *  A CEILING -- a re-list under a new id is invisible to us. Null on a row
+   *  from a deploy that predates the column. This is the number every
+   *  "come off the board and stay off" sentence prints. */
+  filled_roles_90d: number | null;
+  /** ROLES that came back in the same window: closed more than once, superseded,
+   *  or serving again today. A FLOOR. Null on a row that predates the column. */
+  relisted_roles_90d: number | null;
   ageouts_90d: number;
   fill_through: number;
   /** Relisting share of all takedowns, 0..1. A FLOOR. */
@@ -367,7 +383,8 @@ interface FillCurve {
 // stays true on a record too thin to support a rate.
 const ACTIVELY_HIRING_MIN_CLOSED = 3;
 // The window those closures are counted over. get_company_fill_curve's
-// fills_90d is `closed_at >= now() - interval '90 days'`; every basis sentence
+// filled_roles_90d and fills_90d are both `closed_at >= now() - interval
+// '90 days'`; every basis sentence
 // prints this beside {{min}}, because "at least three roles down" with no
 // window reads as an all-time count and it is not one. The guard pins this
 // constant to the migration's interval.
@@ -430,20 +447,25 @@ export type HiringRecordVerdict = "closes" | "no-pattern" | "unknown";
  * function or through `isActivelyHiring` (which is `=== "closes"` and nothing
  * else), so a fourth surface cannot quietly re-derive a two-state answer.
  *
- * relists_90d is a FLOOR — the collector logs one relisted title per company per
+ * relisted_roles_90d is a FLOOR — the collector logs one relisted title per company per
  * day and deletes the rest — so requiring it to stay at or under the fills errs
  * towards DISQUALIFYING, the safe direction for a claim that speaks well of an
  * employer. That is a "no-pattern", not an "unknown": we watched the roles come
  * back, which is a reading and not a gap.
  */
 export function hiringRecordVerdict(
-  h: Pick<FillCurve, "fills_90d" | "relists_90d"> | null | undefined,
+  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> | null | undefined,
 ): HiringRecordVerdict {
   // No row: either the batch is still in flight, or this token was never asked
   // (the fetch caps at 200). Both are our side.
   if (!h) return "unknown";
-  const fills = h.fills_90d;
-  const relists = h.relists_90d;
+  // ROLES, NOT EVENTS (20261008110000). The bar read fills_90d, a count of
+  // closure events: Johnson & Johnson cleared it on 2,499 "roles taken down for
+  // good" when at most 1,799 roles came down and stayed down and 403 came back.
+  // A row from a deploy without the role columns arrives with them null, and
+  // the check below turns that into "unknown" -- our deploy, not the employer.
+  const fills = h.filled_roles_90d ?? NaN;
+  const relists = h.relisted_roles_90d ?? NaN;
   // A build that stops returning the columns is our instrument failing, and is
   // a statement about the deploy rather than about the employer.
   if (!Number.isFinite(fills) || !Number.isFinite(relists)) return "unknown";
@@ -454,6 +476,34 @@ export function hiringRecordVerdict(
   if (fills + relists <= 0) return "unknown";
   if (fills >= ACTIVELY_HIRING_MIN_CLOSED && relists <= fills) return "closes";
   return "no-pattern";
+}
+
+/** The floor the role caution needs before it speaks: ten roles that came back. */
+export const RELIST_CAUTION_MIN = 10;
+
+/**
+ * THE ROLE CAUTION, READ ONCE. True when the roles that came back
+ * (relisted_roles_90d, a FLOOR) outnumber the roles that came down and stayed
+ * down (filled_roles_90d) and reach RELIST_CAUTION_MIN. The detail pane, the
+ * compare drawer and the card slot all ask this function, so no surface can
+ * praise an employer another surface is warning about: when it is true the
+ * verdict cannot be "closes" (relists > fills), so the card's praise branch,
+ * gated on that verdict, cannot fire beside it.
+ *
+ * WHY THE CARD NEEDED IT. The card's caution read relists_90d (same-title
+ * re-list EVENTS) and its "Fills fast" branch asked only for three filled
+ * roles, trusting arithmetic that held while both sides counted events (a
+ * caution at three events left fewer than three, so fills >= 3 implied
+ * relists <= fills). Once the verdict counted ROLES (20261008110000) a card
+ * with 5 roles down, 20 back and one re-list event printed "Fills fast" while
+ * its detail pane warned "re-lists roles often (at least 20x)".
+ */
+export function relistCaution(
+  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> | null | undefined,
+): boolean {
+  if (!h) return false;
+  const back = h.relisted_roles_90d ?? 0;
+  return back > (h.filled_roles_90d ?? 0) && back >= RELIST_CAUTION_MIN;
 }
 
 /**
@@ -962,6 +1012,10 @@ function normaliseCurve(row: FillCurve): FillCurve {
     open_roles: num(row.open_roles),
     fills_90d: num(row.fills_90d),
     relists_90d: num(row.relists_90d),
+    // Null stays null: an absent column is a deploy gap, and coercing it to 0
+    // would read as "we watched and nothing stayed down".
+    filled_roles_90d: row.filled_roles_90d === null || row.filled_roles_90d === undefined ? null : num(row.filled_roles_90d),
+    relisted_roles_90d: row.relisted_roles_90d === null || row.relisted_roles_90d === undefined ? null : num(row.relisted_roles_90d),
     ageouts_90d: num(row.ageouts_90d),
     fill_through: num(row.fill_through),
     churn: num(row.churn),
@@ -1015,10 +1069,16 @@ interface FieldCurve {
  * since it learned the cap. The client discarded the whole payload and printed
  * "no longer live — it was filled or taken down", which for an aged-out posting
  * is not merely vague, it is false.
+ *
+ * A THIRD FACT, unlisted: a bare 404 (the row is gone and no closure was
+ * recorded) or a 200 carrying only a description (the row is hidden while the
+ * employer still serves it). Neither is evidence the employer filled or took
+ * anything down, so neither may say so — it is "no longer listed HERE".
  */
 type DeadLink =
   | { kind: "closed"; title: string | null; company: string | null }
-  | { kind: "agedOut"; title: string | null; company: string | null; postedAt: string | null; capDays: number | null };
+  | { kind: "agedOut"; title: string | null; company: string | null; postedAt: string | null; capDays: number | null }
+  | { kind: "unlisted"; description: string | null };
 
 // Experience bands mirror EXPERIENCE_BANDS in the edge function's experience.ts.
 // The year range is baked into each localized label (jobsPage.experience.*).
@@ -1802,13 +1862,22 @@ function mergeCompanyOptions(
   remote: Array<{ token: string; name: string; open?: number; tokens?: string[] }>,
   query: string,
 ): Array<{ token: string; name: string; open?: number; tokens?: string[] }> {
-  const q = query.toLowerCase();
+  // FOLDED, both sides: "dominos" found nothing although Domino's had 21,531
+  // open roles, because "domino's".includes("dominos") is false. foldName is
+  // the server's own rule (accents, case and punctuation dropped).
+  // The fold keeps only [a-z0-9]: a query in another script (or punctuation
+  // alone) folds to "", which every name "includes". Such a query matches on
+  // its own lower-cased spelling instead, so it finds names that contain it.
+  const q = foldName(query);
+  const raw = query.trim().toLowerCase();
+  const matches = (name: string) =>
+    q ? foldName(name).includes(q) || name.toLowerCase().includes(raw) : name.toLowerCase().includes(raw);
   // `tokens` travels with each option because `open` is the SUM across a
   // merged employer's sub-boards — see scopeTokensOf below.
   const out: Array<{ token: string; name: string; open?: number; tokens?: string[] }> = [];
   const seen = new Set<string>();
   for (const c of head) {
-    if (!c?.name || !c.name.toLowerCase().includes(q) || seen.has(c.token)) continue;
+    if (!c?.name || !matches(c.name) || seen.has(c.token)) continue;
     seen.add(c.token); out.push(c);
   }
   for (const c of remote) {
@@ -2337,7 +2406,61 @@ function JobAgentHandoff({ job, compact, track }: {
   );
 }
 
+/** A fresh id per mounted board, written into every history entry the board
+ *  writes, so a Back/Forward can tell its own entries from another page's. */
+const newBoardId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+/** The address the mounted board last wrote, so a fragment jump on it (the
+ *  skip link) reads as the board's own entry, not another page's. */
+let boardAddress: { id: string; at: string } | null = null;
+/** Every history entry the board writes: stamped with its id, and recorded. */
+function writeBoardEntry(mode: "push" | "replace", boardId: string, url: string, job?: string) {
+  const state = job ? { job, rbBoard: boardId } : { rbBoard: boardId };
+  if (mode === "push") window.history.pushState(state, "", url);
+  else window.history.replaceState(state, "", url);
+  boardAddress = { id: boardId, at: `${window.location.pathname}${window.location.search}` };
+}
+
+/**
+ * ONE ADDRESS, ONE BOARD.
+ *
+ * /jobs, /jobs/company/:token and /jobs/field/:category all render this page,
+ * and React Router reuses the instance across them. Every filter is seeded
+ * once, in a useState initialiser, so an in-app link from one to another (a
+ * card's employer, the panel's employer, "Also hiring in", the header's Jobs)
+ * changed the address and nothing else: no request, no lander panels, and the
+ * URL-sync effect then wrote the OLD board's filters back over the new address.
+ *
+ * So the board remounts on every navigation the app makes (push/replace), and
+ * on a Back/Forward that lands on an entry this board did not write. A pop
+ * onto its OWN entry (closing the detail panel, the stale-survivor rewrite)
+ * keeps the instance: the board stamps each entry it writes with its id. So
+ * does a fragment jump on the address the board last wrote (index.html's skip
+ * link): a stateless entry that differs only by its hash.
+ */
 export default function Jobs() {
+  const location = useLocation();
+  const navType = useNavigationType();
+  const mounted = useRef<{ loc: typeof location; n: number; id: string } | null>(null);
+  if (mounted.current === null) {
+    mounted.current = { loc: location, n: 0, id: newBoardId() };
+  } else if (mounted.current.loc !== location) {
+    const st = typeof window !== "undefined" ? (window.history.state as { rbBoard?: unknown } | null) : null;
+    // A navigation OFF the board (the free scan at /#upload, /auth) is the
+    // router's to unmount, not a new board to start.
+    const offBoard = !/^\/jobs(?:\/(?:field|company)\/[^/]+)?\/?$/.test(location.pathname);
+    const pop = navType === "POP";
+    const fragmentJump = pop && st == null && location.hash !== ""
+      && boardAddress?.id === mounted.current.id && boardAddress.at === `${location.pathname}${location.search}`;
+    const ownEntry = offBoard || fragmentJump || (pop && st?.rbBoard === mounted.current.id);
+    mounted.current = ownEntry
+      ? { ...mounted.current, loc: location }
+      : { loc: location, n: mounted.current.n + 1, id: newBoardId() };
+  }
+  return <JobsBoard key={mounted.current.n} boardId={mounted.current.id} />;
+}
+
+function JobsBoard({ boardId }: { boardId: string }) {
   const { t, i18n } = useTranslation();
   // The FX vintage as a reader sees it, once per language rather than five times
   // per render. The constant itself stays ISO — it is the page's half of a mirror
@@ -2482,6 +2605,10 @@ export default function Jobs() {
   // with the board-wide total presented as Foo's (bug sweep 2026-07-26).
   const landerCompany = routeCompany && company === routeCompany ? routeCompany : undefined;
   const landerCategory = routeCategory && category === routeCategory ? routeCategory : undefined;
+  // A secondary board's lander consolidates into the employer's primary board:
+  // the bake says so in this address's own canonical, read before React writes
+  // over it, so the rendered head names the same page (prerendered-head.ts).
+  const [bakedPrimary] = useState(() => (routeCompany ? bakedCompanyPrimary(routeCompany) : null));
   // Arrived from the Explore page? Captured once on mount (the URL-sync effect
   // strips unknown params), so we can offer a "Back to Explore" link instead
   // of leaving the user on a filtered board with no way back.
@@ -2753,7 +2880,9 @@ export default function Jobs() {
   const [nlOpen, setNlOpen] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlLoading, setNlLoading] = useState(false);
-  const [nlResult, setNlResult] = useState<{ interpreted: string[]; notMapped: string[] } | null>(null);
+  // `applied` / `dropped`: the filters nl-search kept and the ones its
+  // validator REFUSED, by wire name (null from a build that sends neither).
+  const [nlResult, setNlResult] = useState<{ interpreted: string[]; notMapped: string[]; applied: string[] | null; dropped: string[] } | null>(null);
   const applyNlSearch = useCallback(async (override?: string) => {
     const raw = (override ?? nlQuery).trim();
     if (raw.length < 3 || nlLoading) return;
@@ -2828,8 +2957,15 @@ export default function Jobs() {
       // paying first" → salary sort. Reset like the other fields.
       setActivelyHiringOnly(f.activelyHiring === true);
       setSortMode(f.sort === "salary" ? "salary" : "newest");
-      const d = data as { interpreted?: string[]; notMapped?: string[] };
-      setNlResult({ interpreted: Array.isArray(d.interpreted) ? d.interpreted : [], notMapped: Array.isArray(d.notMapped) ? d.notMapped : [] });
+      const d = data as { interpreted?: string[]; notMapped?: string[]; applied?: unknown; dropped?: unknown };
+      const names = (v: unknown): string[] | null =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x !== "") : null;
+      setNlResult({
+        interpreted: Array.isArray(d.interpreted) ? d.interpreted : [],
+        notMapped: Array.isArray(d.notMapped) ? d.notMapped : [],
+        applied: names(d.applied),
+        dropped: names(d.dropped) ?? [],
+      });
       setNlOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch { toast({ title: t("jobsPage.nlFailed", "Couldn't read that — try the filters below instead.") }); }
@@ -3107,6 +3243,9 @@ export default function Jobs() {
     return () => { alive = false; };
   }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
+  // The filter body the on-screen reply was asked for (see landerHiringAnswer:
+  // a sentence about a reply must not speak for a question asked since).
+  const [dataFilterSig, setDataFilterSig] = useState<string | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
   // THE TRAY COUNTS ROWS THAT ARE ON THE PAGE. compareIds index `jobs`, and a
   // refetch, a narrowed filter or Clear all can drop a compared row from the
@@ -3463,13 +3602,14 @@ export default function Jobs() {
     // Milestone moments: save #1 and save #12 are different situations — by
     // the 5th/12th save the user is assembling a PIPELINE, which is exactly
     // the workload batch prep and the Morning Queue exist for. The claims are
-    // factual (the trial is a real 7-day trial; the agent never auto-submits)
-    // and Pro users never see the pitch. Counts land on 5 and 12 once each.
+    // factual (the trial is real, offered once per customer, its length read
+    // from the checkout's own constant; the agent never auto-submits) and Pro
+    // users never see the pitch. Counts land on 5 and 12 once each.
     const savedCount = savedIds.size + 1;
     if (!isPro && (savedCount === 5 || savedCount === 12)) {
       toast({
         title: t("jobsPage.savedMilestone", "That's {{n}} jobs in your pipeline", { n: savedCount }),
-        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — 7-day free trial, and you always hit send yourself."),
+        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers, and you always hit send yourself.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
       });
     } else {
       toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
@@ -3728,7 +3868,10 @@ export default function Jobs() {
     // just clicked. With only the field bound, the kept unfiltered facet is
     // the answer and no probe is sent (controls guard F1).
     const activeFilters = !categoryOnly;
-    if (!activeFilters) { setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
+    // The bump retires a probe still in flight: clearing "nurse" before its
+    // probe answered let that reply pass the seq check and paint the nurse
+    // counts over the unfiltered board's chips.
+    if (!activeFilters) { ++catFacetSeq.current; setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
       try {
@@ -3933,6 +4076,7 @@ export default function Jobs() {
         // the body that was sent rather than from the filter state a later
         // render will read. Same write-before-setData rule as the facet above.
         coverageScopeRef.current = narrowingBodyKeys(body);
+        setDataFilterSig(JSON.stringify(boardFilterBody(filterState)));
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -4117,15 +4261,15 @@ export default function Jobs() {
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
     if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({}, "", `/jobs/company/${landerCompany}${landerQs ? `?${landerQs}` : ""}`);
+      writeBoardEntry("replace", boardId, companyLanderPath(landerCompany, landerQs));
       return;
     }
     if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
-      window.history.replaceState({}, "", `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
+      writeBoardEntry("replace", boardId, `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
-    window.history.replaceState({}, "", qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany]);
+    writeBoardEntry("replace", boardId, qs ? `/jobs?${qs}` : "/jobs");
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany, boardId]);
 
   // THE PER-SOURCE INVENTORY FOR THE VENDOR DROPDOWN, read once on mount from
   // the same stored facet row /explore's tiles come from (src/lib/board-facets).
@@ -4240,22 +4384,33 @@ export default function Jobs() {
   // into true is how a user who correctly reported a posting gone got told
   // "{{company}}'s own board still lists this role as open" — a confident claim
   // about a named employer built on a read that never reached the posting.
+  //
+  // AND OUR OWN FAILURE IS A FOURTH ANSWER, NOT A THIRD. `null` covered both a
+  // feed that pages short of its total AND a verify call that never answered
+  // (network, 5xx, budget refusal) — so a failed check printed "{{company}}'s
+  // feed lists more roles than it lets us read", blaming a named employer's
+  // feed for our outage. verifyJobOutcome keeps them apart; verifyJob keeps
+  // its three-valued contract for the apply path.
   const verifyJob = async (job: BoardJob): Promise<boolean | null> => {
+    const v = await verifyJobOutcome(job);
+    return v === "live" ? true : v === "closed" ? false : null;
+  };
+  const verifyJobOutcome = async (job: BoardJob): Promise<"live" | "closed" | "uncheckable" | "error"> => {
     try {
-      const { data } = await invokeBoard<unknown>({ action: "verify", ids: [job.id] }, { retry: false });
-      const live = (data as { live?: Record<string, boolean | null> })?.live;
-      if (!live || !(job.id in live)) return null; // no answer is not a confirmation
-      if (live[job.id] === null) return null;      // the board answered; our read could not reach the posting
+      const { data, error: verifyErr } = await invokeBoard<unknown>({ action: "verify", ids: [job.id] }, { retry: false });
+      const live = (data as { live?: Record<string, boolean | null> } | null)?.live;
+      if (verifyErr || !live || !(job.id in live)) return "error"; // no answer is not a confirmation, and not a fact about their feed
+      if (live[job.id] === null) return "uncheckable";             // the board answered; our read could not reach the posting
       if (live[job.id] === false) {
         setJobs((prev) => prev.filter((j) => j.id !== job.id));
         toast({
           title: t("jobsPage.postingClosedTitle", "That posting just closed"),
           description: t("jobsPage.postingClosedBody", "{{company}} took this one down. It's off the board now — the openings below are still live.", { company: job.company }),
         });
-        return false;
+        return "closed";
       }
-    } catch { return null; /* unverifiable — never blocks the user, and never claims a confirmation either */ }
-    return true;
+    } catch { return "error"; /* unverifiable — never blocks the user, and never claims a confirmation either */ }
+    return "live";
   };
 
   // P1 detail panel: click a card → slide-over with the full stored JD, fit,
@@ -4431,10 +4586,10 @@ export default function Jobs() {
       p.set("job", job.id);
       const url = `${window.location.pathname}?${p.toString()}`;
       if (urlMode === "push" && !detailPushed.current) {
-        window.history.pushState({ job: job.id }, "", url);
+        writeBoardEntry("push", boardId, url, job.id);
         detailPushed.current = true;
       } else {
-        window.history.replaceState({ job: job.id }, "", url);
+        writeBoardEntry("replace", boardId, url, job.id);
       }
     }
     // Verify-on-view: a posting not re-checked in 24h+ gets a background live
@@ -4508,11 +4663,31 @@ export default function Jobs() {
         const p = new URLSearchParams(window.location.search);
         p.delete("job");
         const qs = p.toString();
-        window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+        writeBoardEntry("replace", boardId, `${window.location.pathname}${qs ? `?${qs}` : ""}`);
       }
     }
     if (viaHistory) detailPushed.current = false;
   }, []);
+  /**
+   * Leave the board from inside the panel. closeDetail() closes a pushed panel
+   * with history.back(), which runs AFTER a link's push: the Back then landed
+   * on the old board's ?job= entry instead of the link's page. So the link
+   * takes the panel's own entry over (replace) when the panel pushed one, and
+   * a modified click (new tab) leaves the panel alone.
+   */
+  const leavePanelFor = (e: React.MouseEvent<HTMLAnchorElement>, to: string) => {
+    if (e.button !== 0 || e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    const overPushed = detailPushed.current && new URLSearchParams(window.location.search).has("job");
+    if (overPushed) {
+      detailPushed.current = false;
+      userClosed.current = true;
+      setDetailJob(null);
+    } else {
+      closeDetail(); // no pushed entry: it only rewrites this one, no traversal
+    }
+    navigate(to, { replace: overPushed });
+  };
   // S3 in-panel discovery: real similar-roles via the ranked search (title
   // stripped of seniority/location noise), not just same-category rows from
   // the currently loaded page. Same-company rows are excluded — the
@@ -4571,6 +4746,18 @@ export default function Jobs() {
   // (see the DeadLink type). Title present when we know the posting, so we can
   // offer a search for live siblings instead of a shrug.
   const [deadLink, setDeadLink] = useState<DeadLink | null>(null);
+  // The ?job= id whose read FAILED (not the server's answer about the posting):
+  // a retry is offered and nothing is claimed about the posting.
+  const [deepLinkFailed, setDeepLinkFailed] = useState<string | null>(null);
+  /** Take ?job= off the address once its banner is dismissed, so the dead or
+   *  failed link stops holding back desktop auto-select. */
+  const dropJobParam = useCallback(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (!p.has("job")) return;
+    p.delete("job");
+    const qs = p.toString();
+    writeBoardEntry("replace", boardId, `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  }, [boardId]);
 
   // GSC "Soft 404" (2026-08-07): a dead ?job= deep link renders this banner
   // under a head that says index,follow — the textbook soft-404 shape, and with
@@ -4587,21 +4774,10 @@ export default function Jobs() {
     markDeadForRobots(t("jobsPage.deadLinkDocTitle", "Posting no longer available — Resume Booster"));
     return () => { clearDeadForRobots(); document.title = prevTitle; };
   }, [deadLink, t]);
-  useEffect(() => {
-    if (deepLinkTried.current) return;
-    const id = new URLSearchParams(window.location.search).get("job");
-    if (!id) { deepLinkTried.current = true; return; }
-    const inList = jobs.find((j) => j.id === id);
-    if (inList) {
-      deepLinkTried.current = true;
-      void openDetail(inList, "none");
-    } else if (!loading) {
-      // Loaded list doesn't contain it — the detail action resolves the row.
-      // Gated on the FIRST LOAD SETTLING, not on jobs.length: a shared link
-      // whose other filters happen to match nothing left the visitor with a
-      // generic zero-state and no answer about the posting they clicked.
-      deepLinkTried.current = true;
-      (async () => {
+  // Resolves a ?job= id the loaded list does not contain. A callback, so the
+  // failed-read banner's Try again runs the same path the mount did.
+  const resolveDeepLink = useCallback(async (id: string) => {
+        setDeepLinkFailed(null);
         // Owns the panel from here — stamp the sequence so no concurrent
         // openDetail can paint its description under this posting.
         const seq = ++detailSeq.current;
@@ -4617,12 +4793,14 @@ export default function Jobs() {
           // daily allowance), a timeout or a 5xx says nothing about the posting,
           // and "no longer available" plus noindex on a LIVE posting is a false
           // claim to the reader and to every crawler that renders the URL. A
-          // 404 is the answer "no such posting"; anything else leaves the board
-          // as it is (the budget notice speaks for a refusal).
+          // 404 is the answer "no such posting HERE" — no closure was recorded,
+          // so it is unlisted, never "filled or taken down". A refusal leaves
+          // the board as it is (the budget notice speaks for it); any other
+          // failure offers a retry rather than silence.
           if (linkErr || !res) {
-            if (!(await readBoardBudgetRefusal(linkErr)) && httpStatusOf(linkErr) === 404) {
-              setDeadLink({ kind: "closed", title: null, company: null });
-            }
+            if (await readBoardBudgetRefusal(linkErr)) return;
+            if (httpStatusOf(linkErr) === 404) setDeadLink({ kind: "unlisted", description: null });
+            else setDeepLinkFailed(id);
             return;
           }
           if (res?.job) {
@@ -4653,13 +4831,34 @@ export default function Jobs() {
               company: res.closed.company ? decodeNameEntities(res.closed.company) : res.closed.company,
             });
           } else {
-            setDeadLink({ kind: "closed", title: null, company: null });
+            // {job:null, description}: the row is hidden or gone while the
+            // employer still serves the text. Unlisted here, and the text is
+            // offered rather than thrown away.
+            const desc = typeof res.description === "string" && res.description.trim() ? res.description : null;
+            setDeadLink({ kind: "unlisted", description: desc });
           }
         } catch {
           // A thrown failure is not the server's answer about the posting:
-          // no dead link, and no noindex on what may be a live posting.
+          // no dead link, no noindex on what may be a live posting — a retry.
+          if (seq === detailSeq.current) setDeepLinkFailed(id);
         }
-      })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (deepLinkTried.current) return;
+    const id = new URLSearchParams(window.location.search).get("job");
+    if (!id) { deepLinkTried.current = true; return; }
+    const inList = jobs.find((j) => j.id === id);
+    if (inList) {
+      deepLinkTried.current = true;
+      void openDetail(inList, "none");
+    } else if (!loading) {
+      // Loaded list doesn't contain it — the detail action resolves the row.
+      // Gated on the FIRST LOAD SETTLING, not on jobs.length: a shared link
+      // whose other filters happen to match nothing left the visitor with a
+      // generic zero-state and no answer about the posting they clicked.
+      deepLinkTried.current = true;
+      void resolveDeepLink(id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs, loading]);
@@ -4670,17 +4869,39 @@ export default function Jobs() {
   const reportJob = async (job: BoardJob, reason: "gone" | "misleading" | "other") => {
     setReportingId(null);
     setReportedIds((prev) => new Set(prev).add(job.id));
+    // "LOGGED" ONLY WHEN IT WAS. invoke resolves {error} on an HTTP failure
+    // rather than throwing, so the awaited call's error was discarded and the
+    // page said "Your report is logged" for a report that never landed.
+    let reportLogged = false;
     try {
-      await invokeJobBoard({ body: { action: "report", id: job.id, reason } });
+      const { error: reportErr } = await invokeJobBoard({ body: { action: "report", id: job.id, reason } });
+      reportLogged = !reportErr;
     } catch { /* the report is best-effort — never block the user on telemetry */ }
+    // An unsent report leaves the card reportable again, so "try again" can.
+    if (!reportLogged) setReportedIds((prev) => { const next = new Set(prev); next.delete(job.id); return next; });
     if (reason === "gone") {
-      const stillLive = await verifyJob(job); // prunes + toasts if confirmed gone
-      if (stillLive === true) {
+      const outcome = await verifyJobOutcome(job); // prunes + toasts if confirmed gone
+      if (outcome === "live") {
         toast({
           title: t("jobsPage.reportCheckedTitle", "We just re-checked it"),
-          description: t("jobsPage.reportCheckedBody", "{{company}}'s own board still lists this role as open. Thanks for flagging — we log every report.", { company: job.company }),
+          description: reportLogged
+            ? t("jobsPage.reportCheckedBody", "{{company}}'s own board still lists this role as open. Thanks for flagging — we log every report.", { company: job.company })
+            : t("jobsPage.reportCheckedBodyUnsent", "{{company}}'s own board still lists this role as open. Your report did not reach us, so nothing was logged — please try again later.", { company: job.company }),
         });
-      } else if (stillLive === null) {
+      } else if (outcome === "error") {
+        // OUR CHECK FAILED: a neutral sentence, and no claim about their feed.
+        toast({
+          title: t("jobsPage.reportCheckFailedTitle", "We couldn't check it just now"),
+          description: reportLogged
+            ? t("jobsPage.reportCheckFailedBody", "Our check of this posting didn't go through, so we can't say yet whether it is gone. Your report is logged.")
+            : t("jobsPage.reportCheckFailedBodyUnsent", "Our check of this posting didn't go through, and your report did not reach us either — please try again later."),
+        });
+      } else if (outcome === "uncheckable" && !reportLogged) {
+        toast({
+          title: t("jobsPage.reportUncheckableTitle", "We couldn't confirm either way"),
+          description: t("jobsPage.reportUncheckableBodyUnsent", "{{company}}'s feed lists more roles than it lets us read in one pass, so we can't confirm this one is gone — or that it isn't. Your report did not reach us, so nothing was logged — please try again later.", { company: job.company }),
+        });
+      } else if (outcome === "uncheckable") {
         // THE USER IS PROBABLY RIGHT AND WE CANNOT PROVE IT EITHER WAY. This is
         // the one path where the reader has independent evidence — they went and
         // looked. Answering a correct report with "their board still lists it as
@@ -4692,10 +4913,15 @@ export default function Jobs() {
           description: t("jobsPage.reportUncheckableBody", "{{company}}'s feed lists more roles than it lets us read in one pass, so we can't confirm this one is gone — or that it isn't. Your report is logged and the posting goes back in the queue for a deeper check.", { company: job.company }),
         });
       }
-    } else {
+    } else if (reportLogged) {
       toast({
         title: t("jobsPage.reportThanksTitle", "Report received"),
         description: t("jobsPage.reportThanksBody", "Thanks — every report is logged and factors into which company boards we keep listing."),
+      });
+    } else {
+      toast({
+        title: t("jobsPage.reportUnsentTitle", "Your report didn't reach us"),
+        description: t("jobsPage.reportUnsentBody", "Nothing was logged. Please try again in a little while."),
       });
     }
   };
@@ -4958,7 +5184,7 @@ export default function Jobs() {
     const args = toSearchJobsArgs(boardFilterBody(filterState), discoveredView ? undefined : shownSort);
     const prompt = searchPrompt(args, { activelyHiring: activelyHiringOnly })
       + (discoveredView
-        ? " The board is showing them in the order we first saw each posting, which search_jobs has no argument for, so the order is not included here."
+        ? " The board is showing them by each employer's stated date, or for an undated posting by when we first saw it, which search_jobs has no argument for, so the order is not included here."
         : "");
     trackBoard("agent_handoff_search", { keys: Object.keys(args), host: rememberedHostName() });
     void copyText(prompt).then((ok) => toast({
@@ -5553,7 +5779,7 @@ export default function Jobs() {
   const hiringBadgeTip = useCallback((closes: HiringRecordVerdict, growth: GrowthVerdict, curve: FillCurve | null | undefined, g: GrowthRow | null | undefined): string => {
     const by = admittedBy(closes, growth);
     const basis = t("jobsPage.hiringBadgeTip3", "“Actively hiring” here means either of two things observed on an employer's own board: we watched at least {{min}} of their roles come off the board in the last {{days}} days and stay off, or the board served at least {{minNet}} more roles — at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation on days we read it in full. A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and more roles served is roles opened net of roles that came down, on one board, never a headcount.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS, minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS });
-    const n = curve?.fills_90d ?? 0;
+    const n = curve?.filled_roles_90d ?? 0;
     const lead = by === "both" && g
       ? t("jobsPage.hiringAdmittedBoth", "This one clears both halves: we watched {{n}} of its roles come off the board in the last {{days}} days and stay off, and its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation.", { n, days: ACTIVELY_HIRING_WINDOW_DAYS, ...growthFigures(g) })
       : by === "grew" && g
@@ -6247,14 +6473,49 @@ export default function Jobs() {
    *  the board refuses to show. This reads the facet the LIST RESPONSE carries,
    *  computed over the serving population — the same integer the field landers
    *  have been printing since, and the same one /explore's tiles print. */
+  //  THE LANDER GETS NO EXEMPTION FROM THOSE CONDITIONS. It returned
+  //  landerCategory unconditionally, so /jobs/field/healthcare with "night
+  //  shift" typed (568 matches) printed "96,826 live Healthcare openings" —
+  //  the facet the server still sends board-wide on a filtered request —
+  //  above "Showing 60 of 568 matching openings". The lander's category is the
+  //  same single filter as anyone's, and the same rule decides.
   const countCategory = useMemo(() => {
-    if (landerCategory) return landerCategory;
     const cats = category.split(",").filter(Boolean);
     if (cats.length !== 1) return undefined;
     if (activeFilterCount !== 1) return undefined;
     if (q.trim() || location.trim()) return undefined;
     return cats[0];
-  }, [landerCategory, category, activeFilterCount, q, location]);
+  }, [category, activeFilterCount, q, location]);
+
+  /** "IS {COMPANY} HIRING?" IS ANSWERED ONLY FROM THE LANDER'S OWN QUESTION.
+   *
+   *  The sentence under the company H1 is the indexed answer to the query this
+   *  page ranks for, so it may speak only from a SUCCESSFUL reply to the
+   *  UNNARROWED company request. It used to read whatever list was on screen:
+   *  a failed or refused first read left `data` null, `?? 0` made that a zero,
+   *  and the page printed "Not right now — Acme has no open roles" beside the
+   *  error panel; typing "astronaut" on a 412-role lander printed the same
+   *  sentence over the empty search, and a partial match printed "Yes — 3".
+   *
+   *  So: no error, a reply that exists and was asked for the filters now on
+   *  screen, and nothing narrowing it but the company itself (no query, no
+   *  location, no other filter, not the browser-side "actively hiring" cut).
+   *  Anything else leaves the question unanswered — never answered wrongly. */
+  const currentFilterSig = useMemo(() => JSON.stringify(boardFilterBody(filterState)), [filterState]);
+  const landerHiringAnswer = useMemo((): "yes" | "no" | null => {
+    if (!landerCompany || activelyHiringOnly || error || loading || !data) return null;
+    if (!Object.keys(boardFilterBody(filterState)).every((k) => k === "companies")) return null;
+    if (dataFilterSig !== currentFilterSig) return null;
+    // A WITHDRAWN COUNT IS NOT A ZERO (total:null + countUnavailable).
+    if (data.countUnavailable === true) return null;
+    // Both segments decide emptiness: a company page whose rows match only in
+    // descriptions has total 0 and a full page.
+    if ((data.total ?? 0) + (data.relatedTotal ?? 0) > 0) return "yes";
+    return refreshing ? null : "no";
+  }, [landerCompany, activelyHiringOnly, error, loading, data, filterState, dataFilterSig, currentFilterSig, refreshing]);
+  // Whether the reply on screen answers the request now on screen — the
+  // search order claim reads `data` and may speak only for that reply.
+  const orderClaimCurrent = !loading && !refreshing && !!data && dataFilterSig === currentFilterSig;
 
   // Removable chips for every active filter — what's narrowing your results
   // should be visible and one click to undo, not buried in the controls.
@@ -6296,7 +6557,17 @@ export default function Jobs() {
     if (companyTokens.length > 1) {
       f.push({ key: "company", label: t("jobsPage.companiesChip", "{{n}} companies", { n: companyTokens.length }), clear: () => setCompany("") });
     } else if (company) {
-      f.push({ key: "company", label: companies.find((c) => c.token === company)?.name ?? company, clear: () => setCompany("") });
+      // The head facet is the top 150 boards, so on nearly every lander the
+      // token itself ("Deloitte6", "emqk~ca3~CX_1") was the chip. The rows
+      // name their employer; the lander has its name; the token is last.
+      f.push({
+        key: "company",
+        label: companies.find((c) => c.token === company)?.name
+          ?? companyNames.current[company]
+          ?? (company === landerCompany ? landerCompanyName : undefined)
+          ?? company,
+        clear: () => setCompany(""),
+      });
     }
     if (country) {
       const cs = country.split(",").filter(Boolean);
@@ -6396,7 +6667,7 @@ export default function Jobs() {
     // claiming it is active would name a filter the board is not applying.
     if (category && inclUncat && sortMode !== "salary") f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, landerCompany, landerCompanyName, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -6472,10 +6743,13 @@ export default function Jobs() {
     { id: "clear", label: t("jobsPage.paClear", "Clear all filters"), run: () => activeFilters.forEach((f) => f.clear()) },
     { id: "saved", label: t("jobsPage.paSaved", "My saved jobs & tracker"), run: () => { window.location.href = "/account"; } },
     { id: "ghost", label: t("jobsPage.paGhost", "Ghost Job Index"), run: () => { window.location.href = "/ghost-job-index"; } },
-    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => { window.location.href = "/#scan"; } },
+    // The uploader's anchor is #upload (ResumeUploader, and Index's hash
+    // handler reads only that). The old "scan" anchor named no element and
+    // landed at the top of the homepage; navigate() also skips the reload.
+    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => navigate("/#upload") },
     { id: "help", label: t("jobsPage.paHelp", "Keyboard shortcuts"), hint: "?", run: () => setHelpOpen(true) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [remoteOnly, workMode, activeFilters, t]);
+  ], [remoteOnly, workMode, activeFilters, navigate, t]);
 
 
   // Smart zero-result help: when the server really has nothing for this
@@ -7021,7 +7295,7 @@ export default function Jobs() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
                 <p className="text-sm text-muted-foreground">
-                  <Link to={`/jobs/company/${detailJob.token}`} className="text-primary hover:underline" onClick={() => closeDetail()}>
+                  <Link to={companyLanderPath(detailJob.token)} className="text-primary hover:underline" onClick={(e) => leavePanelFor(e, companyLanderPath(detailJob.token))}>
                     {detailJob.company}
                   </Link>
                   {detailLoc.text ? <> · {detailLoc.text}</> : null}
@@ -7669,8 +7943,10 @@ export default function Jobs() {
                 const hh = detailJob.token ? curveByToken[detailJob.token] : undefined;
                 const f = fits[detailJob.id];
                 const age = daysAgo(detailJob.postedAt);
-                const fills = hh?.fills_90d ?? 0;
-                const churn = hh?.relists_90d ?? 0;
+                // ROLES on both sides (20261008110000): the roles that stayed
+                // down against the roles that came back, never an event count.
+                const fills = hh?.filled_roles_90d ?? 0;
+                const churn = hh?.relisted_roles_90d ?? 0;
                 const clauses: string[] = [];
                 if (typeof f === "number") {
                   clauses.push(f >= 20
@@ -7725,7 +8001,7 @@ export default function Jobs() {
                 if (dg && dgv === "unknown") clauses.push(t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(dg)) }));
                 // "at least": the collector logs a relisted title once a day per
                 // company, so this count is a floor and never an exact tally.
-                if (hh && churn > fills && churn >= 10) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
+                if (relistCaution(hh)) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
                 if (canStateFillRate(hh, hh?.tracking_days) && hh!.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                   // "up to", and the coverage share named when it is thin.
                   // The fill share is a CEILING for the same reason the relist
@@ -7748,7 +8024,7 @@ export default function Jobs() {
                   clauses.push(t("jobsPage.verdictSlowFill", "we never see half its roles come down inside {{d}} days", { d: FILL_SUPPORT_MAX_DAYS }));
                 }
                 if (clauses.length === 0) return null;
-                const caution = churn > fills && churn >= 10;
+                const caution = relistCaution(hh);
                 // `fills >= 3` was typed here too — a third spelling of the bar,
                 // in the condition that decides whether this panel's headline
                 // reads "Worth applying now". It reads the shared verdict now,
@@ -8111,7 +8387,8 @@ export default function Jobs() {
           : landerCompany
           ? t("jobsPage.companySeoDescription", "Is {{company}} hiring right now? See {{company}}'s verified open roles, pulled straight from their own job board and re-checked today — no aggregators, no ghost postings. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
-        path={landerCompany ? `/jobs/company/${landerCompany}` : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
+        path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
+        canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
@@ -8173,8 +8450,7 @@ export default function Jobs() {
               a capped count renders "10,000+", never as an exact figure; zero
               open roles gets a plain honest "No … right now" instead of the
               question hanging unanswered; and counts are locale-formatted. */}
-          {landerCompany && data?.countUnavailable !== true
-            && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) > 0 && (
+          {landerHiringAnswer === "yes" && data && (
             <p className="text-sm font-semibold text-success mb-1">
               {data.countCapped
                 // Past the count cap the true figure is HIGHER — "10,000+" is
@@ -8203,8 +8479,7 @@ export default function Jobs() {
                 below — telling a visitor an employer is not hiring on exactly
                 the page that ranks for "is X hiring?". Unknown must leave the
                 question unanswered rather than answer it wrongly. */}
-            {landerCompany && data?.countUnavailable !== true
-              && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) === 0 && !loading && !refreshing && (
+            {landerHiringAnswer === "no" && (
             <p className="text-sm font-semibold text-muted-foreground mb-1">
               {t("jobsPage.companyNotHiring", "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
             </p>
@@ -8276,7 +8551,10 @@ export default function Jobs() {
                   })(),
                   category: t(`jobsPage.categories.${countCategory}`, countCategory),
                 })
-              : !countCategory && data?.totalAllCompanies
+              // A NARROWED FIELD LANDER PRINTS NO NUMBER: its H1 names a field,
+              // so the board-wide line below would read as that field's, and
+              // the results line already states the narrowed count.
+              : !countCategory && !landerCategory && data?.totalAllCompanies
               // A SERVING-FILTERED NUMERATOR NEEDS A SERVING-FILTERED
               // DENOMINATOR. companiesCount is the length of the UNFILTERED
               // token grouping — it counts boards whose every posting has been
@@ -8310,7 +8588,7 @@ export default function Jobs() {
                     what closed, not just what is open. */}
                 {!!data?.trackedTotal && t("jobsPage.trackedCorpus", "{{n}} postings tracked including closed roles", { n: data.trackedTotal.toLocaleString() })}
                 {!!data?.trackedTotal && (takedownsToday !== null || recheckP50Min !== null) && " · "}
-                {takedownsToday !== null && t("jobsPage.takedownsToday", "{{n}} roles filled or closed today", { n: takedownsToday.toLocaleString() })}
+                {takedownsToday !== null && t("jobsPage.takedownsLast24h", "{{n}} roles filled or closed in the last 24 hours", { n: takedownsToday.toLocaleString() })}
                 {takedownsToday !== null && recheckP50Min !== null && " · "}
                 {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
               </span>
@@ -8435,7 +8713,7 @@ export default function Jobs() {
               "typically within ~N days" — was drawn from a window that could not
               contain the answer, and it read within a day and a half of the same
               number for every employer and every field on the board. */}
-          {landerCompany && hiringCurve && (hiringCurve.open_roles > 0 || hiringCurve.fills_90d > 0) && (
+          {landerCompany && hiringCurve && (hiringCurve.open_roles > 0 || (hiringCurve.filled_roles_90d ?? 0) + (hiringCurve.relisted_roles_90d ?? 0) > 0) && (
             <div className="rounded-xl border border-border bg-card p-4 mb-6 max-w-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-primary shrink-0" />
@@ -8494,10 +8772,12 @@ export default function Jobs() {
                     {t("jobsPage.hhOpen", "open roles verified on the board right now")}
                   </li>
                 )}
-                {hiringCurve.fills_90d > 0 ? (
+                {/* ROLES, NOT EVENTS (20261008110000): a role that came down
+                    twice, or is serving again, is not "taken down for good". */}
+                {(hiringCurve.filled_roles_90d ?? 0) > 0 ? (
                   <li>
                     {t("jobsPage.hhFilledPre", "Filled")}{" "}
-                    <span className="text-foreground font-semibold">{hiringCurve.fills_90d}</span>{" "}
+                    <span className="text-foreground font-semibold">{hiringCurve.filled_roles_90d}</span>{" "}
                     {hiringCurve.tracking_days > 0
                       ? t("jobsPage.hhTakenDownPost", "roles in {{d}}d of tracking — taken down for good, not re-listed", { d: hiringCurve.tracking_days })
                       : t("jobsPage.hhTakenDownPostUntracked", "roles since we began tracking — taken down for good, not re-listed")}
@@ -8517,7 +8797,7 @@ export default function Jobs() {
                   <li className="italic text-muted-foreground/80">
                     {hiringRecordVerdict(hiringCurve) === "unknown"
                       ? t("jobsPage.hhNoClosureRecord", "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.")
-                      : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relists_90d })}
+                      : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relisted_roles_90d ?? 0 })}
                   </li>
                 )}
                 {/* Every qualifying filing in the window, after the growth,
@@ -9529,8 +9809,8 @@ export default function Jobs() {
               }`}
               // THE LABEL IS "ACTIVELY HIRING" AND, SINCE MIGRATION
               // 20260909227000, BOTH HALVES OF THE CLAIM ARE MEASURED. The
-              // predicate is closes OR grew: fills_90d >= ACTIVELY_HIRING_MIN_
-              // CLOSED over closures WE watched, or a served count on the
+              // predicate is closes OR grew: filled_roles_90d >= ACTIVELY_HIRING_
+              // MIN_CLOSED over roles WE watched, or a served count on the
               // board's own series that rose by the migration's bars over its
               // window with every read in the window whole. Three verdicts on
               // each half, combined once in activelyHiringVerdict, and the
@@ -9626,7 +9906,7 @@ export default function Jobs() {
                   path orders by relevance and no date order is applied, so an
                   option that cannot happen is not shown — and the caption for it
                   says whose date it is, because ours is not the employer's. */}
-              {!q.trim() && <option value="discovered">{t("jobsPage.sortDiscovered", "Recently found by us")}</option>}
+              {!q.trim() && <option value="discovered">{t("jobsPage.sortDiscovered2", "Newest, undated by our date")}</option>}
             </select>
             {/* "SEND THIS SEARCH TO MY AGENT" — the board's own request body,
                 renamed into search_jobs arguments (src/lib/agent-handoff.ts;
@@ -9728,8 +10008,16 @@ export default function Jobs() {
                        two effective_posted reads and scores nothing, whatever
                        sort was requested — names its own order first, because it
                        is the one thing on this page that is true of it. */
-                    ? data?.exactWordMatch
-                      ? t("jobsPage.orderExactWord", "exact whole-word matches, in the order we first saw each posting — our date, not the employer's")
+                    /* NO CLAIM UNTIL THE REPLY FOR THIS SEARCH IS ON SCREEN.
+                       Every arm below reads `data`, which is null before the
+                       first reply and is the PREVIOUS request's reply while a
+                       new one loads, so a fresh search fell through to the
+                       date-order arm and printed it over results about to be
+                       ranked by relevance (root of the newest-first flake). */
+                    ? !orderClaimCurrent
+                      ? ""
+                      : data?.exactWordMatch
+                      ? t("jobsPage.orderExactWord2", "exact whole-word matches: title matches first, then employer-name matches — within each group, by the employer's stated date, or by when we first saw a posting with no date")
                       : data?.sortScope === "matchSet"
                         ? data?.sortMatcher === "company"
                           ? t("jobsPage.orderNewestWholeSetCompany", "newest first across every posting from this employer")
@@ -9747,7 +10035,7 @@ export default function Jobs() {
                                both is false half the time. */
                             : searchNewestFirst
                               ? t("jobsPage.orderNewest", "newest first, company-stated dates before undated")
-                              : t("jobsPage.orderDiscovered", "ordered by when we first saw each posting — our date, not the employer's")
+                              : t("jobsPage.orderDiscovered2", "ordered by each employer's stated date — or, for a posting with no date, by when we first saw it")
                     /* WHOSE DATE, NAMED, IN EVERY ARM — and until this build the
                        two arms below were printed over rows ordered by OUR crawl
                        stamp. The no-query browse sent no `sort`, so the server
@@ -9771,8 +10059,8 @@ export default function Jobs() {
                        agentPitchScope lesson). */
                     : discoveredView
                       ? (interleaveEmployers
-                        ? t("jobsPage.orderDiscoveredWoven", "ordered by when we first saw each posting — our date, not the employer's — spread across employers so one company can't fill the page")
-                        : t("jobsPage.orderDiscovered", "ordered by when we first saw each posting — our date, not the employer's"))
+                        ? t("jobsPage.orderDiscoveredWoven2", "ordered by each employer's stated date — or, for a posting with no date, by when we first saw it — spread across employers so one company can't fill the page")
+                        : t("jobsPage.orderDiscovered2", "ordered by each employer's stated date — or, for a posting with no date, by when we first saw it"))
                       : interleaveEmployers
                         ? t("jobsPage.orderNewestWovenDated", "newest by the date each employer states, spread across employers so one company can't fill the page")
                         : t("jobsPage.orderNewest", "newest first, company-stated dates before undated")}
@@ -9817,7 +10105,7 @@ export default function Jobs() {
                   onClick={() => { setSortMode("discovered"); setSearchNewestFirst(false); }}
                   className="underline underline-offset-2 hover:text-foreground transition-colors"
                 >
-                  {t("jobsPage.orderUndatedShow", "See them in the order we found them")}
+                  {t("jobsPage.orderUndatedShow2", "Mix them in by when we first saw them")}
                 </button>
               </span>
             )}
@@ -10529,6 +10817,98 @@ export default function Jobs() {
           {budgetRefusal && !(error && errorKind === "budget") && (
             <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />
           )}
+          {/* Dead deep link. Say what it was (when we know) and offer live
+              siblings — a visible answer where there used to be silence.
+              ABOVE the loading/error/zero/list switch: inside the list branch
+              a dead link under filters that match nothing set noindex and the
+              title while the visitor saw only the generic zero-state.
+              Three kinds, three claims: closed (we watched it go), agedOut
+              (OUR cap, not the employer's) and unlisted (gone from THIS board
+              with no closure recorded). "Filled or taken down" is a claim
+              about the employer; for the other two it
+              is a claim we have no evidence for. */}
+          {deadLink && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/5 px-3.5 py-2.5 mb-4" data-dead-link={deadLink.kind}>
+              <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <div className="text-[13px] min-w-0">
+                {deadLink.kind === "agedOut" ? (
+                  <>
+                    <p className="text-foreground">
+                      {deadLink.title
+                        ? t("jobsPage.agedLinkKnown", "“{{title}}”{{at}} is no longer listed here — it aged out of this board's freshness window.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                        : t("jobsPage.agedLinkUnknown", "The posting in that link aged out of this board's freshness window, so it is no longer listed here.")}
+                    </p>
+                    {/* Each fact on its own gate, because each has its own
+                        basis. The cap comes from the server; the age is the
+                        COMPANY'S stated date and is absent when it stated none. */}
+                    <p className="text-muted-foreground mt-0.5">
+                      {daysAgo(deadLink.postedAt) !== null
+                        ? t("jobsPage.agedLinkPosted", "The company dated it {{days}} days ago on its own feed.", { days: daysAgo(deadLink.postedAt) })
+                        : t("jobsPage.agedLinkUndated", "This employer states no posting date, so the window ran from when we first saw it — our discovery date, not theirs.")}
+                      {typeof deadLink.capDays === "number" && (
+                        <> {t("jobsPage.agedLinkCap", "We only carry postings for {{cap}} days.", { cap: deadLink.capDays })}</>
+                      )}{" "}
+                      {t("jobsPage.agedLinkStillOpen", "Aging out is our rule, not the employer's — it may still be open on their own site.")}
+                    </p>
+                  </>
+                ) : deadLink.kind === "unlisted" ? (
+                  <>
+                    <p className="text-foreground">
+                      {t("jobsPage.unlistedLink", "The posting in that link is no longer listed on this board. That says nothing about the employer — it may still be open on their own site.")}
+                    </p>
+                    {deadLink.description && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-[13px] font-semibold text-primary">
+                          {t("jobsPage.unlistedLinkDesc", "Read the last description we held")}
+                        </summary>
+                        <div className="mt-1 text-muted-foreground whitespace-pre-line leading-6 max-w-[72ch]">
+                          {decodeEntities(deadLink.description).slice(0, 4000)}
+                        </div>
+                      </details>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-foreground">
+                    {deadLink.title
+                      ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
+                      : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
+                  </p>
+                )}
+                <div className="mt-1 flex flex-wrap gap-3">
+                  {deadLink.kind !== "unlisted" && deadLink.title && (
+                    <button
+                      type="button"
+                      className="text-[13px] font-semibold text-primary hover:underline"
+                      onClick={() => { setQ(deadLink.title ?? ""); setDeadLink(null); dropJobParam(); }}
+                    >
+                      {t("jobsPage.deadLinkSearch", "Find similar live roles")}
+                    </button>
+                  )}
+                  <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => { setDeadLink(null); dropJobParam(); }}>
+                    {t("jobsPage.deadLinkDismiss", "Dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* A ?job= link whose READ failed: no claim about the posting, no
+              noindex — a retry, where there used to be nothing at all. */}
+          {deepLinkFailed && !deadLink && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 mb-4" data-deep-link-failed="">
+              <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="text-[13px] min-w-0">
+                <p className="text-foreground">{t("jobsPage.deepLinkFailed", "We couldn't load the posting in that link just now.")}</p>
+                <div className="mt-1 flex flex-wrap gap-3">
+                  <button type="button" className="text-[13px] font-semibold text-primary hover:underline" onClick={() => void resolveDeepLink(deepLinkFailed)}>
+                    {t("jobsPage.retry", "Try again")}
+                  </button>
+                  <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => { setDeepLinkFailed(null); dropJobParam(); }}>
+                    {t("jobsPage.deadLinkDismiss", "Dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {loading ? (
             // Skeleton cards: the page keeps its shape while the first load
             // lands — no spinner void, no layout jump when cards arrive.
@@ -10618,63 +10998,6 @@ export default function Jobs() {
             </div>
           ) : (
             <>
-              {/* Dead deep link. Say what it was (when we know) and offer live
-                  siblings — a visible answer where there used to be silence.
-                  The aged-out branch says something DIFFERENT from the closed
-                  branch on purpose: "filled or taken down" is a claim about the
-                  employer, and for a posting that merely passed our own cap it
-                  is a claim we have no evidence for. */}
-              {deadLink && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning/5 px-3.5 py-2.5 mb-4">
-                  <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                  <div className="text-[13px] min-w-0">
-                    {deadLink.kind === "agedOut" ? (
-                      <>
-                        <p className="text-foreground">
-                          {deadLink.title
-                            ? t("jobsPage.agedLinkKnown", "“{{title}}”{{at}} is no longer listed here — it aged out of this board's freshness window.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
-                            : t("jobsPage.agedLinkUnknown", "The posting in that link aged out of this board's freshness window, so it is no longer listed here.")}
-                        </p>
-                        {/* Each fact on its own gate, because each has its own
-                            basis. The cap comes from the server rather than a
-                            client-side constant that could drift away from it;
-                            the age is the COMPANY'S stated date and is simply
-                            absent when the company stated none — first_seen has
-                            never been a posting age on this board. */}
-                        <p className="text-muted-foreground mt-0.5">
-                          {daysAgo(deadLink.postedAt) !== null
-                            ? t("jobsPage.agedLinkPosted", "The company dated it {{days}} days ago on its own feed.", { days: daysAgo(deadLink.postedAt) })
-                            : t("jobsPage.agedLinkUndated", "This employer states no posting date, so the window ran from when we first saw it — our discovery date, not theirs.")}
-                          {typeof deadLink.capDays === "number" && (
-                            <> {t("jobsPage.agedLinkCap", "We only carry postings for {{cap}} days.", { cap: deadLink.capDays })}</>
-                          )}{" "}
-                          {t("jobsPage.agedLinkStillOpen", "Aging out is our rule, not the employer's — it may still be open on their own site.")}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-foreground">
-                        {deadLink.title
-                          ? t("jobsPage.deadLinkKnown", "“{{title}}”{{at}} is no longer live — it was filled or taken down.", { title: deadLink.title, at: deadLink.company ? ` ${t("jobsPage.deadLinkAt", "at")} ${deadLink.company}` : "" })
-                          : t("jobsPage.deadLinkUnknown", "The posting in that link is no longer live — it was filled or taken down.")}
-                      </p>
-                    )}
-                    <div className="mt-1 flex flex-wrap gap-3">
-                      {deadLink.title && (
-                        <button
-                          type="button"
-                          className="text-[13px] font-semibold text-primary hover:underline"
-                          onClick={() => { setQ(deadLink.title ?? ""); setDeadLink(null); }}
-                        >
-                          {t("jobsPage.deadLinkSearch", "Find similar live roles")}
-                        </button>
-                      )}
-                      <button type="button" className="text-[13px] text-muted-foreground hover:underline" onClick={() => setDeadLink(null)}>
-                        {t("jobsPage.deadLinkDismiss", "Dismiss")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
               {disclosure && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 mb-4">
                   <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -10894,7 +11217,7 @@ export default function Jobs() {
                     <Sparkles className="inline w-3 h-3 text-primary -mt-0.5" aria-hidden />{" "}
                     {t("jobsPage.agentPitchCounted", "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.", { n: agentReadyOnPage })}{" "}
                     <Link to="/agent" className="text-primary underline underline-offset-2">
-                      {t("jobsPage.agentPitchCta", "See how it works — 7 days free, then $99/mo")}
+                      {t("jobsPage.agentPitchCta", "See how it works — {{trialDays}} days free for first-time subscribers, then ${{agentPrice}}/mo", { trialDays: SUBSCRIPTIONS.agent.trialDays, agentPrice: SUBSCRIPTIONS.agent.priceUsd })}
                     </Link>
                     <span className="block text-[11px] opacity-80 mt-0.5">
                       {/* BOTH NUMBERS WERE WRONG, IN ALL NINE LOCALES. This said
@@ -10984,13 +11307,26 @@ export default function Jobs() {
               {/* NL-search interpretation: show exactly how the plain-language
                   query was read (chips = applied filters) and disclose anything
                   we couldn't map — never silently drop a concept. */}
-              {nlResult && (nlResult.interpreted.length > 0 || nlResult.notMapped.length > 0) && (
+              {/* A REFUSED FILTER IS NAMED AS REFUSED. nl-search's validator
+                  leaves an out-of-list or out-of-range filter out of `filters`
+                  and names it in `dropped`, but the model's own chip for it
+                  stayed in `interpreted` — so "Read as:" stated a filter the
+                  board never applied. When anything was dropped the chips are
+                  built from `applied` (the filters that survived) instead, and
+                  the refused ones get their own line. */}
+              {nlResult && (() => {
+                const nlLabel = (k: string) => t(`jobsPage.filterName.${k}`, k);
+                const chips = nlResult.dropped.length > 0 && nlResult.applied
+                  ? nlResult.applied.map(nlLabel)
+                  : nlResult.interpreted;
+                if (chips.length === 0 && nlResult.notMapped.length === 0 && nlResult.dropped.length === 0) return null;
+                return (
                 <div className="mb-2 -mt-1 text-xs">
-                  {nlResult.interpreted.length > 0 && (
+                  {chips.length > 0 && (
                     <p className="text-muted-foreground flex flex-wrap items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
                       <span>{t("jobsPage.nlInterpreted", "Read as:")}</span>
-                      {nlResult.interpreted.map((c) => (
+                      {chips.map((c) => (
                         <span key={c} className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5">{c}</span>
                       ))}
                       <button type="button" className="text-muted-foreground hover:text-foreground underline ml-1" onClick={() => setNlResult(null)}>
@@ -11003,8 +11339,14 @@ export default function Jobs() {
                       {t("jobsPage.nlNotMapped", "Couldn't filter by: {{terms}} — no filter for that yet, so it wasn't applied.", { terms: nlResult.notMapped.join(", ") })}
                     </p>
                   )}
+                  {nlResult.dropped.length > 0 && (
+                    <p className="text-warning/90 mt-1">
+                      {t("jobsPage.nlDropped", "Couldn't apply: {{filters}} — what was asked for isn't a value that filter takes, so it wasn't applied.", { filters: nlResult.dropped.map(nlLabel).join(", ") })}
+                    </p>
+                  )}
                 </div>
-              )}
+                );
+              })()}
               {/* Typo fallback disclosure: never pass fuzzy matches off as
                   exact — say plainly these are the closest titles we found. */}
               {data?.fuzzy && (
@@ -11103,8 +11445,9 @@ export default function Jobs() {
                       require the server's own sortScope, and the bound is printed
                       only where a number arrived. The exact-word tier concatenates
                       two `ORDER BY effective_posted DESC` reads whatever sort was
-                      requested, which is why its sentence names our date and not
-                      the employer's — `jobsPage.sortedExactWord` said "Sorted by
+                      requested (title read first, then the employer-name read),
+                      which is why its sentence names both groups and whose date
+                      orders each — `jobsPage.sortedExactWord` said "Sorted by
                       newest first" over exactly those rows and is RETIRED, not
                       edited, along with `jobsPage.sortedNewestFallback`, which
                       said it over the effective_posted fall-through. Both are
@@ -11112,7 +11455,7 @@ export default function Jobs() {
                       an inline default, so an edited English string would have
                       left eight translated copies of the old claim rendering. */}
                   {data?.exactWordMatch
-                    ? t("jobsPage.sortedExactWordDiscovery", "Exact whole-word matches, ordered by when we first saw each posting — our date, not the employer's, and not relevance-ranked")
+                    ? t("jobsPage.sortedExactWordDiscovery2", "Exact whole-word matches, not relevance-ranked: title matches first, then employer-name matches — within each group, by the employer's stated date, or by when we first saw a posting with no date")
                     : data?.sortScope === "matchSet"
                       ? data?.sortMatcher === "company"
                         ? t("jobsPage.sortedNewestWholeSetCompany", "Sorted by newest first — every posting from this employer, by the employer's own date, undated last")
@@ -11135,10 +11478,10 @@ export default function Jobs() {
                              and it blinded the one sentence that makes a real
                              ranked-path outage visible. */
                           : data?.companyMatched
-                            ? t("jobsPage.sortedEmployerDiscovery", "Ordered by when we first saw each posting — our date, not the employer's. These aren't relevance-ranked: every one of them is {{company}}.", { company: data.companyMatched })
+                            ? t("jobsPage.sortedEmployerDiscovery2", "Ordered by each employer's stated date — or, for a posting with no date, by when we first saw it. These aren't relevance-ranked: every one of them is {{company}}.", { company: data.companyMatched })
                             : searchNewestFirst
                               ? t("jobsPage.sortedNewestDatedFallback", "Sorted by newest first, by the date each employer states, undated last (relevance ranking briefly unavailable)")
-                              : t("jobsPage.sortedDiscoveryFallback", "Ordered by when we first saw each posting — our date, not the employer's (relevance ranking briefly unavailable)")}
+                              : t("jobsPage.sortedDiscoveryFallback2", "Ordered by each employer's stated date — or, for a posting with no date, by when we first saw it (relevance ranking briefly unavailable)")}
                   {" · "}
                   <button type="button" className="text-primary hover:underline" onClick={() => setSearchNewestFirst((v) => !v)}>
                     {searchNewestFirst
@@ -11438,7 +11781,7 @@ export default function Jobs() {
                           </Link>
                           <p className="text-[13px] text-muted-foreground mt-0.5">
                             {job.token
-                              ? <Link to={`/jobs/company/${job.token}`} className="hover:text-primary hover:underline">{job.company}</Link>
+                              ? <Link to={companyLanderPath(job.token)} className="hover:text-primary hover:underline">{job.company}</Link>
                               : job.company}
                             {/* The tidied place, with the employer's own string
                                 one hover away whenever the two differ. A span
@@ -11768,7 +12111,11 @@ export default function Jobs() {
                                 Not one gate moved: REPOST_FLAG_MIN,
                                 ACTIVELY_HIRING_MIN_CLOSED and
                                 URGENT_FILL_MAX_DAYS are the same numbers, read
-                                in the same order they were read before. */}
+                                in the same order they were read before. One
+                                caution was added second (relistCaution, the
+                                one the detail pane prints), and the praise
+                                branch now asks the verdict, so the card and
+                                the pane can never disagree about an employer. */}
                             {job.token && (() => {
                               const hh = curveByToken[job.token];
                               // NO ROW YET IS NOT A VERDICT. The batch is in
@@ -11797,6 +12144,19 @@ export default function Jobs() {
                                   </span>
                                 );
                               }
+                              // The role caution the detail pane prints (see relistCaution).
+                              if (relistCaution(hh)) {
+                                const back = hh.relisted_roles_90d ?? 0;
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 whitespace-nowrap"
+                                    title={t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: back, f: hh.filled_roles_90d ?? 0 })}
+                                  >
+                                    <RefreshCw className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.repostChipFloor", "Re-lists roles often ({{n}}×+)", { n: back })}
+                                  </span>
+                                );
+                              }
                               // Urgency: a proven, FAST record from the lifecycle log —
                               // honest data-backed "apply early", not a fake scarcity badge.
                               //
@@ -11808,17 +12168,11 @@ export default function Jobs() {
                               // employer-stated dates to build on, and at least half the
                               // employer's roles gone inside the horizon.
                               //
-                              // THE COUNT GATE HERE IS NOT A SECOND READING OF THE BAR,
-                              // and it is deliberately still spelled out. This branch is
-                              // only reached when the caution above did not fire, i.e.
-                              // churn < REPOST_FLAG_MIN (3) <= ACTIVELY_HIRING_MIN_CLOSED
-                              // (3) <= fills, so relists <= fills holds by arithmetic and
-                              // the condition is exactly hiringRecordVerdict === "closes"
-                              // at this point in the chain. It is a POSITIVE-ONLY gate: a
-                              // fills count of zero falls through to the branches below,
-                              // where the third state is named, so nothing here can turn
-                              // an unreadable record into a silent negative.
-                              if (hh.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED && canStateFillRate(hh, hh.tracking_days)
+                              // THE RECORD GATE IS THE VERDICT ITSELF (see relistCaution for
+                              // why a count gate stopped implying it). POSITIVE-ONLY: any
+                              // other verdict falls through to the branches below, where the
+                              // third state is named.
+                              if (hiringRecordVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
                                   <span
@@ -12930,7 +13284,7 @@ export default function Jobs() {
                           neutral-toned rather than a warning — it is a fact
                           about our record. */}
                       {hiringRecordVerdict(hh) === "closes" && (
-                        <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh!.fills_90d })}</li>
+                        <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh!.filled_roles_90d ?? 0 })}</li>
                       )}
                       {/* `hh &&`, not `!healthPending`: a row is the evidence
                           that we asked about this employer and got an answer.
@@ -12953,8 +13307,8 @@ export default function Jobs() {
                         if (cg && cgv === "unknown") return <li className="text-muted-foreground">{t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(cg)) })}</li>;
                         return null;
                       })()}
-                      {hh && hh.relists_90d > hh.fills_90d && hh.relists_90d >= 10 && (
-                        <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relists_90d })}</li>
+                      {hh && relistCaution(hh) && (
+                        <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relisted_roles_90d ?? 0 })}</li>
                       )}
                       {/* The pace, where the record can carry it. A share at a
                           fixed horizon, never a midpoint drawn from a window

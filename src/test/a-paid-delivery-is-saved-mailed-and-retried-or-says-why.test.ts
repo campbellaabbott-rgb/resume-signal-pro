@@ -263,11 +263,14 @@ describe("the webhook", () => {
     expect(rowOf(id)?.status).toBe("delivered");
   });
 
-  it("tells the owner about a refund or a dispute and changes no entitlement (L6-18)", async () => {
-    expect(await event("charge.refunded", { id: "ch_1", amount: 2900, amount_refunded: 2900, currency: "usd", payment_intent: "pi_1", billing_details: { email: "<b>x</b>@example.com" } })).toBe(200);
+  // A refund IN FULL now takes the purchase back (owner decision 2026-10-04;
+  // a-refund-or-a-dispute-left-every-entitlement-in-place runs that). A
+  // partial refund is a goodwill amount: the owner is told, nothing changes.
+  it("tells the owner about a partial refund and changes no entitlement (L6-18)", async () => {
+    expect(await event("charge.refunded", { id: "ch_1", amount: 2900, amount_refunded: 900, refunded: false, currency: "usd", payment_intent: "pi_1", billing_details: { email: "<b>x</b>@example.com" } })).toBe(200);
     expect(alerts).toHaveLength(1);
     const mail = alerts[0] as { subject: string; html: string };
-    expect(mail.subject).toMatch(/Refund issued/);
+    expect(mail.subject).toMatch(/refund issued/i);
     expect(mail.html, "a buyer-typed value reached the owner's inbox as markup").not.toMatch(/<b>x<\/b>/);
     expect(db.writes.filter((w) => w.table !== "webhook_events")).toEqual([]);
   });

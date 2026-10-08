@@ -42,7 +42,7 @@ import { join, resolve } from "node:path";
 import { anonCan, authenticatedCan, migrationReplay, arrayLiteralAt, replayMigrations, type FnState } from "./helpers/function-acl";
 import { access, tableReplay } from "./helpers/table-acl";
 import {
-  CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, UNCAPPED_TOKEN_ARRAYS,
+  ADMIN_READERS_CREATED_CLOSED, CLIENT_CALLABLE, CLOSED_BY_CENSUS, CLOSED_TABLES, CREATED_CLOSED, OPEN_TABLES, OWNED_ELSEWHERE, UNCAPPED_TOKEN_ARRAYS,
 } from "./helpers/client-callable-allowlist";
 import { codeOf } from "./helpers/strip-comments";
 
@@ -373,11 +373,21 @@ const ADMIN_RPCS = (() => {
 describe("the dashboards reach the closed readers only through admin-ops", () => {
   it("admin-ops serves exactly closed readers -- never an open function, never a writer", () => {
     expect(ADMIN_RPCS.size).toBeGreaterThan(10);
-    const closedNames = new Set([...CLOSED].map(nameOf));
+    const closedNames = new Set([...CLOSED, ...ADMIN_READERS_CREATED_CLOSED.map((r) => r.sig)].map(nameOf));
     const notClosed = [...ADMIN_RPCS].filter((n) => !closedNames.has(n));
     expect(notClosed, `admin-ops lists functions the census did not close: ${notClosed.join(", ")}`).toEqual([]);
     const writers = [...ADMIN_RPCS].filter((n) => [...fns.values()].some((f) => f.name === n && WRITES.test(f.body)));
     expect(writers, `admin-ops must only proxy readers: ${writers.join(", ")}`).toEqual([]);
+  });
+
+  it("a reader created closed after the census is closed to both client roles in the replay", () => {
+    for (const { sig } of ADMIN_READERS_CREATED_CLOSED) {
+      const f = fns.get(sig);
+      expect(f, `${sig} missing from the replay`).toBeTruthy();
+      expect(anonCan(f!), `anon can execute ${sig}`).toBe(false);
+      expect(authenticatedCan(f!), `authenticated can execute ${sig}`).toBe(false);
+      expect(f!.acl.service_role, `service_role lost ${sig}`).toBe(true);
+    }
   });
 
   it("every adminRpc(...) in the frontend names a function admin-ops serves, and each served one is used", () => {

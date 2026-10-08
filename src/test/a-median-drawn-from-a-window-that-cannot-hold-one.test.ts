@@ -471,8 +471,12 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // property THIS block exists to protect is asserted directly below rather
     // than assumed: if a future re-issue drops the lap_backfill exclusion, that
     // assertion fails even though the pin is satisfied.
-    const CLOSURE_KEEP_FIX = "20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it.sql";
-    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that turned its prune off").toBe(CLOSURE_KEEP_FIX);
+    // MOVED AGAIN ON 20261008112500: the rollup now reads whole ended months
+    // (it rolled by instant and overwrote the month, and on the NULL the cron
+    // passes it rolled nothing). The aggregates were carried verbatim; the two
+    // properties below are asserted against whatever body is live.
+    const CLOSURE_KEEP_FIX = "20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned.sql";
+    expect(LIVE.get("roll_up_and_prune_closures")?.file, "roll_up_and_prune_closures must resolve to the migration that made its rollup read whole months").toBe(CLOSURE_KEEP_FIX);
     expect(
       LIVE.get("roll_up_and_prune_closures")?.code,
       "the re-issue must carry the late-closed_at fix forward: lap_backfill rows are excluded from the duration statistics",
@@ -542,8 +546,14 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // cohort and still published 0.9431 with sufficient_30 true). The day-14
     // chain and the seven-day-floor property are untouched by that change;
     // the pins follow the definitions that run.
-    const COMPANY_CURVE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
-    const CATEGORY_CURVE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+    // MOVED, NOT DROPPED, a seventh time, both curves together: on 2026-10-08
+    // a doubted closure (and its bad batch's age-out) whose posting was seen
+    // again leaves the risk set instead of being censored beside its own
+    // re-observation, and the company curve gained role-level counts beside
+    // its event counts. The seven-day-floor property is untouched; the pins
+    // follow the definitions that run.
+    const COMPANY_CURVE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
+    const CATEGORY_CURVE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });

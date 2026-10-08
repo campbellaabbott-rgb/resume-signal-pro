@@ -80,7 +80,8 @@ describe("a spent grant is not found, and two callers cannot both spend it", () 
 
   it("spends the grant only after the subscription re-check has passed", () => {
     // Otherwise the 402 for a lapsed subscriber burns the grant on its way out.
-    const subCheck = VERIFY.indexOf("Subscription is not active");
+    // The re-check is the one rule's grant test (_shared/pro-standing.ts).
+    const subCheck = VERIFY.indexOf("proGrantRefusal(supabaseGrant, grant)");
     const consume = VERIFY.indexOf('.update({ consumed_at');
     expect(subCheck, "the subscription re-check is gone").toBeGreaterThan(-1);
     expect(consume, "the consume is gone").toBeGreaterThan(-1);

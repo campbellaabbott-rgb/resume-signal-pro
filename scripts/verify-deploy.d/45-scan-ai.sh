@@ -56,12 +56,14 @@ probe scan_credit_account_grants '{"p_user_id":"00000000-0000-4000-8000-00000000
 echo "INFO  use_scan_credit, add_scan_credits, scan_credit_redeem/refund/grant_record/grant_claim and store_temp_resume write, so they are not called here; section 40's census and src/test/a-scan-credit-is-spent-only-by-whoever-proved-the-purchase.test.ts / a-stored-resume-can-be-read-again-and-the-store-has-a-ceiling.test.ts prove them"
 
 # THE OWNER'S CLOSING STEP for an address as proof (mailbox-proof.ts): turn
-# email confirmation on, then set EMAIL_CONFIRMED_SINCE to that moment. Until
-# the auth server answers mailer_autoconfirm=false, only a verified Google or
-# Apple sign-in proves an address, whatever the secret says. A pure read.
+# email confirmation on, then record that moment in the ONE switch every
+# caller reads since wave 2 (section 65): UPDATE public.mailbox_proof_settings
+# SET confirmation_required_since = now(). Until the auth server answers
+# mailer_autoconfirm=false, only a verified Google or Apple sign-in proves an
+# address, whatever the switch says. A pure read.
 W1_AC=$(curl -s -m 30 "$B/auth/v1/settings" -H "apikey: $K" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(String(JSON.parse(s).mailer_autoconfirm))}catch{console.log("unreadable")}})')
 case "$W1_AC" in
-  false) echo "PASS  auth settings: mailer_autoconfirm=false -- an address confirmed after EMAIL_CONFIRMED_SINCE now counts as proven (if that secret is set)";;
-  true) echo "INFO  auth settings: mailer_autoconfirm=true -- sign-ups are auto-confirmed, so a password account's address unlocks no credits or Pro (owner step open: turn on email confirmation, then set EMAIL_CONFIRMED_SINCE)";;
+  false) echo "PASS  auth settings: mailer_autoconfirm=false -- an address confirmed after mailbox_proof_settings.confirmation_required_since now counts as proven (if that row is set)";;
+  true) echo "INFO  auth settings: mailer_autoconfirm=true -- sign-ups are auto-confirmed, so a password account's address unlocks no address-pooled credits (owner step open: turn on email confirmation, then UPDATE public.mailbox_proof_settings SET confirmation_required_since = now())";;
   *) echo "INFO  auth settings unreadable ($W1_AC): the functions treat that as still auto-confirming";;
 esac

@@ -216,10 +216,12 @@ describe("the remaining sweep pins", () => {
   });
 
   it("the facet-count probe binds the filters the list binds", () => {
-    const facetBlock = BOARD.slice(BOARD.indexOf("const t_count_jobs_capped_5"), BOARD.indexOf("p_cap: COUNT_CAP,", BOARD.indexOf("const t_count_jobs_capped_5")));
-    for (const frag of ["...sendableSourcesParam(applied)", "p_posted_after: applied.postedAfter", "p_max_age_days: applied.maxAgeDays", "...payParams(applied)", "...extraFilterParams(applied)"]) {
-      expect(facetBlock, `facet counts must bind ${frag} — the rail promised ~18x more than clicking delivered`).toContain(frag);
-    }
+    // Since .91 every chip count goes through buildQuery, the list's own filter
+    // binder (L13-24); the separate RPC argument list this guarded is gone.
+    const facetBlock = BOARD.slice(BOARD.indexOf("if (body.facetCounts === true) {"), BOARD.indexOf("facetSource: facetTokens ?"));
+    expect(facetBlock).toMatch(/buildQuery\("effective_posted", true, c, \{ skipTerms: true \}\)\.in\("company_token", facetTokens\)/);
+    expect(facetBlock).toMatch(/: buildQuery\("effective_posted", true, c\);/);
+    expect(facetBlock).not.toMatch(/count_jobs_capped/);
   });
 
   it("neither augmentation reshuffles a newest-sorted page", () => {

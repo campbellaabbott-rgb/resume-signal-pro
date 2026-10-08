@@ -1407,7 +1407,21 @@ const PINNED = {
   // deep lane runs ahead of the base rotation, one board a slice out of the
   // bootstrap take, its start mapped from the cold cursor's place (n426).
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.90",
+  // 2026-09-09.91: wave 2 of the 2026-10-04 sweep (n427-n435). A tombstone
+  // dated inside the window lets its id back on a vendor whose stored date
+  // never moves; a shared token's boards stamp their own key and the stale
+  // lane reads by board (migrations 20261008100000/100100); a state code
+  // matches at a boundary on US/CA rows (20261008100200); a filter keeps the
+  // route, the pay order never falls to the substring path, a symbol query
+  // withholds its count, chips under a text query are withheld, a deep page's
+  // floor counts rows; pay figures, OR, quotes, trade terms, the typeahead,
+  // ISO country, whole-day ages and the audit's RateLimitError read right;
+  // slice_stats.cursorStep records the cursor's two writes.
+  // Also in .91 (wave 2 email-ops): newSince, the saved-search digest's
+  // discovery window (posted_at OR first_seen after X), RPC-blind, echoed on
+  // list and count answers (n306b).
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.91",
 };
 
 /**

@@ -184,12 +184,12 @@ describe("the board-pass action, with Cloudflare faked", () => {
   });
 
   it("every allowed host passes; any other host fails even when Cloudflare says success", async () => {
-    expect([...BOARD_PASS_HOSTS].sort()).toEqual(["resumebooster.lovable.app", "resumebooster.work", "www.resumebooster.work"]);
+    expect([...BOARD_PASS_HOSTS].sort()).toEqual(["resumebooster.work", "www.resumebooster.work"]);
     for (const host of BOARD_PASS_HOSTS) {
       reply = async () => answer({ success: true, hostname: host.toUpperCase() });
       expect((await act({ token: "t" })).status, host).toBe(200);
     }
-    for (const host of ["evil.example", "resumebooster.work.evil.example", "", undefined]) {
+    for (const host of ["evil.example", "resumebooster.work.evil.example", "resumebooster.lovable.app", "", undefined]) {
       reply = async () => answer({ success: true, hostname: host, "error-codes": [] });
       const r = await act({ token: "t" });
       expect(r, String(host)).toEqual({ status: 403, body: { error: "board_pass_failed", codes: ["hostname-not-allowed"] } });

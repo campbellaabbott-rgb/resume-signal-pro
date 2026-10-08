@@ -16,7 +16,11 @@
 //   POST {action:"send"}  the daily cron (x-email-cron, a vault key) or our own
 //     service role. Nobody else: this used to answer any caller, so N
 //     concurrent posts mailed every due subscriber N times (defect sweep 2.23).
-//   GET ?action=unsubscribe&email=&token=  the HMAC link in every pulse mail.
+//   GET ?action=unsubscribe&email=&token=  the HMAC link in pulse mails
+//     already sent: it changes nothing and redirects to the confirm page on
+//     resumebooster.work (mail scanners follow every link). Unsubscribing is a
+//     POST with the same parameters -- that page's button, or the mail
+//     client's RFC 8058 one-click (List-Unsubscribe-Post) -- register L10-14.
 //
 // WHY THE OPT-IN CHANGED (defect sweep 1.59). The report page's box was
 // pre-ticked, and the address it subscribed was whatever anyone typed, so the
@@ -30,10 +34,11 @@ import { sameSecret } from "../_shared/service-caller.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
+import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-market-pulse.2026-10-04.2";
+const FN_BUILD = "send-market-pulse.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,24 +121,27 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
 
-  // ── Unsubscribe (GET link from the email) ────────────────────────────────
+  // ── Unsubscribe (_shared/unsubscribe-link.ts) ───────────────────────────
+  // A GET changes nothing and opens the confirm page; only a POST unsubscribes.
   if (req.method === "GET" && url.searchParams.get("action") === "unsubscribe") {
-    const email = (url.searchParams.get("email") ?? "").toLowerCase();
-    const token = url.searchParams.get("token") ?? "";
-    const expected = await hmacToken(email);
-    if (!email || !sameSecret(token, expected)) {
-      return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
-    }
-    await supabase.from("market_pulse_subscribers")
-      .update({ unsubscribed_at: new Date().toISOString() })
-      .eq("email", email);
-    return new Response(
-      "<html><body style='font-family:sans-serif;text-align:center;padding:60px'><h2>You're unsubscribed.</h2><p>No more market pulse emails. You can re-subscribe from any future scan.</p></body></html>",
-      { headers: { "Content-Type": "text/html" } },
-    );
+    return redirectToConfirm("market-pulse", { email: url.searchParams.get("email") ?? "", token: url.searchParams.get("token") ?? "" });
   }
 
   if (req.method !== "POST") return json({ error: "POST an action." }, 405);
+
+  const un = await unsubscribeParams(req, url);
+  if (un) {
+    const email = (un.email ?? "").toLowerCase();
+    if (!email || !sameSecret(un.token ?? "", await hmacToken(email))) return json({ error: "invalid unsubscribe link" }, 400);
+    const { error: unErr } = await supabase.from("market_pulse_subscribers")
+      .update({ unsubscribed_at: new Date().toISOString() })
+      .eq("email", email);
+    if (unErr) {
+      console.error("[MARKET-PULSE] unsubscribe failed:", unErr.message);
+      return json({ error: "could not unsubscribe right now" }, 503);
+    }
+    return json({ unsubscribed: true });
+  }
 
   try {
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
@@ -246,7 +254,9 @@ Deno.serve(async (req) => {
         const digest = buildDigest(industry);
         if (!digest) { skipped++; continue; }
         const token = await hmacToken(sub.cl_email);
-        const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-market-pulse?action=unsubscribe&email=${encodeURIComponent(sub.cl_email)}&token=${token}`;
+        const unsubParams = { email: sub.cl_email, token };
+        const unsubUrl = unsubscribePageUrl("market-pulse", unsubParams);
+        const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-market-pulse", unsubParams));
         const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
         const industryLabel = industry.replace(/_/g, " ");
         const confirmedOn = String(sub.cl_confirmed_at ?? "").slice(0, 10);
@@ -295,7 +305,7 @@ Deno.serve(async (req) => {
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
       You confirmed this monthly pulse${confirmedOn ? ` on ${escapeHtml(confirmedOn)}` : ""} by clicking the link we emailed you.<br>
-      <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> — one click, no login.
+      <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Unsubscribe</a> — no login needed.
     </p>
   </div>
 </body></html>`;
@@ -305,6 +315,7 @@ Deno.serve(async (req) => {
           to: [sub.cl_email],
           subject: `${industryLabel} postings shifted — is your resume current?`,
           html,
+          headers: unsubHeaders,
         });
         if (sendErr) {
           console.error("[MARKET-PULSE] send failed for one subscriber", sendErr);

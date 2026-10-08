@@ -123,14 +123,14 @@ const all = (src: string, re: RegExp) => {
 /** The 34,000-open-role employer. A board bigger than one visit can read, so not
  *  one closure of theirs was ever observable. THIS IS THE ROW THE OLD BOOLEAN
  *  ANSWERED "no" FOR. */
-const WINDOWED = { fills_90d: 0, relists_90d: 0 };
+const WINDOWED = { filled_roles_90d: 0, relisted_roles_90d: 0 };
 /** Read, and the pattern is not there: we watched postings leave and come back.
  *  A finding we can support, and the only verdict a surface may render silently. */
-const CHURNS = { fills_90d: 1, relists_90d: 9 };
+const CHURNS = { filled_roles_90d: 1, relisted_roles_90d: 9 };
 /** Watched taking roles down and leaving them down. */
-const CLOSES = { fills_90d: 5, relists_90d: 1 };
+const CLOSES = { filled_roles_90d: 5, relisted_roles_90d: 1 };
 
-type VerdictFn = (h: { fills_90d: number; relists_90d: number } | null | undefined) => HiringRecordVerdict;
+type VerdictFn = (h: { filled_roles_90d: number | null; relisted_roles_90d: number | null } | null | undefined) => HiringRecordVerdict;
 
 /**
  * THE PROPERTY ITSELF, as a routine, so the teeth test can run the SAME checks
@@ -162,19 +162,36 @@ describe("we could not observe it is not they are not hiring", () => {
     expect(hiringRecordVerdict(CLOSES)).toBe("closes");
     expect(hiringRecordVerdict(CHURNS)).toBe("no-pattern");
     // Below the bar but READ: two clean take-downs is a reading, not a gap.
-    expect(hiringRecordVerdict({ fills_90d: 2, relists_90d: 0 })).toBe("no-pattern");
+    expect(hiringRecordVerdict({ filled_roles_90d: 2, relisted_roles_90d: 0 })).toBe("no-pattern");
     // A single re-list and nothing else is also a reading — we watched a posting
     // of theirs leave. Only an EMPTY closure ledger is unknown.
-    expect(hiringRecordVerdict({ fills_90d: 0, relists_90d: 1 })).toBe("no-pattern");
+    expect(hiringRecordVerdict({ filled_roles_90d: 0, relisted_roles_90d: 1 })).toBe("no-pattern");
     // relists_90d is a FLOOR (one logged re-list per title per day), so equality
     // still qualifies and one more re-list than take-downs does not: the error
     // is towards disqualifying, the safe direction for a claim that speaks well
     // of an employer.
-    expect(hiringRecordVerdict({ fills_90d: 3, relists_90d: 3 })).toBe("closes");
-    expect(hiringRecordVerdict({ fills_90d: 3, relists_90d: 4 })).toBe("no-pattern");
+    expect(hiringRecordVerdict({ filled_roles_90d: 3, relisted_roles_90d: 3 })).toBe("closes");
+    expect(hiringRecordVerdict({ filled_roles_90d: 3, relisted_roles_90d: 4 })).toBe("no-pattern");
     // A build that stops returning the columns is our instrument failing.
-    expect(hiringRecordVerdict({ fills_90d: NaN, relists_90d: 0 })).toBe("unknown");
-    expect(hiringRecordVerdict({ fills_90d: 0, relists_90d: NaN })).toBe("unknown");
+    expect(hiringRecordVerdict({ filled_roles_90d: NaN, relisted_roles_90d: 0 })).toBe("unknown");
+    expect(hiringRecordVerdict({ filled_roles_90d: 0, relisted_roles_90d: NaN })).toBe("unknown");
+    // ...and so is a row from a deploy that predates the role columns.
+    expect(hiringRecordVerdict({ filled_roles_90d: null, relisted_roles_90d: null })).toBe("unknown");
+  });
+
+  it("the bar counts roles, not closure events: a role that closed twice or came back is never a role that stayed down", () => {
+    // Johnson & Johnson's shape on 2026-10-04: thousands of fill EVENTS and a
+    // handful of same-title re-list events, while per role far fewer stayed
+    // down and hundreds came back. The events must not decide the verdict.
+    const jnj = { fills_90d: 2499, relists_90d: 5, filled_roles_90d: 1799, relisted_roles_90d: 403 };
+    expect(hiringRecordVerdict(jnj)).toBe("closes");
+    // Every event a re-closure of a role that came back: plenty of fill events,
+    // no role that stayed down.
+    const churner = { fills_90d: 40, relists_90d: 0, filled_roles_90d: 0, relisted_roles_90d: 20 };
+    expect(hiringRecordVerdict(churner)).toBe("no-pattern");
+    // More roles came back than stayed down, though the events say otherwise.
+    const backAgain = { fills_90d: 12, relists_90d: 1, filled_roles_90d: 3, relisted_roles_90d: 5 };
+    expect(hiringRecordVerdict(backAgain)).toBe("no-pattern");
   });
 
   it("TEETH: folding unknown into the negative fails this file", () => {
@@ -290,8 +307,22 @@ describe("we could not observe it is not they are not hiring", () => {
     // split; narrow enough that a site pasted into a different part of the
     // page has no handler in reach.
     const WINDOW = 2500;
+    // THE CARD'S ONE-SLOT CHAIN IS ONE SURFACE, AND IT IS LONGER THAN THE
+    // WINDOW: about 8,500 characters from its first caution to its third-state
+    // chip once the praise branch read the verdict itself (it read a role
+    // count before, so it was never a consumer here). Every consumer inside
+    // the chain is answered by that chip -- the pinned `=== "unreadable"`
+    // branch asserted below -- so the chain is matched as a range rather than
+    // by widening the window for every other site on the page. The range is
+    // bounded, so a site pasted far from the chain is still outside it.
+    const slotStart = JOBS.indexOf("const churn = hh.relists_90d;");
+    const slotEnd = JOBS.search(/hiringRecordSlot\(hiringRecordOf\(job\.token\)\) === "unreadable"/);
+    expect(slotStart, "the one-slot chain moved -- RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
+    expect(slotEnd, "the slot's third-state chip is missing").toBeGreaterThan(slotStart);
+    expect(slotEnd - slotStart, "the slot chain is no longer one surface").toBeLessThan(10_000);
     const unhandled: number[] = [];
     for (const i of sites) {
+      if (i > slotStart && i < slotEnd) continue;
       const near = JOBS.slice(Math.max(0, i - WINDOW), i + WINDOW);
       if (!/=== "unknown"|=== "unreadable"|"unknown" &&/.test(near)) unhandled.push(lineOf(JOBS, i));
     }

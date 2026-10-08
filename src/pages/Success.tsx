@@ -143,7 +143,9 @@ const Success = () => {
         // the catalogue sells it for: this recorded 25 -- the analysis's
         // price in its first week -- on every $5 sale, overstating the main
         // product's funnel revenue five-fold (platform sweep L3-21).
-        if (!hasTrackedConversion) {
+        // A Pro member's included analysis (a pro_ grant) took no money, so
+        // it is not recorded as a $5 purchase in the funnel.
+        if (!hasTrackedConversion && !sessionId?.startsWith('pro_')) {
           trackAllConversions({ type: 'paid_analysis', hasLinkedIn: data.hasLinkedIn });
           trackPurchaseCompleted('fullAnalysis', PRODUCTS.fullAnalysis.priceUsd, sessionId || undefined);
           trackFunnelPurchase('fullAnalysis', PRODUCTS.fullAnalysis.priceUsd, sessionId || undefined);

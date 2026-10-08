@@ -149,8 +149,11 @@ describe("a cap of ours is not a closure of theirs", () => {
 
   it("behaviour: an unresolvable link is still answered, and still not called aged out", async () => {
     mount({ job: null });
-    await waitFor(() => expect(body()).toContain("The posting in that link is no longer live"), SLOW);
+    // {job:null} with no closure and no cap is "no longer listed on this
+    // board" -- answered, but with no claim that the employer filled it.
+    await waitFor(() => expect(body()).toContain("The posting in that link is no longer listed on this board"), SLOW);
     expect(body()).not.toContain("aged out of this board's freshness window");
+    expect(body()).not.toContain("filled or taken down");
   });
 
   it("behaviour: a live deep link renders the posting, not a banner", async () => {
@@ -168,7 +171,7 @@ describe("a cap of ours is not a closure of theirs", () => {
     const writes = [...JOBS.matchAll(/setDeadLink\(\{/g)];
     expect(writes.length).toBeGreaterThan(2);
     for (const m of writes) {
-      expect(JOBS.slice(m.index, (m.index ?? 0) + 60), "a dead link written without a kind").toMatch(/kind: "(closed|agedOut)"/);
+      expect(JOBS.slice(m.index, (m.index ?? 0) + 60), "a dead link written without a kind").toMatch(/kind: "(closed|agedOut|unlisted)"/);
     }
     // Closure rows and aged-out rows are feed text and get the same display
     // hygiene every live row gets.

@@ -26,11 +26,20 @@
 // every gate reads the plan by that id (agent_subscription_rows). Sign-ups are
 // confirmed automatically, so an address alone is not proof of who paid.
 
-// deploy-stamp: 2026-10-05T13:00Z
+// ONE TRIAL PER CUSTOMER (owner decision 2026-10-04, platform sweep L6-29).
+// Every agent checkout used to carry a fresh seven-day trial, and a trial
+// minted the whole paid catalogue: start, take, cancel, repeat. The trial is
+// now offered only when NONE of the three keys has ever held an agent-priced
+// or trialed subscription: the account's id (agentPlanEverHeld), the account's
+// address and every Stripe customer behind it (standing.hadTrialOrAgent, from
+// the same Stripe read the double-billing guard makes). A read that fails
+// offers no trial.
+
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, manualAgentGrant } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, AGENT_TRIAL_DAYS, agentPlanEverHeld, manualAgentGrant } from "../_shared/agent.ts";
 import { subscriptionStandingByEmail } from "../_shared/pro.ts";
 import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
@@ -39,7 +48,7 @@ import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-05.3";
+const FN_BUILD = "create-agent-checkout.2026-10-08.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,6 +106,10 @@ serve(async (req) => {
     const verdict = checkoutVerdict(standing, "agent");
     if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 
+    // A first-time customer only (see the header): the address's customers
+    // as Stripe holds them, and the account's own record.
+    const trialOffered = !standing.hadTrialOrAgent && !(await agentPlanEverHeld(supabase, user.id, email));
+
     const origin = req.headers.get("origin") || "https://resumebooster.work";
     // The buyer's user id ON THE SUBSCRIPTION — the copy checkAgentByEmail
     // reads to bind agent_subscribers.user_id, on every later refresh.
@@ -125,13 +138,15 @@ serve(async (req) => {
       ],
       allow_promotion_codes: true,
       // The Agent sells an experience ("wake up to a shortlist") that has to
-      // be FELT once — 7 free mornings before the first charge.
-      // checkAgentByEmail already treats 'trialing' as active, so the
-      // entitlement (and the nightly runner) work from day one. Whether a
-      // returning subscriber gets another trial is an open owner decision
-      // (platform sweep L6-29); the guard above already refuses a new trial
-      // to anyone whose plan owes money.
-      subscription_data: { trial_period_days: 7, metadata: subscriptionBuyer },
+      // be FELT once — free mornings before the first charge, ONCE per
+      // customer (trialOffered above). checkAgentByEmail treats 'trialing'
+      // as active, so the agent works from day one of a trial; the paid
+      // one-off tools are not minted until the first payment
+      // (_shared/pro-standing.ts).
+      subscription_data: {
+        ...(trialOffered ? { trial_period_days: AGENT_TRIAL_DAYS } : {}),
+        metadata: subscriptionBuyer,
+      },
       // LAND THEM WHERE THE AGENT IS SET UP, NOT ON THE ACCOUNT PAGE.
       //
       // This used to return the buyer to `/account?agent=success` — and nothing
@@ -152,10 +167,13 @@ serve(async (req) => {
       // names the three prerequisites (CV/consent, exclusions, active mandate)
       // with the consequence of skipping each.
       //
-      // `welcome=1` IS READ — see src/pages/Agent.tsx. Do not add a parameter
+      // `welcome` IS READ — see src/pages/Agent.tsx. Do not add a parameter
       // here without wiring the reader; a redirect carrying a flag nobody
-      // consumes is precisely the bug this replaced.
-      success_url: `${origin}/agent?welcome=1`,
+      // consumes is precisely the bug this replaced. Its value says whether
+      // THIS checkout carried a trial ("trial") or charged at once ("1"):
+      // the welcome banner told every subscriber, a returning one just
+      // charged included, that the first charge was days away.
+      success_url: `${origin}/agent?welcome=${trialOffered ? "trial" : "1"}`,
       // Cancel returns to the agent page too, where the pitch and the retry
       // path live — not to an account page that says nothing about why they
       // came. NO FLAG: the first draft of this line carried `?checkout=cancelled`
@@ -178,11 +196,11 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(body),
-      metadata: { planCents: AGENT_PRICE_CENTS, trial: session.payment_status === "no_payment_required" },
+      metadata: { planCents: AGENT_PRICE_CENTS, trial: trialOffered },
     });
 
     console.log(`[CREATE-AGENT-CHECKOUT] Session ${session.id} created`);
-    return json({ url: session.url, sessionId: session.id });
+    return json({ url: session.url, sessionId: session.id, trial: trialOffered });
   } catch (error) {
     console.error("[CREATE-AGENT-CHECKOUT] Error:", error);
     return json({ error: "Could not start checkout. Please try again." }, 500);

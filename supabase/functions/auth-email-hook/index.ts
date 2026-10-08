@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js'
@@ -11,7 +11,13 @@ import { RecoveryEmail } from '../_shared/email-templates/recovery.tsx'
 import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
 
+// Provable from outside without a key: every response, the preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = 'auth-email-hook.2026-10-08.1'
+
 const corsHeaders = {
+  'x-fn-build': FN_BUILD,
+  'Access-Control-Expose-Headers': 'x-fn-build',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type, x-lovable-signature, x-lovable-timestamp, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -36,8 +42,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   reauthentication: ReauthenticationEmail,
 }
 
-// Configuration
-const SITE_NAME = "resume-signal-pro"
+// Configuration. SITE_NAME is the From display name and the product name in
+// every auth template, so it is the name every other mail of ours uses -- it
+// was the internal repository name (register L10-09).
+const SITE_NAME = "Resume Booster"
 const SENDER_DOMAIN = "notify.resumebooster.work"
 const ROOT_DOMAIN = "resumebooster.work"
 const FROM_DOMAIN = "notify.resumebooster.work" // Domain shown in From address (may be root or sender subdomain)

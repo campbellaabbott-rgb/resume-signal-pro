@@ -191,7 +191,16 @@ describe("the handler: who is counted, and what a refusal is", () => {
     });
   });
   afterAll(() => { globalThis.fetch = realFetch; });
-  beforeEach(() => { db = new MeterDb(); g.__jbDb = db; env.SUPABASE_SERVICE_ROLE_KEY = SVC; });
+  // A fresh headline row, so a list request serves it instead of seeding the
+  // board with a background refresh. waitUntil is a no-op here but the refresh
+  // promise still runs; it used to die at its first upsert, which the shared
+  // FakeDb could not do, and since it can (wave 2) it reached the vendors and
+  // landed in this file's no-network assertion.
+  beforeEach(() => {
+    db = new MeterDb();
+    db.rows("job_board_meta").push({ id: "refresh_head", k: "refresh_head", v: { companiesCount: 1 }, updated_at: new Date().toISOString() });
+    g.__jbDb = db; env.SUPABASE_SERVICE_ROLE_KEY = SVC;
+  });
 
   const post = (body: Record<string, unknown>, headers: Record<string, string> = {}) =>
     handler(new Request("https://h.supabase.co/functions/v1/job-board", {

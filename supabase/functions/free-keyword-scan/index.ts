@@ -19,6 +19,10 @@ import {
   type CreditHold,
 } from "../_shared/scan-credits.ts";
 import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
+// The one "is Pro" rule, from its import-free module (_shared/pro.ts
+// re-exports it): the scanner has no reason to load Stripe.
+import { accountProStanding } from "../_shared/pro-standing.ts";
+import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 import {
   detectCountryFromResume,
   getMarketInsight,
@@ -442,7 +446,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-05.2";
+const FN_BUILD = "free-keyword-scan.2026-10-08.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1147,17 +1151,9 @@ function calculateRuleBasedAtsScore(
 // Retry helper for AI API calls with exponential backoff
 const MAX_AI_RETRIES = 2;
 const AI_RETRY_DELAY_MS = 2000;
-// Flash-first: production logs showed both parallel calls bound by
-// gemini-2.5-pro's 45-95s tail latency on heavy structured output. Flash is
-// several times faster on the same workload, and the post-call safety nets
-// (rule-based score clamp, claim grounding, consistency validation, schema
-// coercion) were built precisely so model choice can't corrupt the report.
-// Pro stays second as the quality fallback.
-const MODEL_FALLBACK_ORDER = [
-  'google/gemini-2.5-flash',
-  'google/gemini-2.5-pro',
-  'openai/gpt-4o-mini',
-];
+// Flash-first, then pro, then cross-provider: the rationale lives with the
+// list in _shared/scan-models.ts, which test-ai-fallback reads too.
+const MODEL_FALLBACK_ORDER: string[] = [...SCAN_MODEL_CHAIN];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -1317,6 +1313,9 @@ serve(async (req) => {
   // (cache hit, rule-based or load-shed report, busy gateway, any error).
   let creditHold: CreditHold | null = null;
   let creditDelivered = false;
+  // The scan_type an error metric is logged under: our own probes' failures
+  // are not a real visitor's failed scan.
+  let metricScanType = 'free';
   // The model calls' clock, counted from the request's start.
   const aiDeadlineAt = requestStartTime + AI_DEADLINE_MS;
 
@@ -1353,6 +1352,14 @@ serve(async (req) => {
     // get_real_score_distribution filter to real scan types). No secret
     // needed: spoofing the flag only removes a scan from our own stats.
     const isSyntheticScan = body.synthetic === true;
+    // OUR OWN PROBE IS NOT A RESUME ANYONE SCANNED. Since the heartbeat's scan
+    // stopped being a cache hit (2026-10-08) it runs the whole pipeline every
+    // 10 minutes, so everything below that counts a visitor's scan skips it:
+    // the public "scanned today" counter, the owner's per-scan mail, the
+    // detection logs, the industry pin and the report cache.
+    const isOwnProbe = isHeartbeatProbe || isSyntheticScan;
+    // The heartbeat's row stays 'heartbeat' even when it also says synthetic.
+    metricScanType = isHeartbeatProbe ? 'heartbeat' : isSyntheticScan ? 'synthetic' : 'free';
     // Optional per-scan context the user stated or confirmed — beats inference.
     const userContext: {
       situation?: string; targetRole?: string;
@@ -1420,11 +1427,12 @@ serve(async (req) => {
     // The frontend client attaches the session JWT automatically when logged in.
     let isAuthedUser = false;
     // WHO IS ASKING, as far as it was proven. The auth user id the platform
-    // verified on the JWT spends the purchases it claimed. The account's
-    // ADDRESS is honoured for Pro or for the address's credit pool only once
-    // the session has proven it reads that mailbox (_shared/mailbox-proof.ts):
-    // sign-ups are auto-confirmed, so an address on a session is a claim, the
-    // same as one in the body (2.07). Never an address from the body.
+    // verified on the JWT spends the purchases it claimed and is what Pro is
+    // read by (the plan bound to that account). The account's ADDRESS is
+    // honoured for the address's credit pool only once the session has proven
+    // it reads that mailbox (_shared/mailbox-proof.ts): sign-ups are
+    // auto-confirmed, so an address on a session is a claim, the same as one
+    // in the body (2.07). Never an address from the body.
     let authedUserId: string | null = null;
     let authedUser: AuthUserLike | null = null;
     let authedJwt = '';
@@ -1490,7 +1498,7 @@ serve(async (req) => {
     const metricCtx: ScanMetricContext = {
       supabase,
       startTime: requestStartTime,
-      scanType: isSyntheticScan ? 'synthetic' : isHeartbeatProbe ? 'heartbeat' : 'free',
+      scanType: metricScanType,
       cacheHit: false,
       ipCountry: country || null,
       visitorId: clientIp,
@@ -1527,31 +1535,31 @@ serve(async (req) => {
       // the request proves nothing: it used to be enough to spend a stranger's
       // purchased credits, or to scan without limit as a Pro subscriber.
       //
-      // 1. Pro, for the signed-in account's address, once its mailbox is
-      //    proven. A password sign-up as a subscriber's address is not.
-      if (authedUser) {
-        provenEmail = await provenMailbox(authedUser, authedJwt, {
-          confirmedSince: Deno.env.get('EMAIL_CONFIRMED_SINCE') ?? null,
-          supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
-          anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        });
-      }
-      if (provenEmail) {
+      // 1. Pro, held by the signed-in ACCOUNT: the one rule
+      //    (_shared/pro-standing.ts) over both caches, by user id. Unlimited
+      //    scans are an ongoing feature of the plan, so a trial counts. A
+      //    password sign-up as a subscriber's address holds no plan: the plan
+      //    belongs to the account that bought it (20261008130000).
+      if (authedUserId) {
         try {
-          const { data: proRow } = await supabase
-            .from('pro_subscribers')
-            .select('status, current_period_end')
-            .eq('email', provenEmail)
-            .maybeSingle();
-          const proActive = !!proRow && ['active', 'trialing'].includes(proRow.status) &&
-            (!proRow.current_period_end || new Date(proRow.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
-          if (proActive) {
-            console.log('[FREE-KEYWORD-SCAN] Rate limit reached — signed-in Pro subscriber, scan allowed');
+          if ((await accountProStanding(supabase, authedUserId)).pro) {
+            console.log('[FREE-KEYWORD-SCAN] Rate limit reached — signed-in Pro account, scan allowed');
             proBypass = true;
           }
         } catch (e) {
           console.warn('[FREE-KEYWORD-SCAN] Pro check failed:', e);
         }
+      }
+      // The address's credit pool still needs the mailbox proven. The switch
+      // is the mailbox_proof_settings row; the secret only answers when that
+      // row cannot be read.
+      if (authedUser && !proBypass) {
+        provenEmail = await provenMailbox(authedUser, authedJwt, {
+          db: supabase,
+          confirmedSince: Deno.env.get('EMAIL_CONFIRMED_SINCE') ?? null,
+          supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
+          anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        });
       }
       // 2. A purchased credit: the proven address's pool, a purchase this
       //    browser holds the Stripe Checkout session of, or a purchase the
@@ -3302,7 +3310,7 @@ ${resumeText.substring(0, 20000)}
 
     // Write a new pin for future rescans of this resume (high confidence only,
     // and never from the rule-based fallback path — that's a degraded signal).
-    if (!pinnedIndustry && finalConfidence === 'high' && !usedRuleBasedFallback && finalIndustry !== 'general') {
+    if (!isOwnProbe && !pinnedIndustry && finalConfidence === 'high' && !usedRuleBasedFallback && finalIndustry !== 'general') {
       EdgeRuntime.waitUntil(
         (async () => {
           try {
@@ -3436,7 +3444,7 @@ ${resumeText.substring(0, 20000)}
     console.log(`[FREE-KEYWORD-SCAN] Success for IP: ${clientIp}, country: ${country || "Unknown"}, industry: ${analysis.industry}`);
 
     // Log industry detection metrics for monitoring/improvement (non-blocking)
-    EdgeRuntime.waitUntil(
+    if (!isOwnProbe) EdgeRuntime.waitUntil(
       (async () => {
         try {
           await supabase.rpc('log_industry_detection', {
@@ -3468,7 +3476,7 @@ ${resumeText.substring(0, 20000)}
     );
 
     // Increment daily scan counter in background
-    EdgeRuntime.waitUntil(
+    if (!isOwnProbe) EdgeRuntime.waitUntil(
       (async () => {
         try {
           await supabase.rpc('increment_free_scan_count');
@@ -3480,7 +3488,7 @@ ${resumeText.substring(0, 20000)}
     );
 
     // Send admin notification email for every free scan
-    EdgeRuntime.waitUntil(
+    if (!isOwnProbe) EdgeRuntime.waitUntil(
       (async () => {
         try {
           const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -4094,7 +4102,7 @@ ${resumeText.substring(0, 20000)}
     // Detection observability: one row per scan, fire-and-forget. Trends in
     // source distribution / tiebreaker rate / grounding drops show accuracy
     // drifting long before users complain.
-    EdgeRuntime.waitUntil((async () => {
+    if (!isOwnProbe) EdgeRuntime.waitUntil((async () => {
       try {
         await supabase.from('detection_telemetry').insert({
           industry: finalIndustry,
@@ -4503,12 +4511,16 @@ ${resumeText.substring(0, 20000)}
     trackPerformance(requestStartTime, 'free-keyword-scan', true, { atsScore: analysis.atsScoreEstimate, industry: analysis.industry }, clientIp);
 
     // Owner notification for each completed scan (fire and forget).
-    // Disable by setting NOTIFY_SCANS=false in function secrets.
-    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false') {
+    // Disable by setting NOTIFY_SCANS=false in function secrets. Never for our
+    // own probes: the heartbeat now runs an uncached scan every 10 minutes.
+    // notify-owner answers only the service role or the cron key since
+    // 2026-10-08 (register L10-13), so the call carries the service key.
+    if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false' && !isOwnProbe) {
+      const notifyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
       EdgeRuntime.waitUntil(
         fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-owner`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${notifyKey}`, apikey: notifyKey },
           body: JSON.stringify({
             type: 'scan',
             score: analysis.atsScoreEstimate,
@@ -4522,7 +4534,7 @@ ${resumeText.substring(0, 20000)}
     
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).
-    if (!usedRuleBasedFallback && !responseData.partialResults) {
+    if (!isOwnProbe && !usedRuleBasedFallback && !responseData.partialResults) {
       EdgeRuntime.waitUntil(
         supabase.from('scan_report_cache').upsert({
           cache_key: reportCacheKey,
@@ -4571,7 +4583,7 @@ ${resumeText.substring(0, 20000)}
         (async () => {
           try {
             await supabase.rpc('log_scan_metric', {
-              p_scan_type: 'free',
+              p_scan_type: metricScanType,
               p_status: 'failed',
               p_duration_ms: Date.now() - requestStartTime,
               p_cache_hit: false,

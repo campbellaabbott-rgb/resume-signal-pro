@@ -2362,7 +2362,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
-            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id (30 days back on a free key, 180 on a paid one).</li>
+            <li><code>GET /v1/changes</code> — what opened and what closed since a timestamp, and for each close whether the role genuinely came down or was re-listed under a new id. Opened reaches back 30 days on any key; closed reaches back 72 hours on a free key and 180 days on a paid one, and leaves out batches our own collector flagged as a possible failed read unless you ask for them with <code>include_suspect=true</code>. Closures written before the collector began assessing its batches were never assessed: they carry <code>suspectBatch: null</code> and no walk filters them.</li>
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
@@ -2507,6 +2507,9 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     // The figure is the mirror's, the one pricing-truth pins to the checkout
     // function's constant; it was typed here three times.
     const agentMonthly = D.SUBSCRIPTIONS.agent.priceUsd;
+    // The trial is offered once per customer (L6-29); its length is the
+    // mirror of AGENT_TRIAL_DAYS, and the page says who gets it.
+    const agentTrialDays = D.SUBSCRIPTIONS.agent.trialDays;
     write({
       path: "/agent",
       title: `Apply Agent — $${agentMonthly}/mo, Applications Sent For You`,
@@ -2515,21 +2518,21 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       // "four" for weeks while the list held five (project_claim_drift). The
       // board share is not on hand at bake time (no per-vendor facet here),
       // so it is absent rather than a stale figure — the SPA derives it live.
-      description: `The agent matches fresh postings to your resume and submits real applications on ${D.SENDABLE_VENDOR_LABELS.length} hiring systems. $${agentMonthly}/mo, 7 days free. It never solves CAPTCHAs.`,
+      description: `The agent matches fresh postings to your resume and submits real applications on ${D.SENDABLE_VENDOR_LABELS.length} hiring systems. $${agentMonthly}/mo; ${agentTrialDays} days free for first-time subscribers. It never solves CAPTCHAs.`,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
         <h1 class="text-3xl font-bold mb-3">The agent applies. You interview.</h1>
         <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings and submits real applications with your resume and answers, on the hiring systems it can drive end to end. You review what it sent, not what it plans to send.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it costs, and what you get</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$${agentMonthly}/month, 7 days free</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples.</p></div>
+          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$${agentMonthly}/month; ${agentTrialDays} days free for first-time subscribers</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples. A returning subscriber is charged from the first day.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">The limits, stated up front</h2>
           <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">${D.SENDABLE_VENDOR_LABELS.length} hiring systems: ${D.SENDABLE_VENDOR_SENTENCE}</p><p class="text-xs text-muted-foreground">The agent submits only where it can complete a real application end to end. The board labels every posting it can send to, so the scope is countable on the page, not a claim.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">It never solves CAPTCHAs or evades bot checks</p><p class="text-xs text-muted-foreground">Where a site gates applying, the agent prepares the application — answers, resume, cover note — and you press send. That boundary is permanent.</p></div>
         </section>
-        ${cta("Set up the agent", "Upload a resume, pick your targets, and the first morning queue is ready tomorrow. 7 days free.", "Start free week")}`,
+        ${cta("Set up the agent", `Upload a resume, pick your targets, and the first morning queue is ready tomorrow. ${agentTrialDays} days free for first-time subscribers.`, "Start the agent")}`,
     });
 
     // ---- /agents: the MCP server's human page ----

@@ -632,10 +632,13 @@ describe("the reader's slice has an address", () => {
       .toMatch(/const backHere = useCallback\(\(field: string \| null, r: string \| null, i: Intent = "fields"\)/);
     expect(EXPLORE, "backHere no longer builds its address from the intent it was given")
       .toMatch(/new URLSearchParams\(\{ i \}\)/);
-    const link = /\/jobs\/company\/\$\{encodeURIComponent\(h\.tokens\[0\]\)\}\?from=explore([^`]*)/.exec(EXPLORE);
-    expect(link, "the check tab's employer link is not where it was — re-read this assertion").toBeTruthy();
-    expect(link![1], "the employer link still leaves the reader with no way back to their check")
-      .toContain('back=${encodeURIComponent(backHere(null, null, "check"))}');
+    // The href itself is now judged on a REAL RENDER (2026-10-08): the card
+    // links a lander for one board and the group-scoped board for several, and
+    // explore-states-what-its-links-open-and-what-paused-it.test.tsx types into
+    // the check and reads `from` and `back` off both hrefs. What stays here is
+    // that the check slice is what this call site hands backHere.
+    expect(EXPLORE, "the employer check no longer passes its own slice to backHere")
+      .toMatch(/const backTo = backHere\(null, null, "check"\);/);
   });
 });
 

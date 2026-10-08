@@ -26,11 +26,12 @@ import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
+import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-04.1";
+const FN_BUILD = "send-search-digest.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,6 +46,21 @@ const SITE_URL = "https://resumebooster.work";
 // These floors live in search_digest_claim_batch (20261004100000), where the
 // claim is atomic: daily = 20 hours, anything else = 6 days.
 const CLAIM_BATCH = 400;
+/** Rows read per search: the window's newest, deduped against what was already mailed. */
+const CANDIDATES = 60;
+
+/**
+ * The board's answer for THIS window, or null. The digest asks for newSince
+ * (posted_at OR first_seen after the last send, register L10-02) and the board
+ * echoes the window it applied; an answer without the echo came from a bundle
+ * that ignored the key, and would mail an unwindowed search as "new".
+ */
+function windowAnswer(j: unknown, since: string): unknown {
+  if (!j || typeof j !== "object") return null;
+  const echoed = (j as { newSince?: unknown }).newSince;
+  if (typeof echoed !== "string" || Date.parse(echoed) !== Date.parse(since)) return null;
+  return j;
+}
 
 function escapeHtml(text: string | number | undefined | null): string {
   if (text === undefined || text === null) return "";
@@ -106,19 +122,29 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
 
-  // ── Unsubscribe (GET link from the email) — turns digest_opt_in off ──
+  // ── Unsubscribe — turns digest_opt_in off (_shared/unsubscribe-link.ts) ──
+  // A GET (the link in every digest already sent, and every mail scanner that
+  // follows it) changes nothing and opens the confirm page; only a POST -- the
+  // page's button, or the mail client's RFC 8058 one-click -- unsubscribes.
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("action") === "unsubscribe") {
-    const id = url.searchParams.get("id") ?? "";
-    const token = url.searchParams.get("token") ?? "";
-    if (!id || !sameSecret(token, await hmacToken(id))) {
-      return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
+    return redirectToConfirm("search-digest", { id: url.searchParams.get("id") ?? "", token: url.searchParams.get("token") ?? "" });
+  }
+  if (req.method === "POST") {
+    const un = await unsubscribeParams(req, url);
+    if (un) {
+      const id = un.id ?? "";
+      const token = un.token ?? "";
+      if (!/^[0-9a-f-]{36}$/i.test(id) || !sameSecret(token, await hmacToken(id))) {
+        return new Response(JSON.stringify({ error: "invalid unsubscribe link" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { error: unErr } = await supabase.from("user_job_searches").update({ digest_opt_in: false }).eq("id", id);
+      if (unErr) {
+        console.error("[SEARCH-DIGEST] unsubscribe failed:", unErr.message);
+        return new Response(JSON.stringify({ error: "could not unsubscribe right now" }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ unsubscribed: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    await supabase.from("user_job_searches").update({ digest_opt_in: false }).eq("id", id);
-    return new Response(
-      "<html><body style='font-family:sans-serif;text-align:center;padding:60px'><h2>Unsubscribed.</h2><p>No more digest emails for that saved search. Your other saved searches are unaffected.</p></body></html>",
-      { headers: { "Content-Type": "text/html" } },
-    );
   }
 
   try {
@@ -205,10 +231,19 @@ Deno.serve(async (req) => {
             includeFacets: false,
             ...extra,
           }),
-        }).then((r) => r.json()).catch(() => null);
+        }).then((r) => (r.ok ? r.json() : null)).then((j) => windowAnswer(j, since)).catch(() => null);
 
-      const countRes = await callBoard({ countOnly: true, postedAfter: since });
-      const rawNew = (countRes as { total?: number } | null)?.total ?? 0;
+      // AN ANSWER THAT IS NOT A NUMBER IS NOT ZERO (register L10-03). A failed
+      // or timed-out board call, a {total:null, countUnavailable:true} answer,
+      // or an answer from a bundle that did not apply the window all used to
+      // read as "nothing new", and the claim's advanced stamp then deleted that
+      // window's matches for good. Each now gives the claim back.
+      const countRes = await callBoard({ countOnly: true, newSince: since });
+      const rawNew = (countRes as { total?: unknown } | null)?.total;
+      if (typeof rawNew !== "number" || !Number.isFinite(rawNew)) {
+        console.error(`[SEARCH-DIGEST] board count unavailable for search ${s.id}; claim given back`);
+        await giveBack(s); skipped++; continue;
+      }
       // The board caps counting for speed (count_jobs_capped, 2026-07-25), so a
       // broad saved search comes back as exactly the cap with countCapped set.
       // Rendering that bare would email "10,000 new openings" as though it were
@@ -220,6 +255,13 @@ Deno.serve(async (req) => {
         skipped++;
         continue;
       }
+      /** Postings this search already mailed (search_digest_sent, 30 days), or null when unreadable. */
+      const alreadySent = async (ids: string[]): Promise<Set<string> | null> => {
+        if (!ids.length) return new Set();
+        const { data, error: sentErr } = await supabase.from("search_digest_sent").select("posting_id").eq("search_id", s.id).in("posting_id", ids);
+        if (sentErr) { console.error("[SEARCH-DIGEST] sent-id read failed:", sentErr.message); return null; }
+        return new Set((data ?? []).map((r: { posting_id: string }) => r.posting_id));
+      };
 
       // Fit-threshold alerts: when the saved search has a fit_threshold, score the
       // new postings against the user's latest résumé and only alert on ones that
@@ -230,6 +272,8 @@ Deno.serve(async (req) => {
       let newCount: number;
       let countIsLowerBound = false;
       let strongMode = false;
+      /** What this mail counts as sent, recorded only after the send succeeds. */
+      let mailedIds: string[] = [];
 
       let resumeText = "";
       if (threshold > 0) {
@@ -255,8 +299,13 @@ Deno.serve(async (req) => {
 
       if (threshold > 0 && resumeText.length >= 100) {
         strongMode = true;
-        const candRes = await callBoard({ limit: 60, offset: 0, postedAfter: since });
-        const cand = ((candRes as { jobs?: Array<{ id: string; company: string; title: string; location: string; applyUrl: string }> } | null)?.jobs) ?? [];
+        const candRes = await callBoard({ limit: CANDIDATES, offset: 0, newSince: since });
+        const candJobs = (candRes as { jobs?: unknown } | null)?.jobs;
+        if (!Array.isArray(candJobs)) { await giveBack(s); skipped++; continue; }
+        const sentBefore = await alreadySent(candJobs.map((j: { id?: string }) => j.id).filter((x): x is string => !!x));
+        if (!sentBefore) { await giveBack(s); skipped++; continue; }
+        const cand = (candJobs as Array<{ id: string; company: string; title: string; location: string; applyUrl: string }>)
+          .filter((j) => !sentBefore.has(j.id));
         const ids = cand.map((j) => j.id).filter(Boolean);
         const descById = new Map<string, string>();
         if (ids.length > 0) {
@@ -280,21 +329,36 @@ Deno.serve(async (req) => {
         }
         newCount = passing.length;
         jobs = passing.slice(0, 5);
+        mailedIds = passing.map((j) => j.id);
       } else {
-        newCount = rawNew;
-        countIsLowerBound = rawCapped;
-        // postedAfter matches the count's window — the headline says "new
-        // since we last checked", so the rows below it must actually BE that
-        // (they were fetched unwindowed: newest overall, not newest-since).
-        const listRes = await callBoard({ limit: 5, offset: 0, postedAfter: since });
-        jobs = ((listRes as { jobs?: Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }> } | null)?.jobs) ?? [];
-        if (jobs.length === 0) { await giveBack(s); skipped++; continue; } // count said new but list empty (transient) — retry next run, claim handed back
+        // The list's window is the count's — the headline says "new since we
+        // last checked", so the rows below it must actually BE that.
+        const listRes = await callBoard({ limit: CANDIDATES, offset: 0, newSince: since });
+        const listJobs = (listRes as { jobs?: unknown } | null)?.jobs;
+        if (!Array.isArray(listJobs) || listJobs.length === 0) { await giveBack(s); skipped++; continue; } // count said new but no list (transient) — retry next run, claim handed back
+        const all = listJobs as Array<{ id?: string; company: string; title: string; location: string; applyUrl: string; postedAt?: string | null }>;
+        const sentBefore = await alreadySent(all.map((j) => j.id).filter((x): x is string => !!x));
+        if (!sentBefore) { await giveBack(s); skipped++; continue; }
+        const fresh = all.filter((j) => !j.id || !sentBefore.has(j.id));
+        // Everything in the window was mailed before (a re-dated posting, a
+        // reset discovery date): nothing new, and the claim's stamp advances.
+        if (fresh.length === 0) { skipped++; continue; }
+        // Counted, never guessed: when the list held the whole window the
+        // number is the fresh rows; otherwise the board's count less the rows
+        // proven already mailed, still marked "+" if the board capped it.
+        const sawAll = rawNew <= all.length;
+        newCount = sawAll ? fresh.length : rawNew - (all.length - fresh.length);
+        countIsLowerBound = !sawAll && rawCapped;
+        jobs = fresh.slice(0, 5);
+        mailedIds = fresh.map((j) => j.id).filter((x): x is string => !!x);
       }
 
       const token = await hmacToken(s.id as string);
       // "10,000+" when the board could only tell us "at least this many".
       const shownCount = countIsLowerBound ? `${newCount.toLocaleString()}+` : String(newCount);
-      const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-search-digest?action=unsubscribe&id=${encodeURIComponent(s.id as string)}&token=${token}`;
+      const unsubParams = { id: s.id as string, token };
+      const unsubUrl = unsubscribePageUrl("search-digest", unsubParams);
+      const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-search-digest", unsubParams));
       const viewUrl = `${boardUrl(p)}${boardUrl(p).includes("?") ? "&" : "?"}utm_source=email&utm_medium=search_digest`;
 
       const fmtPosted = (iso?: string | null) => {
@@ -359,9 +423,15 @@ Deno.serve(async (req) => {
           : strongMode
             ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
             : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
-        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html });
+        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html, headers: unsubHeaders });
         if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         sent++;
+        // Remembered so a re-dated or re-discovered posting is not mailed
+        // twice; a failed record costs at most one repeat, never a lost mail.
+        if (mailedIds.length) {
+          const { error: recErr } = await supabase.rpc("search_digest_record_sent", { p_search_id: s.id, p_posting_ids: mailedIds });
+          if (recErr) console.error("[SEARCH-DIGEST] sent-id record failed:", recErr.message);
+        }
       } catch (e) {
         // A failed send gives its claim back, so the next run retries it.
         console.error("[SEARCH-DIGEST] send failed:", e instanceof Error ? e.message : e);

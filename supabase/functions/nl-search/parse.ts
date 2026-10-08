@@ -22,7 +22,7 @@
 // there are no longer three places to add it to.
 //
 // WHAT IS DELIBERATELY NOT HERE
-// See NL_DECLINED. Six of the board's wire params are refused on purpose, each
+// See NL_DECLINED. Seven of the board's wire params are refused on purpose, each
 // with its reason; the guard test asserts that emitted + declined is EXACTLY
 // the board's param list, so a filter added to filters.ts fails this repo's
 // tests until somebody decides which pile it belongs in.
@@ -403,6 +403,9 @@ export const NL_DECLINED: Readonly<Record<string, string>> = {
   // an entitlement this function cannot see. A sentence like "jobs I can apply
   // to" means the ordinary thing, not the product.
   sendableOnly: "a paid-capability gate, not a description of a job",
+  // The saved-search digest's discovery window (wave 2 email-ops, n306b): an
+  // instant the mailer sets from its own cursor, never something a reader asks.
+  newSince: "the saved-search digest's discovery instant, set by the mailer from its cursor; not an intent a sentence carries",
 };
 
 /** The prompt's filter list, DERIVED — never written out a second time. */

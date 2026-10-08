@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -7,7 +7,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 // Price identity for the $99 apply agent, and the entitlement writer.
 // Static import: the dynamic one inside the handler typechecked as `any`,
 // which is how a rename would have reached production silently.
-import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
 // The six-hour pass: identified by product_type ONLY (Freelance Boost bills
 // the same amount), granted through one idempotent RPC with every number
 // copied in from this module — never spelled here, never matched on.
@@ -38,7 +38,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-05.1";
+const FN_BUILD = "stripe-webhook.2026-10-08.2";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -311,6 +311,78 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
     passId: r?.granted_pass_id ?? null, duplicate: r?.was_duplicate === true,
   });
   return { granted: r?.granted_ok === true, reason, passId: r?.granted_pass_id ?? null };
+}
+
+/** The id of a Stripe reference that may arrive expanded or as a bare id. */
+const refId = (v: unknown): string | null =>
+  typeof v === "string" && v ? v : (v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : null);
+
+/** What a refunded or disputed payment bought, as payment_revoke needs it. */
+type RevocationTarget = {
+  sessionId: string | null;
+  productType: string | null;
+  email: string | null;
+  userId: string | null;
+  credits: number;
+  subscriptionId: string | null;
+  customerId: string | null;
+  paidAt: string | null;
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * RESOLVE A PAYMENT TO WHAT IT BOUGHT (L6-18). A one-time product is the
+ * Checkout session that took the payment (listed by its payment intent); a
+ * subscription payment is the invoice it paid (the charge's own reference
+ * where the event carries it, else Stripe's invoice-payment record), whose
+ * subscription names its buyer. Anything else resolves to the buyer's address
+ * alone, and payment_revoke finds nothing to take back but the receipt.
+ */
+async function revocationTarget(
+  stripe: Stripe,
+  charge: { created?: number; invoice?: unknown; billing_details?: { email?: string | null } | null } | null,
+  intent: string,
+): Promise<RevocationTarget> {
+  const paidAt = typeof charge?.created === "number" ? new Date(charge.created * 1000).toISOString() : null;
+  const sessions = await stripe.checkout.sessions.list({ payment_intent: intent, limit: 1 });
+  const s = sessions.data?.[0];
+  if (s) {
+    const productType = s.metadata?.product_type ?? null;
+    const buyer = s.client_reference_id ?? s.metadata?.user_id ?? null;
+    return {
+      sessionId: s.id,
+      productType,
+      email: buyerEmailOf(s),
+      userId: buyer && UUID_RE.test(buyer) ? buyer : null,
+      credits: SCAN_CREDIT_PRODUCT_TYPES.includes(productType ?? "") ? creditsBoughtBy(s) : 0,
+      subscriptionId: null,
+      customerId: refId(s.customer),
+      paidAt,
+    };
+  }
+  let invoiceId = refId(charge?.invoice);
+  if (!invoiceId) {
+    const payments = await stripe.invoicePayments.list({ payment: { type: "payment_intent", payment_intent: intent }, limit: 1 });
+    invoiceId = refId(payments.data?.[0]?.invoice);
+  }
+  if (invoiceId) {
+    const invoice = await stripe.invoices.retrieve(invoiceId);
+    const subscriptionId = refId(invoice.parent?.subscription_details?.subscription)
+      ?? refId((invoice as unknown as { subscription?: unknown }).subscription);
+    const sub = subscriptionId ? await stripe.subscriptions.retrieve(subscriptionId) : null;
+    return {
+      sessionId: null,
+      productType: sub && isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? "apply_agent" : "pro_subscription",
+      email: invoice.customer_email ?? charge?.billing_details?.email ?? null,
+      userId: sub ? subscriptionBuyer(sub) : null,
+      credits: 0,
+      subscriptionId,
+      customerId: refId(invoice.customer),
+      paidAt,
+    };
+  }
+  return { sessionId: null, productType: null, email: charge?.billing_details?.email ?? null, userId: null, credits: 0, subscriptionId: null, customerId: null, paidAt };
 }
 
 // Trigger product delivery for a completed checkout
@@ -777,6 +849,9 @@ serve(async (req) => {
     );
 
     let processingError: string | null = null;
+    // Set when work Stripe must redeliver the event for did not finish: the
+    // handler then answers 500, and Stripe retries for up to three days.
+    let mustRetry = false;
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -784,8 +859,8 @@ serve(async (req) => {
         
         // THE AGENT ENTITLEMENT IS GRANTED BEFORE THE PAYMENT TEST, and it has to be.
         //
-        // create-agent-checkout attaches `subscription_data: { trial_period_days: 7 }`
-        // unconditionally, so an agent session's amount_total is 0 and Stripe
+        // create-agent-checkout attaches a trial to a FIRST-TIME subscriber's
+        // session (once per customer since wave 2), so that session's amount_total is 0 and Stripe
         // reports payment_status as 'no_payment_required' — NOT 'paid'. This whole
         // handler body sat inside `payment_status === 'paid'`, so for the $99
         // Morning Queue the seeding below, and the prepare kick with it, NEVER RAN.
@@ -1106,33 +1181,88 @@ serve(async (req) => {
         break;
       }
 
-      // REFUNDS AND DISPUTES ARE SEEN, NOT YET ACTED ON (L6-18).
-      //
-      // They used to fall into "Unhandled event" and leave no trace a person
-      // would read. What a refund should revoke (close a pass, claw back
-      // unspent credits, end a grant) is an open owner decision, so this only
-      // tells the owner, with the payment to look at, and changes no
-      // entitlement. Stripe sends these only once the endpoint is subscribed
-      // to charge.refunded and charge.dispute.created (an owner action).
+      // REFUNDS AND DISPUTES TAKE BACK WHAT THE PAYMENT BOUGHT (L6-18; owner
+      // decision 2026-10-04). They used to change nothing: a refunded pass
+      // kept its clock, refunded credits stayed spendable, a refunded product
+      // could be regenerated, a refunded plan kept its grants. Now a refund
+      // IN FULL, or any dispute, resolves the payment to what it bought and
+      // payment_revoke (20261008131000) takes it back once per payment
+      // intent; a refunded or disputed subscription is cancelled at once in
+      // Stripe and both entitlement caches re-read. A partial refund is a
+      // goodwill amount the owner chose: it is reported, nothing is revoked.
+      // Work that did not finish answers 500, so Stripe redelivers it.
+      // Stripe sends these only once the endpoint is subscribed to
+      // charge.refunded and charge.dispute.created (an owner action).
       case "charge.refunded":
       case "charge.dispute.created": {
-        const obj = event.data.object as { id: string; amount?: number; amount_refunded?: number; currency?: string; payment_intent?: string | { id?: string } | null; reason?: string | null; billing_details?: { email?: string | null } | null };
-        const intent = typeof obj.payment_intent === "string" ? obj.payment_intent : obj.payment_intent?.id ?? obj.id;
         const isRefund = event.type === "charge.refunded";
-        logStep(isRefund ? "Charge refunded (no entitlement changed)" : "Dispute opened (no entitlement changed)", {
-          id: obj.id, paymentIntent: intent, amount: isRefund ? obj.amount_refunded : obj.amount,
-        });
+        const obj = event.data.object as {
+          id: string; amount?: number; amount_refunded?: number; refunded?: boolean; currency?: string;
+          payment_intent?: unknown; charge?: unknown; reason?: string | null; created?: number;
+          invoice?: unknown; billing_details?: { email?: string | null } | null;
+        };
+        const intent = refId(obj.payment_intent);
+        const amount = (isRefund ? obj.amount_refunded : obj.amount) ?? 0;
+        const inFull = !isRefund || obj.refunded === true || (obj.amount_refunded ?? 0) >= (obj.amount ?? Number.POSITIVE_INFINITY);
+        const lead = isRefund ? (inFull ? "Refund issued" : "Partial refund issued") : "Dispute opened";
+
+        let summary = "nothing revoked";
+        if (!inFull) {
+          summary = "a partial refund: nothing revoked (refund in full to take the purchase back)";
+        } else if (!intent) {
+          summary = "no payment intent on the event: nothing could be matched to a purchase; review it by hand";
+        } else {
+          try {
+            const charge = isRefund
+              ? obj
+              : await stripe.charges.retrieve(refId(obj.charge) ?? "").catch(() => null) as typeof obj | null;
+            const target = await revocationTarget(stripe, charge, intent);
+            const { data: receipt, error: revokeError } = await supabase.rpc("payment_revoke", {
+              p_payment_intent_id: intent,
+              p_reason: isRefund ? "refunded" : "disputed",
+              p_stripe_event_id: event.id,
+              p_stripe_session_id: target.sessionId,
+              p_product_type: target.productType,
+              p_email: target.email,
+              p_user_id: target.userId,
+              p_credits: target.credits,
+              p_subscription_id: target.subscriptionId,
+              p_paid_at: target.paidAt,
+            });
+            if (revokeError) throw new Error(`payment_revoke: ${revokeError.message}`);
+            const r = (receipt ?? {}) as Record<string, unknown>;
+            summary = r.duplicate === true
+              ? "already taken back by an earlier event for this payment"
+              : `claim revoked ${r.claim_revoked === true}, pass closed ${r.pass_closed === true}, applications stopped ${r.applications_stopped ?? 0}, credits taken back ${r.credits_clawed ?? 0}, Pro grants revoked ${r.grants_revoked ?? 0}`;
+
+            if (target.subscriptionId) {
+              const sub = await stripe.subscriptions.retrieve(target.subscriptionId);
+              if (sub.status !== "canceled" && sub.status !== "incomplete_expired") {
+                await stripe.subscriptions.cancel(target.subscriptionId);
+              }
+              summary += `; subscription ${target.subscriptionId} cancelled`;
+              await refreshProEntitlement(stripe, supabase, target.email, target.customerId, event.type);
+              await refreshAgentEntitlement(stripe, supabase, target.email, target.customerId, event.type);
+            }
+            logStep(isRefund ? "Refund revoked the purchase" : "Dispute revoked the purchase", {
+              paymentIntent: intent, sessionId: target.sessionId, productType: target.productType, summary,
+            });
+          } catch (err) {
+            processingError = String(err).slice(0, 500);
+            mustRetry = true;
+            summary = `REVOCATION FAILED, Stripe will redeliver: ${processingError}`;
+            logStep("Revocation failed; answering 500 so Stripe redelivers", { paymentIntent: intent, error: processingError });
+          }
+        }
         sendFailureAlertBackground({
-          type: isRefund
-            ? "Refund issued: entitlements are NOT revoked automatically; review the purchase"
-            : `Dispute opened${obj.reason ? ` (${obj.reason})` : ""}: entitlements are NOT revoked automatically`,
-          amount: (isRefund ? obj.amount_refunded : obj.amount) ?? 0,
+          type: `${lead}${!isRefund && obj.reason ? ` (${obj.reason})` : ""}: ${summary}`,
+          amount,
           currency: obj.currency ?? "usd",
           failureCode: event.type,
           failureMessage: null,
           customerEmail: obj.billing_details?.email ?? null,
-          paymentIntentId: intent,
-          subjectLead: isRefund ? "Refund issued" : "Dispute opened",
+          paymentIntentId: intent ?? obj.id,
+          subjectLead: lead,
         });
         break;
       }
@@ -1154,6 +1284,13 @@ serve(async (req) => {
         })
       )
     );
+
+    if (mustRetry) {
+      return new Response(JSON.stringify({ error: "Processing incomplete; redeliver" }), {
+        headers: { "Content-Type": "application/json", ...BUILD_HEADER },
+        status: 500,
+      });
+    }
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { "Content-Type": "application/json", ...BUILD_HEADER },

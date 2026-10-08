@@ -24,15 +24,36 @@ export const ADMIN_OPS_RPCS: ReadonlySet<string> = new Set([
   "get_email_metrics_hourly",
   "get_function_error_rates",
   "get_geo_latency_stats",
+  // 20261008127000: the Health History card and /scan-metrics' heartbeat list
+  // read the same closed table directly, and drew the refusal as 0% / empty.
+  "get_heartbeat_history",
   "get_industry_detection_breakdown",
   "get_industry_detection_recent",
   "get_industry_detection_stats",
   "get_parse_failure_stats",
   "get_payment_health",
   "get_rate_limit_stats",
+  // 20261008123000: the heartbeat results /health-check read straight from a
+  // table closed to the browser, and rendered the refusal as 100% uptime.
+  "get_recent_heartbeats",
   "get_scan_metrics_hourly",
   "get_webhook_health",
   "get_webhook_metrics_hourly",
+]);
+
+/**
+ * The owner's catalogue readers: service-role-only INVOKER functions that read
+ * the database's own catalogue, asked for with curl and the ADMIN_API_KEY
+ * rather than by a dashboard panel. A separate list because they are not
+ * functions the census closed -- they were never client-callable -- and no
+ * dashboard calls them.
+ *
+ *   client_callable_unlisted_names (20261008141000): the signatures behind
+ *   client_callable_census()'s unlisted_client_callable count, which the
+ *   census gives the publishable key as a number only.
+ */
+export const ADMIN_CATALOGUE_RPCS: ReadonlySet<string> = new Set([
+  "client_callable_unlisted_names",
 ]);
 
 /** Argument names the readers above take; anything else is refused. */

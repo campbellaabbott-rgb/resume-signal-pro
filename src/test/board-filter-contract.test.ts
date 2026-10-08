@@ -146,6 +146,8 @@ describe("isUnfiltered — derived, so a new filter cannot be forgotten", () => 
       companies: ["tok"],
       maxAgeDays: 7,
       postedAfter: "2026-07-01T00:00:00Z",
+      // Added 2026-10-08: the saved-search digest's discovery window.
+      newSince: "2026-07-01T00:00:00.000Z",
       // Added 2026-08-31: the agency opt-out (charter change). The literal
       // failing the typecheck the day AppliedFilters grew is this tripwire
       // doing its job again; the loop below proves isUnfiltered counts it —
@@ -573,7 +575,8 @@ describe("the countOnly exit is not exempt from the honesty contract", () => {
     // of 3 above 60 delivered rows, 57 of them "Camarero/a"). The invariant
     // this test defends — an augmented page never publishes a total — is
     // unchanged; the condition it rides on simply widened.
-    expect(code).toMatch(/total: augmented \|\| totalUnderstated \? null : total/);
+    expect(code).toMatch(/const countWithheld = augmented \|\| totalUnderstated \|\| symbolQuery;/);
+    expect(code).toMatch(/total: countWithheld \? null : total/);
   });
 });
 

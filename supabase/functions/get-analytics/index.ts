@@ -1,10 +1,20 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { keyMatches } from "../_shared/admin-key.ts";
+
+// THE DASHBOARD COULD NEVER REACH THIS (register L1-03). Its page sends the
+// owner's key as x-admin-key, and this preflight did not allow that header,
+// so the browser refused the request before it left: the dashboard was dead
+// whatever key was entered. The header is allowed now, and the key is
+// compared in constant time.
+const FN_BUILD = "get-analytics.2026-10-08.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key',
+  'Access-Control-Expose-Headers': 'x-fn-build',
+  'x-fn-build': FN_BUILD,
 };
 
 serve(async (req) => {
@@ -15,10 +25,10 @@ serve(async (req) => {
 
   try {
     // Verify admin API key
-    const adminApiKey = Deno.env.get('ADMIN_API_KEY');
-    const authHeader = req.headers.get('x-admin-key') || req.headers.get('authorization')?.replace('Bearer ', '');
+    const adminApiKey = Deno.env.get('ADMIN_API_KEY') ?? '';
+    const authHeader = req.headers.get('x-admin-key') || req.headers.get('authorization')?.replace('Bearer ', '') || '';
     
-    if (!adminApiKey || authHeader !== adminApiKey) {
+    if (!keyMatches(authHeader, adminApiKey)) {
       console.log('[Analytics] Unauthorized access attempt');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),

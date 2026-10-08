@@ -25,7 +25,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { sanitizeTerm } from "../../supabase/functions/_shared/location-terms";
-import { salaryFromQueryText, SALARY_IN_QUERY } from "../../supabase/functions/job-board/filters.ts";
+import { salaryTokenInQuery } from "../../supabase/functions/job-board/filters.ts";
 import { expandQuery } from "../../supabase/functions/job-board/search-alias";
 import { scoreTitle, splitExclusions } from "../../supabase/functions/job-board/search-routing";
 
@@ -56,8 +56,8 @@ const pipeline = (() => {
     "return { ftsSafe, ftsQuery, queryTerms, phraseText };",
   ].join("\n");
   const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return new Function("sanitizeTerm", "salaryFromQueryText", "SALARY_IN_QUERY", js)(
-    sanitizeTerm, salaryFromQueryText, SALARY_IN_QUERY,
+  return new Function("sanitizeTerm", "salaryTokenInQuery", js)(
+    sanitizeTerm, salaryTokenInQuery,
   ) as {
     ftsSafe: (t: string) => string;
     ftsQuery: (t: string) => string;
@@ -166,7 +166,9 @@ describe("the wiring: phraseText feeds BOTH query derivations and the RPC, and o
     // count_jobs_capped binds p.title ILIKE '%' || $10 || '%' — verified in
     // pglite: '"registered nurse"' counts 0, 'registered nurse' counts the
     // adjacent titles. The other ILIKE caller sends qTerms[0], already unquoted.
-    expect(BOARD).toMatch(/client\.rpc\("count_jobs_capped", \{\s*p_fresh_cutoff: freshCutoffIso,\s*p_q: qText\.replace\(\/"\/g, ""\),/);
+    // The facet rail's ILIKE count is gone since .91 (a text query's chips are
+    // withheld, L13-24); the one remaining ILIKE caller sends qTerms[0], unquoted.
+    expect(BOARD).not.toMatch(/p_q: qText\.replace\(\/"\/g, ""\),/);
     expect(BOARD).toMatch(/p_q: qTerms\.length === 1 \? qTerms\[0\] : null,/);
   });
 

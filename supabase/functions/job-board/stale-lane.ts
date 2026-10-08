@@ -217,6 +217,16 @@ export function tokensOf(rec: unknown): Set<string> {
   }));
 }
 
+/**
+ * Own keys of a meta Record, unchanged, as a Set. Since .91 the lane reads its
+ * rows by board key (bare token, or source:token on a shared token, n428), the
+ * same keys board_failures holds, so a failing twin no longer marks the other.
+ */
+export function keysOf(rec: unknown): Set<string> {
+  if (rec === null || typeof rec !== "object" || Array.isArray(rec)) return new Set();
+  return new Set(Object.keys(rec as Record<string, unknown>));
+}
+
 /** Meta stale_lane.tries -> Map. Non-integer or negative counts are dropped. */
 export function readStaleTries(v: unknown): Map<string, number> {
   const out = new Map<string, number>();

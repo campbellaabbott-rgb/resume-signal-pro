@@ -6585,6 +6585,30 @@ Undated rows now fall OUT of a postedAfter window rather than counting as
 brand new. That is the honest reading of "posted after X" and it is
 disclosed, not silent.
 
+## n306b-applied-newsince
+
+Above: `if (applied.newSince) q = q.or(...posted_at.gt..., first_seen.gt...)`
+
+THE DIGEST ASKS A DIFFERENT QUESTION FROM THE BADGE (.91, wave 2 email-ops,
+register L10-02). n306 moved postedAfter onto the employer's stated date,
+which is right for "posted after X" and wrong for "new to me since my last
+email": a Workday posting dated three days ago and first crawled today was
+outside every later window, and an undated posting could never enter one,
+so a watch on an employer whose feed carries no dates could never fire.
+
+newSince is the discovery window the saved-search digest sends instead:
+posted_at > X OR first_seen > X. The OR catches late discovery and undated
+rows; the digest dedupes against search_digest_sent (30 days), so a
+first_seen reset or an employer re-dating a posting it already mailed does
+not mail it twice. Both columns are indexed (posted_at_idx,
+first_seen_idx), so the planner can BitmapOr them.
+
+RPC-blind on purpose: no search or count RPC takes it, so a request
+carrying it goes through buildQuery and an exact count. Echoed back as
+`newSince` on list and count answers; the digest refuses an answer that
+does not carry it, so an older bundle that ignores the key cannot make the
+digest mail an unwindowed search as "new".
+
 ## n307-applied-country-applied-country-inclu
 
 Above: `if (applied.country && applied.country.includes(",")) return null;`
@@ -9767,3 +9791,231 @@ consecutive slices can take the same board; each visit reads its next window,
 so a capped board can finish its lap in one run. Dedupe before the cap against
 base, demand and bootstrap is unchanged, and retry and stale still exclude the
 board the lane took.
+
+## n427-a-tombstone-a-readmission-wrote
+
+Above: tombstone.ts (`splitTombstoned` with `cutoffMs`, `DATE_MOVES_AFTER_INSERT`)
+and the ingest read of `id, posted_at, aged_at`.
+
+Found while testing the SNOWFLAKE-3 hypothesis (three ashby:snowflake postings
+of 2026-10-06 not stored by the 10-07 reads). The hypothesis itself fails twice:
+no writer stores a tombstone without a date (the seed and the sweep write
+effective_posted of rows selected by `effective_posted < cutoff`; a
+re-admission writes the date it just parsed), and on 2026-10-08 the three were
+inserted at 02:00:57Z with their feed dates unchanged, which a tombstone never
+allows. Their cause is not established (the .91 deploy note says what read
+settles it).
+
+The defect fixed: a tombstone holding a date INSIDE the window, which only a
+re-admission (n412) writes, refused the same id's next appearance within
+REDATE_MARGIN_MS of that date, or on it, when the re-admitted row had left by a
+closure or a prune, until it aged out. On a vendor whose stored date never moves
+after insert (everything but Workday, whose filler moves it older: the loop n412
+closed), such a row cannot have aged out since its re-admission, so coming back
+on a date no older than the tombstone's is a live posting and is let in. A
+tombstone with no date lets a dated row in when the row's date is past the
+tombstone's own write (`aged_at`) by more than the margin. Undated rows still
+never come back; a re-admission still moves the tombstone to the row's date once
+the insert lands.
+
+## n428-a-stamp-per-board-on-a-shared-token
+
+Above: verification-stamp.ts (`stampRows`, `stampKeyOfJob`, `stampPlan`,
+`laneRows`), the stamp upsert, `seedBoardStamps`, attachRecheckedAtInner, the
+stale lane (CATALOGUE_KEYS, keysOf, boardByKey), migrations 20261008100000 (the
+48h sweep) and 20261008100100 (get_stalest_boards).
+
+The verification stamp was one row per company_token, and 139 tokens are
+carried by two or three vendors. personio:lush's reads kept greenhouse:lush's
+stamp fresh while greenhouse:lush was deferred by the byte bound, so the 48h
+sweep never stamped its rows and 19 postings already gone from its feed were
+served with a fresh recheckedAt (the .90 diagnosis).
+
+A board on a shared token now stamps its own key, `source:token`
+(boardKeyOf), AND the bare token, which the freshness rollup and the company
+readers still join on (dual write: no legacy reader changes meaning). Once per
+isolate the refresh reads the table's board keys and the shared tokens' bare
+stamps and (stampPlan) seeds a key for every shared board that has none, at the
+token's stamp, with ignoreDuplicates; a board that reads moves its own key, one
+that cannot keeps the seed, which ages. Keys whose token is no longer shared are
+deleted, or their aging stamp would sweep a board that reads. recheckedAt is
+read by board key and never falls back to the twin's bare stamp (absent until
+the key exists). The stale lane classifies, excludes (p_exclude now carries
+registry keys, matched exactly) and folds tries by board key; a shared token's
+bare row is dropped from the window (its boards' own, older-or-equal rows stand
+for it).
+
+The sweep (20261008100000) judges a row by its own board's key when one exists
+and its token's bare stamp is no newer than the token's newest key (1s slack),
+else by the bare token as before. The test is per token: .91 writes the bare
+stamp and the reading board's key in one upsert with one value (a seed copies
+the bare value), so it holds while .91 writes; .90 moves the bare stamp alone,
+so after a rollback a token falls back at .90's first read of any of its
+boards. A global test ("some key written in 48h") was wrong: keys age over a
+lap, not together, so a rollback would sweep every shared board whose own key
+crossed 48h while .90 read it. Before .90 reads a token its boards are judged
+by .91's last keys (a board unread for 48h is swept, as .91 would). A key
+removed while its token stays shared (a board left the catalogue) can leave the
+bare stamp newer than every remaining key: that token falls back to bare until
+its next read. It reads the stamp table once and joins the stale set to
+postings. get_stalest_boards (20261008100100) resolves a key to its
+vendor's rows; closed to client roles as the census left it.
+
+NOT DONE: job_board_board_state is still keyed by company_token (day history of
+a shared token's twins pools), and the orphan prune's token-level facet is
+unchanged (L13-49's remainder; both need schema and serving-reader work).
+
+## n429-a-state-code-is-not-a-substring
+
+Above: location-match.ts (`isStateCodeAlias`, `partMatchesTerm`,
+`locationBranch`), buildQuery's location binding, preferMatchedLocation, and
+migration 20261008100200 (search_jobs, count_jobs_capped, fuzzy_title_search).
+
+"Maine" expands to "Maine|, ME", and every alias was bound as location ILIKE
+'%alias%': no case and nothing required after the code, so ", ME" matched ",
+Mexico" (6,375 rows for Maine on .87, 32 of the first 60 Mexican), ", IN" India,
+", DE" "Berlin, DE", ", CA" every ", Canada". A ", XX" alias now matches
+case-sensitively, followed by the end of the field or a non-letter, on a US,
+Canadian or unplaced row; the ILIKE stays first so the trigram index still finds
+the rows. preferMatchedLocation used the same needles with the comma stripped,
+so "or" matched inside "New York" and the searched state never moved first; it
+now applies partMatchesTerm. The three RPC bodies are their 20260927034117
+definitions with only the location clause changed.
+
+RESIDUAL. The country gate reads the stored country, and with no vendor-stated
+country ingest derives it from the same text: detectCountry tests
+P_US_STATE_CODE before cityCountry, so "Berlin, DE", "Munich, DE", "Pune, IN",
+"Chennai, IN" are stored as US and still match Delaware and Indiana. Removed
+are spelled-out countries and vendor-stated ones. The rest is a detectCountry
+change (a known foreign city before a trailing code; COUNTRY_MAP_VERSION bump
+and backfill), not done here; verifier section 61 counts what is still served.
+
+## n430-a-pay-figure-must-be-unambiguous
+
+Above: filters.ts (`salaryTokenInQuery`, `unambiguousMoney`), queryTerms' money
+token, and the SYMBOL count in the ranked exit and countOnly.
+
+Any token from 1,000 to 2,000,000 was a pay floor: "new grad 2026" ($2,026),
+"401k" ($401,000), "1099 sales", a GPU model, a zip code. A figure lifts only
+with a $, a thousands comma, a trailing +, a k (never 401k), or as a bare number
+of six digits or more. queryTerms removed the first bare number in the query,
+not the money token ("python 3 120k" lost the 3 and searched "120k"); it now
+removes exactly the token the floor came from.
+
+A SYMBOL query ("c#", "c++") parses to the bare letter, so search_jobs' count is
+the letter's: both published 2,067 as exact. The ranked exit and countOnly
+withhold it (total null, countUnavailable), with totalAtLeast the fetched rows
+whose title carries every symbol token.
+
+## n431-a-floor-counts-rows-not-positions
+
+Above: paging.ts `rowsReached` and the ranked exit's `totalUnderstated`.
+
+The ranked exit withdrew `total` whenever offset + cards shown exceeded it and
+published that sum as totalAtLeast. Past a ring-merged pool the offset is the
+400 seam the walk jumps to, not rows: q="nurse" GB said 314, then 460 at offset
+400 and 512 at 497 after 207 distinct rows. The floor is now the rows provably
+reached: below the seam the pool positions served (each a distinct row, never
+past the pool's end); on a deep page the SQL rank reached, only when SQL
+answered at that rank (an OFFSET returns rows only when that many exist). It is
+set against both segments (total + related). Page one still withdraws a count
+its own rows outrun (q=camarero: 3 counted, 60 delivered by the ring).
+
+## n432-a-filter-keeps-the-route
+
+Above: `const routeDecision = qText && qClass`, the SALARY branch
+(`salaryTextSort`, `salaryEmployer`), `routedServesThisOrder`, and countOnly's
+sort=salary exit.
+
+n318 stood the router down under any filter on the premise that a filter over
+the capped window answers from a subset. It does not: buildQuery binds every
+filter in SQL before the window. Standing down sent q="it manager" + country GB
+to the english tsquery, which drops "it" (5,649 rows identical to "manager").
+The route now holds under filters.
+
+The pay order: with any filter set it fell to the recency path's substring
+ILIKE (q="rn" served NorthwesteRN), an employer search searched titles for the
+brand (Domino's $85,000 manager rows excluded) or, through the routed branch,
+ignored the order. The SALARY branch now serves every text query under the pay
+order, with the title tiers' alias expansion, binds an employer route's tokens,
+and never falls through: nothing pay-ordered on page one is said
+(sortUnavailable "no-stated-pay" | "unavailable"). countOnly under sort=salary
+mirrors the list's header (no total) instead of counting substrings.
+
+## n433-chips-withheld-under-a-text-query
+
+Above: the facetCounts block. Supersedes n315-n317.
+
+A one-term query's chips came from count_jobs_capped (a contiguous ILIKE) and a
+multi-term query's from buildQuery's ILIKE terms, while the list matches by FTS:
+q="rn" US showed legal 1,159 over a legal list of 8. A text query now withholds
+the per-category numbers (facetSource "withheld"); an employer query counts its
+tokens per category through buildQuery, the routed list's own matcher
+(facetSource "employer"); no query counts the filters, as before. Counting each
+category with search_jobs would match the list but costs a ranked RPC per
+category under a 1.5s facet budget; not done.
+
+## n434-a-cold-cursor-that-steps-back
+
+Above: `sliceCursorNote` (slice_stats.cursorStep).
+
+The cold cursor read on .89/.90 stepped back (137 -> 104, 285 -> 212) and sat
+still 6-7 minutes at a time. From code: every cold slice writes the cursor
+twice, optimistically at admission by the whole base slice (80), then, if it
+survives, corrected to the base boards it started (rotation.ts). A slice the
+posting budget stops after 7-47 base boards therefore reads as a step back of
+33-73: bookkeeping, no board skipped or repeated (the next slice starts at the
+corrected cursor; a slice that dies keeps the optimistic one, a forward skip).
+The stillness has two causes in code: the pass's last slice (coldDone 160)
+returns without chaining, so the next pass waits for the cron (:x4/:x9) past the
+3-minute lock (19:42:49 -> 19:50 on 2026-10-06); and a chain death waits the
+same way (19:33 -> 19:39:40). Chaining the next pass directly would remove ~7
+minutes a pass (~12% of the rotation) and add load; that is a decision, not
+made here. cursorStep {from, admitted, to, base, started} on every cold slice
+lets a poll tell the correction from any real regression.
+
+## n435-what-the-board-read-into-the-words
+
+Above: ringWordPattern / startsWithWord (search-routing.ts), INTENT_FILTERS'
+trade-term lookaheads and liftIntentFilters' quoted-span mask and noIntent,
+queryTerms' "or" and orGroups, company-suggest's foldTypeahead, PLACE_QUALIFIERS,
+ISO_ALPHA2 / COUNTRY_ALIASES and the whole-day maxAgeDays (filters.ts), and the
+filter audit's `refused` probe. One build of small readings, each measured in
+the platform-debug register of 2026-10-04:
+
+- L8-05: the head-term ring read titles by a bare prefix and scoreTitle gave
+  any prefix +45, so "nurse" served ten Nursery rows on page one, outside the
+  count. Ring and bonus now need the prefix to end at a word.
+- L8-06: "hybrid vehicle technician", "remote sensing analyst" and quoted
+  phrases were lifted into work-mode filters. Quoted spans are never lifted, the
+  two bare work-mode words are not lifted as the first word of a trade term, and
+  noIntent:true reads every word as text. The register's broader rule (no lift
+  when any title word follows) would undo the measured "remote nurse" gain and is
+  left for a decision.
+- L8-07: "or" was filler, so "welder OR fabricator" was an AND (54 rows against
+  684 + 547). Between two real words it is a term: the tsquery tiers read OR,
+  the substring path binds OR groups.
+- L8-08: the employer typeahead compared lowercase substrings ("dominos" found
+  nothing); both sides are folded to letters and digits of every script
+  (foldTypeahead). The router's foldName (a-z0-9) was tried first and folded a
+  Korean, Greek, Thai or Hindi query, and four catalogue names, to nothing.
+- L8-09: a one-word tail that only qualifies a place ("united", "county") is not
+  tried as the location-split's place.
+- L8-10: country takes ISO 3166-1 alpha-2 (plus XK), reads UK as GB, and names
+  an unknown code instead of answering zero.
+- L13-68: maxAgeDays must be whole days; 1.5 broke the ranked RPC's integer bind.
+- L1-07: the runtime refuses a self-call by THROWING RateLimitError; the audit
+  now calls that (and 429/503/546) a refusal, walks its pages one at a time, and
+  says incomplete when every finding is a refusal.
+
+## n436-a-host-we-do-not-own-is-not-a-pass-host
+
+resumebooster.lovable.app is not this project. Fetched 2026-10-08 it serves
+"ResumeBoost AI", a different app on a different Supabase backend
+(nhtepkgxdhollkjakdfy), with no /success route; nothing named either appears
+in this repository's history. This project's own Lovable host,
+resume-signal-pro.lovable.app, redirects to resumebooster.work. BOARD_PASS_HOSTS
+listed resumebooster.lovable.app since .87, which let a Turnstile token solved
+on that foreign page mint a board pass here. It is removed in .91; the test
+now lists it among the hosts that must FAIL. The paid-product and Full
+Analysis emails had linked buyers to the same host until 2026-10-08 (PR #19).

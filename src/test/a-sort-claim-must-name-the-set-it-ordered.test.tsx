@@ -218,7 +218,7 @@ describe("a sort claim must name the set it ordered", () => {
     // 3. And the OTHER retrievers stand down for a date sort rather than serving
     //    one silently: there the rows go through rerankWindow, and the ranked path
     //    below already answers that body with its real seam.
-    expect(FN).toContain('const routedServesThisOrder = routedRetriever === "company" || !newestFirst;');
+    expect(FN).toContain('const routedServesThisOrder = body.sort !== "salary" && (routedRetriever === "company" || !newestFirst);');
     expect(
       FN,
       "the routed block runs for a date sort on a retriever that does not date-order it",
@@ -567,8 +567,10 @@ describe("a sort claim must name the set it ordered", () => {
       .not.toContain("newest of the closest matches only");
     expect(text(), "a whole-set date claim over a reply that never said it ordered by date")
       .not.toContain("Sorted by newest first");
-    // What it MUST say instead: our stamp, named as ours, and the employer named.
-    expect(text()).toContain("Ordered by when we first saw each posting");
+    // What it MUST say instead: the effective_posted order, both halves named
+    // (the employer's date, our first-seen stamp for undated rows), and the
+    // employer named.
+    expect(text()).toContain("Ordered by each employer's stated date — or, for a posting with no date, by when we first saw it");
     expect(text()).toContain("every one of them is Accenture");
   });
 });

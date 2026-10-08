@@ -481,8 +481,8 @@ describe("a board that grew is a rate with gates, not a count", () => {
   it("the closure half is untouched: its verdict still answers alone and the growth half cannot leak into it", () => {
     // hiringRecordVerdict reads fills and relists and nothing else; a growth
     // row handed to it by mistake is ignored, not folded.
-    expect(hiringRecordVerdict({ fills_90d: 5, relists_90d: 1 })).toBe("closes");
-    expect(hiringRecordVerdict({ fills_90d: 0, relists_90d: 0 })).toBe("unknown");
+    expect(hiringRecordVerdict({ filled_roles_90d: 5, relisted_roles_90d: 1 })).toBe("closes");
+    expect(hiringRecordVerdict({ filled_roles_90d: 0, relisted_roles_90d: 0 })).toBe("unknown");
     expect(JOBS.match(/export function hiringRecordVerdict\([\s\S]*?\n}/)?.[0], "hiringRecordVerdict must not read the growth row").not.toMatch(/growth|verdict\b/);
   });
 });

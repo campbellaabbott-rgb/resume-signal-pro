@@ -6468,9 +6468,30 @@ async function computeIndustryBenchmark(
   return { ...computeIndustryBenchmarkFallback(score, industry), isRealData: false };
 }
 
+/**
+ * Improvement potential can't promise more than the score gap allows
+ * (register L5-15), the primary's consistency rule ported to this fork. The
+ * schema makes it an OBJECT ({level, estimatedScoreIncrease, topPriority}) and
+ * the report prints "+N pts", so a 92 could promise +25. Runs on the FINAL
+ * score (after industry calibration) and on a cached report as it is served,
+ * since a report cached before this shipped still carries the old promise.
+ */
+function clampImprovementToScoreGap(report: Record<string, unknown>): void {
+  if (typeof report.atsScoreEstimate !== 'number') return;
+  const gap = Math.max(0, 98 - report.atsScoreEstimate);
+  const ip = report.improvementPotential;
+  if (typeof ip === 'number') {
+    report.improvementPotential = Math.max(0, Math.min(ip, gap));
+  } else if (ip && typeof ip === 'object' && typeof (ip as { estimatedScoreIncrease?: unknown }).estimatedScoreIncrease === 'number') {
+    const inc = (ip as { estimatedScoreIncrease: number }).estimatedScoreIncrease;
+    (ip as { estimatedScoreIncrease: number }).estimatedScoreIncrease = Math.round(Math.max(0, Math.min(inc, gap)));
+  }
+}
+
 // Provable from outside without a scan: every response, the CORS preflight
-// included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-05.1";
+// included, carries this in x-fn-build. 2026-10-08.1: the improvement-potential
+// clamp (register L5-15), on fresh and cached reports.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-08.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7618,8 +7639,11 @@ serve(async (req) => {
             metadata: { cached: true, cacheKey: cacheKey.substring(0, 8), industryCorrected: cachedHybridResult.industry !== cachedResponse.industry }
           });
           
-          // Return cached result
-          send('complete', { ...cachedResponse, cached: true });
+          // Return cached result, its improvement promise bounded by its score
+          // (a report cached before the clamp shipped can still exceed it).
+          const servedFromCache = { ...cachedResponse, cached: true };
+          clampImprovementToScoreGap(servedFromCache);
+          send('complete', servedFromCache);
           close();
           return;
         }
@@ -8494,6 +8518,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         console.log(`[FREE-KEYWORD-SCAN-STREAM] Score calibration: ${rawAtsScore} -> ${scoreCalibration.calibratedScore} (${scoreCalibration.reason})`);
         analysis.atsScoreEstimate = scoreCalibration.calibratedScore;
       }
+      // The score is final from here on, so the promise is bounded by it.
+      clampImprovementToScoreGap(analysis);
 
       // ======================== Server-Side Computed Fields ========================
       // These are computed from the raw resume text for accuracy and consistency

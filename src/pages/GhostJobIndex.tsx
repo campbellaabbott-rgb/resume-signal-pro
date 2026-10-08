@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
 import { Activity, ShieldCheck, Clock, Briefcase } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -1318,7 +1319,7 @@ export default function GhostJobIndex() {
               {shownLeaders.map((c, i) => (
                 <Link
                   key={c.company_token}
-                  to={`/jobs/company/${c.company_token}`}
+                  to={companyLanderPath(c.company_token)}
                   className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors ${i > 0 ? "border-t border-border/60" : ""}`}
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>

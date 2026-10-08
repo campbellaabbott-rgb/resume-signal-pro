@@ -63,7 +63,7 @@ export interface FallbackAIOptions {
 
 // Default order: the paid-quality primary, then the same-family model the
 // products originally shipped on (known-good output shape), then cross-provider.
-const DEFAULT_MODELS = [
+export const DEFAULT_MODELS = [
   'google/gemini-2.5-pro',
   'google/gemini-2.5-flash',
   'openai/gpt-5-mini',

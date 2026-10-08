@@ -13,7 +13,12 @@
 //     assumed from the mandate — a lapsed subscriber stops receiving.
 //   - Reasons are the stored ones. This email never re-derives or embellishes:
 //     if the runner didn't record a reason, the email doesn't claim one.
-//   - The agent NEVER applies. Every row links out for the human to press send.
+//   - The footer says what THIS mandate's agent does (register L9-14): it told
+//     every subscriber "We never submit anything for you - you always press
+//     send", including auto-mode accounts that were sold "applies for you".
+//     apply_mode is read per mandate; review says nothing goes until released,
+//     auto says the agent sends within its daily cap, and a mode that could
+//     not be read gets no sentence at all rather than a guess.
 //
 // Trigger on a schedule shortly after agent-runner: POST {"action":"send"}.
 //
@@ -34,7 +39,7 @@ import { sameSecret } from "../_shared/service-caller.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-agent-digest.2026-10-04.1";
+const FN_BUILD = "send-agent-digest.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,6 +51,18 @@ const SITE_URL = "https://resumebooster.work";
 // the floor lives in agent_digest_claim_batch (20261004100000).
 const CLAIM_BATCH = 500;
 const MAX_ROWS_IN_EMAIL = 6;
+
+/** The footer's sentence for a mandate's apply mode; null when the mode is unknown. */
+export function modeSentence(mode: { apply_mode?: unknown; auto_apply_daily_cap?: unknown } | undefined): string | null {
+  if (mode?.apply_mode === "review") return "Your agent is in review mode: nothing is sent until you release it from your queue.";
+  if (mode?.apply_mode === "auto") {
+    const cap = Number(mode.auto_apply_daily_cap);
+    return Number.isFinite(cap) && cap > 0
+      ? `Your agent is in auto mode: it sends applications for you, up to ${cap} a day. Hold any of these from your queue.`
+      : "Your agent is in auto mode: it sends applications for you within your daily cap. Hold any of these from your queue.";
+  }
+  return null;
+}
 
 function escapeHtml(text: string | number | undefined | null): string {
   if (text === undefined || text === null) return "";
@@ -147,6 +164,17 @@ Deno.serve(async (req) => {
       entitled = entitledFromRows(subs);
     }
 
+    // What each agent actually does, for the footer. A failed read leaves the
+    // map empty and every footer without a mode sentence.
+    const modes = new Map<string, { apply_mode?: unknown; auto_apply_daily_cap?: unknown }>();
+    {
+      const { data: modeRows, error: modeErr } = await supabase
+        .from("agent_mandates").select("user_id, apply_mode, auto_apply_daily_cap")
+        .in("user_id", list.map((m) => m.user_id));
+      if (modeErr) console.warn("[AGENT-DIGEST] apply_mode read failed; footers carry no mode sentence:", modeErr.message?.slice(0, 120));
+      for (const r of (modeRows ?? []) as Array<{ user_id: string; apply_mode?: unknown; auto_apply_daily_cap?: unknown }>) modes.set(r.user_id, r);
+    }
+
     // Global unsubscribes win over everything.
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
     const suppressed = new Set(((suppressedRows ?? []) as Array<{ email: string }>).map((r) => r.email.toLowerCase()));
@@ -196,6 +224,7 @@ Deno.serve(async (req) => {
       }).join("");
 
       const n = rows.length;
+      const footer = modeSentence(modes.get(m.user_id));
       const html = `
 <!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
@@ -213,9 +242,7 @@ Deno.serve(async (req) => {
       <div style="text-align:center;margin-top:20px">
         <a href="${escapeHtml(queueUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:13px;font-weight:600;text-decoration:none;padding:10px 18px;border-radius:8px">Review in your queue</a>
       </div>
-      <p style="font-size:11px;color:#94a3b8;margin:16px 0 0;text-align:center">
-        We never submit anything for you — you always press send.
-      </p>
+      ${footer ? `<p style="font-size:11px;color:#94a3b8;margin:16px 0 0;text-align:center">${escapeHtml(footer)}</p>` : ""}
     </div>
     <div style="text-align:center;padding:14px 0 0">
       <a href="${escapeHtml(unsubUrl)}" style="font-size:11px;color:#94a3b8">Stop these morning emails</a>

@@ -310,34 +310,36 @@ describe("index.ts keys the oversize registry by board", () => {
     ).toEqual(["ashby:pulse:2", "lever:acme:9"]);
   });
 
-  it("the stale lane hands get_stalest_boards and the classifier tokens, never board keys", () => {
+  it("the stale lane hands get_stalest_boards and the classifier board keys, since stamps are per board (.91, n428)", () => {
     const reg = new Map<string, OversizeEntry>([
       ["greenhouse:pulse", { source: "greenhouse", mb: 20.6, at: "x" }],
       ["bigco", { source: "teamtailor", mb: 15, at: "y" }],
     ]);
     const lines = registryLines("let staleBoards: JobSource[] = [];", "const slice = [...demandBoards");
     const scope = { ...MODULE, OVERSIZE_BOARDS: reg, staleExclusion, staleTries: new Map<string, number>() };
-    const exclusion = lines.map((l) => /^\s*const (\w+) = ([\s\S]*);\s*$/.exec(l)).find(Boolean);
+    const exclusion = lines.map((l) => /^\s*const (staleExclude) = ([\s\S]*);\s*$/.exec(l)).find(Boolean);
     expect(exclusion, "the p_exclude list is built in one statement from the registry").toBeTruthy();
     const pExclude = run<string[]>(`return ${exclusion![2]};`, scope);
-    expect(pExclude).toContain("pulse");
+    // get_stalest_boards matches p_exclude against a stamp's key exactly: the
+    // deferred greenhouse board's own stamp, never ashby:pulse's.
+    expect(pExclude).toContain("greenhouse:pulse");
     expect(pExclude).toContain("bigco");
-    expect(pExclude.filter((t) => t.includes(":")), "p_exclude takes tokens; a board key excludes nothing").toEqual([]);
+    expect(pExclude).not.toContain("pulse");
 
-    const ctxAt = CODE.indexOf("classifyStale(rows, {");
+    const ctxAt = CODE.indexOf("classifyStale(laneRows(rows, SHARED_TOKENS), {");
     expect(ctxAt, "the stale lane's classifyStale call").toBeGreaterThan(0);
     const oversize = run<ReadonlySet<string>>(`return ${propertyExpr("oversize", ctxAt)};`, scope);
     const ctx: StaleContext = {
-      catalogued: new Set(["pulse", "bigco"]),
+      catalogued: new Set(["greenhouse:pulse", "ashby:pulse", "bigco"]),
       quarantinedVendors: new Set(),
       oversize,
       dormant: new Set(),
       failing: new Set(),
       tries: new Map(),
     };
-    const row: StaleRow = { stale_token: "pulse", stale_vendor: "greenhouse", stamped_at: "2026-10-01T00:00:00Z", age_min: 6000, posting_rows: 3, live_rows: 3, newest_effective: null };
-    const verdicts = classifyStale([row], ctx);
-    expect(verdicts.map((v) => v.cls), "the classifier compares tokens").toEqual(["oversize"]);
+    const row = (k: string, v: string): StaleRow => ({ stale_token: k, stale_vendor: v, stamped_at: "2026-10-01T00:00:00Z", age_min: 6000, posting_rows: 3, live_rows: 3, newest_effective: null });
+    const verdicts = classifyStale([row("greenhouse:pulse", "greenhouse"), row("ashby:pulse", "ashby")], ctx);
+    expect(verdicts.map((v) => v.cls), "the deferred board is oversize; its twin is not").toEqual(["oversize", "unexplained"]);
   });
 
   it("status names each entry by bare token and by board key", () => {

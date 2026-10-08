@@ -638,7 +638,15 @@ describe("each re-issue loads alone onto a schema that has never seen the tables
 
 /* ───────────────────────────── the code ──────────────────────────────── */
 
+/** The definition the database runs: the newest file defining the function. */
+const newest = (fn: string) => definers(fn).at(-1)!;
 const LIVE = {
+  company: definitionOf(mig(newest("get_company_fill_curve")), "get_company_fill_curve"),
+  category: definitionOf(mig(newest("get_category_fill_curve")), "get_category_fill_curve"),
+  writer: definitionOf(mig(newest("refresh_layoff_partition")), "refresh_layoff_partition"),
+};
+/** The watch-floor re-issues themselves: the "nothing else changed" diff is against these, whatever came after. */
+const AT_FLOOR = {
   company: definitionOf(mig(NEW_COMPANY), "get_company_fill_curve"),
   category: definitionOf(mig(NEW_CATEGORY), "get_category_fill_curve"),
   writer: definitionOf(mig(NEW_WRITER), "refresh_layoff_partition"),
@@ -691,16 +699,22 @@ function constants(code: string): Record<string, string> {
 }
 
 describe("the floor is spelled where the database can run it", () => {
-  it("each re-issue is the newest definition of its function, and replaces the one this file's 'before' runs", () => {
+  it("each re-issue replaces the one this file's 'before' runs, and any later re-issue is checked for the floor as the live one", () => {
+    // MOVED, NOT DROPPED: both curves were re-issued again on 2026-10-08 (a
+    // doubted row whose posting was seen again leaves the risk set; role
+    // counts beside event counts). The floor properties below read the NEWEST
+    // definition (LIVE), so a later re-issue that lost the floor fails them;
+    // this pin keeps 'before' and 'after' the pair this file executes.
     for (const [fn, was, now] of [
       ["get_company_fill_curve", WAS_COMPANY, NEW_COMPANY],
       ["get_category_fill_curve", WAS_CATEGORY, NEW_CATEGORY],
       ["refresh_layoff_partition", WAS_WRITER, NEW_WRITER],
     ] as const) {
       const files = definers(fn);
-      expect(files.at(-1), `${fn}: the pins follow the newest definition`).toBe(now);
-      expect(files.at(-2), `${fn}: 'before' is the definition the re-issue replaced`).toBe(was);
-      expect(definitionsIn(now), `${now} defines one function`).toBe(1);
+      const at = files.indexOf(now);
+      expect(at, `${fn}: ${now} is in the lane`).toBeGreaterThan(-1);
+      expect(files[at - 1], `${fn}: 'before' is the definition the re-issue replaced`).toBe(was);
+      for (const f of files.slice(at)) expect(definitionsIn(f), `${f} defines one function`).toBe(1);
     }
   });
 
@@ -750,8 +764,8 @@ describe("the floor is spelled where the database can run it", () => {
       }
       return s.replace(" AND r.tt <= 30\n    GROUP BY r.tok, r.cat", " AND r.tt <= 30 AND r.admitted\n    GROUP BY r.tok, r.cat");
     };
-    expect(norm(LIVE.category)).toBe(pooled(definitionOf(mig(WAS_CATEGORY), "get_category_fill_curve")));
-    expect(norm(LIVE.writer)).toBe(pooled(definitionOf(mig(WAS_WRITER), "refresh_layoff_partition")));
+    expect(norm(AT_FLOOR.category)).toBe(pooled(definitionOf(mig(WAS_CATEGORY), "get_category_fill_curve")));
+    expect(norm(AT_FLOOR.writer)).toBe(pooled(definitionOf(mig(WAS_WRITER), "refresh_layoff_partition")));
 
     let co = norm(definitionOf(mig(WAS_COMPANY), "get_company_fill_curve"));
     const edit = (a: string, b: string) => {
@@ -780,7 +794,7 @@ describe("the floor is spelled where the database can run it", () => {
       "    COALESCE(ob.admitted\n       AND ob.watched_from IS NOT NULL\n       AND ob.watched_from < (SELECT h.to_d FROM cohort30 h)\n");
     // The two appended columns are pinned term by term by floorViolations;
     // here they are carried across so the rest of the body is compared.
-    const live = norm(LIVE.company);
+    const live = norm(AT_FLOOR.company);
     const addedAt = live.search(/^ {4}ob\.watched_from\s+AS watched_from,$/m);
     expect(addedAt, "the published floor's projection line").toBeGreaterThan(0);
     const added = live.slice(addedAt, live.indexOf("\n  FROM toks t\n", addedAt) + 1);

@@ -44,6 +44,7 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
+import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
 interface FixItem { step: string; done: boolean }
 
@@ -119,8 +120,12 @@ const SAVED_STALE_DAYS = 5;
  *  optional: a row from an older deploy, or a token the curve has no history
  *  for, must degrade to showing nothing rather than to a zero. */
 interface CompanyFillCurve {
-  fills_90d?: number;
-  relists_90d?: number;
+  /** ROLES taken down in the last 90 days and not brought back (20261008110000):
+   *  closed once, not superseded, not serving again. A CEILING. NOT fills_90d,
+   *  which counts closure events -- a role that closed twice is two of those. */
+  filled_roles_90d?: number | null;
+  /** ROLES that came back in the same window. A FLOOR. */
+  relisted_roles_90d?: number | null;
   /** R(14) — cumulative incidence of a genuine fill by day 14, 0..1. */
   fill_rate_14?: number | null;
   /** Board-level relist share, a FLOOR: the collector logs one re-list per
@@ -460,8 +465,8 @@ export default function Account() {
             // and they are the whole point. A rate without `sufficient` and
             // `dated_coverage` beside it is the old chip with a new number.
             map[r.company_token] = {
-              fills_90d: r.fills_90d,
-              relists_90d: r.relists_90d,
+              filled_roles_90d: r.filled_roles_90d,
+              relisted_roles_90d: r.relisted_roles_90d,
               fill_rate_14: r.fill_rate_14,
               churn: r.churn,
               median_censored: r.median_censored,
@@ -1530,19 +1535,15 @@ export default function Account() {
                       const hhToken = (a.job_id ?? "").split(":")[1];
                       const hh = hhToken ? appHealth[hhToken] : undefined;
                       if (!hh) return null;
-                      const fills = hh.fills_90d ?? 0;
-                      const relists = hh.relists_90d ?? 0;
-                      // CHURN IS RENDERED WITH A ">=", ALWAYS. The collector
-                      // logs at most one superseded closure per role title per
-                      // company per 24h, so `churn` is a floor on the recycling
-                      // share and never a measurement of it. Printing it as an
-                      // exact percentage would be the same overstated precision
-                      // the old superseded_90d count carried.
-                      if (hh.churn != null && hh.churn > 0.5 && relists >= 10) {
-                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: relists })}</p>;
+                      // ROLES, NOT EVENTS (20261008110000): the rule lives in
+                      // trackedEmployerChip, which reads the role counts and
+                      // shows nothing for a row without them.
+                      const chip = trackedEmployerChip(hh);
+                      if (chip?.kind === "churn") {
+                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: chip.n })}</p>;
                       }
-                      if (fills >= 3 && relists <= fills) {
-                        return <p className="text-[11px] text-success/80 mt-0.5">{t("jobsPage.verdictFills", "this company genuinely fills roles ({{n}} in our tracking)", { n: fills })}</p>;
+                      if (chip?.kind === "stayed-down") {
+                        return <p className="text-[11px] text-success/80 mt-0.5">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: chip.n })}</p>;
                       }
                       return null;
                     })()}

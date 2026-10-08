@@ -65,7 +65,7 @@ describe("the budget counted the wrong thing", () => {
     // budgetSkipped is excluded from the failure accounting, so a board the
     // slice never reached does not feed the retry lane or the prune.
     expect(CODE).toMatch(/const budgetSkippedSet = new Set\(budgetSkipped\);/);
-    expect(CODE).toMatch(/!budgetSkippedSet\.has\(tk\)/);
+    expect(CODE).toMatch(/!budgetSkippedSet\.has\(s\.token\)/);
   });
 
   it("the stop is reported where the outage was invisible", () => {

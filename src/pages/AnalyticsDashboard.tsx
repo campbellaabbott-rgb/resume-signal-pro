@@ -86,7 +86,10 @@ function AnalyticsDashboardContent() {
   const fetchAnalytics = async () => {
     try {
       setIsLoading(true);
-      
+      // A new fetch starts clean: one failed range used to lock the page on
+      // its error screen for good (register L3-19).
+      setError(null);
+
       // Use edge function to fetch analytics (bypasses RLS)
       const { data: result, error: invokeError } = await supabase.functions.invoke('get-analytics', {
         body: {
@@ -129,12 +132,30 @@ function AnalyticsDashboardContent() {
     );
   }
 
+  const presetButtons = DATE_PRESETS.map((preset) => (
+    <Button
+      key={preset.days}
+      variant={activePreset === preset.days ? "default" : "outline"}
+      size="sm"
+      onClick={() => handlePresetClick(preset.days)}
+    >
+      {preset.label}
+    </Button>
+  ));
+
   if (error || !data) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-12">
-          <div className="text-center text-destructive">{error || 'No data available'}</div>
+          <div className="text-center text-destructive mb-4">{error || 'No data available'}</div>
+          {/* The ranges and a retry stay reachable from the error screen. */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {presetButtons}
+            <Button variant="outline" size="sm" onClick={() => fetchAnalytics()}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Retry
+            </Button>
+          </div>
         </main>
         <Footer />
       </div>
@@ -156,16 +177,7 @@ function AnalyticsDashboardContent() {
             
             <div className="flex flex-wrap items-center gap-2">
               {/* Preset buttons */}
-              {DATE_PRESETS.map((preset) => (
-                <Button
-                  key={preset.days}
-                  variant={activePreset === preset.days ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handlePresetClick(preset.days)}
-                >
-                  {preset.label}
-                </Button>
-              ))}
+              {presetButtons}
               
               {/* Custom date pickers */}
               <div className="flex items-center gap-2">

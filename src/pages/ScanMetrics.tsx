@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { adminRpc } from '@/lib/admin-auth';
+import { adminAuthHeaders, adminRpc } from '@/lib/admin-auth';
 import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import {
   LineChart,
@@ -87,6 +87,9 @@ function ScanMetricsContent() {
   const [geoStats, setGeoStats] = useState<GeoStat[]>([]);
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [recentHeartbeats, setRecentHeartbeats] = useState<HeartbeatResult[]>([]);
+  // heartbeat_results is closed to the browser: the list comes through
+  // admin-ops, and a refusal is said instead of "No heartbeat results yet".
+  const [heartbeatsUnavailable, setHeartbeatsUnavailable] = useState(false);
   const [runningHeartbeat, setRunningHeartbeat] = useState(false);
 
   const fetchMetrics = useCallback(async () => {
@@ -97,11 +100,7 @@ function ScanMetricsContent() {
         adminRpc('get_scan_metrics_hourly', { p_hours_back: hoursBack }),
         supabase.rpc('get_scan_geo_stats', { p_hours_back: hoursBack }),
         supabase.rpc('get_scan_health_status'),
-        supabase.from('heartbeat_results')
-          .select('*')
-          .eq('function_name', 'free-keyword-scan')
-          .order('created_at', { ascending: false })
-          .limit(10)
+        adminRpc('get_heartbeat_history', { p_hours: 168, p_function: 'free-keyword-scan', p_limit: 10 }),
       ]);
 
       if (successRateRes.data && successRateRes.data.length > 0) {
@@ -120,7 +119,11 @@ function ScanMetricsContent() {
         setHealthStatus(healthRes.data[0]);
       }
       
-      if (heartbeatsRes.data) {
+      if (heartbeatsRes.error || !Array.isArray(heartbeatsRes.data)) {
+        setHeartbeatsUnavailable(true);
+        setRecentHeartbeats([]);
+      } else {
+        setHeartbeatsUnavailable(false);
         setRecentHeartbeats(heartbeatsRes.data as unknown as HeartbeatResult[]);
       }
     } catch (error) {
@@ -143,7 +146,9 @@ function ScanMetricsContent() {
   const runHeartbeat = async () => {
     setRunningHeartbeat(true);
     try {
-      const { data, error } = await supabase.functions.invoke('scan-heartbeat');
+      // scan-heartbeat answers its cron, the service role and the owner's key
+      // only (register L10-10); this button sends the key the gate holds.
+      const { data, error } = await supabase.functions.invoke('scan-heartbeat', { headers: adminAuthHeaders() });
       if (error) throw error;
       console.log('Heartbeat result:', data);
       // Refresh metrics to show new heartbeat
@@ -487,7 +492,7 @@ function ScanMetricsContent() {
                           <p className="text-sm text-red-400 mt-2">{hb.error_message}</p>
                         )}
                         <div className="flex gap-2 mt-2 flex-wrap">
-                          {Object.entries(hb.checks_passed).map(([name, check]) => (
+                          {Object.entries(hb.checks_passed ?? {}).map(([name, check]) => (
                             <Badge 
                               key={name} 
                               variant="outline" 
@@ -501,10 +506,15 @@ function ScanMetricsContent() {
                       </div>
                     ))}
                   </div>
+                ) : heartbeatsUnavailable ? (
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground flex-col gap-2">
+                    <Heart className="w-8 h-8 text-muted-foreground/50" />
+                    <p>Heartbeat results unavailable: they could not be read (admin key required).</p>
+                  </div>
                 ) : (
                   <div className="h-[200px] flex items-center justify-center text-muted-foreground flex-col gap-2">
                     <Heart className="w-8 h-8 text-muted-foreground/50" />
-                    <p>No heartbeat results yet</p>
+                    <p>No heartbeat results in the last 7 days</p>
                     <Button size="sm" onClick={runHeartbeat} disabled={runningHeartbeat}>
                       Run First Heartbeat
                     </Button>

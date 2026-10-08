@@ -1,10 +1,19 @@
 // Company intel strip on the lander: verified headcount (with its basis and
-// scale band), 7-day net-new trend from the daily snapshots, this company's
-// stated-salary median, and its top fields. Every clause renders only when
-// its data exists — absent data shows nothing, never a guess.
+// scale band), this company's stated-salary median, and its top fields. Every
+// clause renders only when its data exists — absent data shows nothing, never
+// a guess.
+//
+// NO NET-NEW FIGURE. This strip printed "+N net-new roles this week" from
+// get_company_intel.net_7d -- the difference of raw stored-row counts across a
+// week of snapshots, with no read-quality, size or tenure gate -- right above
+// the Hiring Health card, whose own growth line (get_company_growth) refuses
+// to read a rate on exactly those boards: careers.orlandohealth.com showed
+// "+52 net-new roles this week" beside "No posting rate yet: windowed read"
+// (register L11-03). The board's growth reading lives in one place, the card,
+// on the gates that make it a reading.
 
 import { useEffect, useState } from "react";
-import { Users, TrendingUp, BadgeDollarSign, Layers } from "lucide-react";
+import { Users, BadgeDollarSign, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,6 +25,7 @@ interface Intel {
   usd_n: number | null;
   categories: Array<{ category: string; n: number }>;
   countries: Array<{ country: string; n: number }>;
+  /** Still returned by the RPC; deliberately never rendered (see header). */
   net_7d: number | null;
 }
 
@@ -67,9 +77,6 @@ export function CompanyIntelPanel({ companyToken }: { companyToken: string }) {
         band,
       }),
     });
-  }
-  if (intel.net_7d != null && intel.net_7d > 0) {
-    items.push({ icon: TrendingUp, text: t("jobsPage.intel.net7d", "+{{n}} net-new roles this week", { n: intel.net_7d }) });
   }
   if (intel.median_usd_floor != null && (intel.usd_n ?? 0) >= 10) {
     items.push({

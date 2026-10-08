@@ -450,6 +450,6 @@ describe("confirm redeems only the token that was mailed", () => {
 
   it("the preflight answers its build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/send-market-pulse", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^send-market-pulse\.2026-10-04\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^send-market-pulse\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
   });
 });

@@ -25,6 +25,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
@@ -86,12 +87,16 @@ let balances: Map<string, number>;
 let rpcLog: Array<[string, Args]>;
 let cacheRow: { report: unknown; created_at: string } | null;
 let cacheWrites: unknown[];
-let proRows: Record<string, { status: string; current_period_end: string | null }>;
+/** What pro_entitlement_rows answers per ACCOUNT (the plan is read by user id). */
+let proPlans: Record<string, Array<{ tier: string; status: string; current_period_end: string | null; bound: boolean }>>;
+/** The account ids the scanner asked about. */
 let proLookups: unknown[];
 let underLimit: boolean;
 let grants: Map<string, { email: string; left: number; claimedBy: string | null }>;
 let settingsReads: number;
 let autoconfirm: boolean;
+/** POSTs to notify-owner: the URL's headers and body (wave 2 email-ops, register L10-13). */
+const notifyCalls: Array<{ headers: Record<string, string>; body: Record<string, unknown> }> = [];
 const env: Record<string, string> = {
   SUPABASE_URL: "https://harness.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "service-role-harness-key-0123456789abcdef",
@@ -136,6 +141,9 @@ function client() {
       case "check_global_rate_limit": return { data: true, error: null };
       case "check_rate_limit": return { data: args.p_function === "free-keyword-scan" ? underLimit : true, error: null };
       case "acquire_scan_slot": return { data: "slot-1", error: null };
+      case "pro_entitlement_rows":
+        proLookups.push(args.p_user_id);
+        return { data: proPlans[String(args.p_user_id)] ?? [], error: null };
       case "scan_credit_redeem": {
         const e = String(args.p_email);
         const n = balances.get(e) ?? 0;
@@ -177,11 +185,6 @@ function client() {
         return { data: null, error: null };
       }
       if (table === "scan_report_cache") return { data: state.single ? cacheRow : cacheRow ? [cacheRow] : [], error: null };
-      if (table === "pro_subscribers") {
-        const email = state.eq.find(([c]) => c === "email")?.[1];
-        proLookups.push(email);
-        return { data: proRows[String(email)] ?? null, error: null };
-      }
       return { data: state.single ? null : [], error: null };
     };
     const builder: Record<string, unknown> = new Proxy({}, {
@@ -210,7 +213,11 @@ beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.EdgeRuntime = { waitUntil: (p: unknown) => { void Promise.resolve(p).catch(() => {}); } };
-  g.fetch = async (url: string) => {
+  g.fetch = async (url: string, init?: { headers?: Record<string, string>; body?: string }) => {
+    if (String(url).endsWith("/functions/v1/notify-owner")) {
+      notifyCalls.push({ headers: init?.headers ?? {}, body: JSON.parse(init?.body ?? "{}") });
+      return new Response("{}", { status: 200 });
+    }
     if (String(url).endsWith("/auth/v1/settings")) {
       settingsReads++;
       return new Response(JSON.stringify({ mailer_autoconfirm: autoconfirm, disable_signup: false }), { status: 200 });
@@ -238,7 +245,7 @@ beforeEach(() => {
   rpcLog = [];
   cacheRow = null;
   cacheWrites = [];
-  proRows = { "pro@example.com": { status: "active", current_period_end: null } };
+  proPlans = { [PRO_ID]: [{ tier: "pro", status: "active", current_period_end: null, bound: true }] };
   proLookups = [];
   underLimit = false; // past today's free scans: only a credit or Pro can pay
   (globalThis as Record<string, unknown>).__scanClient = client();
@@ -280,7 +287,7 @@ describe("an address in the request body proves nothing", () => {
   it("a Pro subscriber signed in with Google for that address still scans past the limit, with no credit spent", async () => {
     const r = await scan({ resumeText: RESUME }, JWT.proGoogle);
     expect(r.status).toBe(200);
-    expect(proLookups).toEqual(["pro@example.com"]);
+    expect(proLookups).toEqual([PRO_ID]);
     expect(redeems()).toEqual([]);
   });
 });
@@ -296,12 +303,12 @@ describe("an address on a session proves nothing either, while sign-ups are auto
     expect(aiCalls).toBe(0);
   });
 
-  it("a password sign-up as a subscriber's address gets no Pro, and the subscription is not looked up", async () => {
+  it("a password sign-up as a subscriber's address gets no Pro: the plan is read by account, and that account holds none", async () => {
     USERS[JWT.squatsVictim].email = "pro@example.com";
     try {
       const r = await scan({ resumeText: RESUME }, JWT.squatsVictim);
       expect(r.status).toBe(429);
-      expect(proLookups).toEqual([]);
+      expect(proLookups).toEqual([SQUATTER_ID]);
       expect(aiCalls).toBe(0);
     } finally {
       USERS[JWT.squatsVictim].email = "victim@example.com";
@@ -383,6 +390,35 @@ describe("a proven buyer's credit is spent only when a full report is delivered"
   });
 });
 
+describe("the owner's note for a scan (wave 2 email-ops, register L10-13)", () => {
+  const settled = () => new Promise((r) => setTimeout(r, 20));
+  it("carries the service key, and is never sent for the heartbeat's or a script's synthetic scan", async () => {
+    env.NOTIFY_SCANS = "true";
+    env.HEARTBEAT_SECRET = "hb-secret";
+    notifyCalls.length = 0;
+    try {
+      underLimit = true;
+      expect((await scan({ resumeText: RESUME })).status).toBe(200);
+      await settled();
+      expect(notifyCalls, "a real scan stopped telling the owner").toHaveLength(1);
+      expect(notifyCalls[0].headers.Authorization, "notify-owner refuses a note without the service key").toBe(`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`);
+      notifyCalls.length = 0;
+      expect((await scan({ resumeText: `${RESUME}\nsynthetic run`, synthetic: true })).status).toBe(200);
+      const hb = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer anon_harness", "x-heartbeat-secret": "hb-secret", "cf-connecting-ip": "198.51.100.41" },
+        body: JSON.stringify({ resumeText: `${RESUME}\nheartbeat run` }),
+      }));
+      expect(hb.status).toBe(200);
+      await settled();
+      expect(notifyCalls, "every heartbeat scan mailed the owner").toEqual([]);
+    } finally {
+      env.NOTIFY_SCANS = "false";
+      delete env.HEARTBEAT_SECRET;
+    }
+  });
+});
+
 describe("a malformed body is the caller's mistake", () => {
   it("answers 400, not a 500 incident", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", {
@@ -395,6 +431,6 @@ describe("a malformed body is the caller's mistake", () => {
 
   it("every answer carries the build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^free-keyword-scan\.2026-10-05\.\d+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "free-keyword-scan", "2026-10-08")).toBe(true);
   });
 });

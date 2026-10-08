@@ -298,4 +298,17 @@ describe("the prices a crawler reads are the mirrors', never typed", () => {
     expect(prints(desc, agent), "description").toBe(true);
     expect((b.match(/\$\$\{\w+\}\/month/g) ?? []).length, "the body's price line").toBeGreaterThan(0);
   });
+
+  // The trial is offered once per customer (L6-29); /agent told every
+  // crawler and visitor it was free for a typed number of days.
+  it("/agent prints the trial's length from the mirror and names who gets it", () => {
+    const days = boundTo("D.SUBSCRIPTIONS.agent.trialDays");
+    expect(days.length, "a binding to the trial length's mirror").toBeGreaterThan(0);
+    const b = block("/agent");
+    const desc = /description: `([^`]*)`/.exec(b)?.[1] ?? "";
+    const named = (text: string) => days.some((n) => text.includes(`\${${n}} days free for first-time subscribers`));
+    expect(named(desc), "description").toBe(true);
+    expect(named(b.slice(b.indexOf("content:"))), "body").toBe(true);
+    expect(b, "a typed trial length").not.toMatch(/\b\d+ days? free|free week/i);
+  });
 });

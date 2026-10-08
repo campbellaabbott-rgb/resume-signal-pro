@@ -25,9 +25,9 @@ export const BOARD_PASS_HEADER = "x-rb-pass";
 export const BOARD_PASS_TTL_S = 30 * 60;
 export const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 export const SITEVERIFY_TIMEOUT_MS = 5_000;
-/** Where a Turnstile token may have been solved: the site, and the project's lovable.app host. */
+/** Where a Turnstile token may have been solved: the site only. resumebooster.lovable.app is someone else's app (n436). */
 export const BOARD_PASS_HOSTS: ReadonlySet<string> = new Set([
-  "resumebooster.work", "www.resumebooster.work", "resumebooster.lovable.app",
+  "resumebooster.work", "www.resumebooster.work",
 ]);
 
 export type PassState = "valid" | "invalid" | "none" | "unconfigured";

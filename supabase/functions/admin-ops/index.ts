@@ -13,12 +13,13 @@
 // survivor with the service role.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { ADMIN_OPS_RPCS, ARG_NAME } from "./rpcs.ts";
+import { ADMIN_CATALOGUE_RPCS, ADMIN_OPS_RPCS, ARG_NAME } from "./rpcs.ts";
 import { keyMatches } from "../_shared/admin-key.ts";
 
 // Provable from outside without the key: every response, the CORS preflight
-// included, carries this in x-fn-build.
-const FN_BUILD = "admin-ops.2026-10-04.1";
+// included, carries this in x-fn-build. 2026-10-08.1: the owner's catalogue
+// reader client_callable_unlisted_names (ADMIN_CATALOGUE_RPCS).
+const FN_BUILD = "admin-ops.2026-10-08.2";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -50,7 +51,9 @@ serve(async (req: Request) => {
     return json(400, { error: "body must be JSON: {fn, args}" });
   }
   const fn = typeof body.fn === "string" ? body.fn : "";
-  if (!ADMIN_OPS_RPCS.has(fn)) return json(400, { error: `not an operations reader: ${fn || "(none)"}` });
+  if (!ADMIN_OPS_RPCS.has(fn) && !ADMIN_CATALOGUE_RPCS.has(fn)) {
+    return json(400, { error: `not an operations reader: ${fn || "(none)"}` });
+  }
 
   const args = body.args ?? {};
   if (typeof args !== "object" || args === null || Array.isArray(args)) {

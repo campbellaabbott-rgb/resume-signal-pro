@@ -203,6 +203,21 @@ describe("/fix-plan/confirm: the sequence starts only on the person's click", ()
     expect(screen.queryByRole("button", { name: /yes, start the emails/i })).toBeNull();
   });
 
+  it("a failed start asks for another press only when another press can work", async () => {
+    for (const [body, text, retryWorks] of [
+      [{ success: false, error: "Could not start it right now. Try the button again shortly." }, /Try the button again shortly/, true],
+      [{ success: false, error: "Could not start the whole sequence.", retry: false }, /will not restart it this month/, false],
+    ] as const) {
+      window.history.replaceState(null, "", `/fix-plan/confirm#d=${SIGNED}`);
+      invoke.mockResolvedValue({ data: null, error: httpError(503, body) });
+      page(<FixPlanConfirm />);
+      fireEvent.click(await screen.findByRole("button", { name: /yes, start the emails/i }));
+      await waitFor(() => expect(screen.getByText(text)).toBeInTheDocument());
+      if (!retryWorks) expect(screen.queryByText(/Try the button again/), "the page asked for a press that can only answer already started").toBeNull();
+      cleanup();
+    }
+  });
+
   it("without a plan there is nothing to press", () => {
     page(<FixPlanConfirm />);
     expect(screen.getByText(/needs the button from your report email/)).toBeInTheDocument();

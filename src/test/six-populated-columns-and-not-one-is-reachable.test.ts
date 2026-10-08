@@ -445,6 +445,8 @@ describe("isUnfiltered — mechanical, so all six are counted the day they exist
       companies: ["tok"],
       maxAgeDays: 7,
       postedAfter: "2026-07-01T00:00:00Z",
+      // Added 2026-10-08: the saved-search digest's discovery window.
+      newSince: "2026-07-01T00:00:00.000Z",
       // 2026-08-31: the agency opt-out — the typed-literal tripwire fired
       // here exactly as designed when AppliedFilters gained it.
       excludeAgencies: true,

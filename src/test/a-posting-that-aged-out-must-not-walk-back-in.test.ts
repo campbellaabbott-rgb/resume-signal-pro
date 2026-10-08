@@ -61,7 +61,7 @@ describe("a posting that aged out must not walk back in", () => {
     // a whole-file match was satisfied by the sweep alone. Since .87 ingest
     // also reads the tombstone's date (a-re-dated-posting-walks-back-in).
     const block = CODE.slice(CODE.indexOf("if (newRows.length > 0)"), CODE.indexOf("const vanishedAll"));
-    expect(block).toMatch(/from\("job_board_aged_out"\)\s*\n?\s*\.select\("id, posted_at"\)/);
+    expect(block).toMatch(/from\("job_board_aged_out"\)\s*\n?\s*\.select\("id, posted_at(, aged_at)?"\)/);
     expect(block).toMatch(/newRows = newRows\.filter\(\(r\) => !blocked\.has\(String\(r\.id\)\)\)/);
   });
 

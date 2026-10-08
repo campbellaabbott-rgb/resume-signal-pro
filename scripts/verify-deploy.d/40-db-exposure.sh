@@ -69,7 +69,7 @@ done
 # first and builds no client until it matches).
 H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/admin-ops" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: x-admin-key,content-type,authorization,apikey")
 BUILD=$(printf '%s' "$H" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-case "$BUILD" in admin-ops.2026-10-04.*) echo "PASS  admin-ops preflight x-fn-build = $BUILD";; *) echo "FAIL  admin-ops preflight x-fn-build = '${BUILD}' (want admin-ops.2026-10-04.1; empty = not deployed)";; esac
+if build_ge admin-ops "$BUILD" 2026-10-04 1; then echo "PASS  admin-ops preflight x-fn-build = $BUILD (2026-10-04.1 or later)"; else echo "FAIL  admin-ops preflight x-fn-build = '${BUILD}' (want admin-ops.2026-10-04.1 or later; empty = not deployed)"; fi
 printf '%s' "$H" | tr -d '\r' | grep -i '^access-control-allow-headers:' | grep -qi 'x-admin-key' && echo "PASS  admin-ops allows the x-admin-key header" || echo "FAIL  admin-ops preflight does not allow x-admin-key (every dashboard panel would fail CORS)"
 NOKEY=$(curl -s -m 30 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1/admin-ops" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"fn":"get_delivery_health","args":{"p_hours_back":0}}')
 [ "$NOKEY" = "401" ] && echo "PASS  admin-ops without the admin key -> 401" || echo "FAIL  admin-ops without the admin key -> $NOKEY"
@@ -89,5 +89,5 @@ case "$CBUILD" in
 esac
 EH=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/check-error-spikes" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST")
 EBUILD=$(printf '%s' "$EH" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-case "$EBUILD" in check-error-spikes.2026-10-04.*) echo "PASS  check-error-spikes preflight x-fn-build = $EBUILD (alert email defangs browser-written text)";; *) echo "FAIL  check-error-spikes preflight x-fn-build = '${EBUILD}' (want check-error-spikes.2026-10-04.1)";; esac
+if build_ge check-error-spikes "$EBUILD" 2026-10-04 1; then echo "PASS  check-error-spikes preflight x-fn-build = $EBUILD (alert email defangs browser-written text)"; else echo "FAIL  check-error-spikes preflight x-fn-build = '${EBUILD}' (want check-error-spikes.2026-10-04.1 or later)"; fi
 

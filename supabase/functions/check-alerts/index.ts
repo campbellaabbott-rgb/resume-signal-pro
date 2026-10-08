@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T20:00Z
+// deploy-stamp: 2026-10-08T12:00Z
 //
 // WHO MAY RUN THIS. check-alerts is verify_jwt = false and used to answer
 // anyone: a POST ran the alert evaluation and handed back the delivery, AI,
@@ -9,6 +9,17 @@
 // vault and alerts_cron_key_matches checks without ever returning it. A
 // caller with neither is a 401 before any client is built. And it returns a
 // count, never the metrics: the owner reads those on /health-check.
+//
+// IT LOOKED AT ONE HOUR IN SIX, AND CALLED EVERY ALERT SENT (2026-10-08,
+// register L13-48 and L10-17). The cron runs at '18 */6 * * *' but each
+// reader was asked for the last hour, so deliveries failing 07:00-11:00 were
+// invisible to the 12:18 run; the window now matches the cadence. The send's
+// answer was never read and every alert was logged p_success: true; a refused
+// send is now logged as failed (so its cooldown does not swallow it) and said
+// in the response. A health reader that cannot answer is now an alarm of its
+// own instead of a log line. And the dashboard button linked
+// resumebooster.lovable.app -- someone else's product -- whenever SITE_URL
+// was unset, which it was.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -16,7 +27,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "check-alerts.2026-10-04.1";
+const FN_BUILD = "check-alerts.2026-10-08.1";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +41,12 @@ const unauthorized = () =>
     status: 401,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+// The window each run reads, in hours: the cron's cadence (every six hours at
+// minute 18, 20261004110000), so consecutive runs cover the clock between them.
+export const LOOKBACK_HOURS = 6;
+/** The page the alert mail links to: ours, never a default host. */
+const HEALTH_DASHBOARD_URL = "https://resumebooster.work/health-check";
 
 interface AlertConfig {
   name: string;
@@ -45,6 +62,7 @@ const ALERT_CONFIGS: AlertConfig[] = [
   { name: 'Email Success Rate Low', metric: 'email_success_rate', threshold: 90, operator: 'lt', severity: 'warning' },
   { name: 'Webhook Failures Spike', metric: 'webhook_failure_rate', threshold: 10, operator: 'gt', severity: 'critical' },
   { name: 'Parse Failures High', metric: 'parse_failure_count', threshold: 5, operator: 'gt', severity: 'warning' },
+  { name: 'Health Checks Unavailable', metric: 'unavailable_checks', threshold: 0, operator: 'gt', severity: 'warning' },
 ];
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -100,7 +118,7 @@ serve(async (req) => {
     const unavailable: string[] = [];
     // deno-lint-ignore no-explicit-any
     const health = async (fn: string): Promise<any | null> => {
-      const { data, error } = await supabase.rpc(fn, { p_hours_back: 1 });
+      const { data, error } = await supabase.rpc(fn, { p_hours_back: LOOKBACK_HOURS });
       if (error) {
         unavailable.push(fn);
         logStep("Health RPC failed — alert cannot be evaluated", { fn, error: error.message?.slice(0, 160) });
@@ -141,6 +159,9 @@ serve(async (req) => {
     if (unavailable.length) {
       logStep("ALERTS BLIND — these checks could not be evaluated", { unavailable });
     }
+    // Blindness is itself an alert: a reader that cannot answer is the monitor
+    // going dark, which reads exactly like "all clear" if it is only logged.
+    if (unavailable.length) metrics.unavailable_checks = unavailable.length;
     
     logStep("Metrics gathered", metrics);
     
@@ -201,7 +222,7 @@ serve(async (req) => {
         </tr>
       `).join('');
       
-      await resend.emails.send({
+      const { error: sendError } = await resend.emails.send({
         from: "Resume Booster Alerts <alerts@resend.dev>",
         to: [adminEmail],
         subject,
@@ -211,7 +232,8 @@ serve(async (req) => {
               System Alert Report
             </h2>
             
-            <p style="margin-bottom: 20px;">The following metrics have breached their thresholds:</p>
+            <p style="margin-bottom: 20px;">The following metrics breached their thresholds over the last ${LOOKBACK_HOURS} hours:</p>
+            ${unavailable.length ? `<p style="margin-bottom: 20px;">These checks could not be evaluated: ${unavailable.join(", ")}.</p>` : ""}
             
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
               <thead>
@@ -227,7 +249,7 @@ serve(async (req) => {
             </table>
             
             <div style="margin-top: 24px;">
-              <a href="${Deno.env.get('SITE_URL') || 'https://resumebooster.lovable.app'}/health-check" 
+              <a href="${HEALTH_DASHBOARD_URL}" 
                  style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">
                 View Health Dashboard
               </a>
@@ -240,7 +262,10 @@ serve(async (req) => {
         `,
       });
       
-      // Log each alert sent
+      if (sendError) {
+        console.error("[CHECK-ALERTS] alert email REFUSED by Resend:", (sendError as { message?: string }).message ?? sendError);
+      }
+      // Each alert is logged with whether it actually went out.
       for (const alert of triggeredAlerts) {
         await supabase.rpc('log_alert_sent', {
           p_alert_type: alert.severity,
@@ -248,11 +273,17 @@ serve(async (req) => {
           p_threshold: alert.threshold,
           p_actual: alert.value,
           p_sent_to: adminEmail,
-          p_success: true
+          p_success: !sendError
         });
       }
-      
-      logStep("Alerts sent successfully", { count: triggeredAlerts.length });
+
+      logStep(sendError ? "Alert email refused" : "Alerts sent successfully", { count: triggeredAlerts.length });
+      if (sendError) {
+        return new Response(JSON.stringify({ success: false, alertsTriggered: triggeredAlerts.length, sent: false, unavailable: unavailable.length }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     } else {
       logStep("No alerts triggered");
     }

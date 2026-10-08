@@ -9,6 +9,8 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal, useBoardBudgetRefusal } from "@/lib/board-budget";
+import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { COMPANY_SCOPE_MAX } from "@/lib/company-scope";
 
 // `open` — the SERVABLE per-employer count, under BOTH serving predicates
@@ -56,12 +58,21 @@ export function companyLinkScope(c: { token: string; tokens?: string[] }): strin
 export default function Companies() {
   const [companies, setCompanies] = useState<CompanyChip[]>([]);
   const [openBoards, setOpenBoards] = useState<number | null>(null);
+  // A board-budget refusal rendered as an empty list read as "no companies";
+  // it is the board pausing this connection, and the notice says so.
+  const budgetRefusal = useBoardBudgetRefusal();
 
   useEffect(() => {
     let cancelled = false;
+    if (boardBudgetRefusal()) return;
     invokeJobBoard({ body: { action: "list", limit: 1, includeFacets: true } })
-      .then(({ data }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return;
+        if (error) {
+          const refused = await readBoardBudgetRefusal(error);
+          if (refused) markBoardBudgetRefused(refused);
+          return;
+        }
         // NEVER companiesCount. That is the length of the UNFILTERED
         // company_token grouping — the array the orphan prune DELETES by, which
         // is why it is left unfiltered — so it counts boards whose every
@@ -97,6 +108,7 @@ export default function Companies() {
                 count — so "N companies" over it would overstate employers. */}
             {openBoards ? `${openBoards.toLocaleString()} company job boards hiring now` : "Companies hiring now"}
           </h1>
+          {budgetRefusal && <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />}
           <p className="text-muted-foreground mb-8">
             Every posting comes from the employer's own hiring system — no aggregators, no reposts.
             The largest boards are below;{" "}

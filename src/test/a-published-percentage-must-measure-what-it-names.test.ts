@@ -111,12 +111,16 @@ describe("a count the page disproves is withdrawn, not published", () => {
   // an audit lane that read it as a 39x recall loss was refuted by the rows
   // themselves.
   it("suppresses the total when the page already holds more than it claims", () => {
-    expect(CODE).toMatch(/const totalUnderstated = !augmented && typeof total === "number" && \(offset \+ shownRowCount\) > total;/);
-    expect(CODE).toMatch(/total: augmented \|\| totalUnderstated \? null : total,/);
+    // Since .91 the rows reached, not a pool position past the seam jump, set
+    // against both segments (L8-16); run end to end in
+    // a-floor-counted-pool-positions-and-a-symbol-query-counted-the-letter.test.ts.
+    expect(CODE).toMatch(/const totalUnderstated = !augmented && typeof pageTotal === "number" && countedReached > pageTotal;/);
+    expect(CODE).toMatch(/const countWithheld = augmented \|\| totalUnderstated \|\| symbolQuery;/);
+    expect(CODE).toMatch(/total: countWithheld \? null : total,/);
   });
 
   it("publishes a provable floor in its place", () => {
-    expect(CODE).toMatch(/totalUnderstated \? \{ countUnavailable: true, totalAtLeast: offset \+ shownRowCount \}/);
+    expect(CODE).toMatch(/totalUnderstated \? \{ countUnavailable: true, totalAtLeast: countedReached \}/);
   });
 });
 
@@ -279,7 +283,9 @@ describe("a phase mark must measure what the request waited on", () => {
     // Worth having — it is how you see an RPC that is slow but deadlined —
     // but it must never be summed with critical-path phases.
     expect(CODE).toMatch(/markFrom\("count_jobs_capped_settle", t_count_jobs_capped_6\);/);
-    expect(CODE).toMatch(/markFrom\("count_jobs_capped_settle", t_count_jobs_capped_5\);/);
+    // The facet rail's count_jobs_capped call (t_count_jobs_capped_5) is gone
+    // since .91: a text query's chips are withheld or counted by buildQuery (L13-24).
+    expect(CODE).not.toMatch(/t_count_jobs_capped_5/);
   });
 
   it("the unraced call site still measures its own wait", () => {

@@ -9,6 +9,14 @@ export interface ProSubscriptionState {
   status: string | null;
   currentPeriodEnd: string | null;
   loading: boolean;
+  /**
+   * Live only through a trial (check-subscription, the one rule in
+   * _shared/pro-standing.ts): the plan's ongoing features are on, the paid
+   * one-off tools are not included until the first payment.
+   */
+  trialing: boolean;
+  /** The address holds a live plan this account cannot use yet (not linked, mailbox not proven). */
+  linkPending: boolean;
 }
 
 /**
@@ -27,6 +35,8 @@ export function useProSubscription() {
     status: null,
     currentPeriodEnd: null,
     loading: true,
+    trialing: false,
+    linkPending: false,
   });
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -38,7 +48,7 @@ export function useProSubscription() {
 
   const refresh = useCallback(async () => {
     if (!knownEmail) {
-      setPro({ active: false, status: null, currentPeriodEnd: null, loading: false });
+      setPro({ active: false, status: null, currentPeriodEnd: null, loading: false, trialing: false, linkPending: false });
       return;
     }
     try {
@@ -51,6 +61,8 @@ export function useProSubscription() {
         status: data?.status ?? null,
         currentPeriodEnd: data?.currentPeriodEnd ?? null,
         loading: false,
+        trialing: data?.trialing === true,
+        linkPending: data?.linkPending === true,
       });
     } catch {
       setPro((p) => ({ ...p, loading: false }));

@@ -32,13 +32,14 @@ import {
   PASS_SHELF_LIFE_DAYS,
 } from "../_shared/pass.ts";
 import { passSessionSettled } from "../_shared/pass-settlement.ts";
+import { paymentRevocationState } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without signing in: the preflight carries it. The
 // name and the date sit on separate lines on purpose: a guard reads every line
 // that names the product for a spelled pass number, and a build date's "10"
 // is not one.
 const FN_NAME = "agent-pass-status";
-const FN_BUILD = `${FN_NAME}.2026-10-05.1`;
+const FN_BUILD = `${FN_NAME}.2026-10-08.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -57,8 +58,9 @@ const cors = {
  * Both are now terminal on the page; for the second pass, the owner is told
  * once per session so the charge can be refunded (a session another account
  * paid has its pass on that account, and the page says to sign in there).
+ * A refunded payment (L6-18) is terminal too: no wait opens a pass from it.
  */
-const TERMINAL_REPAIRS = new Set(["pass_already_open", "not_yours"]);
+const TERMINAL_REPAIRS = new Set(["pass_already_open", "not_yours", "payment_revoked"]);
 
 async function tellOwnerOnce(service: ServiceClient, reason: string, sessionId: string): Promise<void> {
   try {
@@ -169,6 +171,15 @@ async function repairFromSession(service: ServiceClient, userId: string, session
   const intent = typeof session.payment_intent === "string"
     ? session.payment_intent
     : session.payment_intent?.id ?? "";
+  // A REFUNDED PAYMENT OPENS NO PASS (L6-18). A second pass paid while one
+  // is open is refused at grant and refunded by the owner; payment_revoke
+  // then finds no pass to close and writes only its receipt, and Stripe
+  // still answers 'paid'. Without this, reopening the success URL once the
+  // first pass closed granted a pass from the refunded session. A receipt
+  // that cannot be read grants nothing either; the page offers a retry.
+  const revoked = await paymentRevocationState(service, { sessionId: session.id, paymentIntentId: intent });
+  if (revoked === "revoked") return "payment_revoked";
+  if (revoked === "unreadable") return "revocation_unreadable";
   const { data, error } = await service.rpc("agent_pass_grant", {
     p_user_id: userId,
     p_stripe_session_id: session.id,

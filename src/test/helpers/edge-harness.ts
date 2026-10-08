@@ -130,9 +130,23 @@ export class FakeDb {
 let seq = 0;
 const hex = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join("");
 
+/**
+ * Tables whose primary key is not `id`, as the migrations declare it. An upsert
+ * with no onConflict targets the primary key in Postgres; keyed on `id` here, it
+ * appended a second row where the database updates the one row (an address's
+ * pro_subscribers cache then read as two rows and missed the cache).
+ */
+const UPSERT_PRIMARY_KEYS: Record<string, string> = {
+  pro_subscribers: "email",
+  agent_subscribers: "email",
+  job_board_meta: "k",
+};
+
 class FakeQuery implements PromiseLike<DbResult> {
-  private op: "select" | "insert" | "update" | "delete" = "select";
+  private op: "select" | "insert" | "update" | "delete" | "upsert" = "select";
   private payload: unknown = null;
+  /** upsert's conflict column (supabase-js onConflict); the row's id when absent. */
+  private conflict = "id";
   private filters: Array<[string, unknown]> = [];
   /** Filters other than equality (.in, .gt), as predicates over a row. */
   private preds: Array<(r: Row) => boolean> = [];
@@ -142,6 +156,7 @@ class FakeQuery implements PromiseLike<DbResult> {
 
   select(_cols?: string) { this.returning = true; return this; }
   insert(payload: unknown) { this.op = "insert"; this.payload = payload; return this; }
+  upsert(payload: unknown, opts?: { onConflict?: string }) { this.op = "upsert"; this.payload = payload; this.conflict = opts?.onConflict ?? UPSERT_PRIMARY_KEYS[this.table] ?? "id"; return this; }
   update(payload: unknown) { this.op = "update"; this.payload = payload; return this; }
   delete() { this.op = "delete"; return this; }
   eq(col: string, val: unknown) { this.filters.push([col, val]); return this; }
@@ -185,6 +200,18 @@ class FakeQuery implements PromiseLike<DbResult> {
     if (fault) return { data: null, error: fault };
     const rows = this.db.rows(this.table);
     if (this.op === "select") return this.finish(rows.filter((r) => this.matches(r)), mode);
+    if (this.op === "upsert") {
+      const list = (Array.isArray(this.payload) ? this.payload : [this.payload]) as Row[];
+      const done = list.map((row) => {
+        const hit = rows.find((r) => r[this.conflict] != null && r[this.conflict] === row[this.conflict]);
+        if (hit) { Object.assign(hit, row); return hit; }
+        const full: Row = { ...defaultsFor(this.table), ...row };
+        rows.push(full);
+        return full;
+      });
+      this.db.writes.push({ table: this.table, op: "upsert", payload: this.payload });
+      return this.finish(done, mode);
+    }
     if (this.op === "insert") {
       const list = (Array.isArray(this.payload) ? this.payload : [this.payload]) as Row[];
       const keys = this.db.unique[this.table] ?? [];
@@ -228,6 +255,9 @@ function defaultsFor(table: string): Row {
       return { id: `pc-${seq}`, created_at: now };
     case "used_stripe_sessions":
       return { used_at: now, product_type: null, ip_address: null };
+    case "pro_grants":
+      // The real column defaults: a uuid id, unspent.
+      return { id: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, created_at: now, consumed_at: null, revoked_at: null };
     case "company_claims":
       return { id: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, verify_token: `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`, status: "pending", created_at: now, verified_at: null };
     default:

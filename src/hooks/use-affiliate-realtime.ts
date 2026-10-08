@@ -1,90 +1,68 @@
-import { useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
-interface UseAffiliateRealtimeOptions {
-  affiliateId: string | null;
-  enabled?: boolean;
-  onNewClick?: (data: any) => void;
-  onNewConversion?: (data: any) => void;
+/**
+ * NEW CLICKS AND SALES, BY ASKING (register L3-10).
+ *
+ * This hook subscribed to Supabase Realtime on affiliate_clicks and
+ * affiliate_conversions. Realtime applies RLS, both tables are FOR ALL USING
+ * (false), and an affiliate is a custom session on the anon role -- so nothing
+ * ever arrived, while the page promised "instant toast notifications". The
+ * page's inline callbacks also changed every render, so the channel was torn
+ * down and re-opened on each one.
+ *
+ * Now it re-reads the dashboard the affiliate's own session already reads
+ * (get_affiliate_dashboard) every POLL_MS while the page is open and visible,
+ * and announces what grew since the last read. The callbacks live in refs, so
+ * the timer is set up once.
+ */
+export const AFFILIATE_POLL_MS = 30_000;
+
+interface AffiliateStatsLike {
+  total_clicks?: number;
+  total_conversions?: number;
+  pending_payout?: number;
 }
 
-export function useAffiliateRealtime({
-  affiliateId,
-  enabled = true,
-  onNewClick,
-  onNewConversion,
-}: UseAffiliateRealtimeOptions) {
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+interface UseAffiliateUpdatesOptions {
+  enabled: boolean;
+  /** The latest stats the page holds. */
+  stats: AffiliateStatsLike | null | undefined;
+  /** Re-read the dashboard (the page's fetchDashboard). */
+  refresh: () => Promise<unknown>;
+  intervalMs?: number;
+}
 
-  const showClickNotification = useCallback((payload: any) => {
-    const referrer = payload.new?.referrer || 'Direct';
-    toast.success('New click on your affiliate link!', {
-      description: `Source: ${referrer}`,
-      icon: '🖱️',
-      duration: 5000,
-    });
-    onNewClick?.(payload.new);
-  }, [onNewClick]);
+const usd = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 
-  const showConversionNotification = useCallback((payload: any) => {
-    const commission = payload.new?.commission_amount || 0;
-    const formattedCommission = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(commission / 100);
+export function useAffiliateUpdates({ enabled, stats, refresh, intervalMs = AFFILIATE_POLL_MS }: UseAffiliateUpdatesOptions) {
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  const last = useRef<AffiliateStatsLike | null>(null);
 
-    toast.success(`You earned ${formattedCommission}!`, {
-      description: `New conversion from your referral`,
-      icon: '💰',
-      duration: 8000,
-    });
-    onNewConversion?.(payload.new);
-  }, [onNewConversion]);
+  // Announce growth between two reads. The first read sets the baseline.
+  useEffect(() => {
+    if (!stats) return;
+    const prev = last.current;
+    last.current = { ...stats };
+    if (!prev) return;
+    const clicks = (stats.total_clicks ?? 0) - (prev.total_clicks ?? 0);
+    const sales = (stats.total_conversions ?? 0) - (prev.total_conversions ?? 0);
+    const earned = (stats.pending_payout ?? 0) - (prev.pending_payout ?? 0);
+    if (clicks > 0) {
+      toast.success(clicks === 1 ? 'New click on your affiliate link!' : `${clicks} new clicks on your affiliate link!`, { icon: '🖱️', duration: 5000 });
+    }
+    if (sales > 0 && earned > 0) {
+      toast.success(`You earned ${usd(earned)}!`, { description: 'New conversion from your referral', icon: '💰', duration: 8000 });
+    }
+  }, [stats]);
 
   useEffect(() => {
-    if (!affiliateId || !enabled) return;
-
-    // Create a channel for this affiliate's events
-    const channel = supabase
-      .channel(`affiliate-${affiliateId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'affiliate_clicks',
-          filter: `affiliate_id=eq.${affiliateId}`,
-        },
-        showClickNotification
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'affiliate_conversions',
-          filter: `affiliate_id=eq.${affiliateId}`,
-        },
-        showConversionNotification
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Affiliate Realtime] Subscribed to updates');
-        }
-      });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  }, [affiliateId, enabled, showClickNotification, showConversionNotification]);
-
-  return {
-    isConnected: channelRef.current !== null,
-  };
+    if (!enabled) return;
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      refreshRef.current().catch(() => { /* the next tick tries again */ });
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [enabled, intervalMs]);
 }

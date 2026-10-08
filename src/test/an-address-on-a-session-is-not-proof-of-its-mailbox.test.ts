@@ -27,6 +27,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 import {
   autoconfirmIsOff,
   confirmedSinceEnforcement,
@@ -222,7 +223,7 @@ describe("the scan-credits handler", () => {
     const r = await ask(JWT.ownerGoogle);
     expect(r.json.credits).toBe(4);
     expect(r.json.mailboxProven).toBe(true);
-    expect(r.build).toMatch(/^scan-credits\.2026-10-05\.\d+$/);
+    expect(buildIsAtLeast(r.build, "scan-credits", "2026-10-08"), `build ${r.build}`).toBe(true);
   });
 
   it("a held purchase presented while signed in by password is claimed for the account, and then needs no id", async () => {
@@ -245,7 +246,7 @@ describe("the scan-credits handler", () => {
 // ── the shipped get-account-data handler (the Account page's credits and purchases) ──
 describe("the get-account-data handler", () => {
   let accountHandler: EdgeHandler;
-  let purchaseReads: unknown[];
+  let purchaseReads: Array<[string, unknown]>;
   let balanceArgs: Args[];
 
   const accountClient = () => ({
@@ -290,7 +291,8 @@ describe("the get-account-data handler", () => {
     const r = await account(JWT.squatter);
     expect(r.status).toBe(200);
     expect(r.json).toEqual({ credits: 0, purchases: [], mailboxProven: false });
-    expect(purchaseReads).toEqual([]);
+    // The one read it makes is the mailbox switch row, never a purchase.
+    expect(purchaseReads.filter(([t]) => t === "purchased_content")).toEqual([]);
     expect(balanceArgs[0]).toMatchObject({ p_email: null, p_user_id: SQUATTER });
   });
 
@@ -305,7 +307,7 @@ describe("the get-account-data handler", () => {
     expect(r.json.mailboxProven).toBe(true);
     expect(r.json.purchases).toEqual([{ product: "Premium Resume Package", date: "2026-09-30T10:00:00Z" }]);
     expect(purchaseReads).toEqual([["purchased_content", "owner@example.com"]]);
-    expect(r.build).toMatch(/^get-account-data\.2026-10-05\.\d+$/);
+    expect(buildIsAtLeast(r.build, "get-account-data", "2026-10-08"), `build ${r.build}`).toBe(true);
   });
 
   it("no valid session: 401", async () => {
