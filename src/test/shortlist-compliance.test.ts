@@ -32,7 +32,7 @@ Requires wheelchair accessible workplace accommodation.`;
   const features = new Set(exclusionsApplied.map(e => e.feature));
 
   it("removes the candidate's name everywhere", () => {
-    expect(redacted).not.toMatch(/Maria|Gonzalez/);
+    expect(redacted).not.toMatch(/maria|gonzalez/i);
     expect(features.has("candidate_name")).toBe(true);
   });
 

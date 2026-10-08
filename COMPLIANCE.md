@@ -21,7 +21,7 @@ it never decides.
 | Human-in-the-loop gate: status changes only via logged human actions | `Shortlist.tsx` `decide()` + `shortlist_decisions` | LL144 (human discretion), EU AI Act human oversight, GDPR Art. 22 (no solely automated decision), CA FEHA human-oversight expectation |
 | Append-only decision/override log (actor, timestamp, old→new, reason) | `shortlist_decisions` table — INSERT+SELECT policies only, no update/delete | CA FEHA 4-year recordkeeping; EU AI Act logging; discovery-readiness |
 | Immutable evaluation record (JD version, redacted input, score, signals, flags, model/prompt version, reviewer decision) | `shortlist_candidates` table | CA FEHA recordkeeping (inputs/outputs); EU technical documentation; reproducibility |
-| Proxy-variable exclusion before scoring, with per-evaluation audit of what fired | `_shared/redaction.ts`, applied in `shortlist-evaluate` | Title VII/ADEA/ADA disparate-impact risk reduction; CA FEHA anti-bias evidence |
+| Proxy-variable exclusion before scoring (name in any script or case, contact details, labelled personal fields, age, origin, disability, family, affinity and faith proxies), with per-evaluation audit of what fired | `_shared/redaction.ts`, applied in `shortlist-evaluate` | Title VII/ADEA/ADA disparate-impact risk reduction; CA FEHA anti-bias evidence |
 | Employer-configurable allow/blocklists (baseline blocklist cannot shrink) | `redactionConfig.extraBlocklist` param | Documented, configurable feature governance |
 | Bias-audit pipeline: separate demographic capture, never passed to model; selection rate + impact ratio (4/5ths) per sex, race/ethnicity, intersectional | `shortlist_demographics` table + `_shared/impact-ratio.ts` + bias view | NYC LL144 audit data preparation (independent auditor still required); EEOC Uniform Guidelines math |
 | Audit exports (CSV/JSON by role) | `Shortlist.tsx` `exportAudit()` | LL144 auditor handoff; CRD investigation readiness; customer evidence trail |
@@ -51,7 +51,8 @@ it never decides.
 
 ## Tests
 
-`src/test/shortlist-compliance.test.ts` pins the two legal-exposure components:
+`src/test/shortlist-compliance.test.ts`, `shortlist-redaction-let-names-and-contact-lines-reach-the-model.test.ts`
+and `shortlist-redaction-erased-job-evidence-and-passed-protected-fields.test.ts` pin the two legal-exposure components:
 proxy redaction (name/age/address/ADA/affinity/family/gender stripping, with
 employment tenure preserved) and the four-fifths impact-ratio math (including
 low-sample handling and intersectionality). CI-gated with the rest of the suite.

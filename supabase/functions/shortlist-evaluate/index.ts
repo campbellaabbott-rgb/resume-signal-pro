@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T13:00Z
+// deploy-stamp: 2026-10-09T09:00Z
 // Shortlist evaluation: redact → score → persist the audit row.
 //
 // Compliance-critical properties (see COMPLIANCE.md):
@@ -16,7 +16,7 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "shortlist-evaluate.2026-10-04.1";
+const FN_BUILD = "shortlist-evaluate.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
