@@ -4603,7 +4603,11 @@
     "replyWindowFill": "postulaste hace {{d}} días — el {{pct}}% de las vacantes de esta empresa se retiran definitivamente, sin volver a publicarse, dentro de los {{h}} días de publicarse",
     "replyWindowFillPast": "postulaste hace {{d}} días — superas los {{h}} días en que ya se había retirado definitivamente el {{pct}}% de las vacantes de esta empresa; hacer seguimiento es razonable",
     "replyWindowFillCensored": "postulaste hace {{d}} días — más de la mitad de las vacantes de esta empresa seguían publicadas 30 días después",
-    "replyWindowFillCoverage": "sobre el {{pct}}% de sus vacantes que indican una fecha de publicación de la propia empresa"
+    "replyWindowFillCoverage": "sobre el {{pct}}% de sus vacantes que indican una fecha de publicación de la propia empresa",
+    "deleteAccountBody": "Elimina para siempre tu cuenta, tu historial de análisis, tu lista de tareas, tu objetivo, tus candidaturas y cualquier CV que subiste para el agente, y cancela cualquier suscripción que pague esta cuenta, para que no se cobre nada más. Los registros de compra se conservan por motivos contables. No se puede deshacer.",
+    "deleteUnlinkedPlan": "Esta dirección tiene una suscripción que no está vinculada a esta cuenta. Cancélala primero en la página de facturación de Stripe y luego elimina la cuenta. No se eliminó nada.",
+    "deleteRetry": "No se eliminó nada: no pudimos terminar de cancelar tu suscripción ni de quitar tus archivos. Vuelve a intentarlo en un minuto.",
+    "deleteFailed": "No se pudo eliminar la cuenta. Ponte en contacto con soporte."
   },
   "applyAgent": {
     "badge": "Tu agente de IA para postular",

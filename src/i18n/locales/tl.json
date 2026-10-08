@@ -4603,7 +4603,11 @@
     "replyWindowFill": "nag-apply {{d}} araw na ang nakalipas — {{pct}}% ng mga posisyon ng employer na ito ay tuluyang naaalis, hindi na muling ipino-post, sa loob ng {{h}} araw mula nang i-post",
     "replyWindowFillPast": "nag-apply {{d}} araw na ang nakalipas — lampas na sa {{h}} araw kung saan {{pct}}% ng mga posisyon ng employer na ito ay tuluyan nang naalis; makatuwiran ang mag-follow up",
     "replyWindowFillCensored": "nag-apply {{d}} araw na ang nakalipas — mahigit kalahati ng mga posisyon ng employer na ito ay nakapaskil pa rin 30 araw matapos i-post",
-    "replyWindowFillCoverage": "sa {{pct}}% ng mga posisyon nito na may petsa ng pag-post mula mismo sa kumpanya"
+    "replyWindowFillCoverage": "sa {{pct}}% ng mga posisyon nito na may petsa ng pag-post mula mismo sa kumpanya",
+    "deleteAccountBody": "Permanenteng binubura ang iyong account, kasaysayan ng scan, checklist, layunin, mga aplikasyon at anumang CV na in-upload mo para sa agent, at kinakansela ang anumang subscription na binabayaran ng account na ito, kaya wala nang sisingilin. Itinatago ang mga rekord ng pagbili para sa accounting. Hindi na ito maibabalik.",
+    "deleteUnlinkedPlan": "May subscription ang address na ito na hindi naka-link sa account na ito. Kanselahin muna ito sa billing page ng Stripe, saka burahin ang account. Walang nabura.",
+    "deleteRetry": "Walang nabura: hindi namin natapos ang pagkansela ng iyong subscription o ang pag-alis ng iyong mga file. Pakisubukang muli makalipas ang isang minuto.",
+    "deleteFailed": "Nabigo ang pagbura ng account. Makipag-ugnayan sa support."
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",

@@ -4603,7 +4603,11 @@
     "replyWindowFill": "applied {{d}}d ago — {{pct}}% of this employer's roles are taken down for good, not re-listed, within {{h}} days of being posted",
     "replyWindowFillPast": "applied {{d}}d ago — past the {{h}}-day mark by which {{pct}}% of this employer's roles had been taken down for good; a follow-up is reasonable",
     "replyWindowFillCensored": "applied {{d}}d ago — more than half of this employer's roles were still up 30 days after being posted",
-    "replyWindowFillCoverage": "across the {{pct}}% of its roles that carry a posting date from the company itself"
+    "replyWindowFillCoverage": "across the {{pct}}% of its roles that carry a posting date from the company itself",
+    "deleteAccountBody": "Permanently deletes your account, scan history, checklist, goal, applications and any CV you uploaded for the agent, and cancels any subscription this account pays for, so nothing more is charged. Purchase records are retained for accounting. This cannot be undone.",
+    "deleteUnlinkedPlan": "This address has a subscription that isn't linked to this account. Cancel it from Stripe's billing page first, then delete the account. Nothing was deleted.",
+    "deleteRetry": "Nothing was deleted: we couldn't finish cancelling your subscription or removing your files. Please try again in a minute.",
+    "deleteFailed": "Account deletion failed. Please contact support."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",

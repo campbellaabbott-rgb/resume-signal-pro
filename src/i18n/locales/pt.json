@@ -4603,7 +4603,11 @@
     "replyWindowFill": "candidatou-se há {{d}} dias — {{pct}}% das vagas deste empregador são retiradas em definitivo, sem voltarem a ser publicadas, em até {{h}} dias após a publicação",
     "replyWindowFillPast": "candidatou-se há {{d}} dias — para lá dos {{h}} dias em que {{pct}}% das vagas deste empregador já tinham sido retiradas em definitivo; um seguimento é razoável",
     "replyWindowFillCensored": "candidatou-se há {{d}} dias — mais de metade das vagas deste empregador continuava publicada 30 dias depois",
-    "replyWindowFillCoverage": "sobre os {{pct}}% das suas vagas que indicam uma data de publicação da própria empresa"
+    "replyWindowFillCoverage": "sobre os {{pct}}% das suas vagas que indicam uma data de publicação da própria empresa",
+    "deleteAccountBody": "Exclui para sempre a sua conta, o histórico de análises, a lista de tarefas, o objetivo, as candidaturas e qualquer CV enviado para o agente, e cancela qualquer assinatura paga por esta conta, para que nada mais seja cobrado. Os registos de compra são mantidos para fins contabilísticos. Não pode ser desfeito.",
+    "deleteUnlinkedPlan": "Este endereço tem uma assinatura que não está ligada a esta conta. Cancele-a primeiro na página de faturação da Stripe e depois exclua a conta. Nada foi excluído.",
+    "deleteRetry": "Nada foi excluído: não conseguimos terminar de cancelar a sua assinatura ou remover os seus ficheiros. Tente novamente daqui a um minuto.",
+    "deleteFailed": "A exclusão da conta falhou. Contacte o suporte."
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",

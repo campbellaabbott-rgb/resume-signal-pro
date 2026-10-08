@@ -662,11 +662,22 @@ export default function Account() {
     if (!error && (data as { success?: boolean })?.success) {
       await signOut();
       navigate("/");
-    } else {
-      setDeleting(false);
-      setConfirmDelete(false);
-      alert("Account deletion failed — please contact support.");
+      return;
     }
+    // The function refuses before deleting anything when a plan could not be
+    // cancelled or the CV could not be removed (L6-30, L3-13): say which.
+    let code = "";
+    try {
+      const ctx = (error as { context?: { clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
+      code = String(((await ctx?.clone?.().json()) as { code?: string } | null)?.code ?? "");
+    } catch { /* body unreadable */ }
+    setDeleting(false);
+    setConfirmDelete(false);
+    alert(code === "subscription_unlinked"
+      ? t("accountPage.deleteUnlinkedPlan")
+      : /^(subscription_cancel_failed|billing_unreadable|files_not_deleted)$/.test(code)
+        ? t("accountPage.deleteRetry")
+        : t("accountPage.deleteFailed"));
   };
 
   if (loading || !session) {
@@ -1925,7 +1936,7 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.deleteAccount", "Delete account")}</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Permanently deletes your account, scan history, checklist, goal, and applications. Purchase records are retained for accounting. This cannot be undone.
+            {t("accountPage.deleteAccountBody")}
           </p>
           {!confirmDelete ? (
             <button
