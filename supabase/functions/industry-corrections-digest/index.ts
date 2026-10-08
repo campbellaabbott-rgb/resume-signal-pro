@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
+import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industries.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 
 const FN_BUILD = "industry-corrections-digest.2026-10-08.1";
@@ -30,13 +31,14 @@ const corsHeaders = {
 };
 
 /**
- * Every value the correction menu can send: the detector's industries plus
- * the menu's own additions (src/components/IndustryConfidenceIndicator.tsx,
- * getAvailableIndustries).
+ * The labels a pair may carry: what the scan detected (the detector's
+ * industries) and what the correction menu can send (its own list, mirrored
+ * in _shared/correction-menu-industries.ts). Anything else was typed by
+ * someone calling the RPC directly.
  */
 export const KNOWN_INDUSTRIES: ReadonlySet<string> = new Set([
   ...Object.keys(INDUSTRY_KEYWORDS),
-  "business_development", "real_estate", "nonprofit", "government", "hospitality", "manufacturing", "general",
+  ...CORRECTION_MENU_INDUSTRIES,
 ]);
 
 function escapeHtml(text: string | number | undefined | null): string {

@@ -16,9 +16,19 @@
  * nothing and sends nothing; the cron key (or the service role) runs it; only
  * pairs whose both labels are industries the correction menu can send are
  * printed, escaped, and the number left out is stated.
+ *
+ * AND A REAL CORRECTION IS NOT DROPPED (review of the fix). The known list was
+ * built from the detector's industries, but the menu sends the keys of
+ * src/config/industry-keywords.ts, stored verbatim: 37 of its values
+ * (humanResources, dataScience, customerService, sre, ...) were missing, so a
+ * genuine "technology -> humanResources" was dropped as "a label outside the
+ * known industry list". The list now includes the menu's own values, held
+ * equal to getAvailableIndustries() here.
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { getAvailableIndustries } from "@/components/IndustryConfidenceIndicator";
+import { CORRECTION_MENU_INDUSTRIES } from "../../supabase/functions/_shared/correction-menu-industries";
 
 const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
 const CRON_KEY = "c".repeat(64);
@@ -89,5 +99,23 @@ describe("only industries anyone can pick are printed, and nothing prints as mar
     expect(m.html).toContain("→ healthcare");
     expect(m.html).toContain("2 pairs naming a label outside the known industry list were left out.");
     expect(m.subject).toBe("Industry detection: 3 corrections this week");
+  });
+
+  it("a correction to any value the menu offers is printed, camelCase keys included", async () => {
+    install();
+    db.rpcs.get_industry_correction_stats = () => ({ data: [
+      { detected: "technology", corrected: "humanResources", corrections: 4 },
+      { detected: "data_science", corrected: "sre", corrections: 2 },
+      { detected: "sales", corrected: "customerSuccess", corrections: 1 },
+      { detected: "technology", corrected: HOSTILE, corrections: 9 },
+    ], error: null });
+    expect(await (await post({ authorization: `Bearer ${SERVICE}` })).json(),
+      "a genuine correction from the menu was dropped as an unknown label").toMatchObject({ sent: true, total: 7, pairs: 3, dropped: 1 });
+    expect(sent[0].html).toContain("→ humanResources");
+    expect(sent[0].html).toContain("→ customerSuccess");
+  });
+
+  it("the edge mirror of the menu is exactly what the menu offers", () => {
+    expect([...CORRECTION_MENU_INDUSTRIES].sort()).toEqual(getAvailableIndustries().map((i) => i.value).sort());
   });
 });
