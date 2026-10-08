@@ -66,7 +66,8 @@ function fakeClient(handle: (q: Q) => Answer) {
     };
     return b;
   };
-  const deleted = () => calls.filter((c) => c.op === "delete");
+  // Posting deletes; a tombstone drop (job_board_aged_out) is not a posting leaving.
+  const deleted = () => calls.filter((c) => c.op === "delete" && c.table === "job_board_postings");
   return { client: { from }, calls, deleted };
 }
 const idsOf = (q: Q) => (q.filters.find((f) => f[0] === "in" && f[1] === "id")?.[2] ?? []) as string[];
@@ -97,7 +98,7 @@ describe("the closure prune deletes only rows whose ledger row landed (L13-71)",
     });
     const background: Promise<unknown>[] = [];
     const fn = build<(c: unknown, s: unknown, chunk: string[], ctx: unknown) => Promise<string[]>>(
-      [lifted("settleInsertError"), lifted("insertExits"), lifted("closeVanishedChunk")],
+      [lifted("settleInsertError"), lifted("insertExits"), lifted("closeVanishedChunk"), lifted("dropTombstones", "function")],
       {
         LIFECYCLE_SELECT: "*",
         EXIT_OPTIONAL_COLS: OPTIONAL("EXIT_OPTIONAL_COLS"),
@@ -172,9 +173,9 @@ describe("a whole-board prune deletes only what the exit log holds (L13-71)", ()
       return {};
     });
     const fn = build<(c: unknown, token: string, reason: string, source: string | null) => Promise<{ logged: number; complete: boolean }>>(
-      [lifted("settleInsertError"), lifted("insertExits"), lifted("logWholeBoardExit"), lifted("pruneWholeBoard")],
+      [lifted("settleInsertError"), lifted("insertExits"), lifted("logWholeBoardExit"), lifted("pruneWholeBoard"), lifted("dropTombstones", "function")],
       {
-        LIFECYCLE_SELECT: "*", EXIT_OPTIONAL_COLS: [], tenureDays: () => ({ days: 1, basis: "stated" }), lifecycleFacets: () => ({}),
+        LIFECYCLE_SELECT: "*", EXIT_OPTIONAL_COLS: [], tenureDays: () => ({ days: 1, basis: "stated" }), lifecycleFacets: () => ({}), waitUntil: () => {},
         console: { warn: () => {}, log: () => {} },
       },
       "pruneWholeBoard",

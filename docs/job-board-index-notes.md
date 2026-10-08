@@ -10148,3 +10148,22 @@ agedOutIds), so it writes exactly the aged exit and deletes what landed. One
 extra read of the chunk's rows per visit that ages something out. Anything
 else in `vanished` can only be there before the missing_since column existed
 (the legacy path), and is deleted as before.
+
+## n442-a-posting-that-leaves-another-way-takes-its-tombstone
+
+Above: `dropTombstones`, called by closeVanishedChunk (for every deleted row
+that was not an age-out) and pruneWholeBoard (for every row it logged and
+deleted).
+
+A re-admission MOVES its tombstone to the date it came back on and keeps it
+(deleting it there reopens the Workday betterDate loop, n412). When that
+posting then left by a closure or a board prune, the moved tombstone stayed,
+and the same id relisted on a date within the 3-day margin was refused for up
+to 180 days (sweep S8-085). .91 (n427) let such a row back on every vendor
+whose stored date never moves; Workday's date moves, so there the refusal
+stood. Only a stored row that was re-admitted can hold a tombstone, so
+deleting `job_board_aged_out` rows by the ids that just left by a non-age
+path removes exactly those (and nothing an age-out wrote: the aged ids of the
+same chunk are excluded). Best-effort, in waitUntil: a tombstone left behind
+costs one refusal, as before. Volume measured by the sweep: about 20
+re-admissions in total.

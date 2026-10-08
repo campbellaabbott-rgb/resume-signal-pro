@@ -2675,9 +2675,11 @@ async function pruneWholeBoard(
     if (source) q = q.eq("source", source);
     const { error } = await q;
     if (error) console.warn(`[JOB-BOARD] whole-board delete failed for ${token} (rows stay, already logged):`, error.message?.slice(0, 120));
+    else dropTombstones(client, loggedIds);
   } else {
     for (let i = 0; i < loggedIds.length; i += 200) {
-      await client.from("job_board_postings").delete().in("id", loggedIds.slice(i, i + 200));
+      const { error } = await client.from("job_board_postings").delete().in("id", loggedIds.slice(i, i + 200));
+      if (!error) dropTombstones(client, loggedIds.slice(i, i + 200));
     }
   }
   return { logged, complete };
@@ -2711,6 +2713,7 @@ async function closeVanishedChunk(
 ): Promise<string[]> {
   const { closedAt, agedOutIds, freshCutoffMs, liveTitles, recentSuperseded, batchSuspect, absentInPass, removableBefore, lapMode, lapBackfillUntil, missingSinceById, startIso } = ctx;
   const keep = new Set<string>();
+  const agedIds = new Set<string>(agedOutIds);
   try {
     // Rationale: docs/job-board-index-notes.md#n122-logres
     let logRes = await client
@@ -2739,6 +2742,7 @@ async function closeVanishedChunk(
       return Number.isFinite(posted) && posted < freshCutoffMs;
     };
     const agedRows = ((toLog ?? []) as Array<Record<string, unknown>>).filter(isAgedOut);
+    for (const r of agedRows) agedIds.add(String(r.id));
     if (agedRows.length) {
       // Rationale: docs/job-board-index-notes.md#n124-agedexitrow
       const agedExitRow = (r: Record<string, unknown>) => {
@@ -2848,7 +2852,23 @@ async function closeVanishedChunk(
   if (doomed.length === 0) return [];
   const { error: delErr } = await client.from("job_board_postings").delete().in("id", doomed);
   if (delErr) { console.warn(`[JOB-BOARD] closure prune delete failed for ${s.token} (non-fatal):`, delErr.message?.slice(0, 150)); return []; }
+  dropTombstones(client, doomed.filter((id) => !agedIds.has(id)));
   return doomed;
+}
+
+/**
+ * A posting that left by any path but the freshness cap (a closure, a board
+ * prune) loses its aged-out tombstone: only a re-admitted row holds one, and
+ * left in place it refused the same id's next listing on an unchanged date for
+ * up to 180 days (S8-085). Never at re-admission (the Workday betterDate loop,
+ * n412). Best-effort: a tombstone left behind costs one refusal.
+ */
+function dropTombstones(client: SupabaseClient, ids: readonly string[]): void {
+  for (let i = 0; i < ids.length; i += 200) {
+    waitUntil(Promise.resolve(client.from("job_board_aged_out").delete().in("id", ids.slice(i, i + 200))).then(({ error }) => {
+      if (error) console.warn("[JOB-BOARD] tombstone drop failed (non-fatal):", String(error.message ?? error).slice(0, 120));
+    }).catch(() => {}));
+  }
 }
 
 // Cap the aged-tail sweep per pass so a big backlog drains without a giant
