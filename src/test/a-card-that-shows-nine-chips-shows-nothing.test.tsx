@@ -161,7 +161,8 @@ const ROWS = [
 ];
 
 // get_company_fill_curve rows. Every field the gates read must be present: the
-// three branches consult relists_90d, fills_90d, sufficient, dated_coverage,
+// three branches consult relists_90d, filled_roles_90d / relisted_roles_90d
+// (through the verdict), sufficient, dated_coverage,
 // fill_rate_14 and tracking_days, and a row missing one of them is refused for
 // the wrong reason — which would make this guard pass on a broken fixture.
 //
@@ -186,7 +187,7 @@ const ROWS = [
 //       the slot now.
 const CURVE = [
   {
-    company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, ageouts_90d: 2,
+    company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, filled_roles_90d: 20, relisted_roles_90d: 7, ageouts_90d: 2,
     n_at_risk_14: 60, fills_le_14: 14,
     fill_rate_14: 0.62, fill_rate_14_lo: 0.55, fill_rate_14_hi: 0.69,
     relist_rate_14: 0.10, still_open_14: 0.28, fill_rate_7: 0.30, fill_rate_30: 0.80,
@@ -195,7 +196,7 @@ const CURVE = [
     fill_through: 0.70, churn: 0.26, absorption: 0.10, tracking_days: 90, sufficient: true,
   },
   {
-    company_token: "beta", open_roles: 4, fills_90d: 11, relists_90d: 0, ageouts_90d: 1,
+    company_token: "beta", open_roles: 4, fills_90d: 11, relists_90d: 0, filled_roles_90d: 11, relisted_roles_90d: 0, ageouts_90d: 1,
     n_at_risk_14: 45, fills_le_14: 12,
     fill_rate_14: 0.58, fill_rate_14_lo: 0.52, fill_rate_14_hi: 0.64,
     relist_rate_14: 0.02, still_open_14: 0.40, fill_rate_7: 0.25, fill_rate_30: 0.75,
@@ -204,7 +205,7 @@ const CURVE = [
     fill_through: 0.90, churn: 0, absorption: 0.05, tracking_days: 90, sufficient: true,
   },
   {
-    company_token: "gamma", open_roles: 3, fills_90d: 6, relists_90d: 1, ageouts_90d: 4,
+    company_token: "gamma", open_roles: 3, fills_90d: 6, relists_90d: 1, filled_roles_90d: 6, relisted_roles_90d: 1, ageouts_90d: 4,
     n_at_risk_14: 38, fills_le_14: 6,
     fill_rate_14: 0.18, fill_rate_14_lo: 0.12, fill_rate_14_hi: 0.25,
     relist_rate_14: 0.04, still_open_14: 0.78, fill_rate_7: 0.05, fill_rate_30: 0.35,
@@ -213,7 +214,7 @@ const CURVE = [
     fill_through: 0.50, churn: 0.14, absorption: 0.20, tracking_days: 90, sufficient: true,
   },
   {
-    company_token: "delta", open_roles: 900, fills_90d: 0, relists_90d: 0, ageouts_90d: 0,
+    company_token: "delta", open_roles: 900, fills_90d: 0, relists_90d: 0, filled_roles_90d: 0, relisted_roles_90d: 0, ageouts_90d: 0,
     n_at_risk_14: 0, fills_le_14: 0,
     fill_rate_14: 0, fill_rate_14_lo: 0, fill_rate_14_hi: 0,
     relist_rate_14: 0, still_open_14: 0, fill_rate_7: 0, fill_rate_30: 0,
@@ -516,7 +517,9 @@ describe("a card that shows nine chips shows nothing", () => {
     // branch's tooltip interpolates URGENT_FILL_MAX_DAYS too, so the old
     // anchor found the copy rather than the gate and an ordering assertion
     // against it was measuring the wrong thing.
-    const iFast = slot.indexOf("hh.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED");
+    // Since 20261008110000 the praise branch counts ROLES that stayed down,
+    // not closure events.
+    const iFast = slot.indexOf("(hh.filled_roles_90d ?? 0) >= ACTIVELY_HIRING_MIN_CLOSED");
     const iActive = slot.indexOf("isActivelyHiring(job.token)");
     expect(iChurn, "the caution branch is missing").toBeGreaterThan(-1);
     // A vanished PRAISE branch must be reported as itself. Without these the
