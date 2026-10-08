@@ -3781,7 +3781,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // just clicked. With only the field bound, the kept unfiltered facet is
     // the answer and no probe is sent (controls guard F1).
     const activeFilters = !categoryOnly;
-    if (!activeFilters) { setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
+    // The bump retires a probe still in flight: clearing "nurse" before its
+    // probe answered let that reply pass the seq check and paint the nurse
+    // counts over the unfiltered board's chips.
+    if (!activeFilters) { ++catFacetSeq.current; setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
       try {
