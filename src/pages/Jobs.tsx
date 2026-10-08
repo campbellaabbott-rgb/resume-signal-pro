@@ -3107,6 +3107,9 @@ export default function Jobs() {
     return () => { alive = false; };
   }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
+  // The filter body the on-screen reply was asked for (see landerHiringAnswer:
+  // a sentence about a reply must not speak for a question asked since).
+  const [dataFilterSig, setDataFilterSig] = useState<string | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
   // THE TRAY COUNTS ROWS THAT ARE ON THE PAGE. compareIds index `jobs`, and a
   // refetch, a narrowed filter or Clear all can drop a compared row from the
@@ -3933,6 +3936,7 @@ export default function Jobs() {
         // the body that was sent rather than from the filter state a later
         // render will read. Same write-before-setData rule as the facet above.
         coverageScopeRef.current = narrowingBodyKeys(body);
+        setDataFilterSig(JSON.stringify(boardFilterBody(filterState)));
         setData(br);
         setJobs((prev) => (offset === 0 ? br.jobs : [...prev, ...br.jobs]));
       } catch (e) {
@@ -6256,6 +6260,33 @@ export default function Jobs() {
     return cats[0];
   }, [landerCategory, category, activeFilterCount, q, location]);
 
+  /** "IS {COMPANY} HIRING?" IS ANSWERED ONLY FROM THE LANDER'S OWN QUESTION.
+   *
+   *  The sentence under the company H1 is the indexed answer to the query this
+   *  page ranks for, so it may speak only from a SUCCESSFUL reply to the
+   *  UNNARROWED company request. It used to read whatever list was on screen:
+   *  a failed or refused first read left `data` null, `?? 0` made that a zero,
+   *  and the page printed "Not right now — Acme has no open roles" beside the
+   *  error panel; typing "astronaut" on a 412-role lander printed the same
+   *  sentence over the empty search, and a partial match printed "Yes — 3".
+   *
+   *  So: no error, a reply that exists and was asked for the filters now on
+   *  screen, and nothing narrowing it but the company itself (no query, no
+   *  location, no other filter, not the browser-side "actively hiring" cut).
+   *  Anything else leaves the question unanswered — never answered wrongly. */
+  const currentFilterSig = useMemo(() => JSON.stringify(boardFilterBody(filterState)), [filterState]);
+  const landerHiringAnswer = useMemo((): "yes" | "no" | null => {
+    if (!landerCompany || activelyHiringOnly || error || loading || !data) return null;
+    if (!Object.keys(boardFilterBody(filterState)).every((k) => k === "companies")) return null;
+    if (dataFilterSig !== currentFilterSig) return null;
+    // A WITHDRAWN COUNT IS NOT A ZERO (total:null + countUnavailable).
+    if (data.countUnavailable === true) return null;
+    // Both segments decide emptiness: a company page whose rows match only in
+    // descriptions has total 0 and a full page.
+    if ((data.total ?? 0) + (data.relatedTotal ?? 0) > 0) return "yes";
+    return refreshing ? null : "no";
+  }, [landerCompany, activelyHiringOnly, error, loading, data, filterState, dataFilterSig, currentFilterSig, refreshing]);
+
   // Removable chips for every active filter — what's narrowing your results
   // should be visible and one click to undo, not buried in the controls.
   const activeFilters = useMemo(() => {
@@ -8173,8 +8204,7 @@ export default function Jobs() {
               a capped count renders "10,000+", never as an exact figure; zero
               open roles gets a plain honest "No … right now" instead of the
               question hanging unanswered; and counts are locale-formatted. */}
-          {landerCompany && data?.countUnavailable !== true
-            && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) > 0 && (
+          {landerHiringAnswer === "yes" && data && (
             <p className="text-sm font-semibold text-success mb-1">
               {data.countCapped
                 // Past the count cap the true figure is HIGHER — "10,000+" is
@@ -8203,8 +8233,7 @@ export default function Jobs() {
                 below — telling a visitor an employer is not hiring on exactly
                 the page that ranks for "is X hiring?". Unknown must leave the
                 question unanswered rather than answer it wrongly. */}
-            {landerCompany && data?.countUnavailable !== true
-              && ((data?.total ?? 0) + (data?.relatedTotal ?? 0)) === 0 && !loading && !refreshing && (
+            {landerHiringAnswer === "no" && (
             <p className="text-sm font-semibold text-muted-foreground mb-1">
               {t("jobsPage.companyNotHiring", "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
             </p>
