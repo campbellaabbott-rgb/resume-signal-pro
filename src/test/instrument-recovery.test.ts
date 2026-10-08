@@ -117,20 +117,19 @@ describe("the transparency payload is computed hourly, not per page view", () =>
   });
 });
 
-describe("the page reads the cache first and falls back only unserved", () => {
+describe("the page reads the cache, and only the cache", () => {
   const page = readFileSync(resolve(__dirname, "../pages/PayTransparencyIndex.tsx"), "utf8");
   const code = page.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-  it("asks the cache before either aggregate", () => {
-    const cacheAt = code.indexOf('rpc("get_transparency_cache")');
-    const payAt = code.indexOf('rpc("get_pay_transparency")');
-    expect(cacheAt, "the cache read is gone").toBeGreaterThan(-1);
-    expect(payAt, "the fallback is gone — the page breaks for the deploy window").toBeGreaterThan(-1);
-    expect(cacheAt).toBeLessThan(payAt);
-  });
-
-  it("falls back only when the cache served nothing", () => {
-    expect(code).toMatch(/if \(served\) return;/);
+  it("asks the cache and never the two aggregates the migration revoked from anon", () => {
+    // The deploy-window fallback this block once required outlived its window
+    // by two months: both aggregates are revoked from anon, so a cache miss
+    // fell through to two calls that could never answer and the page said
+    // "Loading…" for ever (register L2-10). The unread state is executed in
+    // a-data-page-said-loading-for-ever-when-its-cache-could-not-be-read.
+    expect(code.indexOf('rpc("get_transparency_cache")'), "the cache read is gone").toBeGreaterThan(-1);
+    expect(code).not.toMatch(/rpc\("get_pay_transparency"\)/);
+    expect(code).not.toMatch(/rpc\("get_transparency_coverage"\)/);
   });
 
   it("never trusts null as an object", () => {
@@ -158,10 +157,10 @@ describe("the page reads the cache first and falls back only unserved", () => {
       .toMatch(/Measured \{new Date\(computedAt\)/);
   });
 
-  it("claims nothing when the fallback served — no timestamp, no claim", () => {
-    // The deploy-window fallback computes live and carries no computed_at.
-    // Rendering must be conditional on a real timestamp rather than defaulting
-    // to now(), which would put an invented time under the numbers.
+  it("claims nothing without a timestamp — no timestamp, no claim", () => {
+    // A row without computed_at carries no date basis. Rendering must be
+    // conditional on a real timestamp rather than defaulting to now(), which
+    // would put an invented time under the numbers.
     expect(code).not.toMatch(/computedAt \?\?\s*new Date\(\)/);
     expect(code).toMatch(/typeof c\?\.computed_at === "string"/);
   });

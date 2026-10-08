@@ -80,7 +80,15 @@ const TABLE_FILE = "20260909217800_the_bucket_we_computed_and_threw_away.sql";
 // tests, and a CREATE OR REPLACE keeps a stored comment, so the re-issue
 // restates it and is `contract` as well as `file`. The watch floor itself is
 // guarded by a-day-thirty-share-needs-thirty-days-of-reading-in-full.
-const LIVE_COMPANY_FILE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
+// MOVED AGAIN 2026-10-08, both curves: a doubted closure (and its bad
+// batch's age-out) whose posting was seen again leaves the risk set instead of
+// being censored beside its own re-observation, and the company curve gained
+// role-level counts beside its event counts (two appended columns). The
+// company file restates the drop and the contract again, so it is all three
+// nouns at once; the category file restates the contract, the shape is
+// unchanged. Every day-30 property pinned here is carried verbatim.
+const WATCH_FLOOR_COMPANY_FILE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
+const LIVE_COMPANY_FILE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
 // TWO NOUNS, BECAUSE A RE-ISSUE CAN MOVE ONE WITHOUT THE OTHER. On 2026-09-27
 // the category curve was re-issued a third time with ONLY its own header
 // raised (its sixty seconds had become a blank section on two pages); the
@@ -92,12 +100,15 @@ const LIVE_COMPANY_FILE = "20261002121417_a_board_is_judged_at_day_thirty_only_o
 // that wrote it (`contract`), which since 2026-10-02 is no longer always the
 // shape file. A check below computes all three from the migration lane rather
 // than trusting any constant.
-const LIVE_CATEGORY_FILE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+const WATCH_FLOOR_CATEGORY_FILE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+const LIVE_CATEGORY_FILE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
 /** The re-issues that repeat the observability table's DDL without owning it. */
 const WATCH_FLOOR_FILES = [
+  WATCH_FLOOR_COMPANY_FILE,
+  WATCH_FLOOR_CATEGORY_FILE,
+  "20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql",
   LIVE_COMPANY_FILE,
   LIVE_CATEGORY_FILE,
-  "20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql",
 ];
 const SHAPE_CATEGORY_FILE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
 
@@ -342,11 +353,14 @@ describe("still advertised at day 30 is published as a share, gated, and never p
         // the rule; each must be its own `contract`.
         expect(contract, `${fn}: the running definition does not carry its own contract`).toBe(file);
         // Every definition strictly between the shape file and the one that
-        // runs is the header-only kind: no catalogue drop, no comment.
+        // runs kept the shape: no catalogue drop. Since 2026-10-08 the
+        // category curve has two contract-writing re-issues after its shape
+        // file (the watch floor, then the seen-again rule), each the running
+        // contract in its day, so an intermediate comment is allowed; the
+        // running definition carrying its own is asserted above.
         for (const f of ALL_FILES.filter((x) => x > shape && x < file && definitionsIn(x).has(fn))) {
           const code = stripSql(readFileSync(resolve(DIR, f), "utf8"));
           expect(code, `${f} drops the catalogue`).not.toMatch(/DROP FUNCTION/);
-          expect(code, `${f} writes a comment`).not.toMatch(commentOnRe(fn));
         }
       });
 

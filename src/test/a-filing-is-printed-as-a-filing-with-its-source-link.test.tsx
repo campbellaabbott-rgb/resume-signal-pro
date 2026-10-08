@@ -258,7 +258,7 @@ describe("a filing is printed as a filing, with its source link -- or not at all
 
   it("4b. the employer page lists every qualifying filing under 'Also on record:', newest first, each with its own link", async () => {
     const CURVE = {
-      company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, ageouts_90d: 2,
+      company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, filled_roles_90d: 20, relisted_roles_90d: 7, ageouts_90d: 2,
       n_at_risk_14: 60, fills_le_14: 14, fill_rate_14: 0.62, fill_rate_14_lo: 0.55, fill_rate_14_hi: 0.69,
       relist_rate_14: 0.10, still_open_14: 0.28, fill_rate_7: 0.30, fill_rate_30: 0.80,
       median_days_to_fill: 11, median_censored: false, dated_coverage: 0.80, dated_n: 40, undated_n: 10,

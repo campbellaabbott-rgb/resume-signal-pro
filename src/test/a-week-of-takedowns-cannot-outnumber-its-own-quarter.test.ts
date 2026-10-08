@@ -15,9 +15,9 @@
 //
 // WHAT THIS FILE PROVES, BY RUNNING THE SQL rather than reading it, over a
 // ledger seeded at roughly 1/600 of the live rates -- 79 days of admitted
-// closures, the last 25 days carrying flagged batches at four times that rate,
+// closures, the last 22 days carrying flagged batches at four times that rate,
 // plus relists, a first-lap backfill and a showcase-excluded board:
-//   * no week, and not the five weeks together, exceeds the 90-day total
+//   * no week, and not the drawn weeks together, exceeds the 90-day total
 //     computed by the expression lifted from the newest refresh_ghost_stats,
 //     and no week reads above the plausibility ceiling the pages apply;
 //   * closed + closed_flagged is exactly the pre-fix weekly figure and
@@ -154,11 +154,15 @@ const boot = async (): Promise<PGlite> => {
 // Admitted: 40 a day for 79 days, every tenth a relist; absence_basis NULL
 // before day 23 (written before the column), 'lap' on every third row after;
 // suspect NULL before day 25 (written before the guard). Flagged: 160 a day for
-// the last 25 days, every twentieth a relist. Plus 300 first-lap backfill rows
+// the last 22 days, every twentieth a relist. Plus 300 first-lap backfill rows
 // and a showcase-excluded board's 30. All within a day of their own day.
+// 22, not 25, since 20261008111000: the series now draws only weeks whose
+// Monday is inside the 30-day fence, so the oldest drawn week starts between
+// 23 and 30 days back depending on the weekday, and a flagged era reaching 25
+// days back fell partly outside it on some weekdays and not others.
 const ADMITTED_PER_DAY = 40 - 4;
 const FLAGGED_PER_DAY = 160 - 8;
-const FLAGGED_DAYS = 25;
+const FLAGGED_DAYS = 22;
 const LEDGER = `
   INSERT INTO public.showcase_excluded VALUES ('dominos');
   INSERT INTO public.job_board_closures (posting_id, company_token, posted_at, first_seen, closed_at, superseded, suspect, absence_basis)
@@ -250,8 +254,10 @@ describe("a week of takedowns cannot outnumber its own quarter (executed)", () =
 
   const sum = (k: keyof WeekOut) => weeks.reduce((a, w) => a + Number(w[k]), 0);
 
-  it("the ledger is the one described: five weeks, a 79-day record, the flagged rows all inside the window", () => {
-    expect(weeks.length).toBeGreaterThanOrEqual(5);
+  it("the ledger is the one described: four or five weeks, a 79-day record, the flagged rows all inside the window", () => {
+    // Four from Wednesday to Sunday, five on Monday and Tuesday: a week whose
+    // Monday is more than 30 days back is not drawn (20261008111000).
+    expect(weeks.length).toBeGreaterThanOrEqual(4);
     expect(weeks[0].days).toBe(79);
     expect(flaggedSeeded).toBe(FLAGGED_PER_DAY * FLAGGED_DAYS);
     expect(sum("flagged_admissible")).toBe(flaggedSeeded);

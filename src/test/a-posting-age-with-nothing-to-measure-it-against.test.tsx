@@ -161,7 +161,7 @@ type Curve = {
   relist_rate_14: number; still_open_14: number; fill_rate_7: number; fill_rate_30: number;
   median_days_to_fill: number | null; median_censored: boolean;
   dated_coverage: number; dated_n: number; undated_n: number;
-  open_roles: number; fills_90d: number; relists_90d: number; ageouts_90d: number;
+  open_roles: number; fills_90d: number; relists_90d: number; filled_roles_90d: number; relisted_roles_90d: number; ageouts_90d: number;
   fill_through: number; churn: number; absorption: number;
   tracking_days: number; sufficient: boolean;
 };
@@ -171,7 +171,7 @@ const curve = (over: Partial<Curve> = {}): Curve => ({
   relist_rate_14: 0.05, still_open_14: 0.40, fill_rate_7: 0.30, fill_rate_30: 0.70,
   median_days_to_fill: null, median_censored: true,
   dated_coverage: 0.78, dated_n: 210, undated_n: 59,
-  open_roles: 5, fills_90d: 14, relists_90d: 0, ageouts_90d: 3,
+  open_roles: 5, fills_90d: 14, relists_90d: 0, filled_roles_90d: 14, relisted_roles_90d: 0, ageouts_90d: 3,
   fill_through: 0.6, churn: 0, absorption: 0.1,
   tracking_days: 63, sufficient: true, ...over,
 });

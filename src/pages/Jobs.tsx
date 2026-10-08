@@ -343,10 +343,22 @@ interface FillCurve {
   dated_n: number;
   undated_n: number;
   open_roles: number;
-  /** Roles taken down for good in the trailing 90 days (not relistings). */
+  /** Closure EVENTS in the trailing 90 days that were not re-listings. NOT a
+   *  count of roles: a posting that closed twice is two of them, and one that
+   *  closed and is serving again today is one. Never printed as "roles". */
   fills_90d: number;
-  /** Relistings in the trailing 90 days. A FLOOR, for the reason above. */
+  /** Same-title re-listing EVENTS in the trailing 90 days. A FLOOR, for the
+   *  reason above; printed only as "re-listed the same title N times". */
   relists_90d: number;
+  /** ROLES taken down in the trailing 90 days and not brought back: closed
+   *  exactly once, not superseded, not serving again today (20261008110000).
+   *  A CEILING -- a re-list under a new id is invisible to us. Null on a row
+   *  from a deploy that predates the column. This is the number every
+   *  "come off the board and stay off" sentence prints. */
+  filled_roles_90d: number | null;
+  /** ROLES that came back in the same window: closed more than once, superseded,
+   *  or serving again today. A FLOOR. Null on a row that predates the column. */
+  relisted_roles_90d: number | null;
   ageouts_90d: number;
   fill_through: number;
   /** Relisting share of all takedowns, 0..1. A FLOOR. */
@@ -367,7 +379,8 @@ interface FillCurve {
 // stays true on a record too thin to support a rate.
 const ACTIVELY_HIRING_MIN_CLOSED = 3;
 // The window those closures are counted over. get_company_fill_curve's
-// fills_90d is `closed_at >= now() - interval '90 days'`; every basis sentence
+// filled_roles_90d and fills_90d are both `closed_at >= now() - interval
+// '90 days'`; every basis sentence
 // prints this beside {{min}}, because "at least three roles down" with no
 // window reads as an all-time count and it is not one. The guard pins this
 // constant to the migration's interval.
@@ -430,20 +443,25 @@ export type HiringRecordVerdict = "closes" | "no-pattern" | "unknown";
  * function or through `isActivelyHiring` (which is `=== "closes"` and nothing
  * else), so a fourth surface cannot quietly re-derive a two-state answer.
  *
- * relists_90d is a FLOOR — the collector logs one relisted title per company per
+ * relisted_roles_90d is a FLOOR — the collector logs one relisted title per company per
  * day and deletes the rest — so requiring it to stay at or under the fills errs
  * towards DISQUALIFYING, the safe direction for a claim that speaks well of an
  * employer. That is a "no-pattern", not an "unknown": we watched the roles come
  * back, which is a reading and not a gap.
  */
 export function hiringRecordVerdict(
-  h: Pick<FillCurve, "fills_90d" | "relists_90d"> | null | undefined,
+  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> | null | undefined,
 ): HiringRecordVerdict {
   // No row: either the batch is still in flight, or this token was never asked
   // (the fetch caps at 200). Both are our side.
   if (!h) return "unknown";
-  const fills = h.fills_90d;
-  const relists = h.relists_90d;
+  // ROLES, NOT EVENTS (20261008110000). The bar read fills_90d, a count of
+  // closure events: Johnson & Johnson cleared it on 2,499 "roles taken down for
+  // good" when at most 1,799 roles came down and stayed down and 403 came back.
+  // A row from a deploy without the role columns arrives with them null, and
+  // the check below turns that into "unknown" -- our deploy, not the employer.
+  const fills = h.filled_roles_90d ?? NaN;
+  const relists = h.relisted_roles_90d ?? NaN;
   // A build that stops returning the columns is our instrument failing, and is
   // a statement about the deploy rather than about the employer.
   if (!Number.isFinite(fills) || !Number.isFinite(relists)) return "unknown";
@@ -454,6 +472,34 @@ export function hiringRecordVerdict(
   if (fills + relists <= 0) return "unknown";
   if (fills >= ACTIVELY_HIRING_MIN_CLOSED && relists <= fills) return "closes";
   return "no-pattern";
+}
+
+/** The floor the role caution needs before it speaks: ten roles that came back. */
+export const RELIST_CAUTION_MIN = 10;
+
+/**
+ * THE ROLE CAUTION, READ ONCE. True when the roles that came back
+ * (relisted_roles_90d, a FLOOR) outnumber the roles that came down and stayed
+ * down (filled_roles_90d) and reach RELIST_CAUTION_MIN. The detail pane, the
+ * compare drawer and the card slot all ask this function, so no surface can
+ * praise an employer another surface is warning about: when it is true the
+ * verdict cannot be "closes" (relists > fills), so the card's praise branch,
+ * gated on that verdict, cannot fire beside it.
+ *
+ * WHY THE CARD NEEDED IT. The card's caution read relists_90d (same-title
+ * re-list EVENTS) and its "Fills fast" branch asked only for three filled
+ * roles, trusting arithmetic that held while both sides counted events (a
+ * caution at three events left fewer than three, so fills >= 3 implied
+ * relists <= fills). Once the verdict counted ROLES (20261008110000) a card
+ * with 5 roles down, 20 back and one re-list event printed "Fills fast" while
+ * its detail pane warned "re-lists roles often (at least 20x)".
+ */
+export function relistCaution(
+  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> | null | undefined,
+): boolean {
+  if (!h) return false;
+  const back = h.relisted_roles_90d ?? 0;
+  return back > (h.filled_roles_90d ?? 0) && back >= RELIST_CAUTION_MIN;
 }
 
 /**
@@ -962,6 +1008,10 @@ function normaliseCurve(row: FillCurve): FillCurve {
     open_roles: num(row.open_roles),
     fills_90d: num(row.fills_90d),
     relists_90d: num(row.relists_90d),
+    // Null stays null: an absent column is a deploy gap, and coercing it to 0
+    // would read as "we watched and nothing stayed down".
+    filled_roles_90d: row.filled_roles_90d === null || row.filled_roles_90d === undefined ? null : num(row.filled_roles_90d),
+    relisted_roles_90d: row.relisted_roles_90d === null || row.relisted_roles_90d === undefined ? null : num(row.relisted_roles_90d),
     ageouts_90d: num(row.ageouts_90d),
     fill_through: num(row.fill_through),
     churn: num(row.churn),
@@ -5553,7 +5603,7 @@ export default function Jobs() {
   const hiringBadgeTip = useCallback((closes: HiringRecordVerdict, growth: GrowthVerdict, curve: FillCurve | null | undefined, g: GrowthRow | null | undefined): string => {
     const by = admittedBy(closes, growth);
     const basis = t("jobsPage.hiringBadgeTip3", "“Actively hiring” here means either of two things observed on an employer's own board: we watched at least {{min}} of their roles come off the board in the last {{days}} days and stay off, or the board served at least {{minNet}} more roles — at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation on days we read it in full. A takedown is not a hire — a filled role, a cancelled one and a withdrawn one look identical from here — and more roles served is roles opened net of roles that came down, on one board, never a headcount.", { min: ACTIVELY_HIRING_MIN_CLOSED, days: ACTIVELY_HIRING_WINDOW_DAYS, minNet: GROWTH_MIN_NET_ADD, minRate: Math.round(GROWTH_MIN_RATE * 100), gdays: GROWTH_WINDOW_DAYS });
-    const n = curve?.fills_90d ?? 0;
+    const n = curve?.filled_roles_90d ?? 0;
     const lead = by === "both" && g
       ? t("jobsPage.hiringAdmittedBoth", "This one clears both halves: we watched {{n}} of its roles come off the board in the last {{days}} days and stay off, and its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation.", { n, days: ACTIVELY_HIRING_WINDOW_DAYS, ...growthFigures(g) })
       : by === "grew" && g
@@ -7669,8 +7719,10 @@ export default function Jobs() {
                 const hh = detailJob.token ? curveByToken[detailJob.token] : undefined;
                 const f = fits[detailJob.id];
                 const age = daysAgo(detailJob.postedAt);
-                const fills = hh?.fills_90d ?? 0;
-                const churn = hh?.relists_90d ?? 0;
+                // ROLES on both sides (20261008110000): the roles that stayed
+                // down against the roles that came back, never an event count.
+                const fills = hh?.filled_roles_90d ?? 0;
+                const churn = hh?.relisted_roles_90d ?? 0;
                 const clauses: string[] = [];
                 if (typeof f === "number") {
                   clauses.push(f >= 20
@@ -7725,7 +7777,7 @@ export default function Jobs() {
                 if (dg && dgv === "unknown") clauses.push(t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(dg)) }));
                 // "at least": the collector logs a relisted title once a day per
                 // company, so this count is a floor and never an exact tally.
-                if (hh && churn > fills && churn >= 10) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
+                if (relistCaution(hh)) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
                 if (canStateFillRate(hh, hh?.tracking_days) && hh!.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                   // "up to", and the coverage share named when it is thin.
                   // The fill share is a CEILING for the same reason the relist
@@ -7748,7 +7800,7 @@ export default function Jobs() {
                   clauses.push(t("jobsPage.verdictSlowFill", "we never see half its roles come down inside {{d}} days", { d: FILL_SUPPORT_MAX_DAYS }));
                 }
                 if (clauses.length === 0) return null;
-                const caution = churn > fills && churn >= 10;
+                const caution = relistCaution(hh);
                 // `fills >= 3` was typed here too — a third spelling of the bar,
                 // in the condition that decides whether this panel's headline
                 // reads "Worth applying now". It reads the shared verdict now,
@@ -8310,7 +8362,7 @@ export default function Jobs() {
                     what closed, not just what is open. */}
                 {!!data?.trackedTotal && t("jobsPage.trackedCorpus", "{{n}} postings tracked including closed roles", { n: data.trackedTotal.toLocaleString() })}
                 {!!data?.trackedTotal && (takedownsToday !== null || recheckP50Min !== null) && " · "}
-                {takedownsToday !== null && t("jobsPage.takedownsToday", "{{n}} roles filled or closed today", { n: takedownsToday.toLocaleString() })}
+                {takedownsToday !== null && t("jobsPage.takedownsLast24h", "{{n}} roles filled or closed in the last 24 hours", { n: takedownsToday.toLocaleString() })}
                 {takedownsToday !== null && recheckP50Min !== null && " · "}
                 {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
               </span>
@@ -8435,7 +8487,7 @@ export default function Jobs() {
               "typically within ~N days" — was drawn from a window that could not
               contain the answer, and it read within a day and a half of the same
               number for every employer and every field on the board. */}
-          {landerCompany && hiringCurve && (hiringCurve.open_roles > 0 || hiringCurve.fills_90d > 0) && (
+          {landerCompany && hiringCurve && (hiringCurve.open_roles > 0 || (hiringCurve.filled_roles_90d ?? 0) + (hiringCurve.relisted_roles_90d ?? 0) > 0) && (
             <div className="rounded-xl border border-border bg-card p-4 mb-6 max-w-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-primary shrink-0" />
@@ -8494,10 +8546,12 @@ export default function Jobs() {
                     {t("jobsPage.hhOpen", "open roles verified on the board right now")}
                   </li>
                 )}
-                {hiringCurve.fills_90d > 0 ? (
+                {/* ROLES, NOT EVENTS (20261008110000): a role that came down
+                    twice, or is serving again, is not "taken down for good". */}
+                {(hiringCurve.filled_roles_90d ?? 0) > 0 ? (
                   <li>
                     {t("jobsPage.hhFilledPre", "Filled")}{" "}
-                    <span className="text-foreground font-semibold">{hiringCurve.fills_90d}</span>{" "}
+                    <span className="text-foreground font-semibold">{hiringCurve.filled_roles_90d}</span>{" "}
                     {hiringCurve.tracking_days > 0
                       ? t("jobsPage.hhTakenDownPost", "roles in {{d}}d of tracking — taken down for good, not re-listed", { d: hiringCurve.tracking_days })
                       : t("jobsPage.hhTakenDownPostUntracked", "roles since we began tracking — taken down for good, not re-listed")}
@@ -8517,7 +8571,7 @@ export default function Jobs() {
                   <li className="italic text-muted-foreground/80">
                     {hiringRecordVerdict(hiringCurve) === "unknown"
                       ? t("jobsPage.hhNoClosureRecord", "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.")
-                      : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relists_90d })}
+                      : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relisted_roles_90d ?? 0 })}
                   </li>
                 )}
                 {/* Every qualifying filing in the window, after the growth,
@@ -9529,8 +9583,8 @@ export default function Jobs() {
               }`}
               // THE LABEL IS "ACTIVELY HIRING" AND, SINCE MIGRATION
               // 20260909227000, BOTH HALVES OF THE CLAIM ARE MEASURED. The
-              // predicate is closes OR grew: fills_90d >= ACTIVELY_HIRING_MIN_
-              // CLOSED over closures WE watched, or a served count on the
+              // predicate is closes OR grew: filled_roles_90d >= ACTIVELY_HIRING_
+              // MIN_CLOSED over roles WE watched, or a served count on the
               // board's own series that rose by the migration's bars over its
               // window with every read in the window whole. Three verdicts on
               // each half, combined once in activelyHiringVerdict, and the
@@ -11768,7 +11822,11 @@ export default function Jobs() {
                                 Not one gate moved: REPOST_FLAG_MIN,
                                 ACTIVELY_HIRING_MIN_CLOSED and
                                 URGENT_FILL_MAX_DAYS are the same numbers, read
-                                in the same order they were read before. */}
+                                in the same order they were read before. One
+                                caution was added second (relistCaution, the
+                                one the detail pane prints), and the praise
+                                branch now asks the verdict, so the card and
+                                the pane can never disagree about an employer. */}
                             {job.token && (() => {
                               const hh = curveByToken[job.token];
                               // NO ROW YET IS NOT A VERDICT. The batch is in
@@ -11797,6 +11855,19 @@ export default function Jobs() {
                                   </span>
                                 );
                               }
+                              // The role caution the detail pane prints (see relistCaution).
+                              if (relistCaution(hh)) {
+                                const back = hh.relisted_roles_90d ?? 0;
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 whitespace-nowrap"
+                                    title={t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: back, f: hh.filled_roles_90d ?? 0 })}
+                                  >
+                                    <RefreshCw className="w-3 h-3 shrink-0" />
+                                    {t("jobsPage.repostChipFloor", "Re-lists roles often ({{n}}×+)", { n: back })}
+                                  </span>
+                                );
+                              }
                               // Urgency: a proven, FAST record from the lifecycle log —
                               // honest data-backed "apply early", not a fake scarcity badge.
                               //
@@ -11808,17 +11879,11 @@ export default function Jobs() {
                               // employer-stated dates to build on, and at least half the
                               // employer's roles gone inside the horizon.
                               //
-                              // THE COUNT GATE HERE IS NOT A SECOND READING OF THE BAR,
-                              // and it is deliberately still spelled out. This branch is
-                              // only reached when the caution above did not fire, i.e.
-                              // churn < REPOST_FLAG_MIN (3) <= ACTIVELY_HIRING_MIN_CLOSED
-                              // (3) <= fills, so relists <= fills holds by arithmetic and
-                              // the condition is exactly hiringRecordVerdict === "closes"
-                              // at this point in the chain. It is a POSITIVE-ONLY gate: a
-                              // fills count of zero falls through to the branches below,
-                              // where the third state is named, so nothing here can turn
-                              // an unreadable record into a silent negative.
-                              if (hh.fills_90d >= ACTIVELY_HIRING_MIN_CLOSED && canStateFillRate(hh, hh.tracking_days)
+                              // THE RECORD GATE IS THE VERDICT ITSELF (see relistCaution for
+                              // why a count gate stopped implying it). POSITIVE-ONLY: any
+                              // other verdict falls through to the branches below, where the
+                              // third state is named.
+                              if (hiringRecordVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
                                   <span
@@ -12930,7 +12995,7 @@ export default function Jobs() {
                           neutral-toned rather than a warning — it is a fact
                           about our record. */}
                       {hiringRecordVerdict(hh) === "closes" && (
-                        <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh!.fills_90d })}</li>
+                        <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh!.filled_roles_90d ?? 0 })}</li>
                       )}
                       {/* `hh &&`, not `!healthPending`: a row is the evidence
                           that we asked about this employer and got an answer.
@@ -12953,8 +13018,8 @@ export default function Jobs() {
                         if (cg && cgv === "unknown") return <li className="text-muted-foreground">{t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(cg)) })}</li>;
                         return null;
                       })()}
-                      {hh && hh.relists_90d > hh.fills_90d && hh.relists_90d >= 10 && (
-                        <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relists_90d })}</li>
+                      {hh && relistCaution(hh) && (
+                        <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relisted_roles_90d ?? 0 })}</li>
                       )}
                       {/* The pace, where the record can carry it. A share at a
                           fixed horizon, never a midpoint drawn from a window

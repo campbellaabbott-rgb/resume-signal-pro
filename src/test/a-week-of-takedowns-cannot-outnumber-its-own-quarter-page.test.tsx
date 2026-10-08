@@ -59,8 +59,12 @@ const NEW_ROWS = [
   { ...OLD_ROWS[3], closed: 150000, closed_flagged: 656570 },
   { ...OLD_ROWS[4], closed: 90000, closed_flagged: 409871 },
 ];
+// Stamped 2026-09-29 (a Tuesday), the last day these five weeks could all be
+// drawn: since 20261008111000 a week whose Monday is more than 30 days before
+// the cache's stamp has lost its aged-out postings and is not drawn, and on
+// 2026-10-01 the week of 08-31 had already reached past the fence.
 const cacheRow = (rows: unknown[] | undefined, ghost: unknown = RECORD) => ({
-  computed_at: "2026-10-01T23:12:00+00:00",
+  computed_at: "2026-09-29T23:12:00+00:00",
   stale_parts: [],
   ghost_stats: ghost,
   ...(rows === undefined ? {} : { hiring_trends: rows }),
