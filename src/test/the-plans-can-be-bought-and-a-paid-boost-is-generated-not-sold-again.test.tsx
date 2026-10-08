@@ -47,7 +47,10 @@ vi.mock("@/hooks/use-pro-subscription", () => ({
 }));
 
 const purchaseProduct = vi.fn(async () => null);
-vi.mock("@/hooks/use-product-checkout", () => ({ useProductCheckout: () => ({ purchaseProduct, isLoading: false, currentProduct: null }) }));
+vi.mock("@/hooks/use-product-checkout", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/use-product-checkout")>()),
+  useProductCheckout: () => ({ purchaseProduct, isLoading: false, currentProduct: null }),
+}));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
@@ -201,11 +204,13 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
 
 describe("backing out of Stripe (L3-15)", () => {
   it("says nothing was charged, and Try again goes back to the product being bought", async () => {
+    // With the binding the cancelled checkout carried (wave 3, S8-056).
+    sessionStorage.setItem("rb_checkout_retry", JSON.stringify({ productId: "premiumPackage", sessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566", path: "/pricing", at: Date.now() }));
     at("/payment-failed?product=premiumPackage", <PaymentFailed />);
     expect(screen.getByText("Checkout cancelled")).toBeInTheDocument();
     expect(screen.queryByText(/couldn't process your payment/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
-    await waitFor(() => expect(purchaseProduct).toHaveBeenCalledWith("premiumPackage", { ctaSection: "payment_cancelled" }), SLOW);
+    await waitFor(() => expect(purchaseProduct).toHaveBeenCalledWith("premiumPackage", expect.objectContaining({ ctaSection: "payment_cancelled", sessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566" })), SLOW);
   });
 
   it("returns a Freelance Boost buyer to the guided flow, where their intake is kept", () => {
