@@ -458,8 +458,10 @@ const HEAP_SOFT_LIMIT_MB = 150;
 // derivation that makes 120s frightening, and it was landing on a different
 // number than the code.
 //
-// 120s to STOP TAKING new boards. A board already in flight can add at most
-// FETCH_TIMEOUT_MS (20s) plus its upsert, and then the post-loop tail —
+// 120s to STOP TAKING new boards. A board already in flight can add, per
+// request, FETCH_TIMEOUT_MS (20s) for headers and as much for the body
+// (bodyDeadline since .92; before it the body had no clock, S8-030) plus its
+// upsert, and then the post-loop tail —
 // stampSliceWork, the cursor advance, updateBoardFailures with its per-token
 // exits and deletes, the deep-cursor and oversize meta writes,
 // maybeKickMaintenance, chainNextSlice, recordSliceStats — runs on top. A
@@ -1117,13 +1119,35 @@ function chunkPageRefusal(e: unknown, isFirstPage: boolean): null {
   throw e;
 }
 
-async function readChunkPage(res: Response): Promise<{ body: unknown; over: boolean }> {
+async function readChunkPage(res: Response): Promise<{ body: unknown; over: boolean; late?: Error }> {
   try {
     return { body: await boundBody(res, MAX_RESPONSE_BYTES).json(), over: false };
   } catch (e) {
     if (isOversize(e)) return { body: undefined, over: true };
+    // A body past its clock (bodyDeadline): the walk's first page throws it as a timeout, a later page ends the walk.
+    if (isLate(e)) return { body: undefined, over: false, late: e as Error };
     return { body: undefined, over: false };
   }
+}
+
+// The body's clock (S8-030): FETCH_TIMEOUT_MS covers only the wait for headers.
+// Rationale: docs/job-board-index-notes.md#n438-a-body-has-a-clock
+const BODY_LATE_MARKER = "BODY_DEADLINE";
+const isLate = (e: unknown) => String((e as Error)?.message ?? e).includes(BODY_LATE_MARKER);
+function bodyDeadline(res: Response, ms: number): Response {
+  const body = res.body;
+  if (!body || ms <= 0 || res.status === 204 || res.status === 205 || res.status === 304) return res;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const clocked = body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    start(ctrl) {
+      // Erroring the stream cancels the source body, so the connection is released (as boundBody's bound does).
+      timer = setTimeout(() => { try { ctrl.error(new Error(`${BODY_LATE_MARKER}: body not finished ${ms}ms after its headers (deadline)`)); } catch { /* already done */ } }, ms);
+    },
+    flush() { clearTimeout(timer); },
+  }));
+  const out = new Response(clocked, { status: res.status, statusText: res.statusText, headers: res.headers });
+  try { Object.defineProperty(out, "url", { value: res.url || "", configurable: true }); } catch { /* diagnostics only */ }
+  return out;
 }
 
 /**
@@ -1185,12 +1209,13 @@ function boundBody(src: Response | Request, limit = MAX_RESPONSE_BYTES): Respons
   return out;
 }
 
-async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RESPONSE_BYTES): Promise<Response> {
+async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RESPONSE_BYTES, bodyMs = FETCH_TIMEOUT_MS): Promise<Response> {
   const once = async () => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    let res: Response;
     try {
-      return await fetch(url, {
+      res = await fetch(url, {
         ...init,
         signal: ctrl.signal,
         // A vendor's own defaults (Workday names a language, S8-003), then the caller's.
@@ -1199,6 +1224,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
     } finally {
       clearTimeout(t);
     }
+    return bodyDeadline(res, bodyMs);
   };
   const res = await once();
   // Rate limits: honor Retry-After with one short, capped retry (personio
@@ -1341,7 +1367,8 @@ async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
         const res = responses[i];
         read = i + 1;
         if (res === null) break outer; // mid-walk HTTP failure — keep what we have
-        const { body, over } = await readChunkPage(res);
+        const { body, over, late } = await readChunkPage(res);
+        if (late && all.length === 0) throw late;
         if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
         const ops = (body as { opportunities?: unknown[] } | undefined)?.opportunities;
         // A 200 that is not the opportunity envelope is drift or a bot-wall: a
@@ -1397,7 +1424,8 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
         if (res === null) break outer; // mid-walk HTTP failure — keep what we have
         // undefined = body unreadable, distinct from a mid-walk HTTP miss; `over`
         // = the byte bound aborted it, which ends the walk, never fails the board.
-        const { body, over } = await readChunkPage(res);
+        const { body, over, late } = await readChunkPage(res);
+        if (late && all.length === 0) throw late;
         if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
         const reqs = (body as { jobRequisitions?: unknown[] } | undefined)?.jobRequisitions;
         // A 200 whose body isn't the requisition envelope is drift or a
@@ -1642,7 +1670,8 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
         const res = responses[i];
         read = i + 1;
         if (res === null) break outer; // mid-walk HTTP failure — keep what we have
-        const { body, over } = await readChunkPage(res);
+        const { body, over, late } = await readChunkPage(res);
+        if (late && all.length === 0) throw late;
         if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
         // An unreadable body used to reject the whole chunk and fail the
         // board. Same verdict, kept where it belongs: page 0 proves the shape,
@@ -1720,7 +1749,8 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
         const res = responses[i];
         read = i + 1;
         if (res === null) break outer; // mid-walk HTTP failure — keep what we have, same as the serial loop's break
-        const { body, over } = await readChunkPage(res);
+        const { body, over, late } = await readChunkPage(res);
+        if (late && all.length === 0) throw late;
         if (over) { if (all.length === 0) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}`); break outer; }
         if (body === undefined) {
           if (pages[i] === 0) throw new Error("oracle payload unreadable");
@@ -1794,7 +1824,8 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
         // null = a page refused before it could be read (see
         // chunkPageRefusal) — end the walk with what landed.
         if (responses[i] === null) break outer;
-        const { body, over } = await readChunkPage(responses[i]!);
+        const { body, over, late } = await readChunkPage(responses[i]!);
+        if (late && all.length === 0) throw late;
         // Over the byte budget mid-walk is a WINDOW, not a failure: keep
         // the pages that landed and leave `exhausted` false so nextOffset
         // resumes here. Only a first page bigger than an isolate can hold
@@ -1881,7 +1912,8 @@ async function fetchUsajobs(s: JobSource, startOffset: number, key: string, ua: 
       });
     } catch (e) { if (chunkPageRefusal(e, first) === null) break; throw e; }
     if (!res.ok) { discardBody(res); if (first) throw new Error(`HTTP ${res.status}`); break; }
-    const { body, over } = await readChunkPage(res);
+    const { body, over, late } = await readChunkPage(res);
+    if (late && first) throw late;
     if (over) { if (first) throw new Error(`${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${page}`); break; }
     const sr = (body as { SearchResult?: { SearchResultCountAll?: number; SearchResultItems?: unknown[] } } | undefined)?.SearchResult;
     if (!sr) { if (first) throw new Error("usajobs payload unreadable"); break; }
@@ -1907,7 +1939,7 @@ async function readOversizeBoard(s: JobSource, deadlineAt: number, freshCutoffMs
   const spec = SLIM_SPECS[s.source];
   if (!spec) return null;
   try {
-    const res = await beforeDeadline(fetchWithTimeout(listUrl(s), undefined, STREAM_WIRE_BYTES), deadlineAt, discardBody);
+    const res = await beforeDeadline(fetchWithTimeout(listUrl(s), undefined, STREAM_WIRE_BYTES, STREAM_READ_BUDGET_MS), deadlineAt, discardBody);
     if (!res.ok || !res.body || !/json/i.test(res.headers.get("content-type") ?? "")) {
       discardBody(res);
       throw new Error(`HTTP ${res.status} ${res.headers.get("content-type") ?? ""}`);

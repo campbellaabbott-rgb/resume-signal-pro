@@ -10041,3 +10041,30 @@ and no other vendor does: a named language may switch another vendor's
 descriptions. A caller that names its own language keeps it. Recovery needs
 no data edit: a dormant board is re-probed every DORMANT_RECHECK_MS (12h) and
 a failing one by the retry lane, and the first 200 clears its entry.
+
+## n438-a-body-has-a-clock
+
+Above: `bodyDeadline` and `BODY_LATE_MARKER`, applied in fetchWithTimeout's
+`once`; `late` from readChunkPage.
+
+fetchWithTimeout cleared its abort timer when the response headers arrived,
+and nothing timed the body. A scratch repro (FETCH_TIMEOUT_MS 1,000, a server
+sending a byte every 500 ms) had headers at 19 ms and the body at 8,560 ms,
+nothing aborting (sweep S8-030). In a slice, one vendor that sends headers and
+then stalls holds a worker; Promise.all never settles and the isolate is
+killed before the post-loop writes (refresh_progress, board_failures, the deep
+cursor and its laps). No production death has been attributed to it yet.
+
+Now every vendor body has its own clock, started at its headers:
+`bodyMs`, FETCH_TIMEOUT_MS by default and STREAM_READ_BUDGET_MS for the
+streamed oversize read (which also has its own deadline). Expiry errors the
+stream, which cancels the source body like the byte bound does, with a
+message fetchBoard reads as "timeout". In a chunked walk (Workday, Oracle,
+iCIMS, UKG, ADP, USAJOBS) a late FIRST page throws (a timeout failure); a
+later one ends the walk with the pages read, as a window. A page held unread
+while earlier pages of its chunk are parsed runs its clock too; a chunk of
+five iCIMS pages (2-3 MB each) must be read within 20 s of its headers, or the
+walk ends there and resumes next visit.
+
+The in-flight bound the slice wall relies on is now 2 x FETCH_TIMEOUT_MS per
+request instead of unbounded.
