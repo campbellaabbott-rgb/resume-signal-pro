@@ -15,7 +15,7 @@ import { chromium } from "playwright";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { learnedKey, type LearnedAnswers, type LearnedAnswer } from "./questions/learned.js";
+import { learnedFromRows, learnedKey, type LearnedAnswers } from "./questions/learned.js";
 import * as broker from "./broker.js";
 import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
@@ -267,12 +267,7 @@ function toStanding(
 }
 
 function toLearned(rows: broker.ClaimedPacket["learned"]): LearnedAnswers {
-  const m = new Map<string, LearnedAnswer>();
-  for (const r of rows ?? []) {
-    if (!r?.key) continue;
-    m.set(r.key, { key: r.key, label: r.label ?? "", kind: r.kind, value: r.value ?? "" });
-  }
-  return m;
+  return learnedFromRows(rows);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
