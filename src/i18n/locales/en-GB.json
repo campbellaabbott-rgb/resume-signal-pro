@@ -33,11 +33,8 @@
     "freeScan": "Try Free Scan",
     "heading": "Stop guessing.",
     "headingHighlight": "Start landing interviews.",
-    "subheading": "Same document, same score, every time — benchmarked against real scans in your industry, with every quote verified against your actual resume. Not a ChatGPT or Claude opinion.",
-    "price": "£20",
     "oneTime": "one-time",
     "nofees": "One-time payment • No auto-renewal • Instant results",
-    "roi": "One interview = £20 paid for itself",
     "trusted": "Trusted by",
     "jobSeekers": "job seekers",
     "seeSample": "See Sample Analysis",
@@ -46,7 +43,6 @@
     "mainHeading": "Is Your Resume",
     "mainHeadingHighlight": "Invisible to Recruiters?",
     "atsTooltip": "ATS (Applicant Tracking Systems) parse your CV into a database recruiters search. They rarely auto-reject — but bad parsing or missing keywords means searches never surface you. Over 98% of Fortune 500 companies use them.",
-    "mainSubheading": "Find out in 30 seconds. Get your ATS score and see exactly what's costing you interviews.",
     "ctaButton": "Scan my CV free",
     "freeBadge": "FREE",
     "noSignup": "No sign-up required",
@@ -106,12 +102,11 @@
     },
     "trust": {
       "secure": "Secure & Private",
-      "results": "Results in 30 seconds",
       "approved": "Recruiter-approved"
     },
     "socialFirst": {
-      "joinThousands": "Free scan · No sign-up · Results in about 60 seconds",
-      "subheading": "Upload your resume and get a reproducible score — benchmarked against real scans in your industry, every quoted line verified. Not a chatbot's opinion.",
+      "joinThousands": "Free scan · No sign-up · Results within {{seconds}} seconds",
+      "subheading": "Upload your CV and get a score you can check: rescan the same file within {{days}} days and you get the same report — benchmarked against real scans in your industry, every quoted line verified. Not a chatbot's opinion.",
       "recentActivityCount": "{{count}} people",
       "recentActivityText": "scanned their CV in the last hour"
     },
@@ -122,7 +117,7 @@
       "painSubheading": "Before a human ever sees them. Is yours one of them?",
       "solutionLabel": "The solution",
       "solutionHeadingHighlight": "instant ATS-proof fixes",
-      "solutionHeadingSuffix": "in 60 seconds",
+      "solutionHeadingSuffix": "within {{seconds}} seconds",
       "solutionSubheading": "Our AI scanner finds exactly what's blocking your CV and shows you how to fix it."
     },
     "ultraCompactDescription": "ATS-optimised rewrites • Red-flag warnings • Keyword improvements",
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. AI Analysis",
-        "description": "Our AI performs 24 distinct checks in ~10 seconds."
+        "description": "Our AI performs {{checks}} distinct checks within {{seconds}} seconds."
       },
       "results": {
         "title": "3. Get Results",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Real AI analysis",
-      "results": "Results in ~10 sec",
+      "results": "Results within {{seconds}} seconds",
       "private": "100% private"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 more"
     },
-    "scanFooter": "Results in ~90 seconds • 7 free scans per day",
+    "scanFooter": "Results within {{seconds}} seconds • 7 free scans per day",
     "getFreeAnalysis": "Get Free CV Analysis",
     "orGetCompleteAnalysis": "Or get the complete analysis for",
     "securePaymentStripe": "Secure payment via Stripe",
@@ -426,7 +421,6 @@
     "feature": "Feature",
     "templates": "Templates",
     "free": "Free",
-    "cta": "Try It Now — £20",
     "ctaText": "Try It Now",
     "features": {
       "atsScoring": "5-Category ATS Scoring",
@@ -489,7 +483,7 @@
       },
       "instant": {
         "label": "Instant Delivery",
-        "description": "Results in 30 seconds"
+        "description": "Results within {{seconds}} seconds"
       }
     },
     "methodology": {
@@ -569,7 +563,6 @@
       "title": "Unlock Your Full Analysis",
       "description": "Get comprehensive feedback with detailed bullet rewrites, ATS optimisation strategies, and a prioritised action plan.",
       "button": "Get Full Analysis",
-      "price": "£20",
       "processing": "Processing..."
     }
   },
@@ -698,7 +691,6 @@
   },
   "stickyCta": {
     "title": "Ready to land more interviews?",
-    "subtitle": "Get recruiter-grade feedback in 30 seconds",
     "mobileTitle": "Get your CV analysed →",
     "button": "Analyse My CV",
     "ctaButton": "See All Packages",
@@ -735,7 +727,7 @@
     "oneTime": "one-time",
     "guarantee": "Instant results • One-time payment",
     "button": "Get My Analysis Now",
-    "roi": "One interview = £20 paid for itself"
+    "roi": "One interview = {{price}} paid for itself"
   },
   "scanProgress": {
     "title": "AI Analysis in Progress",
@@ -1404,7 +1396,6 @@
     "getJobSpecificAnalysis": "Get Job-Specific Analysis",
     "personalizedInsightsForRole": "Get personalised insights for your target role",
     "oneTimePaymentInstantAccess": "One-time payment • Instant access",
-    "oneInterviewPaidForItself": "One interview = {{price}} paid for itself",
     "unlockWithFullAnalysis": "Unlock with Full Analysis",
     "premiumFeatures": {
       "completeAtsAnalysis": "Complete ATS analysis",
@@ -1548,8 +1539,7 @@
       "badge": "Free teaser",
       "before": "❌ BEFORE (from your CV)",
       "after": "✅ AFTER (optimised)",
-      "whyBetter": "Why it's better:",
-      "cta": "Get all your bullet points rewritten in the full {{price}} analysis"
+      "whyBetter": "Why it's better:"
     },
     "lockedInsights": {
       "bulletLine1": "• Replace 'Responsible for managing team of 5' → 'Led cross-functional team of 5, driving 32% efficiency gain'",
@@ -1611,8 +1601,7 @@
     "cta": {
       "fixIssues": "See What's Costing You Interviews — {{price}}",
       "getFullAnalysis": "Get My Recruiter-Ready CV — {{price}}",
-      "socialProof": "{{count}} CVs scanned today",
-      "resultsExpiry": "Your results are saved for {{hours}} more hours"
+      "socialProof": "{{count}} CVs scanned today"
     },
     "enterprise": {
       "verdictLabel": "The Verdict",
@@ -1666,6 +1655,16 @@
       "loading": "Ranking live openings against your resume…",
       "apply": "Apply",
       "seeAll": "See all matches on the job board — save searches, track applications"
+    },
+    "nextSteps": {
+      "eyebrow": "Next steps",
+      "title": "If you want help with the fixes above",
+      "body": "The diagnosis above is complete and free. These are the two paid options that do the work for you.",
+      "fullAnalysisName": "Full Analysis",
+      "fullAnalysisDesc": "Applies the fixes from this report to your own CV content. One payment, no subscription.",
+      "proName": "Pro",
+      "proDesc": "Monthly plan: unlimited scans and every paid tool, the Full Analysis included. Cancel anytime from your account.",
+      "proPrice": "${{price}}/month"
     }
   },
   "analysisPreviewSample": {
@@ -1727,7 +1726,7 @@
     "rows": {
       "timeToResults": {
         "feature": "Time to results",
-        "us": "Under 60 seconds",
+        "us": "Within {{seconds}} seconds",
         "them": "3-7 business days"
       },
       "cost": {

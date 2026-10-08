@@ -22,7 +22,7 @@ export interface Competitor {
 }
 
 const US_FREE = "Full diagnostic report — score with audit trail, bullets graded and rewritten, recruiter panel, interview questions, per-vendor ATS checks. 7 scans/day (15 with a free account).";
-const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a reproducible report ID; every quoted line verified against your actual resume.";
+const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a report ID that a rescan of the same file within 7 days returns again; every quoted line verified against your actual resume.";
 const US_PRICING = "Free scan; paid tools $3–29 one-time; optional all-access subscription.";
 
 export const COMPETITORS: Record<string, Competitor> = {
@@ -30,7 +30,7 @@ export const COMPETITORS: Record<string, Competitor> = {
     slug: "chatgpt",
     name: "ChatGPT & Claude",
     intro:
-      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument gives the same reading for the same document and tells you where that reading sits among real ones.",
+      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument returns the same report for the same file (within the 7 days a report is kept) and tells you where that reading sits among real ones.",
     pricingNote:
       "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription.",
     rows: [

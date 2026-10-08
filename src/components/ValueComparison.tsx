@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 
 interface ComparisonRow {
   feature: string;
@@ -13,7 +14,7 @@ export function ValueComparison() {
   const comparisons: ComparisonRow[] = [
     {
       feature: t('valueComparison.rows.timeToResults.feature'),
-      us: t('valueComparison.rows.timeToResults.us'),
+      us: t('valueComparison.rows.timeToResults.us', { seconds: SCAN_RESULTS_WITHIN_SECONDS }),
       them: t('valueComparison.rows.timeToResults.them'),
     },
     {

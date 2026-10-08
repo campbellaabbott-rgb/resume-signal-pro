@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp, ArrowDown } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -1259,7 +1260,7 @@ export function ResumeUploader({
                     </div>
 
                     <p className="text-xs text-muted-foreground/70">
-                      {t('uploader.scanFooter')}
+                      {t('uploader.scanFooter', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}
                     </p>
                   </div>
                 )}

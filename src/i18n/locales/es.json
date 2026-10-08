@@ -33,11 +33,8 @@
     "freeScan": "Escaneo Gratis",
     "heading": "Deja de adivinar.",
     "headingHighlight": "Empieza a conseguir entrevistas.",
-    "subheading": "Mismo documento, misma puntuación, siempre — comparada con escaneos reales de tu sector y con cada cita verificada contra tu currículum. No es la opinión de ChatGPT ni de Claude.",
-    "price": "$25",
     "oneTime": "único pago",
     "nofees": "Pago único • Sin renovación automática • Resultados instantáneos",
-    "roi": "Una entrevista = $25 recuperados",
     "trusted": "Confiado por",
     "jobSeekers": "buscadores de empleo",
     "seeSample": "Ver Análisis de Ejemplo",
@@ -46,7 +43,6 @@
     "mainHeading": "¿Tu currículum es",
     "mainHeadingHighlight": "invisible para los reclutadores?",
     "atsTooltip": "Los ATS (sistemas de seguimiento de candidatos) convierten tu currículum en una base de datos que los reclutadores buscan. Rara vez rechazan automáticamente — pero un mal análisis o palabras clave ausentes hacen que las búsquedas nunca te muestren. Más del 98% de las empresas Fortune 500 los usan.",
-    "mainSubheading": "Descúbrelo en 30 segundos. Obtén tu puntuación ATS y ve exactamente qué te está costando entrevistas.",
     "ctaButton": "Escanear mi currículum gratis",
     "freeBadge": "GRATIS",
     "noSignup": "Sin registro requerido",
@@ -106,12 +102,11 @@
     },
     "trust": {
       "secure": "Seguro y Privado",
-      "results": "Resultados en 30 segundos",
       "approved": "Aprobado por reclutadores"
     },
     "socialFirst": {
-      "joinThousands": "Escaneo gratis · Sin registro · Resultados en unos 60 segundos",
-      "subheading": "Sube tu currículum y obtén una puntuación reproducible — comparada con escaneos reales de tu sector, con cada cita verificada. No es la opinión de un chatbot.",
+      "joinThousands": "Escaneo gratis · Sin registro · Resultados en {{seconds}} segundos como máximo",
+      "subheading": "Sube tu currículum y obtén una puntuación que puedes comprobar: si vuelves a escanear el mismo archivo antes de {{days}} días, recibes el mismo informe — comparada con escaneos reales de tu sector, con cada cita verificada. No es la opinión de un chatbot.",
       "recentActivityCount": "{{count}} personas",
       "recentActivityText": "escanearon su currículum en la última hora"
     },
@@ -122,7 +117,7 @@
       "painSubheading": "Antes de que un humano los vea siquiera. ¿Es el tuyo uno de ellos?",
       "solutionLabel": "La solución",
       "solutionHeadingHighlight": "soluciones instantáneas a prueba de ATS",
-      "solutionHeadingSuffix": "en 60 segundos",
+      "solutionHeadingSuffix": "en {{seconds}} segundos como máximo",
       "solutionSubheading": "Nuestro escáner de IA encuentra exactamente qué está bloqueando tu currículum y te muestra cómo solucionarlo."
     },
     "ultraCompactDescription": "Reescrituras optimizadas para ATS • Alertas de señales de riesgo • Mejoras de palabras clave",
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. Análisis IA",
-        "description": "Nuestra IA realiza 24 verificaciones distintas en ~10 segundos."
+        "description": "Nuestra IA realiza {{checks}} verificaciones distintas en {{seconds}} segundos como máximo."
       },
       "results": {
         "title": "3. Obtén Resultados",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Análisis IA real",
-      "results": "Resultados en ~10 seg",
+      "results": "Resultados en {{seconds}} segundos como máximo",
       "private": "100% privado"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Señales de alerta",
       "plusMore": "+12 más"
     },
-    "scanFooter": "Resultados en ~90 segundos • 7 escaneos gratis al día",
+    "scanFooter": "Resultados en {{seconds}} segundos como máximo • 7 escaneos gratis al día",
     "getFreeAnalysis": "Obtener análisis gratuito del currículum",
     "orGetCompleteAnalysis": "O consigue el análisis completo por",
     "securePaymentStripe": "Pago seguro a través de Stripe",
@@ -426,7 +421,6 @@
     "feature": "Característica",
     "templates": "Plantillas",
     "free": "Gratis",
-    "cta": "Pruébalo Ahora — $25",
     "ctaText": "Pruébalo Ahora",
     "features": {
       "atsScoring": "Puntuación ATS de 5 Categorías",
@@ -489,7 +483,7 @@
       },
       "instant": {
         "label": "Entrega Instantánea",
-        "description": "Resultados en 30 segundos"
+        "description": "Resultados en {{seconds}} segundos como máximo"
       }
     },
     "methodology": {
@@ -569,7 +563,6 @@
       "title": "Desbloquea Tu Análisis Completo",
       "description": "Obtén retroalimentación completa con reescrituras detalladas de viñetas, estrategias de optimización ATS y un plan de acción priorizado.",
       "button": "Obtener Análisis Completo",
-      "price": "$25",
       "processing": "Procesando..."
     }
   },
@@ -698,7 +691,6 @@
   },
   "stickyCta": {
     "title": "¿Listo para conseguir más entrevistas?",
-    "subtitle": "Obtén retroalimentación de reclutador en 30 segundos",
     "mobileTitle": "Analiza tu currículum →",
     "button": "Analizar Mi Currículum",
     "ctaButton": "Ver Todos los Paquetes",
@@ -735,7 +727,7 @@
     "oneTime": "pago único",
     "guarantee": "Resultados instantáneos • Pago único",
     "button": "Obtener Mi Análisis Ahora",
-    "roi": "Una entrevista = $25 recuperados"
+    "roi": "Una entrevista = {{price}} recuperados"
   },
   "scanProgress": {
     "title": "Análisis IA en Progreso",
@@ -1404,7 +1396,6 @@
     "getJobSpecificAnalysis": "Obtener análisis específico del puesto",
     "personalizedInsightsForRole": "Obtén información personalizada para tu puesto objetivo",
     "oneTimePaymentInstantAccess": "Pago único • Acceso instantáneo",
-    "oneInterviewPaidForItself": "Una entrevista = {{price}} se pagó por sí sola",
     "unlockWithFullAnalysis": "Desbloquear con el análisis completo",
     "premiumFeatures": {
       "completeAtsAnalysis": "Análisis ATS completo",
@@ -1548,8 +1539,7 @@
       "badge": "Muestra gratuita",
       "before": "❌ ANTES (de tu currículum)",
       "after": "✅ DESPUÉS (optimizado)",
-      "whyBetter": "Por qué es mejor:",
-      "cta": "Obtén todos tus puntos reescritos en el análisis completo de {{price}}"
+      "whyBetter": "Por qué es mejor:"
     },
     "lockedInsights": {
       "bulletLine1": "• Reemplaza 'Responsable de gestionar un equipo de 5' → 'Lideré un equipo multifuncional de 5, generando un aumento de eficiencia del 32%'",
@@ -1611,8 +1601,7 @@
     "cta": {
       "fixIssues": "Ver qué te cuesta entrevistas — {{price}}",
       "getFullAnalysis": "Obtener mi CV listo para reclutadores — {{price}}",
-      "socialProof": "{{count}} CV analizados hoy",
-      "resultsExpiry": "Tus resultados se guardarán {{hours}} horas más"
+      "socialProof": "{{count}} CV analizados hoy"
     },
     "enterprise": {
       "verdictLabel": "El Veredicto",
@@ -1666,6 +1655,16 @@
       "loading": "Clasificando ofertas en vivo contra tu currículum…",
       "apply": "Postular",
       "seeAll": "Ver todas las coincidencias en la bolsa — guarda búsquedas y sigue candidaturas"
+    },
+    "nextSteps": {
+      "eyebrow": "Próximos pasos",
+      "title": "Si quieres ayuda con las correcciones de arriba",
+      "body": "El diagnóstico de arriba está completo y es gratis. Estas son las dos opciones de pago que hacen el trabajo por ti.",
+      "fullAnalysisName": "Análisis completo",
+      "fullAnalysisDesc": "Aplica las correcciones de este informe al contenido de tu propio currículum. Un solo pago, sin suscripción.",
+      "proName": "Pro",
+      "proDesc": "Plan mensual: escaneos ilimitados y todas las herramientas de pago, incluido el Análisis completo. Cancela cuando quieras desde tu cuenta.",
+      "proPrice": "${{price}}/mes"
     }
   },
   "analysisPreviewSample": {
@@ -1727,7 +1726,7 @@
     "rows": {
       "timeToResults": {
         "feature": "Tiempo hasta los resultados",
-        "us": "Menos de 60 segundos",
+        "us": "{{seconds}} segundos como máximo",
         "them": "3-7 días hábiles"
       },
       "cost": {

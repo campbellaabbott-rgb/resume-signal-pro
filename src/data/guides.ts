@@ -509,7 +509,7 @@ export const GUIDES: Record<string, Guide> = {
       {
         h2: "Scores you should distrust",
         paras: [
-          "Distrust any score that arrives without an itemized explanation, any score that can't be reproduced (rescan the same file — consistent tools produce consistent results; ours prints a report ID so you can check), and any 'match rate' that punishes you for not pasting keywords you don't have. And distrust cross-tool comparisons entirely: a 70 in one tool and a 78 in another measure different models, not progress.",
+          "Distrust any score that arrives without an itemized explanation, any score that can't be reproduced (rescan the same file — consistent tools produce consistent results; ours returns the same report under the same report ID for 7 days, so you can check), and any 'match rate' that punishes you for not pasting keywords you don't have. And distrust cross-tool comparisons entirely: a 70 in one tool and a 78 in another measure different models, not progress.",
           "The honest use of any scoring tool is the same: run it, read the findings, fix what's real, rescan to confirm the fix registered, and then go apply. The interview pipeline is the only score that ultimately counts.",
         ],
       },

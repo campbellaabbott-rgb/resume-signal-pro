@@ -33,11 +33,8 @@
     "freeScan": "Kostenloser Scan",
     "heading": "Schluss mit Raten.",
     "headingHighlight": "Mehr Vorstellungsgespräche.",
-    "subheading": "Gleiches Dokument, gleicher Score, jedes Mal — verglichen mit echten Scans Ihrer Branche, jedes Zitat gegen Ihren Lebenslauf verifiziert. Keine ChatGPT- oder Claude-Meinung.",
-    "price": "25 $",
     "oneTime": "einmalig",
     "nofees": "Einmalige Zahlung • Keine automatische Verlängerung • Sofortige Ergebnisse",
-    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert",
     "trusted": "Vertrauen von",
     "jobSeekers": "Bewerbern",
     "seeSample": "Beispielanalyse ansehen",
@@ -46,7 +43,6 @@
     "mainHeading": "Ist Ihr Lebenslauf",
     "mainHeadingHighlight": "für Recruiter unsichtbar?",
     "atsTooltip": "ATS (Bewerbermanagementsysteme) überführen Ihren Lebenslauf in eine Datenbank, die Recruiter durchsuchen. Sie lehnen selten automatisch ab — aber schlechtes Parsing oder fehlende Keywords bedeuten, dass Suchen Sie nie anzeigen. Über 98 % der Fortune-500-Unternehmen nutzen sie.",
-    "mainSubheading": "Finden Sie es in 30 Sekunden heraus. Erhalten Sie Ihren ATS-Score und sehen Sie genau, was Sie Vorstellungsgespräche kostet.",
     "ctaButton": "Lebenslauf kostenlos scannen",
     "freeBadge": "GRATIS",
     "noSignup": "Keine Anmeldung erforderlich",
@@ -106,12 +102,11 @@
     },
     "trust": {
       "secure": "Sicher & Privat",
-      "results": "Ergebnisse in 30 Sekunden",
       "approved": "Recruiter-geprüft"
     },
     "socialFirst": {
-      "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse in ca. 60 Sekunden",
-      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen reproduzierbaren Score — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
+      "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse innerhalb von {{seconds}} Sekunden",
+      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen überprüfbaren Score: Scannen Sie dieselbe Datei innerhalb von {{days}} Tagen erneut, erhalten Sie denselben Bericht — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
       "recentActivityCount": "{{count}} Personen",
       "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
     },
@@ -122,7 +117,7 @@
       "painSubheading": "Bevor ein Mensch sie je sieht. Ist deiner einer davon?",
       "solutionLabel": "Die Lösung",
       "solutionHeadingHighlight": "sofortige ATS-sichere Korrekturen",
-      "solutionHeadingSuffix": "in 60 Sekunden",
+      "solutionHeadingSuffix": "innerhalb von {{seconds}} Sekunden",
       "solutionSubheading": "Unser KI-Scanner findet genau, was deinen Lebenslauf blockiert, und zeigt dir, wie du es behebst."
     },
     "ultraCompactDescription": "ATS-optimierte Umformulierungen • Warnsignal-Hinweise • Schlüsselwort-Verbesserungen",
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. KI-Analyse",
-        "description": "Unsere KI führt 24 verschiedene Prüfungen in ~10 Sekunden durch."
+        "description": "Unsere KI führt {{checks}} verschiedene Prüfungen innerhalb von {{seconds}} Sekunden durch."
       },
       "results": {
         "title": "3. Ergebnisse erhalten",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Echte KI-Analyse",
-      "results": "Ergebnisse in ~10 Sek.",
+      "results": "Ergebnisse innerhalb von {{seconds}} Sekunden",
       "private": "100% privat"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Warnsignale",
       "plusMore": "+12 weitere"
     },
-    "scanFooter": "Ergebnisse in ~90 Sekunden • 7 kostenlose Scans pro Tag",
+    "scanFooter": "Ergebnisse innerhalb von {{seconds}} Sekunden • 7 kostenlose Scans pro Tag",
     "getFreeAnalysis": "Kostenlose Lebenslaufanalyse erhalten",
     "orGetCompleteAnalysis": "Oder erhalte die vollständige Analyse für",
     "securePaymentStripe": "Sichere Zahlung über Stripe",
@@ -426,7 +421,6 @@
     "feature": "Funktion",
     "templates": "Vorlagen",
     "free": "Kostenlos",
-    "cta": "Jetzt testen — 25 $",
     "ctaText": "Jetzt testen",
     "features": {
       "atsScoring": "5-Kategorien ATS-Scoring",
@@ -489,7 +483,7 @@
       },
       "instant": {
         "label": "Sofortlieferung",
-        "description": "Ergebnisse in 30 Sekunden"
+        "description": "Ergebnisse innerhalb von {{seconds}} Sekunden"
       }
     },
     "methodology": {
@@ -569,7 +563,6 @@
       "title": "Vollständige Analyse freischalten",
       "description": "Erhalten Sie umfassendes Feedback mit detaillierten Stichpunkt-Rewrites, ATS-Optimierung und priorisiertem Aktionsplan.",
       "button": "Vollanalyse erhalten",
-      "price": "25 $",
       "processing": "Wird verarbeitet..."
     }
   },
@@ -698,7 +691,6 @@
   },
   "stickyCta": {
     "title": "Bereit für mehr Vorstellungsgespräche?",
-    "subtitle": "Recruiter-Feedback in 30 Sekunden",
     "mobileTitle": "Lebenslauf analysieren →",
     "button": "Lebenslauf analysieren",
     "ctaButton": "Alle Pakete ansehen",
@@ -735,7 +727,7 @@
     "oneTime": "einmalig",
     "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
+    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert"
   },
   "scanProgress": {
     "title": "KI-Analyse läuft",
@@ -1404,7 +1396,6 @@
     "getJobSpecificAnalysis": "Jobspezifische Analyse erhalten",
     "personalizedInsightsForRole": "Erhalte personalisierte Einblicke für deine Zielrolle",
     "oneTimePaymentInstantAccess": "Einmalzahlung • Sofortiger Zugriff",
-    "oneInterviewPaidForItself": "Ein Vorstellungsgespräch = {{price}} hat sich gelohnt",
     "unlockWithFullAnalysis": "Mit Vollanalyse freischalten",
     "premiumFeatures": {
       "completeAtsAnalysis": "Vollständige ATS-Analyse",
@@ -1548,8 +1539,7 @@
       "badge": "Kostenlose Vorschau",
       "before": "❌ VORHER (aus deinem Lebenslauf)",
       "after": "✅ NACHHER (optimiert)",
-      "whyBetter": "Warum es besser ist:",
-      "cta": "Alle deine Stichpunkte in der vollständigen {{price}}-Analyse neu geschrieben bekommen"
+      "whyBetter": "Warum es besser ist:"
     },
     "lockedInsights": {
       "bulletLine1": "• Ersetze 'Verantwortlich für das Management eines Teams von 5' → 'Führte funktionsübergreifendes Team von 5, steigerte Effizienz um 32%'",
@@ -1611,8 +1601,7 @@
     "cta": {
       "fixIssues": "Sehen, was Bewerbungen kostet — {{price}}",
       "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
-      "socialProof": "{{count}} Lebensläufe heute geprüft",
-      "resultsExpiry": "Ihre Ergebnisse werden noch {{hours}} Stunden gespeichert"
+      "socialProof": "{{count}} Lebensläufe heute geprüft"
     },
     "enterprise": {
       "verdictLabel": "Das Urteil",
@@ -1666,6 +1655,16 @@
       "loading": "Live-Stellen werden gegen Ihren Lebenslauf gerankt…",
       "apply": "Bewerben",
       "seeAll": "Alle Treffer auf der Jobbörse ansehen — Suchen speichern, Bewerbungen verfolgen"
+    },
+    "nextSteps": {
+      "eyebrow": "Nächste Schritte",
+      "title": "Wenn Sie Hilfe bei den obigen Korrekturen möchten",
+      "body": "Die Diagnose oben ist vollständig und kostenlos. Diese zwei kostenpflichtigen Optionen erledigen die Arbeit für Sie.",
+      "fullAnalysisName": "Vollständige Analyse",
+      "fullAnalysisDesc": "Wendet die Korrekturen aus diesem Bericht auf die Inhalte Ihres eigenen Lebenslaufs an. Einmalige Zahlung, kein Abo.",
+      "proName": "Pro",
+      "proDesc": "Monatsplan: unbegrenzte Scans und jedes kostenpflichtige Tool, die vollständige Analyse inklusive. Jederzeit in Ihrem Konto kündbar.",
+      "proPrice": "{{price}} $/Monat"
     }
   },
   "analysisPreviewSample": {
@@ -1727,7 +1726,7 @@
     "rows": {
       "timeToResults": {
         "feature": "Zeit bis zum Ergebnis",
-        "us": "Unter 60 Sekunden",
+        "us": "Innerhalb von {{seconds}} Sekunden",
         "them": "3-7 Werktage"
       },
       "cost": {

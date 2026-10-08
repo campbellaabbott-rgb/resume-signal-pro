@@ -33,11 +33,8 @@
     "freeScan": "Gratis scan",
     "heading": "Stop met gissen.",
     "headingHighlight": "Begin met sollicitatiegesprekken.",
-    "subheading": "Zelfde document, zelfde score, elke keer — vergeleken met echte scans in jouw sector, elk citaat geverifieerd tegen je cv. Geen mening van ChatGPT of Claude.",
-    "price": "$ 25",
     "oneTime": "eenmalig",
     "nofees": "Eenmalige betaling • Geen automatische verlenging • Directe resultaten",
-    "roi": "Eén gesprek = $ 25 terugverdiend",
     "trusted": "Vertrouwd door",
     "jobSeekers": "werkzoekenden",
     "seeSample": "Bekijk voorbeeldanalyse",
@@ -46,7 +43,6 @@
     "mainHeading": "Is je cv",
     "mainHeadingHighlight": "onzichtbaar voor recruiters?",
     "atsTooltip": "ATS (Applicant Tracking Systems) zetten je cv om in een database die recruiters doorzoeken. Ze wijzen zelden automatisch af — maar slechte parsing of ontbrekende trefwoorden betekent dat zoekopdrachten je nooit tonen. Meer dan 98% van de Fortune 500-bedrijven gebruikt ze.",
-    "mainSubheading": "Ontdek het in 30 seconden. Krijg je ATS-score en zie precies wat je sollicitatiegesprekken kost.",
     "ctaButton": "Scan mijn cv gratis",
     "freeBadge": "GRATIS",
     "noSignup": "Geen aanmelding nodig",
@@ -106,12 +102,11 @@
     },
     "trust": {
       "secure": "Veilig & Privé",
-      "results": "Resultaten in 30 seconden",
       "approved": "Recruiter-goedgekeurd"
     },
     "socialFirst": {
-      "joinThousands": "Gratis scan · Geen aanmelding · Resultaten in ongeveer 60 seconden",
-      "subheading": "Upload je cv en krijg een reproduceerbare score — vergeleken met echte scans in jouw sector, elk citaat geverifieerd. Geen chatbot-mening.",
+      "joinThousands": "Gratis scan · Geen aanmelding · Resultaten binnen {{seconds}} seconden",
+      "subheading": "Upload je cv en krijg een score die je kunt controleren: scan hetzelfde bestand binnen {{days}} dagen opnieuw en je krijgt hetzelfde rapport — vergeleken met echte scans in jouw sector, elk citaat geverifieerd. Geen chatbot-mening.",
       "recentActivityCount": "{{count}} mensen",
       "recentActivityText": "hebben hun cv in het afgelopen uur gescand"
     },
@@ -122,7 +117,7 @@
       "painSubheading": "Voordat een mens ze ooit ziet. Is jouw cv er een van?",
       "solutionLabel": "De oplossing",
       "solutionHeadingHighlight": "directe ATS-bestendige verbeteringen",
-      "solutionHeadingSuffix": "in 60 seconden",
+      "solutionHeadingSuffix": "binnen {{seconds}} seconden",
       "solutionSubheading": "Onze AI-scanner vindt precies wat je cv blokkeert en laat je zien hoe je het oplost."
     },
     "ultraCompactDescription": "ATS-geoptimaliseerde herschrijvingen • Waarschuwingssignalen • Zoekwoordverbeteringen",
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. AI Analyse",
-        "description": "Onze AI voert 24 verschillende controles uit in ~10 seconden."
+        "description": "Onze AI voert {{checks}} verschillende controles uit binnen {{seconds}} seconden."
       },
       "results": {
         "title": "3. Krijg Resultaten",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Echte AI-analyse",
-      "results": "Resultaten in ~10 sec",
+      "results": "Resultaten binnen {{seconds}} seconden",
       "private": "100% privé"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Waarschuwingssignalen",
       "plusMore": "+12 meer"
     },
-    "scanFooter": "Resultaten in ~90 seconden • 7 gratis scans per dag",
+    "scanFooter": "Resultaten binnen {{seconds}} seconden • 7 gratis scans per dag",
     "getFreeAnalysis": "Gratis cv-analyse krijgen",
     "orGetCompleteAnalysis": "Of krijg de volledige analyse voor",
     "securePaymentStripe": "Veilige betaling via Stripe",
@@ -426,7 +421,6 @@
     "feature": "Functie",
     "templates": "Templates",
     "free": "Gratis",
-    "cta": "Probeer nu — $ 25",
     "ctaText": "Probeer nu",
     "features": {
       "atsScoring": "5-categorie ATS-scoring",
@@ -489,7 +483,7 @@
       },
       "instant": {
         "label": "Directe Levering",
-        "description": "Resultaten in 30 seconden"
+        "description": "Resultaten binnen {{seconds}} seconden"
       }
     },
     "methodology": {
@@ -569,7 +563,6 @@
       "title": "Ontgrendel je volledige analyse",
       "description": "Krijg uitgebreide feedback met gedetailleerde bullet-herschrijvingen, ATS-optimalisatiestrategieën en geprioriteerd actieplan.",
       "button": "Volledige analyse",
-      "price": "$ 25",
       "processing": "Verwerken..."
     }
   },
@@ -698,7 +691,6 @@
   },
   "stickyCta": {
     "title": "Klaar voor meer sollicitatiegesprekken?",
-    "subtitle": "Recruiter-feedback in 30 seconden",
     "mobileTitle": "Analyseer je CV →",
     "button": "Analyseer mijn CV",
     "ctaButton": "Bekijk Alle Pakketten",
@@ -735,7 +727,7 @@
     "oneTime": "eenmalig",
     "guarantee": "Directe resultaten • Eenmalige betaling",
     "button": "Mijn analyse nu",
-    "roi": "Eén gesprek = $ 25 terugverdiend"
+    "roi": "Eén gesprek = {{price}} terugverdiend"
   },
   "scanProgress": {
     "title": "AI-analyse bezig",
@@ -1404,7 +1396,6 @@
     "getJobSpecificAnalysis": "Functiespecifieke analyse ontvangen",
     "personalizedInsightsForRole": "Krijg gepersonaliseerde inzichten voor je doelfunctie",
     "oneTimePaymentInstantAccess": "Eenmalige betaling • Directe toegang",
-    "oneInterviewPaidForItself": "Eén sollicitatiegesprek = {{price}} terugverdiend",
     "unlockWithFullAnalysis": "Ontgrendel met volledige analyse",
     "premiumFeatures": {
       "completeAtsAnalysis": "Volledige ATS-analyse",
@@ -1548,8 +1539,7 @@
       "badge": "Gratis voorproefje",
       "before": "❌ VOOR (uit jouw cv)",
       "after": "✅ NA (geoptimaliseerd)",
-      "whyBetter": "Waarom het beter is:",
-      "cta": "Laat al jouw bullets herschrijven in de volledige {{price}} analyse"
+      "whyBetter": "Waarom het beter is:"
     },
     "lockedInsights": {
       "bulletLine1": "• Vervang 'Verantwoordelijk voor het managen van een team van 5' → 'Leidde een cross-functioneel team van 5, met 32% efficiëntieverbetering'",
@@ -1611,8 +1601,7 @@
     "cta": {
       "fixIssues": "Zie wat sollicitaties kost — {{price}}",
       "getFullAnalysis": "Mijn recruiter-klaar cv ophalen — {{price}}",
-      "socialProof": "{{count}} cv's vandaag gescand",
-      "resultsExpiry": "Uw resultaten worden nog {{hours}} uur opgeslagen"
+      "socialProof": "{{count}} cv's vandaag gescand"
     },
     "enterprise": {
       "verdictLabel": "Het Oordeel",
@@ -1666,6 +1655,16 @@
       "loading": "Live vacatures worden gerangschikt tegen je cv…",
       "apply": "Solliciteer",
       "seeAll": "Bekijk alle matches op de vacaturebank — zoekopdrachten opslaan, sollicitaties volgen"
+    },
+    "nextSteps": {
+      "eyebrow": "Volgende stappen",
+      "title": "Als je hulp wilt bij de verbeteringen hierboven",
+      "body": "De diagnose hierboven is volledig en gratis. Dit zijn de twee betaalde opties die het werk voor je doen.",
+      "fullAnalysisName": "Volledige analyse",
+      "fullAnalysisDesc": "Past de verbeteringen uit dit rapport toe op de inhoud van je eigen cv. Eenmalige betaling, geen abonnement.",
+      "proName": "Pro",
+      "proDesc": "Maandabonnement: onbeperkt scannen en elke betaalde tool, de volledige analyse inbegrepen. Altijd opzegbaar vanuit je account.",
+      "proPrice": "$ {{price}}/maand"
     }
   },
   "analysisPreviewSample": {
@@ -1727,7 +1726,7 @@
     "rows": {
       "timeToResults": {
         "feature": "Tijd tot resultaten",
-        "us": "Minder dan 60 seconden",
+        "us": "Binnen {{seconds}} seconden",
         "them": "3-7 werkdagen"
       },
       "cost": {

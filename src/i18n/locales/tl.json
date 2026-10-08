@@ -33,11 +33,8 @@
     "freeScan": "Libreng Scan",
     "heading": "Huwag nang hulaan.",
     "headingHighlight": "Simulan na ang makakuha ng interview.",
-    "subheading": "Parehong dokumento, parehong iskor, tuwing susubukan — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado laban sa iyong resume. Hindi opinyon ng ChatGPT o Claude.",
-    "price": "$25",
     "oneTime": "isang beses lang",
     "nofees": "Isang beses na bayad • Walang auto-renew • Instant na resulta",
-    "roi": "Isang interview = Bawi na ang $25",
     "trusted": "Pinagkakatiwalaan ng",
     "jobSeekers": "mga naghahanap ng trabaho",
     "seeSample": "Tingnan ang Sample Analysis",
@@ -46,7 +43,6 @@
     "mainHeading": "Ang resume mo ba ay",
     "mainHeadingHighlight": "hindi nakikita ng mga recruiter?",
     "atsTooltip": "Ginagawang database ng ATS (Applicant Tracking Systems) ang resume mo na hinahanapan ng mga recruiter. Bihira silang awtomatikong tumanggi — pero ang maling parsing o kulang na keywords ay nangangahulugang hindi ka kailanman lalabas sa paghahanap. Mahigit 98% ng Fortune 500 ang gumagamit nito.",
-    "mainSubheading": "Alamin sa 30 segundo. Kunin ang iyong ATS score at tingnan kung ano ang nagpapababa ng iyong mga interview.",
     "ctaButton": "I-scan ang resume ko nang libre",
     "freeBadge": "LIBRE",
     "noSignup": "Walang kailangang mag-sign-up",
@@ -106,12 +102,11 @@
     },
     "trust": {
       "secure": "Secure at Private",
-      "results": "Resulta sa 30 segundo",
       "approved": "Recruiter-approved"
     },
     "socialFirst": {
-      "joinThousands": "Libreng scan · Walang sign-up · Resulta sa humigit-kumulang 60 segundo",
-      "subheading": "I-upload ang iyong resume at makakuha ng nauulit na iskor — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
+      "joinThousands": "Libreng scan · Walang sign-up · Resulta sa loob ng {{seconds}} segundo",
+      "subheading": "I-upload ang iyong resume at makakuha ng iskor na masusuri mo: i-scan muli ang parehong file sa loob ng {{days}} araw at pareho ang ulat — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
       "recentActivityCount": "{{count}} katao",
       "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
     },
@@ -122,7 +117,7 @@
       "painSubheading": "Bago pa man makita ng tao. Isa ba ang iyo sa mga ito?",
       "solutionLabel": "Ang solusyon",
       "solutionHeadingHighlight": "instant na ATS-proof na ayos",
-      "solutionHeadingSuffix": "sa 60 segundo",
+      "solutionHeadingSuffix": "sa loob ng {{seconds}} segundo",
       "solutionSubheading": "Hinahanap ng aming AI scanner ang eksaktong sumasala sa iyong resume at ipinapakita kung paano ito ayusin."
     },
     "ultraCompactDescription": "ATS-optimized na rewrites • Red-flag warnings • Keyword improvements",
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. AI Analysis",
-        "description": "Nagsasagawa ang aming AI ng 24 na iba't ibang pagsusuri sa ~10 segundo."
+        "description": "Nagsasagawa ang aming AI ng {{checks}} na iba't ibang pagsusuri sa loob ng {{seconds}} segundo."
       },
       "results": {
         "title": "3. Kumuha ng Resulta",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Tunay na AI analysis",
-      "results": "Resulta sa ~10 seg",
+      "results": "Resulta sa loob ng {{seconds}} segundo",
       "private": "100% private"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 pa"
     },
-    "scanFooter": "Resulta sa ~90 segundo • 7 libreng scan kada araw",
+    "scanFooter": "Resulta sa loob ng {{seconds}} segundo • 7 libreng scan kada araw",
     "getFreeAnalysis": "Kumuha ng Libreng Resume Analysis",
     "orGetCompleteAnalysis": "O kunin ang kumpletong analysis sa halagang",
     "securePaymentStripe": "Secure na bayad gamit ang Stripe",
@@ -426,7 +421,6 @@
     "feature": "Feature",
     "templates": "Templates",
     "free": "Libre",
-    "cta": "Subukan Ngayon — $25",
     "ctaText": "Subukan Ngayon",
     "features": {
       "atsScoring": "5-Kategoryang ATS Scoring",
@@ -489,7 +483,7 @@
       },
       "instant": {
         "label": "Instant Delivery",
-        "description": "Resulta sa 30 segundo"
+        "description": "Resulta sa loob ng {{seconds}} segundo"
       }
     },
     "methodology": {
@@ -569,7 +563,6 @@
       "title": "I-unlock ang Iyong Buong Pagsusuri",
       "description": "Kumuha ng komprehensibong feedback na may detalyadong bullet rewrites, ATS optimization strategies, at prioritized na action plan.",
       "button": "Kumuha ng Buong Pagsusuri",
-      "price": "$25",
       "processing": "Pinoproseso..."
     }
   },
@@ -698,7 +691,6 @@
   },
   "stickyCta": {
     "title": "Handa nang makakuha ng mas maraming interview?",
-    "subtitle": "Makakuha ng recruiter-grade feedback sa 30 segundo",
     "mobileTitle": "I-analyze ang iyong resume →",
     "button": "I-analyze ang Aking Resume",
     "ctaButton": "Tingnan Lahat ng Packages",
@@ -735,7 +727,7 @@
     "oneTime": "isang beses lang",
     "guarantee": "Instant na resulta • Isang beses na bayad",
     "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "Isang interview = $25 na-recover"
+    "roi": "Isang interview = {{price}} na-recover"
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
@@ -1404,7 +1396,6 @@
     "getJobSpecificAnalysis": "Kunin ang Job-Specific na Analysis",
     "personalizedInsightsForRole": "Kumuha ng personalized na insight para sa target role mo",
     "oneTimePaymentInstantAccess": "Isang-beses na bayad • Agarang access",
-    "oneInterviewPaidForItself": "Isang interview = {{price}} ay nabayaran na",
     "unlockWithFullAnalysis": "I-unlock sa Full Analysis",
     "premiumFeatures": {
       "completeAtsAnalysis": "Kumpletong ATS analysis",
@@ -1548,8 +1539,7 @@
       "badge": "Libreng halimbawa",
       "before": "❌ BAGO (mula sa iyong resume)",
       "after": "✅ PAGKATAPOS (na-optimize)",
-      "whyBetter": "Bakit mas maganda:",
-      "cta": "Ipasulat ang lahat ng iyong mga bullet sa kumpletong {{price}} na pagsusuri"
+      "whyBetter": "Bakit mas maganda:"
     },
     "lockedInsights": {
       "bulletLine1": "• Palitan ang 'Responsable sa pamamahala ng team ng 5' → 'Nanguna sa cross-functional team ng 5, nagdulot ng 32% na pagtaas ng kahusayan'",
@@ -1611,8 +1601,7 @@
     "cta": {
       "fixIssues": "Tingnan kung ano ang pumipigil sa mga interview — {{price}}",
       "getFullAnalysis": "Kunin ang aking recruiter-ready na resume — {{price}}",
-      "socialProof": "{{count}} resume ang na-scan ngayong araw",
-      "resultsExpiry": "Ang iyong mga resulta ay naka-save pa ng {{hours}} oras"
+      "socialProof": "{{count}} resume ang na-scan ngayong araw"
     },
     "enterprise": {
       "verdictLabel": "Ang Hatol",
@@ -1666,6 +1655,16 @@
       "loading": "Nira-rank ang mga live na opening laban sa resume mo…",
       "apply": "Mag-apply",
       "seeAll": "Tingnan ang lahat ng tugma sa job board — mag-save ng paghahanap, subaybayan ang aplikasyon"
+    },
+    "nextSteps": {
+      "eyebrow": "Susunod na hakbang",
+      "title": "Kung gusto mo ng tulong sa mga ayos sa itaas",
+      "body": "Kumpleto at libre ang diagnosis sa itaas. Ito ang dalawang bayad na opsyon na gagawa ng trabaho para sa iyo.",
+      "fullAnalysisName": "Full Analysis",
+      "fullAnalysisDesc": "Inilalapat ang mga ayos mula sa ulat na ito sa nilalaman ng sarili mong resume. Isang bayad, walang subscription.",
+      "proName": "Pro",
+      "proDesc": "Buwanang plan: walang limitasyong scan at bawat bayad na tool, kasama ang Full Analysis. Puwedeng i-cancel kahit kailan mula sa iyong account.",
+      "proPrice": "${{price}}/buwan"
     }
   },
   "analysisPreviewSample": {
@@ -1727,7 +1726,7 @@
     "rows": {
       "timeToResults": {
         "feature": "Oras bago makuha ang resulta",
-        "us": "Mas mababa sa 60 segundo",
+        "us": "Sa loob ng {{seconds}} segundo",
         "them": "3-7 araw ng trabaho"
       },
       "cost": {

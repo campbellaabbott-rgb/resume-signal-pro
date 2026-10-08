@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 
 export function HowItWorks() {
   const { t } = useTranslation();
@@ -71,7 +72,7 @@ export function HowItWorks() {
             </div>
             <h3 className="font-semibold mb-2">{t("howItWorks.steps.analysis.title")}</h3>
             <p className="text-sm text-muted-foreground">
-              {t("howItWorks.steps.analysis.description")}
+              {t("howItWorks.steps.analysis.description", { seconds: SCAN_RESULTS_WITHIN_SECONDS, checks: analysisPoints.length })}
             </p>
           </div>
           
@@ -125,7 +126,7 @@ export function HowItWorks() {
             </div>
             <div className="flex items-center gap-1.5">
               <Clock className="w-3 h-3 text-primary" />
-              {t("howItWorks.footer.results")}
+              {t("howItWorks.footer.results", { seconds: SCAN_RESULTS_WITHIN_SECONDS })}
             </div>
             <div className="flex items-center gap-1.5">
               <Shield className="w-3 h-3 text-warning" />

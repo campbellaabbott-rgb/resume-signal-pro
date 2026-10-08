@@ -1312,7 +1312,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <h1 class="text-3xl font-bold mb-3">${esc(cfg.heading)}</h1>
         <p class="text-muted-foreground mb-6">${esc(cfg.intro)}</p>
         <ul class="space-y-1.5 mb-8">${cfg.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>
-        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? "Informe completo en unos 20 segundos. Sin registro; tu currículum se borra en un máximo de 7 días." : "Full diagnostic report in about 20 seconds. No sign-up; your resume is deleted within 7 days.", cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
+        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? "Informe completo en 90 segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días." : "Full diagnostic report within 90 seconds. No sign-up; your resume is deleted within 7 days.", cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
         <section class="mt-10"><h2 class="text-2xl font-bold mb-4">${cfg.lang === "es" ? "Preguntas frecuentes" : "Common questions"}</h2><div class="space-y-4">${cfg.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>`,
     });
   }
@@ -1366,7 +1366,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
               ${s.bullets ? `<ul class="space-y-1.5 mt-1">${s.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>` : ""}
             </section>`).join("")}
           ${g.faqs?.length ? `<section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${g.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
-          ${cta("See where your resume actually stands — free", "The full diagnostic in about 20 seconds: parsing, keywords, structure, and red flags — with every finding quoted from your actual document. No signup; your resume is deleted within 7 days.", "Run the free scan")}
+          ${cta("See where your resume actually stands — free", "The full diagnostic within 90 seconds: parsing, keywords, structure, and red flags — with every finding quoted from your actual document. No signup; your resume is deleted within 7 days.", "Run the free scan")}
           <nav class="mt-6 flex flex-wrap gap-2 text-xs">${g.related.map((r) => pill(r.href, `${r.label} →`)).join("")}</nav>
           </article>`,
       });
@@ -1469,7 +1469,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           <p class="text-sm text-muted-foreground leading-relaxed mb-3">Two caveats we insist on. First, this sample self-selects: people scan resumes when they suspect a problem, so the distribution likely sits below the true population of working professionals. Second, any resume score — ours included — is a model with error bars, not a measurement; <a href="/guides/what-resume-score-means" class="text-primary">what a resume score actually means</a> explains how to read one without being fooled by false precision.</p>
           <p class="text-sm text-muted-foreground leading-relaxed">What the data is good for: ranking yourself against real peers instead of a made-up "75 is passing" threshold, and seeing that industry context matters — the same resume quality scores differently against different keyword expectations. Our <a href="/methodology" class="text-primary">methodology</a> covers how the score itself is computed.</p></section>
         <section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${studyFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
-        ${cta("See where your resume lands in this distribution — free", "The full diagnostic in about 20 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup; your resume is deleted within 7 days.", "Run the free scan")}
+        ${cta("See where your resume lands in this distribution — free", "The full diagnostic within 90 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup; your resume is deleted within 7 days.", "Run the free scan")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${pill("/guides/what-resume-score-means", "What a resume score actually means →")}${pill("/guides/why-resumes-get-rejected", "Why resumes get rejected →")}${pill("/industries", "Keywords by industry →")}</nav>
         </article>`,
     });
@@ -1550,7 +1550,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} ${esc(AGENT_OFFER.pass)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
       </section>
       <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
-      <p class="text-muted-foreground mb-6">Same document, same score, every time — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reproducible reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is deleted within 7 days. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
+      <p class="text-muted-foreground mb-6">Rescan the same file within 7 days and you get the same report — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is deleted within 7 days. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
       ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
       <section class="mt-10 mb-8">
         <h2 class="text-xl font-bold mb-3">What the free scan covers</h2>
@@ -1565,7 +1565,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       </section>
       <section class="mb-8">
         <h2 class="text-xl font-bold mb-3">Why use this instead of ChatGPT or Claude?</h2>
-        <p class="text-sm text-muted-foreground leading-relaxed mb-3">A general chatbot gives useful generic advice, and if that's all you need, use it — it's free too. This scanner does the parts a chat can't: it runs your actual file through real text extraction (the step that silently breaks resumes), checks documented per-vendor ATS behaviors, verifies every quoted finding against your document so nothing is invented, scores against a consistent rubric with a reproducible report ID, and cites its keyword sources (your posting, or U.S. Department of Labor O*NET data).</p>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-3">A general chatbot gives useful generic advice, and if that's all you need, use it — it's free too. This scanner does the parts a chat can't: it runs your actual file through real text extraction (the step that silently breaks resumes), checks documented per-vendor ATS behaviors, verifies every quoted finding against your document so nothing is invented, scores against a consistent rubric with a report ID that a rescan of the same file within 7 days returns again, and cites its keyword sources (your posting, or U.S. Department of Labor O*NET data).</p>
       </section>
       ${scanInsights?.overall ? `<section class="mb-8">
         <h2 class="text-xl font-bold mb-3">How real resumes actually score</h2>

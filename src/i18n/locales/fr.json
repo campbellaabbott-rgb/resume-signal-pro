@@ -33,11 +33,8 @@
     "freeScan": "Scan gratuit",
     "heading": "Arrêtez de deviner.",
     "headingHighlight": "Décrochez des entretiens.",
-    "subheading": "Même document, même score, à chaque fois — comparé à de vrais scans de votre secteur, chaque citation vérifiée contre votre CV. Pas l'avis de ChatGPT ou de Claude.",
-    "price": "25 $",
     "oneTime": "paiement unique",
     "nofees": "Paiement unique • Sans renouvellement automatique • Résultats instantanés",
-    "roi": "Un entretien = 25 $ rentabilisés",
     "trusted": "Fait confiance par",
     "jobSeekers": "chercheurs d'emploi",
     "seeSample": "Voir un exemple d'analyse",
@@ -46,7 +43,6 @@
     "mainHeading": "Votre CV est-il",
     "mainHeadingHighlight": "invisible pour les recruteurs ?",
     "atsTooltip": "Les ATS (systèmes de suivi des candidatures) transforment votre CV en base de données que les recruteurs interrogent. Ils rejettent rarement automatiquement — mais un mauvais parsing ou des mots-clés manquants font que les recherches ne vous affichent jamais. Plus de 98 % des entreprises du Fortune 500 les utilisent.",
-    "mainSubheading": "Découvrez-le en 30 secondes. Obtenez votre score ATS et voyez exactement ce qui vous coûte des entretiens.",
     "ctaButton": "Scanner mon CV gratuitement",
     "freeBadge": "GRATUIT",
     "noSignup": "Sans inscription",
@@ -106,12 +102,11 @@
     },
     "trust": {
       "secure": "Sécurisé et privé",
-      "results": "Résultats en 30 secondes",
       "approved": "Approuvé par les recruteurs"
     },
     "socialFirst": {
-      "joinThousands": "Analyse gratuite · Sans inscription · Résultats en 60 secondes environ",
-      "subheading": "Téléversez votre CV et obtenez un score reproductible — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
+      "joinThousands": "Analyse gratuite · Sans inscription · Résultats en {{seconds}} secondes maximum",
+      "subheading": "Téléversez votre CV et obtenez un score vérifiable : rescannez le même fichier sous {{days}} jours et vous obtenez le même rapport — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
       "recentActivityCount": "{{count}} personnes",
       "recentActivityText": "ont scanné leur CV dans la dernière heure"
     },
@@ -122,7 +117,7 @@
       "painSubheading": "Avant même qu'un humain ne les voie. Le vôtre en fait-il partie ?",
       "solutionLabel": "La solution",
       "solutionHeadingHighlight": "des corrections instantanées à l'épreuve des ATS",
-      "solutionHeadingSuffix": "en 60 secondes",
+      "solutionHeadingSuffix": "en {{seconds}} secondes maximum",
       "solutionSubheading": "Notre scanner IA trouve exactement ce qui bloque votre CV et vous montre comment le corriger."
     },
     "ultraCompactDescription": "Réécritures optimisées ATS • Alertes de signaux d'alarme • Améliorations de mots-clés",
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. Analyse IA",
-        "description": "Notre IA effectue 24 vérifications distinctes en ~10 secondes."
+        "description": "Notre IA effectue {{checks}} vérifications distinctes en {{seconds}} secondes maximum."
       },
       "results": {
         "title": "3. Obtenez les Résultats",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Vraie analyse IA",
-      "results": "Résultats en ~10 sec",
+      "results": "Résultats en {{seconds}} secondes maximum",
       "private": "100% privé"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Signaux d'alarme",
       "plusMore": "+12 autres"
     },
-    "scanFooter": "Résultats en ~90 secondes • 7 scans gratuits par jour",
+    "scanFooter": "Résultats en {{seconds}} secondes maximum • 7 scans gratuits par jour",
     "getFreeAnalysis": "Obtenir une analyse de CV gratuite",
     "orGetCompleteAnalysis": "Ou obtenez l'analyse complète pour",
     "securePaymentStripe": "Paiement sécurisé via Stripe",
@@ -426,7 +421,6 @@
     "feature": "Fonctionnalité",
     "templates": "Modèles",
     "free": "Gratuit",
-    "cta": "Essayer — 25 $",
     "ctaText": "Essayer",
     "features": {
       "atsScoring": "Scoring ATS en 5 catégories",
@@ -489,7 +483,7 @@
       },
       "instant": {
         "label": "Livraison Instantanée",
-        "description": "Résultats en 30 secondes"
+        "description": "Résultats en {{seconds}} secondes maximum"
       }
     },
     "methodology": {
@@ -569,7 +563,6 @@
       "title": "Débloquez votre analyse complète",
       "description": "Obtenez un feedback complet avec réécriture des puces, stratégies ATS et plan d'action prioritaire.",
       "button": "Obtenir l'analyse complète",
-      "price": "25 $",
       "processing": "Traitement..."
     }
   },
@@ -698,7 +691,6 @@
   },
   "stickyCta": {
     "title": "Prêt à décrocher plus d'entretiens ?",
-    "subtitle": "Feedback recruteur en 30 secondes",
     "mobileTitle": "Analysez votre CV →",
     "button": "Analyser mon CV",
     "ctaButton": "Voir Tous les Forfaits",
@@ -735,7 +727,7 @@
     "oneTime": "paiement unique",
     "guarantee": "Résultats instantanés • Paiement unique",
     "button": "Obtenir mon analyse",
-    "roi": "Un entretien = 25 $ rentabilisés"
+    "roi": "Un entretien = {{price}} rentabilisés"
   },
   "scanProgress": {
     "title": "Analyse IA en cours",
@@ -1404,7 +1396,6 @@
     "getJobSpecificAnalysis": "Obtenir une analyse spécifique au poste",
     "personalizedInsightsForRole": "Obtenez des analyses personnalisées pour le poste visé",
     "oneTimePaymentInstantAccess": "Paiement unique • Accès instantané",
-    "oneInterviewPaidForItself": "Un entretien = {{price}} amorti",
     "unlockWithFullAnalysis": "Débloquer avec l'analyse complète",
     "premiumFeatures": {
       "completeAtsAnalysis": "Analyse ATS complète",
@@ -1548,8 +1539,7 @@
       "badge": "Aperçu gratuit",
       "before": "❌ AVANT (de votre CV)",
       "after": "✅ APRÈS (optimisé)",
-      "whyBetter": "Pourquoi c'est mieux :",
-      "cta": "Faites réécrire tous vos points dans l'analyse complète à {{price}}"
+      "whyBetter": "Pourquoi c'est mieux :"
     },
     "lockedInsights": {
       "bulletLine1": "• Remplacez 'Responsable de la gestion d'une équipe de 5' → 'Dirigé une équipe interfonctionnelle de 5, générant un gain d'efficacité de 32%'",
@@ -1611,8 +1601,7 @@
     "cta": {
       "fixIssues": "Voir ce qui vous coûte des entretiens — {{price}}",
       "getFullAnalysis": "Obtenir mon CV prêt pour les recruteurs — {{price}}",
-      "socialProof": "{{count}} CV analysés aujourd'hui",
-      "resultsExpiry": "Vos résultats sont sauvegardés encore {{hours}} heures"
+      "socialProof": "{{count}} CV analysés aujourd'hui"
     },
     "enterprise": {
       "verdictLabel": "Le Verdict",
@@ -1666,6 +1655,16 @@
       "loading": "Classement des offres en direct contre votre CV…",
       "apply": "Candidater",
       "seeAll": "Voir toutes les correspondances sur le job board — recherches enregistrées, suivi des candidatures"
+    },
+    "nextSteps": {
+      "eyebrow": "Prochaines étapes",
+      "title": "Si vous voulez de l'aide pour les corrections ci-dessus",
+      "body": "Le diagnostic ci-dessus est complet et gratuit. Voici les deux options payantes qui font le travail pour vous.",
+      "fullAnalysisName": "Analyse complète",
+      "fullAnalysisDesc": "Applique les corrections de ce rapport au contenu de votre propre CV. Un seul paiement, sans abonnement.",
+      "proName": "Pro",
+      "proDesc": "Formule mensuelle : scans illimités et tous les outils payants, Analyse complète comprise. Résiliable à tout moment depuis votre compte.",
+      "proPrice": "{{price}} $/mois"
     }
   },
   "analysisPreviewSample": {
@@ -1727,7 +1726,7 @@
     "rows": {
       "timeToResults": {
         "feature": "Délai d'obtention des résultats",
-        "us": "Moins de 60 secondes",
+        "us": "{{seconds}} secondes maximum",
         "them": "3 à 7 jours ouvrables"
       },
       "cost": {
