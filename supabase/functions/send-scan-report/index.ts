@@ -284,7 +284,9 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
     { html: day14, subject: "One question: did the new resume get interviews?", delay: 14 * DAY },
   ];
   for (const d of drips) {
-    await admin.rpc("enqueue_email_delayed", {
+    // An enqueue the database refused is a sequence that never starts: thrown,
+    // so confirm-drip answers 503 and logs it instead of saying "queued".
+    const { error: enqErr } = await admin.rpc("enqueue_email_delayed", {
       queue_name: "transactional_emails",
       payload: {
         message_id: crypto.randomUUID(),
@@ -298,9 +300,14 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
         label: "fix-plan-drip",
         unsubscribe_token: token,
         queued_at: new Date().toISOString(),
+        // When the message becomes due: process-email-queue ages a message
+        // from here, so a day-4 mail is not "older than the 60-minute TTL"
+        // the moment it becomes visible (register L13-39).
+        due_at: new Date(Date.now() + d.delay * 1000).toISOString(),
       },
       delay_seconds: d.delay,
     });
+    if (enqErr) throw new Error(`enqueue_email_delayed refused: ${String((enqErr as { message?: string }).message ?? enqErr).slice(0, 160)}`);
   }
 }
 
