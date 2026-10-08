@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { adminRpc } from '@/lib/admin-auth';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, BarChart, Bar, Legend
@@ -38,8 +38,12 @@ export function HealthHistoryChart() {
   const [data, setData] = useState<HealthRecord[]>([]);
   const [hourlyStats, setHourlyStats] = useState<HourlyStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [overallUptime, setOverallUptime] = useState(0);
-  const [avgLatency, setAvgLatency] = useState(0);
+  // null until a read succeeds: an unreadable or empty history is not 0% or 100% uptime.
+  const [overallUptime, setOverallUptime] = useState<number | null>(null);
+  const [avgLatency, setAvgLatency] = useState<number | null>(null);
+  // heartbeat_results is closed to the browser (20260627121655); the history
+  // comes through admin-ops, and a refusal is said, never drawn as 0% (L3-08).
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     fetchHealthHistory();
@@ -47,15 +51,14 @@ export function HealthHistoryChart() {
 
   const fetchHealthHistory = async () => {
     try {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data: records, error } = await supabase
-        .from('heartbeat_results')
-        .select('*')
-        .gte('created_at', twentyFourHoursAgo)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      const { data: rows, error } = await adminRpc('get_heartbeat_history', { p_hours: 24, p_limit: 5000 });
+      if (error || !Array.isArray(rows)) {
+        setUnavailable(true);
+        return;
+      }
+      setUnavailable(false);
+      // Oldest first for the chart; the probes' latencies where this code reads them.
+      const records = [...rows].reverse().map((r) => ({ ...r, metadata: { probes: r.probes } }));
 
       // Debug: log raw data structure
       if (records && records.length > 0) {
@@ -65,7 +68,7 @@ export function HealthHistoryChart() {
         console.log('[HealthHistoryChart] Sample probes:', sample.metadata?.probes);
       }
 
-      const typedRecords = (records || []) as HealthRecord[];
+      const typedRecords = (records || []) as unknown as HealthRecord[];
       setData(typedRecords);
       
       // Calculate hourly stats
@@ -136,13 +139,14 @@ export function HealthHistoryChart() {
       // Calculate overall stats
       const totalPassed = typedRecords.filter(r => r.test_passed).length;
       const totalRecords = typedRecords.length;
-      setOverallUptime(totalRecords > 0 ? Math.round((totalPassed / totalRecords) * 100) : 100);
+      setOverallUptime(totalRecords > 0 ? Math.round((totalPassed / totalRecords) * 100) : null);
       
       const allLatencies = typedRecords.filter(r => r.response_time_ms).map(r => r.response_time_ms!);
-      setAvgLatency(allLatencies.length > 0 ? Math.round(allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length) : 0);
+      setAvgLatency(allLatencies.length > 0 ? Math.round(allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length) : null);
 
     } catch (error) {
       console.error('Failed to fetch health history:', error);
+      setUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -161,7 +165,23 @@ export function HealthHistoryChart() {
     );
   }
 
-  const uptimeColor = overallUptime >= 99 ? 'text-green-400' : overallUptime >= 95 ? 'text-yellow-400' : 'text-red-400';
+  if (unavailable) {
+    return (
+      <Card className="bg-card/50 backdrop-blur border-border/50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Health History (24h)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Health history unavailable: the heartbeat results could not be read (admin key required).</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const uptimeColor = overallUptime === null ? 'text-muted-foreground' : overallUptime >= 99 ? 'text-green-400' : overallUptime >= 95 ? 'text-yellow-400' : 'text-red-400';
 
   return (
     <Card className="bg-card/50 backdrop-blur border-border/50">
@@ -174,11 +194,11 @@ export function HealthHistoryChart() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Uptime</p>
-              <p className={`text-xl font-bold ${uptimeColor}`}>{overallUptime}%</p>
+              <p className={`text-xl font-bold ${uptimeColor}`}>{overallUptime === null ? '—' : `${overallUptime}%`}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Avg Latency</p>
-              <p className="text-xl font-bold text-foreground">{avgLatency}ms</p>
+              <p className="text-xl font-bold text-foreground">{avgLatency === null ? '—' : `${avgLatency}ms`}</p>
             </div>
           </div>
         </div>

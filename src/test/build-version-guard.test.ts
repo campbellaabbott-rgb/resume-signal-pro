@@ -1417,6 +1417,9 @@ const PINNED = {
   // floor counts rows; pay figures, OR, quotes, trade terms, the typeahead,
   // ISO country, whole-day ages and the audit's RateLimitError read right;
   // slice_stats.cursorStep records the cursor's two writes.
+  // Also in .91 (wave 2 email-ops): newSince, the saved-search digest's
+  // discovery window (posted_at OR first_seen after X), RPC-blind, echoed on
+  // list and count answers (n306b).
   // sources.ts UNCHANGED.
   buildVersion: "2026-09-09.91",
 };

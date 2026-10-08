@@ -89,5 +89,5 @@ case "$CBUILD" in
 esac
 EH=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/check-error-spikes" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST")
 EBUILD=$(printf '%s' "$EH" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-case "$EBUILD" in check-error-spikes.2026-10-04.*) echo "PASS  check-error-spikes preflight x-fn-build = $EBUILD (alert email defangs browser-written text)";; *) echo "FAIL  check-error-spikes preflight x-fn-build = '${EBUILD}' (want check-error-spikes.2026-10-04.1)";; esac
+if build_ge check-error-spikes "$EBUILD" 2026-10-04 1; then echo "PASS  check-error-spikes preflight x-fn-build = $EBUILD (alert email defangs browser-written text)"; else echo "FAIL  check-error-spikes preflight x-fn-build = '${EBUILD}' (want check-error-spikes.2026-10-04.1 or later)"; fi
 

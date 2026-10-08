@@ -151,12 +151,19 @@ try {
 }
 
 // ---- 4. Heartbeat sentinel reports on itself ----
+// Since 2026-10-08 scan-heartbeat answers only its cron, the service role and
+// the owner's key (a run costs a model call and a full scan), so this script
+// reads the sentinel's LAST run through the public status reader instead of
+// starting one.
 try {
-  const r = await post("scan-heartbeat", {}, 120000);
-  const j = await r.json();
-  const failed = (j.checks || []).filter((c) => !c.passed).map((c) => c.name);
-  record("heartbeat sentinel", j.status === "healthy",
-    `status=${j.status}${failed.length ? `, failing: ${failed.join(", ")}` : ""} (${j.responseTimeMs}ms)`);
+  const r = await fetch(`${URL_BASE}/rest/v1/rpc/get_scan_health_status`, {
+    method: "POST", headers: hdrs, body: "{}", signal: AbortSignal.timeout(30000),
+  });
+  const rows = await r.json();
+  const j = Array.isArray(rows) ? rows[0] ?? {} : rows;
+  const ageMin = j.last_heartbeat_time ? Math.round((Date.now() - Date.parse(j.last_heartbeat_time)) / 60000) : null;
+  record("heartbeat sentinel", j.last_heartbeat_status === "healthy" && ageMin !== null && ageMin <= 20,
+    `last run ${j.last_heartbeat_status ?? "none"} ${ageMin === null ? "(never)" : `${ageMin} min ago`}${Array.isArray(j.issues) && j.issues.length ? `; issues: ${j.issues.join(", ")}` : ""}`);
 } catch (e) {
   record("heartbeat sentinel", false, String(e));
 }

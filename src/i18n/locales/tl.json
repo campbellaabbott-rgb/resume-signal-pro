@@ -5229,7 +5229,7 @@
   },
   "fixPlanConfirm": {
     "title": "Simulan ang mga email ng iyong fix plan",
-    "body": "Apat na maikling email sa loob ng dalawang linggo: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6, at isang tanong sa araw 14. May one-click na unsubscribe ang bawat email.",
+    "body": "Apat na maikling email sa loob ng dalawang linggo: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6, at isang tanong sa araw 14. May link para mag-unsubscribe ang bawat email.",
     "button": "Oo, simulan ang mga email",
     "done": "Tapos na. Darating ang unang email sa loob ng dalawang araw.",
     "already": "May fix plan sequence nang nasimulan para sa address na ito ngayong buwan, kaya walang naidagdag.",
@@ -5237,6 +5237,42 @@
     "invalid": "Expired na o hindi valid ang link na ito. I-email ang bagong report sa iyong susunod na scan para makakuha ng bago.",
     "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
     "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
+    "errorFinal": "Hindi nasimulan ang buong sequence, at hindi ito mauulit ngayong buwan kahit pindutin ulit ang button.",
     "home": "Bumalik sa Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Itigil ang mga email na ito",
+    "searchDigest": "Itigil ang mga digest email para sa naka-save na paghahanap na ito. Hindi maaapektuhan ang iba mong naka-save na paghahanap.",
+    "marketPulse": "Itigil ang buwanang market pulse email sa address na ito.",
+    "scanReport": "Itigil ang lahat ng email mula sa Resume Booster sa address na ito, kasama ang mga fix-plan email na darating pa.",
+    "button": "Oo, itigil na",
+    "done": "Tapos na. Hindi mo na matatanggap ang mga email na ito.",
+    "invalid": "Hindi wasto ang link na ito. Gamitin ang unsubscribe link sa mismong email.",
+    "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
+    "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
+    "home": "Bumalik sa Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "tagline": "Kumita ng komisyon sa mga tool na binibili ng mga ini-refer mo.",
+      "headline": "{{other}} bawat benta ng tool ({{small}} sa mas maliliit na tool)",
+      "detail": "Kumita ng {{other}} kapag ang ini-refer mo ay bumili ng Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan o Freelance Boost, o {{small}} para sa isa sa mas maliliit na tool: keyword fix, cover letter, scan pack, interview coach, career path simulator o apply assistant.",
+      "excluded": "Walang komisyon ang Full Resume Analysis, mga top-up ng scan credit, Pro, Morning Queue at Agent Pass.",
+      "bannerTitle": "Ang komisyon mo",
+      "banner": "{{other}} bawat benta ng tool na ini-refer, {{small}} sa mas maliliit na tool",
+      "linkHint": "Ibahagi ang link na ito para kumita ng {{other}} sa bawat benta ng tool na dala nito ({{small}} sa mas maliliit na tool), na may 30-araw na attribution window",
+      "howItWorks": "Kapag may nag-click sa link mo at bumili ng isa sa mga tool sa loob ng 30 araw, kikita ka ng {{other}}, o {{small}} para sa mas maliit na tool. Walang kita sa Full Resume Analysis, mga credit top-up at mga subscription."
+    },
+    "updates": {
+      "title": "Mga update habang bukas ang pahinang ito",
+      "body": "Tinitingnan ng pahinang ito ang mga bagong click at benta bawat {{seconds}} segundo habang bukas ito, at nagpapakita ng abiso kapag may dumating."
+    },
+    "payout": {
+      "received": "Natanggap ang payout request. Mag-e-email kami para ayusin ang bayad.",
+      "already": "May bukas nang payout request. Mag-e-email kami tungkol dito.",
+      "failed": "Hindi ma-request ang payout. Pakisubukang muli.",
+      "requestedTitle": "Na-request ang payout",
+      "requestedBody": "Mag-e-email kami para ayusin ang bayad."
+    }
   }
 }

@@ -1,6 +1,13 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-08T12:00Z
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+
+// Provable from outside without a key: every response, the preflight
+// included, carries this in x-fn-build.
+const FN_BUILD = 'process-email-queue.2026-10-08.1'
+const BUILD_HEADERS = { 'x-fn-build': FN_BUILD, 'Access-Control-Expose-Headers': 'x-fn-build' }
+const reply = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...BUILD_HEADERS } })
 
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
@@ -79,25 +86,34 @@ async function moveToDlq(
   }
 }
 
+/**
+ * WHEN A QUEUED MESSAGE IS DUE (register L13-39). The fix-plan drip is
+ * enqueued with delays of 2-14 days, and its payload stamps queued_at as the
+ * moment it becomes due (send-scan-report since 2026-10-08). Before that it
+ * stamped the enqueue time, so every drip mail was older than the 60-minute TTL
+ * the moment it became visible and went straight to the dead-letter queue.
+ * Aging from `due_at` when a payload carries one keeps either stamp honest.
+ */
+export function dueAt(payload: Record<string, unknown>, enqueuedAt?: string): string | undefined {
+  const due = typeof payload.due_at === 'string' ? payload.due_at : undefined
+  const queued = typeof payload.queued_at === 'string' ? payload.queued_at : undefined
+  return due ?? queued ?? enqueuedAt
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: BUILD_HEADERS })
   const apiKey = Deno.env.get('LOVABLE_API_KEY')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
   if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
     console.error('Missing required environment variables')
-    return new Response(
-      JSON.stringify({ error: 'Server configuration error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    return reply({ error: 'Server configuration error' }, 500)
   }
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    )
+    return reply({ error: 'Unauthorized' }, 401)
   }
 
   // Defense in depth: verify_jwt=true already requires a valid JWT at the
@@ -106,10 +122,7 @@ Deno.serve(async (req) => {
   const token = authHeader.slice('Bearer '.length).trim()
   const claims = parseJwtClaims(token)
   if (claims?.role !== 'service_role') {
-    return new Response(
-      JSON.stringify({ error: 'Forbidden' }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    )
+    return reply({ error: 'Forbidden' }, 403)
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -121,10 +134,7 @@ Deno.serve(async (req) => {
     .single()
 
   if (state?.retry_after_until && new Date(state.retry_after_until) > new Date()) {
-    return new Response(
-      JSON.stringify({ skipped: true, reason: 'rate_limited' }),
-      { headers: { 'Content-Type': 'application/json' } }
-    )
+    return reply({ skipped: true, reason: 'rate_limited' })
   }
 
   const batchSize = state?.batch_size ?? DEFAULT_BATCH_SIZE
@@ -135,6 +145,7 @@ Deno.serve(async (req) => {
   }
 
   let totalProcessed = 0
+  let forbidden = 0
 
   // 2. Process auth_emails first (priority), then transactional_emails
   for (const queue of ['auth_emails', 'transactional_emails']) {
@@ -198,10 +209,10 @@ Deno.serve(async (req) => {
           ? (failedAttemptsByMessageId.get(payload.message_id) ?? 0)
           : msg.read_ct ?? 0
 
-      // Drop expired messages (TTL exceeded).
-      // Prefer payload.queued_at when present; fall back to PGMQ's enqueued_at
-      // which is always set by the queue.
-      const queuedAt = payload.queued_at ?? msg.enqueued_at
+      // Drop expired messages (TTL exceeded), aged from when each was DUE
+      // (dueAt above): a delayed message is not stale for the days it was
+      // meant to wait.
+      const queuedAt = dueAt(payload ?? {}, msg.enqueued_at)
       if (queuedAt) {
         const ageMs = Date.now() - new Date(queuedAt).getTime()
         const maxAgeMs = ttlMinutes[queue] * 60 * 1000
@@ -322,13 +333,17 @@ Deno.serve(async (req) => {
         })
 
         if (isRateLimited(error)) {
-          await supabase.from('email_send_log').insert({
+          // 'rate_limited' is a status email_send_log's CHECK accepts since
+          // 20261008121000 (register L10-16); before it, this insert was
+          // refused, the error was never read, and throttling left no trace.
+          const { error: rlLogError } = await supabase.from('email_send_log').insert({
             message_id: payload.message_id,
             template_name: payload.label || queue,
             recipient_email: payload.to,
             status: 'rate_limited',
             error_message: errorMsg.slice(0, 1000),
           })
+          if (rlLogError) console.error('Failed to record the provider throttle', { queue, msg_id: msg.msg_id, error: rlLogError })
 
           const retryAfterSecs = getRetryAfterSeconds(error)
           await supabase
@@ -342,20 +357,27 @@ Deno.serve(async (req) => {
             .eq('id', 1)
 
           // Stop processing — remaining messages stay in queue (VT expires, retried next cycle)
-          return new Response(
-            JSON.stringify({ processed: totalProcessed, stopped: 'rate_limited' }),
-            { headers: { 'Content-Type': 'application/json' } }
-          )
+          return reply({ processed: totalProcessed, stopped: 'rate_limited' })
         }
 
-        // 403s are permanent configuration or authorization failures for this
-        // message, so move straight to DLQ and stop processing the rest of the batch.
+        // A 403 is a refusal of THIS message's sender (register L10-01: the
+        // auth mails and the drip send as notify.resumebooster.work, whose DNS
+        // was gone). Only this message goes to the DLQ, with the sender named,
+        // and the run continues: stopping here left every message behind it --
+        // the transactional queue whole, since auth_emails is read first --
+        // starved behind one dead domain, with nothing in the log saying why.
         if (isForbidden(error)) {
-          await moveToDlq(supabase, queue, msg, errorMsg.slice(0, 1000))
-          return new Response(
-            JSON.stringify({ processed: totalProcessed, stopped: 'forbidden' }),
-            { headers: { 'Content-Type': 'application/json' } }
-          )
+          forbidden++
+          console.error('Email sender refused (403): the sending domain is not accepted by the provider. Re-verify it in Lovable Cloud, or restore its DNS.', {
+            queue,
+            msg_id: msg.msg_id,
+            sender_domain: payload.sender_domain ?? null,
+            from: payload.from ?? null,
+            label: payload.label ?? null,
+            error: errorMsg.slice(0, 300),
+          })
+          await moveToDlq(supabase, queue, msg, `403 from the provider for sender ${String(payload.sender_domain ?? payload.from ?? 'unknown')}: ${errorMsg}`.slice(0, 1000))
+          continue
         }
 
         // Log non-429 failures to track real retry attempts.
@@ -380,8 +402,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(
-    JSON.stringify({ processed: totalProcessed }),
-    { headers: { 'Content-Type': 'application/json' } }
-  )
+  return reply({ processed: totalProcessed, ...(forbidden ? { forbidden } : {}) })
 })

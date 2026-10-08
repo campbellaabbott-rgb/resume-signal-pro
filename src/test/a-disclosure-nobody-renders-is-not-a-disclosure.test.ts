@@ -75,6 +75,7 @@ const NOT_RENDERED: Record<string, string> = {
   searchRouteReason: "telemetry, paired with searchRoute.",
   appliedSignature: "a cache token the client compares, not prose. Read as data, not shown.",
   searchId: "click-attribution id, sent back with the click. Never displayed.",
+  newSince: "the discovery window echoed to send-search-digest, which refuses a count or list that does not carry it. No browser sends newSince.",
 };
 
 describe("a disclosure nobody renders is not a disclosure", () => {

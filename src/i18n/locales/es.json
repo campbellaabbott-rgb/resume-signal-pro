@@ -5229,7 +5229,7 @@
   },
   "fixPlanConfirm": {
     "title": "Inicia los correos de tu plan de arreglos",
-    "body": "Cuatro correos breves en dos semanas: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 y una pregunta el día 14. Cada correo permite darse de baja con un clic.",
+    "body": "Cuatro correos breves en dos semanas: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 y una pregunta el día 14. Cada correo incluye un enlace para darse de baja.",
     "button": "Sí, iniciar los correos",
     "done": "Listo. El primer correo llega en dos días.",
     "already": "Ya se inició una secuencia del plan para esta dirección este mes, así que no se programó nada más.",
@@ -5237,6 +5237,42 @@
     "invalid": "Este enlace caducó o no es válido. Envíate un informe nuevo desde tu próximo escaneo para obtener otro.",
     "missing": "Esta página necesita el botón de tu correo del informe.",
     "error": "No se pudo iniciar ahora. Vuelve a pulsar el botón en un momento.",
+    "errorFinal": "No se pudo iniciar la secuencia completa, y volver a pulsar el botón no la reiniciará este mes.",
     "home": "Volver a Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Dejar de recibir estos correos",
+    "searchDigest": "Dejar de recibir los correos de resumen de esta búsqueda guardada. Tus otras búsquedas guardadas no cambian.",
+    "marketPulse": "Dejar de recibir los correos mensuales del pulso del mercado en esta dirección.",
+    "scanReport": "Dejar de recibir todos los correos de Resume Booster en esta dirección, incluidos los correos del plan de mejoras que falten.",
+    "button": "Sí, darme de baja",
+    "done": "Listo. No volverás a recibir estos correos.",
+    "invalid": "Este enlace no es válido. Usa el enlace para darse de baja del propio correo.",
+    "missing": "Esta página necesita el enlace para darse de baja de uno de nuestros correos.",
+    "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
+    "home": "Volver a Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "tagline": "Gana una comisión por las herramientas que compren tus referidos.",
+      "headline": "{{other}} por venta de herramienta ({{small}} en herramientas pequeñas)",
+      "detail": "Ganas {{other}} cuando alguien que recomiendes compra el Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan o Freelance Boost, o {{small}} por una de las herramientas pequeñas: corrección de palabras clave, carta de presentación, paquete de escaneos, coach de entrevistas, simulador de trayectoria profesional o asistente de postulación.",
+      "excluded": "El Full Resume Analysis, las recargas de créditos de escaneo, Pro, Morning Queue y el Agent Pass no generan comisión.",
+      "bannerTitle": "Tu comisión",
+      "banner": "{{other}} por venta de herramienta recomendada, {{small}} en herramientas pequeñas",
+      "linkHint": "Comparte este enlace para ganar {{other}} por cada venta de herramienta que traiga ({{small}} en herramientas pequeñas), con una ventana de atribución de 30 días",
+      "howItWorks": "Cuando alguien hace clic en tu enlace y compra una de las herramientas en un plazo de 30 días, ganas {{other}}, o {{small}} por una herramienta pequeña. El Full Resume Analysis, las recargas de créditos y las suscripciones no generan nada."
+    },
+    "updates": {
+      "title": "Actualizaciones mientras esta página está abierta",
+      "body": "Esta página busca nuevos clics y ventas cada {{seconds}} segundos mientras está abierta y muestra un aviso cuando llega uno."
+    },
+    "payout": {
+      "received": "Solicitud de pago recibida. Te escribiremos por correo para organizar el pago.",
+      "already": "Ya hay una solicitud de pago abierta. Te escribiremos por correo sobre ella.",
+      "failed": "No se pudo solicitar el pago. Inténtalo de nuevo.",
+      "requestedTitle": "Pago solicitado",
+      "requestedBody": "Te escribiremos por correo para organizar el pago."
+    }
   }
 }

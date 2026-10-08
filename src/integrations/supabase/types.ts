@@ -5840,6 +5840,20 @@ export type Database = {
           total_open: number
         }[]
       }
+      get_heartbeat_history: {
+        Args: { p_function?: string; p_hours?: number; p_limit?: number }
+        Returns: {
+          checks_passed: Json
+          created_at: string
+          error_message: string
+          function_name: string
+          id: string
+          probes: Json
+          response_time_ms: number
+          status: string
+          test_passed: boolean
+        }[]
+      }
       get_hiring_trends: {
         Args: never
         Returns: {
@@ -6070,6 +6084,17 @@ export type Database = {
           worst_title: string
           worst_title_events_floor: number
           worst_title_first_at: string
+        }[]
+      }
+      get_recent_heartbeats: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          function_name: string
+          id: string
+          response_time_ms: number
+          status: string
+          test_passed: boolean
         }[]
       }
       get_repost_churn_companies: {

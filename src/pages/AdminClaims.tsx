@@ -33,6 +33,8 @@ interface Claim {
   status: "pending" | "email_confirmed" | "verified" | "rejected";
   created_at: string;
   verified_at: string | null;
+  /** Set by Approve; the company page shows the claimant's website only then. */
+  owner_approved_at?: string | null;
 }
 
 const STATUS_STYLE: Record<Claim["status"], string> = {
@@ -85,7 +87,9 @@ function ClaimsDashboard() {
       }
       toast.success(
         decision === "verified"
-          ? `${claim.company_name ?? claim.company_token} verified — the claimant was emailed.`
+          ? claim.status === "verified"
+            ? `${claim.company_name ?? claim.company_token} approved — its website now shows on the company page.`
+            : `${claim.company_name ?? claim.company_token} verified — the claimant was emailed.`
           : `Claim from ${claim.work_email} rejected.`,
       );
       await load();
@@ -156,10 +160,11 @@ function ClaimsDashboard() {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Requested {new Date(claim.created_at).toLocaleString()}
                   {claim.verified_at ? ` · verified ${new Date(claim.verified_at).toLocaleString()}` : ""}
+                  {claim.status === "verified" && !claim.owner_approved_at ? " · website hidden until you approve" : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {claim.status !== "verified" && (
+                {(claim.status !== "verified" || !claim.owner_approved_at) && (
                   <button
                     type="button"
                     disabled={deciding !== null}

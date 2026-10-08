@@ -80,6 +80,9 @@ const PRIVATE_ROUTES = [
   // The fix-plan confirmation page: opened only from the button in a report
   // mail (#d=...), noindex, nothing to bake for a crawler.
   "/fix-plan/confirm",
+  // The unsubscribe page: opened only from the link in one of our mails
+  // (#list=...&token=...), noindex, nothing to bake for a crawler.
+  "/email/unsubscribe",
 ];
 /** Route families whose every member is private (dev tooling, admin, affiliate redirects). */
 const PRIVATE_PREFIXES = ["/dev/", "/admin/", "/r/"];

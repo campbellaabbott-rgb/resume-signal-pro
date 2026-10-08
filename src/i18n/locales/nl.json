@@ -5229,7 +5229,7 @@
   },
   "fixPlanConfirm": {
     "title": "Start je fix-plan-mails",
-    "body": "Vier korte e-mails in twee weken: de belangrijkste fixes op dag 2, de rest op dag 4, een rescan-herinnering op dag 6 en één vraag op dag 14. Elke e-mail heeft een afmeldlink met één klik.",
+    "body": "Vier korte e-mails in twee weken: de belangrijkste fixes op dag 2, de rest op dag 4, een rescan-herinnering op dag 6 en één vraag op dag 14. Elke e-mail bevat een afmeldlink.",
     "button": "Ja, start de e-mails",
     "done": "Klaar. De eerste e-mail komt over twee dagen.",
     "already": "Voor dit adres is deze maand al een fix-plan-reeks gestart, dus er is niets meer ingepland.",
@@ -5237,6 +5237,42 @@
     "invalid": "Deze link is verlopen of ongeldig. Mail jezelf een nieuw rapport bij je volgende scan om een nieuwe te krijgen.",
     "missing": "Deze pagina heeft de knop uit je rapportmail nodig.",
     "error": "Starten lukt nu niet. Probeer de knop zo meteen opnieuw.",
+    "errorFinal": "De hele reeks kon niet worden gestart, en opnieuw op de knop drukken start hem deze maand niet opnieuw.",
     "home": "Terug naar Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Deze e-mails uitzetten",
+    "searchDigest": "Stop de digest-e-mails voor deze opgeslagen zoekopdracht. Je andere opgeslagen zoekopdrachten blijven ongewijzigd.",
+    "marketPulse": "Stop de maandelijkse marktpuls-e-mails naar dit adres.",
+    "scanReport": "Stop alle e-mails van Resume Booster naar dit adres, ook fixplan-e-mails die nog moeten komen.",
+    "button": "Ja, zet ze uit",
+    "done": "Klaar. Je ontvangt deze e-mails niet meer.",
+    "invalid": "Deze link is niet geldig. Gebruik de afmeldlink in de e-mail zelf.",
+    "missing": "Deze pagina heeft de afmeldlink uit een van onze e-mails nodig.",
+    "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
+    "home": "Terug naar Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "tagline": "Verdien commissie op de tools die je verwijzingen kopen.",
+      "headline": "{{other}} per toolverkoop ({{small}} op kleinere tools)",
+      "detail": "Je verdient {{other}} als iemand die je aanbrengt het Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan of Freelance Boost koopt, of {{small}} voor een van de kleinere tools: keyword-fix, sollicitatiebrief, scanpakket, interviewcoach, loopbaansimulator of sollicitatieassistent.",
+      "excluded": "De Full Resume Analysis, bijgekocht scantegoed, Pro, Morning Queue en de Agent Pass leveren geen commissie op.",
+      "bannerTitle": "Je commissie",
+      "banner": "{{other}} per aangebrachte toolverkoop, {{small}} op kleinere tools",
+      "linkHint": "Deel deze link en verdien {{other}} op elke toolverkoop die hij oplevert ({{small}} op kleinere tools), met een attributievenster van 30 dagen",
+      "howItWorks": "Als iemand op je link klikt en binnen 30 dagen een van de tools koopt, verdien je {{other}}, of {{small}} voor een kleinere tool. De Full Resume Analysis, bijgekocht scantegoed en abonnementen leveren niets op."
+    },
+    "updates": {
+      "title": "Updates zolang deze pagina open is",
+      "body": "Deze pagina controleert elke {{seconds}} seconden op nieuwe klikken en verkopen zolang hij open is, en toont een melding zodra er een binnenkomt."
+    },
+    "payout": {
+      "received": "Uitbetalingsverzoek ontvangen. We mailen je om de betaling te regelen.",
+      "already": "Er staat al een uitbetalingsverzoek open. We mailen je erover.",
+      "failed": "De uitbetaling kon niet worden aangevraagd. Probeer het opnieuw.",
+      "requestedTitle": "Uitbetaling aangevraagd",
+      "requestedBody": "We mailen je om de betaling te regelen."
+    }
   }
 }

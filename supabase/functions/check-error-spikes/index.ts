@@ -1,14 +1,30 @@
-// deploy-stamp: 2026-10-04T20:00Z
+// deploy-stamp: 2026-10-08T12:00Z
+//
+// IT NEVER RAN (register L10-20). Nothing called it: no cron, no page, no
+// script, and a header-less cron could not have passed its admin-key check
+// anyway, while 20261004110000 says browser errors "are mailed to the owner by
+// check-error-spikes". Since 2026-10-08 it answers the owner's ADMIN_API_KEY
+// (constant time) or the alerts cron key (x-alerts-cron, the vault key
+// check-alerts uses, checked by alerts_cron_key_matches), and 20261008128000
+// runs it every 15 minutes, the window detect_user_error_spikes looks at.
+// It mails the owner ONLY when a visitor's errors spike, at most once in six
+// hours (mail_door_take), from our alerts sender; it used to mail on any error
+// in the window, which on a schedule would be a mail for every browser hiccup.
+// The send's answer is read and said in the response.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { defang } from './defang.ts';
+import { keyMatches } from '../_shared/admin-key.ts';
 
 // Provable from outside without the key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'check-error-spikes.2026-10-04.1';
+const FN_BUILD = 'check-error-spikes.2026-10-08.1';
+
+/** At most one spike mail per this many minutes, however often it runs. */
+const MAIL_COOLDOWN_MINUTES = 360;
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-alerts-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   'x-fn-build': FN_BUILD,
 };
@@ -40,16 +56,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify admin API key
-    const adminApiKey = Deno.env.get('ADMIN_API_KEY');
-    const authHeader = req.headers.get('x-admin-key') || req.headers.get('authorization')?.replace('Bearer ', '');
-    
-    if (!adminApiKey || authHeader !== adminApiKey) {
+    const unauthorized = () => new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    // The owner's key, or the alerts cron's. Anything else is refused before
+    // a client exists.
+    const byOwner = keyMatches(req.headers.get('x-admin-key') ?? '', Deno.env.get('ADMIN_API_KEY') ?? '');
+    const cronKey = req.headers.get('x-alerts-cron') ?? '';
+    if (!byOwner && cronKey.length < 32) {
       console.log('[ErrorCheck] Unauthorized access attempt');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return unauthorized();
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -58,6 +75,13 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    if (!byOwner) {
+      const { data: matches, error: keyError } = await supabase.rpc('alerts_cron_key_matches', { p_key: cronKey });
+      if (keyError || matches !== true) {
+        if (keyError) console.error('[ErrorCheck] cron key check failed:', keyError.message?.slice(0, 160));
+        return unauthorized();
+      }
+    }
 
     // Detect user error spikes
     const { data: spikes, error: spikeError } = await supabase.rpc('detect_user_error_spikes', {
@@ -101,10 +125,21 @@ Deno.serve(async (req) => {
     console.log(`[ErrorCheck] ${activeSpikes.length} user spikes detected`);
     console.log(`[ErrorCheck] ${recentDiagnostics.length} error types in last hour`);
 
-    // Send alert if there are ANY errors or spikes
-    const hasIssues = allRecentErrors.length > 0 || activeSpikes.length > 0;
-    
-    if (hasIssues && adminEmail && resendApiKey) {
+    // A SPIKE is the alert: a visitor whose errors jumped past their own
+    // baseline. Errors alone are in the response and on /errors. And one
+    // mail per cooldown, so a spike that lasts an hour is one message.
+    let mailed = false;
+    let mailSkipped: string | null = activeSpikes.length === 0 ? 'no spike' : null;
+    if (!mailSkipped && (!adminEmail || !resendApiKey)) mailSkipped = 'ADMIN_EMAIL or RESEND_API_KEY not set';
+    if (!mailSkipped) {
+      const { data: due, error: doorErr } = await supabase.rpc('mail_door_take', {
+        p_door: 'check-error-spikes:owner', p_bucket: 'all', p_max: 1, p_window_minutes: MAIL_COOLDOWN_MINUTES,
+      });
+      if (doorErr) mailSkipped = 'cooldown count unavailable';
+      else if (due !== true) mailSkipped = 'cooldown: a spike mail went out in the last 6 hours';
+    }
+
+    if (!mailSkipped) {
       // Every string below that came from error_telemetry was written by a
       // browser -- by anyone holding the publishable key -- so each passes
       // through defang() before it reaches the owner's inbox: no clickable
@@ -140,7 +175,7 @@ ${spikeDetails}
 ${diagnosticSummary || 'No errors in the last hour'}
 
 ---
-This is an automated alert from ResumeBee error monitoring.
+Resume Booster error monitoring (check-error-spikes): at most one mail every 6 hours.
       `.trim();
 
       try {
@@ -151,19 +186,22 @@ This is an automated alert from ResumeBee error monitoring.
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'ResumeBee Alerts <alerts@resend.dev>',
+            from: 'Resume Booster Alerts <alerts@resend.dev>',
             to: adminEmail,
-            subject: `[Error Report] ${allRecentErrors.length} Error(s) | ${activeSpikes.length} Spike(s)`,
+            subject: `[Error spike] ${activeSpikes.length} visitor(s) | ${allRecentErrors.length} error(s) in 15 min`,
             text: emailBody
           })
         });
 
         if (!emailRes.ok) {
-          console.error('Failed to send alert email:', await emailRes.text());
+          mailSkipped = `send refused: HTTP ${emailRes.status}`;
+          console.error('Failed to send alert email:', (await emailRes.text()).slice(0, 200));
         } else {
+          mailed = true;
           console.log('Alert email sent successfully');
         }
       } catch (emailError) {
+        mailSkipped = 'send threw';
         console.error('Email sending error:', emailError);
       }
     }
@@ -194,6 +232,8 @@ This is an automated alert from ResumeBee error monitoring.
         recent_errors_count: allRecentErrors.length,
         recent_errors: allRecentErrors.slice(0, 20),
         spikes_found: activeSpikes.length,
+        mailed,
+        mail_skipped: mailSkipped,
         spikes: activeSpikes,
         diagnostics: recentDiagnostics.slice(0, 10)
       }),

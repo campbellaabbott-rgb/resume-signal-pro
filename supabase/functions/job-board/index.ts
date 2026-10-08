@@ -7383,7 +7383,7 @@ const DID_YOU_MEAN: Record<string, string> = {
 
 function searchDisclosures(
   body: Record<string, unknown>,
-  applied: { salaryFloor?: number | null; postedAfter?: string | null; excludeAgencies?: boolean; hasDescription?: boolean },
+  applied: { salaryFloor?: number | null; postedAfter?: string | null; newSince?: string | null; excludeAgencies?: boolean; hasDescription?: boolean },
   maxAgeClamped = false,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -7410,6 +7410,8 @@ function searchDisclosures(
   // out loud because it changes what the filter returns: the same 24-hour
   // question was 467 rows on crawl time and 90 on the company date.
   if (applied.postedAfter) out.postedAfterUsesStatedDate = true;
+  // The digest's window, echoed: send-search-digest refuses an answer without it.
+  if (applied.newSince) out.newSince = applied.newSince;
   // The agency opt-out, named back like every other row-selecting choice: a
   // filter the page cannot show is one the reader cannot take off, and a
   // total that quietly omits the disclosed-agency inventory reads as "the
@@ -11458,6 +11460,8 @@ async function serveList(
     if (applied.excludeAgencies) q = q.eq("agency", false);
     // Rationale: docs/job-board-index-notes.md#n306-applied-postedafter-q-q-gt-posted-at
     if (applied.postedAfter) q = q.gt("posted_at", applied.postedAfter);
+    // Rationale: docs/job-board-index-notes.md#n306b-applied-newsince
+    if (applied.newSince) q = q.or(`posted_at.gt."${applied.newSince}",first_seen.gt."${applied.newSince}"`);
     // "Posted this week" quick filter: company-stated dates ONLY (posted_at,
     // never first_seen — our discovery time can't make a posting fresh).
     // Undated postings are excluded by the filter, honestly; the UI says so.
@@ -11617,6 +11621,7 @@ async function serveList(
     // Rationale: docs/job-board-index-notes.md#n320-counthonesty
     const countHonesty = {
       ...(ignoredFilters.length ? { ignoredFilters } : {}),
+      ...(applied.newSince ? { newSince: applied.newSince } : {}),
       ...(maxAgeClamped ? { maxAgeClampedTo: 30 } : {}),
       // Spread LAST in every count exit, so under an exclusion it overrides the
       // exit's own total — a count never sees the exclusion predicate (see

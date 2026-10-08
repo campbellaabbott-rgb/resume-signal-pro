@@ -19,7 +19,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // Provable from outside without the key: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-10-08.1: the owner's catalogue
 // reader client_callable_unlisted_names (ADMIN_CATALOGUE_RPCS).
-const FN_BUILD = "admin-ops.2026-10-08.1";
+const FN_BUILD = "admin-ops.2026-10-08.2";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",

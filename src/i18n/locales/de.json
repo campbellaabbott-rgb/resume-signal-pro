@@ -5229,7 +5229,7 @@
   },
   "fixPlanConfirm": {
     "title": "Starten Sie Ihre Fix-Plan-E-Mails",
-    "body": "Vier kurze E-Mails über zwei Wochen: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 und eine Frage an Tag 14. Jede E-Mail lässt sich mit einem Klick abbestellen.",
+    "body": "Vier kurze E-Mails über zwei Wochen: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 und eine Frage an Tag 14. Jede E-Mail enthält einen Abmeldelink.",
     "button": "Ja, E-Mails starten",
     "done": "Erledigt. Die erste E-Mail kommt in zwei Tagen.",
     "already": "Für diese Adresse wurde diesen Monat bereits eine Fix-Plan-Sequenz gestartet, daher wurde nichts weiter eingeplant.",
@@ -5237,6 +5237,42 @@
     "invalid": "Dieser Link ist abgelaufen oder ungültig. Senden Sie sich beim nächsten Scan einen neuen Bericht, um einen neuen zu erhalten.",
     "missing": "Diese Seite benötigt den Button aus Ihrer Bericht-E-Mail.",
     "error": "Start gerade nicht möglich. Versuchen Sie den Button gleich noch einmal.",
+    "errorFinal": "Die Serie konnte nicht vollständig gestartet werden, und ein erneuter Klick startet sie diesen Monat nicht neu.",
     "home": "Zurück zu Resume Booster"
+  },
+  "emailUnsubscribe": {
+    "title": "Diese E-Mails abbestellen",
+    "searchDigest": "Die Digest-E-Mails für diese gespeicherte Suche beenden. Ihre anderen gespeicherten Suchen bleiben unverändert.",
+    "marketPulse": "Die monatlichen Marktpuls-E-Mails an diese Adresse beenden.",
+    "scanReport": "Alle E-Mails von Resume Booster an diese Adresse beenden, auch noch ausstehende Fix-Plan-E-Mails.",
+    "button": "Ja, abbestellen",
+    "done": "Erledigt. Sie erhalten diese E-Mails nicht mehr.",
+    "invalid": "Dieser Link ist ungültig. Nutzen Sie den Abmeldelink in der E-Mail selbst.",
+    "missing": "Diese Seite braucht den Abmeldelink aus einer unserer E-Mails.",
+    "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
+    "home": "Zurück zu Resume Booster"
+  },
+  "affiliates": {
+    "commission": {
+      "tagline": "Verdienen Sie eine Provision auf die Tools, die Ihre Empfehlungen kaufen.",
+      "headline": "{{other}} pro Tool-Verkauf ({{small}} bei kleineren Tools)",
+      "detail": "Sie verdienen {{other}}, wenn jemand über Ihre Empfehlung das Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan oder Freelance Boost kauft, oder {{small}} für eines der kleineren Tools: Keyword-Fix, Anschreiben, Scan-Paket, Interview-Coach, Karrierepfad-Simulator oder Bewerbungsassistent.",
+      "excluded": "Für die Full Resume Analysis, Aufladungen von Scan-Guthaben, Pro, Morning Queue und den Agent Pass gibt es keine Provision.",
+      "bannerTitle": "Ihre Provision",
+      "banner": "{{other}} pro vermitteltem Tool-Verkauf, {{small}} bei kleineren Tools",
+      "linkHint": "Teilen Sie diesen Link und verdienen Sie {{other}} an jedem Tool-Verkauf, den er bringt ({{small}} bei kleineren Tools), mit 30 Tagen Zuordnungsfenster",
+      "howItWorks": "Wenn jemand Ihren Link anklickt und innerhalb von 30 Tagen eines der Tools kauft, verdienen Sie {{other}}, oder {{small}} bei einem kleineren Tool. Die Full Resume Analysis, Guthaben-Aufladungen und Abos bringen nichts."
+    },
+    "updates": {
+      "title": "Aktualisierungen, solange diese Seite offen ist",
+      "body": "Diese Seite prüft alle {{seconds}} Sekunden auf neue Klicks und Verkäufe, solange sie geöffnet ist, und zeigt eine Benachrichtigung, sobald einer eintrifft."
+    },
+    "payout": {
+      "received": "Auszahlungsanfrage erhalten. Wir melden uns per E-Mail, um die Zahlung abzustimmen.",
+      "already": "Es ist bereits eine Auszahlungsanfrage offen. Wir melden uns dazu per E-Mail.",
+      "failed": "Die Auszahlung konnte nicht angefragt werden. Bitte versuchen Sie es erneut.",
+      "requestedTitle": "Auszahlung angefragt",
+      "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
+    }
   }
 }

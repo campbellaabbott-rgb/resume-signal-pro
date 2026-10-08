@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,8 +85,12 @@ function SectionHeader({ title, description }: { title: string; description: str
   );
 }
 
+/** How often the page re-reads the telemetry while auto-refresh is on. */
+const ERROR_POLL_MS = 30_000;
+
 function ErrorDashboardContent() {
   const [errors, setErrors] = useState<ErrorTelemetry[]>([]);
+  const errorsRef = useRef<ErrorTelemetry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isLive, setIsLive] = useState(true);
@@ -113,9 +117,21 @@ function ErrorDashboardContent() {
         return;
       }
 
-      setErrors((result?.data as ErrorTelemetry[]) || []);
+      const next = (result?.data as ErrorTelemetry[]) || [];
+      // What arrived since the last read: rows whose id the page had not seen.
+      const prev = errorsRef.current;
+      if (prev.length) {
+        const seen = new Set(prev.map((e) => e.id));
+        const fresh = next.filter((e) => !seen.has(e.id));
+        setNewErrorCount(fresh.length);
+        const critical = fresh.find((e) => getErrorSeverity(e) === 'critical');
+        if (critical) toast.error(`Critical error: ${critical.error_code}`, { description: critical.error_message || 'Server error detected' });
+      } else {
+        setNewErrorCount(0);
+      }
+      errorsRef.current = next;
+      setErrors(next);
       setLastUpdated(new Date());
-      setNewErrorCount(0);
     } catch (err) {
       console.error('Error fetching errors:', err);
     } finally {
@@ -129,43 +145,15 @@ function ErrorDashboardContent() {
     fetchErrors();
   }, [fetchErrors]);
 
-  // Real-time subscription
+  // Auto-refresh by asking (register L3-10). This subscribed to Realtime on
+  // error_telemetry, which RLS denies the browser (an insert-only policy), so
+  // nothing ever arrived under a pulsing "Live" badge and the page never
+  // polled. It re-reads through get-error-telemetry (the owner's key) instead.
   useEffect(() => {
     if (!isLive) return;
-
-    const channel = supabase
-      .channel('error-telemetry-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'error_telemetry'
-        },
-        (payload) => {
-          console.log('New error received:', payload);
-          const newError = payload.new as ErrorTelemetry;
-          
-          setErrors(prev => [newError, ...prev].slice(0, 1000));
-          setNewErrorCount(prev => prev + 1);
-          setLastUpdated(new Date());
-          
-          const severity = getErrorSeverity(newError);
-          if (severity === 'critical') {
-            toast.error(`Critical error: ${newError.error_code}`, {
-              description: newError.error_message || 'Server error detected',
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isLive]);
+    const id = setInterval(() => { void fetchErrors(); }, ERROR_POLL_MS);
+    return () => clearInterval(id);
+  }, [isLive, fetchErrors]);
 
   const handleRefresh = () => {
     setLoading(true);
@@ -175,7 +163,7 @@ function ErrorDashboardContent() {
 
   const toggleLive = () => {
     setIsLive(prev => !prev);
-    toast(isLive ? 'Live updates paused' : 'Live updates resumed');
+    toast(isLive ? 'Auto-refresh paused' : 'Auto-refresh resumed');
   };
 
   const exportToCSV = () => {
@@ -284,7 +272,7 @@ function ErrorDashboardContent() {
                 className="flex items-center gap-1.5"
               >
                 <span className={`h-2 w-2 rounded-full ${isLive ? 'bg-green-400 animate-pulse' : 'bg-muted-foreground'}`} />
-                {isLive ? 'Live' : 'Paused'}
+                {isLive ? `Auto-refresh ${ERROR_POLL_MS / 1000}s` : 'Paused'}
               </Badge>
               
               <Button

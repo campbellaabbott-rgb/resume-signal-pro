@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
-import { useAffiliateRealtime } from '@/hooks/use-affiliate-realtime';
+import { AFFILIATE_POLL_MS, useAffiliateUpdates } from '@/hooks/use-affiliate-realtime';
+import { AFFILIATE_COMMISSION_CENTS, formatUsd } from '@/config/affiliate-commission';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +53,9 @@ interface ClickData {
 }
 
 export default function Affiliates() {
+  const { t } = useTranslation();
+  // What the server pays (register L13-63): flat amounts, never a percentage.
+  const rate = { other: formatUsd(AFFILIATE_COMMISSION_CENTS.other), small: formatUsd(AFFILIATE_COMMISSION_CENTS.smallTool) };
   const { 
     session, 
     isLoading, 
@@ -72,19 +77,25 @@ export default function Affiliates() {
   const [clickHistory, setClickHistory] = useState<ClickData[]>([]);
   const [isLoadingClicks, setIsLoadingClicks] = useState(false);
 
-  // Real-time notifications for clicks and conversions
-  useAffiliateRealtime({
-    affiliateId: dashboardData?.affiliate?.id || null,
+  // New clicks and sales, read every 30 s while the page is open (register
+  // L3-10: the Realtime subscription could never receive a row).
+  useAffiliateUpdates({
     enabled: isAuthenticated,
-    onNewClick: () => {
-      // Refresh dashboard when new click arrives
-      fetchDashboard().catch(console.error);
-    },
-    onNewConversion: () => {
-      // Refresh dashboard when new conversion arrives
-      fetchDashboard().catch(console.error);
-    },
+    stats: dashboardData?.stats,
+    refresh: fetchDashboard,
   });
+
+  /** Request Payout: a real server record, or an error the button shows. */
+  const requestPayout = async (): Promise<'requested' | 'already'> => {
+    if (!session?.sessionToken) throw new Error(t('affiliates.payout.failed', 'Could not request the payout. Please try again.'));
+    const { data, error } = await supabase.functions.invoke('affiliate-payout-request', { body: { sessionToken: session.sessionToken } });
+    if (!error && (data as { status?: string } | null)?.status === 'requested') return 'requested';
+    const ctx = (error as { context?: Response } | null)?.context;
+    if (ctx && typeof ctx.status === 'number' && ctx.status === 409) return 'already';
+    let message = '';
+    try { message = String(((await ctx?.clone().json()) as { error?: string } | undefined)?.error ?? ''); } catch { /* no body */ }
+    throw new Error(message || t('affiliates.payout.failed', 'Could not request the payout. Please try again.'));
+  };
   useEffect(() => {
     if (isAuthenticated) {
       fetchDashboard().catch((err) => {
@@ -191,16 +202,19 @@ export default function Affiliates() {
             <CardDescription>
               {isLoginMode 
                 ? 'Sign in to access your affiliate dashboard' 
-                : 'Earn rewards for every sale you refer!'}
+                : t('affiliates.commission.tagline', 'Earn a commission on the tools your referrals buy.')}
             </CardDescription>
             {/* Commission disclosure */}
             <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <span className="font-bold text-lg text-primary">20% Commission</span>
+                <span className="font-bold text-lg text-primary">{t('affiliates.commission.headline', '{{other}} per tool sale ({{small}} on smaller tools)', rate)}</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Earn <span className="font-semibold text-foreground">20%</span> on every sale you refer
+                {t('affiliates.commission.detail', 'Earn {{other}} when someone you refer buys the Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan or Freelance Boost, or {{small}} for one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.', rate)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t('affiliates.commission.excluded', 'The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 30-day cookie • Paid monthly
@@ -283,8 +297,9 @@ export default function Affiliates() {
               <TrendingUp className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="font-semibold">Your Commission Rate</p>
-              <p className="text-sm text-muted-foreground">20% of every sale you refer</p>
+              <p className="font-semibold">{t('affiliates.commission.bannerTitle', 'Your commission')}</p>
+              <p className="text-sm text-muted-foreground">{t('affiliates.commission.banner', '{{other}} per referred tool sale, {{small}} on smaller tools', rate)}</p>
+              <p className="text-xs text-muted-foreground">{t('affiliates.commission.excluded', 'The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.')}</p>
             </div>
           </div>
           <Badge variant="secondary" className="text-primary border-primary/30">
@@ -299,7 +314,7 @@ export default function Affiliates() {
               <div>
                 <h3 className="font-semibold mb-1">Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Share this link to earn <span className="font-semibold text-primary">20%</span> on every sale (30-day attribution window)
+                  {t('affiliates.commission.linkHint', 'Share this link to earn {{other}} on each tool sale it brings ({{small}} on smaller tools), with a 30-day attribution window', rate)}
                 </p>
                 <code className="text-xs bg-background px-2 py-1 rounded border break-all">
                   {getReferralLink()}
@@ -691,7 +706,7 @@ export default function Affiliates() {
               <div>
                 <p className="font-medium">Track Conversions</p>
                 <p className="text-sm text-muted-foreground">
-                  When someone clicks your link and makes a purchase within 30 days, you earn {formatCurrency(affiliate?.commission_amount || 500)}
+                  {t('affiliates.commission.howItWorks', 'When someone clicks your link and buys one of the tools within 30 days, you earn {{other}}, or {{small}} for a smaller tool. The Full Resume Analysis, scan credit top-ups and subscriptions earn nothing.', rate)}
                 </p>
               </div>
             </div>
@@ -722,6 +737,7 @@ export default function Affiliates() {
               <PayoutRequest
                 pendingPayout={stats?.pending_payout || 0}
                 totalPaidOut={stats?.paid_out || 0}
+                onRequestPayout={requestPayout}
               />
               
               {/* Payout History */}
@@ -771,10 +787,9 @@ export default function Affiliates() {
                     <Bell className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-medium">Real-time Notifications</h4>
+                    <h4 className="font-medium">{t('affiliates.updates.title', 'Updates while this page is open')}</h4>
                     <p className="text-sm text-muted-foreground mt-1">
-                      You'll receive instant toast notifications when someone clicks your link or makes a purchase.
-                      Keep this page open to see updates in real-time!
+                      {t('affiliates.updates.body', 'This page checks for new clicks and sales every {{seconds}} seconds while it is open, and shows a notification when one arrives.', { seconds: AFFILIATE_POLL_MS / 1000 })}
                     </p>
                   </div>
                 </div>

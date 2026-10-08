@@ -6585,6 +6585,30 @@ Undated rows now fall OUT of a postedAfter window rather than counting as
 brand new. That is the honest reading of "posted after X" and it is
 disclosed, not silent.
 
+## n306b-applied-newsince
+
+Above: `if (applied.newSince) q = q.or(...posted_at.gt..., first_seen.gt...)`
+
+THE DIGEST ASKS A DIFFERENT QUESTION FROM THE BADGE (.91, wave 2 email-ops,
+register L10-02). n306 moved postedAfter onto the employer's stated date,
+which is right for "posted after X" and wrong for "new to me since my last
+email": a Workday posting dated three days ago and first crawled today was
+outside every later window, and an undated posting could never enter one,
+so a watch on an employer whose feed carries no dates could never fire.
+
+newSince is the discovery window the saved-search digest sends instead:
+posted_at > X OR first_seen > X. The OR catches late discovery and undated
+rows; the digest dedupes against search_digest_sent (30 days), so a
+first_seen reset or an employer re-dating a posting it already mailed does
+not mail it twice. Both columns are indexed (posted_at_idx,
+first_seen_idx), so the planner can BitmapOr them.
+
+RPC-blind on purpose: no search or count RPC takes it, so a request
+carrying it goes through buildQuery and an exact count. Echoed back as
+`newSince` on list and count answers; the digest refuses an answer that
+does not carry it, so an older bundle that ignores the key cannot make the
+digest mail an unwindowed search as "new".
+
 ## n307-applied-country-applied-country-inclu
 
 Above: `if (applied.country && applied.country.includes(",")) return null;`
