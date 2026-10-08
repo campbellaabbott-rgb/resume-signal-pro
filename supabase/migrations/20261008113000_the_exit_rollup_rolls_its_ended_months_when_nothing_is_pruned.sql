@@ -9,22 +9,23 @@
 -- roll-up keeps running every night either way"; it has rolled nothing since.
 -- Same register item as the closure rollup (L13-16), same file, same defect.
 --
--- THE FIX, as for closures: the rollup reads every whole month that has ended
--- (exited_at before the first instant of the current month), from the first
--- month not already rolled after it ended; an exit row is written at the
--- moment it is observed, so an ended month cannot gain rows and a month
--- rolled after its end is final. NULL rolls and deletes nothing; a day count
--- also deletes the whole months that ended on or before the cutoff, and only
--- where the summary row is final. Every aggregate, dimension and the closed
--- exit_reason vocabulary are the 20261001090000 text; the grants and the
--- census status (service_role only) are unchanged.
+-- THE FIX, as for closures: each run rolls ONE whole month that has ended --
+-- the first month after the newest one already rolled after it ended that
+-- holds a row the rollup reads; an exit row is written at the moment it is
+-- observed, so an ended month cannot gain rows and a month rolled after its
+-- end is final. NULL rolls and deletes nothing; a day count also deletes the
+-- whole months that ended on or before the cutoff, and only where the summary
+-- row is final. The rollup's last final month is from the 90-day prune era,
+-- so the job catches up on the months since over its first nights, one a
+-- night. Every aggregate, dimension and the closed exit_reason vocabulary are
+-- the 20261001090000 text; the grants and the census status (service_role
+-- only) are unchanged.
 --
 -- THE CRON: like the closure job, this one was re-scheduled bare by
 -- 20261001090000 after 20261004010000 had given it its header, so it is held
--- to two minutes (get_cron_health 2026-10-08: timeout null). The first run
--- under this file reads every ended month since the rollup's last final month
--- (July, August and September), so the header rises from 300s to ten minutes
--- and the job's command is rewritten in place to set it.
+-- to two minutes (get_cron_health 2026-10-08: timeout null). The header rises
+-- from 300s to ten minutes, as for closures, and the job's command is
+-- rewritten in place to set it.
 --
 --    REJECTED -- ROLL EVERY ENDED MONTH ON EVERY RUN. No watermark, one line
 --    shorter. With the prune off the raw ledger only grows, so every nightly
@@ -51,17 +52,25 @@ DECLARE
     WHEN p_keep_days IS NULL OR p_keep_days <= 0 THEN NULL
     ELSE now() - make_interval(days => GREATEST(p_keep_days, 30))
   END;
-  -- Every month that has ended: exited_at before this instant.
-  v_roll_to timestamptz := date_trunc('month', now());
-  -- The first month not yet rolled after it ended.
+  -- The month after the newest one already rolled after it ended.
+  v_after timestamptz;
+  -- The month this run rolls: the first one after v_after that holds a row
+  -- the rollup reads, if it has ended. One month per run.
   v_roll_from timestamptz;
+  v_roll_to timestamptz;
   v_months integer := 0;
   v_pruned integer := 0;
 BEGIN
-  SELECT max(rr.month) + interval '1 month' INTO v_roll_from
+  SELECT max(rr.month) + interval '1 month' INTO v_after
     FROM public.job_board_exit_rollup rr
    WHERE rr.rolled_at >= rr.month + interval '1 month';
-  v_roll_from := COALESCE(v_roll_from, '-infinity'::timestamptz);
+  -- Found from the ledger, so a month with no rollable row cannot stall it.
+  SELECT date_trunc('month', min(e.exited_at)) INTO v_roll_from
+    FROM public.job_board_exits e
+   WHERE e.exited_at >= COALESCE(v_after, '-infinity'::timestamptz)
+     AND e.company_token <> ''
+     AND e.exit_reason IN ('removed', 'aged_out', 'backdated', 'board_dormant', 'untracked');
+  v_roll_to := LEAST(date_trunc('month', now()), v_roll_from + interval '1 month');
 
   -- 1. Roll up WHOLE months only. Every table is aliased and every column
   -- qualified: in plpgsql the RETURNS TABLE names are OUT parameters in scope
@@ -231,9 +240,10 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.roll_up_and_prune_exits(integer) IS
-  'Summarises WHOLE calendar months of job_board_exits that have ended into '
-  'job_board_exit_rollup, from the first month not already rolled after it '
-  'ended, and -- only when p_keep_days is a positive number -- deletes the rows '
+  'Summarises ONE WHOLE calendar month of job_board_exits per run into '
+  'job_board_exit_rollup -- the first month that has ended, holds a row, and '
+  'was not already rolled after it ended -- and -- only when p_keep_days is a '
+  'positive number -- deletes the rows '
   'of whole months that ended on or before now() - p_keep_days days and carry a '
   'final summary row (20261008113000). With NULL, which the '
   '''job-board-exits-rollup-retention'' cron passes, it rolled nothing between '

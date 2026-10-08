@@ -92,11 +92,11 @@ in all nine locales.
 - **The /jobs ticker** is the last 24 hours, not "today since 00:00 UTC".
 - **The ATS-score benchmark** drops our own synthetic test scans (about 22 of
   375 rows).
-- **The closure, exit and layoff rollups** now actually roll. The first
-  closure run (03:17 UTC) and exit run (04:17 UTC) after apply read every
-  ended month since the ledgers' last final month — July, August and September
-  — once; after that each reads one month at most. Nothing is pruned: both
-  crons still pass `NULL`. Both jobs had been re-scheduled bare by
+- **The closure, exit and layoff rollups** now actually roll. The closure job
+  (03:17 UTC) and exit job (04:17 UTC) roll one whole ended month per night —
+  July, August and September over the first three nights after apply, then
+  each month on the first night after it ends; a run never reads more than a
+  month of the ledger. Nothing is pruned: both crons still pass `NULL`. Both jobs had been re-scheduled bare by
   20261001090000 (applied after 20261004010000), so they were held to the
   session's two minutes; the commands now set the ten-minute header.
 - **/pay-transparency** says "could not read this figure just now" instead of
@@ -118,9 +118,9 @@ PASS or INFO. Also watch:
   465k-closure pglite model (3.5 s → 7.3 s); its share of the run was roughly
   40–80 s, so expect the run to land near 210–290 s with zero timeouts.
   `refresh-explore-cache` (95–131 s, header 900 s) also calls the curves.
-- The two rollup jobs: `ch_timeout = 10min`, and their first runs succeeding
-  (INFO lines (h2)). A failed first run leaves the rollup where it is and
-  deletes nothing.
+- The two rollup jobs: `ch_timeout = 10min`, and their nightly runs
+  succeeding (INFO lines (h2)), one ended month each. A failed run rolls back
+  whole, deletes nothing, and the next night retries that one month.
 - J&J (`jj~wd5~JJ`) on the employer page: the "Filled N roles" figure should
   sit well under the 2,687 events.
 

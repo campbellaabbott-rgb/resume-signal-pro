@@ -119,8 +119,13 @@ describe("the closure rollup", () => {
     expect(await closureMonths(oldDb)).toEqual([]);
   });
 
-  it("now rolls every month that has ended on NULL, whole, and deletes nothing", async () => {
-    await newDb.query(`SELECT * FROM public.roll_up_and_prune_closures_new(NULL)`);
+  it("now rolls the months that have ended on NULL, one whole month a run, deletes nothing, and stops at the current month", async () => {
+    const run = async () => (await newDb.query<{ months_rolled: number }>(`SELECT * FROM public.roll_up_and_prune_closures_new(NULL)`)).rows[0].months_rolled;
+    expect(await run()).toBe(1);
+    expect(await closureMonths(newDb)).toEqual([{ month: "2026-07-01", total: 31 }]);
+    expect(await run()).toBe(1);
+    expect(await run()).toBe(1);
+    expect(await run(), "October has not ended").toBe(0);
     expect(await closureMonths(newDb)).toEqual([
       { month: "2026-07-01", total: 31 }, { month: "2026-08-01", total: 31 }, { month: "2026-09-01", total: 30 },
     ]);
@@ -138,6 +143,14 @@ describe("the closure rollup", () => {
     const again = (await newDb.query<{ rows_pruned: number }>(`SELECT * FROM public.roll_up_and_prune_closures_new_next(59)`)).rows[0];
     expect(again.rows_pruned).toBe(0);
     expect((await closureMonths(newDb)).map((m) => m.total)).toEqual([31, 31, 30]);
+  });
+
+  it("a month with no rows does not stall the next one", async () => {
+    const db = await fresh();
+    await db.exec(definitionAt(NEW_CLOSURES, "roll_up_and_prune_closures", AT, "new"));
+    await db.exec(`DELETE FROM public.job_board_closures WHERE closed_at >= '2026-08-01' AND closed_at < '2026-09-01'`);
+    for (let i = 0; i < 3; i++) await db.query(`SELECT * FROM public.roll_up_and_prune_closures_new(NULL)`);
+    expect(await closureMonths(db)).toEqual([{ month: "2026-07-01", total: 31 }, { month: "2026-09-01", total: 30 }]);
   });
 
   it("teeth: rolled by instant, two nights in a row kept one day of the month the cutoff cut and deleted the rest", async () => {
@@ -163,8 +176,8 @@ describe("the exit rollup", () => {
     expect(await exitMonths(oldDb)).toEqual([]);
   });
 
-  it("now rolls every month that has ended on NULL and deletes nothing; a day count deletes exactly what the summary holds", async () => {
-    await newDb.query(`SELECT * FROM public.roll_up_and_prune_exits_new(NULL)`);
+  it("now rolls the months that have ended on NULL, one a run, and deletes nothing; a day count deletes exactly what the summary holds", async () => {
+    for (let i = 0; i < 4; i++) await newDb.query(`SELECT * FROM public.roll_up_and_prune_exits_new(NULL)`);
     expect(await exitMonths(newDb)).toEqual([
       { month: "2026-07-01", total: 31 }, { month: "2026-08-01", total: 31 }, { month: "2026-09-01", total: 30 },
     ]);

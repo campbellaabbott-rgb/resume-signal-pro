@@ -91,7 +91,7 @@ const num=(v)=>typeof v==="number"&&Number.isFinite(v);
     const j=ch.j.find(x=>x.ch_jobname===name);
     if(!j){ok(false,"(h) "+name+" is not scheduled");continue}
     ok(j.ch_timeout==="10min","(h) "+name+" command sets statement_timeout "+JSON.stringify(j.ch_timeout)+" (want 10min; null = held to the session two minutes, the state 20261001090000 left it in)");
-    info("(h2) "+name+": "+j.ch_runs+" runs / "+j.ch_failed+" failed / "+j.ch_timeouts+" timeouts in 48h, last "+j.ch_last_start+" "+j.ch_last_status+" in "+j.ch_last_seconds+"s. The first run after apply reads every ended month once; every later one reads one month at most");
+    info("(h2) "+name+": "+j.ch_runs+" runs / "+j.ch_failed+" failed / "+j.ch_timeouts+" timeouts in 48h, last "+j.ch_last_start+" "+j.ch_last_status+" in "+j.ch_last_seconds+"s. Each run rolls one ended month: July, August and September over the first three nights, then one a month");
   }
   // (i) the deployed chunks.
   const shell=await (await fetch(SITE+"/")).text();

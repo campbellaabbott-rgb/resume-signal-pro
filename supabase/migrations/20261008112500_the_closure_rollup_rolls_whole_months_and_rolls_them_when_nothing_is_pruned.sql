@@ -17,31 +17,39 @@
 --     from the day it was written. roll_up_and_prune_exits, in the same file,
 --     has the same NULL defect and is fixed beside this one (20261008113000).
 --
--- THE FIX. The rollup reads WHOLE MONTHS that have ended -- closed_at before
--- the first instant of the current month -- whatever the argument, starting
--- at the first month not already rolled after it ended (a month rolled after
--- its end is final: closed_at is always the moment a row is written, so no row
--- can arrive in a month that has ended). NULL now rolls those months and
--- deletes nothing; a day count rolls them and deletes only whole months that
--- ended on or before the cutoff and are rolled. The upsert still overwrites,
--- which is now correct: a month is only ever read whole. The DELETE keeps its
--- roll-up-first EXISTS guard and now also requires the summary row to be a
--- final one. Every aggregate, the lap_backfill exclusion, the grants and the
--- census status (service_role only) are the 20261001090000 text.
+-- THE FIX. Each run rolls ONE WHOLE MONTH that has ended -- the first month
+-- after the newest one already rolled after it ended that holds a row --
+-- whatever the argument. A month rolled after its end is final: closed_at is
+-- always the moment a row is written, so no row can arrive in a month that
+-- has ended. NULL rolls and deletes nothing; a day count also deletes whole
+-- months that ended on or before the cutoff and carry a final summary row.
+-- The upsert still overwrites, which is now correct: a month is only ever
+-- read whole. The DELETE keeps its roll-up-first EXISTS guard and now also
+-- requires the summary row to be final. One month per run bounds every run
+-- to a month of the ledger however far behind the rollup is: the job catches
+-- up on July, August and September over its first three nights, then rolls
+-- each month on the first night after it ends. The next month is found from
+-- the ledger itself, so a month with no rows cannot stall it. Every aggregate,
+-- the lap_backfill exclusion, the grants and the census status (service_role
+-- only) are the 20261001090000 text.
 --
 -- THE CRON. 20261001090000 re-scheduled the job with a bare
 -- `SELECT public.roll_up_and_prune_closures(NULL);` and was applied after
 -- 20261004010000, so its command carries no statement_timeout and is held to
 -- the session's two minutes (get_cron_health, read-only, 2026-10-08: timeout
--- null). The first run under this file reads every month the ledger holds
--- that has ended, so the function gets a ten-minute header and the job's
--- command is rewritten in place to set it, keeping its id, schedule, owner and
--- active flag. Every later run reads one month at most.
+-- null). A month of closures is millions of rows with two ordered-set
+-- aggregates over them, so the function gets a ten-minute header and the
+-- job's command is rewritten in place to set it, keeping its id, schedule,
+-- owner and active flag.
 --
 --    REJECTED -- ROLL EVERY ENDED MONTH ON EVERY RUN. No watermark. With the
 --    prune off the ledger only grows, so each night would re-aggregate all of
 --    history -- several million rows a month today -- and the run would pass
 --    its header within months, failing silently under pg_cron.
+--
+--    REJECTED -- ROLL EVERY UNROLLED MONTH IN ONE RUN. The first run would
+--    read three months at once; a run that times out rolls back whole, and
+--    the next night would try the same three again, for ever.
 --
 --    REJECTED -- DELETE AND COUNT IN ONE STATEMENT, as the layoff rollup now
 --    does (20261008113500). It is only needed where a row can arrive in a month
@@ -63,17 +71,26 @@ DECLARE
     WHEN p_keep_days IS NULL OR p_keep_days <= 0 THEN NULL
     ELSE now() - make_interval(days => GREATEST(p_keep_days, 30))
   END;
-  -- Every month that has ended: closed_at before this instant.
-  v_roll_to timestamptz := date_trunc('month', now());
-  -- The first month not yet rolled after it ended.
+  -- The month after the newest one already rolled after it ended.
+  v_after timestamptz;
+  -- The month this run rolls: the first one after v_after that holds a row
+  -- the rollup reads, if it has ended. One month per run, so no run reads
+  -- more than a month of the ledger however far behind the rollup is.
   v_roll_from timestamptz;
+  v_roll_to timestamptz;
   v_months integer := 0;
   v_pruned integer := 0;
 BEGIN
-  SELECT max(rr.month) + interval '1 month' INTO v_roll_from
+  SELECT max(rr.month) + interval '1 month' INTO v_after
     FROM public.job_board_closure_rollup rr
    WHERE rr.rolled_at >= rr.month + interval '1 month';
-  v_roll_from := COALESCE(v_roll_from, '-infinity'::timestamptz);
+  -- The first month holding a row the rollup reads, so a month with no rows
+  -- (or only rows it never rolls) cannot stall the watermark.
+  SELECT date_trunc('month', min(c.closed_at)) INTO v_roll_from
+    FROM public.job_board_closures c
+   WHERE c.closed_at >= COALESCE(v_after, '-infinity'::timestamptz)
+     AND c.company_token <> '';
+  v_roll_to := LEAST(date_trunc('month', now()), v_roll_from + interval '1 month');
 
   WITH src AS (
     SELECT
@@ -155,9 +172,10 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.roll_up_and_prune_closures(integer) IS
-  'Rolls WHOLE calendar months of job_board_closures that have ended into '
-  'job_board_closure_rollup, starting at the first month not already rolled '
-  'after it ended, and -- only when p_keep_days is a positive number -- deletes '
+  'Rolls ONE WHOLE calendar month of job_board_closures per run into '
+  'job_board_closure_rollup -- the first month that has ended, holds a row, and '
+  'was not already rolled after it ended -- and -- only when p_keep_days is a '
+  'positive number -- deletes '
   'the rows of whole months that ended on or before now() - p_keep_days days '
   'and already carry a final summary row (20261008112500). Before that file it '
   'rolled by instant and overwrote the month, so the boundary month kept about '
