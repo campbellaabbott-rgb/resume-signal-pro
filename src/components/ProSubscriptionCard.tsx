@@ -1,4 +1,5 @@
 import { Crown, Check, Loader2, Sparkles, Settings2, CreditCard } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ const PRO_PERKS = [
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
   const { pro, subscribe, manage, actionLoading } = useProSubscription();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,7 +99,12 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-success">
             <Check className="w-4 h-4" />
-            You're a Pro member — every tool is unlocked.
+            {/* A trial unlocks the plan's ongoing features and mints no paid
+                one-off tool (the one rule, _shared/pro-standing.ts), so it
+                is never told "every tool". */}
+            {pro.trialing
+              ? t("proPlan.trialing", "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.")
+              : "You're a Pro member — every tool is unlocked."}
             {pro.currentPeriodEnd && (
               <span className="text-muted-foreground font-normal">
                 Renews {new Date(pro.currentPeriodEnd).toLocaleDateString()}
@@ -121,6 +128,11 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         </div>
       ) : (
         <div className="space-y-3">
+          {pro.linkPending && (
+            <p className="text-sm text-muted-foreground">
+              {t("proPlan.linkPending", "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here.")}
+            </p>
+          )}
           <Button
             className="w-full gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
             onClick={goPro}

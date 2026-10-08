@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS, NON_ATS_SOURCES, BOARD_SOURCE_LIST } from "../config/ats-vendors";
 import { SUBSCRIPTIONS } from "../config/products";
+import { proStandingFrom } from "../../supabase/functions/_shared/pro-standing";
 
 const root = resolve(__dirname, "../..");
 const automation = readFileSync(
@@ -95,9 +96,9 @@ describe("the agent tier is priced and described as a superset of Pro", () => {
     // was refused the Pro features they had paid for, while checkProByEmail
     // (which does not filter by price) said they were entitled. Two checks,
     // opposite answers, and the copy would have been the wrong one.
-    const pro = readFileSync(resolve(root, "supabase/functions/_shared/pro.ts"), "utf8");
-    expect(pro, "isProCached must consult agent_subscribers, or the includes-Pro claim is false")
-      .toMatch(/agent_subscribers/);
+    // Now run, not read: the one rule over an agent-tier row is Pro.
+    expect(proStandingFrom([{ tier: "agent", status: "active", current_period_end: null }]).pro,
+      "an agent plan must count as Pro, or the includes-Pro claim is false").toBe(true);
   });
 
   it("the card reads its price from config, never a literal", () => {

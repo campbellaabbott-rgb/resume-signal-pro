@@ -87,7 +87,9 @@ let balances: Map<string, number>;
 let rpcLog: Array<[string, Args]>;
 let cacheRow: { report: unknown; created_at: string } | null;
 let cacheWrites: unknown[];
-let proRows: Record<string, { status: string; current_period_end: string | null }>;
+/** What pro_entitlement_rows answers per ACCOUNT (the plan is read by user id). */
+let proPlans: Record<string, Array<{ tier: string; status: string; current_period_end: string | null; bound: boolean }>>;
+/** The account ids the scanner asked about. */
 let proLookups: unknown[];
 let underLimit: boolean;
 let grants: Map<string, { email: string; left: number; claimedBy: string | null }>;
@@ -137,6 +139,9 @@ function client() {
       case "check_global_rate_limit": return { data: true, error: null };
       case "check_rate_limit": return { data: args.p_function === "free-keyword-scan" ? underLimit : true, error: null };
       case "acquire_scan_slot": return { data: "slot-1", error: null };
+      case "pro_entitlement_rows":
+        proLookups.push(args.p_user_id);
+        return { data: proPlans[String(args.p_user_id)] ?? [], error: null };
       case "scan_credit_redeem": {
         const e = String(args.p_email);
         const n = balances.get(e) ?? 0;
@@ -178,11 +183,6 @@ function client() {
         return { data: null, error: null };
       }
       if (table === "scan_report_cache") return { data: state.single ? cacheRow : cacheRow ? [cacheRow] : [], error: null };
-      if (table === "pro_subscribers") {
-        const email = state.eq.find(([c]) => c === "email")?.[1];
-        proLookups.push(email);
-        return { data: proRows[String(email)] ?? null, error: null };
-      }
       return { data: state.single ? null : [], error: null };
     };
     const builder: Record<string, unknown> = new Proxy({}, {
@@ -239,7 +239,7 @@ beforeEach(() => {
   rpcLog = [];
   cacheRow = null;
   cacheWrites = [];
-  proRows = { "pro@example.com": { status: "active", current_period_end: null } };
+  proPlans = { [PRO_ID]: [{ tier: "pro", status: "active", current_period_end: null, bound: true }] };
   proLookups = [];
   underLimit = false; // past today's free scans: only a credit or Pro can pay
   (globalThis as Record<string, unknown>).__scanClient = client();
@@ -281,7 +281,7 @@ describe("an address in the request body proves nothing", () => {
   it("a Pro subscriber signed in with Google for that address still scans past the limit, with no credit spent", async () => {
     const r = await scan({ resumeText: RESUME }, JWT.proGoogle);
     expect(r.status).toBe(200);
-    expect(proLookups).toEqual(["pro@example.com"]);
+    expect(proLookups).toEqual([PRO_ID]);
     expect(redeems()).toEqual([]);
   });
 });
@@ -297,12 +297,12 @@ describe("an address on a session proves nothing either, while sign-ups are auto
     expect(aiCalls).toBe(0);
   });
 
-  it("a password sign-up as a subscriber's address gets no Pro, and the subscription is not looked up", async () => {
+  it("a password sign-up as a subscriber's address gets no Pro: the plan is read by account, and that account holds none", async () => {
     USERS[JWT.squatsVictim].email = "pro@example.com";
     try {
       const r = await scan({ resumeText: RESUME }, JWT.squatsVictim);
       expect(r.status).toBe(429);
-      expect(proLookups).toEqual([]);
+      expect(proLookups).toEqual([SQUATTER_ID]);
       expect(aiCalls).toBe(0);
     } finally {
       USERS[JWT.squatsVictim].email = "victim@example.com";

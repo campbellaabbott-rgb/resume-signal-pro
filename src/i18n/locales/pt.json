@@ -4892,6 +4892,10 @@
     "needsPaymentUpdate": "O seu plano tem um pagamento pendente. Atualize o cartão em vez de iniciar um novo plano.",
     "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois."
   },
+  "proPlan": {
+    "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",
+    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui."
+  },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
     "sub": "Lemos as vagas diretamente de {{count}} sistemas de gestão de candidaturas — não de um motor de busca.",

@@ -4892,6 +4892,10 @@
     "needsPaymentUpdate": "May nakabinbing bayad ang iyong plano. I-update ang iyong card sa halip na magsimula ng bagong plano.",
     "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa."
   },
+  "proPlan": {
+    "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
+    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito."
+  },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
     "sub": "Direktang binabasa namin ang mga trabaho mula sa {{count}} applicant tracking system — hindi kinuha sa search engine.",

@@ -17,13 +17,13 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shared/model-spend-gate.ts";
-import { isProCached } from "../_shared/pro.ts";
+import { proGrantRefusal } from "../_shared/pro.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-freelance-boost.2026-10-05.1";
+const FN_BUILD = "generate-freelance-boost.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,11 +145,18 @@ serve(async (req) => {
     let productType = "freelance_boost";
     let buyerEmail: string | null = null;
     if (body.sessionId.startsWith("pro_")) {
-      const { data: grant } = await supabase.from("pro_grants").select("email, product_type").eq("id", body.sessionId.slice(4)).maybeSingle();
+      const { data: grant } = await supabase.from("pro_grants").select("email, product_type, user_id, revoked_at").eq("id", body.sessionId.slice(4)).maybeSingle();
       if (grant && VALID_TYPES.includes(grant.product_type)) {
-        // The shared reader: both caches (an agent plan includes Pro) and the
-        // paid-period check this copy lacked (L6-08, decision-free half).
-        paid = await isProCached(supabase, grant.email);
+        // THE ONE RULE: the account that minted the grant still holds a plan
+        // that may mint consumables (both caches, not only a trial), and no
+        // refund took it back (L6-08, L6-29, L6-18).
+        const refusal = await proGrantRefusal(supabase, grant);
+        if (refusal?.status === 503) {
+          return new Response(JSON.stringify({ error: refusal.error }), {
+            status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        paid = refusal === null;
         productType = grant.product_type;
         buyerEmail = grant.email;
       }

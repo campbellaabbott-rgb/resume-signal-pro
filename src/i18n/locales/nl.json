@@ -4892,6 +4892,10 @@
     "needsPaymentUpdate": "Er staat een betaling open voor je plan. Werk je kaart bij in plaats van een nieuw plan te starten.",
     "hasPro": "Je hebt Pro, dat bij de agent inbegrepen is. Zeg Pro eerst op via Abonnement beheren en start dan de agent — zo betaal je nooit voor beide."
   },
+  "proPlan": {
+    "trialing": "Je proefperiode loopt: onbeperkte scans en het in één keer voorbereiden van sollicitaties zijn nu ontgrendeld. De betaalde tools zijn inbegrepen vanaf je eerste betaling.",
+    "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken."
+  },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
     "sub": "We lezen vacatures rechtstreeks uit {{count}} sollicitatiesystemen — niet geschraapt van een zoekmachine.",

@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -38,7 +38,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-05.1";
+const FN_BUILD = "stripe-webhook.2026-10-08.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks

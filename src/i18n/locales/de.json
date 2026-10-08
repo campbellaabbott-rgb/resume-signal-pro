@@ -4892,6 +4892,10 @@
     "needsPaymentUpdate": "Für deinen Plan ist eine Zahlung offen. Aktualisiere deine Karte, statt einen neuen Plan zu starten.",
     "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides."
   },
+  "proPlan": {
+    "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",
+    "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen."
+  },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
     "sub": "Wir lesen Stellen direkt aus {{count}} Bewerbermanagement-Systemen – nicht aus einer Suchmaschine.",

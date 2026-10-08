@@ -4892,6 +4892,10 @@
     "needsPaymentUpdate": "Your plan has a payment due. Update your card instead of starting a new plan.",
     "hasPro": "You're on Pro, which the agent includes. Cancel Pro in Manage subscription first, then start the agent — so you're never billed for both."
   },
+  "proPlan": {
+    "trialing": "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.",
+    "linkPending": "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here."
+  },
   "atsCoverage": {
     "heading": "Built for the systems employers actually use",
     "sub": "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.",

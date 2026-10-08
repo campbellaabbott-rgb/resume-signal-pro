@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -6,11 +6,11 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
-import { isProCached } from "../_shared/pro.ts";
+import { proGrantRefusal } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-05.2";
+const FN_BUILD = "verify-product-purchase.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -183,15 +183,24 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+        // A spent grant a refund took back is not refreshed into a delivery.
+        if (spent.revoked_at) {
+          return new Response(
+            JSON.stringify({ error: "This was withdrawn because the subscription payment behind it was refunded." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         grant = spent;
       } else {
-        // Re-verify the subscription is still active before honoring the
-        // grant -- both caches (a $99 or comped agent account includes Pro),
-        // through the one shared reader.
-        if (!(await isProCached(supabaseGrant, grant.email))) {
+        // Re-verify before honoring the grant, by THE ONE RULE: the ACCOUNT
+        // that minted it (never the grant's address) still holds a plan that
+        // may mint consumables -- both caches, and not only a trial (L6-08,
+        // L6-29) -- and no refund has taken it back.
+        const refusal = await proGrantRefusal(supabaseGrant, grant);
+        if (refusal) {
           return new Response(
-            JSON.stringify({ error: "Subscription is not active" }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: refusal.error }),
+            { status: refusal.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
         // The consume is the claim. Two requests can both pass the SELECT above;

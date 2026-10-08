@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 // Returns the caller's OWN Resume Booster Pro status.
 //
 // WHO IS ASKED ABOUT. This used to answer for whatever address the request
@@ -28,19 +28,30 @@
 // was a fresh Stripe lookup, up to the per-address allowance (2026-10-05
 // review). The row is written only when none exists (a row the webhook wrote
 // first is left alone) and is trusted for the same five minutes.
+//
+// WHAT "active" MEANS FOR A SIGNED-IN CALLER (wave 2, L6-08 / L6-29). The
+// address work above keeps the cache fresh, but the answer is the ACCOUNT's,
+// by the one rule every gate applies (_shared/pro-standing.ts): both caches,
+// bound to this account or on a mailbox it proved; a trial is live but mints
+// no consumables (`trialing`, `consumablesIncluded`). This page used to call
+// a trialing or address-only plan "every tool unlocked" while the gates
+// behind it refused. `linkPending` says the address holds a live plan this
+// account cannot use yet (bought before plans named their account, and the
+// mailbox not proven). If the account's plan cannot be read, the address
+// answer is served as before: this function only displays.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkProByEmail } from "../_shared/pro.ts";
-import { isOwingStatus, LIVE_SUBSCRIPTION_STATUSES } from "../_shared/subscription-standing.ts";
-import { signedInEmail } from "../_shared/signed-in-email.ts";
+import { checkProByEmail, PRO_ENTITLEMENT_RPC, proStandingFrom, type ProRow } from "../_shared/pro.ts";
+import { isOwingStatus } from "../_shared/subscription-standing.ts";
+import { signedInUser } from "../_shared/signed-in-email.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "check-subscription.2026-10-05.2";
+const FN_BUILD = "check-subscription.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,8 +78,33 @@ serve(async (req) => {
     );
     const body = await req.json().catch(() => ({})) as { sessionId?: unknown };
 
-    const signedIn = await signedInEmail(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    const caller = await signedInUser(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    const signedIn = caller?.email ?? null;
     let email = signedIn;
+
+    // The address answer, turned into the ACCOUNT's for a signed-in caller.
+    // `liveRow` is a plan Stripe just answered for, bound to THIS caller: it
+    // counts even if writing it to the cache failed a moment ago.
+    const answer = async (addressAnswer: Record<string, unknown>, status = 200, liveRow: ProRow | null = null): Promise<Response> => {
+      if (!caller || status !== 200) return json(addressAnswer, status);
+      let rows: unknown[] = [];
+      try {
+        const { data, error } = await supabase.rpc(PRO_ENTITLEMENT_RPC, { p_user_id: caller.id });
+        if (error) return json(addressAnswer, status);
+        rows = Array.isArray(data) ? data : [];
+      } catch (_) {
+        return json(addressAnswer, status);
+      }
+      const standing = proStandingFrom(liveRow ? [...rows, liveRow] : rows);
+      return json({
+        ...addressAnswer,
+        active: standing.pro,
+        trialing: standing.trialing,
+        consumablesIncluded: standing.consumables,
+        ...(addressAnswer.active === true && !standing.pro ? { linkPending: true } : {}),
+        ...(standing.pro && standing.status && addressAnswer.active !== true ? { status: standing.status } : {}),
+      }, status);
+    };
     const heldSession = typeof body.sessionId === "string" && /^cs_[A-Za-z0-9_]{8,250}$/.test(body.sessionId)
       ? body.sessionId : null;
     if (!email && !heldSession) {
@@ -124,8 +160,8 @@ serve(async (req) => {
         .maybeSingle();
       seenUpdatedAt = row ? String(row.updated_at) : null;
       if (row) {
-        const live = LIVE_SUBSCRIPTION_STATUSES.has(row.status) &&
-          (!row.current_period_end || new Date(row.current_period_end).getTime() > Date.now() - 24 * 3600 * 1000);
+        // The one rule's live test (one grace), over the address's row.
+        const live = proStandingFrom([row]).pro;
         cachedAnswer = {
           active: live,
           status: row.status,
@@ -137,7 +173,7 @@ serve(async (req) => {
         // A caller holding the checkout they just completed is told the live
         // answer, never a not-live row written before they paid.
         const notLiveFor = heldSession ? 0 : NOT_LIVE_CACHE_MS;
-        if (age < (live ? LIVE_CACHE_MS : notLiveFor)) return json(cachedAnswer);
+        if (age < (live ? LIVE_CACHE_MS : notLiveFor)) return await answer(cachedAnswer);
       }
     } catch (_) { /* fall through to live check */ }
 
@@ -147,7 +183,7 @@ serve(async (req) => {
       // Over the live-check allowance: the last known answer, said to be old,
       // rather than a "not subscribed" that may be false.
       return cachedAnswer
-        ? json({ ...cachedAnswer, stale: true })
+        ? await answer({ ...cachedAnswer, stale: true })
         : json({ active: false, status: "rate_limited" }, 429);
     }
     const status = await checkProByEmail(stripeClient(), supabase, who, { seenUpdatedAt });
@@ -165,12 +201,13 @@ serve(async (req) => {
         });
       } catch (_) { /* best-effort; the next view looks again */ }
     }
-    return json({
+    const boundToCaller = !!caller?.id && status.boundUserId === caller.id;
+    return await answer({
       active: status.active,
       status: status.status,
       currentPeriodEnd: status.currentPeriodEnd,
       needsPaymentUpdate: isOwingStatus(status.status),
-    });
+    }, 200, boundToCaller ? { tier: "pro", status: status.status, current_period_end: status.currentPeriodEnd } : null);
   } catch (error) {
     console.error("[CHECK-SUBSCRIPTION] Error:", error);
     return json({ active: false, error: "Could not check the subscription just now." }, 500);

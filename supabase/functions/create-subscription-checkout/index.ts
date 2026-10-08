@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
 // all current and future consumer tools included. Uses inline recurring
 // price_data so no Price object needs to exist in the Stripe dashboard.
@@ -17,6 +17,14 @@
 // subscription that bills beside the first once Stripe's retry succeeds. A
 // new subscription is billed to the Stripe customer the address already has,
 // so the portal can see everything it pays for (L6-05).
+//
+// AND THE PLAN BELONGS TO THE ACCOUNT THAT BOUGHT IT (wave 2, L6-08). The
+// buyer's user id rides the session (client_reference_id, metadata) and the
+// subscription itself (subscription_data.metadata.user_id); checkProByEmail,
+// which the webhook runs on purchase, copies it onto pro_subscribers.user_id,
+// and every gate reads the plan by that id (pro_entitlement_rows). An address
+// is a claim a password sign-up can make. NO TRIAL is offered here, so the
+// one-trial rule of create-agent-checkout has nothing to guard.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
@@ -24,13 +32,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { PRO_PRICE_CENTS, PRO_PRODUCT_NAME, subscriptionStandingByEmail } from "../_shared/pro.ts";
 import { manualAgentGrant } from "../_shared/agent.ts";
 import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.ts";
-import { signedInEmail } from "../_shared/signed-in-email.ts";
+import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-10-05.1";
+const FN_BUILD = "create-subscription-checkout.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,8 +70,9 @@ serve(async (req) => {
     });
     if (allowed === false) return json({ error: "Too many requests. Please try again later." }, 429);
 
-    const email = await signedInEmail(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
-    if (!email) {
+    const buyer = await signedInUser(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    const email = buyer?.email ?? null;
+    if (!buyer?.id || !email) {
       return json({ error: "Sign in to subscribe, so the plan is attached to your account.", signInRequired: true }, 401);
     }
     const body = await req.json().catch(() => ({}));
@@ -101,9 +110,13 @@ serve(async (req) => {
         },
       ],
       allow_promotion_codes: true,
+      // THE BUYER, three ways; the subscription's copy is the one
+      // checkProByEmail reads to bind pro_subscribers.user_id.
+      client_reference_id: buyer.id,
+      subscription_data: { metadata: { user_id: buyer.id } },
       success_url: `${origin}/account?pro=success`,
       cancel_url: `${origin}/pricing?pro=cancelled`,
-      metadata: { product_type: "pro_subscription", customer_email: email },
+      metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id },
     });
 
     // The start is on record before the browser has the url, so no

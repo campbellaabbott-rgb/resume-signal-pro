@@ -1,15 +1,15 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-08T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
-import { isProCached } from "../_shared/pro.ts";
+import { accountProStanding, addressProStanding } from "../_shared/pro.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-05.2";
+const FN_BUILD = "create-product-checkout.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -178,11 +178,15 @@ serve(async (req) => {
     // path never pays for an auth round trip. getUser() on a service-role
     // client still validates the token against the auth server.
     let proEmail: string | null = null;
+    let proUserId: string | null = null;
     const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
     if (bearer && bearer !== (Deno.env.get("SUPABASE_ANON_KEY") ?? "")) {
       try {
         const { data: authData } = await supabase.auth.getUser(bearer);
-        if (authData?.user?.email) proEmail = authData.user.email.toLowerCase().trim();
+        if (authData?.user?.email) {
+          proEmail = authData.user.email.toLowerCase().trim();
+          proUserId = authData.user.id ?? null;
+        }
       } catch (authErr) {
         // A bad token is an anonymous request, not an error. It must never fall
         // through to the body email — that is the bug this block exists to fix.
@@ -199,16 +203,32 @@ serve(async (req) => {
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
           { auth: { persistSession: false } },
         );
-        // The shared reader, so a $99 agent plan or a comped agent account
-        // (which includes Pro) is not sent to Stripe for an included tool:
-        // this copy read only pro_subscribers (L6-08, decision-free half).
-        // Same statuses and grace as before.
-        const proActive = await isProCached(supabase, proEmail);
-        if (proActive) {
+        // THE ONE RULE (_shared/pro-standing.ts; L6-08, L6-29): the verified
+        // ACCOUNT's plan, from both caches (a $99 or comped agent plan
+        // includes Pro), never the session's address -- a password sign-up
+        // can claim a subscriber's address. A grant is a consumable: a trial
+        // unlocks the plan's ongoing features but mints none, so a trialing
+        // member goes to Stripe like anyone else.
+        const standing = await accountProStanding(supabase, proUserId);
+        if (!standing.known) {
+          // The plan could not be read. Sending a member to Stripe now could
+          // charge them for a tool their plan includes; a retry costs nothing.
+          console.error("[CREATE-PRODUCT-CHECKOUT] The account's plan could not be read; not starting a checkout");
+          return new Response(
+            JSON.stringify({ error: "We couldn't check your plan just now. Please try again in a minute." }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 },
+          );
+        }
+        if (standing.trialing) {
+          console.log("[CREATE-PRODUCT-CHECKOUT] Trialing plan: no grant minted while the trial runs");
+        }
+        if (standing.consumables) {
           const { data: grant, error: grantError } = await supabase
             .from("pro_grants")
             .insert({
               email: proEmail,
+              // The account the redeemer re-checks (20261008130000).
+              user_id: proUserId,
               product_id: productId,
               product_type: product.productType,
               product_name: product.name,
@@ -249,6 +269,8 @@ serve(async (req) => {
       //
       // It does reveal whether an address is a Pro subscriber (one bit, from
       // the cache, no Stripe call, under this function's per-address limit).
+      // Said only when signing in WOULD make the tool free: a trialing plan
+      // mints nothing, so it is not told to sign in for a free copy.
       // check-subscription no longer answers that for a stranger (2026-10-05),
       // so this is now the one place that does.
       //
@@ -262,8 +284,8 @@ serve(async (req) => {
       // agent account (no Stripe customer, visible nowhere else) is never
       // revealed by it. The signed-in branch above reads both.
       try {
-        const proActive = await isProCached(supabase, normalizedEmail, { tables: ["pro_subscribers"] });
-        if (proActive) {
+        const standing = await addressProStanding(supabase, normalizedEmail);
+        if (standing.consumables) {
           return new Response(
             JSON.stringify({ proRequiresSignIn: true }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },

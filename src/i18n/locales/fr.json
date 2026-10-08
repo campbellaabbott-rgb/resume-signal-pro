@@ -4892,6 +4892,10 @@
     "needsPaymentUpdate": "Votre formule a un paiement en attente. Mettez à jour votre carte plutôt que de souscrire une nouvelle formule.",
     "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux."
   },
+  "proPlan": {
+    "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",
+    "linkPending": "Cette adresse a un abonnement qui n'est pas encore lié à ce compte. Connectez-vous avec Google avec cette adresse pour l'utiliser ici."
+  },
   "atsCoverage": {
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",
     "sub": "Nous lisons les offres directement dans {{count}} systèmes de suivi des candidatures, sans passer par un moteur de recherche.",
