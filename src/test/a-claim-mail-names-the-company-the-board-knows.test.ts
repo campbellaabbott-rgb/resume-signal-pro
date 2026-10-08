@@ -66,7 +66,9 @@ function install() {
     return { data: n <= Number(a.p_max), error: null };
   };
   for (const [token, company] of [["acme", "Acme & Co <Ltd>"], ["anthropic", "Anthropic"], ["globex", "Globex"], ["initech", "Initech"]]) {
-    db.rows("job_board_postings").push({ id: `p-${token}`, company_token: token, company });
+    // An apply URL on the employer's own domain: since 2026-10-08 the only
+    // thing a work email can match (a-cheap-domain-does-not-make-its-owner-an-employer).
+    db.rows("job_board_postings").push({ id: `p-${token}`, company_token: token, company, apply_url: `https://careers.${token}.com/jobs/1` });
   }
 }
 
@@ -198,7 +200,7 @@ describe("the rest of the door", () => {
 
   it("the preflight answers its build and lets the admin page send its key header", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/company-claim", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^company-claim\.2026-10-04\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^company-claim\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
     expect(res.headers.get("access-control-allow-headers")).toMatch(/x-admin-key/);
   });
 });
