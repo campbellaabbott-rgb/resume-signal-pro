@@ -8,6 +8,7 @@ import { PRODUCTS, ProductId } from "@/config/products";
 import { useCurrency } from "@/hooks/use-currency";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { ProductPreview } from "@/components/ProductPreview";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 const addOnProducts: { key: ProductId; icon: React.ElementType }[] = [
   { key: 'interviewCoach', icon: MessageSquare },
@@ -49,6 +50,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
           {t('addOnsShowcase.targetedInsights')}
         </p>
         
+        <PurchaseTerms kind="payment" className="mb-3" />
         <div className="grid gap-3">
           {addOnProducts.map(({ key, icon: Icon }) => {
             const product = PRODUCTS[key];
@@ -117,6 +119,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
         </p>
       </div>
       
+      <PurchaseTerms kind="payment" className="mb-3 text-center" />
       <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
         {addOnProducts.map(({ key, icon: Icon }) => {
           const product = PRODUCTS[key];

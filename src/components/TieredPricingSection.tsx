@@ -6,6 +6,7 @@ import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/use-currency";
 import { useTranslation } from "react-i18next";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface TieredPricingSectionProps {
   onFullAnalysisCheckout?: () => void;
@@ -48,6 +49,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
         <p className="text-muted-foreground text-sm">{t("tieredPricing.subtitle")}</p>
       </div>
 
+      <PurchaseTerms kind="payment" className="mb-3 text-center" />
       <div className="grid md:grid-cols-3 gap-4">
         {tiers.map(({ key, highlight }) => {
           const product = PRODUCTS[key];

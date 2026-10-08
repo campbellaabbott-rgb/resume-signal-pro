@@ -2,10 +2,20 @@
 // see their credits and purchases. Supabase email auth; session persists
 // via the supabase client's built-in storage.
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { TERMS_VERSION } from "@/config/terms";
+
+/**
+ * WHAT A NEW ACCOUNT AGREED TO (commercial-readiness plan item 12). The sign-up
+ * button carries "By continuing you agree to the Terms"; the account stores
+ * which Terms and when, in its own metadata, with no new table.
+ */
+export function termsAcceptance(now: Date = new Date()): { terms_version: string; terms_accepted_at: string } {
+  return { terms_version: TERMS_VERSION, terms_accepted_at: now.toISOString() };
+}
 
 /**
  * WHERE TO GO AFTER SIGNING IN. Every sign-in path used to hard-navigate to
@@ -57,16 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const userSignedOut = useRef(false);
 
   useEffect(() => {
     // Listener FIRST, then getSession — avoids missing an auth event
     // that fires between the two calls.
     let hadSession = false;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      // A session vanishing without an explicit sign-out = expiry/revocation.
-      // Surfacing it lets the auth page say "session expired" instead of
-      // silently dumping the user to a logged-out state.
-      if (hadSession && !s && event !== "SIGNED_OUT") setSessionExpired(true);
+      // A session vanishing without THE USER signing out = expiry/revocation.
+      // auth-js reports a failed refresh as SIGNED_OUT too, so the event name
+      // cannot tell the two apart (platform sweep L3-20: this never fired);
+      // the sign-out button sets userSignedOut first, and only that is quiet.
+      if (hadSession && !s && !userSignedOut.current) setSessionExpired(true);
+      if (!s) { hadSession = false; userSignedOut.current = false; }
       if (s) {
         hadSession = true;
         setSessionExpired(false);
@@ -86,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}${safeNextPath(next)}` },
+      options: { emailRedirectTo: `${window.location.origin}${safeNextPath(next)}`, data: termsAcceptance() },
     });
     return { error: error?.message ?? null };
   };
@@ -105,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    userSignedOut.current = true;
     await supabase.auth.signOut();
   };
 

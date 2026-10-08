@@ -382,7 +382,8 @@ export default function Account() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!loading && !session) navigate("/auth", { replace: true });
+    // Back here after signing in, query intact (/agent?welcome=1 after Stripe; L3-20).
+    if (!loading && !session) navigate(`/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`, { replace: true });
   }, [loading, session, navigate]);
 
   const loadAll = useCallback(async () => {

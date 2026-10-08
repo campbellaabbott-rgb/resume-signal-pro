@@ -6,7 +6,8 @@ import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { checkoutContext } from '@/lib/track-transport';
-import { getStoredReferralCode } from '@/hooks/use-affiliate-auth';
+import { consentWasRequired, purchaseTerms } from '@/lib/purchase-terms';
+import i18n from '@/i18n';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 import { getResumeFromSession } from '@/hooks/use-session-resume';
 
@@ -232,16 +233,21 @@ export function useProductCheckout() {
           sessionId: binding.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
-          referralCode: getStoredReferralCode(),
           // Generation happens server-side from the webhook, which has no
           // access to the browser's i18n state — has to be captured now.
           language: localStorage.getItem('i18nextLng') || 'en',
           // The visitor and the page, so the start the server records joins
           // back to this browser's landing (checkout_starts.visitor_id).
           ...checkoutContext(),
+          // The referral, the Terms line's version, the EU/UK box.
+          ...purchaseTerms(),
         }
       });
 
+      if (await consentWasRequired(error, data)) {
+        toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
+        return null;
+      }
       if (error) {
         console.error('Checkout error:', error);
         const parsedError = await parseEdgeFunctionError(error);

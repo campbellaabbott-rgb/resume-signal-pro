@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import i18n from "@/i18n";
 import { checkoutContext } from "@/lib/track-transport";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+
+/** How often, and how many times, a buyer back from Stripe is re-checked until the plan reads live. */
+export const PRO_CONFIRM_INTERVAL_MS = 3000;
+export const PRO_CONFIRM_TRIES = 10;
 
 export interface ProSubscriptionState {
   active: boolean;
@@ -46,14 +52,28 @@ export function useProSubscription() {
     localStorage.getItem("rb_last_email") ||
     "";
 
-  const refresh = useCallback(async () => {
-    if (!knownEmail) {
+  // THE CHECKOUT THE BUYER JUST COMPLETED (sweep S8-055). Stripe sends a new
+  // subscriber back with ?pro=success&session_id=cs_...; check-subscription
+  // answers that session live instead of the "inactive" row cached when
+  // /pricing was opened before they paid, which it served for five minutes.
+  const heldSession = (() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const id = q.get("session_id") ?? "";
+      return q.get("pro") === "success" && /^cs_[A-Za-z0-9_]{8,250}$/.test(id) ? id : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (!knownEmail && !heldSession) {
       setPro({ active: false, status: null, currentPeriodEnd: null, loading: false, trialing: false, linkPending: false });
-      return;
+      return false;
     }
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription", {
-        body: { email: knownEmail },
+        body: { ...(knownEmail ? { email: knownEmail } : {}), ...(heldSession ? { sessionId: heldSession } : {}) },
       });
       if (error) throw error;
       setPro({
@@ -64,14 +84,25 @@ export function useProSubscription() {
         trialing: data?.trialing === true,
         linkPending: data?.linkPending === true,
       });
+      return !!data?.active;
     } catch {
       setPro((p) => ({ ...p, loading: false }));
+      return false;
     }
-  }, [knownEmail]);
+  }, [knownEmail, heldSession]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Just back from Stripe: ask again until the plan reads live (the webhook
+    // may land a few seconds after the redirect), at most PRO_CONFIRM_TRIES.
+    const run = async (left: number) => {
+      const live = await refresh();
+      if (!stopped && heldSession && !live && left > 1) timer = setTimeout(() => void run(left - 1), PRO_CONFIRM_INTERVAL_MS);
+    };
+    void run(heldSession ? PRO_CONFIRM_TRIES : 1);
+    return () => { stopped = true; if (timer) clearTimeout(timer); };
+  }, [refresh, heldSession]);
 
   const subscribe = useCallback(
     async (emailOverride?: string) => {
@@ -87,8 +118,12 @@ export function useProSubscription() {
       setActionLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
-          body: { email, ...checkoutContext() },
+          body: { email, ...checkoutContext(), ...purchaseTerms() },
         });
+        if (await consentWasRequired(error, data)) {
+          toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
+          return false;
+        }
         if (error) throw error;
         if (data?.alreadySubscribed) {
           toast({ title: "You're already a Pro member", description: "Every tool is already unlocked for this email." });
@@ -143,5 +178,5 @@ export function useProSubscription() {
     }
   }, [session, toast]);
 
-  return { pro, refresh, subscribe, manage, actionLoading, knownEmail };
+  return { pro, refresh, subscribe, manage, actionLoading, knownEmail, justSubscribed: heldSession !== null };
 }

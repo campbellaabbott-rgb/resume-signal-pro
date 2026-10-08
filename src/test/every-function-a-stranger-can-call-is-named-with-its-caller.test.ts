@@ -663,7 +663,7 @@ describe("the tracker's lifecycle answers only for the caller's own tracker", ()
     expect(authenticatedCan(f)).toBe(true);
     expect(ALLOW.get(f.sig)?.roles).toBe("authenticated");
     const account = codeOf(read("src/pages/Account.tsx"));
-    expect(account, "Account.tsx sends a visitor without a session to /auth").toMatch(/if \(!loading && !session\) navigate\("\/auth"/);
+    expect(account, "Account.tsx sends a visitor without a session to /auth").toMatch(/if \(!loading && !session\) navigate\(["`]\/auth/);
     expect(account).toMatch(/rpc\("get_application_lifecycle", \{ p_job_ids: toCheck \}\)/);
     expect(account, "toCheck is the job ids on the user's own tracker rows").toMatch(/const toCheck = apps\.filter\(/);
   });

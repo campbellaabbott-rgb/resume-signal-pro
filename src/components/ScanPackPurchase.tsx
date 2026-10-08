@@ -13,6 +13,7 @@ import { useScanCredits } from "@/hooks/use-scan-credits";
 import { clampScanCredits, MAX_SCAN_CREDITS, MIN_SCAN_CREDITS } from "@/config/scan-credits";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useCurrency } from "@/hooks/use-currency";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 export interface ScanPackPurchaseProps {
   onClose?: () => void;
@@ -162,6 +163,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
           </p>
         </div>
 
+        <PurchaseTerms kind="payment" className="text-center" />
         {/* Purchase button */}
         <Button
           onClick={handlePurchase}

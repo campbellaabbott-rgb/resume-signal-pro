@@ -18,6 +18,7 @@ import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useToast } from "@/hooks/use-toast";
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -490,6 +491,7 @@ export default function FreelanceBoost() {
                   Recruiter-grade bullets in your target field's vocabulary, the right structure for your situation,
                   honest date handling, and keyword coverage against your posting.
                 </p>
+                <PurchaseTerms kind="payment" className="mb-3" />
                 <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
                   <div className="rounded-xl border border-border p-4 flex flex-col">
                     <p className="text-sm font-semibold text-foreground">Boost</p>

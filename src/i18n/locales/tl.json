@@ -1773,7 +1773,7 @@
     "goToHome": "Pumunta sa Home",
     "creditsAdded_one": "{{count}} Credit Idinagdag!",
     "creditsAdded_other": "{{count}} Credits Idinagdag!",
-    "creditsLiveOn": "Aktibo na ang iyong mga credit sa account para sa",
+    "creditsLiveOn": "Ipinapadala ang resibo para sa mga credit na ito sa",
     "creditsBalancePrefix": "Makikita mo ang iyong balanse sa",
     "myCredits": "Aking Credits",
     "creditsBalanceSuffix": "button sa header sa device na ito — hindi na kailangang ilagay ulit ang iyong email.",
@@ -2816,7 +2816,7 @@
     "creditsNeverExpire": "Hindi nag-expire ang mga credit",
     "emailToReceive": "Email para tanggapin ang credits",
     "emailPlaceholder": "iyong@email.com",
-    "creditsTiedToEmail": "Ang mga credit ay nakakabit sa iyong email address",
+    "creditsTiedToEmail": "Gumagana ang iyong mga credit sa browser na ito, at sa iyong account kung naka-sign in ka rito. Para sa resibo mo ang email.",
     "processing": "Pinoproseso...",
     "buyCreditsFor_one": "Bilhin ang {{count}} Credit para sa {{price}}",
     "buyCreditsFor_other": "Bilhin ang {{count}} Credits para sa {{price}}",
@@ -2924,11 +2924,13 @@
     "neverExpire": "ay hindi nag-expire",
     "fullAtsEachScan": "Buong ATS analysis sa bawat scan",
     "emailPlaceholder": "iyong@email.com",
-    "creditsLinkedToEmail": "Ang mga credit ay ikakabit sa email na ito",
+    "creditsLinkedToEmail": "Gumagana ang iyong mga credit sa browser na ito, at sa iyong account kung naka-sign in ka rito. Para sa resibo mo ang email.",
     "processing": "Pinoproseso...",
     "getCreditsFor_one": "Kunin ang {{count}} Credit para sa {{price}}",
     "getCreditsFor_other": "Kunin ang {{count}} Credits para sa {{price}}",
-    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan"
+    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan",
+    "fewerCredits": "Bawasan ang credits",
+    "moreCredits": "Dagdagan ang credits"
   },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
@@ -4911,7 +4913,9 @@
   },
   "proPlan": {
     "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
-    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito."
+    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito.",
+    "confirmed": "Salamat: kumpirmado na ang iyong Pro subscription.",
+    "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
@@ -5274,5 +5278,13 @@
       "requestedTitle": "Na-request ang payout",
       "requestedBody": "Mag-e-email kami para ayusin ang bayad."
     }
+  },
+  "purchaseTerms": {
+    "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",
+    "renewal": "{{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.",
+    "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
+    "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
+    "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
+    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
   }
 }

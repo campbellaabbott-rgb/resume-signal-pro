@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, RefreshCcw, CreditCard, HelpCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { PRODUCTS, type ProductId } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 /**
  * Stripe's cancel_url for every one-time checkout.
@@ -59,6 +60,7 @@ const PaymentFailed = () => {
         <CardContent className="space-y-6">
           {/* Action buttons first: most people here just want to go back. */}
           <div className="flex flex-col gap-3 pt-2">
+            <PurchaseTerms kind="payment" className="text-center" />
             <Button size="lg" className="w-full gap-2" onClick={tryAgain} disabled={isLoading}>
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
               {t("paymentFailed.tryAgain")}

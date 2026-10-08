@@ -11,6 +11,7 @@ import { useProductCheckout } from '@/hooks/use-product-checkout';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface ProductSelectionModalProps {
   open: boolean;
@@ -262,6 +263,7 @@ export function ProductSelectionModal({
           </TooltipProvider>
         )}
 
+        <PurchaseTerms kind="payment" className="mt-4 text-center" />
         {/* Purchase button */}
         <Button 
           onClick={handlePurchase}

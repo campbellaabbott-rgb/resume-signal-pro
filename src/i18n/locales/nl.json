@@ -1773,7 +1773,7 @@
     "goToHome": "Naar de startpagina",
     "creditsAdded_one": "{{count}} credit toegevoegd!",
     "creditsAdded_other": "{{count}} credits toegevoegd!",
-    "creditsLiveOn": "Je credits zijn nu actief op het account voor",
+    "creditsLiveOn": "De bon voor deze credits gaat naar",
     "creditsBalancePrefix": "Je ziet je saldo bij de knop",
     "myCredits": "Mijn credits",
     "creditsBalanceSuffix": "in de header op dit apparaat — je hoeft je e-mailadres niet opnieuw in te voeren.",
@@ -2816,7 +2816,7 @@
     "creditsNeverExpire": "Credits verlopen nooit",
     "emailToReceive": "E-mail om credits te ontvangen",
     "emailPlaceholder": "jouw@email.nl",
-    "creditsTiedToEmail": "Credits zijn gekoppeld aan je e-mailadres",
+    "creditsTiedToEmail": "Je credits werken in deze browser, en op je account als je hier bent ingelogd. Het e-mailadres is voor je bon.",
     "processing": "Verwerken...",
     "buyCreditsFor_one": "Koop {{count}} credit voor {{price}}",
     "buyCreditsFor_other": "Koop {{count}} credits voor {{price}}",
@@ -2924,11 +2924,13 @@
     "neverExpire": "verlopen nooit",
     "fullAtsEachScan": "Volledige ATS-analyse bij elke scan",
     "emailPlaceholder": "jouw@email.nl",
-    "creditsLinkedToEmail": "Credits worden aan dit e-mailadres gekoppeld",
+    "creditsLinkedToEmail": "Je credits werken in deze browser, en op je account als je hier bent ingelogd. Het e-mailadres is voor je bon.",
     "processing": "Verwerken...",
     "getCreditsFor_one": "Krijg {{count}} credit voor {{price}}",
     "getCreditsFor_other": "Krijg {{count}} credits voor {{price}}",
-    "noThanks": "Nee, bedankt, ik wacht tot mijn gratis scans worden gereset"
+    "noThanks": "Nee, bedankt, ik wacht tot mijn gratis scans worden gereset",
+    "fewerCredits": "Minder credits",
+    "moreCredits": "Meer credits"
   },
   "changelogPage": {
     "metaTitle": "Wijzigingslogboek — Resume Booster",
@@ -4911,7 +4913,9 @@
   },
   "proPlan": {
     "trialing": "Je proefperiode loopt: onbeperkte scans en het in één keer voorbereiden van sollicitaties zijn nu ontgrendeld. De betaalde tools zijn inbegrepen vanaf je eerste betaling.",
-    "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken."
+    "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken.",
+    "confirmed": "Bedankt: je Pro-abonnement is bevestigd.",
+    "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden."
   },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
@@ -5274,5 +5278,13 @@
       "requestedTitle": "Uitbetaling aangevraagd",
       "requestedBody": "We mailen je om de betaling te regelen."
     }
+  },
+  "purchaseTerms": {
+    "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",
+    "renewal": "{{price}} per maand, wordt automatisch verlengd tot je opzegt. Zeg op wanneer je wilt via je account.",
+    "agentTrial": "Nieuwe abonnees krijgen {{days}} dagen gratis, daarna {{price}} per maand, automatisch verlengd tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Wie eerder abonnee was, betaalt vanaf de eerste dag.",
+    "waiver": "Ik wil mijn aankoop nu geleverd krijgen en begrijp dat ik mijn herroepingsrecht van {{days}} dagen verlies zodra die is geleverd.",
+    "serviceStart": "Ik vraag om de dienst nu te laten starten. Herroep ik binnen {{days}} dagen, dan betaal ik voor de dagen die al zijn gebruikt.",
+    "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
   }
 }

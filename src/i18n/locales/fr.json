@@ -1773,7 +1773,7 @@
     "goToHome": "Retour à l'accueil",
     "creditsAdded_one": "{{count}} crédit ajouté !",
     "creditsAdded_other": "{{count}} crédits ajoutés !",
-    "creditsLiveOn": "Vos crédits sont désormais actifs sur le compte associé à",
+    "creditsLiveOn": "Le reçu de ces crédits est envoyé à",
     "creditsBalancePrefix": "Vous verrez votre solde dans le bouton",
     "myCredits": "Mes crédits",
     "creditsBalanceSuffix": "dans l'en-tête sur cet appareil — pas besoin de saisir à nouveau votre e-mail.",
@@ -2816,7 +2816,7 @@
     "creditsNeverExpire": "Les crédits n'expirent jamais",
     "emailToReceive": "E-mail pour recevoir les crédits",
     "emailPlaceholder": "votre@email.com",
-    "creditsTiedToEmail": "Les crédits sont liés à votre adresse e-mail",
+    "creditsTiedToEmail": "Vos crédits fonctionnent dans ce navigateur, et sur votre compte si vous êtes connecté ici. L'e-mail sert à recevoir votre reçu.",
     "processing": "Traitement en cours...",
     "buyCreditsFor_one": "Acheter {{count}} crédit pour {{price}}",
     "buyCreditsFor_other": "Acheter {{count}} crédits pour {{price}}",
@@ -2924,11 +2924,13 @@
     "neverExpire": "n'expirent jamais",
     "fullAtsEachScan": "Analyse ATS complète à chaque scan",
     "emailPlaceholder": "votre@email.com",
-    "creditsLinkedToEmail": "Les crédits seront liés à cet e-mail",
+    "creditsLinkedToEmail": "Vos crédits fonctionnent dans ce navigateur, et sur votre compte si vous êtes connecté ici. L'e-mail sert à recevoir votre reçu.",
     "processing": "Traitement en cours...",
     "getCreditsFor_one": "Obtenir {{count}} crédit pour {{price}}",
     "getCreditsFor_other": "Obtenir {{count}} crédits pour {{price}}",
-    "noThanks": "Non merci, j'attendrai la réinitialisation de mes scans gratuits"
+    "noThanks": "Non merci, j'attendrai la réinitialisation de mes scans gratuits",
+    "fewerCredits": "Moins de crédits",
+    "moreCredits": "Plus de crédits"
   },
   "changelogPage": {
     "metaTitle": "Journal des modifications — Resume Booster",
@@ -4911,7 +4913,9 @@
   },
   "proPlan": {
     "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",
-    "linkPending": "Cette adresse a un abonnement qui n'est pas encore lié à ce compte. Connectez-vous avec Google avec cette adresse pour l'utiliser ici."
+    "linkPending": "Cette adresse a un abonnement qui n'est pas encore lié à ce compte. Connectez-vous avec Google avec cette adresse pour l'utiliser ici.",
+    "confirmed": "Merci : votre abonnement Pro est confirmé.",
+    "confirming": "Confirmation de votre abonnement auprès de Stripe. Cela prend quelques secondes."
   },
   "atsCoverage": {
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",
@@ -5274,5 +5278,13 @@
       "requestedTitle": "Paiement demandé",
       "requestedBody": "Nous vous écrirons pour organiser le paiement."
     }
+  },
+  "purchaseTerms": {
+    "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
+    "renewal": "{{price}} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.",
+    "agentTrial": "Les nouveaux abonnés ont {{days}} jours gratuits, puis {{price}} par mois, renouvelé automatiquement jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Un ancien abonné paie dès le premier jour.",
+    "waiver": "Je veux recevoir mon achat maintenant et je comprends que je perds mon droit de rétractation de {{days}} jours une fois qu'il a été livré.",
+    "serviceStart": "Je demande que le service commence maintenant. Si je me rétracte dans les {{days}} jours, je paie les jours déjà utilisés.",
+    "consentNeeded": "Cochez la case au-dessus du bouton pour continuer."
   }
 }

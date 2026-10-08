@@ -9,6 +9,7 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { PRO_PERKS } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 // What the plan includes lives in src/config/pro-perks.ts, where the pricing
 // guards read it without mounting this card.
@@ -27,7 +28,7 @@ import { isOwingStatus } from "@/config/subscription-status";
  *   Stripe's retry succeeded (platform sweep L6-06).
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
-  const { pro, subscribe, manage, actionLoading } = useProSubscription();
+  const { pro, subscribe, manage, actionLoading, justSubscribed } = useProSubscription();
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -83,6 +84,15 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         </ul>
       )}
 
+      {/* BACK FROM STRIPE (S8-055): the plan is confirmed out loud, or said
+          to be confirming, never answered with a second "Go Pro". */}
+      {justSubscribed && (
+        <p role="status" className="mb-3 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium" data-testid="pro-welcome">
+          {pro.active
+            ? t("proPlan.confirmed", "Thank you: your Pro subscription is confirmed.")
+            : t("proPlan.confirming", "Confirming your subscription with Stripe. This takes a few seconds.")}
+        </p>
+      )}
       {pro.active ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-success">
@@ -121,10 +131,11 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
               {t("proPlan.linkPending", "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here.")}
             </p>
           )}
+          <PurchaseTerms kind="subscription" plan="pro" className="text-center" />
           <Button
             className="w-full gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
             onClick={goPro}
-            disabled={actionLoading || (Boolean(user) && pro.loading)}
+            disabled={actionLoading || (Boolean(user) && pro.loading) || (justSubscribed && !pro.active)}
           >
             {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
             Go Pro — ${price}/month

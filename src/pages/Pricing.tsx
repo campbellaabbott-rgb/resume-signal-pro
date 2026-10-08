@@ -21,6 +21,7 @@ import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 const productIcons: Record<string, React.ElementType> = {
   basicKeywordFix: FileText,
@@ -174,6 +175,7 @@ export default function Pricing() {
             <h2 className="text-2xl md:text-3xl font-bold mb-1">{t('pricingPage.ladderTitle')}</h2>
             <p className="text-muted-foreground">{t('pricingPage.ladderSubtitle')}</p>
           </div>
+          <PurchaseTerms kind="payment" className="mb-4 text-center" />
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-14">
             <div className="flex flex-col p-6 rounded-2xl border-2 border-success/50 bg-card">
               <h3 className="font-bold text-lg mb-1">{t('pricingPage.ladderFreeTitle')}</h3>
@@ -248,6 +250,7 @@ export default function Pricing() {
             <h2 className="text-2xl md:text-3xl font-bold mb-2">{t('pricingPage.premiumPackages')}</h2>
             <p className="text-muted-foreground">{t('pricingPage.premiumSubtitle')}</p>
           </div>
+          <PurchaseTerms kind="payment" className="mb-4 text-center" />
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             {productOrder.map((key) => {
               const product = PRODUCTS[key];

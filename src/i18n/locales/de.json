@@ -1773,7 +1773,7 @@
     "goToHome": "Zur Startseite",
     "creditsAdded_one": "{{count}} Credit hinzugefügt!",
     "creditsAdded_other": "{{count}} Credits hinzugefügt!",
-    "creditsLiveOn": "Deine Credits sind jetzt aktiv für das Konto",
+    "creditsLiveOn": "Die Quittung für diese Credits geht an",
     "creditsBalancePrefix": "Dein Guthaben siehst du über den Button",
     "myCredits": "Meine Credits",
     "creditsBalanceSuffix": "in der Kopfzeile auf diesem Gerät — du musst deine E-Mail nicht erneut eingeben.",
@@ -2816,7 +2816,7 @@
     "creditsNeverExpire": "Credits verfallen nie",
     "emailToReceive": "E-Mail zum Erhalt der Credits",
     "emailPlaceholder": "deine@email.de",
-    "creditsTiedToEmail": "Credits sind an deine E-Mail-Adresse gebunden",
+    "creditsTiedToEmail": "Deine Credits funktionieren in diesem Browser und in deinem Konto, wenn du hier angemeldet bist. An die E-Mail-Adresse geht deine Quittung.",
     "processing": "Verarbeitung läuft...",
     "buyCreditsFor_one": "{{count}} Credit für {{price}} kaufen",
     "buyCreditsFor_other": "{{count}} Credits für {{price}} kaufen",
@@ -2924,11 +2924,13 @@
     "neverExpire": "verfallen nie",
     "fullAtsEachScan": "Vollständige ATS-Analyse bei jedem Scan",
     "emailPlaceholder": "deine@email.de",
-    "creditsLinkedToEmail": "Credits werden mit dieser E-Mail verknüpft",
+    "creditsLinkedToEmail": "Deine Credits funktionieren in diesem Browser und in deinem Konto, wenn du hier angemeldet bist. An die E-Mail-Adresse geht deine Quittung.",
     "processing": "Verarbeitung läuft...",
     "getCreditsFor_one": "{{count}} Credit für {{price}} erhalten",
     "getCreditsFor_other": "{{count}} Credits für {{price}} erhalten",
-    "noThanks": "Nein danke, ich warte, bis meine kostenlosen Scans zurückgesetzt werden"
+    "noThanks": "Nein danke, ich warte, bis meine kostenlosen Scans zurückgesetzt werden",
+    "fewerCredits": "Weniger Credits",
+    "moreCredits": "Mehr Credits"
   },
   "changelogPage": {
     "metaTitle": "Änderungsprotokoll — Resume Booster",
@@ -4911,7 +4913,9 @@
   },
   "proPlan": {
     "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",
-    "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen."
+    "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen.",
+    "confirmed": "Danke: Ihr Pro-Abonnement ist bestätigt.",
+    "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden."
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
@@ -5274,5 +5278,13 @@
       "requestedTitle": "Auszahlung angefragt",
       "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
     }
+  },
+  "purchaseTerms": {
+    "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",
+    "renewal": "{{price}} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.",
+    "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",
+    "waiver": "Ich möchte, dass mein Kauf sofort geliefert wird, und mir ist bekannt, dass ich mein {{days}}-tägiges Widerrufsrecht mit der Lieferung verliere.",
+    "serviceStart": "Ich verlange, dass die Leistung sofort beginnt. Widerrufe ich innerhalb von {{days}} Tagen, zahle ich für die bereits genutzten Tage.",
+    "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren."
   }
 }

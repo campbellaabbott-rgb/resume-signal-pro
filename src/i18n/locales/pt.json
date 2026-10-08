@@ -1773,7 +1773,7 @@
     "goToHome": "Ir para a Página Inicial",
     "creditsAdded_one": "{{count}} crédito adicionado!",
     "creditsAdded_other": "{{count}} créditos adicionados!",
-    "creditsLiveOn": "Os seus créditos já estão ativos na conta de",
+    "creditsLiveOn": "O recibo destes créditos é enviado para",
     "creditsBalancePrefix": "Verá o seu saldo no botão",
     "myCredits": "Os Meus Créditos",
     "creditsBalanceSuffix": "no cabeçalho neste dispositivo — não precisa de introduzir o seu e-mail novamente.",
@@ -2816,7 +2816,7 @@
     "creditsNeverExpire": "Os créditos nunca expiram",
     "emailToReceive": "E-mail para receber os créditos",
     "emailPlaceholder": "seu@email.com",
-    "creditsTiedToEmail": "Os créditos estão vinculados ao seu endereço de e-mail",
+    "creditsTiedToEmail": "Os seus créditos funcionam neste navegador e na sua conta se tiver sessão iniciada aqui. O e-mail é para o seu recibo.",
     "processing": "A processar...",
     "buyCreditsFor_one": "Comprar {{count}} crédito por {{price}}",
     "buyCreditsFor_other": "Comprar {{count}} créditos por {{price}}",
@@ -2924,11 +2924,13 @@
     "neverExpire": "nunca expiram",
     "fullAtsEachScan": "Análise ATS completa em cada verificação",
     "emailPlaceholder": "seu@email.com",
-    "creditsLinkedToEmail": "Os créditos serão vinculados a este e-mail",
+    "creditsLinkedToEmail": "Os seus créditos funcionam neste navegador e na sua conta se tiver sessão iniciada aqui. O e-mail é para o seu recibo.",
     "processing": "A processar...",
     "getCreditsFor_one": "Obter {{count}} crédito por {{price}}",
     "getCreditsFor_other": "Obter {{count}} créditos por {{price}}",
-    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas"
+    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas",
+    "fewerCredits": "Menos créditos",
+    "moreCredits": "Mais créditos"
   },
   "changelogPage": {
     "metaTitle": "Registo de alterações — Resume Booster",
@@ -4911,7 +4913,9 @@
   },
   "proPlan": {
     "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",
-    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui."
+    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui.",
+    "confirmed": "Obrigado: a sua assinatura Pro está confirmada.",
+    "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
@@ -5274,5 +5278,13 @@
       "requestedTitle": "Pagamento pedido",
       "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
     }
+  },
+  "purchaseTerms": {
+    "agree": "Ao continuar, você concorda com os <terms>Termos de Serviço</terms> e a <privacy>Política de Privacidade</privacy>.",
+    "renewal": "{{price}} por mês, com renovação automática até você cancelar. Cancele quando quiser na sua conta.",
+    "agentTrial": "Quem assina pela primeira vez tem {{days}} dias grátis; depois, {{price}} por mês, com renovação automática até você cancelar. Cancele antes do fim do teste e nada será cobrado. Quem já assinou antes paga desde o primeiro dia.",
+    "waiver": "Quero receber minha compra agora e entendo que perco meu direito de desistência de {{days}} dias depois da entrega.",
+    "serviceStart": "Peço que o serviço comece agora. Se eu desistir em até {{days}} dias, pago pelos dias já usados.",
+    "consentNeeded": "Marque a caixa acima do botão para continuar."
   }
 }
