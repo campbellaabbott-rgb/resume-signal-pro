@@ -156,8 +156,10 @@ describe("a purchase is one purchase, of one product", () => {
     const r = await modelSpendGate(db, at("203.0.113.9"), "fn-a", { ...FREE, perSessionPerDay: 30 }, CORS, { session: "cs_coach", products: ["interview_coach"] });
     expect(r).toBeNull();
     const sess = await sessionBucket("cs_coach");
+    // The address is counted in the purchase's own bucket, as large as the
+    // purchase's day (sweep S8-065), then the purchase's day itself.
     expect(db.calls.map((c) => c.args)).toEqual([
-      { p_function: "fn-a", p_ip: "203.0.113.9", p_max_requests: 5, p_window_minutes: 60 },
+      { p_function: "fn-a:purchase", p_ip: "203.0.113.9", p_max_requests: 30, p_window_minutes: 60 },
       { p_function: "fn-a", p_ip: sess, p_max_requests: 30, p_window_minutes: 1440 },
     ]);
   });
