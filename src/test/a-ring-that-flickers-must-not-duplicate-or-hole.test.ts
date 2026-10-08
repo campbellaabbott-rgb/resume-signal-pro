@@ -31,7 +31,8 @@ describe("a flickering ring must not duplicate or hole", () => {
     // to the title-prefix predicate (the exact ILIKE the ring runs) so every
     // possible collision is dropped rather than re-served.
     expect(BOARD).toMatch(/const ringIds = ringResolved/);
-    expect(BOARD).toMatch(/String\(r\.title \?\? ""\)\.toLowerCase\(\)\.startsWith\(ringPrefix\)/);
+    // The ring's predicate is word-bounded since .91 (L8-05), so the fallback is too.
+    expect(BOARD).toMatch(/startsWithWord\(String\(r\.title \?\? ""\)\.toLowerCase\(\), ringPrefix\)/);
   });
 
   it("sub-seam pool exhaustion anchors to the SQL-rank boundary when the ring missed", () => {

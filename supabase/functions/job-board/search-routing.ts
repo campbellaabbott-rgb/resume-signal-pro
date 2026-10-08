@@ -223,6 +223,24 @@ export const wordCount = (text: string, term: string): number => {
  * Pure, deterministic, and about 4ms for 600 rows — unmeasurable against ~1,050ms
  * of fixed edge overhead.
  */
+/**
+ * `text` begins with `prefix` and the prefix ends at a word boundary: "nurse"
+ * starts "Nurse Practitioner" and "Nurse", never "Nursery Housekeeper"; "java"
+ * never "JavaScript Developer". A prefix that itself ends on a non-word
+ * character ("c++") needs no boundary after it.
+ */
+export function startsWithWord(text: string, prefix: string): boolean {
+  if (!prefix || !text.startsWith(prefix)) return false;
+  const next = text.charAt(prefix.length);
+  return next === "" || !/[a-z0-9]/i.test(next) || !/[a-z0-9]/i.test(prefix.charAt(prefix.length - 1));
+}
+
+/** The head-term ring's word boundary as a Postgres regex for `title ~* ...` (L8-05). */
+export function ringWordPattern(prefix: string): string {
+  const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return /[a-z0-9]$/i.test(prefix) ? `^${esc}([^[:alnum:]]|$)` : `^${esc}`;
+}
+
 export function scoreTitle(title: string, query: string, ageDays?: number): number {
   const t = String(title ?? "");
   const tl = t.toLowerCase();
@@ -249,7 +267,7 @@ export function scoreTitle(title: string, query: string, ageDays?: number): numb
   const normT = foldName(t);
   const normQ = foldName(qRaw);
   if (normT === normQ) score += 120;                       // "Sales Associate"
-  else if (tl.startsWith(qRaw.toLowerCase())) score += 45; // "Sales Manager"
+  else if (startsWithWord(tl, qRaw.toLowerCase())) score += 45; // "Sales Manager", never "Nursery" for nurse (L8-05)
 
   if (qTokens.length > 1 && tl.includes(qRaw.toLowerCase())) score += 25; // adjacency
 

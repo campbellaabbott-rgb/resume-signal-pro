@@ -85,7 +85,7 @@ import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { pickRoute, rerankWindow, RETRIEVER_FOR, splitExclusions, titleExcluded } from "./search-routing.ts";
+import { pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
@@ -12078,6 +12078,8 @@ async function serveList(
           ? (withDeadline(
               buildQuery("effective_posted", false, undefined, { skipTerms: true })
                 .ilike("title", `${sanitizeTerm(qText)}%`)
+                // The prefix ends at a word: "nurse" is not "Nursery" (L8-05).
+                .filter("title", "imatch", ringWordPattern(sanitizeTerm(qText).toLowerCase()))
                 .order("effective_posted", { ascending: false })
                 .order("id", { ascending: true })
                 .range(0, 199),
@@ -12731,7 +12733,7 @@ async function serveList(
           const excluded = (r: Record<string, unknown>) =>
             ringIds
               ? ringIds.has(String(r.id ?? ""))
-              : ringPrefix.length > 0 && String(r.title ?? "").toLowerCase().startsWith(ringPrefix);
+              : ringPrefix.length > 0 && startsWithWord(String(r.title ?? "").toLowerCase(), ringPrefix);
           const rawIndexOfSurvivor: number[] = [];
           mergedRows = rankedRows.filter((r, i) => {
             const keep = !excluded(r as Record<string, unknown>);
