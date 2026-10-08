@@ -82,7 +82,10 @@ const mount = (url: string) => {
     </MemoryRouter>,
   );
 };
-const hero = () => document.querySelector("main h1")?.parentElement?.parentElement?.textContent ?? "";
+// THE HERO COUNT LINE, the one sentence this fix is about. The field rail's chips
+// carry their own counts under their own rules (a probe replaces the reply's
+// facet once it answers), so the assertions read this slot, not the page.
+const countLine = () => Array.from(document.querySelectorAll("main p")).map((p) => p.textContent ?? "").find((s) => /straight from the company's own/.test(s)) ?? "";
 const listBodies = () => invoke.mock.calls
   .filter(([fn, o]) => fn === "job-board" && (o as { body?: Body })?.body?.action === "list"
     && !(o as { body?: Body }).body?.countOnly && !(o as { body?: Body }).body?.facetCounts)
@@ -99,17 +102,18 @@ beforeEach(() => {
 describe("a field lander prints its field count only while nothing else narrows it", () => {
   it("positive control: the unnarrowed lander prints the field's facet", async () => {
     mount("/jobs/field/healthcare");
-    await waitFor(() => expect(document.body.textContent).toMatch(/96,826 live .* openings/), SLOW);
+    await waitFor(() => expect(countLine()).toMatch(/96,826 live .* openings/), SLOW);
   });
 
   it("a query typed on the lander takes the field's board-wide number away", async () => {
     mount("/jobs/field/healthcare");
-    await waitFor(() => expect(document.body.textContent).toMatch(/96,826 live/), SLOW);
+    await waitFor(() => expect(countLine()).toMatch(/96,826 live/), SLOW);
     fireEvent.change(document.getElementById("board-search") as HTMLInputElement, { target: { value: "night shift" } });
     await waitFor(() => expect(listBodies().some((b) => b.q === "night shift")).toBe(true), SLOW);
     await settle(100);
-    expect(document.body.textContent, "the board-wide field count printed over a narrowed search").not.toMatch(/96,826/);
-    expect(document.body.textContent, "the board-wide total stood in under a field H1").not.toMatch(/815,909 live openings/);
+    expect(countLine(), "the count line slot is gone -- re-anchor countLine").not.toBe("");
+    expect(countLine(), "the board-wide field count printed over a narrowed search").not.toMatch(/96,826/);
+    expect(countLine(), "the board-wide total stood in under a field H1").not.toMatch(/815,909 live openings/);
   });
 
   it("a country on the lander does the same", async () => {
@@ -117,7 +121,8 @@ describe("a field lander prints its field count only while nothing else narrows 
     await waitFor(() => expect(listBodies().some((b) => b.country === "GB")).toBe(true), SLOW);
     await waitFor(() => expect(document.body.textContent).toContain("Night Nurse 5"), SLOW);
     await settle(100);
-    expect(document.body.textContent).not.toMatch(/96,826/);
-    expect(document.body.textContent).not.toMatch(/815,909 live openings/);
+    expect(countLine(), "the count line slot is gone -- re-anchor countLine").not.toBe("");
+    expect(countLine()).not.toMatch(/96,826/);
+    expect(countLine()).not.toMatch(/815,909 live openings/);
   });
 });
