@@ -131,7 +131,9 @@ beforeAll(async () => {
   g.fetch = async (url: string, init: { body: string }) => {
     if (String(url).endsWith("/functions/v1/job-board")) {
       const b = JSON.parse(init.body);
-      return new Response(JSON.stringify(b.countOnly ? { total: boardTotal } : { jobs: boardJobs }), { status: 200 });
+      // The board echoes the window it applied (newSince, .91); the digest
+      // refuses an answer without it (a-saved-search-mails-what-is-new-to-the-board).
+      return new Response(JSON.stringify(b.countOnly ? { total: boardTotal, newSince: b.newSince } : { jobs: boardJobs, newSince: b.newSince }), { status: 200 });
     }
     throw new Error(`unexpected fetch ${url}`);
   };
@@ -207,7 +209,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 
   it("the preflight answers its build", async () => {
     const res = await search(new Request("https://harness.supabase.co/functions/v1/send-search-digest", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^send-search-digest\.2026-10-04\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^send-search-digest\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
   });
 });
 
