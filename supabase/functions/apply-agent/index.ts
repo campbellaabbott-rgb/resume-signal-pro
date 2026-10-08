@@ -21,6 +21,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { wakeConfig, wakeSender } from "../_shared/wake-sender.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, toDraftedAnswers, type DraftedAnswer, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
+import { ownResumePath } from "../_shared/resume-path.ts";
 import { decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
@@ -568,7 +569,9 @@ serve(async (req) => {
 
     const profile: Profile = {
       fullName: m.full_name, email: accountEmail || m.email, phone: m.phone, linkedin: m.linkedin,
-      website: m.website, city: m.city, country: m.country, resumeFileUrl: m.resume_file_url,
+      website: m.website, city: m.city, country: m.country,
+      // Only a file in this account's own folder (S8-080); the broker refuses others too.
+      resumeFileUrl: ownResumePath(m.resume_file_url, m.user_id) ?? "",
     };
     const standing: StandingAnswers = {
       workAuthorized: m.work_authorized, requiresSponsorship: m.requires_sponsorship,
