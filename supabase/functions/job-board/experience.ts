@@ -42,10 +42,11 @@ export function parseMinYears(text: string): number | null {
   // short intervening noun phrase ("8 years of LEADERSHIP experience") but never
   // crossing a sentence boundary (so "founded 10 years ago. …experience" can't tie).
   // (?<!\d): the number starts where the digits start -- "135 years" was read
-  // as 35 (L7-09). And no digit in the gap, so "21 years old ... 2 years of
-  // experience" or "2 years Python, 8 years leadership experience" cannot
-  // bind the first number to the second one's experience word.
-  const forward = /(?<!\d)(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b[^.?!\n\d]{0,30}?(?:experience|exp\b|work|professional|industry|hands-on)/g;
+  // as 35 (L7-09). The gap (group 2) may hold "Python 3" or "Office 365" but
+  // never another "<n> years", so "2 years Python, 8 years leadership
+  // experience" binds only the 8. "to work" ("able to work weekends") is an
+  // availability, not experience.
+  const forward = /(?<!\d)(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b((?:(?!\d{1,2}\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b)[^.?!\n]){0,30}?)(?:experience|exp\b|(?<!\bto\s)work|professional|industry|hands-on)/g;
   // "(experience|minimum|at least|requires)[ :of] <n> year(s)"
   const backward = /(?:experience|minimum|at least|requires?|require)\s*(?:of|:|is)?\s*(?<!\d)(\d{1,2})\s*\+?\s*years?/g;
   for (const re of [forward, backward]) {
@@ -53,15 +54,21 @@ export function parseMinYears(text: string): number | null {
     while ((m = re.exec(t)) !== null) {
       const n = Number(m[1]);
       const at = m.index + m[0].indexOf(m[1]);
+      const end = m.index + m[0].length;
       const before = t.slice(Math.max(0, at - 24), at);
-      const after = t.slice(m.index + m[0].length, m.index + m[0].length + 16);
-      // A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "at least 18 years of age",
-      // "21 years old or older". Cut entry roles' fit by 60% and filed cashiers
-      // under expert.
-      if (/^\s*(?:of\s+age|old|or\s+older|of\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
-      // THE COMPANY'S YEARS ARE NOT THE CANDIDATE'S (L7-09): "for more than 40
-      // years, X has been the industry's partner", "for over 135 years".
-      if (/\b(?:for|over|nearly|almost)\s+(?:more\s+than\s+|over\s+|nearly\s+|almost\s+)?$/.test(before)) continue;
+      const gap = m[2] ?? "";
+      const after = t.slice(end, end + 16);
+      // A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "18 years or older and able
+      // to work", "at least 18 years of age".
+      if (/\b(?:of\s+age|old|older)\b/.test(gap) || /^\s*(?:of\s+age|old\b|or\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
+      // THE COMPANY'S YEARS ARE NOT THE CANDIDATE'S (L7-09): "for over 15
+      // years, Acme has been ...". Only a company clause; "over 10 years of
+      // experience" is a requirement.
+      if (/\b(?:for|over|nearly|almost)\s+(?:more\s+than\s+|over\s+|nearly\s+|almost\s+)?$/.test(before) && !/^\s*of\b/.test(gap)) {
+        const s0 = Math.max(t.lastIndexOf(".", at), t.lastIndexOf("!", at), t.lastIndexOf("?", at), t.lastIndexOf("\n", at)) + 1;
+        const sentence = t.slice(s0, end);
+        if (/^\s*,/.test(gap) || /\b(?:we've|we have|we're|has been|have been|had been|founded|established|in business|since \d{4})\b/.test(sentence)) continue;
+      }
       // A requirement above 20 years is a company-age or boilerplate sentence,
       // never a hiring bar on this board.
       if (Number.isFinite(n) && n >= 0 && n <= 20) nums.push(n);
