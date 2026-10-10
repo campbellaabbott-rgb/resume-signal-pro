@@ -1063,7 +1063,12 @@
     },
     "reportCrash": {
       "title": "Algo salió mal al mostrar tu informe",
-      "body": "Tu escaneo terminó, pero el informe no se pudo mostrar. Escanea de nuevo para verlo; un nuevo escaneo del mismo archivo se sirve desde el informe guardado."
+      "body": "Tu escaneo terminó, pero el informe no se pudo mostrar. Vuelve a analizar para escanear de nuevo y generar un informe nuevo."
+    },
+    "partialResults": {
+      "title": "Resultados parciales:",
+      "ruleBased": "nuestro revisor de IA no estuvo disponible por un momento, así que este informe usa solo análisis automático. Vuelve a escanear en unos minutos para obtener la versión completa personalizada con IA.",
+      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva."
     }
   },
   "miniPricingCards": {

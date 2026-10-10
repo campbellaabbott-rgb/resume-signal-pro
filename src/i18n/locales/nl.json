@@ -1063,7 +1063,12 @@
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",
-      "body": "Je scan is klaar, maar het rapport kon niet worden getoond. Scan opnieuw om het te zien; een nieuwe scan van hetzelfde bestand komt uit het opgeslagen rapport."
+      "body": "Je scan is klaar, maar het rapport kon niet worden getoond. Analyseer opnieuw om nog eens te scannen en een nieuw rapport te maken."
+    },
+    "partialResults": {
+      "title": "Gedeeltelijke resultaten:",
+      "ruleBased": "onze AI-beoordelaar was even niet bereikbaar, dus dit rapport gebruikt alleen automatische analyse. Scan over een paar minuten opnieuw voor de volledige, door AI gepersonaliseerde versie.",
+      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe."
     }
   },
   "miniPricingCards": {

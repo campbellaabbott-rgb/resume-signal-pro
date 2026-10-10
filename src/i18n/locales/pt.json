@@ -1063,7 +1063,12 @@
     },
     "reportCrash": {
       "title": "Algo deu errado ao exibir seu relatório",
-      "body": "Sua análise terminou, mas o relatório não pôde ser exibido. Analise de novo para vê-lo; uma nova análise do mesmo arquivo vem do relatório salvo."
+      "body": "Sua análise terminou, mas o relatório não pôde ser exibido. Reanalise para escanear de novo e gerar um relatório novo."
+    },
+    "partialResults": {
+      "title": "Resultados parciais:",
+      "ruleBased": "nosso revisor de IA ficou indisponível por um momento, então este relatório usa apenas análise automática. Analise de novo em alguns minutos para a versão completa personalizada por IA.",
+      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra."
     }
   },
   "miniPricingCards": {

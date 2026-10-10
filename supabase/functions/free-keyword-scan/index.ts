@@ -449,7 +449,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-09.1";
+const FN_BUILD = "free-keyword-scan.2026-10-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1603,7 +1603,11 @@ serve(async (req) => {
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
       return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
     })();
-    try {
+    // "Re-analyze" (skipCache) skips the read: the scan is counted like a
+    // miss and its report replaces the saved one. It used to replay the
+    // saved report, so the button did nothing.
+    const skipCache = body.skipCache === true;
+    if (!skipCache) try {
       const { data: cached } = await supabase
         .from('scan_report_cache')
         .select('report, created_at')
@@ -4311,17 +4315,24 @@ ${resumeText.substring(0, 20000)}
       if (pct < 70) {
         console.warn(`[FREE-KEYWORD-SCAN] Low report completeness: ${pct}% — missing: ${Object.entries(checks).filter(([, v]) => !v).map(([k]) => k).join(', ')}`);
       }
-      return { pct, missing: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) };
+      // No red flags, no missing keywords and no peer data are answers a
+      // strong résumé can earn, so they never make a model reply "thin".
+      const owed = Object.entries(checks).filter(([k]) => k !== 'redFlags' && k !== 'keywords' && k !== 'comparisons');
+      const ownPct = Math.round((owed.filter(([, v]) => v).length / owed.length) * 100);
+      return { pct, ownPct, missing: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) };
     })();
     responseData.reportCompleteness = reportCompleteness.pct;
     // A model analysis that failed validation, or left most sections empty,
     // is served like the rule-based report: marked partial, never cached
     // (a week of a thin report), and the reserved credit goes back. It used
     // to ship as complete with completeness 60 (sweep S8-067).
-    const thinAnalysis = !usedRuleBasedFallback && (!validation.valid || reportCompleteness.pct < 70);
-    if (thinAnalysis) console.warn(`[FREE-KEYWORD-SCAN] Thin model analysis served as partial (valid=${validation.valid}, completeness=${reportCompleteness.pct}%)`);
+    const thinAnalysis = !usedRuleBasedFallback && (!validation.valid || reportCompleteness.ownPct < 70);
+    if (thinAnalysis) console.warn(`[FREE-KEYWORD-SCAN] Thin model analysis served as partial (valid=${validation.valid}, completeness=${reportCompleteness.pct}%, owed=${reportCompleteness.ownPct}%)`);
     const partialReport = usedRuleBasedFallback || thinAnalysis;
     responseData.partialResults = partialReport;
+    // Why it is partial: the page says "our AI reviewer was unavailable" only
+    // when it was, never for a reply the model did write.
+    responseData.partialReason = usedRuleBasedFallback ? 'rule_based' : thinAnalysis ? 'thin' : undefined;
 
     // Parse-quality gate — bad extraction is the biggest silent accuracy
     // killer: a mangled PDF produces a confidently wrong report. Shared with

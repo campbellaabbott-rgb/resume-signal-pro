@@ -1063,7 +1063,12 @@
     },
     "reportCrash": {
       "title": "Un problème est survenu lors de l'affichage de votre rapport",
-      "body": "Votre analyse est terminée, mais le rapport n'a pas pu s'afficher. Relancez l'analyse pour le voir ; une nouvelle analyse du même fichier est servie depuis le rapport enregistré."
+      "body": "Votre analyse est terminée, mais le rapport n'a pas pu s'afficher. Réanalysez pour relancer l'analyse et obtenir un nouveau rapport."
+    },
+    "partialResults": {
+      "title": "Résultats partiels :",
+      "ruleBased": "notre relecteur IA a été brièvement indisponible, ce rapport repose donc uniquement sur l'analyse automatique. Relancez l'analyse dans quelques minutes pour la version complète personnalisée par l'IA.",
+      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle."
     }
   },
   "miniPricingCards": {

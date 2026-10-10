@@ -1063,7 +1063,12 @@
     },
     "reportCrash": {
       "title": "Something went wrong displaying your report",
-      "body": "Your scan finished, but the report could not be shown. Scan again to see it; a rescan of the same file is served from the saved report."
+      "body": "Your scan finished, but the report could not be shown. Re-analyze to scan again and build a fresh report."
+    },
+    "partialResults": {
+      "title": "Partial results:",
+      "ruleBased": "our AI reviewer was briefly unavailable, so this report uses automated analysis only. Rescan in a few minutes for the full AI-personalized version.",
+      "thin": "the AI review left some sections empty, so automated analysis filled them in. This version was not saved, so a rescan builds a fresh one."
     }
   },
   "miniPricingCards": {

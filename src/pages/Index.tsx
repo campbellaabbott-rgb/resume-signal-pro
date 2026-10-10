@@ -33,6 +33,7 @@ const TailoredResumeModal = lazy(() =>
 );
 import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
+import { PartialResultsNotice } from "@/components/PartialResultsNotice";
 import { ReportBoundary } from "@/components/ReportBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
@@ -342,6 +343,7 @@ interface FreeKeywordResult {
   premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number } | null;
   reportCompleteness?: number;
   partialResults?: boolean;
+  partialReason?: string;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] };
   // Emitted by the scan backend but previously never declared here NOR mapped
   // below, so the cards that read them stayed permanently dark (caught only
@@ -1339,6 +1341,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           premiumTeaser: (result as any).premiumTeaser,
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
+          partialReason: (result as any).partialReason,
           parseQuality: (result as any).parseQuality,
           // Country standards + platform-profile detection — emitted by both scan
           // paths; must be mapped here or their cards never render.
@@ -2199,12 +2202,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 </div>
               )}
               {freeKeywordResult.partialResults && (
-                <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex items-start gap-2">
-                  <span className="text-warning text-sm shrink-0">⚠️</span>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Partial results:</span> our AI reviewer was briefly unavailable, so this report uses automated analysis only. Rescan in a few minutes for the full AI-personalized version.
-                  </p>
-                </div>
+                <PartialResultsNotice reason={freeKeywordResult.partialReason} />
               )}
               {/* THE 60-SECOND PAYOFF. The scan just proved the machine read
                   this CV; this panel is the agent acting on that read — live
@@ -2218,7 +2216,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                   keywords={(freeKeywordResult.keywords ?? []).map((k) => k.keyword)}
                 />
               </CardErrorBoundary>
-              <ReportBoundary resultKey={reportBoundaryKey}>
+              <ReportBoundary
+                resultKey={reportBoundaryKey}
+                onReanalyze={() => {
+                  clearBackgroundScanCache();
+                  setIsCachedResult(false);
+                  handleFreeScan(true);
+                }}
+              >
               <FreeKeywordResults
                 candidateName={freeKeywordResult.candidateName}
                 currentRole={freeKeywordResult.currentRole}
