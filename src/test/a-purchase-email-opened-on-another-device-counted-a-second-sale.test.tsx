@@ -82,6 +82,37 @@ describe("the saved copy of a purchase", () => {
     expect(funnelPurchase, "a revisit from the email was recorded as a funnel purchase").not.toHaveBeenCalled();
   });
 
+  // WAVE 3 INTEGRATION. payments-account made verify-product-purchase answer the
+  // webhook's saved copy whatever the page asked (S8-009), so a revisit from the
+  // email reaches the page with the copy in verify's own answer, not through
+  // recover-purchase. That path must keep the same rule.
+  const savedInVerify = (isFirstUse: boolean) => invoke.mockImplementation(async (fn: string) => {
+    if (fn === "verify-product-purchase") return { data: { success: true, verified: true, isFirstUse, productType: "cover_letter", customerEmail: "b@example.com", generatedContent: { coverLetter: LETTER, keySkillsHighlighted: [] } }, error: null };
+    return { data: {}, error: null };
+  });
+
+  it("answered by verify-product-purchase itself, on a device that never started the checkout: shown, and not counted", async () => {
+    savedInVerify(false);
+    open();
+    expect(await screen.findByText(LETTER, {}, SLOW)).toBeInTheDocument();
+    expect(conversionPurchase, "a revisit from the email was recorded as a purchase").not.toHaveBeenCalled();
+    expect(funnelPurchase).not.toHaveBeenCalled();
+  });
+
+  it("answered by verify-product-purchase on the purchase's first use, or in the tab that started the checkout: counted once", async () => {
+    savedInVerify(true);
+    open();
+    expect(await screen.findByText(LETTER, {}, SLOW)).toBeInTheDocument();
+    expect(conversionPurchase).toHaveBeenCalledTimes(1);
+    cleanup();
+    conversionPurchase.mockReset();
+    savedInVerify(false);
+    sessionStorage.setItem("funnel_progress", JSON.stringify(["landing_view", "product_clicked", "checkout_started"]));
+    open();
+    expect(await screen.findByText(LETTER, {}, SLOW)).toBeInTheDocument();
+    expect(conversionPurchase).toHaveBeenCalledTimes(1);
+  });
+
   it("in the tab that started the checkout (the webhook finished first): shown, and counted once", async () => {
     sessionStorage.setItem("funnel_progress", JSON.stringify(["landing_view", "product_clicked", "checkout_started"]));
     open();

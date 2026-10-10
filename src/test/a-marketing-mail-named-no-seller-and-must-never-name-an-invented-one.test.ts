@@ -49,6 +49,12 @@ afterEach(() => { sent.length = 0; db.tables = {}; db.writes = []; db.rpcs = {};
 function install() {
   db.rpcs.agent_digest_claim_batch = () => ({ data: [{ ad_user_id: "u-1", ad_email: "sub@example.com", ad_prev_sent_at: null }], error: null });
   db.rows("agent_subscribers").push({ email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
+  // The digest reads the plan by account, not by address (agents-api S8-076,
+  // merged beside this group's footer in wave 3).
+  db.rpcs.agent_subscription_rows = (a) => ({
+    data: (a.p_user_ids as string[]).includes("u-1") ? [{ user_id: "u-1", email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() }] : [],
+    error: null,
+  });
   db.rows("agent_mandates").push({ user_id: "u-1", email_last_sent_at: null, apply_mode: "review", auto_apply_daily_cap: 5 });
   db.rows("agent_queue").push({ user_id: "u-1", status: "ready", posting_id: "p1", title: "Nurse", company: "Acme", location: "Leeds", apply_url: "https://acme.example/a", salary: null, fit_pct: 80, reasons: [], created_at: new Date().toISOString() });
 }
