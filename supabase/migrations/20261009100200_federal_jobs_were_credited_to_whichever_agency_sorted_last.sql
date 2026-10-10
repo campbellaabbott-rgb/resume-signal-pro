@@ -156,27 +156,35 @@ SET search_path = public
 SET statement_timeout = '5s'
 AS $$
   WITH q AS (SELECT lower(btrim(coalesce(p_q, ''))) AS s),
-  facets AS (SELECT m.v FROM public.job_board_meta m WHERE m.k = 'facets'),
+  -- The two keys read, split out once: each read of the whole cached row
+  -- detoasts several MB, so nothing below touches m.v again.
+  facets AS MATERIALIZED (
+    SELECT m.v -> 'companiesFacet' AS cf,
+           COALESCE(m.v -> 'carriedEmployers', '{}'::jsonb) AS ce
+    FROM public.job_board_meta m WHERE m.k = 'facets'
+  ),
+  -- The feeds whose carried employers match, resolved ONCE before the
+  -- per-row filter (a correlated EXISTS under the OR ran per facet row).
+  carried_hit AS MATERIALIZED (
+    SELECT DISTINCT k.key AS token
+    FROM facets f, q,
+         LATERAL jsonb_each(f.ce) AS k,
+         LATERAL jsonb_array_elements_text(k.value) AS n
+    WHERE length(q.s) >= 3 AND lower(n.value) LIKE '%' || q.s || '%'
+  ),
   rows AS (
     SELECT e ->> 'name' AS name,
            e ->> 'token' AS token,
            COALESCE((e ->> 'count')::int, 0) AS c
     FROM facets f,
-         LATERAL jsonb_array_elements(f.v -> 'companiesFacet') AS e
-  ),
-  -- The employers a multi-employer feed carries, from the same cached row.
-  carried AS (
-    SELECT k.key AS token, lower(n.value) AS employer
-    FROM facets f,
-         LATERAL jsonb_each(COALESCE(f.v -> 'carriedEmployers', '{}'::jsonb)) AS k,
-         LATERAL jsonb_array_elements_text(k.value) AS n
+         LATERAL jsonb_array_elements(f.cf) AS e
   ),
   hit AS (
     SELECT r.name, r.token, r.c
     FROM rows r, q
     WHERE length(q.s) >= 3
       AND (lower(r.name) LIKE '%' || q.s || '%'
-           OR EXISTS (SELECT 1 FROM carried x WHERE x.token = r.token AND x.employer LIKE '%' || q.s || '%'))
+           OR r.token = ANY ((SELECT coalesce(array_agg(token), '{}') FROM carried_hit)::text[]))
   ),
   merged AS (
     SELECT h.name,
@@ -217,8 +225,8 @@ BEGIN
   IF position('U.S. federal agencies (USAJOBS)' IN r) = 0 OR position('carriedEmployers' IN r) = 0 THEN
     RAISE EXCEPTION 'refresh_job_board_facets did not take the federal feed name';
   END IF;
-  IF position('carriedEmployers' IN s) = 0 THEN
-    RAISE EXCEPTION 'get_company_suggest does not read carriedEmployers';
+  IF position('carriedEmployers' IN s) = 0 OR position('carried_hit AS MATERIALIZED' IN s) = 0 THEN
+    RAISE EXCEPTION 'get_company_suggest does not resolve the carried match once';
   END IF;
   IF has_function_privilege('anon', 'public.refresh_job_board_facets()', 'EXECUTE') THEN
     RAISE EXCEPTION 'refresh_job_board_facets is callable by anon';
