@@ -403,3 +403,23 @@ export function isSystemCodeName(token: string | null | undefined, stored: strin
   const name = fold(String(stored ?? ""));
   return name !== "" && name === fold(t.split("~")[0]);
 }
+
+/**
+ * Feeds that carry many employers under one token, by the name the feed as a
+ * whole goes by. Each posting keeps its own employer (a USAJOBS row names its
+ * agency); only a surface that names the whole board uses this. The facet entry
+ * refresh_job_board_facets writes (20261009100200) carries the same words, and a
+ * test holds the two equal.
+ */
+export const MULTI_EMPLOYER_BOARD_NAMES: ReadonlyMap<string, string> = new Map([
+  ["usajobs", "U.S. federal agencies (USAJOBS)"],
+]);
+
+/**
+ * The name for a whole board (a company lander's H1 and title, a facet chip):
+ * a multi-employer feed's own name, else employerDisplayName. A posting card
+ * names its own employer with employerDisplayName, never this.
+ */
+export function boardDisplayName(token: string | null | undefined, stored: string | null | undefined): string {
+  return MULTI_EMPLOYER_BOARD_NAMES.get(String(token ?? "").trim()) ?? employerDisplayName(token, stored);
+}
