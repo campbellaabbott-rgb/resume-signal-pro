@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008122000_a_claimed_website_shows_only_after_the_owner_approves_it.sql'));

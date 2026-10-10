@@ -834,6 +834,13 @@
       "when": 1791672590668,
       "tag": "0118_20261008121000_an_email_log_row_its_own_send_superseded_is_not_stuck",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1791672599008,
+      "tag": "0119_20261008122000_a_claimed_website_shows_only_after_the_owner_approves_it",
+      "breakpoints": true
     }
   ]
 }

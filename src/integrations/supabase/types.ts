@@ -1264,7 +1264,9 @@ export type Database = {
           created_at: string
           domain_match: boolean
           id: string
+          last_sent_at: string | null
           note: string | null
+          owner_approved_at: string | null
           status: string
           verified_at: string | null
           verify_token: string
@@ -1278,7 +1280,9 @@ export type Database = {
           created_at?: string
           domain_match?: boolean
           id?: string
+          last_sent_at?: string | null
           note?: string | null
+          owner_approved_at?: string | null
           status?: string
           verified_at?: string | null
           verify_token?: string
@@ -1292,7 +1296,9 @@ export type Database = {
           created_at?: string
           domain_match?: boolean
           id?: string
+          last_sent_at?: string | null
           note?: string | null
+          owner_approved_at?: string | null
           status?: string
           verified_at?: string | null
           verify_token?: string
