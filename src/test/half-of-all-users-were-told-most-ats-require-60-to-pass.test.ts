@@ -63,6 +63,20 @@ describe("the agent copy says review is the default and auto is a switch", () =>
     });
   }
 
+  // Reviewer, 2026-10-10: S8-113 cited two lines and only one was changed.
+  // The saved-job toast (jobsPage.savedMilestoneDesc, the Apply Agent upsell)
+  // still ended "and you always hit send yourself" in every locale, which
+  // auto mode contradicts. It now says what the account page says.
+  for (const file of LOCALES) {
+    it(`${file}: the saved-job toast says review is the default, as the account page does`, () => {
+      const d = JSON.parse(read(`src/i18n/locales/${file}`));
+      const toast: string = d.jobsPage.savedMilestoneDesc;
+      expect(toast).not.toMatch(/always hit send|abgeschickt wird immer von dir|el envío siempre lo haces tú|toujours vous qui envoyez|भेजते हमेशा आप|verzenden doe je altijd zelf|sempre você quem envia|laging magpapadala/);
+      const lastSentence = (s: string) => s.trim().split(/(?<=[.।])\s+/).pop();
+      expect(lastSentence(toast)).toBe(lastSentence(d.accountPage.bridgeBlurb));
+    });
+  }
+
   it("the crawler copy of /agent no longer says it submits unattended", () => {
     const bake = codeOf(read("scripts/prerender-seo.mjs"));
     const at = bake.indexOf('path: "/agent",');

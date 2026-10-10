@@ -3918,7 +3918,7 @@
     "tailorLimitTitle": "Uurlimiet bereikt",
     "tailorLimit": "Je hebt de cv-aanpassingen van dit uur gebruikt — ze resetten binnen het uur. Alles wat je hebt gegenereerd blijft bewaard.",
     "savedMilestone": "Dat zijn {{n}} vacatures in je pijplijn",
-    "savedMilestoneDesc": "De Apply Agent kan voor allemaal tegelijk antwoorden op maat voorbereiden — {{trialDays}} dagen gratis proberen voor nieuwe abonnees, en verzenden doe je altijd zelf.",
+    "savedMilestoneDesc": "De Apply Agent kan voor allemaal tegelijk antwoorden op maat voorbereiden — {{trialDays}} dagen gratis proberen voor nieuwe abonnees. In beoordelingsmodus, de standaard, gaat er niets uit voordat jij het goedkeurt.",
     "sortRelevance": "Relevantie",
     "companyNotHiring": "Nu even niet — {{company}} heeft momenteel geen open functies op hun vacaturesite. Volg het bedrijf hieronder en we mailen je zodra er nieuwe functies verschijnen.",
     "companyYesHiringCapped": "Ja — ruim {{n}} geverifieerde open functies op dit moment, rechtstreeks van de vacaturesite van {{company}}.",

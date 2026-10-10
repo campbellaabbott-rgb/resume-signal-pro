@@ -3609,7 +3609,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (!isPro && (savedCount === 5 || savedCount === 12)) {
       toast({
         title: t("jobsPage.savedMilestone", "That's {{n}} jobs in your pipeline", { n: savedCount }),
-        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers, and you always hit send yourself.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
+        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers. In review mode, the default, nothing is sent until you approve it.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
       });
     } else {
       toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
