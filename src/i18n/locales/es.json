@@ -5213,6 +5213,8 @@
     "applyCta": "Postúlate en el sitio de {{company}}",
     "applyCtaPlain": "Postúlate en el sitio del propio empleador",
     "applyNote": "La postulación ocurre en el sistema de selección del propio empleador. Este tablero nunca republica una vacante ni se interpone entre tú y la empresa.",
+    "scoreCta": "Puntuar mi currículum para este empleo (gratis)",
+    "scoreNote": "Abre el escáner gratuito con la descripción de esta oferta ya completada.",
     "descHeading": "La descripción del propio empleador",
     "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días y desaparece en cuanto el feed del empleador deja de incluirla.",
     "theEmployer": "el empleador"

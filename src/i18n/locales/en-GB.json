@@ -5213,6 +5213,8 @@
     "applyCta": "Apply on {{company}}'s own site",
     "applyCtaPlain": "Apply on the employer's own site",
     "applyNote": "The application happens on the employer's own hiring system. This board never reposts a vacancy or stands between you and them.",
+    "scoreCta": "Score my CV against this job (free)",
+    "scoreNote": "Opens the free scanner with this vacancy's description already filled in.",
     "descHeading": "The employer's own description",
     "sourceNote": "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
     "theEmployer": "the employer"

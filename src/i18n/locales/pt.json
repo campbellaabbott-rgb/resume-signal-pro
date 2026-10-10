@@ -5213,6 +5213,8 @@
     "applyCta": "Candidate-se no site da {{company}}",
     "applyCtaPlain": "Candidate-se no site do próprio empregador",
     "applyNote": "A candidatura decorre no sistema de recrutamento do próprio empregador. Este quadro nunca republica uma vaga nem se coloca entre si e o empregador.",
+    "scoreCta": "Avaliar o meu currículo para esta vaga (grátis)",
+    "scoreNote": "Abre o analisador gratuito com a descrição desta vaga já preenchida.",
     "descHeading": "A descrição do próprio empregador",
     "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
     "theEmployer": "o empregador"

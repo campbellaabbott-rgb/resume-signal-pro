@@ -74,6 +74,7 @@ import { heldBoardPass } from "@/lib/board-pass";
 import { readBoardFacets } from "@/lib/board-facets";
 import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { writeJdHandoff } from "@/lib/jd-handoff";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
@@ -4988,10 +4989,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
       const { data: res, error: err } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description: string | undefined = res?.description;
       if (err || !description) throw new Error(err?.message ?? "no description");
-      sessionStorage.setItem(
-        "rb_jd_handoff",
-        JSON.stringify({ jd: description, title: job.title, company: job.company, applyUrl: job.applyUrl }),
-      );
+      if (!writeJdHandoff({ jd: description, title: job.title, company: job.company, applyUrl: job.applyUrl })) {
+        throw new Error("description too short to hand over");
+      }
       navigate("/#upload");
     } catch (e) {
       console.error("[Jobs] detail failed:", e);

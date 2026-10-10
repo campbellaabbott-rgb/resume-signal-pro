@@ -5213,6 +5213,8 @@
     "applyCta": "Auf der eigenen Seite von {{company}} bewerben",
     "applyCtaPlain": "Auf der eigenen Seite des Arbeitgebers bewerben",
     "applyNote": "Die Bewerbung läuft über das eigene Bewerbersystem des Arbeitgebers. Dieses Board veröffentlicht keine Stelle erneut und schaltet sich nie zwischen Sie und den Arbeitgeber.",
+    "scoreCta": "Meinen Lebenslauf mit dieser Stelle abgleichen (kostenlos)",
+    "scoreNote": "Öffnet den kostenlosen Scanner mit der bereits eingefügten Beschreibung dieser Stelle.",
     "descHeading": "Die Beschreibung des Arbeitgebers",
     "sourceNote": "Direkt aus dem eigenen Bewerbersystem von {{company}} — nie ein Aggregator, nie eine Zweitveröffentlichung. Eine datierte Anzeige wird höchstens {{days}} Tage ausgespielt und verschwindet, sobald der Feed des Arbeitgebers sie nicht mehr enthält.",
     "theEmployer": "dem Arbeitgeber"

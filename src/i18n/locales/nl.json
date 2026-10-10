@@ -5213,6 +5213,8 @@
     "applyCta": "Solliciteer op de eigen site van {{company}}",
     "applyCtaPlain": "Solliciteer op de eigen site van de werkgever",
     "applyNote": "De sollicitatie verloopt via het eigen wervingssysteem van de werkgever. Dit bord plaatst een vacature nooit opnieuw en gaat nooit tussen jou en de werkgever staan.",
+    "scoreCta": "Mijn cv beoordelen voor deze vacature (gratis)",
+    "scoreNote": "Opent de gratis scanner met de beschrijving van deze vacature al ingevuld.",
     "descHeading": "De eigen omschrijving van de werkgever",
     "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond en verdwijnt zodra de feed van de werkgever hem niet meer bevat.",
     "theEmployer": "de werkgever"
