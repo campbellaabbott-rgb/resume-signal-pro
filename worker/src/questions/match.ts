@@ -244,19 +244,27 @@ const RE_SALARY_EXPECTED =
 const RE_WORK_AUTH =
   /legally\s+(authori[sz]ed|entitled|eligible|permitted)|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
 
-const RE_SPONSORSHIP =
-  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(require|need)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
-/** "…without sponsorship" / "…able to work without needing sponsorship" flips
- *  the sense of the answer. Missing this states the exact opposite of the
- *  truth, on a question employers filter hard on.
- *
- *  MIRRORED, character for character, by SPONSOR_INVERTED in
- *  supabase/functions/_shared/submission-packet.ts (the review sheet). The
- *  sheet was widened alone once and the two then answered the same label in
- *  opposite directions (sweep S8-006); a cross-runtime test now feeds both the
- *  same labels. */
+// ── SPONSORSHIP QUESTION: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/submission-packet.ts ──
+// Which labels ask about sponsorship, and which way round. "Will you require
+// sponsorship?" is answered from requiresSponsorship; "...work without (the
+// need of / needing) a visa or sponsorship?" asks the opposite (S8-006); a
+// "without" neither reading parses goes to the candidate. A sponsor word in a
+// résumé prompt or with no immigration word beside it ("sponsorship and
+// partnership programs") is not one (S8-044). Rationale: docs/wave3/agents-api.md.
+export const RE_SPONSORSHIP =
+  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(requir\w*|need\w*)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
 export const RE_SPONSOR_INVERTED =
-  /without\s+(the\s+need\s+for\s+|needing\s+(any\s+)?|requiring\s+(any\s+)?)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+  /without\s+(?:the\s+need\s+(?:for|of)\s+|needing\s+|requiring\s+)?(?:an?\s+|any\s+)?(?:visa\s+|work\s+)?(?:sponsor|visa\b|permit\b)|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+const SP_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition|\bsponsor\s+you\b/i;
+const SP_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+export type SponsorshipSense = "asks" | "inverted" | "unread";
+export function sponsorshipSense(label: string): SponsorshipSense | null {
+  if (!RE_SPONSORSHIP.test(label) || SP_PROSE.test(label)) return null;
+  if (!SP_CONTEXT.test(label) && label.trim().split(/\s+/).length > 3) return null;
+  if (RE_SPONSOR_INVERTED.test(label)) return "inverted";
+  return /\bwithout\b/i.test(label) ? "unread" : "asks";
+}
+// ── end of the sponsorship rule ──
 
 /**
  * CONTACT DETAILS BY LABEL.
@@ -309,9 +317,6 @@ export function contactLabelIsAField(label: string, fieldType: string): boolean 
   return words.length > 0 && words.length <= 6 && CF_TAIL.test(words[words.length - 1]!);
 }
 // ── end of the contact-field rule ──
-/** Sponsorship is an immigration question only in an immigration sentence:
- *  "sponsorship and partnership programs" got "No" (S8-044). */
-const RE_SPONSOR_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition/i;
 const RE_CITY = /^(city|town)$|city\s*\/\s*town|which\s+city|city\s+of\s+residence|^city\b/i;
 const RE_POSTCODE = /zip\s*code|zipcode|^zip\b|post(al)?\s*code/i;
 const RE_ADDRESS = /\baddress\b/i;
@@ -604,16 +609,18 @@ function matchStanding(
   // practice — "authorized to work in the US", "require sponsorship for a UK
   // visa" — and a single global boolean answering them produced false claims
   // about a real person's immigration status. See ./countries.ts.
-  const sponsorQ = RE_SPONSORSHIP.test(label) && !CF_PROSE.test(label)
-    && (RE_SPONSOR_CONTEXT.test(label) || label.split(/\s+/).length <= 3);
-  if (sponsorQ || RE_WORK_AUTH.test(label)) {
-    const isSponsor = sponsorQ;
+  const sense = sponsorshipSense(label);
+  if (sense || RE_WORK_AUTH.test(label)) {
+    const isSponsor = sense !== null;
     const category = isSponsor ? "sponsorship" : "work-authorization";
     const stated = isSponsor ? a.requiresSponsorship : a.workAuthorized;
     if (stated === null) {
       return text(category, isSponsor
         ? "candidate has not stated whether they need sponsorship"
         : "candidate has not stated whether they are authorised to work");
+    }
+    if (sense === "unread") {
+      return text(category, "the question turns on a \"without\" this rule cannot read, so either answer could state the opposite of the truth");
     }
 
     // "Authorised in the UK or the EU?" is met by either; "require
@@ -629,8 +636,7 @@ function matchStanding(
     }
 
     if (isSponsor) {
-      const inverted = RE_SPONSOR_INVERTED.test(label);
-      return chooseBoolean(q, inverted ? !a.requiresSponsorship! : a.requiresSponsorship!, category);
+      return chooseBoolean(q, sense === "inverted" ? !a.requiresSponsorship! : a.requiresSponsorship!, category);
     }
     return chooseBoolean(q, a.workAuthorized!, category);
   }

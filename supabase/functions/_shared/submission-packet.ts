@@ -171,10 +171,32 @@ function identityValue(label: string, p: Profile): string {
  */
 const SALARY_CURRENT =
   /\b(current|present|existing|latest|most\s+recent)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|earnings|wage)|(salary|compensation|package|ctc|remuneration|earnings)\b[^?]{0,20}\b(current|present)\b/;
-export const SPONSOR_INVERTED =
-  /without\s+(the\s+need\s+for\s+|needing\s+(any\s+)?|requiring\s+(any\s+)?)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/;
 const START_DATE =
   /notice\s+period|when\s+(can|could|are|would)\s+you\s+(be\s+able\s+to\s+)?(start|commence|be\s+available\s+to\s+start)|start\s+date|date\s+(that\s+)?you\s+(could|can|would\s+be\s+able\s+to)\s+start|available\s+to\s+(start|commence|begin)|availability\s+to\s+start|earliest[^?]{0,30}(start|begin|commence)|how\s+soon\s+(can|could)\s+you/;
+
+// ── SPONSORSHIP QUESTION: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/submission-packet.ts ──
+// Which labels ask about sponsorship, and which way round. "Will you require
+// sponsorship?" is answered from requiresSponsorship; "...work without (the
+// need of / needing) a visa or sponsorship?" asks the opposite (S8-006); a
+// "without" neither reading parses goes to the candidate. A sponsor word in a
+// résumé prompt or with no immigration word beside it ("sponsorship and
+// partnership programs") is not one (S8-044). Rationale: docs/wave3/agents-api.md.
+export const RE_SPONSORSHIP =
+  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(requir\w*|need\w*)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
+export const RE_SPONSOR_INVERTED =
+  /without\s+(?:the\s+need\s+(?:for|of)\s+|needing\s+|requiring\s+)?(?:an?\s+|any\s+)?(?:visa\s+|work\s+)?(?:sponsor|visa\b|permit\b)|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+const SP_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition|\bsponsor\s+you\b/i;
+const SP_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+export type SponsorshipSense = "asks" | "inverted" | "unread";
+export function sponsorshipSense(label: string): SponsorshipSense | null {
+  if (!RE_SPONSORSHIP.test(label) || SP_PROSE.test(label)) return null;
+  if (!SP_CONTEXT.test(label) && label.trim().split(/\s+/).length > 3) return null;
+  if (RE_SPONSOR_INVERTED.test(label)) return "inverted";
+  return /\bwithout\b/i.test(label) ? "unread" : "asks";
+}
+// ── end of the sponsorship rule ──
+/** The name the sheet's inversion rule had before it moved into the block above. */
+export const SPONSOR_INVERTED = RE_SPONSOR_INVERTED;
 
 /** A cover-letter box: a document slot, or a text area that wants the note itself. */
 const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s+motivation/;
@@ -187,13 +209,18 @@ const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s
 function standingValue(label: string, s: StandingAnswers): string | null {
   const l = label.toLowerCase();
   const yn = (b: boolean | null | undefined) => (b === true ? "Yes" : b === false ? "No" : null);
-  if (/sponsor/.test(l)) {
+  const sense = sponsorshipSense(label);
+  if (sense) {
     // "Authorized to work ... WITHOUT sponsorship?" asks the opposite question
     // to "Will you require sponsorship?", and answering both with the same
     // boolean told an authorised candidate's review sheet to say No.
     if (s.requiresSponsorship === null || s.requiresSponsorship === undefined) return null;
-    return yn(SPONSOR_INVERTED.test(l) ? !s.requiresSponsorship : s.requiresSponsorship);
+    if (sense === "unread") return null;
+    return yn(sense === "inverted" ? !s.requiresSponsorship : s.requiresSponsorship);
   }
+  // A sponsor word that is not a sponsorship question ("are you currently
+  // sponsored?", a résumé prompt) is the candidate's, never the boolean's.
+  if (/sponsor/.test(l)) return null;
   if (/authori[sz]ed|legally able|right to work|work permit|eligible to work/.test(l)) {
     return yn(s.workAuthorized);
   }

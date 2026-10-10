@@ -9,6 +9,7 @@ import {
   shapeModelAnswers,
 } from "../../supabase/functions/_shared/application-questions";
 import { matchQuestion, normaliseLabel, type StandingAnswers } from "../../worker/src/questions/match.js";
+import { buildPacket } from "../../supabase/functions/_shared/submission-packet";
 import * as workerProtected from "../../worker/src/questions/protected.js";
 import type { DomQuestion } from "../../worker/src/vendors/enumerate-dom.js";
 
@@ -62,6 +63,10 @@ const PROTECTED = [
   "Describe your experience with any criminal convictions you have",
   "Explain your criminal record",
   "Describe any medical conditions that may affect your work",
+  // Review of S8-044: a sponsorship word with no immigration word beside it
+  // fell to `unrecognised`, and the worker sent the model's draft.
+  "Are you currently sponsored?",
+  "Are you currently sponsored by your employer?",
 ];
 
 /** Résumé questions in the same vocabulary. Widening must not swallow them. */
@@ -81,6 +86,8 @@ const STAYS_DRAFTABLE = [
   "Describe your experience with drug screening assays in a GLP lab",
   "What is your experience caring for pregnant patients?",
   "Describe your experience handling reasonable accommodation requests as an HR partner",
+  // A sponsor word in a résumé prompt about work done stays draftable.
+  "Describe your experience sponsoring H-1B visas for employees as an HR partner",
 ];
 
 const MODEL_TEXT = "MODEL-WRITTEN ANSWER";
@@ -122,6 +129,33 @@ describe("a years question in a protected topic's words is a résumé question",
     const label = "How many years of experience do you have with the US tax code?";
     expect(classifyQuestion(label, "textarea")).toBe("draftable");
     expect(workerProtected.isProtectedQuestion(label)).toBe(false);
+  });
+});
+
+describe("a sponsorship question with no immigration word is still the candidate's", () => {
+  // "Will we have to sponsor you?" is "Will you require sponsorship?" asked
+  // the other way round. The context gate turned it away, the server called it
+  // draftable, and the worker filled the model's "No" for a candidate who
+  // needs sponsorship.
+  const label = "Will we have to sponsor you?";
+  const radio: DomQuestion = { name: "q", type: "radio", required: true, label, options: ["Yes", "No"] };
+  const needs: StandingAnswers = { ...FULL, requiresSponsorship: true };
+
+  it("the worker answers it from what the candidate stated, never from the draft", () => {
+    expect(matchQuestion(radio, needs, undefined, new Map([[normaliseLabel(label), "No, MODEL-WRITTEN"]])))
+      .toMatchObject({ kind: "choose", category: "sponsorship", option: "Yes" });
+  });
+
+  it("the server never asks the model, and the sheet says the same", () => {
+    expect(classifyQuestion(label, "radio")).toBe("factual");
+    const p = buildPacket({
+      questions: [{ label, required: true, fieldType: "radio" }],
+      profile: { fullName: "Alex Doe", country: "United States" },
+      standing: { workAuthorized: true, requiresSponsorship: true },
+      drafted: [{ label, answer: "No, MODEL-WRITTEN", supported: true }],
+      automationTier: "auto",
+    });
+    expect(p.fields.find((f) => f.key === label)).toMatchObject({ value: "Yes", source: "standing" });
   });
 });
 
