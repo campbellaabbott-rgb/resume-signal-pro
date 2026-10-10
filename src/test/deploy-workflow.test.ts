@@ -85,6 +85,17 @@ describe("the verify step compares, and cannot pass without comparing", () => {
     expect(verify({ live: live("2026-09-09.9") }).code, "compared as text, .9 would sort after .92").not.toBe(0);
   });
 
+  it("a version that is not YYYY-MM-DD.N fails as not compared, where a letter sorted after every date and passed", () => {
+    for (const v of ["degraded", "job-board.2026-09-09.80", "2026-10-01.x", "2026-09-09"]) {
+      const r = verify({ live: live(v) });
+      expect(r.code, `live '${v}' was read as this build or later\n${r.out}`).not.toBe(0);
+      expect(r.out, v).toMatch(/nothing was compared/);
+    }
+    const repo = verify({ repo: "next", live: live("2026-09-09.92") });
+    expect(repo.code, repo.out).not.toBe(0);
+    expect(repo.out).toMatch(/nothing was compared/);
+  });
+
   it("with no URL or key to read, it fails: nothing compared is not verified", () => {
     const r = verify({ env: "OTHER=1\n", live: live("2026-09-09.92") });
     expect(r.code, r.out).not.toBe(0);
