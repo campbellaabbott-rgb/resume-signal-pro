@@ -4945,7 +4945,8 @@
     "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
     "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito.",
     "confirmed": "Salamat: kumpirmado na ang iyong Pro subscription.",
-    "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito."
+    "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito.",
+    "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",

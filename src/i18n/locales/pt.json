@@ -4945,7 +4945,8 @@
     "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",
     "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui.",
     "confirmed": "Obrigado: a sua assinatura Pro está confirmada.",
-    "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos."
+    "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos.",
+    "notConfirmedYet": "Ainda não conseguimos confirmar a sua assinatura. Atualize esta página daqui a um minuto ou contacte o suporte se o seu plano não aparecer."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",

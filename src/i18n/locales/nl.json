@@ -4945,7 +4945,8 @@
     "trialing": "Je proefperiode loopt: onbeperkte scans en het in één keer voorbereiden van sollicitaties zijn nu ontgrendeld. De betaalde tools zijn inbegrepen vanaf je eerste betaling.",
     "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken.",
     "confirmed": "Bedankt: je Pro-abonnement is bevestigd.",
-    "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden."
+    "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden.",
+    "notConfirmedYet": "We konden je abonnement nog niet bevestigen. Vernieuw deze pagina over een minuut, of neem contact op met support als je abonnement niet verschijnt."
   },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",

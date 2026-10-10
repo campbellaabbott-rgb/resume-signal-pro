@@ -4945,7 +4945,8 @@
     "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",
     "linkPending": "Cette adresse a un abonnement qui n'est pas encore lié à ce compte. Connectez-vous avec Google avec cette adresse pour l'utiliser ici.",
     "confirmed": "Merci : votre abonnement Pro est confirmé.",
-    "confirming": "Confirmation de votre abonnement auprès de Stripe. Cela prend quelques secondes."
+    "confirming": "Confirmation de votre abonnement auprès de Stripe. Cela prend quelques secondes.",
+    "notConfirmedYet": "Nous n'avons pas encore pu confirmer votre abonnement. Actualisez cette page dans une minute, ou contactez le support si votre abonnement n'apparaît pas."
   },
   "atsCoverage": {
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",

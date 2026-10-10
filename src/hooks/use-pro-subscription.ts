@@ -91,6 +91,11 @@ export function useProSubscription() {
     }
   }, [knownEmail, heldSession]);
 
+  // The asks ran out with the plan still not live (a late webhook, a payment
+  // left incomplete, an old success link): the card stops saying it is
+  // confirming and offers the button again (the checkout answers
+  // alreadySubscribed for a plan that is live).
+  const [confirmGaveUp, setConfirmGaveUp] = useState(false);
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -98,7 +103,9 @@ export function useProSubscription() {
     // may land a few seconds after the redirect), at most PRO_CONFIRM_TRIES.
     const run = async (left: number) => {
       const live = await refresh();
-      if (!stopped && heldSession && !live && left > 1) timer = setTimeout(() => void run(left - 1), PRO_CONFIRM_INTERVAL_MS);
+      if (stopped || !heldSession || live) return;
+      if (left > 1) timer = setTimeout(() => void run(left - 1), PRO_CONFIRM_INTERVAL_MS);
+      else setConfirmGaveUp(true);
     };
     void run(heldSession ? PRO_CONFIRM_TRIES : 1);
     return () => { stopped = true; if (timer) clearTimeout(timer); };
@@ -179,5 +186,9 @@ export function useProSubscription() {
     }
   }, [session, toast]);
 
-  return { pro, refresh, subscribe, manage, actionLoading, knownEmail, justSubscribed: heldSession !== null };
+  return {
+    pro, refresh, subscribe, manage, actionLoading, knownEmail,
+    justSubscribed: heldSession !== null && !confirmGaveUp,
+    notConfirmedYet: heldSession !== null && confirmGaveUp && !pro.active,
+  };
 }

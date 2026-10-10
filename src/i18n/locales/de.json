@@ -4945,7 +4945,8 @@
     "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",
     "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen.",
     "confirmed": "Danke: Ihr Pro-Abonnement ist bestätigt.",
-    "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden."
+    "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden.",
+    "notConfirmedYet": "Wir konnten Ihr Abonnement noch nicht bestätigen. Laden Sie diese Seite in einer Minute neu, oder wenden Sie sich an den Support, falls Ihr Abo nicht erscheint."
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",

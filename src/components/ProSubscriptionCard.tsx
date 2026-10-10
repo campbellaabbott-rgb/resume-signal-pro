@@ -28,7 +28,7 @@ import { PurchaseTerms } from "@/components/PurchaseTerms";
  *   Stripe's retry succeeded (platform sweep L6-06).
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
-  const { pro, subscribe, manage, actionLoading, justSubscribed } = useProSubscription();
+  const { pro, subscribe, manage, actionLoading, justSubscribed, notConfirmedYet } = useProSubscription();
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -91,6 +91,11 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           {pro.active
             ? t("proPlan.confirmed", "Thank you: your Pro subscription is confirmed.")
             : t("proPlan.confirming", "Confirming your subscription with Stripe. This takes a few seconds.")}
+        </p>
+      )}
+      {notConfirmedYet && (
+        <p role="status" className="mb-3 rounded-md bg-muted px-3 py-2 text-sm" data-testid="pro-not-confirmed">
+          {t("proPlan.notConfirmedYet")}
         </p>
       )}
       {pro.active ? (
