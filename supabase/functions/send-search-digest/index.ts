@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Feature 4 — weekly saved-search digest. Each opted-in saved search gets an
 // email counting how many NEW postings match it since the search's last
 // digest, with the freshest handful listed and a link back to the live board.
@@ -28,10 +28,12 @@ import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { sellerFooterHtml } from "../_shared/seller-footer.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-08.1";
+const FN_BUILD = "send-search-digest.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -401,6 +403,7 @@ Deno.serve(async (req) => {
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin:14px 0 0">
       You turned on the digest for this saved search. <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Turn it off</a>.
     </p>
+    ${sellerFooterHtml()}
   </div>
 </body></html>`;
 
@@ -423,7 +426,7 @@ Deno.serve(async (req) => {
           : strongMode
             ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
             : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
-        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html, headers: unsubHeaders });
+        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, reply_to: CUSTOMER_REPLY_TO, subject, html, headers: unsubHeaders });
         if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         sent++;
         // Remembered so a re-dated or re-discovered posting is not mailed

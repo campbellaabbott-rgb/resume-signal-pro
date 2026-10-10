@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Claim-your-profile: employers prove they work at a company on the board by
 // verifying a work email. Two actions:
 //   { action: "request", companyToken, workEmail, contactName?, website? }
@@ -51,10 +51,11 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { domainProven, employerDomains } from "./domain-proof.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "company-claim.2026-10-08.1";
+const FN_BUILD = "company-claim.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -194,6 +195,7 @@ Deno.serve(async (req) => {
         await new Resend(RESEND_API_KEY).emails.send({
           from: FROM,
           to: [claim.work_email],
+          reply_to: CUSTOMER_REPLY_TO,
           subject: `Your claim of ${subjectSafe(displayName)} is verified`,
           html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
             <p>Your claim of <b>${escapeHtml(displayName)}</b> on resumebooster.work has been reviewed and verified. The company page now shows a Verified employer badge:</p>
@@ -333,6 +335,7 @@ Deno.serve(async (req) => {
       const { error: sendError } = await resend.emails.send({
         from: FROM,
         to: [workEmail],
+        reply_to: CUSTOMER_REPLY_TO,
         subject: `Verify your claim of ${subjectSafe(displayName)} on Resume Booster`,
         html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
           <p>Someone (hopefully you) asked to claim the <b>${escapeHtml(displayName)}</b> company profile on resumebooster.work using this address.</p>

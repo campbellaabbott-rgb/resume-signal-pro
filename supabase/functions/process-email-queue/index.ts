@@ -1,10 +1,11 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'process-email-queue.2026-10-08.1'
+const FN_BUILD = 'process-email-queue.2026-10-09.1'
 const BUILD_HEADERS = { 'x-fn-build': FN_BUILD, 'Access-Control-Expose-Headers': 'x-fn-build' }
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...BUILD_HEADERS } })
@@ -294,6 +295,8 @@ Deno.serve(async (req) => {
             html: payload.html,
             text: payload.text,
             purpose: payload.purpose,
+            // A reply reaches a person (commercial-readiness 2026-10-08, item 3).
+            reply_to: typeof payload.reply_to === 'string' && payload.reply_to ? payload.reply_to : CUSTOMER_REPLY_TO,
             label: payload.label,
             idempotency_key: payload.idempotency_key,
             unsubscribe_token: payload.unsubscribe_token,

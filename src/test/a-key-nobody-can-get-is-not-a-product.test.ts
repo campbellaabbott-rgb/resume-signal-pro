@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { MAIL_DOOR_SQL, MAIL_DOOR_VERIFY, bootMailDoorDb, h64, rows } from "./helpers/mail-door-db";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 /**
  * AN API NOBODY CAN TRY IS AN API NOBODY BECOMES A CUSTOMER OF -- AND A KEY
@@ -436,7 +437,7 @@ describe("the link mints the key and shows it once", () => {
 
   it("the preflight answers its build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/api-key-request", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^api-key-request\.2026-10-04\.\d+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "api-key-request", "2026-10-04")).toBe(true);
   });
 });
 

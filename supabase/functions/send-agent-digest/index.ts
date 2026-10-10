@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Agent morning email — the last hop of the overnight loop.
 //
 // agent-runner already scores fresh postings against each mandate and writes
@@ -36,10 +36,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ENTITLEMENT_COLUMNS, entitledFromRows, isEntitled, normalizeEmail, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { sellerFooterHtml } from "../_shared/seller-footer.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-agent-digest.2026-10-08.1";
+const FN_BUILD = "send-agent-digest.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -246,6 +248,7 @@ Deno.serve(async (req) => {
     </div>
     <div style="text-align:center;padding:14px 0 0">
       <a href="${escapeHtml(unsubUrl)}" style="font-size:11px;color:#94a3b8">Stop these morning emails</a>
+      ${sellerFooterHtml()}
     </div>
   </div>
 </body></html>`;
@@ -254,6 +257,7 @@ Deno.serve(async (req) => {
         const { error: sendErr } = await resend.emails.send({
           from: "Resume Booster <agent@resumebooster.work>",
           to: [m.email],
+          reply_to: CUSTOMER_REPLY_TO,
           subject: n === 1 ? "1 role worth your morning" : `${n} roles worth your morning`,
           html,
         });

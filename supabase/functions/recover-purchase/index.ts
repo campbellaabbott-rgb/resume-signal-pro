@@ -1,10 +1,17 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { purchaseReferenceIn } from "../_shared/purchase-links.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "recover-purchase.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -17,14 +24,18 @@ serve(async (req) => {
   }
 
   try {
-    const { email, sessionId } = await req.json();
+    const { email, sessionId: pasted } = await req.json();
 
-    // Require sessionId to prevent enumeration of purchases by email alone.
-    // Email-only recovery is no longer permitted; users must provide their
-    // Stripe checkout session ID (delivered in the post-purchase email).
+    // Require a purchase reference to prevent enumeration of purchases by
+    // email alone. WHAT THE EMAIL CONTAINS IS ACCEPTED AS PASTED: the bare
+    // session id, the button's link (any of the purchase pages, encoded or
+    // not), or the "Order reference" line (commercial-readiness 2026-10-08,
+    // item 3). This asked for a link no email carried, and took only a raw
+    // id, so a pasted line failed as "no purchase".
+    const sessionId = purchaseReferenceIn(pasted);
     if (!sessionId) {
       return new Response(
-        JSON.stringify({ error: "A purchase session ID is required to recover content. Please use the link from your purchase confirmation email." }),
+        JSON.stringify({ error: "Paste the button link or the order reference from your purchase email." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

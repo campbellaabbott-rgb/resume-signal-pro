@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -11,7 +11,7 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-08.2";
+const FN_BUILD = "verify-product-purchase.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -738,7 +738,8 @@ serve(async (req) => {
             email: customerEmail,
             productType,
             productName,
-            generatedContent
+            generatedContent,
+            sessionId
           })
         });
 

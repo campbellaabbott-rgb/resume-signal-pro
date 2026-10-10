@@ -638,6 +638,59 @@ export default function ProductSuccess() {
     }
   }, [toast]);
 
+  // THE SAVED COPY OF A PURCHASE, PUT ON THE PAGE. recover-purchase answers
+  // with every row saved under a reference; the one for this page's product
+  // is shown. False when there is none (the caller decides what follows).
+  // interviewCoach/careerPathSimulator and the scan products have no stored
+  // blob to restore: they are not in the map.
+  const applyRecoveredPurchase = (purchases: Array<{ productType?: string; generatedContent?: unknown }> | undefined): boolean => {
+    const productTypeMap: Record<string, string> = {
+      basicKeywordFix: 'basic_keyword_fix',
+      coverLetter: 'cover_letter',
+      premiumPackage: 'premium_package',
+      atsDefense: 'ats_defense',
+      careerSnapshot: 'career_snapshot',
+      graduateGamePlan: 'graduate_gameplan',
+      applyAssistant: 'apply_assistant'
+    };
+    const targetType = productTypeMap[productKey || ''];
+    const content = targetType
+      ? (purchases ?? []).find((p) => p?.productType === targetType && p?.generatedContent)?.generatedContent as any
+      : null;
+    if (!content) return false;
+    if (productKey === 'atsDefense') {
+      setAtsDefenseData(content);
+    } else if (productKey === 'careerSnapshot') {
+      setCareerSnapshotData(content);
+    } else if (productKey === 'graduateGamePlan') {
+      setGraduateGamePlanData(content);
+    } else if (productKey === 'applyAssistant') {
+      setApplyPackageData({
+        ...content,
+        tailoredResume: normalizeBuilderResume(content.tailoredResume),
+      });
+      setApplyCoverLetter(content.coverLetter || null);
+    } else {
+      setGeneratedContent(content);
+    }
+    return true;
+  };
+
+  // OPENED FROM THE PURCHASE EMAIL, ON ANY DEVICE (commercial-readiness
+  // 2026-10-08, item 3). The mail's button carries the session; when the
+  // product was already made and saved under it, that copy is shown, not an
+  // upload form on a device that never held the resume, and nothing is made
+  // twice. Best-effort: a failed lookup falls through to what the page did.
+  const showSavedPurchase = async (reference: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('recover-purchase', { body: { sessionId: reference } });
+      if (error || !data?.found) return false;
+      return applyRecoveredPurchase(data.purchases);
+    } catch {
+      return false;
+    }
+  };
+
   // Ref to track if verification has run to prevent double-execution
   const verificationStartedRef = useRef(false);
 
@@ -655,6 +708,14 @@ export default function ProductSuccess() {
       }
 
       verificationStartedRef.current = true;
+
+      // An owner re-delivery is not a Stripe session, so verify-product-
+      // purchase cannot read it: its saved copy is the purchase.
+      if (sessionId.startsWith('manual_regen_')) {
+        if (!(await showSavedPurchase(sessionId))) setIsRecoveryMode(true);
+        setIsVerifying(false);
+        return;
+      }
 
       try {
         // For premium package and cover letter, use streaming generation for real-time UX
@@ -698,6 +759,20 @@ export default function ProductSuccess() {
           }
           setScanCreditsResult({ credits: proven?.bought || fromContent, email: email ?? '' });
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
+        }
+
+        // ALREADY MADE AND SAVED (a revisit from the purchase email, or the
+        // webhook finished first): the saved copy, not a second generation.
+        if (!data?.generatedContent && productKey !== 'scanPack' && await showSavedPurchase(sessionId)) {
+          // Tracked as the verified-content branch below is (keyed on the
+          // session, so a revisit is not a second purchase); a Pro grant
+          // is not a sale.
+          if (productKey && product && !sessionId.startsWith('pro_')) {
+            trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
+            trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+          }
+          setIsVerifying(false);
+          return;
         }
 
         // If we already have generated content from the verification, use it
@@ -1764,43 +1839,10 @@ export default function ProductSuccess() {
                                 if (error) throw error;
                                 
                                 if (data?.found && data?.purchases?.length > 0) {
-                                  // Find most recent purchase matching this product type.
-                                  // Note: scanPack/careerBundle aren't here — those are recovered
-                                  // via the email lookup in the "My Credits" widget instead, since
-                                  // there's no generatedContent blob to restore for credits. interviewCoach/
-                                  // careerPathSimulator aren't here either — they're self-contained widgets
-                                  // that only need resumeText (recovered via the upload form above), not a
-                                  // pre-generated content blob.
-                                  const productTypeMap: Record<string, string> = {
-                                    basicKeywordFix: 'basic_keyword_fix',
-                                    coverLetter: 'cover_letter',
-                                    premiumPackage: 'premium_package',
-                                    atsDefense: 'ats_defense',
-                                    careerSnapshot: 'career_snapshot',
-                                    graduateGamePlan: 'graduate_gameplan',
-                                    applyAssistant: 'apply_assistant'
-                                  };
-                                  const targetType = productTypeMap[productKey || ''];
-                                  const matchingPurchase = data.purchases.find(
-                                    (p: any) => p.productType === targetType
-                                  );
-
-                                  if (matchingPurchase?.generatedContent) {
-                                    if (productKey === 'atsDefense') {
-                                      setAtsDefenseData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'careerSnapshot') {
-                                      setCareerSnapshotData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'graduateGamePlan') {
-                                      setGraduateGamePlanData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'applyAssistant') {
-                                      setApplyPackageData({
-                                        ...matchingPurchase.generatedContent,
-                                        tailoredResume: normalizeBuilderResume(matchingPurchase.generatedContent.tailoredResume),
-                                      });
-                                      setApplyCoverLetter(matchingPurchase.generatedContent.coverLetter || null);
-                                    } else {
-                                      setGeneratedContent(matchingPurchase.generatedContent);
-                                    }
+                                  // The saved copy for this page's product
+                                  // (scan credits are recovered from the
+                                  // "My Credits" widget instead).
+                                  if (applyRecoveredPurchase(data.purchases)) {
                                     setShowEmailRecovery(false);
                                     toast({
                                       title: t('productSuccess.recovery.contentRecoveredTitle'),

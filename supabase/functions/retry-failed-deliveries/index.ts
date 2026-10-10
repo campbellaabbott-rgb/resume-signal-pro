@@ -384,7 +384,8 @@ serve(async (req) => {
                 email: delivery.customer_email,
                 productType: delivery.product_type,
                 productName: delivery.product_name,
-                generatedContent
+                generatedContent,
+                sessionId: delivery.stripe_session_id
               })
             });
 
@@ -448,7 +449,8 @@ serve(async (req) => {
                 email: delivery.customer_email,
                 productType: delivery.product_type,
                 productName: delivery.product_name,
-                generatedContent
+                generatedContent,
+                sessionId: delivery.stripe_session_id
               })
             });
 

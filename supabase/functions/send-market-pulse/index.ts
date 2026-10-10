@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Market pulse -- the product's retention loop. Sends each CONFIRMED
 // subscriber a short email with the current must-have keywords for their
 // industry and a free-rescan nudge.
@@ -35,10 +35,12 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { sellerFooterHtml } from "../_shared/seller-footer.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-market-pulse.2026-10-08.1";
+const FN_BUILD = "send-market-pulse.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -197,6 +199,7 @@ Deno.serve(async (req) => {
         const { error: sendErr } = await new Resend(RESEND_API_KEY).emails.send({
           from: "Resume Booster <reports@resumebooster.work>",
           to: [email],
+          reply_to: CUSTOMER_REPLY_TO,
           subject: "Confirm your monthly market pulse",
           html: confirmEmailHtml(industry.replace(/_/g, " "), link),
         });
@@ -307,12 +310,14 @@ Deno.serve(async (req) => {
       You confirmed this monthly pulse${confirmedOn ? ` on ${escapeHtml(confirmedOn)}` : ""} by clicking the link we emailed you.<br>
       <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Unsubscribe</a> — no login needed.
     </p>
+    ${sellerFooterHtml()}
   </div>
 </body></html>`;
 
         const { error: sendErr } = await resend.emails.send({
           from: "Resume Booster <reports@resumebooster.work>",
           to: [sub.cl_email],
+          reply_to: CUSTOMER_REPLY_TO,
           subject: `${industryLabel} postings shifted — is your resume current?`,
           html,
           headers: unsubHeaders,

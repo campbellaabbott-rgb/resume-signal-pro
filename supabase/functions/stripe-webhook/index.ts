@@ -387,6 +387,30 @@ async function revocationTarget(
 
 // Trigger product delivery for a completed checkout
 // deno-lint-ignore no-explicit-any
+/**
+ * A PRODUCT MADE ON ITS OWN PAGE STILL GETS A MAIL AT PAYMENT. The Full
+ * Analysis and Freelance Boost are made after Checkout, on the page it
+ * returns to; a buyer who closed that tab had no mail and no way back
+ * (commercial-readiness 2026-10-08, item 3). The mail's button opens that
+ * page with the session. Background and best-effort: the page is the
+ * delivery, and send-product-email logs the send either way.
+ */
+function mailThePurchaseLink(
+  supabaseUrl: string, email: string | null, productType: string, productName: string, sessionId: string,
+): void {
+  if (!email) return;
+  EdgeRuntime.waitUntil(
+    fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+      body: JSON.stringify({ email, productType, productName, sessionId }),
+    }).then(
+      (r) => { if (!r.ok) logStep("Purchase-link mail refused", { productType, status: r.status }); },
+      (e) => logStep("Purchase-link mail threw", { productType, error: String(e).slice(0, 200) }),
+    ),
+  );
+}
+
 async function triggerProductDelivery(
   session: Stripe.Checkout.Session,
   supabase: SupabaseClient<any, any, any>,
@@ -505,6 +529,7 @@ async function triggerProductDelivery(
   // generation-failed retry queue. The intake page owns delivery.
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
+    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || 'Freelance Boost', sessionId);
     return { success: true, productType, deferred: 'freelance_intake' };
   }
 
@@ -521,6 +546,7 @@ async function triggerProductDelivery(
   // not-yet-delivered and redeems the session itself, once.
   if (productType === FULL_ANALYSIS_PRODUCT_TYPE) {
     logStep("Full analysis — delivered by analyze-resume on the success page; nothing to generate here", { sessionId });
+    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || 'Full Resume Analysis', sessionId);
     return { success: true, productType, deferred: 'success_page' };
   }
 
@@ -792,7 +818,7 @@ async function generateAndDeliver(job: GenerationJob) {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
             },
-            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
+            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent, sessionId })
           });
 
           if (emailResponse.ok) {

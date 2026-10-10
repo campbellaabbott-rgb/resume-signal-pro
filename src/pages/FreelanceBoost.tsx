@@ -142,11 +142,29 @@ export default function FreelanceBoost() {
   useEffect(() => {
     if (!sessionId || autoRunRef.current) return;
     autoRunRef.current = true;
-    if (draftIsComplete(saved)) {
-      void generate(saved);
-    } else {
-      setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
-    }
+    void (async () => {
+      // ALREADY GENERATED UNDER THIS PURCHASE: the saved section, on any
+      // device (the purchase email's button opens this link). It used to ask
+      // a buyer on a new device for the intake again and generate a second
+      // time (commercial-readiness 2026-10-08, item 3).
+      try {
+        const { data } = await supabase.functions.invoke("recover-purchase", { body: { sessionId } });
+        const savedSection = data?.found
+          ? (data.purchases as Array<{ productType?: string; generatedContent?: unknown }> | undefined)
+              ?.find((p) => (p.productType === "freelance_boost" || p.productType === "freelance_transition_pro") && p.generatedContent)
+              ?.generatedContent
+          : null;
+        if (savedSection) {
+          setResult(savedSection as BoostResult);
+          return;
+        }
+      } catch { /* no saved copy reachable: generate as before */ }
+      if (draftIsComplete(saved)) {
+        void generate(saved);
+      } else {
+        setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
