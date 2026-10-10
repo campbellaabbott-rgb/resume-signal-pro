@@ -34,6 +34,7 @@ const RATE_WINDOW_MINUTES = 1440;
 // read, and Pro accounts together share one hourly ceiling.
 const KITS_PER_ACCOUNT_HOUR = 60;
 const PRO_KITS_PER_HOUR = 600;
+const HOUR_WINDOW_MINUTES = 60;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A signed-in session's token, by its unverified claims: the publishable key is a JWT whose role is anon, and is never looked up. */
@@ -110,11 +111,9 @@ serve(async (req) => {
       );
     }
     // check_rate_limit's answer, or null for anything that is not one (a limiter that fails open is off).
-    const counted = async (bucket: string, max: number, minutes: number): Promise<boolean | null> => {
+    const counted = async (args: Record<string, string | number>): Promise<boolean | null> => {
       try {
-        const { data, error } = await supabase.rpc('check_rate_limit', {
-          p_ip: bucket, p_function: 'generate-apply-package', p_max_requests: max, p_window_minutes: minutes,
-        });
+        const { data, error } = await supabase.rpc('check_rate_limit', { ...args, p_function: 'generate-apply-package' });
         if (error) console.error("[GENERATE-APPLY-PACKAGE] Rate limit check error:", error);
         return error || typeof data !== "boolean" ? null : data;
       } catch (e) {
@@ -141,7 +140,7 @@ serve(async (req) => {
         console.warn("[GENERATE-APPLY-PACKAGE] account check failed:", String(e).slice(0, 120));
       }
       if (userId) {
-        const mine = await counted(`user:${userId}`, KITS_PER_ACCOUNT_HOUR, 60);
+        const mine = await counted({ p_ip: `user:${userId}`, p_max_requests: KITS_PER_ACCOUNT_HOUR, p_window_minutes: HOUR_WINDOW_MINUTES });
         if (mine === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
         if (!mine) return spendRefusal("rate_limited_function", KITS_PER_ACCOUNT_HOUR, corsHeaders);
         try {
@@ -152,11 +151,11 @@ serve(async (req) => {
       }
     }
     if (proAccount) {
-      const all = await counted("pro", PRO_KITS_PER_HOUR, 60);
+      const all = await counted({ p_ip: "pro", p_max_requests: PRO_KITS_PER_HOUR, p_window_minutes: HOUR_WINDOW_MINUTES });
       if (all === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
       if (!all) return spendRefusal("rate_limited_global", PRO_KITS_PER_HOUR, corsHeaders);
     } else {
-      const allowed = await counted(clientIp, RATE_LIMIT, RATE_WINDOW_MINUTES);
+      const allowed = await counted({ p_ip: clientIp, p_max_requests: RATE_LIMIT, p_window_minutes: RATE_WINDOW_MINUTES });
       if (allowed === null) {
         return new Response(
           JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
