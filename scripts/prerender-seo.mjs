@@ -173,6 +173,7 @@ export { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../supabase/functions/
 export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-expectations";
 export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
+export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
 export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
@@ -1312,7 +1313,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         <h1 class="text-3xl font-bold mb-3">${esc(cfg.heading)}</h1>
         <p class="text-muted-foreground mb-6">${esc(cfg.intro)}</p>
         <ul class="space-y-1.5 mb-8">${cfg.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>
-        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? "Informe completo en 90 segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días." : "Full diagnostic report within 90 seconds. No sign-up; your resume is deleted within 7 days.", cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
+        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? `Informe completo en ${D.SCAN_RESULTS_WITHIN_SECONDS} segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días.` : `Full diagnostic report within ${D.SCAN_RESULTS_WITHIN_SECONDS} seconds. No sign-up; your resume is deleted within 7 days.`, cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
         <section class="mt-10"><h2 class="text-2xl font-bold mb-4">${cfg.lang === "es" ? "Preguntas frecuentes" : "Common questions"}</h2><div class="space-y-4">${cfg.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>`,
     });
   }
