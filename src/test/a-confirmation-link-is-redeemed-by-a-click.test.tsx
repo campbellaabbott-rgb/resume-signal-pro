@@ -101,7 +101,8 @@ describe("/data-api: a key needs the mailbox, and the link needs a click", () =>
     // True whether or not the server mailed: its answer does not say.
     expect(screen.getByText(/can receive mail from us, a link is on its way/)).toBeInTheDocument();
     expect(screen.queryByText(/We sent a link to/)).toBeNull();
-    expect(invoke).toHaveBeenCalledWith("api-key-request", { body: { email: "dev@example.org", name: "" } });
+    // Plus the Terms version the line above the button showed (wave 3, item 12).
+    expect(invoke).toHaveBeenCalledWith("api-key-request", { body: expect.objectContaining({ email: "dev@example.org", name: "" }) });
     expect(screen.queryByText(/rb_live_/)).toBeNull();
     expect(screen.queryByText(/revokes the old one/i)).toBeNull();
   });

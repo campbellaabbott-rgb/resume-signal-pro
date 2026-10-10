@@ -42,10 +42,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
+import { termsVersionOf } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without minting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "api-key-request.2026-10-04.2";
+const FN_BUILD = "api-key-request.2026-10-09.1";
 
 const SITE = "https://resumebooster.work";
 
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return refuse("method_not_allowed", "POST an email address.", 405);
 
-  let body: { action?: unknown; email?: unknown; name?: unknown; token?: unknown };
+  let body: { action?: unknown; email?: unknown; name?: unknown; token?: unknown; termsVersion?: unknown };
   try { body = await req.json(); } catch { return refuse("bad_json", "Body must be JSON.", 400); }
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -173,10 +174,11 @@ Deno.serve(async (req) => {
   if (!resendKey) return refuse("email_unavailable", "We cannot send the confirmation email right now. Try again shortly.", 503);
 
   const token = hex(crypto.getRandomValues(new Uint8Array(32)));
+  const tokenHash = await sha256Hex(token);
   const { data, error } = await client.rpc("api_key_request_open", {
     p_email: email,
     p_name: name,
-    p_token_hash: await sha256Hex(token),
+    p_token_hash: tokenHash,
     p_net: net,
   }).maybeSingle();
   if (error) {
@@ -204,6 +206,18 @@ Deno.serve(async (req) => {
         return refuse("paused", "Key requests are paused for today. Try again tomorrow, or email us.", 503);
       default:
         return refuse("invalid_email", "Enter a valid email address.", 400);
+    }
+  }
+
+  // The Terms the line above the button showed, on the request row the link
+  // redeems (commercial-readiness item 12; 20261009132000). Never blocks.
+  const termsVersion = termsVersionOf(body);
+  if (termsVersion) {
+    try {
+      const { error: tErr } = await client.from("api_key_requests").update({ terms_version: termsVersion }).eq("token_hash", tokenHash);
+      if (tErr) console.warn("[API-KEY-REQUEST] terms version not recorded:", tErr.message?.slice(0, 120));
+    } catch (e) {
+      console.warn("[API-KEY-REQUEST] terms version not recorded:", e instanceof Error ? e.message.slice(0, 120) : String(e));
     }
   }
 

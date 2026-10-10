@@ -30,6 +30,7 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePassStatus } from "./AgentConnect";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface Details {
   client: { name?: string; uri?: string };
@@ -134,6 +135,8 @@ export default function OAuthConsent() {
                   <p className="text-xs text-muted-foreground mb-4">{t("oauthConsent.signedInAs", "Signed in as {{email}}.", { email: user.email })}</p>
                 )}
                 {error && <p className="text-sm text-destructive mb-3">{error}</p>}
+                {/* Connecting a host is agreeing to act under the Terms (item 12). */}
+                <PurchaseTerms kind="signup" className="mb-3" />
                 <div className="flex gap-2">
                   <button
                     type="button" onClick={() => decide("approve")} disabled={busy !== null}
