@@ -111,8 +111,8 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(MCP).toMatch(/import \{ hasFitAccess, isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
     expect(API, "the predicate must be the one /v1/fit applies").toMatch(/import \{ isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
     expect(API).toMatch(/const paid = isPaidKeyTier\(tier\);/);
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs\)/);
-    expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*\): Promise<unknown>/);
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
+    expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*shop: Shop,\s*\): Promise<unknown>/);
     const dispatch = between(MCP, 'case "fit_resume":', 'case "check_apply_support":');
     expect(dispatch).toMatch(/if \(!hasFitAccess\(tier\)\)/);
     expect(dispatch).toMatch(/return toolErr\(\s*"fit_resume is a paid feature/);
@@ -122,7 +122,7 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     // checked on the raw line that opens the string — a line of code, not a
     // comment — and that line must sit inside the dispatch case.
     const pointer = MCP_RAW.split("\n").find((l) => l.includes("Upgrade the key at "));
-    expect(pointer, "the same upgrade pointer /v1/fit gives").toMatch(/^\s*"Upgrade the key at https:\/\/resumebooster\.work\/data-api/);
+    expect(pointer, "the same upgrade pointer /v1/fit gives").toMatch(/^\s*forSale\(shop, "Upgrade the key at https:\/\/resumebooster\.work\/data-api/);
     expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeGreaterThan(MCP_RAW.indexOf('case "fit_resume":'));
     expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeLessThan(MCP_RAW.indexOf('case "check_apply_support":'));
     const tool = between(MCP, 'name: "fit_resume"', 'name: "board_stats"');

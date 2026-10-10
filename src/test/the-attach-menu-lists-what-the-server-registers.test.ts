@@ -294,7 +294,7 @@ describe("a prompt, the guide and the instructions reach a tool's name only thro
   });
 
   it("the guide types no registered tool name either, and is built from the same constants as the tiers", () => {
-    const guide = between(MCP, "function guideText(): string {", "\n}\n");
+    const guide = between(MCP, "function guideText(shop: Shop): string {", "\n}\n");
     expect(typedToolNames(guide, TOOL_NAMES)).toEqual([]);
     for (const c of ["ANON_TOOLS", "KEY_ONLY_READ_TOOLS", "PAID_TOOLS", "ACCOUNT_TOOLS", "ANON_SEARCH_LIMIT", "ANON_IP_CAP_PER_DAY", "ANON_GLOBAL_CAP_PER_DAY", "FREE_KEY_DAILY_QUOTA", "GET_JOBS_MAX", "MINT_URL", "PASS_URL", "DOCS_URL"]) {
       expect(guide, `${c} must be read, not typed`).toContain(c);
@@ -376,7 +376,7 @@ describe("listing is free, a credentialed read is metered under its own family, 
   it("an unkeyed guide read is free; the statistics and a job link spend the unkeyed allowance; the key's status is challenged like the tool it wraps", () => {
     const pre = between(MCP, "const read: MeteredRead | null = resolved;", 'if (method !== "tools/call") {');
     expect(pre).toMatch(/if \(read && !bearer\) \{/);
-    expect(pre).toMatch(/contentsOf\(GUIDE_URI, read\.resource\.mimeType, guideText\(\)\)/);
+    expect(pre).toMatch(/contentsOf\(GUIDE_URI, read\.resource\.mimeType, guideText\(shop\)\)/);
     expect(pre).toMatch(/answerUnkeyed\(client, req, id, tool\("board_stats"\), \{\}\)/);
     expect(pre).not.toMatch(/api_key_check|unauthorized\(/);
     // The keyed resource has no branch here: it falls through to the gate,
@@ -392,7 +392,7 @@ describe("listing is free, a credentialed read is metered under its own family, 
     const catchAt = pre.indexOf("} catch (e) {");
     expect(tryAt).toBeGreaterThan(-1);
     expect(catchAt).toBeGreaterThan(tryAt);
-    for (const m of pre.matchAll(/answerUnkeyed\(|guideText\(\)/g)) {
+    for (const m of pre.matchAll(/answerUnkeyed\(|guideText\(shop\)/g)) {
       expect(m.index!, `${m[0]} must run inside the try`).toBeGreaterThan(tryAt);
       expect(m.index!).toBeLessThan(catchAt);
     }
@@ -414,7 +414,7 @@ describe("listing is free, a credentialed read is metered under its own family, 
     expect(MCP).toMatch(/const RESOURCE_ENDPOINT = \(name: string\) => `\/mcp\/resource\/\$\{name\}`;/);
     // Answered AFTER the check allowed it, inside the metered try, before the tool dispatch.
     const check = MCP.indexOf('.rpc("api_key_check"');
-    const answered = MCP.indexOf("if (read) return json(rpcResult(id, await answerRead(client, read, d)), 200, rateHeaders);");
+    const answered = MCP.indexOf("if (read) return json(rpcResult(id, await answerRead(client, read, d, shop)), 200, rateHeaders);");
     const dispatched = MCP.indexOf('const result = toolName === "key_status"');
     expect(answered).toBeGreaterThan(check);
     expect(dispatched).toBeGreaterThan(answered);
@@ -603,7 +603,7 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     expect(capsFirst).not.toBe(MCP);
     const rendered = renderInstructions(capsFirst);
     expect(rendered.slice(0, rendered.indexOf("Four tiers"))).toMatch(/\d/);
-    const grown = MCP.replace("`The guide: ${GUIDE_URI}.`,", "`The guide: ${GUIDE_URI}. " + "x".repeat(200) + "`,");
+    const grown = MCP.replace("`The guide: ${GUIDE_URI}.`,", "`The guide: ${GUIDE_URI}. " + "x".repeat(260) + "`,");
     expect(grown).not.toBe(MCP);
     expect(Buffer.byteLength(renderInstructions(grown), "utf8")).toBeGreaterThanOrEqual(2048);
   });
