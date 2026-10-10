@@ -51,7 +51,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // read by the account's user id (agent_subscription_rows), never an address.
 // 2026-10-09.2: the sheet's work questions read their country, so the
 // mandate's listed countries are selected and handed to buildPacket.
-const BUILD_VERSION = "2026-10-09.2";
+const BUILD_VERSION = "2026-10-09.3";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

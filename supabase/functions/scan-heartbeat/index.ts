@@ -17,7 +17,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-09.1',
+  'x-fn-build': 'scan-heartbeat.2026-10-09.2',
 };
 
 // Test resume for heartbeat checks
@@ -120,7 +120,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.1"; // 10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.2"; // 10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────

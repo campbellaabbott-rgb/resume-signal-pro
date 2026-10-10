@@ -1,13 +1,13 @@
 # shellcheck shell=bash
 # ── 73. WAVE 3, AGENTS + API (branch wave3/agents-api, builds of 2026-10-09 and
-# generate-application-answers 2026-10-10.2).
+# generate-application-answers 2026-10-10.3, the wave 3 integration builds).
 # Sourced by scripts/verify-deploy.sh; J R MC probe build_ge $B $K $SITE $UA $RB
 # are in scope. Deploy note: docs/wave3/agents-api.md.
 #
 # THE CLAIMS:
-#   - six functions serve the new builds (agent-mcp .3, apply-agent .2, the
-#     rest .1; generate-application-answers 2026-10-10.2, a floor neither
-#     main's ledger repair, 10-10.1, nor scan-ai, 10-09.2, carries);
+#   - six functions serve the integration builds (agent-mcp .4, apply-agent .3, the
+#     rest .2; generate-application-answers 2026-10-10.3, a floor neither
+#     main's ledger repair, 10-10.1, nor either branch, 10-10.2, carries);
 #   - /v1 is apiVersion 2026-10-09.1 and lists SmartRecruiters beside the
 #     federal feed as withheld (owner decision 4); with the owner's key, naming
 #     it in source= is a 451 and an unknown employment_type a 400 (S8-078);
@@ -40,7 +40,7 @@
 # apply-worker.yml and are proved by their tests, not here.
 echo "== 73. wave 3 agents-api: builds, SmartRecruiters withheld, the host's own allowance, the agent card's four systems =="
 
-for PAIR in "agent-mcp|2026-10-09|3" "public-api|2026-10-09|1" "apply-agent|2026-10-09|2" "apply-broker|2026-10-09|1" "send-agent-digest|2026-10-09|1" "generate-application-answers|2026-10-10|2"; do
+for PAIR in "agent-mcp|2026-10-09|4" "public-api|2026-10-09|2" "apply-agent|2026-10-09|3" "apply-broker|2026-10-09|2" "send-agent-digest|2026-10-09|2" "generate-application-answers|2026-10-10|3"; do
   W73_FN=${PAIR%%|*}; W73_REST=${PAIR#*|}; W73_D=${W73_REST%%|*}; W73_N=${W73_REST#*|}
   W73_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W73_H" ]; then echo "FAIL  $W73_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"

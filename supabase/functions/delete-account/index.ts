@@ -37,7 +37,7 @@ import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without deleting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "delete-account.2026-10-09.3";
+const FN_BUILD = "delete-account.2026-10-09.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

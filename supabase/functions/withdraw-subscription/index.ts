@@ -37,7 +37,7 @@ import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, withdrawalMail } from "../_shared/subscription-notice.ts";
 import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
-const FN_BUILD = "withdraw-subscription.2026-10-09.3";
+const FN_BUILD = "withdraw-subscription.2026-10-09.4";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {

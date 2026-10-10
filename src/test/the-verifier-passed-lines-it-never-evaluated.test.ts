@@ -494,10 +494,18 @@ describe("section 78 judges each stamp from this branch's own build, not a strin
     return b;
   };
 
-  it("a live .1 on layoff-filings is FAIL; on the other four it passes", () => {
+  // WAVE 3 INTEGRATION: every function the integration changed answers a build
+  // later than every branch's string for it, so the floors are the merged
+  // builds: .2 for the four this branch alone stamped .1, and .3 for
+  // layoff-filings, which carries board-data-ingest's .1 and this branch's .2.
+  const FLOOR: Record<string, number> = { "create-test-coupon": 2, "generate-cohort-report": 2, "scrape-linkedin": 2, "warm-up": 2, "layoff-filings": 3 };
+
+  it("a branch's own string is FAIL on every one of the five; the merged builds pass", () => {
     const { lines } = run(S78, { curl: pre((fn) => `${fn}.2026-10-09.1`), bin: NO_GH });
-    for (const fn of SHARED) expect(has(lines, "FAIL", new RegExp(`^FAIL {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.1 \\(want ${fn}\\.2026-10-09\\.2 or later\\)`)), show(lines)).toBe(true);
-    for (const fn of FNS.filter((f) => !SHARED.includes(f))) expect(has(lines, "PASS", new RegExp(`^PASS {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.1 `)), show(lines)).toBe(true);
+    for (const fn of FNS) expect(has(lines, "FAIL", new RegExp(`^FAIL {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.1 \\(want ${fn}\\.2026-10-09\\.${FLOOR[fn]} or later\\)`)), show(lines)).toBe(true);
+    const two = run(S78, { curl: pre((fn) => `${fn}.2026-10-09.2`), bin: NO_GH });
+    for (const fn of SHARED) expect(has(two.lines, "FAIL", new RegExp(`^FAIL {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.2 \\(want ${fn}\\.2026-10-09\\.3 or later\\)`)), show(two.lines)).toBe(true);
+    for (const fn of FNS.filter((f) => !SHARED.includes(f))) expect(has(two.lines, "PASS", new RegExp(`^PASS {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.2 `)), show(two.lines)).toBe(true);
   });
 
   it("positive control: the builds this checkout carries all pass, and a later rebuild passes too", () => {

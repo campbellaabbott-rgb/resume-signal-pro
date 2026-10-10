@@ -8,7 +8,7 @@ import { isProbeOperator } from "../_shared/probe-caller.ts";
 // was fine; the AI check counted only a 5xx, so a 401 (bad key) or a 402
 // (credits exhausted) read healthy. Stripe now passes only on a 200 from its
 // balance endpoint; a missing key or a 401/402/403 from either is an error.
-const FN_BUILD = "health-check.2026-10-09.1";
+const FN_BUILD = "health-check.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

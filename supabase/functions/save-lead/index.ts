@@ -6,7 +6,7 @@ import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
 import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industries.ts";
 
 // Provable from outside without saving a lead: every response carries it.
-const FN_BUILD = "save-lead.2026-10-09.1";
+const FN_BUILD = "save-lead.2026-10-09.2";
 
 /**
  * WHAT A CALLER WROTE NEVER BECOMES MARKUP IN THE OWNER'S MAIL (S8-100). The

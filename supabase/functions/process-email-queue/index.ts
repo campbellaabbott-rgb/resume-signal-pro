@@ -5,7 +5,7 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'process-email-queue.2026-10-09.1'
+const FN_BUILD = 'process-email-queue.2026-10-09.2'
 const BUILD_HEADERS = { 'x-fn-build': FN_BUILD, 'Access-Control-Expose-Headers': 'x-fn-build' }
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...BUILD_HEADERS } })

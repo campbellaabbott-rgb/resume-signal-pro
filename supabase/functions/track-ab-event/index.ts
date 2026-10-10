@@ -9,7 +9,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 // bundle still serving. The same value rides as a response header on every
 // answer INCLUDING the CORS preflight, so a deploy can be checked with an
 // OPTIONS request that writes no row and spends no budget.
-const BUILD_VERSION = "2026-10-09.1";
+const BUILD_VERSION = "2026-10-09.2";
 
 // OPTIMIZATION: Removed alert system - not needed for tracking events
 // Removed EdgeRuntime dependency for simpler, faster execution

@@ -6,7 +6,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-09.1";
+const FN_BUILD = "retry-failed-deliveries.2026-10-09.2";
 
 // WHAT THIS SWEEP CAN DELIVER. A row for anything else (a subscription, the
 // six-hour pass, the Freelance Boost tiers, an unknown type) is taken off the

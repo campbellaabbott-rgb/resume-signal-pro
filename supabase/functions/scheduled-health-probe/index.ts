@@ -5,7 +5,7 @@ import { isProbeOperator } from "../_shared/probe-caller.ts";
 // A KEY THAT IS REFUSED IS NOT A HEALTHY SERVICE (register L13-67): the same
 // change as health-check. Stripe passes only on a 200; a missing key or a
 // 401/402/403 from Stripe or the AI gateway is unhealthy.
-const FN_BUILD = "scheduled-health-probe.2026-10-09.1";
+const FN_BUILD = "scheduled-health-probe.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

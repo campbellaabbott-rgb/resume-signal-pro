@@ -8,7 +8,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-scan-pack-purchase.2026-10-09.1";
+const FN_BUILD = "verify-scan-pack-purchase.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -13,14 +13,19 @@
 # a revoked grant refuses with 42501.
 echo "== 75. wave 3 email-ops: undelivered-order alert, stuck-generation retry, purchase links, reply-to, pulse undo, digest clock, claims, telemetry, probes =="
 
-for FN75 in scan-heartbeat retry-failed-deliveries stripe-webhook send-product-email verify-product-purchase admin-regenerate-delivery \
-  send-analysis-email recover-purchase process-email-queue api-key-request company-claim send-affiliate-commission-email \
-  send-agent-digest send-market-pulse send-scan-report send-search-digest save-lead agent-pass-status track-ab-event \
-  get-analytics health-check scheduled-health-probe; do
+# fn:N = the wave-3 integration's build on 2026-10-09 (docs/wave3/README.md). The
+# branch's own .1 is not enough: payments-account and agents-api stamped several
+# of these .1 on other code, so only the merged build proves the merged code.
+for P75 in scan-heartbeat:2 retry-failed-deliveries:2 stripe-webhook:4 send-product-email:2 verify-product-purchase:2 \
+  admin-regenerate-delivery:2 send-analysis-email:2 recover-purchase:2 process-email-queue:2 api-key-request:2 \
+  company-claim:2 send-affiliate-commission-email:2 send-agent-digest:2 send-market-pulse:2 send-scan-report:2 \
+  send-search-digest:2 save-lead:2 agent-pass-status:2 track-ab-event:2 get-analytics:2 \
+  health-check:2 scheduled-health-probe:2; do
+  FN75=${P75%%:*}; N75=${P75#*:}
   H75=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN75" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$H75" ]; then echo "FAIL  $FN75 preflight carries no x-fn-build (not deployed with this wave)"
-  elif build_ge "$FN75" "$H75" 2026-10-09 1; then echo "PASS  $FN75 x-fn-build = $H75 (2026-10-09.1 or later)"
-  else echo "FAIL  $FN75 x-fn-build = $H75 (want $FN75.2026-10-09.1 or later)"; fi
+  elif build_ge "$FN75" "$H75" 2026-10-09 "$N75"; then echo "PASS  $FN75 x-fn-build = $H75 (2026-10-09.$N75 or later)"
+  else echo "FAIL  $FN75 x-fn-build = $H75 (want $FN75.2026-10-09.$N75 or later)"; fi
 done
 
 # The two probes now open to the owner's key and the cron key: their preflights must let those headers through.
@@ -62,7 +67,7 @@ case "$RP75" in *"order reference"*) echo "PASS  recover-purchase refuses text w
 
 # track-ab-event: oversized metadata is refused before any write, probed only when the new build serves.
 HT75=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/track-ab-event" -H "apikey: $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-if build_ge track-ab-event "$HT75" 2026-10-09 1; then
+if build_ge track-ab-event "$HT75" 2026-10-09 2; then
   BIG75=$(node -e 'console.log(JSON.stringify({testName:"vd75_probe",variant:"probe",eventType:"view",visitorId:"00000000-0000-4000-8000-000000000075",metadata:{blob:"x".repeat(5000)}}))')
   CT75=$(curl -s -m 30 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1/track-ab-event" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d "$BIG75")
   [ "$CT75" = "400" ] && echo "PASS  track-ab-event refuses 5 KB of metadata with 400 before any write (S8-019)" || echo "FAIL  track-ab-event answered 5 KB of metadata with HTTP $CT75 (want 400)"
@@ -71,10 +76,10 @@ else
 fi
 
 # stripe-webhook answers Stripe before generation: provable only with a signed event, so from the build alone.
-echo "INFO  stripe-webhook 2026-10-09.1 answers checkout.session.completed before the AI writer (vitest: stripe-waited-on-the-ai-writer...); watch Stripe's webhook delivery times drop under ~2 s for product sales"
-echo "INFO  scan-heartbeat 2026-10-09.1 mails the owner (subject 'Paid order(s) not delivered') once per undelivered order per day, newest 100 listed and every standing row counted, and fails check cron_http_refusals on any 401/403 cron answer in the last hour; its JSON (undeliveredOrders, undeliveredOrdersTotal, checks) is readable only with the cron key, service role or ADMIN_API_KEY"
-echo "INFO  track-ab-event 2026-10-09.1 counts each address (mail_door_take door track-ab-event:address, 1,800/h) before the site's 20,000/h; mail_door_take is a counter, so it is never called here: with the service role, SELECT count(*) FROM mail_door_counts WHERE door = 'track-ab-event:address' is above 0 after an hour of traffic"
-echo "INFO  send-search-digest 2026-10-09.1 restores handed-back claims when the run ends and keeps the claim's stamp for a suppressed or mailbox-less owner (vitest: searches-the-digest-handed-back-held-the-head-of-the-queue); its run answers {considered, handedBack} only to the cron"
+echo "INFO  stripe-webhook 2026-10-09.4 answers checkout.session.completed before the AI writer (vitest: stripe-waited-on-the-ai-writer...); watch Stripe's webhook delivery times drop under ~2 s for product sales"
+echo "INFO  scan-heartbeat 2026-10-09.2 mails the owner (subject 'Paid order(s) not delivered') once per undelivered order per day, newest 100 listed and every standing row counted, and fails check cron_http_refusals on any 401/403 cron answer in the last hour; its JSON (undeliveredOrders, undeliveredOrdersTotal, checks) is readable only with the cron key, service role or ADMIN_API_KEY"
+echo "INFO  track-ab-event 2026-10-09.2 counts each address (mail_door_take door track-ab-event:address, 1,800/h) before the site's 20,000/h; mail_door_take is a counter, so it is never called here: with the service role, SELECT count(*) FROM mail_door_counts WHERE door = 'track-ab-event:address' is above 0 after an hour of traffic"
+echo "INFO  send-search-digest 2026-10-09.2 restores handed-back claims when the run ends and keeps the claim's stamp for a suppressed or mailbox-less owner (vitest: searches-the-digest-handed-back-held-the-head-of-the-queue); its run answers {considered, handedBack} only to the cron"
 echo "INFO  /health-check (frontend) sends the stored admin key to health-check: after the publish, the dashboard's service cards show provider messages again (an anonymous health-check answer has none)"
 echo "INFO  customer mails now carry reply_to resumeboostersupp@gmail.com; OWNER: reply once to a purchase mail and to a pulse confirmation and confirm the reply lands in that inbox"
 echo "INFO  the seller line in marketing footers renders nothing until _shared/seller-identity.ts is filled (both fields); OWNER: fill it when the entity and address exist, keep the frontend copy equal"

@@ -4,7 +4,8 @@
 #
 # THE CLAIMS, one line each below:
 #   - every changed function serves its own build or a later one: 2026-10-09.N,
-#     or 2026-10-10.2 for the five main re-stamped 2026-10-10.1 (PR #25), so a
+#     or 2026-10-10.3 for the five main re-stamped 2026-10-10.1 (PR #25; the wave 3
+#     integration build, above scan-ai's and agents-api's 10-10.2), so a
 #     production serving main's build without this wave's changes FAILs;
 #   - 20261009111000 landed: shortlist_candidates has jd_text_scored and is
 #     closed to anon, and shortlist_decide exists and refuses anon by name;
@@ -36,12 +37,12 @@ vd72_build() { # $1 fn -> the preflight's x-fn-build header
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
 for PAIR in \
-  "free-keyword-scan|2026-10-09|2" "free-keyword-scan-stream|2026-10-09|2" "shortlist-evaluate|2026-10-10|2" \
-  "generate-application-answers|2026-10-10|2" "generate-apply-package|2026-10-09|3" "generate-ats-defense|2026-10-09|1" \
-  "generate-career-path|2026-10-09|2" "generate-career-snapshot|2026-10-10|2" "generate-cover-letter|2026-10-09|2" \
-  "generate-cover-letter-stream|2026-10-09|1" "generate-graduate-gameplan|2026-10-10|2" "generate-interview-coach|2026-10-09|2" \
-  "generate-keyword-fix|2026-10-09|1" "generate-premium-package|2026-10-09|2" "generate-premium-package-stream|2026-10-09|1" \
-  "generate-product-preview|2026-10-10|2"; do
+  "free-keyword-scan|2026-10-09|3" "free-keyword-scan-stream|2026-10-09|3" "shortlist-evaluate|2026-10-10|3" \
+  "generate-application-answers|2026-10-10|3" "generate-apply-package|2026-10-09|4" "generate-ats-defense|2026-10-09|2" \
+  "generate-career-path|2026-10-09|3" "generate-career-snapshot|2026-10-10|3" "generate-cover-letter|2026-10-09|3" \
+  "generate-cover-letter-stream|2026-10-09|2" "generate-graduate-gameplan|2026-10-10|3" "generate-interview-coach|2026-10-09|3" \
+  "generate-keyword-fix|2026-10-09|2" "generate-premium-package|2026-10-09|3" "generate-premium-package-stream|2026-10-09|2" \
+  "generate-product-preview|2026-10-10|3"; do
   FN=${PAIR%%|*}; REST=${PAIR#*|}; DAY=${REST%%|*}; N=${REST#*|}
   H=$(vd72_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not reachable, or a bundle older than build stamps)"

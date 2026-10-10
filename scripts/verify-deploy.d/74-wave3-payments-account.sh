@@ -40,22 +40,29 @@ vd74_build() { # $1 fn, $2 method -> the x-fn-build header value
 }
 
 for PAIR in \
-  analyze-resume:1 api-key-request:1 create-agent-checkout:3 create-checkout:1 create-pass-checkout:1 \
-  create-portal-session:1 create-product-checkout:1 create-scan-pack-checkout:1 create-subscription-checkout:3 \
-  delete-account:3 get-account-data:1 retry-failed-deliveries:1 scan-credits:1 send-market-pulse:1 \
-  send-product-email:1 send-scan-report:1 send-search-digest:1 verify-product-purchase:1 \
-  verify-scan-pack-purchase:1 withdraw-subscription:3 process-email-queue:1 free-keyword-scan:1; do
+  analyze-resume:2 api-key-request:2 create-agent-checkout:4 create-checkout:2 \
+  create-portal-session:2 create-product-checkout:2 create-scan-pack-checkout:2 create-subscription-checkout:4 \
+  delete-account:4 get-account-data:2 retry-failed-deliveries:2 scan-credits:2 send-market-pulse:2 \
+  send-product-email:2 send-scan-report:2 send-search-digest:2 verify-product-purchase:2 \
+  verify-scan-pack-purchase:2 withdraw-subscription:4 process-email-queue:2 free-keyword-scan:3; do
   FN=${PAIR%%:*}; SEQ=${PAIR#*:}
   H=$(vd74_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving, or the function is not deployed)"
   elif build_ge "$FN" "$H" "2026-10-09" "$SEQ"; then echo "PASS  $FN preflight x-fn-build = $H ($FN.2026-10-09.$SEQ or later)"
   else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-09.$SEQ or later: the previous bundle is still serving)"; fi
 done
+# create-pass-checkout keeps a September date: the pass guard refuses a pass
+# number (an October date's 10) on any line that names the pass, so the merged
+# build follows main's 2026-09-27.3 (payments-account's own string was 2026-10-09.1).
+PC74=$(vd74_build create-pass-checkout)
+if [ -z "$PC74" ]; then echo "FAIL  create-pass-checkout preflight carries no x-fn-build"
+elif build_ge create-pass-checkout "$PC74" "2026-09-27" "4"; then echo "PASS  create-pass-checkout preflight x-fn-build = $PC74 (create-pass-checkout.2026-09-27.4 or later)"
+else echo "FAIL  create-pass-checkout preflight x-fn-build = $PC74 (want create-pass-checkout.2026-09-27.4 or later: the checkout policy is not serving)"; fi
 WH74=$(vd74_build stripe-webhook GET)
-if build_ge stripe-webhook "$WH74" "2026-10-09" 3; then echo "PASS  stripe-webhook GET x-fn-build = $WH74 (subscription confirmation + trial reminder marked legal notices and stating a promotion's charge, the 14-day paragraph for EU/EEA/UK buyers only, pro_ grants not sales, Boost link mail)"
-else echo "FAIL  stripe-webhook GET x-fn-build = '${WH74}' (want stripe-webhook.2026-10-09.3 or later: no subscriber notices, notices a drip unsubscribe drops, or notices quoting the list price to a promotion)"; fi
+if build_ge stripe-webhook "$WH74" "2026-10-09" "4"; then echo "PASS  stripe-webhook GET x-fn-build = $WH74 (subscription confirmation + trial reminder marked legal notices and stating a promotion's charge, the 14-day paragraph for EU/EEA/UK buyers only, pro_ grants not sales, Boost link mail)"
+else echo "FAIL  stripe-webhook GET x-fn-build = '${WH74}' (want stripe-webhook.2026-10-09.4 or later: no subscriber notices, notices a drip unsubscribe drops, or notices quoting the list price to a promotion)"; fi
 TC74=$(vd74_build create-test-checkout)
-echo "INFO  create-test-checkout preflight x-fn-build = '${TC74:-none}' (a dev-page function; deploy it only if the dev checkout page is used: want create-test-checkout.2026-10-09.1)"
+echo "INFO  create-test-checkout preflight x-fn-build = '${TC74:-none}' (a dev-page function; deploy it only if the dev checkout page is used: want create-test-checkout.2026-10-09.2)"
 
 # Owner decision 3: the withdrawal function exists and the switch is off.
 WD74=$(curl -s -m 30 -w '\n%{http_code}' -X POST "$B/functions/v1/withdraw-subscription" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}')

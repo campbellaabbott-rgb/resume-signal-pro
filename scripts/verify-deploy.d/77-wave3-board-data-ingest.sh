@@ -3,9 +3,9 @@
 # docs/wave3/board-data-ingest.md). One line per claim, PASS / FAIL / INFO.
 #
 # Ships: a frontend build (board, header, posting page, Ghost Index, layoff
-# lines, skip link, visit recorder); layoff-filings 2026-10-09.1; agent-runner,
+# lines, skip link, visit recorder); layoff-filings 2026-10-09.3 (the integration build, with tests-ci's header); agent-runner,
 # public-api, send-search-digest, agent-mcp, job-fit and application-fit
-# rebuilt for the fit clamp (2026-10-09.1); four migrations 20261009160000 .. 160300; and job-board
+# rebuilt for the fit clamp (the integration builds: agent-mcp .4, the rest .2); four migrations 20261009160000 .. 160300; and job-board
 # parser changes that ride the job-board group's .92 build (judged INFO here,
 # their verifier is the job-board group's).
 #
@@ -21,7 +21,7 @@
 echo "== 77. wave 3 board-data-ingest: board explanations, phone header, layoff filings, landers, wage cells, parsers =="
 
 # ── function builds ─────────────────────────────────────────────────────────
-for PAIR in "agent-runner|2026-10-09|1" "public-api|2026-10-09|1" "send-search-digest|2026-10-09|1" "agent-mcp|2026-10-09|1" "job-fit|2026-10-09|1" "application-fit|2026-10-09|1"; do
+for PAIR in "agent-runner|2026-10-09|2" "public-api|2026-10-09|2" "send-search-digest|2026-10-09|2" "agent-mcp|2026-10-09|4" "job-fit|2026-10-09|2" "application-fit|2026-10-09|2"; do
   W77_FN=${PAIR%%|*}; W77_REST=${PAIR#*|}; W77_D=${W77_REST%%|*}; W77_N=${W77_REST#*|}
   W77_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W77_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W77_H" ]; then echo "FAIL  $W77_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"

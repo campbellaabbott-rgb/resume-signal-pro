@@ -6,7 +6,7 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-affiliate-commission-email.2026-10-09.1";
+const FN_BUILD = "send-affiliate-commission-email.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

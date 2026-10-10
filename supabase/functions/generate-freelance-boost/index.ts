@@ -24,7 +24,7 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-freelance-boost.2026-10-08.2";
+const FN_BUILD = "generate-freelance-boost.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

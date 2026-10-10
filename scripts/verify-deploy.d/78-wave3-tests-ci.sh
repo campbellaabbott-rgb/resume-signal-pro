@@ -20,7 +20,7 @@
 # design: they judge what main has run since the change.
 echo "== 78. wave 3 tests-ci: stamps, the outside alarm, CI on main =="
 
-for P78 in create-test-coupon:1 generate-cohort-report:1 scrape-linkedin:1 warm-up:1 layoff-filings:3; do
+for P78 in create-test-coupon:2 generate-cohort-report:2 scrape-linkedin:2 warm-up:2 layoff-filings:3; do
   FN=${P78%%:*}; N78=${P78#*:}
   V78=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$V78" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not deployed since it was stamped; want $FN.2026-10-09.$N78 or later)"

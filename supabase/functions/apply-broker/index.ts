@@ -29,7 +29,7 @@ import { ownResumePath } from "../_shared/resume-path.ts";
 // the key the claim uses; a transient refusal's retry waits (10, then 30
 // minutes); an empty claim says when the next cancel window ends, so a
 // started worker waits for it instead of leaving.
-const BUILD_VERSION = "2026-10-09.1";
+const BUILD_VERSION = "2026-10-09.2";
 // Provable from outside with no secret: the preflight and every response carry it.
 const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;

@@ -11,7 +11,7 @@ import { purchaseSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-ats-defense.2026-10-09.1";
+const FN_BUILD = "generate-ats-defense.2026-10-09.2";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 

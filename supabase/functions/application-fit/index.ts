@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // 2026-10-09.1: the limit is keyed on the platform's address, hourly, and a limiter error refuses (S8-062).
 // 2026-10-09.1 (wave3/board-data-ingest): the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
 // Provable from outside: every response, the preflight included, carries it.
-const FN_BUILD = "application-fit.2026-10-09.1";
+const FN_BUILD = "application-fit.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -13,7 +13,8 @@ for VD71_FN in job-board job-fit application-fit; do
   curl -s -m 30 -o /dev/null -D /tmp/vd_71_pf_$VD71_FN.txt -X OPTIONS "$B/functions/v1/$VD71_FN" -H "x-rb-budget: probe" \
     -H "Origin: https://resumebooster.work" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"
   VD71_FB=$(tr -d '\r' < /tmp/vd_71_pf_$VD71_FN.txt | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-  case "$VD71_FN" in job-board) VD71_D=2026-09-09; VD71_N=92;; *) VD71_D=2026-10-09; VD71_N=1;; esac
+  # job-fit and application-fit: .2, the integration's build (job-board and board-data-ingest each stamped .1).
+  case "$VD71_FN" in job-board) VD71_D=2026-09-09; VD71_N=92;; *) VD71_D=2026-10-09; VD71_N=2;; esac
   if [ -z "$VD71_FB" ]; then echo "FAIL  $VD71_FN preflight carries no x-fn-build (want $VD71_FN.$VD71_D.$VD71_N or later; job-fit and application-fit had no stamp before .92's wave)"
   elif build_ge "$VD71_FN" "$VD71_FB" "$VD71_D" "$VD71_N"; then echo "PASS  $VD71_FN preflight x-fn-build = $VD71_FB ($VD71_FN.$VD71_D.$VD71_N or later)"
   else echo "FAIL  $VD71_FN preflight x-fn-build = $VD71_FB (want $VD71_FN.$VD71_D.$VD71_N or later; over the ~4.5 MB raw-source cap the old bundle keeps serving)"; fi

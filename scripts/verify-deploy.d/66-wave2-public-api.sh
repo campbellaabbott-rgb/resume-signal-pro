@@ -40,10 +40,10 @@ done
 # The /v1 index answers without a key; its apiVersion moves with a narrowing.
 W66_ROOT=$(curl -s -m 30 "$B/functions/v1/public-api/v1" -H "apikey: $K" -H "Authorization: Bearer $K")
 W66_VER=$(printf '%s' "$W66_ROOT" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).apiVersion||"none")}catch{console.log("unparsed")}})')
-case "$W66_VER" in
-  2026-10-08.1) echo "PASS  /v1 apiVersion = $W66_VER (the default closed[] narrowing is a version)";;
-  *) echo "FAIL  /v1 apiVersion = $W66_VER (want 2026-10-08.1; 2026-09-30.1 = public-api not deployed)";;
-esac
+# 2026-10-08.1 or later: wave 3 (agents-api) narrows /v1 again to 2026-10-09.1,
+# and an exact pin would read that later contract as wave 2 missing.
+if build_ge v1 "v1.$W66_VER" 2026-10-08 1; then echo "PASS  /v1 apiVersion = $W66_VER (2026-10-08.1 or later: the default closed[] narrowing is a version)"
+else echo "FAIL  /v1 apiVersion = $W66_VER (want 2026-10-08.1 or later; 2026-09-30.1 = public-api not deployed)"; fi
 
 if [ -z "${RB:-}" ]; then
   echo "INFO  RB_API_KEY missing from .env.local -- the keyed /v1/changes reads (default walk, include_suspect=true, include_suspect=yes) are skipped"

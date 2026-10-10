@@ -10,7 +10,7 @@ import { stripInventedContact } from "./contact-guard.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-premium-package.2026-10-09.2";
+const FN_BUILD = "generate-premium-package.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

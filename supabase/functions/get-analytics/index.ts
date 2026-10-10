@@ -8,7 +8,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // so the browser refused the request before it left: the dashboard was dead
 // whatever key was entered. The header is allowed now, and the key is
 // compared in constant time.
-const FN_BUILD = "get-analytics.2026-10-09.1";
+const FN_BUILD = "get-analytics.2026-10-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

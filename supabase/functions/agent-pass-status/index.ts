@@ -40,7 +40,7 @@ import { firstPassAlert } from "../_shared/owner-alert.ts";
 // that names the product for a spelled pass number, and a build date's "10"
 // is not one.
 const FN_NAME = "agent-pass-status";
-const FN_BUILD = `${FN_NAME}.2026-10-09.1`;
+const FN_BUILD = `${FN_NAME}.2026-10-09.2`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
