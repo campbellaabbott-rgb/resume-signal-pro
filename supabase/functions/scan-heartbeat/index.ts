@@ -120,7 +120,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.1"; // 10-09.1: a paid order that never arrived mails the owner, naming it (decided after the delivery read, not before).  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.1"; // 10-09.1: a paid order that never arrived mails the owner, naming it (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -431,6 +431,35 @@ serve(async (req) => {
       }
     } catch (e) {
       skip('stripe_credentials', `Stripe did not answer (${e instanceof Error ? e.message : 'unreachable'}) — credentials not evaluated`);
+    }
+
+    // Check 2c: no cron call was refused in the last hour (S8-051). A cron
+    // run reads 'succeeded' whatever its function answered; a 401/403 is a
+    // key or a gate (a re-key that missed a job), never a blip. 5xx and
+    // timeouts are reported in the check's text, not failed on.
+    try {
+      const { data, error } = await supabase.rpc('cron_http_refusals', { p_minutes: 60 }).maybeSingle();
+      const r = data as { available?: boolean; responses?: number; refused?: number; server_errors?: number; timed_out?: number; last_refused_status?: number | null; last_refused_sample?: string | null } | null;
+      if (error || !r) {
+        skip('cron_http_refusals', `reader unavailable (${error?.message?.slice(0, 80) ?? 'no row'}) — cron answers not evaluated`);
+      } else if (!r.available) {
+        skip('cron_http_refusals', 'pg_net keeps no answers here — cron answers not evaluated');
+      } else {
+        const refused = Number(r.refused ?? 0);
+        checks.push({
+          name: 'cron_http_refusals',
+          passed: refused === 0,
+          responseTimeMs: 0,
+          error: refused === 0 ? undefined
+            : `${refused} of ${Number(r.responses ?? 0)} cron calls in the last hour were refused (latest HTTP ${r.last_refused_status ?? '?'}: ${String(r.last_refused_sample ?? '').slice(0, 120)}); 5xx ${Number(r.server_errors ?? 0)}, timeouts ${Number(r.timed_out ?? 0)}`,
+        });
+        if (refused > 0) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || `Cron: ${refused} refused calls in the last hour`;
+        }
+      }
+    } catch (e) {
+      skip('cron_http_refusals', `reader threw (${e instanceof Error ? e.message.slice(0, 80) : 'unknown'}) — cron answers not evaluated`);
     }
 
     // Check 3: Cache system
