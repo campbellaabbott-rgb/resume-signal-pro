@@ -50,7 +50,7 @@ export function tableFromCsv(text: string, map: StateMap): Table {
 export function mapTable(map: StateMap, table: Table, feed: WarnRecord["feed"], sourceUrl?: string): MapResult {
   const header = table.header.map(normHeader);
   const res = resolveHeaders(map, header);
-  if (!res.ok) return { ok: false, reason: `header_mismatch:${res.missing.join("+")}`, header };
+  if (res.ok === false) return { ok: false, reason: `header_mismatch:${res.missing.join("+")}`, header };
   const p = res.pick;
   const get = (role: keyof StateMap["columns"], row: Record<string, string>): string => {
     const h = p[role];

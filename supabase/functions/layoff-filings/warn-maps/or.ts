@@ -8,11 +8,17 @@
 // them). Received Date is the state's stamp (the file carries no employer
 // notice date).
 //
-// ONE NOTICE, SEVERAL LINES. Oregon splits a notice by layoff phase: WARN#
-// 9591 is five lines (9 + 60 + 2 + 11 + 5 = 87 workers, five layoff dates).
-// foldRows folds lines sharing a WARN# into one: counts summed, the earliest
-// layoff date as the effective date, everything else from the first line.
-// A line with no WARN# stays as it is.
+// ONE NOTICE, SEVERAL LINES. Oregon splits a notice by layoff phase and by
+// site: WARN# 9591 is five Tualatin lines (9 + 60 + 2 + 11 + 5 = 87 workers),
+// while 9509 is six lines at five sites and 9556 is 105 in New York plus one
+// Oregon remote worker. foldRows folds lines sharing a WARN# AND a Location:
+// counts summed, the earliest layoff date, everything else from the first
+// line. A line with no WARN# stays as it is.
+//
+// "Company - Site" (Amentum - Hillsboro, OR; PacificSource - Bend) matches on
+// the part before the first dash; the stored filer stays verbatim. Many
+// filers are a facility ("Medford Delivery Facility"): their counts are now
+// read, but they match no board until a facility-to-employer alias exists.
 import { readCount, readDate } from "../normalize.ts";
 import type { StateMap } from "./types.ts";
 
@@ -22,10 +28,11 @@ export function foldOregonRows(rows: Record<string, string>[]): Record<string, s
   for (const row of rows) {
     const id = (row["WARN#"] ?? "").trim();
     if (id === "") { out.push(row); continue; }
-    const hit = byWarn.get(id);
+    const key = `${id}\u0000${(row["Location"] ?? "").trim().toLowerCase()}`;
+    const hit = byWarn.get(key);
     if (!hit) {
       const first = { ...row };
-      byWarn.set(id, first);
+      byWarn.set(key, first);
       out.push(first);
       continue;
     }
@@ -35,6 +42,13 @@ export function foldOregonRows(rows: Record<string, string>[]): Record<string, s
     if (db != null && (da == null || db < da)) hit["Layoff Date"] = row["Layoff Date"];
   }
   return out;
+}
+
+export function oregonFilerCell(raw: string): { filerRaw: string; filerForNorm: string; siteFromCell: string | null } {
+  const s = raw.replace(/\s+/g, " ").trim();
+  const dash = /^(.*?\S)\s+[-\u2013\u2014]\s+(.+)$/.exec(s);
+  if (dash) return { filerRaw: s, filerForNorm: dash[1].trim(), siteFromCell: dash[2].trim() };
+  return { filerRaw: s, filerForNorm: s, siteFromCell: null };
 }
 
 export const OR: StateMap = {
@@ -52,6 +66,7 @@ export const OR: StateMap = {
     site: ["Location"],
   },
   foldRows: foldOregonRows,
+  filerCell: oregonFilerCell,
   verifiedAgainstSample: true,
-  verifiedBy: "Big Local News raw or.csv (2026-10-10)",
+  verifiedBy: "bln-raw-or.csv (Big Local News raw or.csv, 2026-10-10)",
 };
