@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import i18next from "i18next";
+import { codeOf } from "./helpers/strip-comments";
 import {
   isPostingLive,
   postingEmployer,
@@ -176,5 +180,51 @@ describe("a posting's noindex page names the employer too", () => {
   it("an older ledger's stored name is renamed too, and a held state keeps its date", () => {
     const e = postingStubEntry({ stub: { id, state: "gone", title: null, company: null }, prior: { state: "gone", since: "2026-10-01", first: "2026-09-20", title: "Analyst", company: "Ms", token: "ms~wd5~external" }, today: "2026-10-10", employerName, tokenOf });
     expect(e).toMatchObject({ company: "Morgan Stanley", since: "2026-10-01", first: "2026-09-20", title: "Analyst" });
+  });
+});
+
+describe("the React company page names the employer and its possessive the way the baked page does", () => {
+  // Reviewer, 2026-10-10: once React loaded (Google renders it), the company
+  // page took its name from the first row's stored company ("Is Ms hiring?")
+  // and four locale strings hard-coded "{{company}}'s", so Domino's read as
+  // "Domino's's" in the head description, the subtitle and the hiring answer.
+  const dir = resolve(__dirname, "../i18n/locales");
+  const jobs = codeOf(readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8"));
+  const LANDER_KEYS = ["companySeoDescription", "companySubtitle", "companyYesHiring", "companyYesHiringCapped"];
+
+  it("no locale builds an English possessive by appending 's to the name", () => {
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+      const page = JSON.parse(readFileSync(resolve(dir, file), "utf8")).jobsPage;
+      for (const k of LANDER_KEYS) expect(page[k], `${file} ${k}`).not.toMatch(/\{\{company\}\}['’]s/);
+    }
+  });
+
+  it("rendered for Domino's, the English strings never say Domino's's", async () => {
+    const en = JSON.parse(readFileSync(resolve(dir, "en.json"), "utf8"));
+    const i18n = i18next.createInstance();
+    await i18n.init({ lng: "en", resources: { en: { translation: en } }, interpolation: { escapeValue: false } });
+    const vars = { company: "Domino's", companyPossessive: possessive("Domino's"), count: 12, n: "10,000", roleWord: "roles" };
+    for (const k of LANDER_KEYS) {
+      const out = i18n.t(`jobsPage.${k}`, vars);
+      expect(out, k).toContain("Domino's own");
+      expect(out, k).not.toMatch(/Domino's's|\{\{/);
+    }
+  });
+
+  it("every call of a key that needs the possessive passes it, and the name is the board's own", () => {
+    for (const k of LANDER_KEYS) {
+      let at = jobs.indexOf(`t("jobsPage.${k}"`);
+      expect(at, k).toBeGreaterThan(-1);
+      while (at > -1) {
+        let depth = 0, end = at;
+        for (let i = jobs.indexOf("(", at); i < jobs.length; i++) {
+          if (jobs[i] === "(") depth++;
+          else if (jobs[i] === ")" && --depth === 0) { end = i; break; }
+        }
+        expect(jobs.slice(at, end), k).toMatch(/companyPossessive: possessive\(landerCompanyName/);
+        at = jobs.indexOf(`t("jobsPage.${k}"`, end);
+      }
+    }
+    expect(jobs).toMatch(/return boardName\(landerCompany, jobs\.find/);
   });
 });
