@@ -8,6 +8,7 @@ import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { VisitSource } from "./components/VisitSource";
 
 // Index is the landing page almost every visitor hits first, so it stays eagerly
 // imported. Every other route is lazy-loaded so visitors to "/" aren't downloading
@@ -81,6 +82,8 @@ const App = () => (
     <Toaster />
     <Sonner />
     <BrowserRouter>
+      {/* First, so it reads the landing address before any page edits it. */}
+      <VisitSource />
       <ScrollToTop />
       <Suspense fallback={null}>
         <Routes>
