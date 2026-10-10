@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -41,7 +41,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.1";
+const FN_BUILD = "stripe-webhook.2026-10-09.2";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -320,7 +320,8 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
  * SEND A SUBSCRIPTION NOTICE ONCE (wave 3; Cal. B&P 17602; the notices are
  * described in _shared/subscription-notice.ts). The ledger row is claimed
  * first, so a redelivered event, or the trial event arriving twice, sends
- * nothing more; the mail goes into the transactional queue the drip uses. A
+ * nothing more; the mail goes into the transactional queue the drip uses,
+ * marked legal_notice so a drip unsubscribe does not drop it (a bounce does). A
  * claim whose enqueue fails is given back and the error thrown, so the
  * handler answers 500 and Stripe redelivers the event.
  */
@@ -367,6 +368,8 @@ async function sendSubscriptionNotice(
       text: mail.text,
       purpose: "transactional",
       label: kind === "confirmation" ? "subscription-confirmation" : "trial-ending",
+      // Required by law: the queue sends it past a drip unsubscribe.
+      legal_notice: true,
       queued_at: new Date().toISOString(),
     },
     delay_seconds: 0,

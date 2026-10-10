@@ -1,10 +1,10 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'process-email-queue.2026-10-08.1'
+const FN_BUILD = 'process-email-queue.2026-10-09.1'
 const BUILD_HEADERS = { 'x-fn-build': FN_BUILD, 'Access-Control-Expose-Headers': 'x-fn-build' }
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...BUILD_HEADERS } })
@@ -98,6 +98,25 @@ export function dueAt(payload: Record<string, unknown>, enqueuedAt?: string): st
   const due = typeof payload.due_at === 'string' ? payload.due_at : undefined
   const queued = typeof payload.queued_at === 'string' ? payload.queued_at : undefined
   return due ?? queued ?? enqueuedAt
+}
+
+/**
+ * A NOTICE THE LAW REQUIRES IS NOT MARKETING (wave 3 review). The subscription
+ * confirmation and trial reminder (Cal. B&P 17602) and the EU/UK withdrawal
+ * acknowledgement ride this queue, and the suppression gate below dropped them
+ * for anyone who had unsubscribed from the fix-plan drip. Such a payload sets
+ * legal_notice and names one of these labels; it skips an unsubscribe only,
+ * never a bounce or a complaint.
+ */
+export const LEGAL_NOTICE_LABELS: ReadonlySet<string> = new Set([
+  'subscription-confirmation',
+  'trial-ending',
+  'subscription-withdrawal',
+])
+
+export function suppressionApplies(payload: Record<string, unknown>, reason: unknown): boolean {
+  const legal = payload.legal_notice === true && LEGAL_NOTICE_LABELS.has(String(payload.label ?? ''))
+  return !(legal && reason === 'unsubscribe')
 }
 
 Deno.serve(async (req) => {
@@ -264,14 +283,15 @@ Deno.serve(async (req) => {
       // mail. Matters most for delayed sends (the fix-plan drip) — a user who
       // unsubscribes on day 2 must not get the day-4 and day-6 emails that
       // were enqueued before they opted out. Auth emails (password resets)
-      // are exempt: they're user-initiated security mail.
+      // are exempt: they're user-initiated security mail. A notice the law
+      // requires passes an unsubscribe, never a bounce (suppressionApplies).
       if (queue !== 'auth_emails') {
         const { data: suppressed } = await supabase
           .from('suppressed_emails')
-          .select('email')
+          .select('email, reason')
           .eq('email', String(payload.to || '').toLowerCase())
           .maybeSingle()
-        if (suppressed) {
+        if (suppressed && suppressionApplies(payload, suppressed.reason)) {
           await supabase.from('email_send_log').insert({
             message_id: payload.message_id,
             template_name: payload.label || queue,

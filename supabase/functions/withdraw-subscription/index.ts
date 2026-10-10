@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 // THE 14-DAY WITHDRAWAL FROM A PLAN, FOR EU AND UK BUYERS (owner decision 3,
 // 2026-10-08; rules in _shared/withdrawal.ts).
 //
@@ -30,7 +30,7 @@ import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, withdrawalMail } from "../_shared/subscription-notice.ts";
 import { withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
-const FN_BUILD = "withdraw-subscription.2026-10-09.1";
+const FN_BUILD = "withdraw-subscription.2026-10-09.2";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {
@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
             text: mail.text,
             purpose: "transactional",
             label: "subscription-withdrawal",
+            legal_notice: true,
             queued_at: new Date().toISOString(),
           },
           delay_seconds: 0,
