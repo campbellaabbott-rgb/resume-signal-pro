@@ -409,7 +409,7 @@ export default function JobPosting() {
                 <p className="text-xs text-muted-foreground mt-10">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
-                      "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
+                      "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
                     company: company || t("jobPostingPage.theEmployer", "the employer"),
                     companyPossessive: companyPossessive || t("jobPostingPage.theEmployerPossessive", "the employer's"),
                     days: BOARD_FRESH_WINDOW_DAYS,

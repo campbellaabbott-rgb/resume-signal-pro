@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import {
@@ -149,5 +149,29 @@ describe("the bake is wired to the live site's record and writes the next one", 
     expect(read).toBeLessThan(firstWrite);
     expect(bake).toMatch(/sitemaps: carrySitemaps\(\{ ledgerSource, liveSitemap, committedSitemap \}\)/);
     expect(bake).toMatch(/writeFileSync\(join\(dist, PRERENDER_LEDGER_PATH\.slice\(1\)\), ledgerJson\)/);
+  });
+});
+
+describe("the React posting page says what the board does with a posting, not that it drops it the moment the feed does", () => {
+  // Reviewer, 2026-10-10 (register L13-34): the false sentence was removed
+  // from the bake only. The React posting page, which Google renders over
+  // the static one, still said a posting "is dropped the moment the
+  // employer's feed stops serving it" in nine locales and in its default;
+  // the board drops it at the next re-check of that board.
+  const dir = resolve(__dirname, "../i18n/locales");
+  const INSTANT = /the moment|sobald|en cuanto|dès que|जैसे ही|zodra|assim que|sa sandaling/;
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+    it(`${file}: jobPostingPage.sourceNote states the window and the re-check on open`, () => {
+      const note: string = JSON.parse(readFileSync(resolve(dir, file), "utf8")).jobPostingPage.sourceNote;
+      expect(note).not.toMatch(INSTANT);
+      expect(note).toContain("{{days}}");
+    });
+  }
+  it("the page's own default says the same", () => {
+    const page = readFileSync(resolve(__dirname, "../pages/JobPosting.tsx"), "utf8");
+    const m = /t\("jobPostingPage\.sourceNote", \{\s*defaultValue:\s*"([^"]+)"/.exec(page);
+    expect(m, "could not find the sourceNote default").toBeTruthy();
+    expect(m![1]).not.toMatch(INSTANT);
+    expect(m![1]).toBe(JSON.parse(readFileSync(resolve(dir, "en.json"), "utf8")).jobPostingPage.sourceNote);
   });
 });

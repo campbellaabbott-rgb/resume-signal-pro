@@ -5141,7 +5141,7 @@
     "applyCtaPlain": "Postuler sur le site de l'employeur",
     "applyNote": "La candidature se fait sur le système de recrutement de l'employeur. Ce tableau ne republie jamais une offre et ne s'interpose jamais entre vous et l'employeur.",
     "descHeading": "La description de l'employeur",
-    "sourceNote": "Directement issue du système de recrutement de {{company}} — jamais un agrégateur, jamais une republication. Une offre datée est diffusée au maximum {{days}} jours et disparaît dès que le flux de l'employeur cesse de la contenir.",
+    "sourceNote": "Directement issue du système de recrutement de {{company}} — jamais un agrégateur, jamais une republication. Une offre datée est diffusée au maximum {{days}} jours à partir de la date indiquée par l'employeur, et le site la revérifie quand vous l'ouvrez.",
     "theEmployer": "l'employeur",
     "theEmployerPossessive": "de l'employeur"
   },

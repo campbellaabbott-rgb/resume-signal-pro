@@ -5141,7 +5141,7 @@
     "applyCtaPlain": "Mag-apply sa sariling site ng employer",
     "applyNote": "Ang aplikasyon ay nangyayari sa sariling hiring system ng employer. Hindi kailanman muling ipina-post ng board na ito ang isang trabaho at hindi ito pumapagitna sa inyo ng employer.",
     "descHeading": "Ang sariling paglalarawan ng employer",
-    "sourceNote": "Diretso mula sa sariling hiring system ng {{company}} — hindi kailanman aggregator, hindi kailanman repost. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw at inaalis sa sandaling wala na ito sa feed ng employer.",
+    "sourceNote": "Diretso mula sa sariling hiring system ng {{company}} — hindi kailanman aggregator, hindi kailanman repost. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw mula sa petsang sinabi ng employer, at muling sinusuri ito ng board kapag binuksan mo.",
     "theEmployer": "ang employer",
     "theEmployerPossessive": "ng employer"
   },

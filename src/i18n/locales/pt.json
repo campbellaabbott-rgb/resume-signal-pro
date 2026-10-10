@@ -5141,7 +5141,7 @@
     "applyCtaPlain": "Candidate-se no site do próprio empregador",
     "applyNote": "A candidatura decorre no sistema de recrutamento do próprio empregador. Este quadro nunca republica uma vaga nem se coloca entre si e o empregador.",
     "descHeading": "A descrição do próprio empregador",
-    "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
+    "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias a partir da data indicada pelo empregador, e o portal volta a verificá-la quando você a abre.",
     "theEmployer": "o empregador",
     "theEmployerPossessive": "do empregador"
   },

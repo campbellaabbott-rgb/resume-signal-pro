@@ -5141,7 +5141,7 @@
     "applyCtaPlain": "Postúlate en el sitio del propio empleador",
     "applyNote": "La postulación ocurre en el sistema de selección del propio empleador. Este tablero nunca republica una vacante ni se interpone entre tú y la empresa.",
     "descHeading": "La descripción del propio empleador",
-    "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días y desaparece en cuanto el feed del empleador deja de incluirla.",
+    "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días desde la fecha que indica el empleador, y el portal vuelve a comprobarla cuando la abres.",
     "theEmployer": "el empleador",
     "theEmployerPossessive": "del empleador"
   },
