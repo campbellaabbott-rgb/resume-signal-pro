@@ -11666,7 +11666,7 @@ async function serveList(
     // legal 1,159 over a legal list of 8 (L13-24). An employer query counts the
     // list's own matcher, its tokens; any other text query withholds the numbers
     // rather than publish a different population's (n433).
-    const facetRoute = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
+    const facetRoute = qText ? pickRoute(qText, EMPLOYER_ALIASES, QUERY_FILLER) : null;
     const facetTokens = facetRoute?.route === "EMPLOYER" && facetRoute.tokens?.length ? facetRoute.tokens : null;
     if (!facetTokens && qText) {
       return json({
@@ -11729,7 +11729,7 @@ async function serveList(
   }
 
   // Rationale: docs/job-board-index-notes.md#n318-qclass
-  const qClass = qText ? pickRoute(qText, EMPLOYER_ALIASES) : null;
+  const qClass = qText ? pickRoute(qText, EMPLOYER_ALIASES, QUERY_FILLER) : null;
   const qClassRetriever = qClass ? RETRIEVER_FOR[qClass.route] : null;
   const onlyQuery = isUnfiltered({ ...applied, q: "" });
   // Routed with or without filters: buildQuery binds every filter in SQL BEFORE

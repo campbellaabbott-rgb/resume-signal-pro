@@ -10285,3 +10285,37 @@ the rotation on one board, because the reservation gate is fetched + in-flight
 against the budget, the same for every board, not a board's own size. The
 pre-loop optimistic write and slice_stats.cursorStep (n434; `started` is still
 baseAttempted) are unchanged.
+
+## n447-an-employer-name-without-its-filler-words
+
+Above: search-routing.ts `fillerFoldedAliases` and pickRoute's R1 lookup (now
+`pickRoute(qText, EMPLOYER_ALIASES, QUERY_FILLER)` at both call sites), and
+search-alias.ts expandQuery's ROLE_ALIASES lookup.
+
+Sweep S8-090. The router sees qText, the query after QUERY_FILLER is dropped
+("bank of america" -> "bank america"), while EMPLOYER_ALIASES is keyed on the
+whole folded display name ("bankofamerica"). 14 of the 499 names hold a
+filler word (Bank of America, University of Rochester, University of Miami,
+Coffee and Bagel Brands, Washington University in St. Louis, ...) and none of
+them ever routed: live on .90, 2026-10-08, q="bank of america" answered
+searchRoute null with droppedTerms ["of"], its third card MUFG's "Latin
+America" role. pickRoute now also looks the query up in a second key set,
+each name with its filler words folded out, built once per table: only names
+that keep two or more words ("Destination Careers" would otherwise claim every
+"destination" search), never a key the table already holds, never a key two
+names share. employer-aliases.ts is untouched (layoff-filings carries a byte
+copy).
+
+Found on the way: q="constructor" answered HTTP 500 on .90 (live, same day).
+EMPLOYER_ALIASES["constructor"] and ROLE_ALIASES["constructor"] read Object's
+own constructor; pickRoute read `.tokens.length` off it and expandQuery
+spread `.slice` of it, and both threw. Both lookups take own keys only.
+DID_YOU_MEAN has the same shape but only drops a function-valued field and
+skips the earned suggestion for that one query, so it is left as it is.
+
+Not done: the alias table's token lists are the 2026-08-21 snapshot and miss
+sub-boards added since (meijer Meijer_Market_Format and Meijer-New-Stores,
+boeing~wd1~INTERN). Regenerating it means re-copying it byte for byte into
+layoff-filings (guarded), and building the lists at serve time from the live
+company facet means a 1.3 MB read or an isolate memo on the search path;
+either is a decision for the owner, not made here.
