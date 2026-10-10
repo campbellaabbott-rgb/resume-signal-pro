@@ -26,7 +26,7 @@ import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } 
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-application-answers.2026-10-04.1";
+const FN_BUILD = "generate-application-answers.2026-10-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -22,7 +22,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-tailored-resume-stream.2026-10-04.1";
+const FN_BUILD = "generate-tailored-resume-stream.2026-10-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
