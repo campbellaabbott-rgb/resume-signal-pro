@@ -3519,6 +3519,7 @@ export function usajobsDescriptions(items: unknown, token: string): Map<string, 
   return out;
 }
 
+const USAJOBS_US_TERRITORY = /^(puerto rico|guam|american samoa|northern mariana islands|(u\.?s\.? )?virgin islands(,? u\.?s\.?)?|wake island|midway islands?|johnston atoll)$/i;
 export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: string): JobPosting[] {
   return (Array.isArray(items) ? items : [])
     .map((wrap) => {
@@ -3554,9 +3555,10 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         ? `${money(min)} - ${money(max)}${per ? ` ${per}` : ""}`
         : null;
       // The country the posting names (CountryCode carries a country NAME,
-      // "Germany"), else the place; a post that states neither is US (S8-083).
+      // "Germany"), else the place; a post that states neither, or names a US
+      // territory (its own CountryCode), is US (S8-083).
       const cc = String(first?.CountryCode ?? "").trim();
-      const country = (cc ? detectCountry(cc) : null) ?? detectCountry(loc) ?? (!cc || /united states/i.test(cc) ? "US" : null);
+      const country = (cc ? detectCountry(cc) : null) ?? detectCountry(loc) ?? (!cc || /united states/i.test(cc) || USAJOBS_US_TERRITORY.test(cc) ? "US" : null);
       return {
         id: `usajobs:${token}:${externalId}`,
         source: "usajobs" as const,

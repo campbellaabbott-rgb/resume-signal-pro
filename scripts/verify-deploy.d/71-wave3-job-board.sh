@@ -62,6 +62,8 @@ info("S8-002 repair 20261009100000: no anon probe (job_board_closures and job_bo
   soft(!!dc&&dc.described>0,"S8-023 descCoverage usajobs: "+(dc?dc.described+" of "+dc.total+" described":"absent")+" (0 of 7,927 on .91; new federal rows carry a body from .92, stored ones stay null until they close)");}
 {const r=await list({companies:["usajobs"],country:"DE",limit:5});
   soft(!bad(r)&&typeof r.total==="number"&&r.total>0,"S8-083 usajobs country=DE: total "+(r&&r.total)+", e.g. "+JSON.stringify(rows(r).slice(0,2).map((j)=>j.location))+" (want > 0 once .92 re-reads the feed; every federal row was stored US)");}
+{const r=await list({companies:["usajobs"],country:"US",location:"Puerto Rico",limit:5});
+  soft(!bad(r)&&typeof r.total==="number"&&r.total>0,"S8-083 usajobs country=US location=Puerto Rico: total "+(r&&r.total)+", e.g. "+JSON.stringify(rows(r).slice(0,2).map((j)=>j.location))+" (want > 0: a US territory, its own CountryCode in the feed, is stored US; 0 can also mean no open Puerto Rico post)");}
 {const r=await list({companies:["usajobs"],limit:60});
   const wm=rows(r).filter((j)=>j.workMode||j.work_mode).length;const per=rows(r).filter((j)=>/per (hour|year|day|week)/i.test(String(j.salary||""))).length;
   soft(!bad(r)&&wm>0&&per>0,"S8-023 usajobs first page: "+wm+" of "+rows(r).length+" state a work mode, "+per+" a pay period (60/60 null on .91)");}

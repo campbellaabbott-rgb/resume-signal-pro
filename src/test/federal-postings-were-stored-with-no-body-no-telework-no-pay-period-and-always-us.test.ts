@@ -81,6 +81,19 @@ describe("a federal posting carries what the API states", () => {
     expect(one(item({ PositionLocation: [{ LocationName: "Multiple Locations" }], PositionLocationDisplay: "Multiple Locations" })).country).toBe("US");
   });
 
+  it("a post in a US territory, which USAJOBS names as its own CountryCode, is stored in the US", () => {
+    // The first S8-083 fix stored these with no country, out of country=US and the US region facets.
+    for (const [place, code] of [
+      ["San Juan, Puerto Rico", "Puerto Rico"], ["Hagatna, Guam", "Guam"], ["Saint Thomas, Virgin Islands", "Virgin Islands, U.S."],
+      ["Charlotte Amalie, U.S. Virgin Islands", "U.S. Virgin Islands"], ["Saipan, Northern Mariana Islands", "Northern Mariana Islands"],
+      ["Pago Pago, American Samoa", "American Samoa"], ["Wake Island", "Wake Island"],
+    ]) {
+      expect(one(item({ PositionLocation: [{ LocationName: place, CountryCode: code }], PositionLocationDisplay: place })).country, place).toBe("US");
+    }
+    // A foreign post with a country the matcher cannot place stays unplaced, never US.
+    expect(one(item({ PositionLocation: [{ LocationName: "Road Town, British Virgin Islands", CountryCode: "Virgin Islands, British" }] })).country).toBeNull();
+  });
+
   it("the posting body is the summary, the duties and the qualifications, keyed like the row", () => {
     const fn = (normalize as Record<string, unknown>).usajobsDescriptions as ((items: unknown, token: string) => Map<string, string>) | undefined;
     expect(fn, "nothing reads a federal posting's body").toBeTypeOf("function");
