@@ -1,5 +1,16 @@
-# CI gate: a detection regression (or any test/type failure) physically cannot
-# reach main unnoticed. The golden industry-detection corpus runs on every push.
+# CI: every push and pull request runs the type, test, build and harness checks.
+#
+# WHAT THIS IS AND IS NOT. It is a record of whether a commit passes; it is a
+# GATE only once main's branch protection requires the `test` and `deno-tests`
+# jobs, which is the owner's setting and not this file's. Until 2026-10-10 the
+# header said a regression "physically cannot reach main unnoticed" while main
+# had no protection and 15 of its last 20 runs were red, 14 of them on flaky
+# tests; PRs merged with their own CI red or unfinished.
+#
+# EVERY CHECK RUNS EVERY TIME. A failing step used to skip every step after it,
+# so a red test step meant the production build and the apply-driver harness
+# never ran on most of main's commits. Each check below runs when the installs
+# it needs succeeded, whatever an earlier check said (`!cancelled()`).
 name: CI
 
 on:
@@ -38,7 +49,9 @@ jobs:
       # Worth revisiting when those peers catch up, or if this repo ever moves
       # to installing with npm for real. The worker package needs no flag — it
       # resolves clean on its own.
-      - run: npm ci --legacy-peer-deps
+      - name: Install deps
+        id: deps
+        run: npm ci --legacy-peer-deps
       # BEFORE THE TYPECHECK, and the order is load-bearing.
       #
       # tsconfig.app.json includes `src`, and five tests there import worker
@@ -55,11 +68,20 @@ jobs:
       # Installing here rather than excluding worker/ from the typecheck: the
       # exclusion would silence the cross-boundary imports those mirror tests
       # depend on, which is the drift they were written to catch.
+      #
+      # STRICT, with no `|| npm install` behind it. That fallback hid a lockfile
+      # drift for six weeks: Lovable moved @types/node to ^26 in package.json and
+      # not in package-lock.json, so `npm ci` refused, `npm install` papered over
+      # it here, and the bot-wall sweep -- which has no fallback -- failed every
+      # Monday. src/test/the-worker-lockfile-is-one-npm-ci-accepts.test.ts runs
+      # the same check locally.
       - name: Install worker deps
+        id: worker-deps
         working-directory: worker
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Typecheck
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.worker-deps.outcome == 'success' }}
         # -p tsconfig.app.json, NOT a bare `tsc --noEmit`.
         #
         # The root tsconfig is `files: []` plus project references, and tsc
@@ -71,10 +93,13 @@ jobs:
         # that reports success for two different states.
         run: npx tsc --noEmit -p tsconfig.app.json
       - name: Edge functions syntax check
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npx esbuild supabase/functions/free-keyword-scan/index.ts supabase/functions/free-keyword-scan/industry-detection.ts supabase/functions/free-keyword-scan/market-intelligence.ts supabase/functions/send-scan-report/index.ts --outdir=/tmp/esbuild-ci
       - name: Tests (includes golden detection corpus)
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' && steps.worker-deps.outcome == 'success' }}
         run: npx vitest run
       - name: Production build
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run build
 
       # THE APPLY DRIVER, PAST THE CLICK. Everything above compares selectors
@@ -89,8 +114,59 @@ jobs:
       # matching whatever npm actually resolved rather than one baked into an
       # image tag.
       - name: Install Chromium for the harness
+        id: chromium
+        if: ${{ !cancelled() && steps.worker-deps.outcome == 'success' }}
         working-directory: worker
         run: npx playwright install --with-deps chromium
       - name: Apply-driver harness (six outcomes, past the click)
+        if: ${{ !cancelled() && steps.chromium.outcome == 'success' }}
         working-directory: worker
         run: npm run harness
+
+  # THE DENO TESTS BESIDE THE EDGE FUNCTIONS. 62 of them, and until 2026-10-10
+  # nothing ran them: check-functions.sh only typechecked them and CI never
+  # called it. Their own job, so a Deno failure and a vitest failure are two
+  # separate red checks rather than one step hiding the other.
+  deno-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Deno tests (supabase/functions/**/*_test.ts)
+        run: bash scripts/deno-tests.sh
+
+  # THE GUARDS ON BUILT OUTPUT. Five suites read dist/ (the sitemap, the
+  # prerendered posting pages, the skip link, the preload hints) and skip when
+  # it is absent; the test job runs vitest before its build, so on every CI run
+  # until 2026-10-10 they skipped and the soft-404 sitemap guards never ran
+  # anywhere. Here the build comes first and RB_REQUIRE_DIST=1 turns a missing
+  # dist/ into a failure instead of a skip (src/test/helpers/built-output.ts).
+  #
+  # A SEPARATE JOB ON PURPOSE: the prerender bakes LIVE board data, so what
+  # these suites judge moves with production between two runs of one commit.
+  # They are a finding about the site, not a property of the commit, and stay
+  # out of the `test` job that branch protection should require.
+  built-output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - name: Production build (bakes the prerendered pages)
+        run: npm run build
+      - name: The guards on built output
+        env:
+          RB_REQUIRE_DIST: "1"
+        run: |
+          FILES=$(grep -rlE --include='*.test.ts' --include='*.test.tsx' 'skipIf\(skipWithoutDist\(' src/test || true)
+          # An empty list would make vitest run the WHOLE suite: refuse instead.
+          [ -n "$FILES" ] || { echo "::error::no suite skips through skipWithoutDist"; exit 1; }
+          echo "$FILES"
+          npx vitest run $FILES

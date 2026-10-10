@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { POSTING_PATH_PREFIX } from "@/components/jobs/posting-page";
+import { skipWithoutDist } from "./helpers/built-output";
 
 /**
  * A SITEMAP ENTRY IS A REQUEST TO INDEX THAT URL, SO EVERY ENTRY MUST HAVE A
@@ -143,7 +144,7 @@ describe("the generator refuses to write a sitemap that names a posting page it 
 const DIST_SITEMAP = resolve(ROOT, "dist/sitemap.xml");
 const built = existsSync(resolve(ROOT, "dist/index.html")) && existsSync(DIST_SITEMAP);
 
-describe.skipIf(!built)("the built sitemap advertises no posting URL without a page", () => {
+describe.skipIf(skipWithoutDist(built))("the built sitemap advertises no posting URL without a page", () => {
   // Parity is a property of ONE bake: read the sitemap that shipped beside
   // these files, never a committed copy a later bake may have rewritten.
   // Read in the hook, not at collection: a skipped describe still runs its
