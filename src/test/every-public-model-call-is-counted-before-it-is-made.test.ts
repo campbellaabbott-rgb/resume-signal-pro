@@ -42,6 +42,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { createHash } from "node:crypto";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 /** The purchase's bucket, computed here independently of the gate: "sess:" and 32 hex of a hash, never the id. */
 const sessionBucket = async (id: string) => `sess:${createHash("sha256").update(`spend-session:${id}`).digest("hex").slice(0, 32)}`;
@@ -411,7 +412,8 @@ describe("the retired tailored-resume stream does nothing at all", () => {
 
   it("still answers its build on the preflight", async () => {
     const res = await handlers.get("generate-tailored-resume-stream")!(new Request("https://harness.supabase.co/functions/v1/generate-tailored-resume-stream", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("generate-tailored-resume-stream.2026-10-04.1");
+    // 2026-10-04.1 or any later build (re-stamped 2026-10-10.1: 56789de5 changed it unstamped).
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "generate-tailored-resume-stream", "2026-10-04")).toBe(true);
   });
 });
 
