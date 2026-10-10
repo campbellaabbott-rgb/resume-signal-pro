@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { TOOL_LANDINGS } from "@/data/tool-landings";
+import { buildIndustryFaqs } from "@/data/industry-faqs";
 import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { REPORT_CACHE_DAYS } from "@/lib/resume-retention";
 
@@ -32,4 +33,16 @@ describe("every tool landing", () => {
       }
     });
   }
+});
+
+// Every /industries/<x> page and its FAQPage JSON-LD (the prerender reads the
+// same builder) said the scan "returns a full diagnostic report in about 20
+// seconds", a third time to results beside the homepage's 90.
+describe("every industry page's FAQ", () => {
+  it("states only the scan's own bound as its time to results", () => {
+    const faqs = buildIndustryFaqs({ name: "Healthcare", keywords: ["EHR", "HIPAA", "Epic", "ICD-10", "CPT", "triage"], certifications: ["rn", "bls"], screenerNote: "Licensure first." });
+    const stated = faqs.flatMap((f) => [f.q, f.a]).flatMap((t) => [...t.matchAll(/(\d+)\s*(?:seconds?|secs?\b)/gi)].map((m) => Number(m[1])));
+    expect(stated.length).toBeGreaterThan(0);
+    for (const n of stated) expect(n).toBe(SCAN_RESULTS_WITHIN_SECONDS);
+  });
 });
