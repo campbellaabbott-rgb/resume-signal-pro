@@ -66,13 +66,13 @@ DECLARE
   v_unmarked_listed bigint;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid = 'public.job_board_closure_repairs'::regclass AND relrowsecurity) THEN
-    RAISE EXCEPTION 'self-verify 20261009100000: job_board_closure_repairs does not have row-level security on';
+    RAISE EXCEPTION 'self-verify 20261009100300: job_board_closure_repairs does not have row-level security on';
   END IF;
   IF has_table_privilege('anon', 'public.job_board_closure_repairs', 'SELECT')
      OR has_table_privilege('anon', 'public.job_board_closure_repairs', 'INSERT')
      OR has_table_privilege('authenticated', 'public.job_board_closure_repairs', 'SELECT')
      OR has_table_privilege('authenticated', 'public.job_board_closure_repairs', 'INSERT') THEN
-    RAISE EXCEPTION 'self-verify 20261009100000: job_board_closure_repairs is readable or writable by anon or authenticated';
+    RAISE EXCEPTION 'self-verify 20261009100300: job_board_closure_repairs is readable or writable by anon or authenticated';
   END IF;
 
   -- The boards known to serve more than one page. Read once, so the marking
@@ -107,7 +107,7 @@ BEGIN
         ) AS m(company_token, walked)
     ) t;
   IF coalesce(array_length(v_tokens, 1), 0) < 82 THEN
-    RAISE EXCEPTION 'self-verify 20261009100000: only % Teamtailor board(s) named; the 82 measured boards alone are more', coalesce(array_length(v_tokens, 1), 0);
+    RAISE EXCEPTION 'self-verify 20261009100300: only % Teamtailor board(s) named; the 82 measured boards alone are more', coalesce(array_length(v_tokens, 1), 0);
   END IF;
 
   SELECT coalesce(max(event_id), 0) INTO v_ceiling FROM public.job_board_closures;
@@ -142,7 +142,7 @@ BEGIN
     EXIT WHEN v_left = 0 OR v_pass >= 3;
   END LOOP;
   IF v_left > 0 THEN
-    RAISE EXCEPTION 'self-verify 20261009100000: % Teamtailor closure(s) at or under event_id % were left unmarked after % passes', v_left, v_ceiling, v_pass;
+    RAISE EXCEPTION 'self-verify 20261009100300: % Teamtailor closure(s) at or under event_id % were left unmarked after % passes', v_left, v_ceiling, v_pass;
   END IF;
 
   SELECT count(*) INTO v_unmarked_listed
@@ -150,9 +150,9 @@ BEGIN
     JOIN public.job_board_closures c ON c.event_id = r.event_id
    WHERE r.repair = 'teamtailor_rss_page_s8_002' AND c.suspect IS NOT TRUE;
   IF v_unmarked_listed > 0 THEN
-    RAISE EXCEPTION 'self-verify 20261009100000: % listed closure(s) are still not suspect', v_unmarked_listed;
+    RAISE EXCEPTION 'self-verify 20261009100300: % listed closure(s) are still not suspect', v_unmarked_listed;
   END IF;
 
   SELECT count(*) INTO v_marked FROM public.job_board_closure_repairs WHERE repair = 'teamtailor_rss_page_s8_002';
-  RAISE NOTICE 'self-verify 20261009100000: % Teamtailor closure(s) written while one page of 100 was read as the whole board are marked suspect and listed in job_board_closure_repairs (% boards named, ceiling event_id %)', v_marked, array_length(v_tokens, 1), v_ceiling;
+  RAISE NOTICE 'self-verify 20261009100300: % Teamtailor closure(s) written while one page of 100 was read as the whole board are marked suspect and listed in job_board_closure_repairs (% boards named, ceiling event_id %)', v_marked, array_length(v_tokens, 1), v_ceiling;
 END $$;

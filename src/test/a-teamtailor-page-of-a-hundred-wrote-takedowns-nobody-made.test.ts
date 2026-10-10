@@ -5,7 +5,7 @@
  * Sweep S8-002. Until .92 a Teamtailor board of more than 100 postings was
  * read as a whole board of 100, and every posting pushed past item 100 was
  * logged to job_board_closures as an unsuspect employer takedown. Migration
- * 20261009100000 marks those closures suspect, lists each in
+ * 20261009100300 marks those closures suspect, lists each in
  * job_board_closure_repairs so the marking can be undone exactly, and leaves
  * every other closure alone. Run here against a real Postgres (pglite).
  */
@@ -16,7 +16,7 @@ import { resolve } from "node:path";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
-const FILE = "20261009100000_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made.sql";
+const FILE = "20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made.sql";
 const SQL = readFileSync(resolve(__dirname, "../../supabase/migrations", FILE), "utf8");
 
 const SCHEMA = `
@@ -88,6 +88,16 @@ describe("the closures a 100-item page wrote are marked suspect, and only those"
     await db.exec(`INSERT INTO public.job_board_closures (posting_id, source, company_token, absence_basis) VALUES ('teamtailor:tutoringjobs:9', 'teamtailor', 'tutoringjobs', 'full_read')`);
     await db.exec(SQL);
     expect(await listed()).toEqual(["teamtailor:bigboard:1", "teamtailor:eutalents:1", "teamtailor:eutalents:2", "teamtailor:libra:1", "teamtailor:tutoringjobs:9"]);
+  });
+
+  it("sorts after the .92 migrations that may go in first, so a runner applying by filename order applies it last", () => {
+    const note = readFileSync(resolve(__dirname, "../../docs/job-board-deploy-notes.md"), "utf8");
+    const section = note.slice(note.indexOf("## 2026-09-09.92"), note.indexOf("## 2026-09-09.91"));
+    const apply = section.slice(section.indexOf("2. APPLY"), section.indexOf("3. TELL THE OWNER"));
+    const order = [...apply.matchAll(/^ {3}- (\d{14})_/gm)].map((m) => m[1]);
+    expect(order.length).toBeGreaterThanOrEqual(3);
+    expect(order, "the note's apply order is not the order the filenames sort in").toEqual([...order].sort());
+    expect(order.at(-1), "the repair that waits for .92 is not the last in the note's order").toBe(FILE.slice(0, 14));
   });
 
   it("keeps the repair list out of reach of anon and authenticated", async () => {
