@@ -2632,20 +2632,18 @@
     "transparentResearchBased": "Transparent & forschungsbasiert",
     "titlePrefix": "Unsere ATS-Analyse-",
     "titleHighlight": "Methodik",
-    "heroSubtitle": "Wir haben zurückentwickelt, wie über 50 Bewerbermanagementsysteme (ATS) Lebensläufe analysieren und bewerten. So funktioniert unsere Analyse genau.",
-    "platformsAnalyzed": "50+ ATS-Plattformen analysiert",
+    "heroSubtitle": "Wie ein Scan aus Ihrem Lebenslauf eine Punktzahl macht, aufgeschrieben aus dem Code, der sie berechnet.",
     "resumesProcessed": "{{total}} Lebensläufe verarbeitet",
-    "updatedMonthly": "Monatlich aktualisiert",
     "howAnalysisWorks": "Wie unsere Analyse funktioniert",
     "step": "SCHRITT {{number}}",
     "steps": {
       "parsing": {
         "title": "Dokumentenanalyse",
-        "description": "Wir extrahieren Text unter Beibehaltung der Struktur und verarbeiten PDF- und DOCX-Dateien mit der gleichen Parsing-Logik, die große ATS-Plattformen verwenden."
+        "description": "Wir lesen den Text aus Ihrer PDF- oder DOCX-Datei und behalten die Struktur bei: Abschnitte, Daten und Aufzählungspunkte."
       },
       "aiAnalysis": {
         "title": "KI-Analyse",
-        "description": "Unsere KI simuliert, wie jedes ATS deinen Lebenslauf liest, und identifiziert Abschnitte, Schlüsselwörter und Formatierungen, die zu Parsing-Fehlern führen könnten."
+        "description": "Unsere KI liest den Lebenslauf wie ein Parser und sucht nach Abschnitten, Schlüsselwörtern und Formatierungen, die das Auslesen stören können."
       },
       "keywordMatching": {
         "title": "Schlüsselwort-Abgleich",
@@ -2653,101 +2651,47 @@
       },
       "scoringAlgorithm": {
         "title": "Bewertungsalgorithmus",
-        "description": "Dein ATS-Score wird basierend auf über 50 Faktoren berechnet, darunter Schlüsselwortdichte, Formatierung, Vollständigkeit der Abschnitte und Warnsignale."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Analyse von Abschnittsüberschriften, Schlüsselwortextraktion, Validierung des Datumsformats",
-        "marketShare": "Große Unternehmen"
-      },
-      "1": {
-        "description": "Algorithmen zum Skill-Abgleich, Bewertung der Erfahrungsstufe, Indikatoren für kulturelle Passung",
-        "marketShare": "Tech & Start-ups"
-      },
-      "2": {
-        "description": "Validierung der Kontaktdaten, Formatierungskonsistenz, Abschnittsorganisation",
-        "marketShare": "Mittelstand"
-      },
-      "3": {
-        "description": "Analyse der Schlüsselwortdichte, Abgleich der Jobtitel, Bewertung der Qualifikationen",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Analyse von Bildungsangaben, Zertifikatserkennung, Abgleich der Skill-Taxonomie",
-        "marketShare": "Gesundheitswesen & Einzelhandel"
-      },
-      "5": {
-        "description": "Analyse der Lebenslaufstruktur, Validierung der Erfahrungschronologie",
-        "marketShare": "KMU"
-      },
-      "6": {
-        "description": "Schlüsselwortoptimierung, Algorithmen zur Bewerber-Rangfolge",
-        "marketShare": "Kleinunternehmen"
-      },
-      "7": {
-        "description": "Integration von Social-Profilen, Empfehlungs-Tracking, Skill-Bewertung",
-        "marketShare": "Großunternehmen"
-      },
-      "8": {
-        "description": "KI-gestützter Abgleich, Diversitätsindikatoren, globale Compliance",
-        "marketShare": "Globale Großunternehmen"
-      },
-      "9": {
-        "description": "Personalvermittlungsspezifische Analyse, Erkennung von Auftragnehmern, Verfügbarkeitsbewertung",
-        "marketShare": "Personalvermittlungsagenturen"
+        "description": "Die KI bewertet den Lebenslauf mit Gewichtungen für Ihre Branche, und ihre Punktzahl bleibt innerhalb von {{band}} Punkten einer regelbasierten Punktzahl aus demselben Dokument. Der Prüfpfad teilt das Ergebnis dann in die vier Teile unten auf."
       }
     },
     "atsPlatformsTitle": "ATS-Plattformen, gegen die wir analysieren",
-    "atsPlatformsSubtitle": "Unsere Analyse basiert auf den Parsing-Regeln und Bewertungsalgorithmen dieser großen ATS-Plattformen, die über 90 % des Arbeitsmarkts abdecken.",
-    "moreAtsPlatforms": "+ 40 weitere regionale und branchenspezifische ATS-Plattformen",
+    "atsPlatformsSubtitle": "Der Scan bewertet, wie jedes dieser {{count}} Systeme Ihren Lebenslauf wahrscheinlich liest. Es sind die Systeme, die er nennt; hier wird kein Marktanteil behauptet.",
     "scoreCalculatedTitle": "Wie dein ATS-Score berechnet wird",
-    "scoreCalculatedSubtitle": "Dein Score ist eine gewichtete Kombination mehrerer Faktoren, die bestimmen, wie gut dein Lebenslauf in ATS-Systemen abschneidet.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Schlüsselwortoptimierung",
-        "description": "Erwähnte branchenrelevante Schlüsselwörter und Fähigkeiten"
-      },
-      "formatCompatibility": {
-        "factor": "Formatkompatibilität",
-        "description": "Saubere Struktur, die ATS korrekt analysieren kann"
-      },
-      "sectionCompleteness": {
-        "factor": "Vollständigkeit der Abschnitte",
-        "description": "Alle erwarteten Abschnitte vorhanden und korrekt benannt"
-      },
-      "experienceClarity": {
-        "factor": "Klarheit der Erfahrung",
-        "description": "Klare Jobtitel, Daten und Erfolge"
-      },
-      "actionVerbUsage": {
-        "factor": "Verwendung von Aktionsverben",
-        "description": "Starke Aktionsverben, die Wirkung zeigen"
-      },
-      "quantifiedAchievements": {
-        "factor": "Quantifizierte Erfolge",
-        "description": "Zahlen und Kennzahlen, die Ergebnisse belegen"
-      },
-      "redFlagAbsence": {
-        "factor": "Abwesenheit von Warnsignalen",
-        "description": "Keine Formatierungs- oder Inhaltsprobleme"
-      }
-    },
+    "scoreCalculatedSubtitle": "Das „Warum diese Punktzahl“ jedes Berichts teilt die Punktzahl in diese vier Teile auf, von 100 Punkten.",
     "continuousResearchTitle": "Kontinuierliche Forschung",
-    "continuousResearchSubtitle": "Wir analysieren kontinuierlich Stellenausschreibungen, ATS-Updates und Einstellungstrends, um unsere Analyse genau und aktuell zu halten.",
+    "continuousResearchSubtitle": "Die Schlüsselworttabellen und Regeln ändern sich, während wir lernen, und jede Änderung ist im öffentlichen Changelog datiert.",
     "continuousResearch": {
-      "monthlyUpdates": "Monatliche Algorithmus-Updates",
-      "keywordDatabases": "Branchenspezifische Schlüsselwort-Datenbanken",
-      "recruiterFeedback": "Integration von echtem Recruiter-Feedback"
+      "monthlyUpdates": "Regeländerungen im Changelog datiert",
+      "keywordDatabases": "Branchenspezifische Schlüsselwort-Datenbanken"
     },
-    "validatedByResultsTitle": "Durch Ergebnisse validiert",
-    "validatedByResultsSubtitle": "Unsere Methodik wird durch echte Ergebnisse von Tausenden von Bewerbern validiert, die ihre Lebensläufe mit unserer Analyse verbessert haben.",
+    "validatedByResultsTitle": "Was diese Seite nicht behauptet",
+    "validatedByResultsSubtitle": "Es gibt keine Ergebnisumfrage, daher wird hier keine Interviewquote behauptet. Gemessen wird, wie viele Lebensläufe der Scanner gelesen hat.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} Lebensläufe analysiert"
     },
     "ctaTitle": "Bereit, deinen ATS-Score zu sehen?",
     "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs mit unserer bewährten Methodik.",
-    "ctaButton": "Meinen Lebenslauf kostenlos analysieren"
+    "ctaButton": "Meinen Lebenslauf kostenlos analysieren",
+    "atsCount": "{{count}} ATS-Systeme namentlich geprüft",
+    "pointsOf": "{{points}} von 100 Punkten",
+    "audit": {
+      "keywords": {
+        "label": "Schlüsselwortabdeckung",
+        "description": "Die für Ihre Branche erwarteten Schlüsselwörter, die der Lebenslauf enthält"
+      },
+      "format": {
+        "label": "Format & Auslesbarkeit",
+        "description": "Ob ein Parser die Struktur lesen kann, ohne Abschnitte zu verlieren"
+      },
+      "impact": {
+        "label": "Messbare Wirkung",
+        "description": "Wie viele Ihrer Aufzählungspunkte eine Zahl enthalten"
+      },
+      "content": {
+        "label": "Inhaltssignale",
+        "description": "Verben, Struktur und Abschnittstiefe, abgewogen gegen Warnsignale"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",

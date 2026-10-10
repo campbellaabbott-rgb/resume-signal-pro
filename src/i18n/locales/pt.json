@@ -2632,20 +2632,18 @@
     "transparentResearchBased": "Transparente e baseado em investigação",
     "titlePrefix": "A nossa metodologia de",
     "titleHighlight": "análise ATS",
-    "heroSubtitle": "Fizemos engenharia inversa de como mais de 50 Sistemas de Acompanhamento de Candidatos (ATS) analisam e pontuam currículos. Eis exatamente como funciona a nossa análise.",
-    "platformsAnalyzed": "Mais de 50 plataformas ATS analisadas",
+    "heroSubtitle": "Como uma análise transforma o seu currículo numa pontuação, escrito a partir do código que a calcula.",
     "resumesProcessed": "{{total}} currículos processados",
-    "updatedMonthly": "Atualizado mensalmente",
     "howAnalysisWorks": "Como funciona a nossa análise",
     "step": "PASSO {{number}}",
     "steps": {
       "parsing": {
         "title": "Análise do documento",
-        "description": "Extraímos o texto preservando a estrutura, processando ficheiros PDF e DOCX com a mesma lógica de análise usada pelas principais plataformas ATS."
+        "description": "Extraímos o texto do seu PDF ou DOCX e mantemos a estrutura: secções, datas e marcadores."
       },
       "aiAnalysis": {
         "title": "Análise por IA",
-        "description": "A nossa IA simula como cada ATS lê o seu currículo, identificando secções, palavras-chave e formatação que podem causar falhas de análise."
+        "description": "A nossa IA lê o currículo como um analisador o faria, procurando secções, palavras-chave e formatação que possam estragar a leitura."
       },
       "keywordMatching": {
         "title": "Correspondência de palavras-chave",
@@ -2653,101 +2651,47 @@
       },
       "scoringAlgorithm": {
         "title": "Algoritmo de pontuação",
-        "description": "A sua pontuação ATS é calculada com base em mais de 50 fatores, incluindo densidade de palavras-chave, formatação, integridade das secções e sinais de alerta."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Análise de cabeçalhos de secção, extração de palavras-chave, validação do formato de data",
-        "marketShare": "Grandes empresas"
-      },
-      "1": {
-        "description": "Algoritmos de correspondência de competências, pontuação do nível de experiência, indicadores de adequação cultural",
-        "marketShare": "Tecnologia e startups"
-      },
-      "2": {
-        "description": "Validação de informações de contacto, consistência de formatação, organização de secções",
-        "marketShare": "Mercado intermédio"
-      },
-      "3": {
-        "description": "Análise de densidade de palavras-chave, correspondência de cargos, pontuação de qualificações",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Análise de formação académica, deteção de certificações, correspondência de taxonomia de competências",
-        "marketShare": "Saúde e retalho"
-      },
-      "5": {
-        "description": "Análise da estrutura do currículo, validação da linha temporal de experiência",
-        "marketShare": "PME"
-      },
-      "6": {
-        "description": "Otimização de palavras-chave, algoritmos de classificação de candidatos",
-        "marketShare": "Pequenas empresas"
-      },
-      "7": {
-        "description": "Integração de perfis sociais, acompanhamento de referências, avaliação de competências",
-        "marketShare": "Empresas grandes"
-      },
-      "8": {
-        "description": "Correspondência alimentada por IA, indicadores de diversidade, conformidade global",
-        "marketShare": "Empresas globais"
-      },
-      "9": {
-        "description": "Análise específica para recrutamento, deteção de contratados, pontuação de disponibilidade",
-        "marketShare": "Agências de recrutamento"
+        "description": "A IA pontua o currículo com pesos para o seu setor, e a pontuação fica a menos de {{band}} pontos de uma pontuação baseada em regras calculada a partir do mesmo documento. O registo de auditoria divide depois o resultado nas quatro partes abaixo."
       }
     },
     "atsPlatformsTitle": "Plataformas ATS contra as quais analisamos",
-    "atsPlatformsSubtitle": "A nossa análise baseia-se nas regras de análise e algoritmos de pontuação destas grandes plataformas ATS, cobrindo mais de 90% do mercado de trabalho.",
-    "moreAtsPlatforms": "+ 40 plataformas ATS regionais e específicas da indústria",
+    "atsPlatformsSubtitle": "A análise avalia como cada um destes {{count}} sistemas deverá ler o seu currículo. São os sistemas que nomeia; aqui não se reivindica nenhuma quota do mercado de trabalho.",
     "scoreCalculatedTitle": "Como a sua pontuação ATS é calculada",
-    "scoreCalculatedSubtitle": "A sua pontuação é uma combinação ponderada de múltiplos fatores que determinam o desempenho do seu currículo em sistemas ATS.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Otimização de palavras-chave",
-        "description": "Palavras-chave e competências relevantes para a indústria mencionadas"
-      },
-      "formatCompatibility": {
-        "factor": "Compatibilidade de formato",
-        "description": "Estrutura limpa que o ATS consegue analisar corretamente"
-      },
-      "sectionCompleteness": {
-        "factor": "Integridade das secções",
-        "description": "Todas as secções esperadas presentes e devidamente rotuladas"
-      },
-      "experienceClarity": {
-        "factor": "Clareza da experiência",
-        "description": "Cargos, datas e conquistas claras"
-      },
-      "actionVerbUsage": {
-        "factor": "Uso de verbos de ação",
-        "description": "Verbos de ação fortes que demonstram impacto"
-      },
-      "quantifiedAchievements": {
-        "factor": "Conquistas quantificadas",
-        "description": "Números e métricas que comprovam resultados"
-      },
-      "redFlagAbsence": {
-        "factor": "Ausência de sinais de alerta",
-        "description": "Sem problemas de formatação ou conteúdo"
-      }
-    },
+    "scoreCalculatedSubtitle": "O «Porquê esta pontuação» de cada relatório divide a pontuação nestas quatro partes, em 100 pontos.",
     "continuousResearchTitle": "Investigação contínua",
-    "continuousResearchSubtitle": "Analisamos continuamente ofertas de emprego, atualizações de ATS e tendências de contratação para manter a nossa análise precisa e atualizada.",
+    "continuousResearchSubtitle": "As tabelas de palavras-chave e as regras mudam à medida que aprendemos, e cada alteração fica datada no registo público de alterações.",
     "continuousResearch": {
-      "monthlyUpdates": "Atualizações mensais do algoritmo",
-      "keywordDatabases": "Bases de dados de palavras-chave específicas da indústria",
-      "recruiterFeedback": "Integração de feedback real de recrutadores"
+      "monthlyUpdates": "Alterações de regras datadas no registo de alterações",
+      "keywordDatabases": "Bases de dados de palavras-chave específicas da indústria"
     },
-    "validatedByResultsTitle": "Validado por resultados",
-    "validatedByResultsSubtitle": "A nossa metodologia é validada por resultados reais de milhares de candidatos que melhoraram os seus currículos usando a nossa análise.",
+    "validatedByResultsTitle": "O que esta página não afirma",
+    "validatedByResultsSubtitle": "Não há inquérito de resultados, por isso aqui não se afirma nenhuma taxa de entrevistas. O que se mede é quantos currículos o leitor analisou.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} currículos analisados"
     },
     "ctaTitle": "Pronto para ver a sua pontuação ATS?",
     "ctaSubtitle": "Obtenha uma análise gratuita do seu currículo usando a nossa metodologia comprovada.",
-    "ctaButton": "Analisar o meu currículo gratuitamente"
+    "ctaButton": "Analisar o meu currículo gratuitamente",
+    "atsCount": "{{count}} sistemas ATS verificados pelo nome",
+    "pointsOf": "{{points}} de 100 pontos",
+    "audit": {
+      "keywords": {
+        "label": "Cobertura de palavras-chave",
+        "description": "As palavras-chave esperadas para o seu setor que o currículo contém"
+      },
+      "format": {
+        "label": "Formato e legibilidade",
+        "description": "Se um analisador consegue ler a estrutura sem perder secções"
+      },
+      "impact": {
+        "label": "Impacto quantificado",
+        "description": "Quantos dos seus marcadores incluem um número"
+      },
+      "content": {
+        "label": "Sinais de conteúdo",
+        "description": "Verbos, estrutura e profundidade das secções, pesados contra sinais de alerta"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",

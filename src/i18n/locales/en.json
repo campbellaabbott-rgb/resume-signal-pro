@@ -2632,20 +2632,18 @@
     "transparentResearchBased": "Transparent & Research-Based",
     "titlePrefix": "Our ATS Analysis",
     "titleHighlight": "Methodology",
-    "heroSubtitle": "We've reverse-engineered how 50+ Applicant Tracking Systems parse and score resumes. Here's exactly how our analysis works.",
-    "platformsAnalyzed": "50+ ATS platforms analyzed",
+    "heroSubtitle": "How a scan turns your resume into a score, written down from the code that computes it.",
     "resumesProcessed": "{{total}} resumes processed",
-    "updatedMonthly": "Updated monthly",
     "howAnalysisWorks": "How Our Analysis Works",
     "step": "STEP {{number}}",
     "steps": {
       "parsing": {
         "title": "Document Parsing",
-        "description": "We extract text while preserving structure, handling PDFs and DOCX files with the same parsing logic used by major ATS platforms."
+        "description": "We extract the text from your PDF or DOCX and keep its structure: sections, dates and bullets."
       },
       "aiAnalysis": {
         "title": "AI Analysis",
-        "description": "Our AI simulates how each ATS reads your resume, identifying sections, keywords, and formatting that may cause parsing failures."
+        "description": "Our AI reads the resume the way a parser would, looking for sections, keywords and formatting that can break a parse."
       },
       "keywordMatching": {
         "title": "Keyword Matching",
@@ -2653,101 +2651,47 @@
       },
       "scoringAlgorithm": {
         "title": "Scoring Algorithm",
-        "description": "Your ATS score is calculated based on 50+ factors including keyword density, formatting, section completeness, and red flags."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Section header parsing, keyword extraction, date format validation",
-        "marketShare": "Major enterprise"
-      },
-      "1": {
-        "description": "Skills matching algorithms, experience level scoring, cultural fit indicators",
-        "marketShare": "Tech & startups"
-      },
-      "2": {
-        "description": "Contact info validation, formatting consistency, section organization",
-        "marketShare": "Mid-market"
-      },
-      "3": {
-        "description": "Keyword density analysis, job title matching, qualification scoring",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Education parsing, certification detection, skills taxonomy matching",
-        "marketShare": "Healthcare & retail"
-      },
-      "5": {
-        "description": "Resume structure analysis, experience timeline validation",
-        "marketShare": "SMB"
-      },
-      "6": {
-        "description": "Keyword optimization, applicant ranking algorithms",
-        "marketShare": "Small business"
-      },
-      "7": {
-        "description": "Social profile integration, referral tracking, skills assessment",
-        "marketShare": "Enterprise"
-      },
-      "8": {
-        "description": "AI-powered matching, diversity indicators, global compliance",
-        "marketShare": "Global enterprise"
-      },
-      "9": {
-        "description": "Staffing-specific parsing, contractor detection, availability scoring",
-        "marketShare": "Staffing agencies"
+        "description": "The AI scores the resume with weights for your industry, and its score is held within {{band}} points of a rule-based score computed from the same document. The audit trail then splits the result into the four parts below."
       }
     },
     "atsPlatformsTitle": "ATS Platforms We Analyze Against",
-    "atsPlatformsSubtitle": "Our analysis is based on parsing rules and scoring algorithms from these major ATS platforms, covering over 90% of the job market.",
-    "moreAtsPlatforms": "+ 40 more regional and industry-specific ATS platforms",
+    "atsPlatformsSubtitle": "The scan rates how each of these {{count}} systems is likely to read your resume. These are the systems it names; nothing here claims a share of the job market.",
     "scoreCalculatedTitle": "How Your ATS Score Is Calculated",
-    "scoreCalculatedSubtitle": "Your score is a weighted combination of multiple factors that determine how well your resume will perform in ATS systems.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Keyword Optimization",
-        "description": "Industry-relevant keywords and skills mentioned"
-      },
-      "formatCompatibility": {
-        "factor": "Format Compatibility",
-        "description": "Clean structure that ATS can parse correctly"
-      },
-      "sectionCompleteness": {
-        "factor": "Section Completeness",
-        "description": "All expected sections present and properly labeled"
-      },
-      "experienceClarity": {
-        "factor": "Experience Clarity",
-        "description": "Clear job titles, dates, and achievements"
-      },
-      "actionVerbUsage": {
-        "factor": "Action Verb Usage",
-        "description": "Strong action verbs that demonstrate impact"
-      },
-      "quantifiedAchievements": {
-        "factor": "Quantified Achievements",
-        "description": "Numbers and metrics that prove results"
-      },
-      "redFlagAbsence": {
-        "factor": "Red Flag Absence",
-        "description": "No formatting issues or content problems"
-      }
-    },
+    "scoreCalculatedSubtitle": "Every report's \"Why this score\" splits the score into these four parts, out of 100 points.",
     "continuousResearchTitle": "Continuous Research",
-    "continuousResearchSubtitle": "We continuously analyze job postings, ATS updates, and hiring trends to keep our analysis accurate and up-to-date.",
+    "continuousResearchSubtitle": "The keyword tables and the rules change as we learn, and every change is dated in the public changelog.",
     "continuousResearch": {
-      "monthlyUpdates": "Monthly algorithm updates",
-      "keywordDatabases": "Industry-specific keyword databases",
-      "recruiterFeedback": "Real recruiter feedback integration"
+      "monthlyUpdates": "Rule changes dated in the changelog",
+      "keywordDatabases": "Industry-specific keyword databases"
     },
-    "validatedByResultsTitle": "Validated by Results",
-    "validatedByResultsSubtitle": "Our methodology is validated by real outcomes from thousands of job seekers who improved their resumes using our analysis.",
+    "validatedByResultsTitle": "What this page does not claim",
+    "validatedByResultsSubtitle": "There is no outcome survey, so no interview rate is claimed here. What is measured is how many resumes the scanner has read.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} resumes analyzed"
     },
     "ctaTitle": "Ready to See Your ATS Score?",
     "ctaSubtitle": "Get a free analysis of your resume using our proven methodology.",
-    "ctaButton": "Analyze My Resume Free"
+    "ctaButton": "Analyze My Resume Free",
+    "atsCount": "{{count}} ATS systems checked by name",
+    "pointsOf": "{{points}} of 100 points",
+    "audit": {
+      "keywords": {
+        "label": "Keyword coverage",
+        "description": "The expected keywords for your industry that the resume carries"
+      },
+      "format": {
+        "label": "Format & parseability",
+        "description": "Whether a parser can read the structure without losing sections"
+      },
+      "impact": {
+        "label": "Quantified impact",
+        "description": "How many of your bullets carry a number"
+      },
+      "content": {
+        "label": "Content signals",
+        "description": "Verbs, structure and section depth, weighed against red flags"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",

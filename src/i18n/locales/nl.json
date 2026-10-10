@@ -2632,20 +2632,18 @@
     "transparentResearchBased": "Transparant & onderzoeksgebaseerd",
     "titlePrefix": "Onze ATS-analyse",
     "titleHighlight": "methodologie",
-    "heroSubtitle": "We hebben gereverse-engineerd hoe meer dan 50 Applicant Tracking Systems (ATS) cv's verwerken en scoren. Zo werkt onze analyse precies.",
-    "platformsAnalyzed": "50+ ATS-platforms geanalyseerd",
+    "heroSubtitle": "Hoe een scan van uw cv een score maakt, opgeschreven vanuit de code die hem berekent.",
     "resumesProcessed": "{{total}} cv's verwerkt",
-    "updatedMonthly": "Maandelijks bijgewerkt",
     "howAnalysisWorks": "Hoe onze analyse werkt",
     "step": "STAP {{number}}",
     "steps": {
       "parsing": {
         "title": "Documentverwerking",
-        "description": "We halen tekst eruit met behoud van structuur, en verwerken PDF- en DOCX-bestanden met dezelfde verwerkingslogica die grote ATS-platforms gebruiken."
+        "description": "We halen de tekst uit uw pdf of docx en behouden de structuur: secties, data en opsommingstekens."
       },
       "aiAnalysis": {
         "title": "AI-analyse",
-        "description": "Onze AI simuleert hoe elk ATS je cv leest, waarbij secties, zoekwoorden en opmaak worden geïdentificeerd die verwerkingsfouten kunnen veroorzaken."
+        "description": "Onze AI leest het cv zoals een parser dat zou doen en zoekt naar secties, trefwoorden en opmaak die het uitlezen kunnen breken."
       },
       "keywordMatching": {
         "title": "Zoekwoordmatching",
@@ -2653,101 +2651,47 @@
       },
       "scoringAlgorithm": {
         "title": "Scoringalgoritme",
-        "description": "Je ATS-score wordt berekend op basis van 50+ factoren, waaronder zoekwoorddichtheid, opmaak, volledigheid van secties en waarschuwingssignalen."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Verwerking van sectiekoppen, zoekwoordextractie, validatie van datumformaat",
-        "marketShare": "Grote ondernemingen"
-      },
-      "1": {
-        "description": "Algoritmen voor vaardighedenmatching, scoring van ervaringsniveau, indicatoren voor culturele fit",
-        "marketShare": "Tech & start-ups"
-      },
-      "2": {
-        "description": "Validatie van contactgegevens, consistentie van opmaak, sectie-organisatie",
-        "marketShare": "Middenmarkt"
-      },
-      "3": {
-        "description": "Analyse van zoekwoorddichtheid, matching van functietitels, scoring van kwalificaties",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Verwerking van opleidingsgegevens, detectie van certificeringen, matching van vaardighedentaxonomie",
-        "marketShare": "Zorg & retail"
-      },
-      "5": {
-        "description": "Analyse van cv-structuur, validatie van ervaringstijdlijn",
-        "marketShare": "MKB"
-      },
-      "6": {
-        "description": "Zoekwoordoptimalisatie, algoritmen voor sollicitantenrangschikking",
-        "marketShare": "Kleine bedrijven"
-      },
-      "7": {
-        "description": "Integratie van social profiles, referral tracking, vaardighedenbeoordeling",
-        "marketShare": "Enterprise"
-      },
-      "8": {
-        "description": "AI-gestuurde matching, diversiteitsindicatoren, wereldwijde compliance",
-        "marketShare": "Wereldwijde ondernemingen"
-      },
-      "9": {
-        "description": "Uitzendbureauspecifieke verwerking, detectie van zzp'ers, beschikbaarheidsscoring",
-        "marketShare": "Uitzendbureaus"
+        "description": "De AI scoort het cv met gewichten voor uw branche, en die score blijft binnen {{band}} punten van een op regels gebaseerde score uit hetzelfde document. Het auditspoor verdeelt het resultaat daarna over de vier onderdelen hieronder."
       }
     },
     "atsPlatformsTitle": "ATS-platforms waarop we analyseren",
-    "atsPlatformsSubtitle": "Onze analyse is gebaseerd op verwerkingsregels en scoringalgoritmen van deze grote ATS-platforms, die meer dan 90% van de arbeidsmarkt dekken.",
-    "moreAtsPlatforms": "+ 40 meer regionale en branchespecifieke ATS-platforms",
+    "atsPlatformsSubtitle": "De scan beoordeelt hoe elk van deze {{count}} systemen uw cv waarschijnlijk leest. Dit zijn de systemen die hij noemt; hier wordt geen marktaandeel geclaimd.",
     "scoreCalculatedTitle": "Hoe je ATS-score wordt berekend",
-    "scoreCalculatedSubtitle": "Je score is een gewogen combinatie van meerdere factoren die bepalen hoe goed je cv presteert in ATS-systemen.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Zoekwoordoptimalisatie",
-        "description": "Genoemde branche-relevante zoekwoorden en vaardigheden"
-      },
-      "formatCompatibility": {
-        "factor": "Formaatcompatibiliteit",
-        "description": "Schone structuur die ATS correct kan verwerken"
-      },
-      "sectionCompleteness": {
-        "factor": "Volledigheid van secties",
-        "description": "Alle verwachte secties aanwezig en correct gelabeld"
-      },
-      "experienceClarity": {
-        "factor": "Duidelijkheid van ervaring",
-        "description": "Duidelijke functietitels, datums en prestaties"
-      },
-      "actionVerbUsage": {
-        "factor": "Gebruik van actiewerkwoorden",
-        "description": "Sterke actiewerkwoorden die impact aantonen"
-      },
-      "quantifiedAchievements": {
-        "factor": "Gekwantificeerde prestaties",
-        "description": "Cijfers en statistieken die resultaten bewijzen"
-      },
-      "redFlagAbsence": {
-        "factor": "Afwezigheid van waarschuwingssignalen",
-        "description": "Geen opmaak- of inhoudsproblemen"
-      }
-    },
+    "scoreCalculatedSubtitle": "De „Waarom deze score” van elk rapport verdeelt de score over deze vier onderdelen, op 100 punten.",
     "continuousResearchTitle": "Continu onderzoek",
-    "continuousResearchSubtitle": "We analyseren voortdurend vacatures, ATS-updates en wervingstrends om onze analyse nauwkeurig en actueel te houden.",
+    "continuousResearchSubtitle": "De trefwoordtabellen en regels veranderen naarmate we leren, en elke wijziging staat gedateerd in het openbare wijzigingslogboek.",
     "continuousResearch": {
-      "monthlyUpdates": "Maandelijkse algoritme-updates",
-      "keywordDatabases": "Branchespecifieke zoekwoorddatabases",
-      "recruiterFeedback": "Integratie van echte recruiter-feedback"
+      "monthlyUpdates": "Regelwijzigingen gedateerd in het wijzigingslogboek",
+      "keywordDatabases": "Branchespecifieke zoekwoorddatabases"
     },
-    "validatedByResultsTitle": "Gevalideerd door resultaten",
-    "validatedByResultsSubtitle": "Onze methodologie is gevalideerd door echte resultaten van duizenden werkzoekenden die hun cv hebben verbeterd met onze analyse.",
+    "validatedByResultsTitle": "Wat deze pagina niet beweert",
+    "validatedByResultsSubtitle": "Er is geen uitkomstenonderzoek, dus hier wordt geen sollicitatiegesprek-percentage geclaimd. Gemeten wordt hoeveel cv's de scanner heeft gelezen.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} cv's geanalyseerd"
     },
     "ctaTitle": "Klaar om je ATS-score te zien?",
     "ctaSubtitle": "Krijg een gratis analyse van je cv met onze bewezen methodologie.",
-    "ctaButton": "Analyseer mijn cv gratis"
+    "ctaButton": "Analyseer mijn cv gratis",
+    "atsCount": "{{count}} ATS-systemen bij naam gecontroleerd",
+    "pointsOf": "{{points}} van 100 punten",
+    "audit": {
+      "keywords": {
+        "label": "Dekking van trefwoorden",
+        "description": "De verwachte trefwoorden voor uw branche die het cv bevat"
+      },
+      "format": {
+        "label": "Opmaak & leesbaarheid",
+        "description": "Of een parser de structuur kan lezen zonder secties te verliezen"
+      },
+      "impact": {
+        "label": "Meetbare impact",
+        "description": "Hoeveel van uw opsommingstekens een getal bevatten"
+      },
+      "content": {
+        "label": "Inhoudssignalen",
+        "description": "Werkwoorden, structuur en diepgang van secties, afgewogen tegen waarschuwingssignalen"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",

@@ -19,11 +19,11 @@ import {
   Clock,
   Sparkles
 } from "lucide-react";
+import { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "@/config/score-method";
 
-const atsPlatformNames = [
-  "Workday", "Greenhouse", "Lever", "Taleo", "iCIMS",
-  "BambooHR", "JazzHR", "Jobvite", "SmartRecruiters", "Bullhorn",
-];
+// Everything this page says about the scorer comes from the mirror of the
+// scorer's own constants (src/config/score-method.ts), held to the edge
+// function by a test: the systems the scan names, the AI band, the audit parts.
 
 export default function Methodology() {
   // Both counts on this page were the hardcoded "10,000+" while
@@ -32,11 +32,7 @@ export default function Methodology() {
   const scanTotals = useScanTotals();
   const { t } = useTranslation();
 
-  const atsPlaftorms = atsPlatformNames.map((name, i) => ({
-    name,
-    description: t(`methodologyPage.atsPlatforms.${i}.description`),
-    marketShare: t(`methodologyPage.atsPlatforms.${i}.marketShare`),
-  }));
+  const atsPlaftorms = SCAN_ATS_SYSTEMS.map((name) => ({ name }));
 
   const analysisSteps = [
     {
@@ -57,18 +53,18 @@ export default function Methodology() {
     {
       icon: BarChart3,
       title: t('methodologyPage.steps.scoringAlgorithm.title'),
-      description: t('methodologyPage.steps.scoringAlgorithm.description')
+      description: t('methodologyPage.steps.scoringAlgorithm.description', { band: SCORE_AI_BAND })
     },
   ];
 
+  // The report's own "Why this score" parts, out of 100 points.
   const scoringFactors = [
-    { factor: t('methodologyPage.scoringFactors.keywordOptimization.factor'), weight: "25%", description: t('methodologyPage.scoringFactors.keywordOptimization.description') },
-    { factor: t('methodologyPage.scoringFactors.formatCompatibility.factor'), weight: "20%", description: t('methodologyPage.scoringFactors.formatCompatibility.description') },
-    { factor: t('methodologyPage.scoringFactors.sectionCompleteness.factor'), weight: "15%", description: t('methodologyPage.scoringFactors.sectionCompleteness.description') },
-    { factor: t('methodologyPage.scoringFactors.experienceClarity.factor'), weight: "15%", description: t('methodologyPage.scoringFactors.experienceClarity.description') },
-    { factor: t('methodologyPage.scoringFactors.actionVerbUsage.factor'), weight: "10%", description: t('methodologyPage.scoringFactors.actionVerbUsage.description') },
-    { factor: t('methodologyPage.scoringFactors.quantifiedAchievements.factor'), weight: "10%", description: t('methodologyPage.scoringFactors.quantifiedAchievements.description') },
-    { factor: t('methodologyPage.scoringFactors.redFlagAbsence.factor'), weight: "5%", description: t('methodologyPage.scoringFactors.redFlagAbsence.description') },
+    ...SCORE_AUDIT_PARTS.map((p) => ({
+      factor: t(`methodologyPage.audit.${p.key}.label`),
+      weight: `${p.possible}%`,
+      points: t('methodologyPage.pointsOf', { points: p.possible }),
+      description: t(`methodologyPage.audit.${p.key}.description`),
+    })),
   ];
 
   return (
@@ -115,7 +111,7 @@ export default function Methodology() {
               <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-primary" />
-                  {t('methodologyPage.platformsAnalyzed')}
+                  {t('methodologyPage.atsCount', { count: SCAN_ATS_SYSTEMS.length })}
                 </span>
                 {scanTotals && (
                   <span className="flex items-center gap-2">
@@ -123,10 +119,6 @@ export default function Methodology() {
                     {t('methodologyPage.resumesProcessed', { total: scanTotals.total_scans.toLocaleString() })}
                   </span>
                 )}
-                <span className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  {t('methodologyPage.updatedMonthly')}
-                </span>
               </div>
             </div>
           </div>
@@ -174,7 +166,7 @@ export default function Methodology() {
                   {t('methodologyPage.atsPlatformsTitle')}
                 </h2>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  {t('methodologyPage.atsPlatformsSubtitle')}
+                  {t('methodologyPage.atsPlatformsSubtitle', { count: SCAN_ATS_SYSTEMS.length })}
                 </p>
               </div>
               
@@ -184,20 +176,11 @@ export default function Methodology() {
                     key={platform.name}
                     className="p-4 rounded-xl bg-card/50 border border-border/50 hover:border-primary/20 transition-colors"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold">{platform.name}</h3>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                        {platform.marketShare}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{platform.description}</p>
+                    <h3 className="font-semibold">{platform.name}</h3>
                   </div>
                 ))}
               </div>
               
-              <p className="text-center text-sm text-muted-foreground mt-8">
-                {t('methodologyPage.moreAtsPlatforms')}
-              </p>
             </div>
           </div>
         </section>
@@ -223,7 +206,7 @@ export default function Methodology() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium">{item.factor}</h3>
-                      <span className="text-sm font-bold text-primary">{item.weight}</span>
+                      <span className="text-sm font-bold text-primary">{item.points}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
@@ -264,10 +247,6 @@ export default function Methodology() {
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-success" />
                       <span>{t('methodologyPage.continuousResearch.keywordDatabases')}</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-success" />
-                      <span>{t('methodologyPage.continuousResearch.recruiterFeedback')}</span>
                     </li>
                   </ul>
                 </div>

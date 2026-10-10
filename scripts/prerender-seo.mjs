@@ -192,6 +192,7 @@ export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/count
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
 export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
+export { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "../src/config/score-method";
 export { PRIVACY_LAST_UPDATED, SELLER, TERMS_LAST_UPDATED, sellerIdentity } from "../src/config/seller";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
@@ -2621,7 +2622,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   {
     const M = (D.EN_LOCALE && D.EN_LOCALE.methodologyPage) || {};
     const T = (D.EN_LOCALE && D.EN_LOCALE.trustPage) || {};
-    const steps = M.steps || {};
+    // S4 / L4-05: every claim about the scorer is filled from the mirror of
+    // its own constants (src/config/score-method.ts): the AI band, the four
+    // audit parts and the systems the scan names. No "50+" anything.
+    const methodVals = { band: D.SCORE_AI_BAND, count: D.SCAN_ATS_SYSTEMS.length };
+    const fillM = (s) => fillCopy(s, methodVals, "methodologyPage");
+    const steps = Object.fromEntries(Object.entries(M.steps || {}).map(([k, s]) => [k, { title: s.title, description: fillM(s.description) }]));
     const sec = T.security || {};
     // The /trust strings name their clocks as {{tempHours}}-style values, the
     // same ones the SPA interpolates from src/lib/resume-retention.ts, so a
@@ -2648,7 +2654,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           "@context": "https://schema.org",
           "@type": "HowTo",
           name: "How Resume Booster analyzes your resume",
-          description: M.heroSubtitle,
+          description: fillM(M.heroSubtitle),
           step: Object.values(steps).map((s, i) => ({
             "@type": "HowToStep",
             position: i + 1,
@@ -2660,15 +2666,17 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Methodology" }])}
         <h1 class="text-3xl font-bold mb-3">${esc(`${M.titlePrefix || "Our ATS Analysis"} ${M.titleHighlight || "Methodology"}`)}</h1>
-        <p class="text-muted-foreground mb-8">${esc(M.heroSubtitle || "")}</p>
+        <p class="text-muted-foreground mb-8">${esc(fillM(M.heroSubtitle || ""))}</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">${esc(M.howAnalysisWorks || "How the analysis works")}</h2>
           <ol class="space-y-3">${Object.values(steps).map((s, i) => `<li class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">${i + 1}. ${esc(s.title)}</p><p class="text-xs text-muted-foreground">${esc(s.description)}</p></li>`).join("")}</ol>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(M.scoreCalculatedTitle || "How your ATS score is calculated")}</h2>
-          <p class="text-sm text-muted-foreground">${esc(M.scoreCalculatedSubtitle || "")}</p>
+          <p class="text-sm text-muted-foreground mb-3">${esc(fillM(M.scoreCalculatedSubtitle || ""))}</p>
+          <ul class="space-y-2">${D.SCORE_AUDIT_PARTS.map((p) => `<li class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">${esc(M.audit?.[p.key]?.label ?? p.key)} — ${esc(fillCopy(M.pointsOf, { points: p.possible }, "methodologyPage"))}</p><p class="text-xs text-muted-foreground">${esc(M.audit?.[p.key]?.description ?? "")}</p></li>`).join("")}</ul>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(M.atsPlatformsTitle || "ATS platforms we analyze against")}</h2>
-          <p class="text-sm text-muted-foreground">${esc(M.atsPlatformsSubtitle || "")}</p>
+          <p class="text-sm text-muted-foreground mb-3">${esc(fillM(M.atsPlatformsSubtitle || ""))}</p>
+          <ul class="flex flex-wrap gap-2 text-sm">${D.SCAN_ATS_SYSTEMS.map((n) => `<li class="px-3 py-1 rounded-full border border-border">${esc(n)}</li>`).join("")}</ul>
         </section>
         ${cta("See it run on your own resume", "The full diagnostic — score with audit trail, parse checks, missing keywords — is free and needs no signup.", "Scan my resume free")}`,
     });

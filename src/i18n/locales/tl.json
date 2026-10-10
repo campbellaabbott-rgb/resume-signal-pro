@@ -2632,20 +2632,18 @@
     "transparentResearchBased": "Transparent at Batay sa Pananaliksik",
     "titlePrefix": "Ang Aming ATS Analysis",
     "titleHighlight": "Methodology",
-    "heroSubtitle": "Aming nireverse-engineer kung paano nina-parse at sino-score ng 50+ Applicant Tracking System (ATS) ang mga resume. Ito mismo ang eksaktong paggana ng aming pagsusuri.",
-    "platformsAnalyzed": "50+ ATS platform na na-analyze",
+    "heroSubtitle": "Paano ginagawang score ng scan ang resume mo, isinulat mula sa code na nagkukuwenta nito.",
     "resumesProcessed": "{{total}} resume na naproseso",
-    "updatedMonthly": "Buwanang in-update",
     "howAnalysisWorks": "Paano Gumagana ang Aming Pagsusuri",
     "step": "HAKBANG {{number}}",
     "steps": {
       "parsing": {
         "title": "Pag-parse ng Dokumento",
-        "description": "Kinukuha namin ang teksto habang pinapanatili ang structure, hinahandle ang mga PDF at DOCX file gamit ang parehong parsing logic na ginagamit ng mga malalaking ATS platform."
+        "description": "Kinukuha namin ang teksto mula sa iyong PDF o DOCX at pinapanatili ang istruktura nito: mga seksyon, petsa at bullet."
       },
       "aiAnalysis": {
         "title": "AI Analysis",
-        "description": "Ginagaya ng aming AI kung paano babasahin ng bawat ATS ang iyong resume, tinutukoy ang mga section, keyword, at formatting na posibleng maging dahilan ng parsing failure."
+        "description": "Binabasa ng aming AI ang resume tulad ng isang parser, hinahanap ang mga seksyon, keyword at format na maaaring makasira sa pagbasa."
       },
       "keywordMatching": {
         "title": "Keyword Matching",
@@ -2653,101 +2651,47 @@
       },
       "scoringAlgorithm": {
         "title": "Scoring Algorithm",
-        "description": "Ang iyong ATS score ay kinakalkula base sa 50+ na factor kabilang ang keyword density, formatting, kumpletuhan ng section, at mga red flag."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Pag-parse ng section header, keyword extraction, validation ng date format",
-        "marketShare": "Malalaking enterprise"
-      },
-      "1": {
-        "description": "Mga algorithm sa pagtugma ng skill, scoring ng antas ng karanasan, mga indicator ng cultural fit",
-        "marketShare": "Tech at startup"
-      },
-      "2": {
-        "description": "Validation ng contact info, consistency ng formatting, organisasyon ng section",
-        "marketShare": "Mid-market"
-      },
-      "3": {
-        "description": "Pagsusuri ng keyword density, pagtugma ng job title, scoring ng kwalipikasyon",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Pag-parse ng edukasyon, detection ng certification, pagtugma ng skills taxonomy",
-        "marketShare": "Healthcare at retail"
-      },
-      "5": {
-        "description": "Pagsusuri ng structure ng resume, validation ng timeline ng karanasan",
-        "marketShare": "SMB"
-      },
-      "6": {
-        "description": "Keyword optimization, mga algorithm sa ranking ng applicant",
-        "marketShare": "Maliit na negosyo"
-      },
-      "7": {
-        "description": "Integration ng social profile, referral tracking, skills assessment",
-        "marketShare": "Enterprise"
-      },
-      "8": {
-        "description": "AI-powered matching, mga indicator ng diversity, global compliance",
-        "marketShare": "Pandaigdigang enterprise"
-      },
-      "9": {
-        "description": "Staffing-specific parsing, detection ng contractor, scoring ng availability",
-        "marketShare": "Mga staffing agency"
+        "description": "Binibigyan ng AI ng score ang resume gamit ang timbang para sa iyong industriya, at ang score nito ay pinananatili sa loob ng {{band}} puntos ng isang rule-based na score mula sa parehong dokumento. Hinahati ng audit trail ang resulta sa apat na bahagi sa ibaba."
       }
     },
     "atsPlatformsTitle": "Mga ATS Platform na Aming Sinusuri",
-    "atsPlatformsSubtitle": "Ang aming pagsusuri ay batay sa mga parsing rule at scoring algorithm mula sa mga malalaking ATS platform na ito, sumasaklaw sa mahigit 90% ng job market.",
-    "moreAtsPlatforms": "+ 40 pang regional at industry-specific na ATS platform",
+    "atsPlatformsSubtitle": "Sinusuri ng scan kung paano malamang na babasahin ng bawat isa sa {{count}} system na ito ang resume mo. Ito ang mga system na pinangangalanan nito; walang inaangking bahagi ng job market dito.",
     "scoreCalculatedTitle": "Paano Kinakalkula ang Iyong ATS Score",
-    "scoreCalculatedSubtitle": "Ang iyong score ay isang weighted na kombinasyon ng maramihang factor na tumutukoy kung gaano kahusay magpepresenta ang iyong resume sa mga ATS system.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Keyword Optimization",
-        "description": "Mga binanggit na keyword at skill na kaugnay sa industriya"
-      },
-      "formatCompatibility": {
-        "factor": "Format Compatibility",
-        "description": "Malinis na structure na maayos na mai-parse ng ATS"
-      },
-      "sectionCompleteness": {
-        "factor": "Kumpletuhan ng Section",
-        "description": "Lahat ng inaasahang section ay naroroon at maayos na nakalagyan ng label"
-      },
-      "experienceClarity": {
-        "factor": "Kalinawan ng Karanasan",
-        "description": "Malinaw na job title, petsa, at tagumpay"
-      },
-      "actionVerbUsage": {
-        "factor": "Paggamit ng Action Verb",
-        "description": "Malakas na mga action verb na nagpapakita ng epekto"
-      },
-      "quantifiedAchievements": {
-        "factor": "May Sukat na Tagumpay",
-        "description": "Mga numero at metric na nagpapatunay ng resulta"
-      },
-      "redFlagAbsence": {
-        "factor": "Walang Red Flag",
-        "description": "Walang isyu sa formatting o content"
-      }
-    },
+    "scoreCalculatedSubtitle": "Hinahati ng \"Bakit ang score na ito\" ng bawat report ang score sa apat na bahaging ito, mula sa 100 puntos.",
     "continuousResearchTitle": "Tuloy-tuloy na Pananaliksik",
-    "continuousResearchSubtitle": "Patuloy namin sinusuri ang mga job posting, ATS update, at trend sa hiring upang mapanatili ang katumpakan at pagiging up-to-date ng aming pagsusuri.",
+    "continuousResearchSubtitle": "Nagbabago ang mga keyword table at mga patakaran habang natututo kami, at may petsa ang bawat pagbabago sa pampublikong changelog.",
     "continuousResearch": {
-      "monthlyUpdates": "Buwanang algorithm update",
-      "keywordDatabases": "Industry-specific na keyword database",
-      "recruiterFeedback": "Integration ng tunay na recruiter feedback"
+      "monthlyUpdates": "Mga pagbabago sa patakaran na may petsa sa changelog",
+      "keywordDatabases": "Industry-specific na keyword database"
     },
-    "validatedByResultsTitle": "Pinagtibay ng mga Resulta",
-    "validatedByResultsSubtitle": "Ang aming methodology ay pinagtibay ng tunay na resulta mula sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming pagsusuri.",
+    "validatedByResultsTitle": "Ang hindi inaangkin ng pahinang ito",
+    "validatedByResultsSubtitle": "Walang survey ng resulta, kaya walang inaangking interview rate dito. Ang sinusukat ay kung ilang resume ang nabasa ng scanner.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} resume na na-analyze"
     },
     "ctaTitle": "Handa na Makita ang Iyong ATS Score?",
     "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang aming napatunayang methodology.",
-    "ctaButton": "Suriin ang Aking Resume nang Libre"
+    "ctaButton": "Suriin ang Aking Resume nang Libre",
+    "atsCount": "{{count}} ATS system na sinusuri ayon sa pangalan",
+    "pointsOf": "{{points}} sa 100 puntos",
+    "audit": {
+      "keywords": {
+        "label": "Saklaw ng keyword",
+        "description": "Ang mga inaasahang keyword para sa iyong industriya na nasa resume"
+      },
+      "format": {
+        "label": "Format at kakayahang mabasa",
+        "description": "Kung mababasa ng parser ang istruktura nang hindi nawawala ang mga seksyon"
+      },
+      "impact": {
+        "label": "Nasukat na epekto",
+        "description": "Ilan sa iyong mga bullet ang may numero"
+      },
+      "content": {
+        "label": "Mga senyales ng nilalaman",
+        "description": "Mga pandiwa, istruktura at lalim ng seksyon, tinimbang laban sa mga red flag"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
