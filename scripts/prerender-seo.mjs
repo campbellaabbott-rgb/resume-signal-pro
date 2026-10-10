@@ -24,7 +24,7 @@ import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
-  PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots,
+  PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
   pageLastmod, postingCarryBase, postingCheckState, postingStubPage, selectLanders,
 } from "./prerender-pages.mjs";
 
@@ -2352,17 +2352,30 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       let consolidated = 0;
       let thin = 0;
       let codeNamed = 0;
+      // The facts and openings of each EMPLOYER (every board of it this bake
+      // chose), read first, so the noindex rule can see them all at once.
+      const landerInfo = new Map(LANDERS.map((c) => {
+        const primary = landerByToken.get(c.primary) ?? c;
+        const tokens = LANDERS.filter((x) => x.primary === c.primary).map((x) => x.token);
+        const facts = landerFacts(intelOf.get(primary.token), { countryName, fieldLabel: fieldLabelOf });
+        const openings = tokens.flatMap((t) => postingsByToken.get(t) ?? []).slice(0, 12);
+        return [c.token, { primary, facts, openings, ownContent: landerHasOwnContent({ facts, postings: openings }), answered: intelOf.has(primary.token) || openings.length > 0 }];
+      }));
+      // A CIRCUIT BREAKER ON "NOTHING OF ITS OWN". Every employer here has 8+
+      // open roles, so an answer with no place and no field is rare; when more
+      // than a quarter of the answered primaries say so, the read is broken
+      // (an empty cache, a schema change), not the employers, and noindexing
+      // them would also trip the sitemap ratchet and lose the whole sitemap.
+      const answeredPrimaries = LANDERS.filter((c) => c.primary === c.token && landerInfo.get(c.token).answered);
+      const thinPrimaries = answeredPrimaries.filter((c) => !landerInfo.get(c.token).ownContent);
+      const thinBreaker = landerThinBreaker({ answered: answeredPrimaries.length, thin: thinPrimaries.length });
+      if (thinBreaker) console.warn(`[prerender-seo] company pages: ${thinPrimaries.length} of ${answeredPrimaries.length} answered with no place or field of their own — treated as a broken read, none noindexed for it this bake`);
       for (const c of LANDERS) {
         const nm = c.name;
         const isPrimary = c.primary === c.token;
         if (!isPrimary) consolidated++;
-        const primary = landerByToken.get(c.primary) ?? c;
-        // The facts and openings of the EMPLOYER: every board of it this bake chose.
-        const tokens = LANDERS.filter((x) => x.primary === c.primary).map((x) => x.token);
-        const facts = landerFacts(intelOf.get(primary.token), { countryName, fieldLabel: fieldLabelOf });
-        const openings = tokens.flatMap((t) => postingsByToken.get(t) ?? []).slice(0, 12);
-        const ownContent = landerHasOwnContent({ facts, postings: openings });
-        const answered = intelOf.has(primary.token) || openings.length > 0;
+        const { primary, facts, openings, ownContent } = landerInfo.get(c.token);
+        const answered = landerInfo.get(c.token).answered && !thinBreaker;
         const robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent });
         if (isPrimary && c.unreadable) codeNamed++;
         else if (isPrimary && answered && !ownContent) thin++;
@@ -3439,6 +3452,29 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         priority: postingPage ? "0.5" : "0.7",
       });
     }
+    const lastmodOf = (path) => {
+      const fp = pageFingerprints.get(path);
+      if (!fp) return TODAY;
+      return pageLastmod({ fingerprint: fp.fp, prior: priorPages[path], today: TODAY, stated: fp.stated });
+    };
+    // THE LEDGER THE NEXT BAKE READS (F2a, S3): every posting URL this bake
+    // accounted for and what became of it, and every page's fingerprint with
+    // the date it last changed. Served beside the sitemap, so the next
+    // publish reads what THIS one published; the public/ copy is the fallback
+    // for a build that cannot reach the site. Written BEFORE the sitemap's
+    // refusals below: a refused sitemap leaves the previous one in place, but
+    // the pages this bake wrote are in dist all the same, and the next bake
+    // must know about them.
+    const ledgerOut = {
+      builtAt: TODAY,
+      postings: postingLedger,
+      pages: Object.fromEntries([...pageFingerprints.entries()].map(([path, fp]) => [path, { fp: fp.fp, lastmod: lastmodOf(path) }])),
+    };
+    const ledgerJson = JSON.stringify(ledgerOut);
+    writeFileSync(join(dist, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
+    writeFileSync(join(root, "public", PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
+    console.log(`[prerender-seo] ${PRERENDER_LEDGER_PATH} written: ${Object.keys(postingLedger).length} posting URLs, ${pageFingerprints.size} pages (read from: ${ledgerSource})`);
+
     // THE SITEMAP MAY NOT NAME A POSTING URL THIS BAKE DID NOT WRITE.
     //
     // A sitemap entry is a request to index that URL. There is no file behind a
@@ -3503,11 +3539,6 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     // publish date, and a date that moves on every publish is one search
     // engines learn to ignore. Each page's date is now the day what it says
     // last changed (or its own stated date), carried in the ledger.
-    const lastmodOf = (path) => {
-      const fp = pageFingerprints.get(path);
-      if (!fp) return TODAY;
-      return pageLastmod({ fingerprint: fp.fp, prior: priorPages[path], today: TODAY, stated: fp.stated });
-    };
     const xml = [
       `<?xml version="1.0" encoding="UTF-8"?>`,
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
@@ -3520,20 +3551,6 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     writeFileSync(join(dist, "sitemap.xml"), xml);
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
 
-    // THE LEDGER THE NEXT BAKE READS (F2a, S3): every posting URL this bake
-    // accounted for and what became of it, and every page's fingerprint with
-    // the date it last changed. Served beside the sitemap, so the next
-    // publish reads what THIS one published; the public/ copy is the fallback
-    // for a build that cannot reach the site.
-    const ledgerOut = {
-      builtAt: TODAY,
-      postings: postingLedger,
-      pages: Object.fromEntries([...pageFingerprints.entries()].map(([path, fp]) => [path, { fp: fp.fp, lastmod: lastmodOf(path) }])),
-    };
-    const ledgerJson = JSON.stringify(ledgerOut);
-    writeFileSync(join(dist, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
-    writeFileSync(join(root, "public", PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
-    console.log(`[prerender-seo] ${PRERENDER_LEDGER_PATH} written: ${Object.keys(postingLedger).length} posting URLs, ${pageFingerprints.size} pages (read from: ${ledgerSource})`);
   }
 
   // Say out loud what the clamp had to cut. Silent truncation is how the

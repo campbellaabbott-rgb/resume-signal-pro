@@ -308,3 +308,13 @@ export function landerRobots({ isPrimary, unreadable, answered, ownContent }) {
   if (!isPrimary) return null;
   return unreadable || (answered && !ownContent) ? "noindex, follow" : null;
 }
+
+/**
+ * True when "nothing of its own" answers are too many to be about the
+ * employers: every company page is for an employer with 8+ open roles, so
+ * when more than a quarter of the answered pages report no place and no
+ * field, the read is broken and none is noindexed for it (that would also
+ * trip the sitemap ratchet and lose the whole sitemap). Measured on a mock
+ * bake whose intel answered empty: 460 of 489 pages, and the ratchet refused.
+ */
+export const landerThinBreaker = ({ answered, thin }) => answered >= 20 && thin > answered * 0.25;

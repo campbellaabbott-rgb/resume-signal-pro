@@ -4,6 +4,7 @@ import {
   landerFacts,
   landerHasOwnContent,
   landerRobots,
+  landerThinBreaker,
   selectLanders,
 } from "../../scripts/prerender-pages.mjs";
 import { boardName, isCodeShapedName, possessive } from "@/lib/company-display";
@@ -82,6 +83,12 @@ describe("a page with nothing of its own, or a name that is still a code, is not
     expect(landerRobots({ isPrimary: true, unreadable: false, answered: true, ownContent: true })).toBeNull();
     expect(landerRobots({ isPrimary: true, unreadable: true, answered: true, ownContent: true })).toBe("noindex, follow");
     expect(landerRobots({ isPrimary: false, unreadable: true, answered: true, ownContent: false }), "a secondary board canonicalises instead").toBeNull();
+  });
+
+  it("a read that answers 'nothing of its own' for most employers is a broken read, not thin pages", () => {
+    expect(landerThinBreaker({ answered: 489, thin: 460 })).toBe(true);
+    expect(landerThinBreaker({ answered: 489, thin: 30 })).toBe(false);
+    expect(landerThinBreaker({ answered: 10, thin: 10 }), "too few answers to judge the read").toBe(false);
   });
 
   it("selects and groups employers by the name they use, and flags a tenant code", () => {
