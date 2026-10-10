@@ -3586,7 +3586,9 @@
       "education": "Formation",
       "skills": "Compétences",
       "certifications": "Certifications"
-    }
+    },
+    "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ?",
+    "replaceWithLatestScan": "Vous avez un brouillon issu d'un CV précédent. Le remplacer par le CV de votre dernière analyse ?"
   },
   "jobsPage": {
     "seoTitle": "Offres en direct des sites carrières des entreprises — vérifiez votre profil avant de postuler",

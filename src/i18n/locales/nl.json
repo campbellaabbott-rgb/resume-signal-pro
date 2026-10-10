@@ -3586,7 +3586,9 @@
       "education": "Opleiding",
       "skills": "Vaardigheden",
       "certifications": "Certificeringen"
-    }
+    },
+    "replaceWithFixes": "Je huidige concept in de builder vervangen door het cv uit je scan, met de verbeteringen uit het rapport toegepast?",
+    "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?"
   },
   "jobsPage": {
     "seoTitle": "Live vacatures rechtstreeks van de bedrijven zelf — check je match voordat je solliciteert",

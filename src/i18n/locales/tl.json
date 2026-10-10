@@ -3586,7 +3586,9 @@
       "education": "Edukasyon",
       "skills": "Mga Kasanayan",
       "certifications": "Mga Sertipikasyon"
-    }
+    },
+    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report?",
+    "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?"
   },
   "jobsPage": {
     "seoTitle": "Live na trabaho mismo mula sa mga kumpanya — suriin ang iyong fit bago mag-apply",

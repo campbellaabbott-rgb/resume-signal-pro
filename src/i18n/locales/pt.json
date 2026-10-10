@@ -3586,7 +3586,9 @@
       "education": "Formação",
       "skills": "Habilidades",
       "certifications": "Certificações"
-    }
+    },
+    "replaceWithFixes": "Substituir o rascunho atual do editor pelo currículo da sua verificação, com as correções do relatório aplicadas?",
+    "replaceWithLatestScan": "Você tem um rascunho de um currículo anterior. Substituí-lo pelo currículo da sua verificação mais recente?"
   },
   "jobsPage": {
     "seoTitle": "Vagas ao vivo direto dos sites das próprias empresas — confira seu encaixe antes de se candidatar",

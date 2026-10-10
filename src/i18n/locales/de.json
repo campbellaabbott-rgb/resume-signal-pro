@@ -3586,7 +3586,9 @@
       "education": "Ausbildung",
       "skills": "Fähigkeiten",
       "certifications": "Zertifikate"
-    }
+    },
+    "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht?",
+    "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?"
   },
   "jobsPage": {
     "seoTitle": "Live-Jobs direkt von den Karriereseiten der Unternehmen — prüfe deine Passung vor der Bewerbung",

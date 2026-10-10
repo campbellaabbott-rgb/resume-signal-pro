@@ -3586,7 +3586,9 @@
       "education": "Education",
       "skills": "Skills",
       "certifications": "Certifications"
-    }
+    },
+    "replaceWithFixes": "Replace your current builder draft with the résumé from your scan, with the report's fixes applied?",
+    "replaceWithLatestScan": "You have a builder draft from an earlier résumé. Replace it with the résumé from your latest scan?"
   },
   "jobsPage": {
     "seoTitle": "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply",

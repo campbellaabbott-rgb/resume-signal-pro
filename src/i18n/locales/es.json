@@ -3586,7 +3586,9 @@
       "education": "Educación",
       "skills": "Habilidades",
       "certifications": "Certificaciones"
-    }
+    },
+    "replaceWithFixes": "¿Reemplazar tu borrador actual del editor por el currículum de tu análisis, con las correcciones del informe aplicadas?",
+    "replaceWithLatestScan": "Tienes un borrador de un currículum anterior. ¿Reemplazarlo por el currículum de tu análisis más reciente?"
   },
   "jobsPage": {
     "seoTitle": "Empleos en vivo de los propios portales de las empresas — comprueba tu perfil antes de postularte",
