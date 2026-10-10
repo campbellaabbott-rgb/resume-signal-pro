@@ -9,6 +9,9 @@ everywhere they are described. The $99 agent card names the four systems the
 agent can send on, not seven. Claude and ChatGPT users get the host's own
 unkeyed allowance instead of sharing one address's 25 calls.
 
+A review of the branch (2026-10-10) found two blockers, one major and four
+minors in its own fixes; all seven are fixed, see "Review round" below.
+
 Verifier: `scripts/verify-deploy.d/73-wave3-agents-api.sh` (one PASS/FAIL/INFO
 line per claim; read-only; spends one unkeyed MCP call and, with
 `RB_API_KEY`, two calls of the owner's free /v1 key). Run against production
@@ -25,11 +28,11 @@ All 18 are fixed. None was already fixed by wave 2 (PR #24): the five marked
 | id | sev | what was wrong | fix (commit) |
 |---|---|---|---|
 | S8-006 | high | the worker answered "without needing/requiring sponsorship" backwards while the review sheet said the opposite | the worker carries the sheet's inversion rule character for character; a cross-runtime test feeds both (1910e552) |
-| S8-007 | high | "U.S.", "U.S.A.", "U.K." read as no country; the pronoun "us" read as the United States; one covered country of several counted as covered | initialisms lose their dots first; bare "us" is the country only as the capitalised initialism or in a place phrase; every named country must be covered (ddd72c82) |
-| S8-008 | high | criminal history, age, citizenship, pay, medical and other protected questions were `draftable`; the worker filled the model's text into required boxes | `PROTECTED_FACTUAL` / `PROTECTED_DEMOGRAPHIC` in the classifier, mirrored in `worker/src/questions/protected.ts`; the worker refuses a prepared draft for them, so they stop for the candidate; `supported` must be a literal true; invented questions are classified (defc7554) |
+| S8-007 | high | "U.S.", "U.S.A.", "U.K." read as no country; the pronoun "us" read as the United States; one covered country of several counted as covered | initialisms lose their dots first; bare "us" is the country only as the capitalised initialism or in a place phrase; every named place must be covered, named regions included, and places joined only by "or" are met by one for authorisation (ddd72c82, review 8177d4e7) |
+| S8-008 | high | criminal history, age, citizenship, pay, medical and other protected questions were `draftable`; the worker filled the model's text into required boxes | `PROTECTED_FACTUAL` / `PROTECTED_DEMOGRAPHIC` in the classifier, mirrored in `worker/src/questions/protected.ts`; the worker refuses a prepared draft for them, so they stop for the candidate; `supported` must be a literal true; invented questions are classified; a résumé prompt about work done stays draftable in both runtimes (defc7554, review 2706712b) |
 | S8-043 | med | "I do not require sponsorship", "I am not authorized", "I do not consent" chosen as the yes | a yes must say yes and not negate itself; two yeses is ambiguous and refused (0fd9d5a6) |
-| S8-044 | med | essay questions got the phone, address, LinkedIn, salary or "No" because contact words matched first; "Emergency contact" got the candidate's own phone | contact patterns count only on a field-shaped label; somebody else's contact never; server classifier gated the same way (b20f6269) |
-| S8-045 | med | "UK" chose Ukraine, York chose New York, Atlanta chose LA, US chose Australia | city matches only a whole option part; country only through `toCode()`; residence-country questions answer from the identity country (c9e676d5) |
+| S8-044 | med | essay questions got the phone, address, LinkedIn, salary or "No" because contact words matched first; "Emergency contact" got the candidate's own phone | contact patterns count only on a field-shaped label; somebody else's contact never; one rule, byte-identical in the worker and the server classifier (b20f6269, review 2763abd3) |
+| S8-045 | med | "UK" chose Ukraine, York chose New York, Atlanta chose LA, US chose Australia | city matches only a whole option part; country only through `toCode()`; residence-country questions answer from the identity country; a hyphenated city stays whole (c9e676d5, review 11de7392) |
 | S8-046 | med | Teamtailor/Personio required markers in labels were ignored, so required questions neither blocked nor were asked | the enumerator reads `*`, `*Required`, `(erforderlich)` and similar before stripping the marker (6f1435ba) |
 | S8-047 | med | a drafted answer typed into a radio/select was refused by Playwright and the posting lost for good | drafts fill only text/textarea; a leading yes/no maps through `chooseBoolean`; anything else becomes a pending question (e48f4ddb) |
 | S8-048 | med | one learned answer served C#, C++ and C (and .NET/NET) | `learnedKey` spells `c++`/`c#`/`f#`/`.net` as words; rows are re-keyed where read, by stored label (ba858cc7) |
@@ -52,7 +55,7 @@ All 18 are fixed. None was already fixed by wave 2 (PR #24): the five marked
 | Wave-2 handoff: /v1 binds `location.ilike` itself (L13-01 on /v1) | **done** (aac699f8): `_shared/location-match.ts`, a byte copy of job-board's, pinned by `the-apis-copy-of-the-boards-location-rule-is-the-boards` |
 | MCP directory prep: per-host allowance instead of one shared 25/day | **done** (9bcaaa6c), see "The host's own allowance" |
 | MCP directory prep: result links to job pages with tracking | **done** (aac699f8): cards carry `siteUrl` = `resumebooster.work/jobs?job=<id>&utm_source=mcp&utm_medium=connector`; the research `search` links there |
-| MCP directory prep: no prices or checkout links in ChatGPT-facing output | **done** (aac699f8): a tools/call result going to ChatGPT (an `openai/` `_meta` key or its user agent) has every buy/subscribe clause and the `buy`/`upgrade` fields removed at the one exit |
+| MCP directory prep: no prices or checkout links in ChatGPT-facing output | **done** (aac699f8, rebuilt in b0ccaed9): each purchase sentence of the server's own has a ChatGPT edition chosen where it is built (an `openai/` `_meta` key or its user agent picks it once per request); key_status drops `buy`/`upgrade`; the guide and `resumebooster://me/key` follow the same rule; initialize and the request_application description carry no pass URL for any host. Job data is never rewritten (the first version filtered the whole answer, see "Review round") |
 | Found by guards this branch had not run | **fixed**: `v1_withheld_company_tokens` was SECURITY INVOKER over the corpus (8505bb6e, the key-wall rule); the pass-number guard read 20261009121000's claim lease default (10 minutes) as the pass's 10 applications (71cbcff6: the guard sets aside exactly the lease spellings, with a teeth case) |
 
 ### The host's own allowance (agent-mcp 2026-10-09.2)
@@ -71,8 +74,51 @@ A spent host bucket falls through to the address bucket (nobody has fewer
 calls than before); the global 2,000/day still binds; an unreadable OpenAI
 list means the address bucket. Each answer's `unkeyed.allowance` says which
 bucket answered (`chatgpt-user`, `claude`, `chatgpt`, `address`). The
-initialize paragraph is unchanged (it sits at 2,028 of 2,048 bytes); the guide
+initialize paragraph carries no new sentence (1,982 of 2,048 bytes in the off state, 46 fewer since the pass URL left it); the guide
 resource, `/agents`, the home strip, llms.txt and llms-full carry the rule.
+
+## Review round (2026-10-10)
+
+| finding | verdict | fix (commit) |
+|---|---|---|
+| blocker: the ChatGPT purchase filter walked the whole tools/call body, so "Best Buy", "Purchase Ledger Clerk", the id/title/company/applyUrl of `lever:upgrade:abc`, description sentences and the queue link's sentences became the pass sentence | confirmed on the shipped handler | no post-hoc filter: `Shop` chosen once per request (`shopOf`), threaded into every builder of purchase text; job cards are never read by it (b0ccaed9) |
+| blocker: "North/Latin/South/Central America" mapped to no country, so a UK candidate claimed North and Latin American work rights | confirmed (tsx, four labels, main refused all four) | named regions are asked: North America = US+CA+MX each stated; LATAM (and the Americas) covered by no stated country (8177d4e7) |
+| major: the worker's 5-token and the sheet's 6-word contact caps disagreed; hinted contact fields were refused by the worker and sent to the model by the sheet | confirmed (six labels) | `contactLabelIsAField`, one block byte-identical in both runtimes (2763abd3) |
+| minor: resources/read of the guide and of me/key, initialize and the tool description still carried the pass link inside ChatGPT | confirmed | built at source like the rest; initialize and the description drop the URL for every host (b0ccaed9) |
+| minor: protected tokens made résumé prompts (immigration law, vaccinations, payroll, drug assays, pregnant patients, accommodation requests) `factual` | confirmed (seven labels) | `asksAboutWorkDone`, mirrored in the worker (2706712b) |
+| minor: "the UK or EU" needed both | confirmed | "or" and nothing else between the places: one is enough, for authorisation only (8177d4e7) |
+| minor: a hyphenated city never matched its own option | confirmed (Winston-Salem) | a hyphen splits only when spaced (11de7392) |
+
+### Rationale (the code comments point here)
+
+- **Purchase text at source.** OpenAI's app rules forbid checkout links in an
+  app's output; Claude's do not, and a pass link is the shortest fix for a
+  Claude user's refusal. A word filter cannot tell this server's sentence from
+  an employer's name, so the edition is chosen where the sentence is written.
+  The cost is a `shop` argument on callTool, runKeyStatus, answerRead and the
+  builders under them; the decision row is still not handed to callTool.
+- **Named regions.** A region the matcher cannot name is the one case the
+  country module exists for: an unknown place must refuse, never fall back to
+  the home-country boolean. North America is expanded (each country stated)
+  rather than treated as unanswerable, so a candidate who stated all three
+  still answers. "The Americas" includes LATAM, so it always asks.
+- **"or" is one place, for authorisation only.** "Authorised in the UK or the
+  EU?" is a true Yes from either. A sponsorship No is a claim about every place
+  named, so a disjunction there still needs all of them. Anything other than
+  "or"/"either"/"the" between the places ("and", "or do you need a visa for")
+  needs all.
+- **One contact-field rule.** Field-shaped is decided by what the label is,
+  not how long: whose detail it names, a label that opens with the detail and
+  then ends or gives a hint (brackets, colon, dash, "where", "we", "for", "so",
+  "that"), or six words or fewer (bracketed hints aside) ending on a contact
+  noun. A question, a prose prompt, a textarea or somebody else's detail never
+  is. The byte-identity test holds the two copies together.
+- **Work done is not status.** A protected word inside "describe / tell us
+  about / what is your experience ..." that names work done is a résumé
+  question, unless the label also asks about the candidate's own status (are
+  you, have you been, your age/citizenship/visa/criminal/medical/health, any
+  convictions, conditions you ...). Mirrored in the worker so the sender does
+  not refuse the sheet's draft.
 
 ## Not done, and why
 
@@ -103,18 +149,19 @@ these where both touch a function):
 
 | function | new `x-fn-build` | why |
 |---|---|---|
-| `agent-mcp` | `agent-mcp.2026-10-09.2` | SmartRecruiters withheld; `groupSimilar:false`; `relatedTotal`/`matchScope`/`filterCoverage` pass-through; card `siteUrl` with tracking; no purchase text inside ChatGPT; the host's own allowance; the guide names the withheld systems |
+| `agent-mcp` | `agent-mcp.2026-10-09.2` | SmartRecruiters withheld; `groupSimilar:false`; `relatedTotal`/`matchScope`/`filterCoverage` pass-through; card `siteUrl` with tracking; no purchase text inside ChatGPT; the host's own allowance; the guide names the withheld systems; purchase text built per host at source (review) |
 | `public-api` | `public-api.2026-10-09.1` (`apiVersion` 2026-10-09.1) | SmartRecruiters withheld (451, `/v1/companies`); ranked `groupSimilar:false`, `total.related`, `match_scope`; parameter parsing (S8-078); the shared location rule; no typed percentage |
-| `apply-agent` | `apply-agent.2026-10-09.1` | the protected-question classifier; packet profile carries only an own-folder résumé path |
+| `apply-agent` | `apply-agent.2026-10-09.1` | the protected-question classifier (résumé prompts about work done stay draftable) and the one contact-field rule; packet profile carries only an own-folder résumé path |
 | `apply-broker` | `apply-broker.2026-10-09.1` | signs only an own-folder résumé path |
-| `generate-application-answers` | `generate-application-answers.2026-10-09.1` | the classifier; `supported` must be true; invented questions classified |
+| `generate-application-answers` | `generate-application-answers.2026-10-09.1` | the classifier (as apply-agent); `supported` must be true; invented questions classified |
 | `send-agent-digest` | `send-agent-digest.2026-10-09.1` | the plan read by account, not address |
 
 Not redeployed by this group, but their bundles change:
 
 - **job-board** (the job-board group's `.92`): imports `_shared/application-questions.ts`
-  (+6.5 KB raw source: the protected-topic patterns and the identity gate, used
-  by its `application-questions` action) and `_shared/board-domains.ts` (+0.3 KB,
+  (+10.2 KB raw source, 10,225 bytes against origin/main: the protected-topic
+  patterns with the résumé-prompt exemption, and the one contact-field rule,
+  used by its `application-questions` action) and `_shared/board-domains.ts` (+0.3 KB,
   `EMPLOYMENT_TYPES`). Count both against the ~4.5 MB cap.
 - **generate-apply-package** imports only `roleGuidance`, which did not change:
   no redeploy needed.
@@ -229,3 +276,8 @@ probes answer 42501, not PGRST202), not by what the runner reports.
 | `the-agent-card-said-it-applies-on-seven-systems-and-it-sends-on-four` | 4 of 4 on HEAD |
 | `every-claude-and-chatgpt-user-shared-one-addresss-unkeyed-allowance` | 4 of 6 handler cases on HEAD; the reader case without 20261009123000 (3 addresses, max 500, against 1 and 7) |
 | `the-connector-page-never-said-which-systems-it-withholds` | 3 of 3 on HEAD |
+| `inside-chatgpt-a-job-whose-title-or-employer-held-a-purchase-word-was-rewritten` (review) | 6 of 8 on the previous agent-mcp (the two refusal cases are guards) |
+| `the-agent-read-u-s-as-no-country-…` + 14 cases (review) | 10 of 14 on the previous countries.ts/match.ts (four refusal guards) |
+| `an-essay-question-got-the-candidates-phone-…` + 18 cases (review) | 13 of 18 on the previous match.ts/application-questions.ts |
+| `the-model-drafted-criminal-age-…` + 17 cases (review) | 8 on the previous protected.ts/application-questions.ts (the 6 own-status cases pass on both) |
+| `the-agent-told-employers-a-uk-candidate-lives-in-ukraine` + 1 case (review) | fails on the previous match.ts |

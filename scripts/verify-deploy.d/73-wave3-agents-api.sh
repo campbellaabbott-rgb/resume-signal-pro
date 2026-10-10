@@ -17,10 +17,15 @@
 #   - the crawler copy of /agents, /data-api and / and llms.txt say what the
 #     code does (the withheld systems, the host's own allowance);
 #   - the agent card's four sendable systems, in the live bundle if the copy
-#     ships in the entry chunk.
+#     ships in the entry chunk;
+#   - inside ChatGPT the guide carries no pass link (Claude's still does), and
+#     initialize and the request_application description carry none for any
+#     host: purchase text has a ChatGPT edition built at source, and job data
+#     is never rewritten (proved by inside-chatgpt-a-job-whose-title-...).
 #
 # READ-ONLY. OPTIONS preflights run no function logic. The /v1 index answers
-# before any key check. tools/list and the guide are free and unmetered. ONE
+# before any key check. initialize, tools/list and the guide (read twice:
+# once as ChatGPT's user agent) are free and unmetered. ONE
 # unkeyed search_jobs call is made (one of this address's 25 free calls for
 # today). The keyed /v1 reads use the owner's own free key (RB_API_KEY in
 # .env.local) and cost two calls of its quota; without it they are INFO. The
@@ -63,10 +68,12 @@ fi
 MC -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > /tmp/vd_73_tools.json
 MC -d '{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"resumebooster://guide"}}' > /tmp/vd_73_guide.json
 MC -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_jobs","arguments":{"query":"engineer","limit":5}}}' > /tmp/vd_73_search.json
+MC -A "openai-mcp/1.0.0" -d '{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"resumebooster://guide"}}' > /tmp/vd_73_guide_gpt.json
+MC -d '{"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy","version":"1"}}}' > /tmp/vd_73_init.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
-const tl=rd("/tmp/vd_73_tools.json"), gd=rd("/tmp/vd_73_guide.json"), se=rd("/tmp/vd_73_search.json");
+const tl=rd("/tmp/vd_73_tools.json"), gd=rd("/tmp/vd_73_guide.json"), se=rd("/tmp/vd_73_search.json"), gg=rd("/tmp/vd_73_guide_gpt.json"), it=rd("/tmp/vd_73_init.json");
 const tools=((tl||{}).result||{}).tools||[];
 if(!tools.length){console.log("FAIL  agent-mcp tools/list answered no tools");}
 else{
@@ -77,12 +84,21 @@ else{
   const COV=/~\s?\d+(\.\d+)?\s?%|\d+(\.\d+)?\s?% of (the board|postings|all postings|employers|jobs)/i;
   const pct=tools.filter(t=>COV.test(String(t.description||"")+JSON.stringify(t.inputSchema||{}))).map(t=>t.name);
   ok(pct.length===0,"no tool description or field types a coverage percentage (S8-079)"+(pct.length?": "+pct.join(", "):""));
+  const ra=tools.find(t=>t.name==="request_application")||{};
+  ok(ra.description&&!/agents\/pass/.test(String(ra.description)),"the request_application description carries no pass link (every host sees it; present = the old build)");
 }
+const ggt=String(((((gg||{}).result||{}).contents)||[{}])[0].text||"");
+if(!ggt){console.log("FAIL  the guide read as ChatGPT answered no text");}
+else ok(!/agents\/pass/.test(ggt),"the guide read as ChatGPT carries no pass link (present = the old build: only tools/call was filtered)");
+const ins=String((((it||{}).result)||{}).instructions||"");
+if(!ins){console.log("FAIL  initialize answered no instructions");}
+else ok(!/agents\/pass/.test(ins),"initialize.instructions carry no pass link for any host (present = the old build)");
 const gt=String(((((gd||{}).result||{}).contents)||[{}])[0].text||"");
 if(!gt){console.log("FAIL  the guide resource answered no text");}
 else{
   ok(/SmartRecruiters/.test(gt)&&/federal/.test(gt),"the guide names both withheld systems");
   ok(/Claude.s users share/.test(gt)&&/each user has their own/.test(gt),"the guide states the host allowance (ChatGPT per user, Claude a shared pool)");
+  ok(/agents\/pass/.test(gt),"the guide read outside ChatGPT still names where a pass is bought");
 }
 const r=(se||{}).result||{};
 const sc=r.structuredContent||(()=>{try{return JSON.parse(((r.content||[])[0]||{}).text||"{}")}catch{return{}}})();
