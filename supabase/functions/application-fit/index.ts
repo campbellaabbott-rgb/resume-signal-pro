@@ -6,13 +6,17 @@
 
 import { computeFit } from "../_shared/fit-score.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { stamped } from "../_shared/fn-build.ts";
+
+// The build every response names (x-fn-build); see _shared/fn-build.ts.
+const FN_BUILD = "application-fit.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+Deno.serve(stamped(FN_BUILD, async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -55,4 +59,4 @@ Deno.serve(async (req) => {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

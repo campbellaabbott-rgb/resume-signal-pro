@@ -29,6 +29,10 @@
 // any bucket they liked and walk out of the IP allowance.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
+import { stamped } from "../_shared/fn-build.ts";
+
+// The build every response names (x-fn-build); see _shared/fn-build.ts.
+const FN_BUILD = "job-fit.2026-10-09.1";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.
@@ -71,7 +75,7 @@ function bucketFor(req: Request): { id: string; max: number; scope: "key" | "ip"
   return { id: clientIp, max: FIT_IP_MAX, scope: "ip" };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(stamped(FN_BUILD, async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return json({ error: "POST { action: \"fit-terms\" | \"fit-batch\", ... }" }, 405);
   let body: Record<string, unknown>;
@@ -149,4 +153,4 @@ Deno.serve(async (req) => {
     console.error("[JOB-FIT]", e instanceof Error ? e.message.slice(0, 200) : String(e));
     return json({ error: "Fit scoring is temporarily unavailable." }, 500);
   }
-});
+}));

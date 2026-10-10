@@ -1,6 +1,10 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { stamped } from "../_shared/fn-build.ts";
+
+// The build every response names (x-fn-build); see _shared/fn-build.ts.
+const FN_BUILD = "create-test-coupon.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +16,7 @@ const corsHeaders = {
 // the endpoint could call it repeatedly to mint unlimited 100%-off codes against
 // live Stripe. Not meant to be called from the frontend; invoke directly with
 // the admin key when you actually need a coupon.
-serve(async (req) => {
+serve(stamped(FN_BUILD, async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -80,4 +84,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}));
