@@ -39,6 +39,16 @@ const BANNED: Array<[string, RegExp]> = [
   // L4-11: the data API page sold "genuine fills vs re-listing churn"; the
   // board sees a takedown, never a hire.
   ["a takedown sold as a fill", /genuine fills|genuinely filled|companies that fill roles|Fills vs\.? re-listing/i],
+  // Reviewer, 2026-10-10: three absolutes the sweep missed. llms.txt and two
+  // data pages still said the board is "never an aggregator or a scrape"
+  // (the "never scraped" claim the bake had removed); the score banner and
+  // the /resume-score FAQ said NO ATS rejects on a score, stronger than the
+  // site's own guide ("Mostly no: major ATS platforms ... do not
+  // auto-reject"); /methodology ended "using our proven methodology" under
+  // its own "no outcome survey" section.
+  ["never a scrape", /aggregator or a scrape\b/i],
+  ["no ATS rejects (unqualified)", /\bno ATS rejects|Kein ATS lehnt|ningún ATS rechaza|aucun ATS ne rejette|कोई ATS |geen ATS wijst|nenhum ATS rejeita|walang ATS na tumatanggi/i],
+  ["a proven methodology", /proven methodology|bewährten Methodik|metodología comprobada|méthodologie éprouvée|सिद्ध पद्धति|bewezen methodologie|metodologia comprovada|napatunayang methodology/i],
 ];
 
 function walk(dir: string, keep: (f: string) => boolean): string[] {

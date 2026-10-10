@@ -1453,9 +1453,9 @@
       "doNotApply": "✗ Mahinang Angkop — Isaalang-alang ang Iba pang mga Papel"
     },
     "atsBanner": {
-      "belowMedian": "Mas mababa sa median na {{median}} sa {{n}} resume sa {{industry}} na na-scan dito. Walang ATS na tumatanggi dahil sa numerong ito, pero itinataas ito ng mga ayos sa ibaba.",
+      "belowMedian": "Mas mababa sa median na {{median}} sa {{n}} resume sa {{industry}} na na-scan dito. Hindi tumatanggi ang mga pangunahing ATS platform dahil sa numerong ito, pero itinataas ito ng mga ayos sa ibaba.",
       "belowTopQuarter": "Mas mataas sa median na {{median}}; ang nangungunang ikaapat ng {{n}} resume sa {{industry}} na na-scan dito ay may score na {{p75}} o higit pa.",
-      "noPassMark": "Hindi ito pasadong marka: walang ATS na tumatanggi sa resume dahil sa score. Itinataas ito ng mga ayos sa ibaba.",
+      "noPassMark": "Hindi ito pasadong marka: hindi tinatanggihan ng mga pangunahing ATS platform ang resume dahil sa score. Itinataas ito ng mga ayos sa ibaba.",
       "topQuarter": "Nangungunang ikaapat: {{p75}}+"
     },
     "eliteSignals": {
@@ -2675,7 +2675,7 @@
       "resumesAnalyzed": "{{total}} resume na na-analyze"
     },
     "ctaTitle": "Handa na Makita ang Iyong ATS Score?",
-    "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang aming napatunayang methodology.",
+    "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang paraang inilalarawan ng pahinang ito.",
     "ctaButton": "Suriin ang Aking Resume nang Libre",
     "atsCount": "{{count}} ATS system na sinusuri ayon sa pangalan",
     "pointsOf": "{{points}} sa 100 puntos",

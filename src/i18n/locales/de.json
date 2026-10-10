@@ -1453,9 +1453,9 @@
       "doNotApply": "✗ Schlechte Eignung — Andere Stellen in Betracht ziehen"
     },
     "atsBanner": {
-      "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Kein ATS lehnt anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
+      "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Die großen ATS-Plattformen lehnen nicht anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
       "belowTopQuarter": "Über dem Median von {{median}}; das oberste Viertel der {{n}} hier gescannten Lebensläufe aus {{industry}} erreicht {{p75}} oder mehr.",
-      "noPassMark": "Das ist keine Bestehensgrenze: Kein ATS lehnt einen Lebenslauf anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie.",
+      "noPassMark": "Das ist keine Bestehensgrenze: Die großen ATS-Plattformen lehnen einen Lebenslauf nicht anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie.",
       "topQuarter": "Oberstes Viertel: {{p75}}+"
     },
     "eliteSignals": {
@@ -2675,7 +2675,7 @@
       "resumesAnalyzed": "{{total}} Lebensläufe analysiert"
     },
     "ctaTitle": "Bereit, deinen ATS-Score zu sehen?",
-    "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs mit unserer bewährten Methodik.",
+    "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs nach der Methode, die diese Seite beschreibt.",
     "ctaButton": "Meinen Lebenslauf kostenlos analysieren",
     "atsCount": "{{count}} ATS-Systeme namentlich geprüft",
     "pointsOf": "{{points}} von 100 Punkten",

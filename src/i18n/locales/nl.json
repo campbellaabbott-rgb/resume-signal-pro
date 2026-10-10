@@ -1453,9 +1453,9 @@
       "doNotApply": "✗ Slechte fit — Overweeg andere rollen"
     },
     "atsBanner": {
-      "belowMedian": "Onder de mediaan van {{median}} bij {{n}} hier gescande cv's uit {{industry}}. Geen ATS wijst af op dit getal, maar de verbeteringen hieronder verhogen het.",
+      "belowMedian": "Onder de mediaan van {{median}} bij {{n}} hier gescande cv's uit {{industry}}. De grote ATS-platforms wijzen niet af op dit getal, maar de verbeteringen hieronder verhogen het.",
       "belowTopQuarter": "Boven de mediaan van {{median}}; het bovenste kwart van de {{n}} hier gescande cv's uit {{industry}} scoort {{p75}} of meer.",
-      "noPassMark": "Dit is geen voldoende-grens: geen ATS wijst een cv af op een score. De verbeteringen hieronder verhogen hem.",
+      "noPassMark": "Dit is geen voldoende-grens: de grote ATS-platforms wijzen een cv niet af op een score. De verbeteringen hieronder verhogen hem.",
       "topQuarter": "Bovenste kwart: {{p75}}+"
     },
     "eliteSignals": {
@@ -2675,7 +2675,7 @@
       "resumesAnalyzed": "{{total}} cv's geanalyseerd"
     },
     "ctaTitle": "Klaar om je ATS-score te zien?",
-    "ctaSubtitle": "Krijg een gratis analyse van je cv met onze bewezen methodologie.",
+    "ctaSubtitle": "Krijg een gratis analyse van je cv volgens de methode die deze pagina beschrijft.",
     "ctaButton": "Analyseer mijn cv gratis",
     "atsCount": "{{count}} ATS-systemen bij naam gecontroleerd",
     "pointsOf": "{{points}} van 100 punten",

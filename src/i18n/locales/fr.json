@@ -1453,9 +1453,9 @@
       "doNotApply": "✗ Mauvaise adéquation — Considérez d'autres rôles"
     },
     "atsBanner": {
-      "belowMedian": "Sous la médiane de {{median}} parmi {{n}} CV du secteur {{industry}} analysés ici. Aucun ATS ne rejette sur ce chiffre, mais les corrections ci-dessous le font monter.",
+      "belowMedian": "Sous la médiane de {{median}} parmi {{n}} CV du secteur {{industry}} analysés ici. Les grands ATS ne rejettent pas sur ce chiffre, mais les corrections ci-dessous le font monter.",
       "belowTopQuarter": "Au-dessus de la médiane de {{median}} ; le quart supérieur des {{n}} CV du secteur {{industry}} analysés ici obtient {{p75}} ou plus.",
-      "noPassMark": "Ce n'est pas une note éliminatoire : aucun ATS ne rejette un CV sur un score. Les corrections ci-dessous le font monter.",
+      "noPassMark": "Ce n'est pas une note éliminatoire : les grands ATS ne rejettent pas un CV sur un score. Les corrections ci-dessous le font monter.",
       "topQuarter": "Quart supérieur : {{p75}}+"
     },
     "eliteSignals": {
@@ -2675,7 +2675,7 @@
       "resumesAnalyzed": "{{total}} CV analysés"
     },
     "ctaTitle": "Prêt à découvrir votre score ATS ?",
-    "ctaSubtitle": "Obtenez une analyse gratuite de votre CV grâce à notre méthodologie éprouvée.",
+    "ctaSubtitle": "Obtenez une analyse gratuite de votre CV selon la méthode décrite sur cette page.",
     "ctaButton": "Analyser mon CV gratuitement",
     "atsCount": "{{count}} systèmes ATS vérifiés nommément",
     "pointsOf": "{{points}} sur 100 points",

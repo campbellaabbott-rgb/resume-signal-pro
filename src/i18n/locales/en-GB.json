@@ -1453,9 +1453,9 @@
       "doNotApply": "✗ Poor Fit — Consider Other Roles"
     },
     "atsBanner": {
-      "belowMedian": "Below the median of {{median}} among {{n}} {{industry}} CVs scanned here. No ATS rejects on this number, but the fixes below raise it.",
+      "belowMedian": "Below the median of {{median}} among {{n}} {{industry}} CVs scanned here. Major ATS platforms do not reject on this number, but the fixes below raise it.",
       "belowTopQuarter": "Above the median of {{median}}; the top quarter of the {{n}} {{industry}} CVs scanned here score {{p75}} or more.",
-      "noPassMark": "This is not a pass mark: no ATS rejects a CV on a score. The fixes below raise it.",
+      "noPassMark": "This is not a pass mark: major ATS platforms do not reject a CV on a score. The fixes below raise it.",
       "topQuarter": "Top quarter: {{p75}}+"
     },
     "eliteSignals": {
@@ -2675,7 +2675,7 @@
       "resumesAnalyzed": "{{total}} CVs analysed"
     },
     "ctaTitle": "Ready to See Your ATS Score?",
-    "ctaSubtitle": "Get a free analysis of your CV using our proven methodology.",
+    "ctaSubtitle": "Get a free analysis of your CV using the method this page describes.",
     "ctaButton": "Analyse My CV Free",
     "atsCount": "{{count}} ATS systems checked by name",
     "pointsOf": "{{points}} of 100 points",

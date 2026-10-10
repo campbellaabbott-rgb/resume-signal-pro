@@ -1453,9 +1453,9 @@
       "doNotApply": "✗ Mala compatibilidad — Considera otros puestos"
     },
     "atsBanner": {
-      "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Ningún ATS rechaza por esta cifra, pero las correcciones de abajo la suben.",
+      "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Los principales ATS no rechazan por esta cifra, pero las correcciones de abajo la suben.",
       "belowTopQuarter": "Por encima de la mediana de {{median}}; el cuartil superior de los {{n}} currículums de {{industry}} escaneados aquí puntúa {{p75}} o más.",
-      "noPassMark": "No es una nota de aprobado: ningún ATS rechaza un currículum por una puntuación. Las correcciones de abajo la suben.",
+      "noPassMark": "No es una nota de aprobado: los principales ATS no rechazan un currículum por una puntuación. Las correcciones de abajo la suben.",
       "topQuarter": "Cuartil superior: {{p75}}+"
     },
     "eliteSignals": {
@@ -2675,7 +2675,7 @@
       "resumesAnalyzed": "{{total}} currículums analizados"
     },
     "ctaTitle": "¿Listo para ver tu puntuación ATS?",
-    "ctaSubtitle": "Obtén un análisis gratuito de tu currículum usando nuestra metodología comprobada.",
+    "ctaSubtitle": "Obtén un análisis gratuito de tu currículum con el método que describe esta página.",
     "ctaButton": "Analizar mi currículum gratis",
     "atsCount": "{{count}} sistemas ATS evaluados por nombre",
     "pointsOf": "{{points}} de 100 puntos",

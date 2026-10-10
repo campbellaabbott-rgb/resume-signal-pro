@@ -149,7 +149,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
         q: "What is a good resume score?",
         // L4-06: "most resumes land in the 55–75 range" was typed; a third of
         // scans do. The live distribution is published, so this points at it.
-        a: "There is no pass mark: no ATS rejects a resume on a score. Where yours sits is measured against real scans, and the live median and quartiles, overall and by industry, are published on /research/ats-score-benchmarks. The number matters less than the audit trail — the report shows exactly which findings cost you points and how to fix them.",
+        a: "There is no pass mark: major ATS platforms do not reject a resume on a score. Where yours sits is measured against real scans, and the live median and quartiles, overall and by industry, are published on /research/ats-score-benchmarks. The number matters less than the audit trail — the report shows exactly which findings cost you points and how to fix them.",
       },
       {
         q: "Why does the score show a range?",
