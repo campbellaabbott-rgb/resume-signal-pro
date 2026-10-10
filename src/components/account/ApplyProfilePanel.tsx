@@ -266,16 +266,6 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
       );
       return;
     }
-    // ONE CV PER ACCOUNT IN STORAGE (L3-13). upsert keys on the filename, so
-    // Jane_CV_2026.pdf after Jane_CV.pdf left the first one stored forever,
-    // with nothing pointing at it. The others under this account's folder go
-    // once the new one is in; a failure here only leaves what was already
-    // there, and deleting the account removes the whole folder.
-    try {
-      const { data: kept } = await sb.storage.from("resumes").list(userId, { limit: 100 });
-      const stale = (kept ?? []).map((f: { name: string }) => `${userId}/${f.name}`).filter((p2: string) => p2 !== path);
-      if (stale.length) await sb.storage.from("resumes").remove(stale);
-    } catch { /* the new file is saved either way */ }
     // THE UPLOAD IS THE WHOLE OF SETUP, so it reads the document rather than
     // handing back a form. Everything a CV states plainly — name, email, phone,
     // LinkedIn — is lifted out and filled in, and the file is saved immediately.
@@ -303,6 +293,18 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
     setP(next);
     const ok = await persist(next);
     if (!ok) return;
+    // ONE CV PER ACCOUNT IN STORAGE (L3-13). upsert keys on the filename, so
+    // Jane_CV_2026.pdf after Jane_CV.pdf left the first one stored forever,
+    // with nothing pointing at it. The others under this account's folder go
+    // only once the mandate names the new one: removed earlier, a failed save
+    // or a closed tab left the mandate pointing at a file that was gone, and
+    // the agent applied with no CV. A failure here only leaves what was
+    // already there, and deleting the account removes the whole folder.
+    try {
+      const { data: kept } = await sb.storage.from("resumes").list(userId, { limit: 100 });
+      const stale = (kept ?? []).map((f: { name: string }) => `${userId}/${f.name}`).filter((p2: string) => p2 !== path);
+      if (stale.length) await sb.storage.from("resumes").remove(stale);
+    } catch { /* the new file is saved either way */ }
     toast.success(filled.length
       ? t("applyProfile.uploadedAndRead", "Saved. We filled in {{count}} details from your CV — check them below.", { count: filled.length })
       : t("applyProfile.uploadedSaved", "Saved. Your CV is attached and the agent can start."));
