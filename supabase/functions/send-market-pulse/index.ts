@@ -51,6 +51,9 @@ const corsHeaders = {
 const SITE_URL = "https://resumebooster.work";
 const CONFIRM_PATH = "/market-pulse/confirm";
 const BATCH = 200;
+// Nothing new starts after 100 s; a claimed row not reached is handed back
+// with its month intact (S8-052: the isolate dies near 150 s).
+const RUN_BUDGET_MS = 100_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const json = (b: unknown, status = 200) =>
@@ -250,11 +253,21 @@ Deno.serve(async (req) => {
       // last_sent_at in the statement that chooses the rows (FOR UPDATE SKIP
       // LOCKED), confirmed and unsuppressed rows only, so a second trigger in
       // flight gets a disjoint set or nothing -- never the same subscriber.
+      const startedAt = Date.now();
       const { data: claimed, error } = await supabase.rpc("market_pulse_claim_batch", { p_limit: BATCH });
       if (error) throw error;
-      let sent = 0, skipped = 0;
+      let sent = 0, skipped = 0, handedBack = 0;
 
-      for (const sub of (claimed ?? []) as Array<{ cl_email: string; cl_industry: string; cl_last_score: number | null; cl_confirmed_at: string; cl_prev_sent_at: string | null }>) {
+      const due = (claimed ?? []) as Array<{ cl_email: string; cl_industry: string; cl_last_score: number | null; cl_confirmed_at: string; cl_prev_sent_at: string | null }>;
+      for (let i = 0; i < due.length; i++) {
+        const sub = due[i];
+        if (Date.now() - startedAt >= RUN_BUDGET_MS) {
+          for (const rest of due.slice(i)) {
+            await supabase.from("market_pulse_subscribers").update({ last_sent_at: rest.cl_prev_sent_at }).eq("email", rest.cl_email);
+            handedBack++;
+          }
+          break;
+        }
         // The label goes into a subject line and the body, so it is one of
         // our own industry names, whatever the row holds: a row written
         // before 2026-10-04 could carry any string a caller sent.
@@ -341,8 +354,8 @@ Deno.serve(async (req) => {
         sent++;
       }
 
-      console.log(`[MARKET-PULSE] Batch complete: sent=${sent} skipped=${skipped}`);
-      return json({ success: true, sent, skipped });
+      console.log(`[MARKET-PULSE] Batch complete: sent=${sent} skipped=${skipped} handedBack=${handedBack}`);
+      return json({ success: true, sent, skipped, handedBack });
     }
 
     return json({ error: "Unknown action." }, 400);

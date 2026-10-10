@@ -47,7 +47,14 @@ const SITE_URL = "https://resumebooster.work";
 // email a day, drift-proof against cron jitter); weekly keeps the old rhythm.
 // These floors live in search_digest_claim_batch (20261004100000), where the
 // claim is atomic: daily = 20 hours, anything else = 6 days.
-const CLAIM_BATCH = 400;
+// THE RUN HAS A CLOCK (S8-052). Claiming 400 at once and working them one by
+// one ran past the ~150 s isolate limit, and every claimed row left behind
+// lost its window (and its first-match mail, which needs a NULL stamp). Now
+// rows are claimed 25 at a time, nothing new starts after 100 s, and a row
+// claimed but not started is handed back.
+const CLAIM_BATCH = 25;
+const RUN_MAX = 400;
+const RUN_BUDGET_MS = 100_000;
 /** Rows read per search: the window's newest, deduped against what was already mailed. */
 const CANDIDATES = 60;
 
@@ -164,18 +171,8 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const readerProof = await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
-    // own cadence decided in SQL), with the stamp it had before, which is the
-    // "new since" window and what a give-back restores.
-    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: CLAIM_BATCH });
-    if (error) throw error;
-    const searches = ((claimed ?? []) as Array<{
-      sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
-      sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
-    }>).map((r) => ({
-      id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
-      digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
-    }));
+    const startedAt = Date.now();
+    const overBudget = () => Date.now() - startedAt >= RUN_BUDGET_MS;
     /** Hand a claim back: the search is due again next run, as if never claimed. */
     const giveBack = (s: { id: string; digest_last_sent_at: string | null }) =>
       supabase.from("user_job_searches").update({ digest_last_sent_at: s.digest_last_sent_at }).eq("id", s.id);
@@ -184,8 +181,36 @@ Deno.serve(async (req) => {
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
     const suppressed = new Set((suppressedRows ?? []).map((r) => (r.email as string).toLowerCase()));
 
-    let sent = 0, skipped = 0;
-    for (const s of searches ?? []) {
+    let sent = 0, skipped = 0, considered = 0, handedBack = 0;
+    const seen = new Set<string>();
+    claiming: while (considered < RUN_MAX && !overBudget()) {
+    // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
+    // own cadence decided in SQL), with the stamp it had before, which is the
+    // "new since" window and what a give-back restores.
+    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: Math.min(CLAIM_BATCH, RUN_MAX - considered) });
+    if (error) { if (considered === 0) throw error; console.error("[SEARCH-DIGEST] a later claim failed:", error.message); break; }
+    const searches = ((claimed ?? []) as Array<{
+      sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
+      sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
+    }>).map((r) => ({
+      id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
+      digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
+    }));
+    // A row this run already took and gave back (a refused send) is due
+    // again, so the claim can hand it over a second time: it goes straight
+    // back, never retried inside the same run.
+    const fresh = searches.filter((x) => !seen.has(x.id));
+    for (const again of searches) if (seen.has(again.id)) await giveBack(again);
+    if (fresh.length === 0) break;
+    for (const x of fresh) seen.add(x.id);
+    considered += fresh.length;
+    for (let i = 0; i < fresh.length; i++) {
+      const s = fresh[i];
+      if (overBudget()) {
+        // Claimed, never started: back to due, window intact.
+        for (const rest of fresh.slice(i)) { await giveBack(rest); handedBack++; }
+        break claiming;
+      }
       const p = (s.params ?? {}) as SearchParams;
       const since = (s.digest_last_sent_at as string | null) ?? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
@@ -442,7 +467,8 @@ Deno.serve(async (req) => {
         skipped++;
       }
     }
-    return new Response(JSON.stringify({ ok: true, sent, skipped, considered: (searches ?? []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("[SEARCH-DIGEST] error:", e instanceof Error ? e.message : e);
     return new Response(JSON.stringify({ error: "digest run failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

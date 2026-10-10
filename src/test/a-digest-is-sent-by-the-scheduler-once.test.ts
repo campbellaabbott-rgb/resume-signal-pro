@@ -29,6 +29,9 @@ import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { MAIL_DOOR_VERIFY, bootMailDoorDb, rows } from "./helpers/mail-door-db";
 
+/** The claim as a run meets it: its rows once, then nothing (a run claims until it is handed none). */
+const perRun = <T,>(r: T[]) => { let fresh = false; return () => ((fresh = !fresh) ? r : []); };
+
 // ── 1. the SQL ───────────────────────────────────────────────────────────────
 
 const U = "11111111-1111-4111-8111-111111111111";
@@ -166,7 +169,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 
   it("no key, the publishable key, or a wrong cron key: 401, nothing claimed, nothing sent", async () => {
     rpc("email_cron_key_matches", (a) => a.p_key === CRON_KEY);
-    rpc("search_digest_claim_batch", () => [claimed(null)]);
+    rpc("search_digest_claim_batch", perRun([claimed(null)]));
     for (const h of UNAUTHORISED) expect((await post(search, "send-search-digest", h)).status, JSON.stringify(h)).toBe(401);
     expect(calls.filter((c) => c.name === "search_digest_claim_batch")).toEqual([]);
     expect(sent).toEqual([]);
@@ -174,7 +177,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 
   it("the cron key claims, and the claim is the only selection: it mails exactly the claimed search, and keeps the stamp", async () => {
     rpc("email_cron_key_matches", (a) => a.p_key === CRON_KEY);
-    rpc("search_digest_claim_batch", () => [claimed("2026-09-27T14:23:00Z")]);
+    rpc("search_digest_claim_batch", perRun([claimed("2026-09-27T14:23:00Z")]));
     boardTotal = 3;
     boardJobs = [{ id: "j1", company: "Acme", title: "Nurse", location: "Leeds", applyUrl: "https://acme.example/apply" }];
     const res = await post(search, "send-search-digest", { "x-email-cron": CRON_KEY });
@@ -185,7 +188,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
   });
 
   it("a failed send, or a transient empty list, gives the claim back so the next run retries", async () => {
-    rpc("search_digest_claim_batch", () => [claimed("2026-09-27T14:23:00Z")]);
+    rpc("search_digest_claim_batch", perRun([claimed("2026-09-27T14:23:00Z")]));
     db.rows("user_job_searches").push({ id: "s-1", digest_last_sent_at: "2026-10-04T14:23:00Z" });
     boardTotal = 3;
     boardJobs = [{ id: "j1", company: "Acme", title: "Nurse", location: "Leeds", applyUrl: "https://acme.example/apply" }];
@@ -200,7 +203,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
   });
 
   it("nothing new: no mail, and the claim's stamp advances the window", async () => {
-    rpc("search_digest_claim_batch", () => [claimed(null)]);
+    rpc("search_digest_claim_batch", perRun([claimed(null)]));
     boardTotal = 0;
     await post(search, "send-search-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
