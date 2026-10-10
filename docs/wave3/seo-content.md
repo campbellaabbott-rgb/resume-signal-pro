@@ -82,6 +82,11 @@ decision 2 of 2026-10-08 and the commercial-readiness plan items 8–10.
 - The bake log: `posting pages: carried N / live M / tombstoned K / retired R / unchecked U`, `company pages: … indexable; noindex: … with nothing of their own to say, … still named by a tenant code`, `sitemap.xml regenerated: … distinct lastmod dates`, `/prerender-ledger.json written`. "unchecked" above a handful means the board refused reads (look at 429s first).
 - Search Console: "Duplicate without user-selected canonical" and "Soft 404" for `/jobs/posting/…` and `/jobs/company/…` should fall over the following weeks; Job postings enhancement counts with the employer names.
 
+## Verified locally (no production write, no production board read)
+
+- An offline bake (committed facets snapshot, no credentials): 500 company pages, 469 indexable, 852 sitemap URLs with 4 distinct lastmods, `/terms` and `/privacy` written, the homepage canonical present.
+- Two bakes against a local mock of the Supabase endpoints (the live sitemap GET real): bake 1 carried 637 published posting URLs (live 274, gone 212 as noindex "no longer listed", unchecked 212 as noindex "could not re-check"), wrote the ledger; bake 2 read that ledger, carried the 212 gone pages WITHOUT re-reading them (486 detail reads, not 698), re-checked the unchecked ones. Ms rows named Morgan Stanley, RMIT rows RMIT University, no noindex URL in the sitemap. The first run also found two defects fixed in cbf2e01e (a broken intel read noindexing every company page and tripping the ratchet; the ledger skipped when the sitemap was refused). Watch for the log line `treated as a broken read` after deploy: it means get_company_intel answered empty for most employers.
+
 ## Rollback
 
 Revert the branch's commits and republish. No data or schema to undo. The
