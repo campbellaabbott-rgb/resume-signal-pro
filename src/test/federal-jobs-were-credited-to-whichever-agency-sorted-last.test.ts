@@ -17,6 +17,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { boardDisplayName, employerDisplayName, MULTI_EMPLOYER_BOARD_NAMES } from "../../supabase/functions/_shared/employer-names";
+import { NON_ATS_SOURCES } from "../../src/config/ats-vendors";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -73,13 +74,19 @@ describe("the federal feed is named as itself, not after one agency", () => {
 
   it("an employer the feed carries is found, and answers with the feed it is on", async () => {
     expect(await suggest("veterans health"), "the largest federal employer was reported as not carried").toEqual([
-      { name: "U.S. federal agencies (USAJOBS)", tokens: ["usajobs"], open_roles: 4 },
+      { name: "USAJOBS", tokens: ["usajobs"], open_roles: 4 },
     ]);
   });
 
   it("the agency that sorted last no longer stands for the whole feed", async () => {
     const hits = await suggest("western area");
-    expect(hits.map((h) => h.name)).toEqual(["U.S. federal agencies (USAJOBS)"]);
+    expect(hits.map((h) => h.name)).toEqual(["USAJOBS"]);
+  });
+
+  it("the feed's chip carries its proper name, the label the vendor menu prints in every locale, not English description", async () => {
+    const entry = (await facets()).companiesFacet.find((c) => c.token === "usajobs")!;
+    const menu = NON_ATS_SOURCES.find((v) => v.key === "usajobs")!.label;
+    expect(entry.name, "a French or German reader got an English description of the feed as its employer name").toBe(menu);
   });
 
   it("only employers with an open posting are carried, and only multi-employer feeds list them", async () => {

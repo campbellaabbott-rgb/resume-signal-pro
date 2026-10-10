@@ -405,14 +405,16 @@ export function isSystemCodeName(token: string | null | undefined, stored: strin
 }
 
 /**
- * Feeds that carry many employers under one token, by the name the feed as a
- * whole goes by. Each posting keeps its own employer (a USAJOBS row names its
- * agency); only a surface that names the whole board uses this. The facet entry
- * refresh_job_board_facets writes (20261009100200) carries the same words, and a
- * test holds the two equal.
+ * Feeds that carry many employers under one token, by the proper name the feed
+ * as a whole goes by: a name, never English description, since it reaches
+ * every locale as is (a renderer that wants "U.S. federal agencies" says it
+ * through its own i18n, keyed on the token). Each posting keeps its own
+ * employer (a USAJOBS row names its agency); only a surface that names the
+ * whole board uses this. The facet entry refresh_job_board_facets writes
+ * (20261009100200) carries the same name, and a test holds the two equal.
  */
 export const MULTI_EMPLOYER_BOARD_NAMES: ReadonlyMap<string, string> = new Map([
-  ["usajobs", "U.S. federal agencies (USAJOBS)"],
+  ["usajobs", "USAJOBS"],
 ]);
 
 /**

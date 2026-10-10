@@ -54,7 +54,7 @@ beforeAll(async () => {
   const companiesFacet = Array.from({ length: ENTRIES }, (_, i) => ({
     token: `tenant${i}~wd5~Careers_${i}`, name: `Employer Number ${i} Holdings`, count: 10 + (i % 50),
   }));
-  companiesFacet.push({ token: "usajobs", name: "U.S. federal agencies (USAJOBS)", count: 9_474 });
+  companiesFacet.push({ token: "usajobs", name: "USAJOBS", count: 9_474 });
   const carriedEmployers = {
     usajobs: [...Array.from({ length: 500 }, (_, i) => `Agency ${i} Administration`), "Veterans Health Administration"],
   };
@@ -67,7 +67,7 @@ afterAll(async () => { try { await db.close(); } catch { /* best effort */ } });
 describe("the employer check answers inside its own timeout at the live board's size", () => {
   it("a carried agency is found without re-reading the cache per employer", async () => {
     const { rows, ms } = await timed("veterans health");
-    expect(rows.map((r) => r.name)).toEqual(["U.S. federal agencies (USAJOBS)"]);
+    expect(rows.map((r) => r.name)).toEqual(["USAJOBS"]);
     expect(ms, `${ENTRIES} facet entries took ${Math.round(ms)} ms`).toBeLessThan(FUNCTION_TIMEOUT_MS / 2);
   });
 

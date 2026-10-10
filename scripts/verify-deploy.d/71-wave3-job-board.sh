@@ -73,7 +73,7 @@ info("S8-002 repair 20261009100300: no anon probe (job_board_closures and job_bo
 {const tq=async(q)=>{const t0=Date.now();const r=await rpc("get_company_suggest",{p_q:q});return [r,Date.now()-t0]};
   const [a,ta]=await tq("veterans health");const [b,tb]=await tq("western area");const [c,tc]=await tq("zzz nothing");
   const names=(x)=>Array.isArray(x)?x.map((h)=>h.name):[];
-  const ok=names(a).includes("U.S. federal agencies (USAJOBS)")&&!names(b).includes("Western Area Power Administration");
+  const ok=names(a).includes("USAJOBS")&&!names(b).includes("Western Area Power Administration");
   console.log((ok?"PASS":"FAIL")+"  S8-022 get_company_suggest veterans health -> "+JSON.stringify(names(a))+", western area -> "+JSON.stringify(names(b))+" (want the feed\x27s own name for both; FAIL until 20261009100200 is applied and the refresh-board-facets cron has run, 15 min)");
   const errs=[a,b,c].filter((x)=>!Array.isArray(x)).map((x)=>JSON.stringify(x).slice(0,90));
   console.log((!errs.length&&Math.max(ta,tb,tc)<2500?"PASS":"FAIL")+"  S8-022 get_company_suggest round trips "+ta+"/"+tb+"/"+tc+" ms"+(errs.length?" errors "+errs.join(" | "):"")+" (want arrays, each under 2,500 ms; its own timeout is 5s, and the first draft of 20261009100200 took 76s at 32k facet entries in pglite)");}

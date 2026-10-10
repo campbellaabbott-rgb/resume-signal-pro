@@ -8,10 +8,11 @@
 -- health') answered [] though 1,446 Veterans Health Administration postings
 -- were open; 'western area' answered the whole federal feed.
 --
--- 1. refresh_job_board_facets names the 'usajobs' token by its own fixed name,
---    'U.S. federal agencies (USAJOBS)' (mirrored for renderers by
---    supabase/functions/_shared/employer-names.ts boardDisplayName; a test holds
---    the two equal), and publishes a small sibling key, carriedEmployers:
+-- 1. refresh_job_board_facets names the 'usajobs' token by the feed's own
+--    proper name, 'USAJOBS', which every locale prints as is (the vendor menu's
+--    label too; a descriptive label is the renderer's to translate). Mirrored
+--    for renderers by supabase/functions/_shared/employer-names.ts
+--    boardDisplayName; a test holds the two equal. It also publishes a small sibling key, carriedEmployers:
 --    {token: [the employers its OPEN rows name]}, for the multi-employer feeds
 --    only. companiesFacet stays unfiltered (the orphan prune's input).
 -- 2. get_job_board_facets is restated unchanged (the newest definition of the
@@ -49,7 +50,7 @@ BEGIN
       SELECT jsonb_agg(jsonb_build_object('token', company_token, 'name', company, 'count', n) ORDER BY company)
       FROM (
         SELECT company_token,
-               CASE company_token WHEN 'usajobs' THEN 'U.S. federal agencies (USAJOBS)' ELSE max(company) END AS company,
+               CASE company_token WHEN 'usajobs' THEN 'USAJOBS' ELSE max(company) END AS company,
                count(*) AS n
         FROM job_board_postings
         GROUP BY company_token
@@ -222,7 +223,7 @@ DECLARE
   r text := pg_get_functiondef('public.refresh_job_board_facets()'::regprocedure);
   s text := pg_get_functiondef('public.get_company_suggest(text)'::regprocedure);
 BEGIN
-  IF position('U.S. federal agencies (USAJOBS)' IN r) = 0 OR position('carriedEmployers' IN r) = 0 THEN
+  IF position('WHEN ''usajobs'' THEN ''USAJOBS''' IN r) = 0 OR position('carriedEmployers' IN r) = 0 THEN
     RAISE EXCEPTION 'refresh_job_board_facets did not take the federal feed name';
   END IF;
   IF position('carriedEmployers' IN s) = 0 OR position('carried_hit AS MATERIALIZED' IN s) = 0 THEN
