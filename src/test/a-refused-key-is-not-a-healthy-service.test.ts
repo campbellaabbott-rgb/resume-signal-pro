@@ -17,7 +17,8 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { ProxyDb } from "./helpers/proxy-db";
 
-const env: Record<string, string> = { SUPABASE_URL: "https://h.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc", LOVABLE_API_KEY: "lov", STRIPE_SECRET_KEY: "sk_live_x" };
+const ADMIN = "admin_key_for_the_harness_0123456789";
+const env: Record<string, string> = { SUPABASE_URL: "https://h.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc", LOVABLE_API_KEY: "lov", STRIPE_SECRET_KEY: "sk_live_x", ADMIN_API_KEY: ADMIN };
 let stripeStatus = 200;
 let aiStatus = 400;
 let check: EdgeHandler;
@@ -39,8 +40,9 @@ beforeAll(async () => {
 
 beforeEach(() => { stripeStatus = 200; aiStatus = 400; env.STRIPE_SECRET_KEY = "sk_live_x"; env.LOVABLE_API_KEY = "lov"; });
 
-const runCheck = async () => (await check(new Request("https://h.supabase.co/functions/v1/health-check", { method: "POST", body: "{}" }))).json();
-const runProbe = async () => (await probe(new Request("https://h.supabase.co/functions/v1/scheduled-health-probe", { method: "POST", body: "{}" }))).json();
+// The live probe is the operator's since S8-061: these run it with the owner's key.
+const runCheck = async () => (await check(new Request("https://h.supabase.co/functions/v1/health-check", { method: "POST", headers: { "x-admin-key": ADMIN }, body: "{}" }))).json();
+const runProbe = async () => (await probe(new Request("https://h.supabase.co/functions/v1/scheduled-health-probe", { method: "POST", headers: { "x-admin-key": ADMIN }, body: "{}" }))).json();
 const probeOf = (j: { probes: Array<{ service: string; status: string; error?: string }> }, s: string) => j.probes.find((p) => p.service === s)!;
 
 describe("health-check", () => {
