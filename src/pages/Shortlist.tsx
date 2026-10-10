@@ -20,7 +20,8 @@ import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { computeImpactAnalysis } from "../../supabase/functions/_shared/impact-ratio";
+import { rankCandidates, reviewsFromDecisions, type CandidateReview } from "@/lib/shortlist-review";
+import { computeImpactAnalysis, raceCategory, sexCategory, RACE_CATEGORIES, SEX_CATEGORIES } from "../../supabase/functions/_shared/impact-ratio";
 
 interface Role {
   id: string;
@@ -42,8 +43,12 @@ interface Candidate {
   exclusions_applied: Array<{ feature: string; count: number }> | null;
   status: "pending" | "advanced" | "rejected";
   model_version: string | null;
+  jd_version: number | null;
+  /** The JD text this candidate was scored against (null before 20261009111000, and for alternative review). */
+  jd_text_scored: string | null;
   created_at: string;
 }
+
 
 const JURISDICTIONS = ["OTHER", "NYC", "IL", "CA", "EU"] as const;
 
@@ -70,6 +75,7 @@ const toCandidate = (row: {
   id: string; file_name: string | null; score: number | null; flags: Json | null;
   signals: Json | null; interview_questions: Json | null; level_read: string | null;
   exclusions_applied: Json | null; status: string; model_version: string | null; created_at: string;
+  jd_version?: number | null; jd_text_scored?: string | null;
 }): Candidate => ({
   id: row.id,
   file_name: row.file_name,
@@ -81,6 +87,8 @@ const toCandidate = (row: {
   exclusions_applied: toExclusions(row.exclusions_applied),
   status: row.status === "advanced" || row.status === "rejected" ? row.status : "pending",
   model_version: row.model_version,
+  jd_version: row.jd_version ?? null,
+  jd_text_scored: row.jd_text_scored ?? null,
   created_at: row.created_at,
 });
 
@@ -132,6 +140,7 @@ export default function Shortlist() {
   const [activeRole, setActiveRole] = useState<Role | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [demographics, setDemographics] = useState<Record<string, { sex?: string; race_ethnicity?: string }>>({});
+  const [reviews, setReviews] = useState<Record<string, CandidateReview>>({});
 
   const [newRole, setNewRole] = useState({ title: "", jd: "", jurisdiction: "OTHER" });
   const [showNewRole, setShowNewRole] = useState(false);
@@ -197,7 +206,13 @@ export default function Shortlist() {
       supabase.from("shortlist_candidates").select("*").eq("role_id", roleId).order("score", { ascending: false }),
       supabase.from("shortlist_demographics").select("*"),
     ]);
-    setCandidates(cands?.map(toCandidate) ?? []);
+    const list = cands?.map(toCandidate) ?? [];
+    setCandidates(list);
+    const { data: logged } = list.length
+      ? await supabase.from("shortlist_decisions").select("candidate_id, action, new_value, created_at")
+          .in("candidate_id", list.map(c => c.id)).in("action", ["override_score", "alt_review_requested"])
+      : { data: [] };
+    setReviews(reviewsFromDecisions((logged as never[]) ?? []));
     const demoMap: typeof demographics = {};
     for (const d of (demos as Array<{ candidate_id: string; sex?: string; race_ethnicity?: string }> | null) ?? []) {
       demoMap[d.candidate_id] = { sex: d.sex, race_ethnicity: d.race_ethnicity };
@@ -237,7 +252,6 @@ export default function Shortlist() {
     const { data, error: err } = await supabase.functions.invoke("shortlist-evaluate", {
       body: {
         roleId: activeRole.id,
-        jdText: activeRole.jd_text,
         resumeText: candidateText,
         fileName: candidateName.trim() || null,
         jurisdiction: activeRole.jurisdiction,
@@ -253,6 +267,24 @@ export default function Shortlist() {
     loadCandidates(activeRole.id);
   };
 
+  // Alternative review before any scoring: a record and its logged request, no model call.
+  const routeToAltReview = async () => {
+    if (!activeRole) return;
+    setEvaluating(true);
+    setError(null);
+    const { data, error: err } = await supabase.functions.invoke("shortlist-evaluate", {
+      body: { roleId: activeRole.id, altReview: true, fileName: candidateName.trim() || null, jurisdiction: activeRole.jurisdiction },
+    }).catch(() => ({ data: null, error: { message: "network" } }));
+    setEvaluating(false);
+    if (err || !(data as { success?: boolean })?.success) {
+      setError((data as { error?: string })?.error ?? "Could not record the alternative review — try again.");
+      return;
+    }
+    setCandidateText("");
+    setCandidateName("");
+    loadCandidates(activeRole.id);
+  };
+
   // ── Human-in-the-loop gate: the ONLY path that changes candidate status ──
   const decide = async (candidate: Candidate, action: "advance" | "reject") => {
     if (!session) return;
@@ -260,17 +292,12 @@ export default function Shortlist() {
       setError("A brief reason is required to reject (it goes in the audit log).");
       return;
     }
-    const newStatus = action === "advance" ? "advanced" : "rejected";
-    await supabase.from("shortlist_decisions").insert({
-      candidate_id: candidate.id,
-      owner_id: session.user.id,
-      actor_email: user?.email ?? null,
-      action,
-      old_value: candidate.status,
-      new_value: newStatus,
-      reason: decisionReason.trim() || null,
-    });
-    await supabase.from("shortlist_candidates").update({ status: newStatus }).eq("id", candidate.id);
+    // One transaction: the decision row and the status it sets, or neither
+    // (shortlist_decide, 20261009111000). Its error is shown, never swallowed.
+    const { error: err } = await supabase.rpc("shortlist_decide" as never, {
+      p_candidate_id: candidate.id, p_action: action, p_reason: decisionReason.trim() || null,
+    } as never);
+    if (err) { setError(`Decision not recorded: ${err.message}`); return; }
     setDecisionReason("");
     setError(null);
     setDecisionLog(prev => { const n = { ...prev }; delete n[candidate.id]; return n; });
@@ -279,18 +306,23 @@ export default function Shortlist() {
   };
 
   const overrideScore = async (candidate: Candidate, newScore: number) => {
-    if (!session || !Number.isFinite(newScore) || newScore < 0 || newScore > 100) return;
-    await supabase.from("shortlist_decisions").insert({
+    if (!session) return;
+    if (!Number.isFinite(newScore) || newScore < 0 || newScore > 100) { setError("An override is a whole number from 0 to 100."); return; }
+    // The override is a decision; the AI's score stays as it was scored.
+    const { error: err } = await supabase.from("shortlist_decisions").insert({
       candidate_id: candidate.id,
       owner_id: session.user.id,
       actor_email: user?.email ?? null,
       action: "override_score",
-      old_value: String(candidate.score ?? ""),
+      old_value: String(reviews[candidate.id]?.overrideScore ?? candidate.score ?? ""),
       new_value: String(newScore),
       reason: "manual reviewer override",
     });
-    await supabase.from("shortlist_candidates").update({ score: newScore }).eq("id", candidate.id);
+    if (err) { setError(`Override not recorded: ${err.message}`); return; }
+    setError(null);
+    setDecisionLog(prev => { const n = { ...prev }; delete n[candidate.id]; return n; });
     if (activeRole) loadCandidates(activeRole.id);
+    loadDecisionLog(candidate.id);
   };
 
   const saveDemographics = async (candidateId: string, field: "sex" | "race_ethnicity", value: string) => {
@@ -298,25 +330,30 @@ export default function Shortlist() {
     const current = demographics[candidateId] ?? {};
     const next = { ...current, [field]: value };
     setDemographics({ ...demographics, [candidateId]: next });
-    await supabase.from("shortlist_demographics").upsert({
+    const { error: err } = await supabase.from("shortlist_demographics").upsert({
       candidate_id: candidateId,
       owner_id: session.user.id,
-      sex: next.sex ?? null,
-      race_ethnicity: next.race_ethnicity ?? null,
+      sex: next.sex || null,
+      race_ethnicity: next.race_ethnicity || null,
     });
+    if (err) setError(`Demographics not saved: ${err.message}`);
   };
 
   const requestAltReview = async (candidate: Candidate) => {
     if (!session) return;
-    await supabase.from("shortlist_decisions").insert({
+    const { error: err } = await supabase.from("shortlist_decisions").insert({
       candidate_id: candidate.id,
       owner_id: session.user.id,
       actor_email: user?.email ?? null,
       action: "alt_review_requested",
       reason: "Candidate routed to non-automated alternative review (ADA / accommodation path)",
     });
+    if (err) { setError(`Alternative review not recorded: ${err.message}`); return; }
     setError(null);
-    alert("Logged: this candidate is routed to non-automated human review. Their AI score should not be used.");
+    // The candidate leaves the ranking and its score is hidden from here on.
+    setReviews(prev => ({ ...prev, [candidate.id]: { overrideScore: prev[candidate.id]?.overrideScore ?? null, altReview: true } }));
+    setDecisionLog(prev => { const n = { ...prev }; delete n[candidate.id]; return n; });
+    loadDecisionLog(candidate.id);
   };
 
   // ── Exports: the customer's compliance evidence trail ────────────────────
@@ -329,7 +366,13 @@ export default function Shortlist() {
     const payload = {
       exportedAt: new Date().toISOString(),
       role: { id: activeRole.id, title: activeRole.title, jd_text: activeRole.jd_text, jd_version: activeRole.jd_version, jurisdiction: activeRole.jurisdiction },
-      candidates,
+      // Each candidate carries the JD version and text it was scored against,
+      // and whether it was routed to alternative review (its score not to be used).
+      candidates: candidates.map(c => ({
+        ...c,
+        alt_review: reviews[c.id]?.altReview === true,
+        human_override_score: reviews[c.id]?.overrideScore ?? null,
+      })),
       decisions: decisions ?? [],
       note: "Append-only audit export. Demographics are excluded from this file by design; use the bias-audit export for aggregate analysis.",
     };
@@ -339,11 +382,14 @@ export default function Shortlist() {
       blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       name = `shortlist-audit-${activeRole.title.replace(/\W+/g, "-")}.json`;
     } else {
-      const rows = candidates.map(c => [
-        c.id, c.file_name ?? "", c.score ?? "", c.level_read ?? "", c.status,
-        (c.flags ?? []).join("; "), c.model_version ?? "", c.created_at,
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
-      blob = new Blob([["candidate_id,file_name,score,level_read,final_human_decision,flags,model_version,created_at", ...rows].join("\n")], { type: "text/csv" });
+      const rows = candidates.map(c => {
+        const alt = reviews[c.id]?.altReview === true;
+        return [
+          c.id, c.file_name ?? "", alt ? "" : c.score ?? "", alt ? "" : reviews[c.id]?.overrideScore ?? "", alt ? "yes" : "no",
+          c.level_read ?? "", c.status, (c.flags ?? []).join("; "), c.model_version ?? "", c.jd_version ?? "", c.created_at,
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
+      });
+      blob = new Blob([["candidate_id,file_name,ai_score,human_override_score,alternative_review,level_read,final_human_decision,flags,model_version,jd_version,created_at", ...rows].join("\n")], { type: "text/csv" });
       name = `shortlist-audit-${activeRole.title.replace(/\W+/g, "-")}.csv`;
     }
     const url = URL.createObjectURL(blob);
@@ -355,11 +401,15 @@ export default function Shortlist() {
   const biasAnalysis = useMemo(() => {
     const records = candidates.map(c => ({
       advanced: c.status === "advanced",
+      pending: c.status === "pending",
+      score: reviews[c.id]?.altReview ? null : c.score,
       sex: demographics[c.id]?.sex ?? null,
       raceEthnicity: demographics[c.id]?.race_ethnicity ?? null,
     }));
     return computeImpactAnalysis(records);
-  }, [candidates, demographics]);
+  }, [candidates, demographics, reviews]);
+
+  const ranked = useMemo(() => rankCandidates(candidates, reviews), [candidates, reviews]);
 
   if (loading || !session) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -462,18 +512,21 @@ export default function Shortlist() {
             {/* Bias audit */}
             {showBias && (
               <div className="rounded-2xl border border-border bg-card p-5 mb-4">
-                <h3 className="font-semibold text-foreground text-sm mb-1">Selection rates & impact ratios</h3>
+                <h3 className="font-semibold text-foreground text-sm mb-1">Selection rates, scoring rates & impact ratios</h3>
                 <p className="text-[11px] text-muted-foreground mb-3">
-                  Based on final HUMAN decisions and self-reported demographics ({biasAnalysis.recordsWithDemographics}/{biasAnalysis.totalRecords} candidates have demographics). Demographics are never provided to the scoring model.
+                  Selection rates use final HUMAN decisions only ({biasAnalysis.pendingExcluded} pending candidates not counted); scoring rates use the AI scores against the median{biasAnalysis.medianScore != null ? ` (${biasAnalysis.medianScore})` : ""}. {biasAnalysis.recordsWithDemographics}/{biasAnalysis.totalRecords} candidates have demographics{biasAnalysis.unclassified > 0 ? `; ${biasAnalysis.unclassified} recorded values are no EEO-1 category and are left out` : ""}. Demographics are never provided to the scoring model.
                 </p>
-                {([["By sex", biasAnalysis.bySex], ["By race/ethnicity", biasAnalysis.byRaceEthnicity], ["Intersectional", biasAnalysis.intersectional]] as const).map(([label, stats]) => (
+                {([
+                  ["Selection rate by sex", biasAnalysis.bySex], ["Selection rate by race/ethnicity", biasAnalysis.byRaceEthnicity], ["Selection rate, intersectional", biasAnalysis.intersectional],
+                  ["Scoring rate by sex", biasAnalysis.scoringBySex], ["Scoring rate by race/ethnicity", biasAnalysis.scoringByRaceEthnicity], ["Scoring rate, intersectional", biasAnalysis.scoringIntersectional],
+                ] as const).map(([label, stats]) => (
                   <div key={label} className="mb-3">
                     <p className="text-xs font-semibold text-foreground mb-1">{label}</p>
                     {stats.length === 0 ? <p className="text-[11px] text-muted-foreground">No demographic data yet.</p> : (
                       <div className="space-y-1">
                         {stats.map(s => (
                           <div key={s.group} className="flex items-center gap-2 text-xs">
-                            <span className="text-foreground capitalize w-40 truncate">{s.group}</span>
+                            <span className="text-foreground w-40 truncate">{s.group}</span>
                             <span className="text-muted-foreground">n={s.total}</span>
                             <span className="text-muted-foreground">rate {(s.selectionRate * 100).toFixed(1)}%</span>
                             <span className="text-muted-foreground">ratio {s.impactRatio != null ? s.impactRatio.toFixed(2) : "—"}</span>
@@ -510,20 +563,30 @@ export default function Shortlist() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors">
                   {evaluating && <Loader2 className="w-4 h-4 animate-spin" />} Evaluate
                 </button>
+                <button onClick={routeToAltReview} disabled={evaluating} title="Record the candidate for non-automated review without any AI scoring (ADA / accommodation)"
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground disabled:opacity-60 transition-colors">
+                  <Accessibility className="w-3.5 h-3.5" /> Alternative review, no AI
+                </button>
                 <p className="text-[10px] text-muted-foreground">Name, age signals, address, and other protected-class proxies are removed before the model sees the text.</p>
               </div>
             </div>
 
             {/* Ranked candidates */}
             <div className="space-y-2">
-              {candidates.map((c, idx) => (
-                <div key={c.id} className="rounded-2xl border border-border bg-card">
+              {ranked.map((c) => (
+                <div key={c.id} className="rounded-2xl border border-border bg-card" data-candidate={c.id}>
                   <button onClick={() => { const next = expanded === c.id ? null : c.id; setExpanded(next); if (next) loadDecisionLog(c.id); }} className="w-full flex items-center gap-3 p-4 text-left">
-                    <span className="text-xs text-muted-foreground w-6">#{idx + 1}</span>
-                    <span className={`text-xl font-bold w-10 ${(c.score ?? 0) >= 70 ? "text-success" : (c.score ?? 0) >= 50 ? "text-warning" : "text-destructive"}`}>{c.score ?? "—"}</span>
+                    <span className="text-xs text-muted-foreground w-6" data-rank>{c.rank != null ? `#${c.rank}` : ""}</span>
+                    {c.rank == null ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold" data-alt-review>Alternative review</span>
+                    ) : (
+                      <span className={`text-xl font-bold w-10 ${(c.shownScore ?? 0) >= 70 ? "text-success" : (c.shownScore ?? 0) >= 50 ? "text-warning" : "text-destructive"}`} data-score>{c.shownScore ?? "—"}</span>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{c.file_name || `Candidate ${c.id.slice(0, 8)}`}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{c.level_read ?? ""}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {c.rank != null && reviews[c.id]?.overrideScore != null ? `Reviewer score · AI scored ${c.score ?? "—"} · ` : ""}{c.level_read ?? ""}
+                      </p>
                     </div>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${c.status === "advanced" ? "bg-success/10 text-success" : c.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>{c.status}</span>
                     {expanded === c.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -531,8 +594,11 @@ export default function Shortlist() {
 
                   {expanded === c.id && (
                     <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+                      {reviews[c.id]?.altReview && (
+                        <p className="text-[11px] text-primary">Routed to non-automated review: the AI evaluation is not shown or ranked, and exports mark it.</p>
+                      )}
                       {/* Signals considered — transparency panel */}
-                      <div>
+                      {!reviews[c.id]?.altReview && <div>
                         <p className="text-xs font-semibold text-foreground mb-1">Signals considered</p>
                         {(c.signals ?? []).map((s, i) => (
                           <div key={i} className="text-xs mb-1">
@@ -543,8 +609,8 @@ export default function Shortlist() {
                             <span className="text-muted-foreground"> — {s.evidence}</span>
                           </div>
                         ))}
-                      </div>
-                      {(c.flags ?? []).length > 0 && (
+                      </div>}
+                      {!reviews[c.id]?.altReview && (c.flags ?? []).length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-foreground mb-1">Job-related gaps vs JD</p>
                           {(c.flags ?? []).map((f, i) => <p key={i} className="text-xs text-muted-foreground">• {f}</p>)}
@@ -568,12 +634,18 @@ export default function Shortlist() {
 
                       {/* Demographics — separate from scoring, audit-only */}
                       <div className="rounded-lg border border-border/50 bg-muted/10 p-2.5">
-                        <p className="text-[11px] text-muted-foreground mb-1.5">Optional demographics (bias-audit math only — never seen by the model). Best practice: candidate self-report.</p>
+                        <p className="text-[11px] text-muted-foreground mb-1.5">Optional demographics, EEO-1 categories (bias-audit math only — never seen by the model). Best practice: candidate self-report.</p>
                         <div className="flex gap-2">
-                          <input value={demographics[c.id]?.sex ?? ""} onChange={e => saveDemographics(c.id, "sex", e.target.value)} placeholder="Sex"
-                            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground" />
-                          <input value={demographics[c.id]?.race_ethnicity ?? ""} onChange={e => saveDemographics(c.id, "race_ethnicity", e.target.value)} placeholder="Race/ethnicity"
-                            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground" />
+                          <select aria-label="Sex" value={sexCategory(demographics[c.id]?.sex) ?? ""} onChange={e => saveDemographics(c.id, "sex", e.target.value)}
+                            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground">
+                            <option value="">Sex: not recorded</option>
+                            {SEX_CATEGORIES.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                          <select aria-label="Race/ethnicity" value={raceCategory(demographics[c.id]?.race_ethnicity) ?? ""} onChange={e => saveDemographics(c.id, "race_ethnicity", e.target.value)}
+                            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground">
+                            <option value="">Race/ethnicity: not recorded</option>
+                            {RACE_CATEGORIES.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
                         </div>
                       </div>
 
@@ -608,7 +680,7 @@ export default function Shortlist() {
                           className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
                           Override score
                         </button>
-                        <button onClick={() => requestAltReview(c)} title="Route to non-automated review (ADA/accommodation)"
+                        <button onClick={() => requestAltReview(c)} disabled={reviews[c.id]?.altReview === true} title="Route to non-automated review (ADA/accommodation)"
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors">
                           <Accessibility className="w-3.5 h-3.5" /> Alt review
                         </button>
