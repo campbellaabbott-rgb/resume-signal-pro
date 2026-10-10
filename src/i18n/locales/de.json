@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Median der aufs Jahr gerechneten Untergrenzen, die Unternehmen selbst veröffentlichen (Stunden- und Monatssätze annualisiert), berechnet nur über die dominierende angegebene Währung dieses Berufsfelds — nie umgerechnet, nie gemischt. Live von diesem Board — keine Umfrage, keine Schätzung.",
     "benchmarkLine": "Ausgeschriebene Gehälter in diesem Berufsfeld: Median-Untergrenze {{symbol}}{{median}} ({{currency}}) — aus {{n}} Anzeigen hier mit Gehaltsangabe",
     "seenLastVisit": "vor deinem letzten Besuch veröffentlicht",
-    "urgencyTipFills": "Basierend auf {{n}} echten Besetzungen in unserem Tracking (Stellen, die mindestens eine Woche ausgeschrieben waren und dann innerhalb von 30 Tagen nach Veröffentlichung schlossen) schließt eine typische Stelle hier in etwa {{d}} Tagen — früh bewerben lohnt sich.",
     "urgencyChip": "Meist in ~{{d}} Tagen besetzt",
     "repostTipTracked": "Dieses Unternehmen hat denselben Stellentitel in unserem Tracking {{n}}-mal neu ausgeschrieben. Das kann routinemäßiges Reposting bedeuten oder Stellen, die immer wieder neu aufgehen — gut zu wissen, bevor du Zeit in eine Bewerbung steckst.",
     "repostChipTracked": "Schreibt Stellen oft neu aus ({{n}}×)",

@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Mediana de los pisos anualizados que las propias empresas publican (tarifas por hora y mensuales anualizadas), calculada solo sobre la moneda declarada dominante en este sector — nunca convertida, nunca mezclada. En vivo desde este tablero — no es una encuesta ni una estimación.",
     "benchmarkLine": "Salario anunciado en este sector: piso mediano {{symbol}}{{median}} ({{currency}}) — de {{n}} publicaciones aquí que declaran salario",
     "seenLastVisit": "publicada antes de tu última visita",
-    "urgencyTipFills": "Según {{n}} contrataciones genuinas en nuestro seguimiento (puestos que estuvieron publicados una semana o más y luego cerraron dentro de los 30 días tras la publicación), un puesto típico aquí cierra en unos {{d}} días — conviene postularse temprano.",
     "urgencyChip": "Suele cubrirse en ~{{d}} d",
     "repostTipTracked": "Esta empresa volvió a publicar el mismo título de puesto {{n}} veces durante nuestro seguimiento. Puede ser republicación rutinaria o puestos que reabren — vale saberlo antes de invertir en una postulación.",
     "repostChipTracked": "Republica puestos seguido ({{n}}×)",

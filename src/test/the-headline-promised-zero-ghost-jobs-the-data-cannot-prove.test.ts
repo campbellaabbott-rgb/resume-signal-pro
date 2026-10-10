@@ -36,6 +36,9 @@ const BANNED: Array<[string, RegExp]> = [
   ["save $6", /Save \$6/],
   ["priority processing", /priority processing/i],
   ["a typed board size", /\b(?:450|550|700|900)[,.]000\+|\b1\.02M\b/],
+  // L4-11: the data API page sold "genuine fills vs re-listing churn"; the
+  // board sees a takedown, never a hire.
+  ["a takedown sold as a fill", /genuine fills|genuinely filled|companies that fill roles|Fills vs\.? re-listing/i],
 ];
 
 function walk(dir: string, keep: (f: string) => boolean): string[] {

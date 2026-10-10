@@ -292,7 +292,7 @@ export default function DataApi() {
     // lead and the count from the one list, and it names only systems the
     // board actually serves rows from.
     { title: "Lifecycle-tracked postings", body: `Every opening from companies' official applicant-tracking feeds (${servingSourceSummary(5)}) — with first-seen, company-stated post date where the vendor provides one, and the exact close date when it comes down.` },
-    { title: "Fills vs. re-listing churn", body: "When a posting closes we record whether it genuinely closed or was re-listed under a new ID. That distinction — companies that fill roles vs. companies that churn them — exists almost nowhere else." },
+    { title: "Takedowns vs. re-listing churn", body: "When a posting closes we record whether it genuinely came down or was re-listed under a new ID. A takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed." },
     { title: "Stated salary ranges", body: "Salary ranges extracted from posting text where the company itself states them, normalized by currency and period. Never estimated, never modeled." },
     { title: "Daily accuracy audits", body: "We sample random live postings every day and re-check them against the companies' own systems, stratified per hiring system. The audit trail ships with the data." },
   ];
@@ -324,7 +324,7 @@ export default function DataApi() {
       icon: Building2,
       name: "Commercial license",
       price: "Custom",
-      body: "Recurring feeds or API access to postings, closures, fills and churn signals for commercial use. Tell us the shape of what you need and we'll quote it.",
+      body: "Recurring feeds or API access to postings, closures, takedown and churn signals for commercial use. Tell us the shape of what you need and we'll quote it.",
       cta: "Talk to us",
       subject: "Commercial data license",
     },
@@ -334,7 +334,7 @@ export default function DataApi() {
     <>
       <SEO
         title="Hiring Data & API — lifecycle-tracked job posting data | Resume Booster"
-        description="License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine fills vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution."
+        description="License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution."
         path="/data-api"
       />
       <Header />
@@ -353,7 +353,7 @@ export default function DataApi() {
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
                 Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was
-                genuinely filled or quietly re-listed, and what the company said it paid — collected only from
+                genuinely taken down or quietly re-listed, and what the company said it paid — collected only from
                 companies' own official career sites and audited against them daily.
               </p>
               <div className="flex flex-wrap justify-center gap-4 text-sm">

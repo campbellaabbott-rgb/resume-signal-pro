@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Médiane des planchers annualisés publiés par les entreprises elles-mêmes (taux horaires et mensuels annualisés), calculée uniquement sur la devise dominante du secteur — jamais convertie, jamais mélangée. En direct de ce site — ni sondage ni estimation.",
     "benchmarkLine": "Salaires affichés dans ce secteur : plancher médian {{symbol}}{{median}} ({{currency}}) — sur {{n}} annonces ici indiquant le salaire",
     "seenLastVisit": "publiée avant votre dernière visite",
-    "urgencyTipFills": "D'après {{n}} recrutements réels dans notre suivi (postes restés publiés au moins une semaine, puis clôturés dans les 30 jours suivant la publication), un poste type ferme ici en environ {{d}} jours — mieux vaut postuler tôt.",
     "urgencyChip": "Généralement pourvu en ~{{d}} j",
     "repostTipTracked": "Cette entreprise a republié le même intitulé de poste {{n}} fois pendant notre suivi. Cela peut être de la republication de routine ou des postes qui rouvrent sans cesse — bon à savoir avant d'investir dans une candidature.",
     "repostChipTracked": "Republie souvent ses offres ({{n}}×)",

@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Mediana dos limites inferiores anualizados que as próprias empresas publicam (valores à hora e ao mês anualizados), calculada apenas na moeda dominante indicada nesta área — nunca convertida, nunca misturada. Em direto desta plataforma — não é um inquérito nem uma estimativa.",
     "benchmarkLine": "Salário anunciado nesta área: mediana dos mínimos {{symbol}}{{median}} ({{currency}}) — com base em {{n}} anúncios daqui que indicam salário",
     "seenLastVisit": "publicado antes da sua última visita",
-    "urgencyTipFills": "Com base em {{n}} preenchimentos genuínos na nossa monitorização (vagas publicadas uma semana ou mais e depois fechadas nos 30 dias após a publicação), uma vaga típica aqui fecha em cerca de {{d}} dias — vale a pena candidatar-se cedo.",
     "urgencyChip": "Costuma fechar em ~{{d}} dias",
     "repostTipTracked": "Esta empresa republicou o mesmo título de vaga {{n}} vezes durante a nossa monitorização. Pode significar republicação de rotina ou vagas que reabrem constantemente — vale a pena saber antes de investir numa candidatura.",
     "repostChipTracked": "Republica vagas com frequência ({{n}}×)",

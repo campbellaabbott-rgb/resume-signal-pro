@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized), computed over this field's dominant stated currency only — never converted, never mixed. Live from this board — not a survey or an estimate.",
     "benchmarkLine": "Advertised pay in this field: median floor {{symbol}}{{median}} ({{currency}}) — from {{n}} postings here that state pay",
     "seenLastVisit": "posted before your last visit",
-    "urgencyTipFills": "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed within 30 days of posting), a typical role here closes in about {{d}} days — worth applying early.",
     "urgencyChip": "Typically fills in ~{{d}}d",
     "repostTipTracked": "This company relisted the same role title {{n}} times during our tracking. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.",
     "repostChipTracked": "Relists roles often ({{n}}×)",

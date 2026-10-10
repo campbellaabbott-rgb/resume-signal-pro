@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Median ng mga annualized na lower bound na inilalathala mismo ng mga kumpanya (naka-annualize ang hourly at monthly rates), kinalkula sa dominanteng nakasaad na currency lang ng field na ito — hindi kailanman kino-convert, hindi hinahalo. Live mula sa board na ito — hindi survey o pagtatantya.",
     "benchmarkLine": "Naka-anunsyong sahod sa field na ito: median floor {{symbol}}{{median}} ({{currency}}) — mula sa {{n}} posting dito na nagsasaad ng sahod",
     "seenLastVisit": "naka-post bago ang huli mong pagbisita",
-    "urgencyTipFills": "Batay sa {{n}} tunay na fill sa aming tracking (mga role na naka-post nang isang linggo o higit pa, saka nagsara sa loob ng 30 araw mula nang i-post), karaniwang nagsasara ang isang role dito sa humigit-kumulang {{d}} araw — sulit mag-apply nang maaga.",
     "urgencyChip": "Karaniwang napupunan sa ~{{d}} araw",
     "repostTipTracked": "In-relist ng kumpanyang ito ang parehong role title nang {{n}} beses sa aming tracking. Maaaring routine na pag-repost iyon o mga role na paulit-ulit na nagbubukas — mabuting malaman bago ka maglaan ng oras sa aplikasyon.",
     "repostChipTracked": "Madalas mag-relist ng role ({{n}}×)",

@@ -4039,7 +4039,6 @@
     "benchmarkTip": "Mediaan van de ondergrenzen op jaarbasis die bedrijven zelf publiceren (uur- en maandtarieven omgerekend naar jaarbasis), berekend over alleen de dominante vermelde valuta in dit vakgebied — nooit omgerekend, nooit gemengd. Live van deze site — geen enquête of schatting.",
     "benchmarkLine": "Geadverteerd salaris in dit vakgebied: mediane ondergrens {{symbol}}{{median}} ({{currency}}) — uit {{n}} vacatures hier met salarisvermelding",
     "seenLastVisit": "geplaatst vóór je vorige bezoek",
-    "urgencyTipFills": "Op basis van {{n}} echte vervullingen in onze tracking (functies die een week of langer online stonden en daarna binnen 30 dagen na plaatsing sloten) sluit een functie hier doorgaans binnen ongeveer {{d}} dagen — vroeg solliciteren loont.",
     "urgencyChip": "Meestal vervuld in ~{{d}}d",
     "repostTipTracked": "Dit bedrijf plaatste dezelfde functietitel {{n}} keer opnieuw tijdens onze tracking. Dat kan wijzen op routinematig herplaatsen of functies die steeds opnieuw opengaan — goed om te weten voordat je tijd in een sollicitatie steekt.",
     "repostChipTracked": "Herplaatst vacatures vaak ({{n}}×)",
