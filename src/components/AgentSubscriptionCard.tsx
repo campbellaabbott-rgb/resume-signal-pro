@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { SUBSCRIPTIONS } from "@/config/products";
-import { AUTO_VENDORS, CLICK_VENDORS } from "@/config/ats-vendors";
+import { ATS_VENDORS } from "@/config/ats-vendors";
+import { PREPARED_ONLY_VENDORS, SENDABLE_ATS_VENDORS } from "@/config/sendable-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { checkoutContext } from "@/lib/track-transport";
 
@@ -50,6 +51,9 @@ export function AgentSubscriptionCard() {
   const { online } = useAgentSender();
   const price = SUBSCRIPTIONS.agent.priceUsd;
   const proPrice = SUBSCRIPTIONS.pro.priceUsd;
+  // Sending is claimed only on the sendable list; everything else is prepared
+  // for the person to send, and with the sender offline that is every system.
+  const preparedNames = (online ? PREPARED_ONLY_VENDORS : ATS_VENDORS).map((v) => v.label).join(", ");
 
   const toSignIn = () => navigate(`/auth?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`);
 
@@ -150,7 +154,7 @@ export function AgentSubscriptionCard() {
             <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
             <span>
               {t("agentPlan.perkAutoApply", "Applies for you automatically on {{names}}", {
-                names: AUTO_VENDORS.map((v) => v.label).join(", "),
+                names: SENDABLE_ATS_VENDORS.map((v) => v.label).join(", "),
               })}
             </span>
           </li>
@@ -159,7 +163,7 @@ export function AgentSubscriptionCard() {
           <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
           <span>
             {t("agentPlan.perkOneClick", "Applications filled in and ready to send on {{names}}", {
-              names: CLICK_VENDORS.map((v) => v.label).join(", "),
+              names: preparedNames,
             })}
           </span>
         </li>
