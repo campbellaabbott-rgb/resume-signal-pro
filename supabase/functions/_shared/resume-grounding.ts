@@ -98,7 +98,16 @@ const yearsIn = (s: string) => [...s.matchAll(/\b(19|20)\d{2}\b/g)].map((m) => m
 // flagging them would reject harmless drafts far more often than it would
 // catch lies. Years are already validated structurally where they matter.
 
-const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{2,}\b/g;
+// The grouped arm ("10,000", "1,000,000") runs before the bare-integer arm,
+// which would otherwise split "10,000" into "10" and "000", both dropped as
+// small counts, so an invented "10,000 users" passed (sweep S8-032).
+// Dot and space grouping ("10.000", "1.000.000", "10 000") are read the same
+// way: generate-cover-letter writes Spanish for Spanish postings. A single
+// dot group counts only with exactly three digits after it, and a space group
+// never runs into a hyphen ("3 100-person teams").
+const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{1,3}(?:,\d{3})+\b|\b\d{1,3}(?:\.\d{3})+\b(?![.,]\d)|\b\d{1,3}(?:[ \u00A0\u202F]\d{3})+\b(?![-\u2010\u2011])|\b\d{2,}\b/g;
+const GROUPED = /^\d{1,3}(?:[,. \u00A0\u202F]\d{3})+$/;
+const SPACE_GROUPED = /^(\d{1,3})[ \u00A0\u202F](\d{3}(?:[ \u00A0\u202F]\d{3})*)$/;
 
 /**
  * Canonical digit-string for matching: "1,200" == "1200", "32 %" == "32%",
@@ -107,14 +116,18 @@ const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x
  * sentence on one side and not the other was refused as invented: an honest
  * cover letter or apply kit got a 422 (register L5-06).
  */
-const canonNum = (s: string) => s.replace(/[\s,]/g, "").toLowerCase().replace(/\.+$/, "");
+const canonNum = (s: string) => {
+  const t = s.replace(/[\s\u00A0\u202F,]/g, "").toLowerCase().replace(/\.+$/, "");
+  return t.replace(/(^|[^\d.])(\d{1,3}(?:\.\d{3})+)$/, (_m, pre: string, n: string) => pre + n.replace(/\./g, ""));
+};
 
 const numClaims = (text: string): string[] =>
   [...(text.matchAll(NUM_CLAIM))].map((m) => m[0]).filter((raw) => {
-    const bare = raw.replace(/[^0-9.]/g, "");
-    const isBareInt = /^\d+$/.test(raw.trim());
+    const grouped = GROUPED.test(raw.trim());
+    const bare = grouped ? raw.replace(/\D/g, "") : raw.replace(/[^0-9.]/g, "");
+    const isBareInt = grouped || /^\d+$/.test(raw.trim());
     if (isBareInt && Number(bare) < 13) return false;      // small counts: allowed
-    if (isBareInt && /^(19|20)\d{2}$/.test(raw.trim())) return false; // years: handled elsewhere
+    if (isBareInt && /^(19|20)\d{2}$/.test(bare)) return false; // years: handled elsewhere
     return true;
   });
 
@@ -132,6 +145,10 @@ export function unsupportedNumericClaims(sourceResume: string, text: string): st
     const canon = canonNum(claim);
     const digits = canon.replace(/[^0-9.]/g, "").replace(/\.+$/, "");
     if (sourceNums.has(canon) || sourceNums.has(digits)) continue;
+    // "2 500" may be a small count and a figure ("2 500-seat venues" without
+    // the hyphen): it passes when its tail is the source's, as it did before.
+    const sp = claim.trim().match(SPACE_GROUPED);
+    if (sp && Number(sp[1]) < 13 && sourceNums.has(canonNum(sp[2]))) continue;
     bad.push(claim.trim());
   }
   return [...new Set(bad)];

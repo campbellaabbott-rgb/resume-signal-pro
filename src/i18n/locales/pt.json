@@ -38,11 +38,8 @@
     "freeScan": "Experimentar Análise Grátis",
     "heading": "Pare de adivinhar.",
     "headingHighlight": "Comece a conseguir entrevistas.",
-    "subheading": "Mesmo documento, mesma pontuação, sempre — comparada com escaneamentos reais do seu setor, com cada citação verificada contra o seu currículo. Não é a opinião do ChatGPT nem do Claude.",
-    "price": "$25",
     "oneTime": "pagamento único",
     "nofees": "Pagamento único • Sem renovação automática • Resultados instantâneos",
-    "roi": "Uma entrevista = $25 que se paga sozinho",
     "trusted": "Confiado por",
     "jobSeekers": "candidatos",
     "seeSample": "Ver Análise de Exemplo",
@@ -51,7 +48,6 @@
     "mainHeading": "Seu currículo está",
     "mainHeadingHighlight": "invisível para os recrutadores?",
     "atsTooltip": "Os ATS (sistemas de rastreamento de candidatos) transformam seu currículo em um banco de dados que os recrutadores pesquisam. Raramente rejeitam automaticamente — mas um parsing ruim ou palavras-chave ausentes fazem as buscas nunca mostrarem você. Mais de 98% das empresas Fortune 500 os usam.",
-    "mainSubheading": "Descubra em 30 segundos. Obtenha a sua pontuação ATS e veja exatamente o que lhe está a custar entrevistas.",
     "ctaButton": "Escanear meu currículo grátis",
     "freeBadge": "GRÁTIS",
     "noSignup": "Sem registo necessário",
@@ -111,12 +107,11 @@
     },
     "trust": {
       "secure": "Seguro e Privado",
-      "results": "Resultados em 30 segundos",
       "approved": "Aprovado por recrutadores"
     },
     "socialFirst": {
-      "joinThousands": "Análise grátis · Sem cadastro · Resultados em cerca de 60 segundos",
-      "subheading": "Envie seu currículo e receba uma pontuação reproduzível — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
+      "joinThousands": "Análise grátis · Sem cadastro · Resultados em até {{seconds}} segundos",
+      "subheading": "Envie seu currículo e receba uma pontuação que você pode conferir: escaneie o mesmo arquivo com a mesma vaga de novo em até {{days}} dias e receba o mesmo relatório (“Reanalisar” cria um novo) — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
       "recentActivityCount": "{{count}} pessoas",
       "recentActivityText": "verificaram o currículo na última hora"
     },
@@ -127,7 +122,7 @@
       "painSubheading": "Antes de um humano sequer vê-los. O seu é um deles?",
       "solutionLabel": "A solução",
       "solutionHeadingHighlight": "correções instantâneas à prova de ATS",
-      "solutionHeadingSuffix": "em 60 segundos",
+      "solutionHeadingSuffix": "em até {{seconds}} segundos",
       "solutionSubheading": "O nosso scanner de IA encontra exatamente o que está bloqueando o seu currículo e mostra como corrigir."
     },
     "ultraCompactDescription": "Reescritas otimizadas para ATS • Alertas de sinais de risco • Melhorias de palavras-chave",
@@ -183,7 +178,7 @@
       },
       "analysis": {
         "title": "2. Análise IA",
-        "description": "A nossa IA realiza 24 verificações distintas em ~10 segundos."
+        "description": "A nossa IA realiza {{checks}} verificações distintas em até {{seconds}} segundos."
       },
       "results": {
         "title": "3. Obtenha Resultados",
@@ -218,7 +213,7 @@
     },
     "footer": {
       "realAi": "Análise IA real",
-      "results": "Resultados em ~10 seg",
+      "results": "Resultados em até {{seconds}} segundos",
       "private": "100% privado"
     }
   },
@@ -375,7 +370,7 @@
       "redFlags": "Sinais de Alerta",
       "plusMore": "+12 mais"
     },
-    "scanFooter": "Resultados em ~90 segundos • 7 verificações gratuitas por dia",
+    "scanFooter": "Resultados em até {{seconds}} segundos • 7 verificações gratuitas por dia",
     "getFreeAnalysis": "Obter Análise Gratuita do Currículo",
     "orGetCompleteAnalysis": "Ou obtenha a análise completa por",
     "securePaymentStripe": "Pagamento seguro via Stripe",
@@ -413,7 +408,7 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que o mesmo ficheiro receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
@@ -431,7 +426,6 @@
     "feature": "Funcionalidade",
     "templates": "Modelos",
     "free": "Grátis",
-    "cta": "Experimente Agora — $25",
     "ctaText": "Experimente Agora",
     "features": {
       "atsScoring": "Pontuação ATS de 5 Categorias",
@@ -494,7 +488,7 @@
       },
       "instant": {
         "label": "Entrega Instantânea",
-        "description": "Resultados em 30 segundos"
+        "description": "Resultados em até {{seconds}} segundos"
       }
     },
     "methodology": {
@@ -574,7 +568,6 @@
       "title": "Desbloqueie a Sua Análise Completa",
       "description": "Obtenha feedback abrangente com reescritas detalhadas de tópicos, estratégias de otimização ATS e um plano de ação prioritizado.",
       "button": "Obter Análise Completa",
-      "price": "$25",
       "processing": "A processar..."
     }
   },
@@ -703,14 +696,11 @@
   },
   "stickyCta": {
     "title": "Pronto para conseguir mais entrevistas?",
-    "subtitle": "Obtenha feedback de recrutador em 30 segundos",
     "mobileTitle": "Analise o seu currículo →",
     "button": "Analisar o Meu Currículo",
     "ctaButton": "Ver Todos os Pacotes",
-    "premiumFrom": "Pacotes premium a partir de",
-    "from": "A partir de",
-    "features": "Reescritas completas + otimização LinkedIn + personalização por vaga",
-    "featuresMobile": "Reescritas + otimização LinkedIn"
+    "features": "Aplica as correções do seu escaneamento grátis ao seu próprio currículo. Pagamento único, sem assinatura.",
+    "featuresMobile": "As correções do seu escaneamento, aplicadas. Pagamento único."
   },
   "finalCta": {
     "urgency": "O seu currículo pode estar a perder-lhe entrevistas agora mesmo",
@@ -740,7 +730,7 @@
     "oneTime": "pagamento único",
     "guarantee": "Resultados instantâneos • Pagamento único",
     "button": "Obter a Minha Análise Agora",
-    "roi": "Uma entrevista = $25 que se paga sozinho"
+    "roi": "Uma entrevista = {{price}} que se paga sozinho"
   },
   "scanProgress": {
     "title": "Análise IA em Progresso",
@@ -1073,6 +1063,15 @@
       "tooManyAttemptsDescription": "Aguarde alguns minutos antes de tentar novamente.",
       "serviceTemporarilyUnavailable": "Serviço temporariamente indisponível",
       "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos."
+    },
+    "reportCrash": {
+      "title": "Algo deu errado ao exibir seu relatório",
+      "body": "Sua análise terminou, mas o relatório não pôde ser exibido. Reanalise para escanear de novo e gerar um relatório novo."
+    },
+    "partialResults": {
+      "title": "Resultados parciais:",
+      "ruleBased": "nosso revisor de IA ficou indisponível por um momento, então este relatório usa apenas análise automática. Analise de novo em alguns minutos para a versão completa personalizada por IA.",
+      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra."
     }
   },
   "miniPricingCards": {
@@ -1409,7 +1408,6 @@
     "getJobSpecificAnalysis": "Obter Análise Específica da Vaga",
     "personalizedInsightsForRole": "Obtenha informações personalizadas para a sua função pretendida",
     "oneTimePaymentInstantAccess": "Pagamento único • Acesso instantâneo",
-    "oneInterviewPaidForItself": "Uma entrevista = {{price}} amortizado",
     "unlockWithFullAnalysis": "Desbloquear com Análise Completa",
     "premiumFeatures": {
       "completeAtsAnalysis": "Análise ATS completa",
@@ -1553,8 +1551,7 @@
       "badge": "Prévia gratuita",
       "before": "❌ ANTES (do seu currículo)",
       "after": "✅ DEPOIS (otimizado)",
-      "whyBetter": "Por que é melhor:",
-      "cta": "Faça todos os seus marcadores serem reescritos na análise completa de {{price}}"
+      "whyBetter": "Por que é melhor:"
     },
     "lockedInsights": {
       "bulletLine1": "• Substitua 'Responsável por gerenciar equipe de 5' → 'Liderou equipe multifuncional de 5, gerando ganho de eficiência de 32%'",
@@ -1616,8 +1613,7 @@
     "cta": {
       "fixIssues": "Ver o que está custando entrevistas — {{price}}",
       "getFullAnalysis": "Obter meu currículo pronto para recrutadores — {{price}}",
-      "socialProof": "{{count}} currículos analisados hoje",
-      "resultsExpiry": "Seus resultados ficam salvos por mais {{hours}} horas"
+      "socialProof": "{{count}} currículos analisados hoje"
     },
     "enterprise": {
       "verdictLabel": "O Veredito",
@@ -1671,6 +1667,16 @@
       "loading": "Classificando vagas ao vivo contra seu currículo…",
       "apply": "Candidatar",
       "seeAll": "Ver todas as combinações no mural — salve buscas e acompanhe candidaturas"
+    },
+    "nextSteps": {
+      "eyebrow": "Próximos passos",
+      "title": "Se quiser ajuda com as correções acima",
+      "body": "O diagnóstico acima está completo e é grátis. Estas são as duas opções pagas que fazem o trabalho por você.",
+      "fullAnalysisName": "Análise completa",
+      "fullAnalysisDesc": "Aplica as correções deste relatório ao conteúdo do seu próprio currículo. Pagamento único, sem assinatura.",
+      "proName": "Pro",
+      "proDesc": "Plano mensal: análises ilimitadas e todas as ferramentas pagas, incluindo a Análise completa. Cancele quando quiser na sua conta.",
+      "proPrice": "${{price}}/mês"
     }
   },
   "analysisPreviewSample": {
@@ -1732,12 +1738,12 @@
     "rows": {
       "timeToResults": {
         "feature": "Tempo até aos resultados",
-        "us": "Menos de 60 segundos",
+        "us": "Em até {{seconds}} segundos",
         "them": "3-7 dias úteis"
       },
       "cost": {
         "feature": "Custo",
-        "us": "$5 – $25 pagamento único",
+        "us": "Análise gratuita · Análise completa ${{price}} pagamento único",
         "them": "$150 – $500+"
       },
       "atsOptimization": {
@@ -3378,32 +3384,6 @@
     "plusMore": "+{{count}} mais",
     "standOut": "Destaque-se de outros candidatos",
     "foundCount": "{{count}} palavras-chave específicas do cargo encontradas"
-  },
-  "scorePackage": {
-    "autoRejected": "⚠️ Seu currículo está sendo automaticamente rejeitado",
-    "filtered": "Sistemas ATS estão filtrando você antes que recrutadores vejam sua candidatura",
-    "critical": "Crítico",
-    "stat75": "Currículos com pontuação baixa têm muito mais chance de passar despercebidos nas buscas antes de qualquer revisão humana",
-    "rewriteDesc": "Reescrita completa + otimização ATS + carta de apresentação",
-    "rewriteGain": "30-40 pontos",
-    "quickFix": "Otimização rápida de palavras-chave ATS",
-    "roomForImprovement": "Seu currículo tem espaço para melhoria",
-    "targetedFix": "Uma correção direcionada pode aumentar significativamente sua pontuação",
-    "addKeywords": "Adicionar palavras-chave ausentes + melhorar pontos",
-    "midGain": "15-25 pontos",
-    "completeOverhaul": "Para uma revisão profissional completa",
-    "alreadyStrong": "Seu currículo já é forte!",
-    "fineTune": "Ajuste-o para candidaturas específicas",
-    "detailedRewrites": "Obtenha reescritas detalhadas + adaptação específica ao cargo",
-    "fineTuneGain": "5-15 pontos",
-    "completePackage": "Complete seu pacote de candidatura",
-    "stronglyRecommended": "Altamente Recomendado",
-    "recommended": "Recomendado",
-    "estimatedGain": "Ganho estimado: {{gain}}",
-    "fixNow": "Corrigir Agora",
-    "viewDetails": "Ver detalhes",
-    "compareAll": "Comparar todos os pacotes",
-    "fixBefore": "Corrigir antes da próxima candidatura"
   },
   "shareableCard": {
     "excellent": "Excelente",
@@ -5292,5 +5272,36 @@
       "requestedTitle": "Pagamento pedido",
       "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Forte",
+    "mixed": "Misto",
+    "risky": "Arriscado",
+    "weak": "Fraco",
+    "growth": "Crescimento",
+    "stable": "Estável",
+    "stagnant": "Estagnado",
+    "unclear": "Pouco claro",
+    "high": "Alta",
+    "medium": "Média",
+    "low": "Baixa",
+    "entry": "Inicial",
+    "mid": "Pleno",
+    "senior": "Sênior",
+    "executive": "Executivo",
+    "aligned": "Alinhado",
+    "stretch": "Desafio",
+    "mismatch": "Incompatível",
+    "readyToApply": "Pronto para se candidatar",
+    "fixTheseFirst": "Corrija isto primeiro",
+    "easy": "Fácil",
+    "hard": "Difícil",
+    "lead": "Líder",
+    "director": "Diretor",
+    "vp": "VP",
+    "behavioral": "Comportamental",
+    "technical": "Técnica",
+    "situational": "Situacional",
+    "cultureFit": "Fit cultural"
   }
 }

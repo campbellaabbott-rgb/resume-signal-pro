@@ -124,6 +124,23 @@ export interface GeoDetectionResult {
   source: 'phone' | 'address' | 'institution' | 'currency' | 'work_authorization' | 'education' | 'relocation' | 'ip' | 'none';
 }
 
+/**
+ * The market a report is written for: the applying-to country, then a
+ * confident résumé detection, then the request's IP country, then a
+ * low-confidence detection, then the US. The scan's country standards, geo
+ * hints and market notes follow it, so a cached report is keyed by it too: the
+ * same text scanned from two countries is two reports (sweep S8-070).
+ */
+export function effectiveCountryOf(
+  targetCountry: string | null,
+  resumeGeo: Pick<GeoDetectionResult, 'country' | 'confidence'>,
+  ipCountry: string | null,
+): string {
+  return targetCountry
+    || (resumeGeo.confidence !== 'low' ? resumeGeo.country : null)
+    || ipCountry || resumeGeo.country || 'US';
+}
+
 // City/address regexes as a weighted list so multiple signals ACCUMULATE
 // instead of first-match-winning. Weight 2 = "a place is named" — a city in a
 // bullet ("expanded into the London market") is real but weak evidence of where

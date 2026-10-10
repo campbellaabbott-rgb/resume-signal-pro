@@ -11,7 +11,7 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-career-path.2026-10-05.1";
+const FN_BUILD = "generate-career-path.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

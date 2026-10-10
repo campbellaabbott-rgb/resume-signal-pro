@@ -9,6 +9,8 @@ import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
+import { REPORT_CACHE_DAYS } from "@/lib/resume-retention";
 import { useABTest } from "@/hooks/use-ab-test";
 import { SampleReportPreview } from "./SampleReportPreview";
 
@@ -361,7 +363,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
             <div className="mb-5 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-4">
                 <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-medium text-success">{t('hero.socialFirst.joinThousands')}</span>
+                <span className="text-sm font-medium text-success">{t('hero.socialFirst.joinThousands', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}</span>
               </div>
               <HeroStatsBar />
             </div>
@@ -378,7 +380,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-                {t('hero.socialFirst.subheading')}
+                {t('hero.socialFirst.subheading', { days: REPORT_CACHE_DAYS })}
               </p>
             </div>
 
@@ -449,7 +451,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.benefitLed.solutionHeadingHighlight')}
                 </span>{" "}
-                {t('hero.benefitLed.solutionHeadingSuffix')}
+                {t('hero.benefitLed.solutionHeadingSuffix', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
                 {t('hero.benefitLed.solutionSubheading')}

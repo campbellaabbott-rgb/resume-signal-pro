@@ -2,6 +2,7 @@ import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } fro
 import { Link } from "react-router-dom";
 import { useSafeTranslation } from "@/hooks/use-safe-translation";
 import { useScanTotals } from "@/hooks/use-scan-totals";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 
 export function TrustIndicators() {
   const { t } = useSafeTranslation();
@@ -40,7 +41,8 @@ export function TrustIndicators() {
     {
       icon: Zap,
       labelKey: "trustIndicators.badges.instant.label",
-      descriptionKey: "trustIndicators.badges.instant.description"
+      descriptionKey: "trustIndicators.badges.instant.description",
+      descriptionValues: { seconds: SCAN_RESULTS_WITHIN_SECONDS },
     }
   ];
 
@@ -59,8 +61,8 @@ export function TrustIndicators() {
                 >
                   <IconComponent className="w-4 h-4 text-primary flex-shrink-0" />
                   <div className="text-left">
-                    <div className="text-[11px] font-medium text-foreground leading-tight">{t(badge.labelKey, ((badge as { values?: Record<string, string> }).values ?? {}) as never)}</div>
-                    <div className="text-[9px] text-muted-foreground leading-tight">{t(badge.descriptionKey)}</div>
+                    <div className="text-[11px] font-medium text-foreground leading-tight">{t(badge.labelKey, (badge as { values?: Record<string, string> }).values ?? {})}</div>
+                    <div className="text-[9px] text-muted-foreground leading-tight">{t(badge.descriptionKey, (badge as { descriptionValues?: Record<string, number> }).descriptionValues ?? {})}</div>
                   </div>
                 </div>
               );

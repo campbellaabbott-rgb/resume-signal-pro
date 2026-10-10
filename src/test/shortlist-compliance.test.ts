@@ -32,7 +32,7 @@ Requires wheelchair accessible workplace accommodation.`;
   const features = new Set(exclusionsApplied.map(e => e.feature));
 
   it("removes the candidate's name everywhere", () => {
-    expect(redacted).not.toMatch(/Maria|Gonzalez/);
+    expect(redacted).not.toMatch(/maria|gonzalez/i);
     expect(features.has("candidate_name")).toBe(true);
   });
 
@@ -84,8 +84,8 @@ describe("impact-ratio math (four-fifths rule)", () => {
       ...Array.from({ length: 10 }, (_, i) => ({ advanced: i < 3, sex: "female" })),
     ];
     const a = computeImpactAnalysis(records);
-    const male = a.bySex.find(g => g.group === "male")!;
-    const female = a.bySex.find(g => g.group === "female")!;
+    const male = a.bySex.find(g => g.group === "Male")!;
+    const female = a.bySex.find(g => g.group === "Female")!;
     expect(male.selectionRate).toBe(0.6);
     expect(female.selectionRate).toBe(0.3);
     expect(male.impactRatio).toBe(1);
@@ -100,7 +100,7 @@ describe("impact-ratio math (four-fifths rule)", () => {
       ...Array.from({ length: 10 }, (_, i) => ({ advanced: i < 4, sex: "female" })), // 40% → 0.8
     ];
     const a = computeImpactAnalysis(records);
-    expect(a.bySex.find(g => g.group === "female")!.fourFifthsFlag).toBe(false);
+    expect(a.bySex.find(g => g.group === "Female")!.fourFifthsFlag).toBe(false);
   });
 
   it("marks small groups low-sample and excludes them from the rate basis", () => {
@@ -109,8 +109,8 @@ describe("impact-ratio math (four-fifths rule)", () => {
       { advanced: true, sex: "nonbinary" },                                        // 100%, n=1
     ];
     const a = computeImpactAnalysis(records);
-    const nb = a.bySex.find(g => g.group === "nonbinary")!;
-    const male = a.bySex.find(g => g.group === "male")!;
+    const nb = a.bySex.find(g => g.group === "Another identity")!;
+    const male = a.bySex.find(g => g.group === "Male")!;
     expect(nb.lowSample).toBe(true);
     // Basis is the adequately-sampled male rate, so male ratio = 1
     expect(male.impactRatio).toBe(1);
@@ -123,7 +123,7 @@ describe("impact-ratio math (four-fifths rule)", () => {
       { advanced: true, sex: "male", raceEthnicity: "white" },
     ];
     const a = computeImpactAnalysis(records);
-    expect(a.intersectional.some(g => g.group === "female × black" && g.total === 2)).toBe(true);
+    expect(a.intersectional.some(g => g.group === "Female × Black or African American" && g.total === 2)).toBe(true);
   });
 
   it("handles missing demographics without crashing", () => {

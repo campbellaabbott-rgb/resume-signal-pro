@@ -4,13 +4,13 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
+import { setStickyBarVisible } from "@/lib/sticky-bar";
 
 interface StickyBottomCTAProps {
-  onGetStarted: () => void;
   isLoading?: boolean;
 }
 
-export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProps) {
+export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const { t } = useTranslation();
@@ -36,6 +36,12 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isDismissed]);
 
+  // The help button lifts above the bar while it shows (src/lib/sticky-bar.ts).
+  useEffect(() => {
+    setStickyBarVisible(isVisible);
+    return () => setStickyBarVisible(false);
+  }, [isVisible]);
+
   if (!isVisible) return null;
 
   return (
@@ -50,8 +56,8 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
               </div>
               <div className="text-white">
                 <p className="font-semibold text-sm md:text-base">
-                  {t('stickyCta.premiumFrom')} ${PRODUCTS.basicKeywordFix.priceUsd}
-                  {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
+                  {t('freeResults.nextSteps.fullAnalysisName')} · ${PRODUCTS.fullAnalysis.priceUsd}
+                  {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
                 </p>
                 <p className="text-xs md:text-sm text-white/80">{t('stickyCta.features')}</p>
               </div>
@@ -60,8 +66,8 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
             {/* Mobile: Compact */}
             <div className="sm:hidden text-white flex-1">
               <p className="font-semibold text-sm">
-                {t('stickyCta.from')} ${PRODUCTS.basicKeywordFix.priceUsd}
-                {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
+                {t('freeResults.nextSteps.fullAnalysisName')} · ${PRODUCTS.fullAnalysis.priceUsd}
+                {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
               </p>
               <p className="text-xs text-white/70">{t('stickyCta.featuresMobile')}</p>
             </div>
@@ -79,7 +85,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
               </button>
               
               <button
-                onClick={() => setIsDismissed(true)}
+                onClick={() => { setIsDismissed(true); setIsVisible(false); }}
                 className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
                 aria-label={t('common.dismiss')}
               >

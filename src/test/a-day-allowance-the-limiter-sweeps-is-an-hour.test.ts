@@ -21,6 +21,13 @@
  * 60). A true day counter needs a table of its own or a change to the sweep,
  * which is a migration; this release ships none.
  *
+ * THE SWEEP ITSELF (sweep S8-011, migration 20261009110000). The same sweep
+ * made every other "daily" allowance on this limiter hourly: the free scan's
+ * 7 a day and a purchase's 10 generator calls a day among them. The live
+ * definition now sweeps only rows older than 1,440 minutes, the longest
+ * window it accepts, so a day row lasts its day. The previous definition is
+ * kept running below beside the live one, so the file proves what changed.
+ *
  * WHAT THIS FILE HOLDS, in a real Postgres (pglite) running the LIVE
  * definition with only its dice loaded -- `random() < 0.01` replaced by
  * `true`, so the sweep runs on every call, which is what an attacker who
@@ -66,41 +73,77 @@ function limiterDefinitions(): Array<{ file: string; text: string }> {
 
 const DEFS = limiterDefinitions();
 const LIVE = DEFS[DEFS.length - 1];
+/** The definition every allowance ran on until 20261009110000. */
+const PREVIOUS = DEFS.find((d) => d.file.startsWith("20251219200654"));
 const DICE = "random() < 0.01";
 
 const OPEN: PGlite[] = [];
 afterAll(async () => { for (const db of OPEN) { try { await db.close(); } catch { /* best effort */ } } });
 
-describe("check_rate_limit's sweep, in a real Postgres, with the dice loaded", () => {
+async function bootWith(def: { file: string; text: string }): Promise<PGlite> {
+  expect(def.text.split(DICE).length - 1, `${def.file}: the sweep's one-in-a-hundred test moved -- re-read the sweep before trusting this file`).toBe(1);
+  const db = new PGlite();
+  OPEN.push(db);
+  const ddl = /CREATE TABLE public\.rate_limits \([\s\S]*?\);/.exec(migCode(MIG_FILES.find((f) => f.startsWith("20251216002238"))!));
+  expect(ddl, "the rate_limits CREATE TABLE was not found").not.toBeNull();
+  await db.exec(ddl![0]);
+  await db.exec(def.text.replace(DICE, "true"));
+  return db;
+}
+
+const check = (tx: { query: PGlite["query"] }, ip: string, fn: string, max: number, minutes: number) =>
+  tx.query<{ ok: boolean }>("SELECT public.check_rate_limit($1, $2, $3, $4) AS ok", [ip, fn, max, minutes]).then((r) => r.rows[0].ok);
+const plant = (tx: { query: PGlite["query"] }, ip: string, fn: string, minutesAgo: number, count: number) =>
+  tx.query("INSERT INTO public.rate_limits (ip_address, function_name, window_start, request_count) VALUES ($1, $2, now() - make_interval(mins => $3), $4)", [ip, fn, minutesAgo, count]);
+const exists = (tx: { query: PGlite["query"] }, ip: string, fn: string) =>
+  tx.query("SELECT 1 FROM public.rate_limits WHERE ip_address = $1 AND function_name = $2", [ip, fn]).then((r) => r.rows.length === 1);
+/** One call from an ordinary 60-minute caller -- track-ab-event's visitor tier, keyed on a visitor id the client picks. */
+const anyHourlyCaller = (tx: { query: PGlite["query"] }, visitor: string) => check(tx, visitor, "track-ab-event-visitor", 50, 60);
+
+describe("the previous check_rate_limit, in a real Postgres, with the dice loaded", () => {
   let db: PGlite;
   beforeAll(async () => {
-    expect(LIVE, "no migration defines check_rate_limit").toBeDefined();
-    expect(LIVE.text.split(DICE).length - 1, `${LIVE.file}: the sweep's one-in-a-hundred test moved -- re-read the sweep before trusting this file`).toBe(1);
-    expect(LIVE.text, `${LIVE.file}: the sweep is not filtered by the caller's window any more -- this file's premise changed`).toMatch(/DELETE FROM public\.rate_limits WHERE window_start < v_window_cutoff;/);
-    db = new PGlite();
-    OPEN.push(db);
-    const ddl = /CREATE TABLE public\.rate_limits \([\s\S]*?\);/.exec(migCode(MIG_FILES.find((f) => f.startsWith("20251216002238"))!));
-    expect(ddl, "the rate_limits CREATE TABLE was not found").not.toBeNull();
-    await db.exec(ddl![0]);
-    await db.exec(LIVE.text.replace(DICE, "true"));
+    expect(PREVIOUS, "the 20251219200654 definition is gone").toBeDefined();
+    db = await bootWith(PREVIOUS!);
   });
 
-  const check = (tx: { query: PGlite["query"] }, ip: string, fn: string, max: number, minutes: number) =>
-    tx.query<{ ok: boolean }>("SELECT public.check_rate_limit($1, $2, $3, $4) AS ok", [ip, fn, max, minutes]).then((r) => r.rows[0].ok);
-  const plant = (tx: { query: PGlite["query"] }, ip: string, fn: string, minutesAgo: number, count: number) =>
-    tx.query("INSERT INTO public.rate_limits (ip_address, function_name, window_start, request_count) VALUES ($1, $2, now() - make_interval(mins => $3), $4)", [ip, fn, minutesAgo, count]);
-  const exists = (tx: { query: PGlite["query"] }, ip: string, fn: string) =>
-    tx.query("SELECT 1 FROM public.rate_limits WHERE ip_address = $1 AND function_name = $2", [ip, fn]).then((r) => r.rows.length === 1);
-  /** One call from an ordinary 60-minute caller -- track-ab-event's visitor tier, keyed on a visitor id the client picks. */
-  const anyHourlyCaller = (tx: { query: PGlite["query"] }, visitor: string) => check(tx, visitor, "track-ab-event-visitor", 50, 60);
-
-  it("TEETH: a 1,440-minute row with its day spent is deleted by one 60-minute caller's sweep, and the day is full again", async () => {
+  it("TEETH: swept a 1,440-minute row with its day spent on one 60-minute caller's call, and the day was full again", async () => {
     await db.transaction(async (tx) => {
       await plant(tx, "198.51.100.1", "job-board-verify", 61, 400);
       expect(await check(tx, "198.51.100.1", "job-board-verify", 400, 1440), "spent: the old daily cap refuses").toBe(false);
       await anyHourlyCaller(tx, "visitor-a");
       expect(await exists(tx, "198.51.100.1", "job-board-verify"), "the day row was swept an hour in").toBe(false);
       expect(await check(tx, "198.51.100.1", "job-board-verify", 400, 1440), "and the spent 'daily' allowance answers true").toBe(true);
+    });
+  });
+});
+
+describe("the live check_rate_limit, in a real Postgres, with the dice loaded", () => {
+  let db: PGlite;
+  beforeAll(async () => {
+    expect(LIVE, "no migration defines check_rate_limit").toBeDefined();
+    db = await bootWith(LIVE);
+  });
+
+  it("a purchase's day, spent and 61 minutes old, survives an hourly caller's sweep and keeps refusing", async () => {
+    await db.transaction(async (tx) => {
+      // purchaseSpendGate's bucket: 10 calls a day per purchase.
+      await plant(tx, "sess:0123456789abcdef0123456789abcdef", "generate-career-snapshot", 61, 10);
+      await anyHourlyCaller(tx, "visitor-b");
+      expect(await exists(tx, "sess:0123456789abcdef0123456789abcdef", "generate-career-snapshot")).toBe(true);
+      expect(await check(tx, "sess:0123456789abcdef0123456789abcdef", "generate-career-snapshot", 10, 1440)).toBe(false);
+      // and the free scan's 7 a day
+      await plant(tx, "198.51.100.9", "free-keyword-scan", 600, 7);
+      await anyHourlyCaller(tx, "visitor-c");
+      expect(await check(tx, "198.51.100.9", "free-keyword-scan", 7, 1440)).toBe(false);
+    });
+  });
+
+  it("a row older than a day is still swept", async () => {
+    await db.transaction(async (tx) => {
+      await plant(tx, "198.51.100.10", "free-keyword-scan", 1441, 7);
+      await anyHourlyCaller(tx, "visitor-d");
+      expect(await exists(tx, "198.51.100.10", "free-keyword-scan")).toBe(false);
     });
   });
 

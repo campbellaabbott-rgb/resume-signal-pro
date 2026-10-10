@@ -223,12 +223,14 @@ export function ResumeRecovery({ onResumeTextReady, disabled }: ResumeRecoveryPr
               </div>
               <p className="text-lg font-medium mb-1">{t("resumeRecovery.dropHere")}</p>
               <p className="text-sm text-muted-foreground mb-5">{t("resumeRecovery.supported")}</p>
-              <label>
+              <label className="inline-block rounded-md focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background">
+                {/* sr-only, not display:none: reachable by keyboard (sweep S8-116). */}
                 <input
                   type="file"
                   accept=".pdf,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   onChange={handleFileChange}
-                  className="hidden"
+                  className="sr-only"
+                  aria-label={t("resumeRecovery.dropHere")}
                 />
                 <Button variant="outline" size="lg" className="gap-2" asChild>
                   <span>

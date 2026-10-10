@@ -1,6 +1,8 @@
 import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
+import { PRODUCTS } from "@/config/products";
 
 interface ComparisonRow {
   feature: string;
@@ -13,12 +15,13 @@ export function ValueComparison() {
   const comparisons: ComparisonRow[] = [
     {
       feature: t('valueComparison.rows.timeToResults.feature'),
-      us: t('valueComparison.rows.timeToResults.us'),
+      us: t('valueComparison.rows.timeToResults.us', { seconds: SCAN_RESULTS_WITHIN_SECONDS }),
       them: t('valueComparison.rows.timeToResults.them'),
     },
     {
       feature: t('valueComparison.rows.cost.feature'),
-      us: t('valueComparison.rows.cost.us'),
+      // The Full Analysis price checkout charges; the old typed range matched no product.
+      us: t('valueComparison.rows.cost.us', { price: PRODUCTS.fullAnalysis.priceUsd }),
       them: t('valueComparison.rows.cost.them'),
     },
     {

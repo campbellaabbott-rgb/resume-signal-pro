@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp, ArrowDown } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -485,7 +486,11 @@ export function ResumeUploader({
     onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
   };
 
-  const canProceed = resumeMode === "upload" ? !!selectedFile : !!textInput.trim();
+  // A résumé the page restored (reload, the board's "Check my fit", Account's
+  // rescan link) is shown as loaded and is what the scan sends, so it counts
+  // as content even though no file was picked in this mount.
+  const restoredResume = !!hasContent && resumeText.trim().length >= 100;
+  const canProceed = resumeMode === "upload" ? (!!selectedFile || restoredResume) : !!textInput.trim();
   const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
   const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
@@ -617,12 +622,14 @@ export function ResumeUploader({
                     </div>
                   </div>
                 ) : (
-                  <label className="block cursor-pointer">
+                  <label className="block cursor-pointer rounded-2xl focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background">
+                    {/* sr-only, not display:none: keyboard and screen-reader users reach the chooser (sweep S8-116). */}
                     <input
                       type="file"
                       accept=".pdf,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={handleFileChange}
-                      className="hidden"
+                      className="sr-only"
+                      aria-label={t('uploader.tapToUpload')}
                     />
                     <div className="inline-flex items-center justify-center w-16 h-16 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
                       <Upload className="w-8 h-8 sm:w-7 sm:h-7 text-primary" />
@@ -903,7 +910,7 @@ export function ResumeUploader({
                       </div>
                     ) : parsedJobs.length === 0 && !jobDescriptionFile ? (
                       <label className={cn(
-                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all focus-within:ring-2 focus-within:ring-success",
                         isParsingJobDescription 
                           ? "border-success/50 bg-success/5" 
                           : "border-border/50 hover:border-success/40 hover:bg-success/5"
@@ -915,7 +922,8 @@ export function ResumeUploader({
                             const file = e.target.files?.[0];
                             if (file) handleJobDescriptionSpreadsheetUpload(file);
                           }}
-                          className="hidden"
+                          className="sr-only"
+                          aria-label={t('uploader.uploadSpreadsheet')}
                           disabled={isParsingJobDescription}
                         />
                         {isParsingJobDescription ? (
@@ -1152,7 +1160,7 @@ export function ResumeUploader({
                       </div>
                     ) : (
                       <label className={cn(
-                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all focus-within:ring-2 focus-within:ring-[#0A66C2]",
                         isParsingLinkedIn 
                           ? "border-[#0A66C2]/50 bg-[#0A66C2]/5" 
                           : "border-border/50 hover:border-[#0A66C2]/40 hover:bg-[#0A66C2]/5"
@@ -1164,7 +1172,8 @@ export function ResumeUploader({
                             const file = e.target.files?.[0];
                             if (file) handleLinkedInFileUpload(file);
                           }}
-                          className="hidden"
+                          className="sr-only"
+                          aria-label={t('uploader.linkedin.uploadPdf')}
                           disabled={isParsingLinkedIn}
                         />
                         {isParsingLinkedIn ? (
@@ -1255,7 +1264,7 @@ export function ResumeUploader({
                     </div>
 
                     <p className="text-xs text-muted-foreground/70">
-                      {t('uploader.scanFooter')}
+                      {t('uploader.scanFooter', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}
                     </p>
                   </div>
                 )}

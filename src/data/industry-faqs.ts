@@ -4,6 +4,8 @@
 // sentence is product truth. Pure module: imported by the React page AND the
 // build-time prerenderer so the visible content and JSON-LD never drift.
 
+import { SCAN_RESULTS_WITHIN_SECONDS } from "../config/scan-timing";
+
 export interface IndustryFaq {
   q: string;
   a: string;
@@ -42,7 +44,7 @@ export function buildIndustryFaqs(opts: {
 
   faqs.push({
     q: `How do I check my ${lower} resume against this data?`,
-    a: `Run the free scan — it checks your actual document against these exact keyword tables, plus parsing, structure, and red flags, and returns a full diagnostic report in about 20 seconds. No signup; your resume is deleted within 7 days.`,
+    a: `Run the free scan — it checks your actual document against these exact keyword tables, plus parsing, structure, and red flags, and returns a full diagnostic report within ${SCAN_RESULTS_WITHIN_SECONDS} seconds. No signup; your resume is deleted within 7 days.`,
   });
 
   return faqs;

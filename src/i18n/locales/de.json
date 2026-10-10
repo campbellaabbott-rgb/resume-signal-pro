@@ -38,11 +38,8 @@
     "freeScan": "Kostenloser Scan",
     "heading": "Schluss mit Raten.",
     "headingHighlight": "Mehr Vorstellungsgespräche.",
-    "subheading": "Gleiches Dokument, gleicher Score, jedes Mal — verglichen mit echten Scans Ihrer Branche, jedes Zitat gegen Ihren Lebenslauf verifiziert. Keine ChatGPT- oder Claude-Meinung.",
-    "price": "25 $",
     "oneTime": "einmalig",
     "nofees": "Einmalige Zahlung • Keine automatische Verlängerung • Sofortige Ergebnisse",
-    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert",
     "trusted": "Vertrauen von",
     "jobSeekers": "Bewerbern",
     "seeSample": "Beispielanalyse ansehen",
@@ -51,7 +48,6 @@
     "mainHeading": "Ist Ihr Lebenslauf",
     "mainHeadingHighlight": "für Recruiter unsichtbar?",
     "atsTooltip": "ATS (Bewerbermanagementsysteme) überführen Ihren Lebenslauf in eine Datenbank, die Recruiter durchsuchen. Sie lehnen selten automatisch ab — aber schlechtes Parsing oder fehlende Keywords bedeuten, dass Suchen Sie nie anzeigen. Über 98 % der Fortune-500-Unternehmen nutzen sie.",
-    "mainSubheading": "Finden Sie es in 30 Sekunden heraus. Erhalten Sie Ihren ATS-Score und sehen Sie genau, was Sie Vorstellungsgespräche kostet.",
     "ctaButton": "Lebenslauf kostenlos scannen",
     "freeBadge": "GRATIS",
     "noSignup": "Keine Anmeldung erforderlich",
@@ -111,12 +107,11 @@
     },
     "trust": {
       "secure": "Sicher & Privat",
-      "results": "Ergebnisse in 30 Sekunden",
       "approved": "Recruiter-geprüft"
     },
     "socialFirst": {
-      "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse in ca. 60 Sekunden",
-      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen reproduzierbaren Score — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
+      "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse innerhalb von {{seconds}} Sekunden",
+      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen überprüfbaren Score: Scannen Sie dieselbe Datei mit derselben Stellenanzeige innerhalb von {{days}} Tagen erneut, erhalten Sie denselben Bericht („Neu analysieren“ erstellt einen neuen) — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
       "recentActivityCount": "{{count}} Personen",
       "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
     },
@@ -127,7 +122,7 @@
       "painSubheading": "Bevor ein Mensch sie je sieht. Ist deiner einer davon?",
       "solutionLabel": "Die Lösung",
       "solutionHeadingHighlight": "sofortige ATS-sichere Korrekturen",
-      "solutionHeadingSuffix": "in 60 Sekunden",
+      "solutionHeadingSuffix": "innerhalb von {{seconds}} Sekunden",
       "solutionSubheading": "Unser KI-Scanner findet genau, was deinen Lebenslauf blockiert, und zeigt dir, wie du es behebst."
     },
     "ultraCompactDescription": "ATS-optimierte Umformulierungen • Warnsignal-Hinweise • Schlüsselwort-Verbesserungen",
@@ -183,7 +178,7 @@
       },
       "analysis": {
         "title": "2. KI-Analyse",
-        "description": "Unsere KI führt 24 verschiedene Prüfungen in ~10 Sekunden durch."
+        "description": "Unsere KI führt {{checks}} verschiedene Prüfungen innerhalb von {{seconds}} Sekunden durch."
       },
       "results": {
         "title": "3. Ergebnisse erhalten",
@@ -218,7 +213,7 @@
     },
     "footer": {
       "realAi": "Echte KI-Analyse",
-      "results": "Ergebnisse in ~10 Sek.",
+      "results": "Ergebnisse innerhalb von {{seconds}} Sekunden",
       "private": "100% privat"
     }
   },
@@ -375,7 +370,7 @@
       "redFlags": "Warnsignale",
       "plusMore": "+12 weitere"
     },
-    "scanFooter": "Ergebnisse in ~90 Sekunden • 7 kostenlose Scans pro Tag",
+    "scanFooter": "Ergebnisse innerhalb von {{seconds}} Sekunden • 7 kostenlose Scans pro Tag",
     "getFreeAnalysis": "Kostenlose Lebenslaufanalyse erhalten",
     "orGetCompleteAnalysis": "Oder erhalte die vollständige Analyse für",
     "securePaymentStripe": "Sichere Zahlung über Stripe",
@@ -412,7 +407,7 @@
       },
       "dataStorage": {
         "question": "Speichern Sie meine Lebenslaufdaten?",
-        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit dieselbe Datei denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder den Lebenslauf, den Sie dem Bewerbungsagenten geben – er sendet ihn an die Arbeitgeber, bei denen er sich für Sie bewirbt. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
+        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit ein erneuter Scan derselben Datei mit derselben Stellenanzeige denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder den Lebenslauf, den Sie dem Bewerbungsagenten geben – er sendet ihn an die Arbeitgeber, bei denen er sich für Sie bewirbt. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
       },
       "vsChatGPT": {
         "question": "Warum ist das besser als ChatGPT?",
@@ -431,7 +426,6 @@
     "feature": "Funktion",
     "templates": "Vorlagen",
     "free": "Kostenlos",
-    "cta": "Jetzt testen — 25 $",
     "ctaText": "Jetzt testen",
     "features": {
       "atsScoring": "5-Kategorien ATS-Scoring",
@@ -494,7 +488,7 @@
       },
       "instant": {
         "label": "Sofortlieferung",
-        "description": "Ergebnisse in 30 Sekunden"
+        "description": "Ergebnisse innerhalb von {{seconds}} Sekunden"
       }
     },
     "methodology": {
@@ -574,7 +568,6 @@
       "title": "Vollständige Analyse freischalten",
       "description": "Erhalten Sie umfassendes Feedback mit detaillierten Stichpunkt-Rewrites, ATS-Optimierung und priorisiertem Aktionsplan.",
       "button": "Vollanalyse erhalten",
-      "price": "25 $",
       "processing": "Wird verarbeitet..."
     }
   },
@@ -703,14 +696,11 @@
   },
   "stickyCta": {
     "title": "Bereit für mehr Vorstellungsgespräche?",
-    "subtitle": "Recruiter-Feedback in 30 Sekunden",
     "mobileTitle": "Lebenslauf analysieren →",
     "button": "Lebenslauf analysieren",
     "ctaButton": "Alle Pakete ansehen",
-    "premiumFrom": "Premium-Pakete ab",
-    "from": "Ab",
-    "features": "Komplette Umschreibungen + LinkedIn-Optimierung + Job-spezifisches Tailoring",
-    "featuresMobile": "Umschreibungen + LinkedIn-Optimierung"
+    "features": "Wendet die Korrekturen aus Ihrem kostenlosen Scan auf Ihren eigenen Lebenslauf an. Einmalige Zahlung, kein Abo.",
+    "featuresMobile": "Die Korrekturen Ihres Scans, angewendet. Einmalige Zahlung."
   },
   "finalCta": {
     "urgency": "Ihr Lebenslauf könnte Sie gerade Vorstellungsgespräche kosten",
@@ -740,7 +730,7 @@
     "oneTime": "einmalig",
     "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
+    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert"
   },
   "scanProgress": {
     "title": "KI-Analyse läuft",
@@ -1073,6 +1063,15 @@
       "tooManyAttemptsDescription": "Bitte warte ein paar Minuten, bevor du es erneut versuchst.",
       "serviceTemporarilyUnavailable": "Dienst vorübergehend nicht verfügbar",
       "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut."
+    },
+    "reportCrash": {
+      "title": "Beim Anzeigen Ihres Berichts ist ein Fehler aufgetreten",
+      "body": "Ihr Scan ist fertig, aber der Bericht konnte nicht angezeigt werden. Analysieren Sie neu, um erneut zu scannen und einen frischen Bericht zu erstellen."
+    },
+    "partialResults": {
+      "title": "Teilergebnisse:",
+      "ruleBased": "Unsere KI-Prüfung war kurz nicht erreichbar, daher beruht dieser Bericht nur auf automatischer Analyse. Scannen Sie in ein paar Minuten erneut für die vollständige, KI-personalisierte Version.",
+      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue."
     }
   },
   "miniPricingCards": {
@@ -1409,7 +1408,6 @@
     "getJobSpecificAnalysis": "Jobspezifische Analyse erhalten",
     "personalizedInsightsForRole": "Erhalte personalisierte Einblicke für deine Zielrolle",
     "oneTimePaymentInstantAccess": "Einmalzahlung • Sofortiger Zugriff",
-    "oneInterviewPaidForItself": "Ein Vorstellungsgespräch = {{price}} hat sich gelohnt",
     "unlockWithFullAnalysis": "Mit Vollanalyse freischalten",
     "premiumFeatures": {
       "completeAtsAnalysis": "Vollständige ATS-Analyse",
@@ -1553,8 +1551,7 @@
       "badge": "Kostenlose Vorschau",
       "before": "❌ VORHER (aus deinem Lebenslauf)",
       "after": "✅ NACHHER (optimiert)",
-      "whyBetter": "Warum es besser ist:",
-      "cta": "Alle deine Stichpunkte in der vollständigen {{price}}-Analyse neu geschrieben bekommen"
+      "whyBetter": "Warum es besser ist:"
     },
     "lockedInsights": {
       "bulletLine1": "• Ersetze 'Verantwortlich für das Management eines Teams von 5' → 'Führte funktionsübergreifendes Team von 5, steigerte Effizienz um 32%'",
@@ -1616,8 +1613,7 @@
     "cta": {
       "fixIssues": "Sehen, was Bewerbungen kostet — {{price}}",
       "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
-      "socialProof": "{{count}} Lebensläufe heute geprüft",
-      "resultsExpiry": "Ihre Ergebnisse werden noch {{hours}} Stunden gespeichert"
+      "socialProof": "{{count}} Lebensläufe heute geprüft"
     },
     "enterprise": {
       "verdictLabel": "Das Urteil",
@@ -1671,6 +1667,16 @@
       "loading": "Live-Stellen werden gegen Ihren Lebenslauf gerankt…",
       "apply": "Bewerben",
       "seeAll": "Alle Treffer auf der Jobbörse ansehen — Suchen speichern, Bewerbungen verfolgen"
+    },
+    "nextSteps": {
+      "eyebrow": "Nächste Schritte",
+      "title": "Wenn Sie Hilfe bei den obigen Korrekturen möchten",
+      "body": "Die Diagnose oben ist vollständig und kostenlos. Diese zwei kostenpflichtigen Optionen erledigen die Arbeit für Sie.",
+      "fullAnalysisName": "Vollständige Analyse",
+      "fullAnalysisDesc": "Wendet die Korrekturen aus diesem Bericht auf die Inhalte Ihres eigenen Lebenslaufs an. Einmalige Zahlung, kein Abo.",
+      "proName": "Pro",
+      "proDesc": "Monatsplan: unbegrenzte Scans und jedes kostenpflichtige Tool, die vollständige Analyse inklusive. Jederzeit in Ihrem Konto kündbar.",
+      "proPrice": "{{price}} $/Monat"
     }
   },
   "analysisPreviewSample": {
@@ -1732,12 +1738,12 @@
     "rows": {
       "timeToResults": {
         "feature": "Zeit bis zum Ergebnis",
-        "us": "Unter 60 Sekunden",
+        "us": "Innerhalb von {{seconds}} Sekunden",
         "them": "3-7 Werktage"
       },
       "cost": {
         "feature": "Kosten",
-        "us": "5 € – 25 € einmalig",
+        "us": "Kostenloser Scan · Vollständige Analyse {{price}} $ einmalig",
         "them": "150 € – 500 €+"
       },
       "atsOptimization": {
@@ -3378,32 +3384,6 @@
     "plusMore": "+{{count}} weitere",
     "standOut": "Von anderen Kandidaten abheben",
     "foundCount": "{{count}} rollenspezifische Schlüsselwörter gefunden"
-  },
-  "scorePackage": {
-    "autoRejected": "⚠️ Dein Lebenslauf wird automatisch abgelehnt",
-    "filtered": "ATS-Systeme filtern dich heraus, bevor Recruiter deine Bewerbung sehen",
-    "critical": "Kritisch",
-    "stat75": "Lebensläufe mit niedrigem Score werden weit häufiger in Recruiter-Suchen übersehen, bevor ein Mensch sie liest",
-    "rewriteDesc": "Komplette Umschreibung + ATS-Optimierung + Anschreiben",
-    "rewriteGain": "30-40 Punkte",
-    "quickFix": "Schnelle ATS-Schlüsselwortoptimierung",
-    "roomForImprovement": "Dein Lebenslauf hat Verbesserungspotenzial",
-    "targetedFix": "Eine gezielte Korrektur könnte deinen Score deutlich steigern",
-    "addKeywords": "Fehlende Schlüsselwörter hinzufügen + Bullet-Points verbessern",
-    "midGain": "15-25 Punkte",
-    "completeOverhaul": "Für eine vollständige professionelle Überarbeitung",
-    "alreadyStrong": "Dein Lebenslauf ist bereits stark!",
-    "fineTune": "Feinabstimmung für spezifische Stellenbewerbungen",
-    "detailedRewrites": "Detaillierte Umschreibungen + stellenspezifische Anpassung",
-    "fineTuneGain": "5-15 Punkte",
-    "completePackage": "Vervollständige dein Bewerbungspaket",
-    "stronglyRecommended": "Dringend empfohlen",
-    "recommended": "Empfohlen",
-    "estimatedGain": "Geschätzter Gewinn: {{gain}}",
-    "fixNow": "Jetzt beheben",
-    "viewDetails": "Details anzeigen",
-    "compareAll": "Alle Pakete vergleichen",
-    "fixBefore": "Vor deiner nächsten Bewerbung beheben"
   },
   "shareableCard": {
     "excellent": "Hervorragend",
@@ -5292,5 +5272,36 @@
       "requestedTitle": "Auszahlung angefragt",
       "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Stark",
+    "mixed": "Gemischt",
+    "risky": "Riskant",
+    "weak": "Schwach",
+    "growth": "Wachstum",
+    "stable": "Stabil",
+    "stagnant": "Stagnierend",
+    "unclear": "Unklar",
+    "high": "Hoch",
+    "medium": "Mittel",
+    "low": "Niedrig",
+    "entry": "Einstieg",
+    "mid": "Mittlere Ebene",
+    "senior": "Senior",
+    "executive": "Führungsebene",
+    "aligned": "Passend",
+    "stretch": "Ambitioniert",
+    "mismatch": "Unpassend",
+    "readyToApply": "Bereit zur Bewerbung",
+    "fixTheseFirst": "Zuerst beheben",
+    "easy": "Leicht",
+    "hard": "Schwer",
+    "lead": "Lead",
+    "director": "Direktor",
+    "vp": "VP",
+    "behavioral": "Verhalten",
+    "technical": "Fachlich",
+    "situational": "Situativ",
+    "cultureFit": "Kulturelle Passung"
   }
 }

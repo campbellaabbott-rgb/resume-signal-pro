@@ -141,7 +141,7 @@ beforeAll(async () => {
 beforeEach(() => {
   db = new FakeDb({ used_stripe_sessions: ["session_id"] });
   db.rows("used_stripe_sessions").push({ session_id: PAID, product_type: null });
-  db.rows("shortlist_roles").push({ id: "role-1", jd_version: 1 });
+  db.rows("shortlist_roles").push({ id: "role-1", jd_version: 1, jd_text: POSTING });
   rateCalls = [];
   aiBodies = [];
   rate = () => ({ data: true, error: null });

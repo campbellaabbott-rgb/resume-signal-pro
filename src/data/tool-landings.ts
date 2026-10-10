@@ -2,7 +2,13 @@
 // Each renders the REAL scanner (Index with a landing config) — not a doorway
 // page: the tool the query asks for is live above the fold. Copy and FAQs are
 // unique per query intent; claims follow the site-wide rule of being
-// verifiable in one free scan.
+// verifiable in one free scan. Times and windows are the code's own numbers.
+
+import { SCAN_RESULTS_WITHIN_SECONDS } from "../config/scan-timing";
+import { REPORT_CACHE_DAYS } from "../lib/resume-retention";
+
+const S = SCAN_RESULTS_WITHIN_SECONDS;
+const D = REPORT_CACHE_DAYS;
 
 export interface ToolLanding {
   slug: string;
@@ -27,7 +33,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     alternates: { en: "/resume-checker", es: "/es/revisar-curriculum" },
     title: "Revisar Currículum Gratis — Análisis ATS Completo en Español",
     description:
-      "Revisa tu currículum gratis en unos 20 segundos: puntaje ATS con auditoría detallada, palabras clave faltantes, viñetas débiles reescritas. Detección nativa en español. Sin registro; tu currículum se borra en un máximo de 7 días.",
+      `Revisa tu currículum gratis en un máximo de ${S} segundos: puntaje ATS con auditoría detallada, palabras clave faltantes, viñetas débiles reescritas. Detección nativa en español. Sin registro; tu currículum se borra en un máximo de 7 días.`,
     heading: "Un revisor de currículum que muestra su trabajo — también en español",
     intro:
       "Sube o pega tu currículum arriba y recibe el diagnóstico completo, no un adelanto. Nuestro motor detecta currículums en español de forma nativa — términos, títulos profesionales y certificaciones en tu idioma — algo que casi ningún otro escáner ATS ofrece.",
@@ -49,7 +55,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "¿Guardan mi currículum?",
-        a: "Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda 7 días para que un nuevo escaneo del mismo archivo dé el mismo informe; después ambos se borran automáticamente. El informe lleva un identificador reproducible para que compruebes esa coherencia tú mismo.",
+        a: `Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda ${D} días para que un nuevo escaneo del mismo archivo con la misma oferta dé el mismo informe; después ambos se borran automáticamente. Durante esos ${D} días, ese nuevo escaneo lleva el mismo identificador de informe, para que compruebes esa coherencia tú mismo.`,
       },
       {
         q: "¿Cómo se calcula el puntaje?",
@@ -63,10 +69,10 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     alternates: { en: "/resume-checker", es: "/es/revisar-curriculum" },
     title: "Free Resume Checker — No Sign-Up, Full Report",
     description:
-      "Check your resume free in about 20 seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up; your resume is deleted within 7 days.",
+      `Check your resume free within ${S} seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up; your resume is deleted within 7 days.`,
     heading: "A resume checker that shows its work",
     intro:
-      "Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and the report carries a reproducible ID.",
+      `Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and a rescan of the same file against the same posting within ${D} days returns the same report and ID.`,
     bullets: [
       "No sign-up and no email required for the full report",
       "Your resume is deleted within 7 days and never sold",
@@ -81,7 +87,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "Do you store my resume?",
-        a: "Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for 7 days so a rescan of the same file returns the same report; both are then deleted automatically. The report carries a reproducible ID so you can verify that consistency yourself.",
+        a: `Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for ${D} days so a rescan of the same file against the same posting returns the same report; both are then deleted automatically. Within those ${D} days such a rescan carries the same report ID, so you can verify that consistency yourself.`,
       },
       {
         q: "How is the score calculated?",
@@ -133,7 +139,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     path: "/resume-score",
     title: "Resume Score — Free Score With a Full Audit Trail",
     description:
-      "Get your resume score free in about 20 seconds — shown with its modeling band and a point-by-point audit trail, benchmarked against real scans. No sign-up; your resume is deleted within 7 days.",
+      `Get your resume score free within ${S} seconds — shown with its modeling band and a point-by-point audit trail, benchmarked against real scans. No sign-up; your resume is deleted within 7 days.`,
     heading: "A resume score you can actually interrogate",
     intro:
       "Most tools hand you a single number and no way to check it. The scan above shows your score with its modeling band, a findings index explaining every deduction, and where you sit against other resumes scanned here.",
@@ -141,7 +147,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       "Score with a modeling band — honest about its own precision",
       "Point-by-point audit trail: every deduction tied to a quoted finding",
       "Benchmarked against real scans in your industry where we have enough data",
-      "Reproducible report ID — rescan the same file, verify consistency",
+      `The same report ID on a rescan of the same file and posting within ${D} days — verify consistency`,
       "Free, no sign-up, resume deleted within 7 days",
     ],
     faqs: [

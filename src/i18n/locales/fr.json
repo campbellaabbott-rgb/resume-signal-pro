@@ -38,11 +38,8 @@
     "freeScan": "Scan gratuit",
     "heading": "Arrêtez de deviner.",
     "headingHighlight": "Décrochez des entretiens.",
-    "subheading": "Même document, même score, à chaque fois — comparé à de vrais scans de votre secteur, chaque citation vérifiée contre votre CV. Pas l'avis de ChatGPT ou de Claude.",
-    "price": "25 $",
     "oneTime": "paiement unique",
     "nofees": "Paiement unique • Sans renouvellement automatique • Résultats instantanés",
-    "roi": "Un entretien = 25 $ rentabilisés",
     "trusted": "Fait confiance par",
     "jobSeekers": "chercheurs d'emploi",
     "seeSample": "Voir un exemple d'analyse",
@@ -51,7 +48,6 @@
     "mainHeading": "Votre CV est-il",
     "mainHeadingHighlight": "invisible pour les recruteurs ?",
     "atsTooltip": "Les ATS (systèmes de suivi des candidatures) transforment votre CV en base de données que les recruteurs interrogent. Ils rejettent rarement automatiquement — mais un mauvais parsing ou des mots-clés manquants font que les recherches ne vous affichent jamais. Plus de 98 % des entreprises du Fortune 500 les utilisent.",
-    "mainSubheading": "Découvrez-le en 30 secondes. Obtenez votre score ATS et voyez exactement ce qui vous coûte des entretiens.",
     "ctaButton": "Scanner mon CV gratuitement",
     "freeBadge": "GRATUIT",
     "noSignup": "Sans inscription",
@@ -111,12 +107,11 @@
     },
     "trust": {
       "secure": "Sécurisé et privé",
-      "results": "Résultats en 30 secondes",
       "approved": "Approuvé par les recruteurs"
     },
     "socialFirst": {
-      "joinThousands": "Analyse gratuite · Sans inscription · Résultats en 60 secondes environ",
-      "subheading": "Téléversez votre CV et obtenez un score reproductible — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
+      "joinThousands": "Analyse gratuite · Sans inscription · Résultats en {{seconds}} secondes maximum",
+      "subheading": "Téléversez votre CV et obtenez un score vérifiable : rescannez le même fichier avec la même offre sous {{days}} jours et vous obtenez le même rapport (« Réanalyser » en crée un nouveau) — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
       "recentActivityCount": "{{count}} personnes",
       "recentActivityText": "ont scanné leur CV dans la dernière heure"
     },
@@ -127,7 +122,7 @@
       "painSubheading": "Avant même qu'un humain ne les voie. Le vôtre en fait-il partie ?",
       "solutionLabel": "La solution",
       "solutionHeadingHighlight": "des corrections instantanées à l'épreuve des ATS",
-      "solutionHeadingSuffix": "en 60 secondes",
+      "solutionHeadingSuffix": "en {{seconds}} secondes maximum",
       "solutionSubheading": "Notre scanner IA trouve exactement ce qui bloque votre CV et vous montre comment le corriger."
     },
     "ultraCompactDescription": "Réécritures optimisées ATS • Alertes de signaux d'alarme • Améliorations de mots-clés",
@@ -183,7 +178,7 @@
       },
       "analysis": {
         "title": "2. Analyse IA",
-        "description": "Notre IA effectue 24 vérifications distinctes en ~10 secondes."
+        "description": "Notre IA effectue {{checks}} vérifications distinctes en {{seconds}} secondes maximum."
       },
       "results": {
         "title": "3. Obtenez les Résultats",
@@ -218,7 +213,7 @@
     },
     "footer": {
       "realAi": "Vraie analyse IA",
-      "results": "Résultats en ~10 sec",
+      "results": "Résultats en {{seconds}} secondes maximum",
       "private": "100% privé"
     }
   },
@@ -375,7 +370,7 @@
       "redFlags": "Signaux d'alarme",
       "plusMore": "+12 autres"
     },
-    "scanFooter": "Résultats en ~90 secondes • 7 scans gratuits par jour",
+    "scanFooter": "Résultats en {{seconds}} secondes maximum • 7 scans gratuits par jour",
     "getFreeAnalysis": "Obtenir une analyse de CV gratuite",
     "orGetCompleteAnalysis": "Ou obtenez l'analyse complète pour",
     "securePaymentStripe": "Paiement sécurisé via Stripe",
@@ -412,7 +407,7 @@
       },
       "dataStorage": {
         "question": "Stockez-vous mes données de CV ?",
-        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour que le même fichier obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature, qui l'envoie aux employeurs auxquels il postule pour vous. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
+        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour qu'une nouvelle analyse du même fichier avec la même offre obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature, qui l'envoie aux employeurs auxquels il postule pour vous. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
       },
       "vsChatGPT": {
         "question": "Pourquoi est-ce mieux que ChatGPT ?",
@@ -431,7 +426,6 @@
     "feature": "Fonctionnalité",
     "templates": "Modèles",
     "free": "Gratuit",
-    "cta": "Essayer — 25 $",
     "ctaText": "Essayer",
     "features": {
       "atsScoring": "Scoring ATS en 5 catégories",
@@ -494,7 +488,7 @@
       },
       "instant": {
         "label": "Livraison Instantanée",
-        "description": "Résultats en 30 secondes"
+        "description": "Résultats en {{seconds}} secondes maximum"
       }
     },
     "methodology": {
@@ -574,7 +568,6 @@
       "title": "Débloquez votre analyse complète",
       "description": "Obtenez un feedback complet avec réécriture des puces, stratégies ATS et plan d'action prioritaire.",
       "button": "Obtenir l'analyse complète",
-      "price": "25 $",
       "processing": "Traitement..."
     }
   },
@@ -703,14 +696,11 @@
   },
   "stickyCta": {
     "title": "Prêt à décrocher plus d'entretiens ?",
-    "subtitle": "Feedback recruteur en 30 secondes",
     "mobileTitle": "Analysez votre CV →",
     "button": "Analyser mon CV",
     "ctaButton": "Voir Tous les Forfaits",
-    "premiumFrom": "Forfaits premium à partir de",
-    "from": "À partir de",
-    "features": "Réécritures complètes + optimisation LinkedIn + personnalisation par poste",
-    "featuresMobile": "Réécritures + optimisation LinkedIn"
+    "features": "Applique les corrections de votre analyse gratuite à votre propre CV. Un seul paiement, sans abonnement.",
+    "featuresMobile": "Les corrections de votre analyse, appliquées. Un seul paiement."
   },
   "finalCta": {
     "urgency": "Votre CV vous fait peut-être perdre des entretiens en ce moment",
@@ -740,7 +730,7 @@
     "oneTime": "paiement unique",
     "guarantee": "Résultats instantanés • Paiement unique",
     "button": "Obtenir mon analyse",
-    "roi": "Un entretien = 25 $ rentabilisés"
+    "roi": "Un entretien = {{price}} rentabilisés"
   },
   "scanProgress": {
     "title": "Analyse IA en cours",
@@ -1073,6 +1063,15 @@
       "tooManyAttemptsDescription": "Veuillez attendre quelques minutes avant de réessayer.",
       "serviceTemporarilyUnavailable": "Service temporairement indisponible",
       "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes."
+    },
+    "reportCrash": {
+      "title": "Un problème est survenu lors de l'affichage de votre rapport",
+      "body": "Votre analyse est terminée, mais le rapport n'a pas pu s'afficher. Réanalysez pour relancer l'analyse et obtenir un nouveau rapport."
+    },
+    "partialResults": {
+      "title": "Résultats partiels :",
+      "ruleBased": "notre relecteur IA a été brièvement indisponible, ce rapport repose donc uniquement sur l'analyse automatique. Relancez l'analyse dans quelques minutes pour la version complète personnalisée par l'IA.",
+      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle."
     }
   },
   "miniPricingCards": {
@@ -1409,7 +1408,6 @@
     "getJobSpecificAnalysis": "Obtenir une analyse spécifique au poste",
     "personalizedInsightsForRole": "Obtenez des analyses personnalisées pour le poste visé",
     "oneTimePaymentInstantAccess": "Paiement unique • Accès instantané",
-    "oneInterviewPaidForItself": "Un entretien = {{price}} amorti",
     "unlockWithFullAnalysis": "Débloquer avec l'analyse complète",
     "premiumFeatures": {
       "completeAtsAnalysis": "Analyse ATS complète",
@@ -1553,8 +1551,7 @@
       "badge": "Aperçu gratuit",
       "before": "❌ AVANT (de votre CV)",
       "after": "✅ APRÈS (optimisé)",
-      "whyBetter": "Pourquoi c'est mieux :",
-      "cta": "Faites réécrire tous vos points dans l'analyse complète à {{price}}"
+      "whyBetter": "Pourquoi c'est mieux :"
     },
     "lockedInsights": {
       "bulletLine1": "• Remplacez 'Responsable de la gestion d'une équipe de 5' → 'Dirigé une équipe interfonctionnelle de 5, générant un gain d'efficacité de 32%'",
@@ -1616,8 +1613,7 @@
     "cta": {
       "fixIssues": "Voir ce qui vous coûte des entretiens — {{price}}",
       "getFullAnalysis": "Obtenir mon CV prêt pour les recruteurs — {{price}}",
-      "socialProof": "{{count}} CV analysés aujourd'hui",
-      "resultsExpiry": "Vos résultats sont sauvegardés encore {{hours}} heures"
+      "socialProof": "{{count}} CV analysés aujourd'hui"
     },
     "enterprise": {
       "verdictLabel": "Le Verdict",
@@ -1671,6 +1667,16 @@
       "loading": "Classement des offres en direct contre votre CV…",
       "apply": "Candidater",
       "seeAll": "Voir toutes les correspondances sur le job board — recherches enregistrées, suivi des candidatures"
+    },
+    "nextSteps": {
+      "eyebrow": "Prochaines étapes",
+      "title": "Si vous voulez de l'aide pour les corrections ci-dessus",
+      "body": "Le diagnostic ci-dessus est complet et gratuit. Voici les deux options payantes qui font le travail pour vous.",
+      "fullAnalysisName": "Analyse complète",
+      "fullAnalysisDesc": "Applique les corrections de ce rapport au contenu de votre propre CV. Un seul paiement, sans abonnement.",
+      "proName": "Pro",
+      "proDesc": "Formule mensuelle : scans illimités et tous les outils payants, Analyse complète comprise. Résiliable à tout moment depuis votre compte.",
+      "proPrice": "{{price}} $/mois"
     }
   },
   "analysisPreviewSample": {
@@ -1732,12 +1738,12 @@
     "rows": {
       "timeToResults": {
         "feature": "Délai d'obtention des résultats",
-        "us": "Moins de 60 secondes",
+        "us": "{{seconds}} secondes maximum",
         "them": "3 à 7 jours ouvrables"
       },
       "cost": {
         "feature": "Coût",
-        "us": "5 à 25 $ paiement unique",
+        "us": "Analyse gratuite · Analyse complète {{price}} $ paiement unique",
         "them": "150 à 500 $+"
       },
       "atsOptimization": {
@@ -3378,32 +3384,6 @@
     "plusMore": "+{{count}} autres",
     "standOut": "Démarquez-vous des autres candidats",
     "foundCount": "{{count}} mots-clés spécifiques au rôle trouvés"
-  },
-  "scorePackage": {
-    "autoRejected": "⚠️ Votre CV est automatiquement rejeté",
-    "filtered": "Les systèmes ATS vous filtrent avant que les recruteurs voient votre candidature",
-    "critical": "Critique",
-    "stat75": "Les CV mal notés ont bien plus de chances de passer inaperçus dans les recherches avant toute lecture humaine",
-    "rewriteDesc": "Réécriture complète + optimisation ATS + lettre de motivation",
-    "rewriteGain": "30-40 points",
-    "quickFix": "Optimisation rapide des mots-clés ATS",
-    "roomForImprovement": "Votre CV a une marge d'amélioration",
-    "targetedFix": "Une correction ciblée pourrait considérablement augmenter votre score",
-    "addKeywords": "Ajouter des mots-clés manquants + améliorer les points",
-    "midGain": "15-25 points",
-    "completeOverhaul": "Pour une refonte professionnelle complète",
-    "alreadyStrong": "Votre CV est déjà solide !",
-    "fineTune": "Peaufinez-le pour des candidatures spécifiques",
-    "detailedRewrites": "Obtenez des réécritures détaillées + adaptation spécifique au poste",
-    "fineTuneGain": "5-15 points",
-    "completePackage": "Complétez votre dossier de candidature",
-    "stronglyRecommended": "Fortement recommandé",
-    "recommended": "Recommandé",
-    "estimatedGain": "Gain estimé : {{gain}}",
-    "fixNow": "Corriger maintenant",
-    "viewDetails": "Voir les détails",
-    "compareAll": "Comparer tous les forfaits",
-    "fixBefore": "À corriger avant votre prochaine candidature"
   },
   "shareableCard": {
     "excellent": "Excellent",
@@ -5292,5 +5272,36 @@
       "requestedTitle": "Paiement demandé",
       "requestedBody": "Nous vous écrirons pour organiser le paiement."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Fort",
+    "mixed": "Mitigé",
+    "risky": "Risqué",
+    "weak": "Faible",
+    "growth": "Croissance",
+    "stable": "Stable",
+    "stagnant": "Stagnant",
+    "unclear": "Pas clair",
+    "high": "Élevée",
+    "medium": "Moyenne",
+    "low": "Faible",
+    "entry": "Débutant",
+    "mid": "Intermédiaire",
+    "senior": "Senior",
+    "executive": "Dirigeant",
+    "aligned": "Aligné",
+    "stretch": "Ambitieux",
+    "mismatch": "Décalage",
+    "readyToApply": "Prêt à postuler",
+    "fixTheseFirst": "À corriger d'abord",
+    "easy": "Facile",
+    "hard": "Difficile",
+    "lead": "Lead",
+    "director": "Directeur",
+    "vp": "VP",
+    "behavioral": "Comportementale",
+    "technical": "Technique",
+    "situational": "Situationnelle",
+    "cultureFit": "Adéquation culturelle"
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { SEO } from "@/components/seo/SEO";
@@ -34,6 +34,8 @@ const TailoredResumeModal = lazy(() =>
 );
 import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
+import { PartialResultsNotice } from "@/components/PartialResultsNotice";
+import { ReportBoundary } from "@/components/ReportBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const ProductSelectionModal = lazy(() =>
@@ -55,9 +57,6 @@ import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
 import { WhyNotChatGPT } from "@/components/WhyNotChatGPT";
 
-const ScoreBasedPackageRecommendation = lazy(() =>
-  import("@/components/ScoreBasedPackageRecommendation").then((m) => ({ default: m.ScoreBasedPackageRecommendation }))
-);
 import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +66,7 @@ import { rememberPreStoredResume, forgetPreStoredResume } from "@/hooks/use-prod
 import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
+import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
   cleanupExpiredResumeData, 
@@ -341,6 +341,7 @@ interface FreeKeywordResult {
   premiumTeaser?: { rewritePreview: string; totalRewritesAvailable: number } | null;
   reportCompleteness?: number;
   partialResults?: boolean;
+  partialReason?: string;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] };
   // Emitted by the scan backend but previously never declared here NOR mapped
   // below, so the cards that read them stayed permanently dark (caught only
@@ -548,6 +549,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload / paste-ready
   const [floatingScanTrigger, setFloatingScanTrigger] = useState(0);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
+  // A fresh crash boundary for every new result object, so a report that
+  // crashed does not keep a later scan's report behind the notice (S8-117).
+  const reportSeq = useRef(0);
+  const reportBoundaryKey = useMemo(() => ++reportSeq.current, [freeKeywordResult]);
   const [isCachedResult, setIsCachedResult] = useState(false);
 
   // Tell the hero's live scan counter a scan just finished so it refetches
@@ -1331,6 +1336,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           premiumTeaser: (result as any).premiumTeaser,
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
+          partialReason: (result as any).partialReason,
           parseQuality: (result as any).parseQuality,
           // Country standards + platform-profile detection — emitted by both scan
           // paths; must be mapped here or their cards never render.
@@ -1423,12 +1429,18 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const targetJob = uploadedJobs.find(j => j.title === jobTitle && j.company === jobCompany);
     const jobDesc = targetJob?.description || `${jobTitle} at ${jobCompany}`;
 
+    // The job becomes the scan's job description everywhere a purchase reads
+    // it, before the scan, with the market and context the primary sends.
+    const jobScan = prepareJobAnalysisScan(
+      { resumeText: contentToAnalyze, linkedInText, jobDescription: jobDesc, targetCountry, userContext: scanContext },
+      { setJobDescriptionText, persistScanInputs },
+    );
+
     setIsFreeScanLoading(true);
 
     try {
       const scanResult = await resilientCallers.freeKeywordScan({
-        resumeText: contentToAnalyze,
-        jobDescriptionText: jobDesc,
+        ...jobScan,
         honeypot,
         creditSessions: creditSessions(),
       });
@@ -2185,12 +2197,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 </div>
               )}
               {freeKeywordResult.partialResults && (
-                <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 flex items-start gap-2">
-                  <span className="text-warning text-sm shrink-0">⚠️</span>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Partial results:</span> our AI reviewer was briefly unavailable, so this report uses automated analysis only. Rescan in a few minutes for the full AI-personalized version.
-                  </p>
-                </div>
+                <PartialResultsNotice reason={freeKeywordResult.partialReason} />
               )}
               {/* THE 60-SECOND PAYOFF. The scan just proved the machine read
                   this CV; this panel is the agent acting on that read — live
@@ -2204,14 +2211,13 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                   keywords={(freeKeywordResult.keywords ?? []).map((k) => k.keyword)}
                 />
               </CardErrorBoundary>
-              <CardErrorBoundary
-                section="free-keyword-results"
-                fallback={
-                  <div className="rounded-2xl border border-warning/30 bg-warning/5 p-6 text-center">
-                    <p className="text-sm font-semibold text-foreground mb-1">Something went wrong displaying your report</p>
-                    <p className="text-xs text-muted-foreground">Your scan completed — try refreshing the page to see the results.</p>
-                  </div>
-                }
+              <ReportBoundary
+                resultKey={reportBoundaryKey}
+                onReanalyze={() => {
+                  clearBackgroundScanCache();
+                  setIsCachedResult(false);
+                  handleFreeScan(true);
+                }}
               >
               <FreeKeywordResults
                 candidateName={freeKeywordResult.candidateName}
@@ -2340,10 +2346,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />
-              </CardErrorBoundary>
-              
-              {/* Score-based package recommendation */}
-              <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />
+              </ReportBoundary>
+              {/* The report's own Next steps section is the only offer here:
+                  the Full Analysis and Pro (owner decision 1, 2026-10-08). */}
 
               {/* LinkedIn insights — shown when user provided their LinkedIn profile */}
               {linkedInText && (
@@ -2432,14 +2437,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       </main>
       
       {/* StickyBottomCTA only shown before results — once results are visible the
-          inline ScoreBasedPackageRecommendation is the primary CTA */}
+          report's Next steps section is the primary CTA */}
       {!freeKeywordResult && (
-        <StickyBottomCTA
-          onGetStarted={() => {
-            document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
-          }}
-          isLoading={isLoading}
-        />
+        <StickyBottomCTA isLoading={isLoading} />
       )}
 
       <FloatingUploadButton

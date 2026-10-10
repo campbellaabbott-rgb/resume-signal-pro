@@ -6,6 +6,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 
 interface ScanStage {
   id: string;
@@ -74,7 +75,7 @@ export function ScanProgressStages({ streamingProgress }: ScanProgressStagesProp
     return () => clearInterval(interval);
   }, []);
 
-  const remainingSeconds = Math.max(0, 90 - elapsedSeconds);
+  const remainingSeconds = Math.max(0, SCAN_RESULTS_WITHIN_SECONDS - elapsedSeconds);
   const remainingMinutes = Math.floor(remainingSeconds / 60);
   const remainingSecondsDisplay = remainingSeconds % 60;
 

@@ -12,10 +12,11 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
+import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-apply-package.2026-10-08.2";
+const FN_BUILD = "generate-apply-package.2026-10-09.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,8 +24,34 @@ const corsHeaders = {
   'x-fn-build': FN_BUILD,
 };
 
-const RATE_LIMIT = 40; // per IP per day — raised from 15 so the account batch-prep co-pilot has real room (entitlement-gated, so only paying users reach this counter)
+// Per address per day, for purchase and unentitled callers. A Pro account
+// is never counted here: its plan is unlimited kits, and with the day now
+// lasting a day (20261009110000) this bucket capped Pro at 40.
+const RATE_LIMIT = 40;
 const RATE_WINDOW_MINUTES = 1440;
+// Unlimited kits a day is not unlimited gemini-2.5-pro calls an hour: every
+// signed-in account has its own hourly bucket, counted before its plan is
+// read, and Pro accounts together share one hourly ceiling.
+const KITS_PER_ACCOUNT_HOUR = 60;
+const PRO_KITS_PER_HOUR = 600;
+const HOUR_WINDOW_MINUTES = 60;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A signed-in session's token, by its unverified claims: the publishable key is a JWT whose role is anon, and is never looked up. */
+function signedInToken(authHeader: string): string | null {
+  const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const parts = jwt.length <= 4096 ? jwt.split(".") : [];
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)));
+    return claims?.role === "authenticated" && claims?.is_anonymous !== true ? jwt : null;
+  } catch {
+    return null;
+  }
+}
+/** Kits one purchase (a checkout session or a Pro grant) may generate in a day. A Pro account's own plan is unlimited and not counted here. */
+const KITS_PER_PURCHASE_DAY = 10;
 
 // The platform's word for the caller's address, never the first forwarded
 // hop, which a caller writes itself.
@@ -76,16 +103,64 @@ serve(async (req) => {
 
   try {
     const supabase = getServiceClient();
-    if (supabase) {
-      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-        p_ip: clientIp,
-        p_function: 'generate-apply-package',
-        p_max_requests: RATE_LIMIT,
-        p_window_minutes: RATE_WINDOW_MINUTES
-      });
-
-      if (rlError) {
-        console.error("[GENERATE-APPLY-PACKAGE] Rate limit check error:", rlError);
+    // A limiter that cannot answer is not a pass (sweep S8-063).
+    if (!supabase) {
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // check_rate_limit's answer, or null for anything that is not one (a limiter that fails open is off).
+    const counted = async (args: Record<string, string | number>): Promise<boolean | null> => {
+      try {
+        const { data, error } = await supabase.rpc('check_rate_limit', { ...args, p_function: 'generate-apply-package' });
+        if (error) console.error("[GENERATE-APPLY-PACKAGE] Rate limit check error:", error);
+        return error || typeof data !== "boolean" ? null : data;
+      } catch (e) {
+        console.error("[GENERATE-APPLY-PACKAGE] Rate limit check threw:", String(e).slice(0, 120));
+        return null;
+      }
+    };
+    // THE ONE RULE (L6-08, L6-29): the verified account's plan, both caches,
+    // by its user id -- never its address. Batch prep is an ongoing feature
+    // of the plan, so a trial unlocks it. Decided first, so a Pro account's
+    // kits are never counted in the address's day; the account's own hour
+    // is counted before the plan is read (review of S8-063).
+    let proAccount = false;
+    const token = signedInToken(req.headers.get("Authorization") ?? "");
+    if (token) {
+      let userId: string | null = null;
+      try {
+        const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: { user } } = await authed.auth.getUser();
+        if (typeof user?.id === "string" && UUID_RE.test(user.id)) userId = user.id.toLowerCase();
+      } catch (e) {
+        console.warn("[GENERATE-APPLY-PACKAGE] account check failed:", String(e).slice(0, 120));
+      }
+      if (userId) {
+        const mine = await counted({ p_ip: `user:${userId}`, p_max_requests: KITS_PER_ACCOUNT_HOUR, p_window_minutes: HOUR_WINDOW_MINUTES });
+        if (mine === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
+        if (!mine) return spendRefusal("rate_limited_function", KITS_PER_ACCOUNT_HOUR, corsHeaders);
+        try {
+          proAccount = (await accountProStanding(supabase, userId)).pro;
+        } catch (e) {
+          console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
+        }
+      }
+    }
+    if (proAccount) {
+      const all = await counted({ p_ip: "pro", p_max_requests: PRO_KITS_PER_HOUR, p_window_minutes: HOUR_WINDOW_MINUTES });
+      if (all === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
+      if (!all) return spendRefusal("rate_limited_global", PRO_KITS_PER_HOUR, corsHeaders);
+    } else {
+      const allowed = await counted({ p_ip: clientIp, p_max_requests: RATE_LIMIT, p_window_minutes: RATE_WINDOW_MINUTES });
+      if (allowed === null) {
+        return new Response(
+          JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       } else if (!allowed) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
@@ -137,9 +212,13 @@ serve(async (req) => {
     // alike (the three server callers also sent no session at all). The list
     // now lives in _shared/apply-kit.ts, in the spelling Stripe carries, and a
     // guard checks it against what every checkout mints.
-    let entitled = false;
+    let entitled = proAccount;
     let refunded = false;
-    if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
+    // Which credential opened the tool: a purchase is counted per day below.
+    let entitledByPurchase = false;
+    if (entitled) {
+      // A Pro account: its plan opens the tool, whatever session it names.
+    } else if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
       try {
         const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
         if (stripeKey) {
@@ -148,13 +227,15 @@ serve(async (req) => {
           const productType = String(session.metadata?.product_type ?? "");
           // 'paid', or a $0 session a 100%-off code completed (L6-10).
           entitled = checkoutSessionSettled(session) && APPLY_KIT_PRODUCT_TYPES.includes(productType);
+          entitledByPurchase = entitled;
           if (!entitled) {
             console.warn(`[GENERATE-APPLY-PACKAGE] session ${sessionId} does not include the kit: ${session.payment_status} / ${productType || "no product"}`);
           }
           // Stripe still answers 'paid' for a refunded or disputed session
-          // (L6-18); a plan on the account may still open the tool below.
+          // (L6-18); a plan on the account was read above.
           if (entitled && supabase && await sessionWasRefunded(supabase, sessionId)) {
             entitled = false;
+            entitledByPurchase = false;
             refunded = true;
           }
         }
@@ -168,30 +249,8 @@ serve(async (req) => {
       // that includes the kit.
       const refusal = await assertPaidSession(supabase, sessionId, APPLY_KIT_PRODUCT_TYPES);
       entitled = refusal === null;
+      entitledByPurchase = entitled;
       if (!entitled) console.warn(`[GENERATE-APPLY-PACKAGE] grant ${sessionId} refused: ${refusal}`);
-    }
-    if (!entitled) {
-      const authHeader = req.headers.get("Authorization") ?? "";
-      if (authHeader.startsWith("Bearer ")) {
-        try {
-          const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-            global: { headers: { Authorization: authHeader } },
-          });
-          const { data: { user } } = await authed.auth.getUser();
-          const admin = user?.id ? getServiceClient() : null;
-          if (user?.id && admin) {
-            // THE ONE RULE (L6-08, L6-29): the verified account's plan, both
-            // caches, by its user id -- never its address. Batch prep is an
-            // ongoing feature of the plan, not a minted consumable, so a
-            // trial unlocks it: this path counted `active` only, and every
-            // trialing Agent subscriber the Account page called a Pro member
-            // got 402 here.
-            entitled = (await accountProStanding(admin, user.id)).pro;
-          }
-        } catch (e) {
-          console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
-        }
-      }
     }
     if (!entitled && refunded) {
       return new Response(
@@ -204,6 +263,13 @@ serve(async (req) => {
         JSON.stringify({ error: "This is a paid tool. Unlock the Apply Assistant from the pricing page, or go Pro for unlimited application kits.", requiresPurchase: true }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    // One purchase buys a day of kits, not unlimited gemini-2.5-pro runs from
+    // a pool of addresses (sweep S8-063). A Pro account keeps its unlimited
+    // day; its hour was counted above.
+    if (entitledByPurchase) {
+      const purchaseRefused = await purchaseSpendGate(supabase, 'generate-apply-package', sessionId, KITS_PER_PURCHASE_DAY, corsHeaders);
+      if (purchaseRefused) return purchaseRefused;
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

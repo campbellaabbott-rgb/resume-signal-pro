@@ -159,6 +159,11 @@ const USERS: Record<string, { id: string; email: string }> = {
   "jwt-squatter": { id: SQUATTER, email: "subscriber@example.com" },
   "jwt-comped": { id: COMPED, email: "comped@example.com" },
 };
+// A real access token is a JWT whose role is authenticated; generate-apply-package
+// reads that claim before it looks an account up (the publishable key never is).
+const accessToken = (sub: string) => `h.${Buffer.from(JSON.stringify({ role: "authenticated", sub })).toString("base64url")}.s`;
+USERS[accessToken(TRIALIST)] = USERS["jwt-trialist"];
+USERS[accessToken(SQUATTER)] = USERS["jwt-squatter"];
 /** What pro_entitlement_rows answers per account. */
 const PLANS: Record<string, Array<Record<string, unknown>>> = {
   [OWNER]: [{ tier: "pro", status: "active", current_period_end: soon(), bound: true }],
@@ -323,14 +328,14 @@ describe("generate-apply-package opens batch prep to every live plan, trial incl
   const kit = { resumeText: "Jane Doe. Senior engineer. ".repeat(10), jobPostingText: "We are hiring a senior engineer to build things. ".repeat(3) };
 
   it("a trialing Agent subscriber reaches the generator instead of a 402", async () => {
-    const res = await post("generate-apply-package", kit, "jwt-trialist");
+    const res = await post("generate-apply-package", kit, accessToken(TRIALIST));
     expect(res.status).not.toBe(402);
     expect((globalThis as Record<string, unknown>).__proAiCalls).toBeGreaterThan(0);
   });
 
   it("a password sign-up as a subscriber's address is still a 402", async () => {
     db.rows("pro_subscribers").push({ email: "subscriber@example.com", status: "active", current_period_end: soon() });
-    const res = await post("generate-apply-package", kit, "jwt-squatter");
+    const res = await post("generate-apply-package", kit, accessToken(SQUATTER));
     expect(res.status).toBe(402);
   });
 });

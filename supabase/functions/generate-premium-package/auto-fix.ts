@@ -43,20 +43,10 @@ export const autoFixContent = (content: string, originalResume: string): { fixed
   // candidate never made), and "closely linked to" became "closely LinkedIn
   // to". A fix that cannot tell a typo from a word is not a fix.
 
-  // Fix truncated CI/CD
-  if (/\/CD\b/i.test(fixed) && !/CI\/CD/i.test(fixed)) {
-    fixed = fixed.replace(/\b\/CD\b/gi, 'CI/CD');
-    corrections.push('Fixed truncated CI/CD');
-  }
-
-  // Fix "including/CD" → "including CI/CD"
-  fixed = fixed.replace(/including\s*\/CD/gi, 'including CI/CD');
-
-  // Fix Fortune without 500
-  if (originalResume.includes('Fortune 500') && /Fortune\b(?!\s*\d)/.test(fixed)) {
-    fixed = fixed.replace(/Fortune\b(?!\s*\d)/gi, 'Fortune 500');
-    corrections.push('Added missing Fortune 500');
-  }
+  // Only the exact truncation artefact "including/CD". A general "/CD" or
+  // "Fortune" rule rewrote words: "DVD/CD" became "DVDCI/CD" and "good
+  // fortune" became "good Fortune 500" (sweep S8-066).
+  fixed = fixed.replace(/including\s*\/CD\b/g, 'including CI/CD');
 
   // Fix broken percentage %+
   if (/%\+/.test(fixed)) {
