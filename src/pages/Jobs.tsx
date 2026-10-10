@@ -66,6 +66,7 @@ import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerL
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
 import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
+import { employerGroupKey } from "@/lib/employer-group";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -3181,7 +3182,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     for (const id of compareIds) {
       const j = jobs.find((x) => x.id === id);
       if (!j?.token) continue;
-      const slug = j.token.split("~")[0];
+      const slug = employerGroupKey(j.token);
       if (compareCtx[slug]) continue;
       void getEmployerCtx(j.token).then((c) => setCompareCtx((prev) => ({ ...prev, [slug]: c })));
     }
@@ -13378,7 +13379,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         <li className="text-success">✓ {t("jobsPage.appliedBadge", "Applied")}</li>
                       )}
                       {(() => {
-                        const ctx = j.token ? compareCtx[j.token.split("~")[0]] : undefined;
+                        const ctx = j.token ? compareCtx[employerGroupKey(j.token)] : undefined;
                         if (!ctx) return null;
                         return (
                           <>
