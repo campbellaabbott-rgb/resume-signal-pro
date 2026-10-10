@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Maghintay ng ilang minuto bago subukan ulit.",
       "serviceTemporarilyUnavailable": "Pansamantalang hindi available ang serbisyo",
       "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto."
+    },
+    "reportCrash": {
+      "title": "May nagkamali sa pagpapakita ng iyong ulat",
+      "body": "Tapos na ang iyong scan, pero hindi maipakita ang ulat. Mag-scan muli para makita ito; ang muling pag-scan ng parehong file ay kinukuha mula sa naka-save na ulat."
     }
   },
   "miniPricingCards": {

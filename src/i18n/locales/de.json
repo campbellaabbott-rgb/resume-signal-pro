@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Bitte warte ein paar Minuten, bevor du es erneut versuchst.",
       "serviceTemporarilyUnavailable": "Dienst vorübergehend nicht verfügbar",
       "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut."
+    },
+    "reportCrash": {
+      "title": "Beim Anzeigen Ihres Berichts ist ein Fehler aufgetreten",
+      "body": "Ihr Scan ist fertig, aber der Bericht konnte nicht angezeigt werden. Scannen Sie erneut, um ihn zu sehen; ein erneuter Scan derselben Datei kommt aus dem gespeicherten Bericht."
     }
   },
   "miniPricingCards": {

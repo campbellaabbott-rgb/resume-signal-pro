@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { SEO } from "@/components/seo/SEO";
@@ -33,6 +33,7 @@ const TailoredResumeModal = lazy(() =>
 );
 import { ResumeLanguageSuggestion } from "@/components/ResumeLanguageSuggestion";
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
+import { ReportBoundary } from "@/components/ReportBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase as supabaseClient } from "@/integrations/supabase/client";
 const ProductSelectionModal = lazy(() =>
@@ -547,6 +548,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload / paste-ready
   const [floatingScanTrigger, setFloatingScanTrigger] = useState(0);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
+  // A fresh crash boundary for every new result object, so a report that
+  // crashed does not keep a later scan's report behind the notice (S8-117).
+  const reportSeq = useRef(0);
+  const reportBoundaryKey = useMemo(() => ++reportSeq.current, [freeKeywordResult]);
   const [isCachedResult, setIsCachedResult] = useState(false);
 
   // Tell the hero's live scan counter a scan just finished so it refetches
@@ -2206,15 +2211,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                   keywords={(freeKeywordResult.keywords ?? []).map((k) => k.keyword)}
                 />
               </CardErrorBoundary>
-              <CardErrorBoundary
-                section="free-keyword-results"
-                fallback={
-                  <div className="rounded-2xl border border-warning/30 bg-warning/5 p-6 text-center">
-                    <p className="text-sm font-semibold text-foreground mb-1">Something went wrong displaying your report</p>
-                    <p className="text-xs text-muted-foreground">Your scan completed — try refreshing the page to see the results.</p>
-                  </div>
-                }
-              >
+              <ReportBoundary resultKey={reportBoundaryKey}>
               <FreeKeywordResults
                 candidateName={freeKeywordResult.candidateName}
                 currentRole={freeKeywordResult.currentRole}
@@ -2342,7 +2339,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 scanSituation={scanContext.situation ?? undefined}
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />
-              </CardErrorBoundary>
+              </ReportBoundary>
               
               {/* Score-based package recommendation */}
               <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />
@@ -2436,12 +2433,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       {/* StickyBottomCTA only shown before results — once results are visible the
           inline ScoreBasedPackageRecommendation is the primary CTA */}
       {!freeKeywordResult && (
-        <StickyBottomCTA
-          onGetStarted={() => {
-            document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
-          }}
-          isLoading={isLoading}
-        />
+        <StickyBottomCTA isLoading={isLoading} />
       )}
 
       <FloatingUploadButton

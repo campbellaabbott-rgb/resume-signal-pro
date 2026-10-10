@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Espera unos minutos antes de volver a intentarlo.",
       "serviceTemporarilyUnavailable": "Servicio temporalmente no disponible",
       "serviceTemporarilyUnavailableDescription": "Nuestro servicio de pago está temporalmente caído. Por favor, inténtalo de nuevo en unos minutos."
+    },
+    "reportCrash": {
+      "title": "Algo salió mal al mostrar tu informe",
+      "body": "Tu escaneo terminó, pero el informe no se pudo mostrar. Escanea de nuevo para verlo; un nuevo escaneo del mismo archivo se sirve desde el informe guardado."
     }
   },
   "miniPricingCards": {

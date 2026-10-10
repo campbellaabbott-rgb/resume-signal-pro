@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Wacht een paar minuten voordat je het opnieuw probeert.",
       "serviceTemporarilyUnavailable": "Service tijdelijk niet beschikbaar",
       "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw."
+    },
+    "reportCrash": {
+      "title": "Er ging iets mis bij het tonen van je rapport",
+      "body": "Je scan is klaar, maar het rapport kon niet worden getoond. Scan opnieuw om het te zien; een nieuwe scan van hetzelfde bestand komt uit het opgeslagen rapport."
     }
   },
   "miniPricingCards": {

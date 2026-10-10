@@ -2,13 +2,17 @@ import { useState } from "react";
 import { HelpCircle, Mail, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
+import { useStickyBarVisible } from "@/lib/sticky-bar";
+import { cn } from "@/lib/utils";
 
 export function FloatingHelpButton() {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  // Above the homepage's sticky bar while it shows, so its dismiss button is reachable.
+  const barVisible = useStickyBarVisible();
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div className={cn("fixed right-6 z-50 flex flex-col items-end gap-3 transition-[bottom]", barVisible ? "bottom-28" : "bottom-6")}>
       {isOpen && (
         <div className="bg-card border border-border rounded-lg shadow-lg p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center justify-between gap-4 mb-2">

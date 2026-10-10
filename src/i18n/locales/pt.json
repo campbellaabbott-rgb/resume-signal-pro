@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Aguarde alguns minutos antes de tentar novamente.",
       "serviceTemporarilyUnavailable": "Serviço temporariamente indisponível",
       "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos."
+    },
+    "reportCrash": {
+      "title": "Algo deu errado ao exibir seu relatório",
+      "body": "Sua análise terminou, mas o relatório não pôde ser exibido. Analise de novo para vê-lo; uma nova análise do mesmo arquivo vem do relatório salvo."
     }
   },
   "miniPricingCards": {

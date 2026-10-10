@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Veuillez attendre quelques minutes avant de réessayer.",
       "serviceTemporarilyUnavailable": "Service temporairement indisponible",
       "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes."
+    },
+    "reportCrash": {
+      "title": "Un problème est survenu lors de l'affichage de votre rapport",
+      "body": "Votre analyse est terminée, mais le rapport n'a pas pu s'afficher. Relancez l'analyse pour le voir ; une nouvelle analyse du même fichier est servie depuis le rapport enregistré."
     }
   },
   "miniPricingCards": {

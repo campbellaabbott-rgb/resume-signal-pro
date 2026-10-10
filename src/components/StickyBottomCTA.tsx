@@ -4,13 +4,13 @@ import { ArrowRight, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
+import { setStickyBarVisible } from "@/lib/sticky-bar";
 
 interface StickyBottomCTAProps {
-  onGetStarted: () => void;
   isLoading?: boolean;
 }
 
-export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProps) {
+export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const { t } = useTranslation();
@@ -35,6 +35,12 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isDismissed]);
+
+  // The help button lifts above the bar while it shows (src/lib/sticky-bar.ts).
+  useEffect(() => {
+    setStickyBarVisible(isVisible);
+    return () => setStickyBarVisible(false);
+  }, [isVisible]);
 
   if (!isVisible) return null;
 
@@ -79,7 +85,7 @@ export function StickyBottomCTA({ onGetStarted, isLoading }: StickyBottomCTAProp
               </button>
               
               <button
-                onClick={() => setIsDismissed(true)}
+                onClick={() => { setIsDismissed(true); setIsVisible(false); }}
                 className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
                 aria-label={t('common.dismiss')}
               >

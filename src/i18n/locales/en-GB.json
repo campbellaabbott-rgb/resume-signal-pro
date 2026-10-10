@@ -1060,6 +1060,10 @@
       "tooManyAttemptsDescription": "Please wait a few minutes before trying again.",
       "serviceTemporarilyUnavailable": "Service temporarily unavailable",
       "serviceTemporarilyUnavailableDescription": "Our payment service is temporarily down. Please try again in a few minutes."
+    },
+    "reportCrash": {
+      "title": "Something went wrong displaying your report",
+      "body": "Your scan finished, but the report could not be shown. Scan again to see it; a rescan of the same file is served from the saved report."
     }
   },
   "miniPricingCards": {
