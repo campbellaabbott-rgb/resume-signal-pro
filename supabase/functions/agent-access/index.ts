@@ -54,7 +54,7 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // (agent_subscription_rows) — a live Stripe plan on the caller's address that
 // is not bound to the account and not on a proven mailbox answers inactive,
 // and says so (subscriptionUnbound).
-const FN_BUILD = "agent-access.2026-10-05.2";
+const FN_BUILD = "agent-access.2026-10-10.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

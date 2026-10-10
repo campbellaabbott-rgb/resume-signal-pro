@@ -1,0 +1,40 @@
+{
+  "supabaseUrl": "https://bwhdazbotpblihdxcmho.supabase.co",
+  "drizzleBaseline": "20260923000000",
+  "neverApply": [
+    "20260928003117"
+  ],
+  "appliedOutsideDrizzle": [],
+  "holdUntilVerified": [
+    {
+      "stamp": "20261008125000",
+      "until": "wave 2 step 1 verified: job-board .91, send-search-digest, industry-corrections-digest serving and /email/unsubscribe live"
+    },
+    {
+      "stamp": "20261008128000",
+      "until": "wave 2 step 1 verified: check-error-spikes serving"
+    }
+  ],
+  "reservations": {
+    "wave2": {
+      "migrations": "20261008*",
+      "jobBoard": "2026-09-09.91",
+      "fnBuildDate": "2026-10-08"
+    },
+    "wave3": {
+      "migrations": "20261009*",
+      "jobBoard": "2026-09-09.92",
+      "fnBuildDate": "2026-10-09"
+    },
+    "connect-apply": {
+      "migrations": "20261011*",
+      "jobBoard": "2026-09-09.93",
+      "fnBuildDate": "2026-10-11"
+    },
+    "next": {
+      "migrations": "20261012* and later, one day per workstream",
+      "jobBoard": "2026-09-09.94+"
+    }
+  },
+  "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub)."
+}
