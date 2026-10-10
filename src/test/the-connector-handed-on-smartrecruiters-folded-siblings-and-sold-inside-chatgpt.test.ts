@@ -126,3 +126,18 @@ describe("inside ChatGPT nothing sends the reader to buy", () => {
     expect(byAgent.raw).not.toMatch(/agents\/pass/);
   });
 });
+
+describe("the guide an agent reads first names what the connector withholds", () => {
+  it("resources/read of the guide names SmartRecruiters and the federal feed", async () => {
+    const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "resources/read", params: { uri: "resumebooster://guide" } }),
+    }));
+    const body = await res.json() as { result?: { contents?: Array<{ text?: string }> } };
+    const text = body.result?.contents?.[0]?.text ?? "";
+    expect(text.length).toBeGreaterThan(500);
+    expect(text).toMatch(/SmartRecruiters/);
+    expect(text).toMatch(/federal/);
+  });
+});

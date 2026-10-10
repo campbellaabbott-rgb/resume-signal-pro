@@ -220,6 +220,15 @@ export const MCP_SERVER_ADDRESS_NOTE = "This address is on Supabase, the company
 export const MCP_ADDRESS_GLOSS =
   `${MCP_ANON_CAPS.perAddressPerDay} free calls a day per network address — an office or a home connection counts as one address. From ChatGPT each person has their own ${MCP_ANON_CAPS.perAddressPerDay}; from Claude, whose servers carry every user, calls come first from a pool of ${MCP_ANON_CAPS.hostPoolPerDay} a day that all Claude users share, then from the address's own ${MCP_ANON_CAPS.perAddressPerDay}.`;
 
+/**
+ * The hiring systems the connector and /v1 do not hand on: NO_REDISTRIBUTION_SOURCES
+ * in agent-mcp and public-api (owner decision 4, 2026-10-08), mirrored and pinned by
+ * src/test/the-connector-page-never-said-which-systems-it-withholds.test.tsx.
+ */
+export const MCP_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
+export const MCP_WITHHELD_NOTE =
+  "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, whose terms forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
+
 /** The three things that need an account, said under every host's steps. */
 export const MCP_NEEDS_ACCOUNT_LINE =
   "The three things that need your account (a key or a sign-in): opening a posting in full through get_job (fetch works without), checking that a shortlist is still open, and applying.";

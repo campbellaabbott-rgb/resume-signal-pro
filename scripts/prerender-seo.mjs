@@ -188,7 +188,7 @@ export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
 export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
-export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
+export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
@@ -2368,6 +2368,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
             <li><code>POST /v1/fit</code> (paid) — a résumé in, the board's best matches out, scored with matched and missing terms; stores nothing.</li>
           </ul>
+          <p>${esc(D.MCP_WITHHELD_NOTE)}</p>
           <p>Pointing an AI agent at this data instead of writing code? The same free keys work on the <a href="/agents">MCP server</a>, which serves the same board to Claude Code, Cursor and any MCP client that can send a header.</p>
           <h2>Access beyond the free tier</h2>
           <p>Free for journalists with attribution, at cost for academic and nonprofit research, and custom-priced for commercial feeds — volume, history and bulk export. Every request gets a human reply.</p>
@@ -2658,6 +2659,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">The server address</h2>
             ${mcpUrl ? `<p class="text-sm mb-2"><code>${h(mcpUrl)}</code></p>` : ""}
             <p class="text-sm text-muted-foreground">${h(D.MCP_SERVER_ADDRESS_NOTE)} Streamable HTTP transport, stateless, POST only. Tool discovery (initialize, tools/list) works with no key, so an agent can see what is here before anyone mints anything. ${unkeyedNames} answer with no key at all — ${unkeyedCaps}, each answer saying how many are left. Every other tool call needs a credential — the key as <code>Authorization: Bearer rb_live_…</code>, or the sign-in a chat host performs for you while the server's sign-in service is on; the live page's Test the server button prints today's state, and the initialize result carries it under <code>_meta["${h(D.MCP_SIGN_IN_META_KEY)}"].state</code>.</p>
+            <p class="text-sm text-muted-foreground mt-2">${h(D.MCP_WITHHELD_NOTE)}</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
             <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>

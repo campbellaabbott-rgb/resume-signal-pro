@@ -1926,6 +1926,7 @@ function guideText(): string {
     ``,
     `- \`countUnavailable\` means the board refuses to guess a total; \`ignoredFilters\` names any filter it could not apply — the results answer a wider question than was asked.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
+    `- ${NO_REDISTRIBUTION_REASON}`,
     `- \`agentReady\` is true when \`${tool("request_application")}\` can submit to that hiring system; every application passes the same gates as the signed-in flow, and answers are never invented.`,
     ``,
     `## The ledger`,
