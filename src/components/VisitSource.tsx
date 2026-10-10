@@ -18,7 +18,10 @@ import { initFunnelTracking } from "@/hooks/use-funnel-tracking";
  */
 export function VisitSource(): null {
   useEffect(() => {
-    initFunnelTracking();
+    // Mounted above every route, so a throw here (storage blocked in a private
+    // window: initFunnelTracking reads sessionStorage unguarded) would take
+    // the whole app down with it. Recording a visit is never worth that.
+    try { initFunnelTracking(); } catch { /* storage blocked: record nothing */ }
   }, []);
   return null;
 }

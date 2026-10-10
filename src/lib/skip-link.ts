@@ -31,3 +31,39 @@ export function honourPendingSkipLink(hash: string, doc: Document = document): b
   el.focus();
   return doc.activeElement === el;
 }
+
+/**
+ * WHERE THE SKIP LINK LANDS ON A PAGE WITHOUT #main-content (S8-095).
+ *
+ * Only four page components (Index, Jobs, Explore, GhostJobIndex) render the
+ * id; /pricing, /auth, /account and some thirty-five others render a bare
+ * <main> or none, so on them the first focusable control on the page moved
+ * neither focus nor scroll. Rather than an id typed into forty files, the
+ * press is caught once: the page's own #main-content when it has one (the
+ * browser's fragment jump, untouched), else its first <main>, else its first
+ * <h1>, made focusable for the press.
+ */
+export function skipLinkTarget(doc: Document = document): HTMLElement | null {
+  return (doc.getElementById("main-content")
+    ?? doc.querySelector("#root main")
+    ?? doc.querySelector("main")
+    ?? doc.querySelector("#root h1")
+    ?? doc.querySelector("h1")) as HTMLElement | null;
+}
+
+/** Catch a press on the skip link wherever the page has no #main-content.
+ *  Returns the uninstaller. */
+export function installSkipLinkFallback(doc: Document = document): () => void {
+  const onClick = (e: MouseEvent) => {
+    const a = (e.target as Element | null)?.closest?.('a[href="#main-content"]');
+    if (!a || doc.getElementById("main-content")) return;
+    const el = skipLinkTarget(doc);
+    if (!el) return;
+    e.preventDefault();
+    if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
+    el.focus();
+    el.scrollIntoView?.({ block: "start" });
+  };
+  doc.addEventListener("click", onClick);
+  return () => doc.removeEventListener("click", onClick);
+}
