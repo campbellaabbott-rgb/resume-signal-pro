@@ -54,7 +54,7 @@ import {
 
 // .1 mirror; .1 of this date carries the certified H-1B wage cells, the action that loads them, the
 // measured coverage span they are labelled by, and the staged swap that replaces a period whole.
-export const BUILD_VERSION = "2026-10-09.1";
+export const BUILD_VERSION = "2026-10-09.2";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

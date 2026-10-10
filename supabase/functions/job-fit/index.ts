@@ -32,7 +32,7 @@ import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts
 import { stamped } from "../_shared/fn-build.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
-const FN_BUILD = "job-fit.2026-10-09.1";
+const FN_BUILD = "job-fit.2026-10-09.2";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.

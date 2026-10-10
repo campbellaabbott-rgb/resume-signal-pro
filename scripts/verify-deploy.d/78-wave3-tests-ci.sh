@@ -2,8 +2,11 @@
 #
 # == wave 3, tests-ci (docs/wave3/tests-ci.md) ==
 # THE CLAIMS:
-#   - seven functions that named no build now answer <fn>.2026-10-09.1 or later
-#     on the preflight (S8-124); layoff-filings' BUILD_VERSION moved with it;
+#   - seven functions that named no build now answer this branch's build or
+#     later on the preflight (S8-124); layoff-filings' BUILD_VERSION moved with
+#     it. job-fit, application-fit and layoff-filings are judged from .2: .1
+#     is the build wave3/job-board and wave3/board-data-ingest put on other
+#     code, so a live .1 says nothing about this branch;
 #   - the board's outside alarm (board-health.yml) parses, runs on its
 #     schedule, and reads two fields the board publishes (L12-01);
 #   - CI on main runs every check whatever an earlier one said, runs the Deno
@@ -17,11 +20,12 @@
 # design: they judge what main has run since the change.
 echo "== 78. wave 3 tests-ci: stamps, the outside alarm, CI on main =="
 
-for FN in application-fit create-test-coupon generate-cohort-report job-fit scrape-linkedin warm-up layoff-filings; do
+for P78 in application-fit:2 create-test-coupon:1 generate-cohort-report:1 job-fit:2 scrape-linkedin:1 warm-up:1 layoff-filings:2; do
+  FN=${P78%%:*}; N78=${P78#*:}
   V78=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-  if [ -z "$V78" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not deployed since it was stamped; want $FN.2026-10-09.1 or later)"
-  elif build_ge "$FN" "$V78" 2026-10-09 1; then echo "PASS  $FN preflight x-fn-build = $V78 ($FN.2026-10-09.1 or later)"
-  else echo "FAIL  $FN preflight x-fn-build = $V78 (want $FN.2026-10-09.1 or later)"; fi
+  if [ -z "$V78" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not deployed since it was stamped; want $FN.2026-10-09.$N78 or later)"
+  elif build_ge "$FN" "$V78" 2026-10-09 "$N78"; then echo "PASS  $FN preflight x-fn-build = $V78 ($FN.2026-10-09.$N78 or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $V78 (want $FN.2026-10-09.$N78 or later)"; fi
 done
 
 # The alarm's two inputs, read the way board-health.yml reads them: a numeric

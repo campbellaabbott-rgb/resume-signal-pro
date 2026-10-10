@@ -60,6 +60,8 @@ interface Fx {
   /** Files under the private /tmp, by name. */
   files?: Record<string, string>;
   env?: Record<string, string>;
+  /** Extra executables on PATH ahead of the real ones (a fake gh), by name. */
+  bin?: Record<string, string>;
 }
 
 const dirs: string[] = [];
@@ -98,6 +100,7 @@ function run(body: string, fx: Fx = {}, cwd = ROOT): { lines: string[]; calls: s
   mkdirSync(join(dir, "bin"));
   writeFileSync(join(dir, "bin", "curl"), FAKE_CURL);
   chmodSync(join(dir, "bin", "curl"), 0o755);
+  for (const [n, src] of Object.entries(fx.bin ?? {})) { writeFileSync(join(dir, "bin", n), src); chmodSync(join(dir, "bin", n), 0o755); }
   writeFileSync(join(dir, "stub.cjs"), STUB);
   writeFileSync(join(dir, "nofetch.cjs"), 'globalThis.fetch = async () => { throw new Error("no network in this test"); };\n');
   writeFileSync(join(dir, "fx.json"), JSON.stringify(fx));
@@ -463,5 +466,44 @@ describe("section 90 does not pass a light re-read that never happened (S8-127)"
     const { lines } = run(S90, { J: [{ match: '"status"', body: st({ enrolled: 3, reread: 3, ok: 3, deferred: 0 }) }], env: { VD_B: "http://127.0.0.1:9" } });
     expect(has(lines, "PASS", /lightReread\.ok = reread \(3 of 3\): every light re-read landed/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /lightReread\.deferred = 0/), show(lines)).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * A BUILD STRING ANOTHER BRANCH ALREADY SHIPPED PASSES FOR CODE THAT IS NOT
+ * DEPLOYED. wave3/job-board stamped job-fit and application-fit
+ * `<fn>.2026-10-09.1` over its own changes, and wave3/board-data-ingest put
+ * layoff-filings' BUILD_VERSION at 2026-10-09.1 over eleven changed files:
+ * the same strings this branch first used. Deployed apart, either branch's
+ * .1 would read PASS here for the other's code. Section 78 judges those three
+ * from .2, the build this branch carries.
+ */
+describe("section 78 judges each stamp from this branch's own build, not a string a sibling shipped (S8-124)", () => {
+  const S78 = sectionFile("78-wave3-tests-ci.sh");
+  const NO_GH = { gh: "#!/bin/sh\nexit 1\n" };
+  const FNS = ["application-fit", "create-test-coupon", "generate-cohort-report", "job-fit", "scrape-linkedin", "warm-up", "layoff-filings"];
+  const SHARED = ["job-fit", "application-fit", "layoff-filings"];
+  const pre = (b: (fn: string) => string): Route[] => FNS.map((fn) => ({ match: `^OPTIONS https://p\\.supabase\\.co/functions/v1/${fn}$`, status: 200, headers: { "x-fn-build": b(fn) } }));
+  const repoBuild = (fn: string): string => {
+    const src = readFileSync(resolve(ROOT, "supabase/functions", fn, "index.ts"), "utf8");
+    const lit = new RegExp(`const FN_BUILD = "(${fn.replace(/-/g, "\\-")}\\.[^"]+)"`).exec(src)?.[1];
+    const bv = /export const BUILD_VERSION = "([^"]+)"/.exec(src)?.[1];
+    const b = lit ?? (bv ? `${fn}.${bv}` : undefined);
+    if (!b) throw new Error(`${fn} carries no build this test can read`);
+    return b;
+  };
+
+  it("a live .1 on job-fit, application-fit or layoff-filings is FAIL; on the other four it passes", () => {
+    const { lines } = run(S78, { curl: pre((fn) => `${fn}.2026-10-09.1`), bin: NO_GH });
+    for (const fn of SHARED) expect(has(lines, "FAIL", new RegExp(`^FAIL {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.1 \\(want ${fn}\\.2026-10-09\\.2 or later\\)`)), show(lines)).toBe(true);
+    for (const fn of FNS.filter((f) => !SHARED.includes(f))) expect(has(lines, "PASS", new RegExp(`^PASS {2}${fn} preflight x-fn-build = ${fn}\\.2026-10-09\\.1 `)), show(lines)).toBe(true);
+  });
+
+  it("positive control: the builds this checkout carries all pass, and a later rebuild passes too", () => {
+    const repo = run(S78, { curl: pre(repoBuild), bin: NO_GH });
+    for (const fn of FNS) expect(has(repo.lines, "PASS", new RegExp(`^PASS {2}${fn} preflight x-fn-build = `)), `${fn} at ${repoBuild(fn)}${show(repo.lines)}`).toBe(true);
+    const later = run(S78, { curl: pre((fn) => `${fn}.2026-10-12.1`), bin: NO_GH });
+    expect(FNS.every((fn) => has(later.lines, "PASS", new RegExp(`^PASS {2}${fn} preflight`))), show(later.lines)).toBe(true);
   });
 });
