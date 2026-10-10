@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008100200_a_state_code_matched_a_country_that_starts_with_its_letters.sql'));
