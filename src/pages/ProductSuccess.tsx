@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
-import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
+import { reachedInThisTab, useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { clearReferralCode } from "@/hooks/use-affiliate-auth";
 import { getResumeFromSession, hasResumeInSession, getMultiColumnDetectedFromSession } from "@/hooks/use-session-resume";
 import { InterviewCoach } from "@/components/InterviewCoach";
@@ -764,10 +764,11 @@ export default function ProductSuccess() {
         // ALREADY MADE AND SAVED (a revisit from the purchase email, or the
         // webhook finished first): the saved copy, not a second generation.
         if (!data?.generatedContent && productKey !== 'scanPack' && await showSavedPurchase(sessionId)) {
-          // Tracked as the verified-content branch below is (keyed on the
-          // session, so a revisit is not a second purchase); a Pro grant
-          // is not a sale.
-          if (productKey && product && !sessionId.startsWith('pro_')) {
+          // A sale only in the tab that started this checkout (the webhook
+          // finished first). The purchase email opened later, here or on
+          // another device, is a revisit: the trackers dedupe per tab and per
+          // visitor, never per session. A Pro grant is not a sale.
+          if (productKey && product && !sessionId.startsWith('pro_') && reachedInThisTab('checkout_started')) {
             trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
             trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
           }
