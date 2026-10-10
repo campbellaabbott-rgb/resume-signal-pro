@@ -478,3 +478,15 @@ export function landerRobots({ isPrimary, unreadable, answered, ownContent, dupl
  * refused.
  */
 export const landerThinBreaker = ({ answered, thin }) => answered >= 20 && thin > answered * 0.25;
+
+/**
+ * The two noindex rules' breakers. The duplicate rule is judged together
+ * with the thin pages it would add to, so the two can never noindex more
+ * than a quarter of the pages between them: the sitemap ratchet refuses a
+ * fifth fewer standing URLs, and a refused sitemap leaves the stale one.
+ */
+export function landerBreakers({ answered, thin, candidates, dupes }) {
+  const thinBreaker = landerThinBreaker({ answered: answered.length, thin: thin.length });
+  const dupeBreaker = landerThinBreaker({ answered: candidates.length, thin: new Set([...dupes, ...(thinBreaker ? [] : thin)]).size });
+  return { thinBreaker, dupeBreaker };
+}

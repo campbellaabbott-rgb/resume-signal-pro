@@ -26,7 +26,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
   bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
-  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, companiesLlmsLine, duplicateSkeletons, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
+  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, companiesLlmsLine, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -2394,8 +2394,9 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // and lose the whole sitemap.
       const answeredPrimaries = LANDERS.filter((c) => c.primary === c.token && landerInfo.get(c.token).answered);
       const thinPrimaries = answeredPrimaries.filter((c) => !landerInfo.get(c.token).ownContent);
-      const thinBreaker = landerThinBreaker({ answered: answeredPrimaries.length, thin: thinPrimaries.length });
-      const dupeBreaker = landerThinBreaker({ answered: candidates.length, thin: dupes.size });
+      const { thinBreaker, dupeBreaker } = landerBreakers({
+        answered: answeredPrimaries.map((c) => c.token), thin: thinPrimaries.map((c) => c.token), candidates: candidates.map((c) => c.token), dupes: [...dupes],
+      });
       if (thinBreaker) console.warn(`[prerender-seo] company pages: ${thinPrimaries.length} of ${answeredPrimaries.length} answered listings had too few openings — treated as a broken read, none noindexed for it this bake`);
       if (dupeBreaker) console.warn(`[prerender-seo] company pages: ${dupes.size} of ${candidates.length} match another page's text — treated as a cold listing cache, none noindexed for it this bake`);
       for (const c of LANDERS) {

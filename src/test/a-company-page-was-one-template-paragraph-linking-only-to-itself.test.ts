@@ -8,6 +8,7 @@ import {
   companyLanderPage,
   duplicateSkeletons,
   landerFacts,
+  landerBreakers,
   landerHasOwnContent,
   landerOpenings,
   landerRobots,
@@ -221,5 +222,24 @@ describe("llms-full says what /companies lists", () => {
   });
   it("the bake writes that line into llms-full", () => {
     expect(codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"))).toMatch(/lines\.push\(companiesLlmsLine\(\{ site: SITE, count: COMPANY_PAGE_COUNT \}\)\);/);
+  });
+});
+
+describe("the two noindex rules together cannot take more than a quarter of the company pages", () => {
+  // A mock bake with a cold listing cache noindexed 73 thin and 65 duplicate
+  // pages of 489 under two separate quarter breakers, leaving 712 standing
+  // sitemap URLs against a ratchet floor of 694; one more bad read and the
+  // stale committed sitemap would have stayed in place.
+  const toks = (n: number, p: string) => Array.from({ length: n }, (_, i) => `${p}${i}`);
+  it("the duplicate rule stands down when it and the thin pages together pass a quarter", () => {
+    const candidates = toks(467, "c");
+    const r = landerBreakers({ answered: toks(300, "c"), thin: toks(73, "c"), candidates, dupes: toks(65, "c").map((t) => t.replace("c", "c1")) });
+    expect(r.thinBreaker).toBe(false);
+    expect(r.dupeBreaker, "73 + 65 of 467 is past a quarter").toBe(true);
+    expect(landerBreakers({ answered: toks(300, "c"), thin: toks(20, "c"), candidates, dupes: toks(40, "d") }).dupeBreaker).toBe(false);
+  });
+  it("a page both thin and duplicate counts once", () => {
+    const r = landerBreakers({ answered: toks(400, "c"), thin: toks(90, "c"), candidates: toks(467, "c"), dupes: toks(90, "c") });
+    expect(r.dupeBreaker).toBe(false);
   });
 });
