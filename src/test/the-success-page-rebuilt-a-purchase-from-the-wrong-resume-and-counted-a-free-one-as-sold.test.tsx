@@ -46,7 +46,7 @@ vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 // The report's own view is not under test: it shows which copy arrived.
 vi.mock("@/components/CareerSnapshotResults", () => ({ CareerSnapshotResults: ({ data }: { data: { summary?: string } }) => <div data-testid="snapshot">{data?.summary}</div> }));
 
-import ProductSuccess, { VERIFY_POLL_MS } from "../pages/ProductSuccess";
+import ProductSuccess, { VERIFY_POLL_DELAYS_MS } from "../pages/ProductSuccess";
 import FreelanceBoost, { PURCHASE_KEY } from "../pages/FreelanceBoost";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
@@ -88,7 +88,7 @@ describe("the success page renders the server's copy (S8-009)", () => {
       return { data: n < 3 ? { verified: true, inProgress: true, generatedContent: null } : { verified: true, generatedContent: SAVED }, error: null };
     });
     at("/product-success?session_id=cs_test_snapshot02&product=careerSnapshot", <ProductSuccess />);
-    for (let i = 0; i < 3; i++) await act(async () => { await vi.advanceTimersByTimeAsync(VERIFY_POLL_MS); });
+    for (let i = 0; i < 3; i++) await act(async () => { await vi.advanceTimersByTimeAsync(VERIFY_POLL_DELAYS_MS[i]); });
     await waitFor(() => expect(calls("verify-product-purchase").length).toBe(3), SLOW);
     expect(calls("generate-career-snapshot")).toHaveLength(0);
   });

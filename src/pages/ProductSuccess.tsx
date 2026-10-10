@@ -152,9 +152,13 @@ interface PremiumPackageData {
  * saved copy too, and stream only when nothing is saved.
  */
 const SERVER_RENDERED: ReadonlySet<string> = new Set(['basicKeywordFix', 'atsDefense', 'careerSnapshot', 'graduateGamePlan', 'applyAssistant']);
-/** How often, and how many times, the page asks again while the webhook is still making the product. */
-export const VERIFY_POLL_MS = 5000;
-export const VERIFY_POLL_TRIES = 24;
+/**
+ * The waits between asks while the webhook is still making the product: six
+ * asks over a minute, the length of a generation. verify-product-purchase
+ * allows 30 calls an hour per address, so a load and a reload (or two
+ * purchases) stay well inside it.
+ */
+export const VERIFY_POLL_DELAYS_MS: readonly number[] = [5000, 8000, 12000, 15000, 20000];
 
 /** The language the buyer reads, as i18next stored it. */
 const uiLanguage = (): string => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } };
@@ -713,10 +717,14 @@ export default function ProductSuccess() {
           const answer = await supabase.functions.invoke('verify-product-purchase', {
             body: { sessionId, generateContent: !useStreaming && SERVER_RENDERED.has(productKey ?? '') }
           });
+          // A later ask refused (its hourly budget, a blip) after the purchase
+          // was confirmed in progress: keep that answer and take the same path
+          // as when the asks run out, never "could not verify" for a paid one.
+          if (answer.error && data?.inProgress) break;
           data = answer.data as Record<string, any> | null;
           error = answer.error as { message: string } | null;
-          if (error || !data?.inProgress || tries + 1 >= VERIFY_POLL_TRIES) break;
-          await new Promise((r) => setTimeout(r, VERIFY_POLL_MS));
+          if (error || !data?.inProgress || tries >= VERIFY_POLL_DELAYS_MS.length) break;
+          await new Promise((r) => setTimeout(r, VERIFY_POLL_DELAYS_MS[tries]));
         }
 
         if (error) {
