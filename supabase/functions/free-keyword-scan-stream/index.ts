@@ -6493,7 +6493,7 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-10-08.1: the improvement-potential
 // clamp (register L5-15), on fresh and cached reports.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-09.1";
+const FN_BUILD = "free-keyword-scan-stream.2026-10-09.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8362,6 +8362,26 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         return;
       }
 
+      // Model JSON has a shape before any filter walks it (the primary's
+      // S8-071 block): keywords: [null] threw after the day's slot was counted.
+      {
+        for (const k of ['keywords', 'redFlags', 'quickWins']) {
+          if (analysis[k] === undefined || analysis[k] === null) continue;
+          analysis[k] = Array.isArray(analysis[k])
+            ? analysis[k].filter((x: unknown) => !!x && typeof x === 'object' && !Array.isArray(x))
+            : [];
+        }
+        if (typeof analysis.industry !== 'string') analysis.industry = undefined;
+        for (const k of ['experienceLevel', 'sectionCheck', 'topStrength', 'improvementPotential', 'detectedLanguage']) {
+          const v = analysis[k];
+          if (v !== undefined && v !== null && (typeof v !== 'object' || Array.isArray(v))) analysis[k] = null;
+        }
+        if (typeof analysis.atsScoreEstimate !== 'number' || !Number.isFinite(analysis.atsScoreEstimate)) {
+          const n = Number(analysis.atsScoreEstimate);
+          analysis.atsScoreEstimate = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
+        }
+      }
+
       // Normalize industry using hybrid detection (combines server + AI + two-pass verification)
       const industryDetectionStart = Date.now();
       const rawIndustry = analysis.industry;
@@ -8925,8 +8945,20 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }
       });
 
+      // A thin reply (the primary's S8-067 rule) is served marked partial and
+      // never cached: a week of it would replay to every rescan.
+      const owed = [
+        Number.isFinite(analysis.atsScoreEstimate), !!analysis.formatGrade, !!analysis.experienceLevel, !!analysis.sectionCheck,
+        (analysis.quickWins?.length ?? 0) > 0, !!analysis.topStrength, !!analysis.improvementPotential,
+      ];
+      const thinAnalysis = owed.filter(Boolean).length / owed.length < 0.7;
+      if (thinAnalysis) {
+        console.warn(`[FREE-KEYWORD-SCAN-STREAM] Thin model analysis served as partial (${owed.filter(Boolean).length}/${owed.length} owed sections)`);
+        Object.assign(responseData, { partialResults: true, partialReason: 'thin' });
+      }
+
       // Store in cache for future requests (non-blocking)
-      EdgeRuntime.waitUntil(
+      if (!thinAnalysis) EdgeRuntime.waitUntil(
         (async () => {
           try {
             const { error: storeError } = await supabase.rpc('store_cached_response', {
