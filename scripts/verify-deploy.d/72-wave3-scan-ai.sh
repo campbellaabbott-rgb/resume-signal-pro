@@ -26,7 +26,7 @@ vd72_build() { # $1 fn -> the preflight's x-fn-build header
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
 for PAIR in \
-  "free-keyword-scan|1" "free-keyword-scan-stream|1" "shortlist-evaluate|2" \
+  "free-keyword-scan|1" "free-keyword-scan-stream|1" "shortlist-evaluate|3" \
   "generate-application-answers|1" "generate-apply-package|1" "generate-ats-defense|1" \
   "generate-career-path|1" "generate-career-snapshot|1" "generate-cover-letter|1" \
   "generate-cover-letter-stream|1" "generate-graduate-gameplan|1" "generate-interview-coach|1" \

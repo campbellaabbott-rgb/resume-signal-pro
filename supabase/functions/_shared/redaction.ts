@@ -49,9 +49,27 @@ function ci(words: string[]): string {
 const MONTHS = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
 // A calendar date or a bare year, in the shapes résumés use.
 const DATE = `(?:\\d{1,4}[./-]\\d{1,2}[./-]\\d{1,4}|\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTHS}\\.?,?\\s+\\d{4}|${MONTHS}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?,?\\s+\\d{4}|${MONTHS}\\.?,?\\s+\\d{4}|(?:19|20)\\d{2})`;
+const MONTHS_ANY = MONTHS.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`);
 const YEAR_RE = /(?<!\d)(?:19|20)\d{2}(?!\d)|(?<![\p{L}\d])['’]\d{2}(?!\d)/gu;
 
 const US_STATES = "AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
+const US_STATE_NAMES = "Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming|District of Columbia|Puerto Rico";
+// Region codes after "City, " (US, Canada, Australia). The ones that are also
+// post-nominals ("Jane Doe, MD") are decided by the segment itself.
+const REGION_CODES = `${US_STATES}|AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT|NSW|VIC|QLD|TAS|ACT`;
+const CREDENTIAL_REGIONS = new Set(["MD", "MS", "MA", "PA", "DC", "PE"]);
+const PLACE_NAMES = new RegExp(`^(?:${US_STATE_NAMES}|Ontario|Quebec|Québec|British Columbia|Alberta|Manitoba|Saskatchewan|Nova Scotia|New Brunswick|Newfoundland|New South Wales|Victoria|Queensland|Tasmania|` +
+  "USA|U\\.S\\.A?\\.?|US|UK|U\\.K\\.|UAE|United States(?: of America)?|United Kingdom|United Arab Emirates|England|Scotland|Wales|Northern Ireland|Ireland|Canada|Mexico|Brazil|Brasil|Argentina|Chile|Colombia|Peru|Venezuela|Ecuador|Uruguay|" +
+  "Spain|España|Portugal|France|Germany|Deutschland|Italy|Italia|Netherlands|Belgium|Switzerland|Austria|Sweden|Norway|Denmark|Finland|Poland|Czechia|Czech Republic|Hungary|Romania|Greece|Turkey|Türkiye|Ukraine|Russia|Israel|" +
+  "Egypt|Morocco|Nigeria|Ghana|Kenya|Ethiopia|South Africa|Saudi Arabia|Qatar|Kuwait|Bahrain|Oman|Jordan|Lebanon|Pakistan|India|Bangladesh|Sri Lanka|Nepal|China|Hong Kong|Taiwan|Japan|Korea|South Korea|" +
+  "Vietnam|Viet Nam|Thailand|Malaysia|Singapore|Indonesia|Philippines|Australia|New Zealand)\\.?$", "iu");
+// Multi-word cities that read like a name when they head the page.
+const CITY_NAMES = new Set(("new york|new york city|los angeles|san francisco|san diego|san jose|san antonio|las vegas|salt lake city|kansas city|oklahoma city|" +
+  "st. louis|saint louis|st. paul|new orleans|fort worth|el paso|long beach|virginia beach|colorado springs|santa clara|santa monica|santa barbara|" +
+  "palo alto|mountain view|redwood city|menlo park|silver spring|jersey city|baton rouge|grand rapids|ann arbor|rio de janeiro|são paulo|sao paulo|" +
+  "buenos aires|mexico city|hong kong|kuala lumpur|new delhi|tel aviv|cape town|abu dhabi|ho chi minh city|bay area|washington dc|washington d.c.").split("|"));
+// Words that make a "Two Words, MD" segment a town, not a person.
+const PLACE_WORD = /^(?:city|springs?|park|heights|beach|falls|hills?|port|fort|ft\.?|mount|mt\.?|lake|bay|harbou?r|haven|village|valley|grove|ridge|creek|point|junction|river|township|station|center|centre|north|south|east|west|new|saint|st\.?|san|santa|los|las|el|college|state)$/i;
 
 // ── Contact details: nothing that identifies or locates the person ─────────
 const URL_STOP = "[^\\s|,;<>()\\[\\]\"'·•]";
@@ -70,14 +88,14 @@ const CONTACT_RULES: Rule[] = [
   { feature: "phone", pattern: /(?<![\p{N}\p{L}.\/-])0\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}(?!\p{N})/gu, replacement: phoneOrKeep },
   {
     feature: "phone",
-    pattern: /(?<!\p{L})(?:phone|tel|telephone|mobile|mob|cell|whatsapp)\.?(?:\s*(?:no\.?|number|#))?\s*[:\-–]?\s*[+(\d][\d\s().-]{5,18}\d/giu,
+    pattern: /(?<!\p{L})(?:(?:phone|tel|telephone|mobile|mob|cell|whatsapp|contact|ph)\.?(?:\s*(?:no\.?|number|#))?\s*[:\-–]?|(?:m|t|p|h)\s*:)\s*[+(\d][\d\s().-]{5,18}\d/giu,
     replacement: (m) => {
       const lead = m.match(/^\D*/)?.[0] ?? "";
       return phoneOrKeep(m.slice(lead.length)) === null ? null : `${lead}[REDACTED-PHONE]`;
     },
   },
   // Postcodes: a US ZIP after a state code, UK and Canadian postcodes.
-  { feature: "zip_code", pattern: new RegExp(`\\b((?:${US_STATES})\\.?,?\\s+)\\d{5}(?:-\\d{4})?(?!\\d)`, "g"), replacement: (_m, pre) => `${pre}[REDACTED-ZIP]` },
+  { feature: "zip_code", pattern: new RegExp(`\\b((?:${US_STATES}|${US_STATE_NAMES})\\.?,?\\s+)\\d{5}(?:-\\d{4})?(?!\\d)`, "g"), replacement: (_m, pre) => `${pre}[REDACTED-ZIP]` },
   { feature: "zip_code", pattern: /(?<!\p{L})((?:zip(?:\s*code)?|postal\s*code|postcode)\s*[:\-–]?\s*)[A-Z0-9][A-Z0-9 -]{2,8}[A-Z0-9](?![\p{L}\p{N}])/giu, replacement: (_m, pre) => `${pre}[REDACTED-ZIP]` },
   { feature: "zip_code", pattern: /\b[A-PR-UWYZ][A-HK-Y]?\d[A-Z\d]?\s?\d[ABD-HJLNP-UW-Z]{2}\b/g, replacement: "[REDACTED-ZIP]" },
   { feature: "zip_code", pattern: /\b[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d\b/g, replacement: "[REDACTED-ZIP]" },
@@ -91,7 +109,11 @@ function phoneOrKeep(m: string): string | null {
 // A bare personal domain ("mariagonzalez.dev") is only treated as contact
 // detail in the header block, where it is the candidate's site; in the body
 // a lowercase domain is usually a product or employer.
-const BARE_DOMAIN = /(?<![\p{L}\p{N}@./-])[a-z0-9][a-z0-9-]{2,}\.(?:com|dev|io|me|net|org|co|ai|app|page|site|design|info|xyz|tech|blog|online)(?:\/[^\s|,;<>()]*)?(?![\p{L}\p{N}])/gu;
+const BARE_DOMAIN = /(?<![\p{L}\p{N}@./-])(?:[a-z0-9-]+\.)*[a-z0-9][a-z0-9-]{2,}\.(?:com|dev|io|me|net|org|co|ai|app|page|site|design|info|xyz|tech|blog|online)(?:\/[^\s|,;<>()]*)?(?![\p{L}\p{N}])/gu;
+// In the header block an "@handle" is the candidate's, and so is any run of
+// 10 to 15 digits, with or without single separators ("98765 43210").
+const HEADER_HANDLE = /(?<![\p{L}\p{N}._@-])@[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?(?![\p{L}\p{N}@])/gu;
+const HEADER_DIGITS = /(?<![\p{L}\p{N}])\+?\d(?:[\s.-]?\d){9,14}(?!\p{N})/gu;
 const HEADER_LINES = 8;
 
 // ── The candidate's name ───────────────────────────────────────────────────
@@ -110,7 +132,7 @@ const NOT_NAME = new Set(("resume résumé cv curriculum vitae profile summary c
   "competencies key highlights achievements accomplishments qualifications technical areas expertise about overview " +
   "background interests hobbies languages certifications awards projects publications volunteer activities employment " +
   "history work training courses coursework relevant selected additional other honors affiliations memberships " +
-  "leadership strengths tools technologies").split(" "));
+  "leadership strengths tools technologies inc llc ltd corp gmbh plc").split(" "));
 // Credentials and suffixes that trail a name ("Jane Doe, PMP", "JANE DOE RN").
 const CREDENTIAL = /^(?:pmp|mba|rn|bsn|msn|cpa|phd|ph\.?d\.?|md|m\.d\.|do|jd|j\.d\.|esq\.?|cfa|cissp|pe|p\.e\.|shrm-c?s?cp|phr|sphr|csm|ms|m\.s\.|ma|m\.a\.|ba|b\.a\.|bs|b\.s\.|msc|bsc|mph|msw|lcsw|np|pa-c|dds|dmd|pharmd|lpn|cna|emt|acca|cma|cisa|ccna|ceng|frcs|mrcp|jr\.?|sr\.?|ii|iii|iv|cpsm|cscp|six|sigma)$/i;
 const NAME_TOKEN = /^(?:\p{Lu}[\p{L}\p{M}'’.-]*|\p{Lu}\.)$/u;
@@ -124,37 +146,75 @@ function findName(text: string): string | null {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const labelled = line.match(/^(?:full\s+)?name\s*[:\-–]\s*(.+)$/i);
-    const candidate = nameFromLine(labelled ? labelled[1] : line, i === 0);
+    const candidate = nameFromLine(labelled ? labelled[1] : line);
     if (candidate) return candidate;
   }
   for (const line of text.split("\n")) {
     const labelled = line.trim().match(/^(?:full\s+)?name\s*[:\-–]\s*(.+)$/i);
     if (labelled) {
-      const candidate = nameFromLine(labelled[1], true);
+      const candidate = nameFromLine(labelled[1]);
       if (candidate) return candidate;
     }
   }
   return null;
 }
 
-function nameFromLine(line: string, firstLine: boolean): string | null {
+const SEG_SPLIT = /\s*(?:[|·•\t]|\s[-–—/]\s|,|\s{2,}|\()\s*/u;
+const letters = (t: string) => t.replace(/[.'’-]/g, "").length;
+const isUpper = (s: string) => { const l = s.replace(/[^\p{L}]/gu, ""); return l.length > 0 && l === l.toUpperCase() && l !== l.toLowerCase(); };
+
+/** A trailing token is a post-nominal only when it cannot be a surname ("Jack Ma", "Anh Do"). */
+function isTrailingCredential(tok: string, tokens: string[], allCaps: boolean): boolean {
+  if (/^(?:resume|résumé|cv)$/i.test(tok)) return true;
+  if (!CREDENTIAL.test(tok)) return false;
+  const remaining = tokens.slice(0, -1).filter((t) => !PARTICLES.has(t.toLowerCase()) && letters(t) >= 2).length;
+  if (allCaps) return remaining >= 2;
+  if (tok.includes(".")) return true;
+  if (/^\p{Lu}\p{Ll}$/u.test(tok)) return false;
+  return true;
+}
+
+/** "Boston, MA", "New York, NY 10001", "Rio de Janeiro, Brazil" head a page as often as a name does. */
+function isPlace(seg: string, rest: string): boolean {
+  if (CITY_NAMES.has(seg.toLowerCase().replace(/\s+/g, " "))) return true;
+  const after = rest.match(/^\s*,\s*([^,|·•\t(]+?)\s*(?=$|[,|·•\t(]|\s[-–—/]\s|\s{2,})/u)?.[1];
+  if (!after) return false;
+  if (PLACE_NAMES.test(after)) return true;
+  const code = after.match(new RegExp(`^(${REGION_CODES})\\.?(\\s+\\d{4,5}(?:-\\d{4})?)?$`));
+  if (!code) return false;
+  if (code[2] || !CREDENTIAL_REGIONS.has(code[1])) return true;
+  // "Jane Doe, MD" is a doctor; "Silver Spring, MD" is a town.
+  return seg.split(/\s+/).some((t) => PLACE_WORD.test(t));
+}
+
+function nameFromLine(line: string): string | null {
   // The first segment before a separator: "Jane Doe | Engineer", "Jane Doe, PMP".
-  let seg = line.split(/\s*(?:[|·•\t]|\s[-–—/]\s|,|\s{2,}|\()\s*/u)[0].trim();
-  const rest = line.slice(seg.length);
-  // On later lines "Austin, TX" is a place, not a name.
-  if (!firstLine && new RegExp(`^\\s*,\\s*(?:${US_STATES})\\b`).test(rest)) return null;
+  let seg = line.split(SEG_SPLIT)[0].trim();
+  const rest = line.slice(line.indexOf(seg) + seg.length);
+  if (isPlace(seg, rest)) return null;
   seg = seg.replace(/^(?:(?:resume|résumé|cv|curriculum vitae)\s+(?:of|for|[-–:])\s+)/i, "");
   seg = seg.replace(HONORIFIC_PREFIX, "");
   let tokens = seg.split(/\s+/).filter(Boolean);
-  while (tokens.length > 0 && (CREDENTIAL.test(tokens[tokens.length - 1]) || /^(?:resume|résumé|cv)$/i.test(tokens[tokens.length - 1]))) tokens = tokens.slice(0, -1);
+  const allCaps = isUpper(seg);
+  while (tokens.length > 0 && isTrailingCredential(tokens[tokens.length - 1], tokens, allCaps)) tokens = tokens.slice(0, -1);
   if (tokens.length === 0) return null;
+  // "GONZALEZ, Maria": a capitalised surname, a comma, then the given name.
+  if (tokens.length === 1 && isUpper(tokens[0]) && letters(tokens[0]) >= 2 && NAME_TOKEN.test(tokens[0])) {
+    const given = rest.match(/^\s*,\s*(\p{Lu}\p{Ll}[\p{L}\p{M}'’-]*(?:\s+\p{Lu}[\p{L}\p{M}'’.-]*)?)\s*(?=$|[,|·•\t(]|\s[-–—/]\s|\s{2,})/u)?.[1];
+    if (given && !isUpper(given) && !PLACE_NAMES.test(given) && !given.split(/\s+/).some((t) => NOT_NAME.has(t.toLowerCase()) || CREDENTIAL.test(t))) {
+      return `${given} ${tokens[0]}`;
+    }
+    return null;
+  }
   const joined = tokens.join(" ");
   if (CJK_NAME.test(joined)) return joined;
   if (/\d/.test(joined)) return null;
   const core = tokens.filter((t) => !PARTICLES.has(t.toLowerCase()));
   if (core.length < 2 || core.length > 5) return null;
   if (!core.every((t) => NAME_TOKEN.test(t) || CASELESS_TOKEN.test(t))) return null;
-  if (core.filter((t) => t.replace(/[.'’-]/g, "").length >= 2).length < 2) return null;
+  // Two full words, or initials and one ("J. R. Smith").
+  const full = core.filter((t) => letters(t) >= 2).length;
+  if (full < 2 && !(full === 1 && core.every((t) => letters(t) >= 2 || /^\p{Lu}\.$/u.test(t)))) return null;
   if (tokens.some((t) => NOT_NAME.has(t.toLowerCase().replace(/[.,:]$/, "")))) return null;
   return joined;
 }
@@ -208,16 +268,27 @@ function maskName(text: string, name: string): { text: string; count: number } {
   const full = parts.map((p) => tokenSource(p, "any")).join("[\\s.-]+");
   out = out.replace(new RegExp(`${B}${full}${E}`, "giu"), () => { count++; return "[CANDIDATE]"; });
   const tokens = new Set<string>();
+  const core: string[] = [];
   for (const p of parts) {
     if (PARTICLES.has(p.toLowerCase())) continue;
+    if (p.replace(/[.'’]/g, "").length >= 2) core.push(p.replace(/[.'’-]/g, ""));
     for (const sub of [p, ...p.split(/[-]/)]) if (sub.replace(/[.'’]/g, "").length >= 2) tokens.add(sub.replace(/\.$/, ""));
+  }
+  // Handles and hosts built from the name: "@mariagonzalez", "maria_gonzalez.dev", "mgonzalez".
+  if (core.length >= 2) {
+    const first = core[0], last = core[core.length - 1];
+    const joins = [core.map((t) => tokenSource(t, "any")).join("[._-]?"), `${tokenSource(last, "any")}[._-]?${tokenSource(first, "any")}`];
+    if (last.length >= 4) joins.push(`${tokenSource(first[0], "any")}[._-]?${tokenSource(last, "any")}`);
+    out = out.replace(new RegExp(`${B}(?:${joins.join("|")})(?![\\p{L}\\p{M}])`, "giu"), () => { count++; return "[CANDIDATE]"; });
   }
   for (const tok of [...tokens].sort((a, b) => b.length - a.length)) {
     const plain = tok.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     if (FUNCTION_WORDS.has(plain)) continue;
+    // A given name that is also a month ("June Lee") keeps "June 2012" and "May – Dec 2017".
+    const guard = new RegExp(`^${MONTHS}$`).test(plain) ? `(?!\\.?,?[ \\t]*(?:\\d{1,2}(?:st|nd|rd|th)?,?[ \\t]+)?(?:(?:19|20)\\d{2}|['’]\\d{2})(?!\\d)|[ \\t]*(?:[-–—/]|to)[ \\t]*(?:${MONTHS_ANY}|(?:19|20)\\d{2}))(?<!(?<!\\d)\\d{1,2}(?:st|nd|rd|th)?[ \\t]+${tokenSource(tok, "any")})` : "";
     const re = COMMON_WORDS.has(plain) || plain.length <= 2
-      ? new RegExp(`${B}(?:${tokenSource(tok, "title")}|${tokenSource(tok, "upper")})${E}`, "gu")
-      : new RegExp(`${B}${tokenSource(tok, "any")}${E}`, "giu");
+      ? new RegExp(`${B}(?:${tokenSource(tok, "title")}|${tokenSource(tok, "upper")})${E}${guard}`, "gu")
+      : new RegExp(`${B}${tokenSource(tok, "any")}${E}${guard}`, "giu");
     out = out.replace(re, () => { count++; return "[CANDIDATE]"; });
   }
   return { text: out, count };
@@ -393,7 +464,7 @@ const INLINE_RULES: Rule[] = [
   // Street address (redlining proxy); city-level location stays
   {
     feature: "street_address",
-    pattern: new RegExp(`(?<![\\p{L}\\p{N}])\\d{1,6}[A-Za-z]?\\s+(?:[NSEW]\\.?\\s+)?(?:${PROPER_WORD}\\s+){1,4}(?:${ci(["street", "avenue", "road", "boulevard", "drive", "lane", "court", "place", "terrace", "circle", "parkway", "highway", "square", "trail", "crescent", "close", "way"])}|St|ST|Ave|AVE|Rd|RD|Blvd|BLVD|Dr|DR|Ln|LN|Ct|CT|Pl|PL|Ter|Cir|Pkwy|Hwy|Sq)\\b\\.?(?:,?\\s*(?:${ci(["apt", "apartment", "unit", "suite", "ste", "flat"])}|#)\\.?\\s*[\\w-]+)?`, "gu"),
+    pattern: new RegExp(`(?<![\\p{L}\\p{N}])\\d{1,6}[A-Za-z]?\\s+(?:[NSEW]\\.?\\s+)?(?:(?:${PROPER_WORD}|\\d{1,4}(?:st|nd|rd|th))\\s+){1,4}(?:${ci(["street", "avenue", "road", "boulevard", "drive", "lane", "court", "place", "terrace", "circle", "parkway", "highway", "square", "trail", "crescent", "close", "way"])}|St|ST|Ave|AVE|Rd|RD|Blvd|BLVD|Dr|DR|Ln|LN|Ct|CT|Pl|PL|Ter|Cir|Pkwy|Hwy|Sq)\\b\\.?(?:,?\\s*(?:${ci(["apt", "apartment", "unit", "suite", "ste", "flat"])}|#)\\.?\\s*[\\w-]+)?`, "gu"),
     replacement: "[REDACTED-ADDRESS]",
   },
   // Photos (references in parsed text)
@@ -467,16 +538,19 @@ export function redactForScoring(rawText: string, config: RedactionConfig = {}):
   // 2. Contact details: emails, profile URLs, phones, postcodes.
   for (const rule of CONTACT_RULES) text = applyRule(text, rule, bump);
   {
-    let count = 0;
+    let count = 0, phones = 0;
     const lines = text.split("\n");
     let seen = 0;
     for (let i = 0; i < lines.length && seen < HEADER_LINES; i++) {
       if (lines[i].trim().length === 0) continue;
       seen++;
       lines[i] = lines[i].replace(BARE_DOMAIN, () => { count++; return "[REDACTED-URL]"; });
+      lines[i] = lines[i].replace(HEADER_HANDLE, () => { count++; return "[REDACTED-URL]"; });
+      lines[i] = lines[i].replace(HEADER_DIGITS, (m) => { if (phoneOrKeep(m) === null || m.split(/[\s.-]/).every((g) => /^(?:19|20)\d{2}$/.test(g))) return m; phones++; return "[REDACTED-PHONE]"; });
     }
     text = lines.join("\n");
     bump("profile_url", count);
+    bump("phone", phones);
   }
 
   // 3. The name, everywhere and in any case.
