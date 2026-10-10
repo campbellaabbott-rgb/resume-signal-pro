@@ -57,9 +57,14 @@ describe("stamped(): every response names the build, and nothing else changes", 
 });
 
 /**
- * Functions still without a stamp, each owned by another wave-3 group that is
- * changing it in this wave (and so bumps its build by the house rule). The
- * list may only shrink.
+ * Functions still without a stamp on this branch, each owned by another
+ * wave-3 group that stamps it in this wave. The excuse lasts only while the
+ * function names neither a build nor the header: once its owner stamps it, it
+ * is held to the same rule as every other function, whether or not anyone has
+ * taken it off this list. (A shrink check that FAILED when a listed function
+ * was stamped turned main red the moment the owners' branches merged: all four
+ * are stamped on wave3/payments-account and wave3/email-ops.) The list may
+ * only shrink.
  */
 const STAMPED_BY_ITS_OWNER: Record<string, string> = {
   "create-test-checkout": "payments-account",
@@ -67,6 +72,29 @@ const STAMPED_BY_ITS_OWNER: Record<string, string> = {
   "recover-purchase": "email-ops",
   "save-lead": "email-ops",
 };
+const OWNER_LIST_AT_START = ["create-test-checkout", "delete-account", "recover-purchase", "save-lead"];
+
+/** What a function's index.ts says about its build: the two shapes scripts/deploy-ledger.mjs buildOf() reads, and whether it sends the header. */
+function stampOf(fn: string, src: string): { build: boolean; sends: boolean } {
+  const esc = fn.replace(/-/g, "\\-");
+  const build = new RegExp(`["'\`]${esc}\\.\\d{4}-\\d{2}-\\d{2}\\.[A-Za-z0-9-]+["'\`]`).test(src)
+    || /\$\{FN_NAME\}\.\d{4}-\d{2}-\d{2}\./.test(src)
+    || /const BUILD_VERSION\s*=\s*["']\d{4}-\d{2}-\d{2}\.[A-Za-z0-9-]+["']/.test(src);
+  const sends = /["']x-fn-build["']/i.test(src) || /\bstamped\(/.test(src);
+  return { build, sends };
+}
+
+/** The functions that cannot say which build is deployed. A listed function is excused only while it is wholly unstamped. */
+function unstamped(sources: Record<string, string>, excused: Record<string, string>): string[] {
+  const missing: string[] = [];
+  for (const [fn, src] of Object.entries(sources)) {
+    const { build, sends } = stampOf(fn, src);
+    if (build && sends) continue;
+    if (fn in excused && !build && !sends) continue;
+    missing.push(`${fn}${build ? "" : " (no build the ledger can read)"}${sends ? "" : " (sends no x-fn-build)"}`);
+  }
+  return missing;
+}
 
 describe("every edge function names its build, and sends it", () => {
   const fns = readdirSync(FN).filter((d) => !d.startsWith("_") && existsSync(join(FN, d, "index.ts")));
@@ -76,29 +104,26 @@ describe("every edge function names its build, and sends it", () => {
   });
 
   it("each carries a build string the deploy ledger can read, and an x-fn-build header or the stamped() wrapper", () => {
-    const missing: string[] = [];
-    for (const fn of fns) {
-      if (fn in STAMPED_BY_ITS_OWNER) continue;
-      const src = readFileSync(join(FN, fn, "index.ts"), "utf8");
-      // The two shapes scripts/deploy-ledger.mjs buildOf() reads: a literal
-      // "<fn>.YYYY-MM-DD.N" (or a FN_NAME template), or a BUILD_VERSION.
-      const esc = fn.replace(/-/g, "\\-");
-      const build = new RegExp(`["'\`]${esc}\\.\\d{4}-\\d{2}-\\d{2}\\.[A-Za-z0-9-]+["'\`]`).test(src)
-        || /\$\{FN_NAME\}\.\d{4}-\d{2}-\d{2}\./.test(src)
-        || /const BUILD_VERSION\s*=\s*["']\d{4}-\d{2}-\d{2}\.[A-Za-z0-9-]+["']/.test(src);
-      const sends = /["']x-fn-build["']/i.test(src) || /\bstamped\(/.test(src);
-      if (!build || !sends) missing.push(`${fn}${build ? "" : " (no build the ledger can read)"}${sends ? "" : " (sends no x-fn-build)"}`);
-    }
-    expect(missing, "these functions cannot say which build is deployed").toEqual([]);
+    const sources = Object.fromEntries(fns.map((fn) => [fn, readFileSync(join(FN, fn, "index.ts"), "utf8")]));
+    expect(unstamped(sources, STAMPED_BY_ITS_OWNER), "these functions cannot say which build is deployed").toEqual([]);
   });
 
-  it("an owner-stamped function that is stamped now is taken off the list", () => {
-    const done = Object.keys(STAMPED_BY_ITS_OWNER).filter((fn) => {
-      const p = join(FN, fn, "index.ts");
-      if (!existsSync(p)) return true;
-      const src = readFileSync(p, "utf8");
-      return /["']x-fn-build["']/i.test(src) || /\bstamped\(/.test(src);
-    });
-    expect(done, "remove these from STAMPED_BY_ITS_OWNER: they name their build now").toEqual([]);
+  it("an owner stamping a listed function turns nothing red, and from then on it is held to the rule", () => {
+    const stampedByOwner = `const FN_BUILD = "save-lead.2026-10-09.1";\nconst h = { "x-fn-build": FN_BUILD };\n`;
+    const halfStamped = `const FN_BUILD = "recover-purchase.2026-10-09.1";\n`;
+    const bare = `Deno.serve(() => new Response("ok"));\n`;
+    expect(unstamped({ "save-lead": stampedByOwner, "delete-account": bare }, STAMPED_BY_ITS_OWNER)).toEqual([]);
+    expect(unstamped({ "recover-purchase": halfStamped }, STAMPED_BY_ITS_OWNER)).toEqual(["recover-purchase (sends no x-fn-build)"]);
+    // Positive control: an unlisted function with no stamp is reported.
+    expect(unstamped({ "warm-up": bare }, STAMPED_BY_ITS_OWNER)).toEqual(["warm-up (no build the ledger can read) (sends no x-fn-build)"]);
+  });
+
+  it("the owner list only shrinks, and names functions that exist", () => {
+    for (const fn of Object.keys(STAMPED_BY_ITS_OWNER)) {
+      expect(OWNER_LIST_AT_START, `${fn} was added to the list: stamp it instead`).toContain(fn);
+      expect(fns, `${fn} is listed but no longer exists`).toContain(fn);
+    }
+    const done = Object.keys(STAMPED_BY_ITS_OWNER).filter((fn) => { const s = stampOf(fn, readFileSync(join(FN, fn, "index.ts"), "utf8")); return s.build && s.sends; });
+    if (done.length) console.info(`stamped by their owners, so the excuse no longer applies; take them off STAMPED_BY_ITS_OWNER: ${done.join(", ")}`);
   });
 });
