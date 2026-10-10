@@ -171,9 +171,9 @@ describe("the spend gate and a paying Interview Coach buyer", () => {
     expect(calls.some((a) => String(a.p_ip).startsWith("sess:"))).toBe(true);
   });
 
-  it("a body naming a purchase, from an address whose purchase bucket is spent, is refused", async () => {
+  it("a body naming a purchase, from an address whose hour and that purchase's day are spent, is refused", async () => {
     const gateDb = {
-      rpc: async (_n: string, a: Record<string, unknown>) => ({ data: String(a.p_ip).startsWith("sess:"), error: null }),
+      rpc: async () => ({ data: false, error: null }),
       from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { session_id: "cs_y", product_type: "interview_coach" }, error: null }) }) }) }),
       auth: { getUser: async () => ({ data: { user: null }, error: { message: "no" } }) },
     };

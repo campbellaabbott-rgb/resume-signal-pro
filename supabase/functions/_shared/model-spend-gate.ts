@@ -368,35 +368,40 @@ export async function modelSpendGate(
   }
   if (!db) return spendRefusal("limiter_unavailable", null, cors);
 
-  // 2. A free generator delivering a purchase of what it sells counts the
-  //    address in a bucket of its own, as large as the purchase's day. The
-  //    shared 20-an-hour address bucket was counted first, so a paying
-  //    Interview Coach buyer (15 calls a pass) got a 429 for an hour on the
-  //    21st call with half the purchase's 30 a day unspent, sooner behind a
-  //    shared NAT (sweep S8-065). A body naming someone else's purchase from
-  //    a spent address is still refused: the address is still counted.
+  // 2. A free generator delivering a purchase of what it sells. The shared
+  //    20-an-hour address bucket refused a paying Interview Coach buyer (15
+  //    calls a pass) for an hour on the 21st call with half the purchase's 30
+  //    a day unspent (sweep S8-065). A separate purchase bucket fixed that but
+  //    gave any address naming a purchase a second hourly allowance beside
+  //    the plain one. So the address is counted in one bucket, always, and a
+  //    spent address goes on only while the named purchase's day lasts: every
+  //    call past the address's hour draws on that day.
   const delivers = limits.globalPerHour !== undefined && !!session && !!opts.products && opts.products.length > 0
     && await deliversProduct(db, session, opts.products);
-  const addressCap = delivers ? Math.max(limits.perAddress, perSession) : limits.perAddress;
 
   // 3. The address.
   const mine = await counted(db, {
-    p_function: delivers ? `${fn}:purchase` : fn,
+    p_function: fn,
     p_ip: spendAddressKey(req.headers),
-    p_max_requests: addressCap,
+    p_max_requests: limits.perAddress,
     p_window_minutes: limits.windowMinutes ?? 60,
   });
   if (mine === null) return spendRefusal("limiter_unavailable", null, cors);
-  if (mine === false) return spendRefusal("rate_limited_function", addressCap, cors);
 
   // 4a. A purchase-gated generator: the function checked the purchase; its day is a hard limit.
-  if (limits.globalPerHour === undefined) return purchaseSpendGate(db, fn, session, perSession, cors);
+  if (limits.globalPerHour === undefined) {
+    if (mine === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
+    return purchaseSpendGate(db, fn, session, perSession, cors);
+  }
 
   // 4b. A free generator delivering a purchase of what it sells: off the ceiling while its day lasts.
   if (delivers && session) {
-    if (await countSession(db, fn, session, perSession) === true) return null;
-    // Spent (or uncountable): charged to the ceiling below like any caller, never refused for it.
+    const day = await countSession(db, fn, session, perSession);
+    if (day === true) return null;
+    if (mine === false) return spendRefusal(day === null ? "limiter_unavailable" : "rate_limited_function", day === null ? null : limits.perAddress, cors);
+    // Spent (or uncountable) inside the address's hour: charged to the ceiling below like any caller.
   }
+  if (mine === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
 
   // 5. The function as a whole: proven callers and strangers spend separate allowances.
   const who = await provenCaller(db, req.headers, opts.boardPass);

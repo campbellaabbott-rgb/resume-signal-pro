@@ -67,6 +67,7 @@ let aiBodies: unknown[];
 let rateCalls: RateArgs[];
 /** true once replaying: every address bucket and every ceiling refuses. */
 let spent = false;
+let sessionDaySpent = false;
 const db = new FakeDb({ used_stripe_sessions: ["session_id"] });
 
 beforeAll(async () => {
@@ -108,11 +109,12 @@ beforeEach(() => {
   aiBodies = [];
   rateCalls = [];
   spent = false;
+  sessionDaySpent = false;
   db.rpcs = {
     check_rate_limit: (a) => {
       rateCalls.push(a as RateArgs);
       const p = String((a as RateArgs).p_ip);
-      return { data: !spent || p.startsWith("sess:"), error: null };
+      return { data: !spent || (p.startsWith("sess:") && !sessionDaySpent), error: null };
     },
     get_temp_resume: () => ({ data: [{ resume_text: RESUME, job_description_text: POSTING }], error: null }),
     get_purchased_content_by_session: () => ({ data: [], error: null }),
@@ -219,9 +221,13 @@ describe("every server delivery reaches the generator as our own server, naming 
     }
   }
 
-  it("a stranger replaying a delivery's body with the publishable key is still refused (the key, not the body, is the exemption)", async () => {
+  // With the publishable key, a body naming the purchase is the buyer's own
+  // browser as far as the gate can tell: past a spent address it draws on the
+  // purchase's day and nothing more. Only the server key skips the address.
+  it("a stranger replaying a delivery's body with the publishable key is refused once the purchase's day is spent (the key, not the body, is the exemption)", async () => {
     await viaWebhook("cs_webhook_copy", "apply_assistant");
     const s = sent.find((x) => x.fn === "generate-cover-letter")!;
+    sessionDaySpent = true;
     const r = await replay({ ...s, headers: { ...s.headers, authorization: "Bearer anon_harness" } });
     expect(r.status).toBe(429);
     expect(aiBodies).toEqual([]);
