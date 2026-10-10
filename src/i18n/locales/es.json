@@ -5037,7 +5037,7 @@
     "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Nunca se renueva; inicia sesión para comprarlo.",
     "connectCta": "Conecta tu agente",
     "passCta": "Comprar o abrir tu pase",
-    "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina, una conexión doméstica o los servidores de un servicio de chat cuentan como una sola dirección, así que el número restante puede empezar por debajo de {{freeCallsPerDay}} cuando otros la comparten)."
+    "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina o una conexión doméstica cuentan como una sola dirección; desde ChatGPT cada persona tiene sus propias {{freeCallsPerDay}}, y desde Claude primero se usa un cupo diario que comparten todos los usuarios de Claude)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} de los {{total}} campos listados aquí no tienen medida de la proporción que seguía anunciada al llegar a nuestro límite de 30 días. Cada uno se retiene por un motivo declarado: una ausencia en nuestro propio registro, nunca una conclusión sobre el campo.",

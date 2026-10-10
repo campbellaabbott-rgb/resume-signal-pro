@@ -814,7 +814,8 @@ export default function AgentConnect() {
                       <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
                       without one, so an agent can see what's here before you decide to mint anything.{" "}
                       {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
-                      day per network address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
+                      day per network address (from ChatGPT, per person; from Claude, a shared pool of{" "}
+                      {MCP_ANON_CAPS.hostPoolPerDay} first; search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
                       many are left; every other tool call needs a credential — the key, or the sign-in a
                       chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state;
                       the initialize result carries it under <code className="text-xs">{`_meta["${MCP_SIGN_IN_META_KEY}"].state`}</code>.

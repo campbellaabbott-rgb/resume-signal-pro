@@ -5037,7 +5037,7 @@
     "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
     "passCta": "Pas kopen of openen",
-    "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor, een thuisverbinding of de servers van een chatdienst tellen als één adres, dus het resterende aantal kan onder {{freeCallsPerDay}} beginnen als anderen het delen)."
+    "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} van de {{total}} hier genoemde vakgebieden hebben geen meting van het aandeel gedateerde functies dat bij onze grens van 30 dagen nog geadverteerd stond. Elk wordt om een genoemde reden ingehouden — een leemte in onze eigen registratie, nooit een uitspraak over het vakgebied.",

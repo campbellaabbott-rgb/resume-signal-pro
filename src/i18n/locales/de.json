@@ -5037,7 +5037,7 @@
     "passLine": "Ein Pass für {{passPrice}} $ gibt ihm {{passHours}} Stunden mit voller Geschwindigkeit, um die Jobbörse zu recherchieren und sich für dich auf {{passApplications}} Stellen zu bewerben. Verlängert sich nie; zum Kauf anmelden.",
     "connectCta": "Agenten verbinden",
     "passCta": "Pass kaufen oder öffnen",
-    "connectLine2": "Kostenlos und ohne Konto verbinden — {{freeCallsPerDay}} Aufrufe pro Tag und Netzwerkadresse, um sich auf der Jobbörse umzusehen (ein Büro, ein Heimanschluss oder die Server eines Chat-Dienstes zählen als eine Adresse, daher kann die verbleibende Zahl unter {{freeCallsPerDay}} beginnen, wenn andere sie teilen)."
+    "connectLine2": "Kostenlos und ohne Konto verbinden — {{freeCallsPerDay}} Aufrufe pro Tag und Netzwerkadresse, um sich auf der Jobbörse umzusehen (ein Büro oder ein Heimanschluss zählt als eine Adresse; aus ChatGPT hat jede Person ihre eigenen {{freeCallsPerDay}}, und aus Claude kommt zuerst ein Tageskontingent, das alle Claude-Nutzer teilen)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} der {{total}} hier aufgeführten Bereiche haben keinen Wert für den Anteil, der an unserer 30-Tage-Grenze noch ausgeschrieben war. Jeder wird mit genanntem Grund zurückgehalten — eine Lücke in unserer eigenen Aufzeichnung, nie eine Aussage über den Bereich.",

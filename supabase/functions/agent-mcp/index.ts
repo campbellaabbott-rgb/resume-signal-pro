@@ -234,7 +234,7 @@ const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Pas
 /** The JSON-RPC methods this server answers, for the error that names them. */
 const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
 /** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
-const FN_BUILD = "agent-mcp.2026-10-09.1";
+const FN_BUILD = "agent-mcp.2026-10-09.2";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -294,7 +294,8 @@ const CHECK_JOBS_OPEN_MAX = 200;
 // times that host's egress addresses per day, and the second user of the day
 // behind one address can still meet the wall. Neither cap fixes that; a
 // signed-in user on those hosts is metered by their own key row instead
-// (the OAuth path below), and the unkeyed remainder is accepted as is. The
+// (the OAuth path below), and the unkeyed remainder gets the host's own
+// allowance (ANON_HOST_POOL_PER_DAY, 2026-10-09). The
 // global cap bounds one thing only: what the unkeyed tier can cost the board
 // in a day, whoever spends it. Both are counted by mcp_anon_check (migration
 // 20260915100000) in its own table; NEVER through check_rate_limit or
@@ -303,6 +304,21 @@ const CHECK_JOBS_OPEN_MAX = 200;
 // prefix of its SHA-256.
 const ANON_GLOBAL_CAP_PER_DAY = 2000;
 const ANON_IP_CAP_PER_DAY = 25;
+/**
+ * A HOST'S OWN ALLOWANCE (MCP directory prep, commercial plan 2026-10-08).
+ * claude.ai and ChatGPT call from their own servers, so every user of a host
+ * shared one address's cap. A call from an address in the host's PUBLISHED
+ * egress list is counted first under its user (ChatGPT's openai/subject,
+ * believed only from OpenAI's addresses) at the address cap, or, where the
+ * host names no user (Claude), in one pool for that host. A spent host bucket
+ * falls through to the address bucket, so nobody has less than before; the
+ * global cap still bounds the tier.
+ */
+const ANON_HOST_POOL_PER_DAY = 500;
+/** Anthropic's outbound range for MCP tool calls (docs.claude.com/en/api/ip-addresses, read 2026-10-10). */
+const CLAUDE_EGRESS_V4: readonly string[] = ["160.79.104.0/21"];
+/** OpenAI's published ChatGPT-connector egress, read at most every six hours per isolate. */
+const CHATGPT_EGRESS_URL = "https://openai.com/chatgpt-connectors.json";
 /**
  * What a free key raises the daily allowance to. key_status reads a key's
  * quota off the api_key_check decision, which api_key_issue set at minting
@@ -356,6 +372,43 @@ function callerAddress(headers: Headers): string {
   const hops = String(headers.get("x-forwarded-for") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
   return hops.at(-1) || "unknown";
 }
+
+const v4 = (ip: string): number | null => {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip.trim());
+  const o = m ? m.slice(1).map(Number) : [];
+  return o.length === 4 && o.every((x) => x <= 255) ? ((o[0] << 24) >>> 0) + (o[1] << 16) + (o[2] << 8) + o[3] : null;
+};
+function inV4Cidr(ip: string, cidr: string): boolean {
+  const [base, bits] = cidr.split("/");
+  const a = v4(ip), b = v4(base ?? ""), n = Number(bits);
+  if (a === null || b === null || !Number.isInteger(n) || n < 0 || n > 32) return false;
+  const mask = n === 0 ? 0 : (0xffffffff << (32 - n)) >>> 0;
+  return ((a & mask) >>> 0) === ((b & mask) >>> 0);
+}
+let chatgptEgress: { at: number; cidrs: string[] } = { at: 0, cidrs: [] };
+/** OpenAI's list; an unreadable one is [] for ten minutes, and the address bucket answers. */
+async function chatgptEgressCidrs(): Promise<string[]> {
+  const ttl = chatgptEgress.cidrs.length ? 6 * 3600_000 : 10 * 60_000;
+  if (chatgptEgress.at && Date.now() - chatgptEgress.at < ttl) return chatgptEgress.cidrs;
+  let cidrs: string[] = [];
+  try {
+    const r = await fetch(CHATGPT_EGRESS_URL, { signal: AbortSignal.timeout(1500) });
+    const j = (r.ok ? await r.json() : {}) as { prefixes?: Array<{ ipv4Prefix?: unknown }> };
+    cidrs = (j.prefixes ?? []).map((p) => p?.ipv4Prefix).filter((c): c is string => typeof c === "string" && c.includes("/"));
+  } catch (e) {
+    console.warn("[AGENT-MCP] ChatGPT egress list unreadable:", String((e as Error)?.message ?? e).slice(0, 120));
+  }
+  chatgptEgress = { at: Date.now(), cidrs };
+  return cidrs;
+}
+/** Whose servers made this call, judged by the platform-seen address alone. */
+async function egressHost(address: string, claimsChatGpt: boolean): Promise<"claude" | "chatgpt" | null> {
+  if (CLAUDE_EGRESS_V4.some((c) => inV4Cidr(address, c))) return "claude";
+  if (claimsChatGpt && (await chatgptEgressCidrs()).some((c) => inV4Cidr(address, c))) return "chatgpt";
+  return null;
+}
+/** One unkeyed meter bucket: its mcp_anon_check key, its cap, and how a sentence names it. */
+type AnonBucket = { key: string; cap: number; kind: "chatgpt-user" | "claude" | "chatgpt" | "address"; owner: string };
 
 // EXPOSED, OR THEY MIGHT AS WELL NOT BE SENT — same lesson public-api learned:
 // a browser-side MCP client cannot read rate headers absent from
@@ -1850,7 +1903,7 @@ function guideText(): string {
     ``,
     `## Four tiers`,
     ``,
-    `- **No key.** ${by(ANON_TOOLS)} answer with no Authorization header at all: search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per network address (an office, a home connection or a chat service's own servers count as one address) and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller; every answer says how many are left. \`${tool("search")}\` and \`${tool("fetch")}\` are \`${tool("search_jobs")}\` and \`${tool("get_job")}\` under the names ChatGPT's research connector calls.`,
+    `- **No key.** ${by(ANON_TOOLS)} answer with no Authorization header at all: search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per network address (an office or a home connection counts as one address; from ChatGPT each user has their own ${ANON_IP_CAP_PER_DAY}, and Claude's users share ${ANON_HOST_POOL_PER_DAY} a day before the address's own) and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller; every answer says how many are left and whose they are. \`${tool("search")}\` and \`${tool("fetch")}\` are \`${tool("search_jobs")}\` and \`${tool("get_job")}\` under the names ChatGPT's research connector calls.`,
     `- **Free key, no account** (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, every filter, and every other read tool — ${by(KEY_ONLY_READ_TOOLS)}.`,
     `- **Paid key:** ${by(PAID_TOOLS)}, exactly like POST /v1/fit on the data API.`,
     `- **Account-linked key** (${DOCS_URL}) with an Agent plan or a live Agent Pass (${PASS_URL}) and a mandate (the permission you set up in Account: what roles, where, and whether it may send): ${by(ACCOUNT_TOOLS)}. A pass also opens the paid scorer.`,
@@ -1887,7 +1940,7 @@ function guideText(): string {
     `- "${KEY_REFUSALS.revoked[0]}" — ${KEY_REFUSALS.revoked[1]}`,
     `- "${KEY_REFUSALS.quota_exceeded(FREE_KEY_DAILY_QUOTA)[0]}" (a free key's day) — ${KEY_REFUSALS.quota_exceeded(FREE_KEY_DAILY_QUOTA)[1]}`,
     `- "${KEY_REFUSALS.rate_limited(FREE_KEY_RATE_PER_MIN)[0]}" (on a free key; a pass or a paid tier names its own number) — ${KEY_REFUSALS.rate_limited(FREE_KEY_RATE_PER_MIN)[1]}`,
-    `- "The unkeyed allowance is spent" — this address used its ${ANON_IP_CAP_PER_DAY} free calls for today (an office or a chat service counts as one address); it resets at midnight UTC, and a free key (${MINT_URL}) raises it to ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")}.`,
+    `- "The unkeyed allowance is spent" — the allowance it names is used up for today: an address's ${ANON_IP_CAP_PER_DAY} (from ChatGPT or Claude, after a ChatGPT user's own ${ANON_IP_CAP_PER_DAY} or Claude's shared ${ANON_HOST_POOL_PER_DAY}), or every caller's ${ANON_GLOBAL_CAP_PER_DAY}; it resets at midnight UTC, and a free key (${MINT_URL}) raises it to ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")}.`,
     `- "That is not a job id from this board." — the argument was a link or a title; use the id from a search card, e.g. greenhouse:acme:12345 (the id in a resumebooster.work/jobs?job=<id> link is the same one).`,
     `- "unknown tool" or "method not found" — call tools/list for the names; the methods are ${SUPPORTED_METHODS.join(", ")}.`,
     `- "${NOT_A_WEB_PAGE}" — the address was opened in a browser; nothing is wrong.`,
@@ -3546,32 +3599,46 @@ async function answerUnkeyed(
   args: Record<string, unknown>,
   params: Record<string, unknown> = {},
 ): Promise<{ rpc: unknown; headers: Record<string, string> }> {
-  const ipHash = (await sha256Hex(callerAddress(req.headers))).slice(0, 16);
-  // A ChatGPT caller stamps its user as `openai/subject` in _meta. It is
-  // caller-written, so it is NEVER the allowance's key (the address bucket
-  // stays the bound); it is logged beside the bucket, hashed to the same
-  // 16-hex prefix, so the edge log can say how many distinct subjects share
-  // one address per day — the measurement that decides whether the shared
-  // egress wall is ever met by real users. Until the adoption reader carries
-  // it, that count is a grep of this line.
+  const address = callerAddress(req.headers);
+  const ipHash = (await sha256Hex(address)).slice(0, 16);
+  // A ChatGPT caller stamps its user as `openai/subject` in _meta. It keys
+  // that user's own bucket only on a call from OpenAI's published egress
+  // (egressHost); from any other address it is the caller's own word and
+  // keys nothing. Logged hashed beside the address bucket either way.
   const subject = openaiSubjectOf(params);
-  if (subject) console.log(`[AGENT-MCP] unkeyed subject ${(await sha256Hex(subject)).slice(0, 16)} on address ${ipHash} (${toolName})`);
-  const { data, error } = await client
-    .rpc("mcp_anon_check", { p_ip_hash: ipHash, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: ANON_IP_CAP_PER_DAY })
-    .maybeSingle();
-  if (error || !data) {
-    console.error("[AGENT-MCP] unkeyed allowance check failed:", error?.message?.slice(0, 160));
-    return { rpc: rpcError(rpcId, -32603, "the unkeyed allowance is temporarily unavailable — retry shortly, or send a free key"), headers: {} };
+  const subjectHash = subject ? (await sha256Hex(subject)).slice(0, 16) : "";
+  if (subject) console.log(`[AGENT-MCP] unkeyed subject ${subjectHash} on address ${ipHash} (${toolName})`);
+  // The host's own bucket first (see ANON_HOST_POOL_PER_DAY), the address's last.
+  const host = await egressHost(address, isChatGptCaller(req.headers, params));
+  const buckets: AnonBucket[] = [];
+  if (host === "chatgpt" && subject) buckets.push({ key: `u:chatgpt:${subjectHash}`, cap: ANON_IP_CAP_PER_DAY, kind: "chatgpt-user", owner: "for you in ChatGPT" });
+  else if (host) buckets.push({ key: `host:${host}`, cap: ANON_HOST_POOL_PER_DAY, kind: host, owner: `shared by every ${host === "claude" ? "Claude" : "ChatGPT"} user` });
+  buckets.push({ key: ipHash, cap: ANON_IP_CAP_PER_DAY, kind: "address", owner: "from this address" });
+  let a: AnonDecision | null = null;
+  let b: AnonBucket = buckets[0];
+  for (b of buckets) {
+    const { data, error } = await client
+      .rpc("mcp_anon_check", { p_ip_hash: b.key, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: b.cap })
+      .maybeSingle();
+    if (error || !data) {
+      console.error("[AGENT-MCP] unkeyed allowance check failed:", error?.message?.slice(0, 160));
+      return { rpc: rpcError(rpcId, -32603, "the unkeyed allowance is temporarily unavailable — retry shortly, or send a free key"), headers: {} };
+    }
+    a = data as AnonDecision;
+    // Allowed, or refused by the global cap: either way the next bucket would answer the same.
+    if (a.allowed || a.ip_used < a.ip_cap) break;
   }
-  const a = data as AnonDecision;
+  if (!a) return { rpc: rpcError(rpcId, -32603, "the unkeyed allowance is temporarily unavailable — retry shortly, or send a free key"), headers: {} };
+  if (b.kind !== "address") console.log(`[AGENT-MCP] unkeyed allowance ${b.kind} (${toolName})`);
   const keyRaisesTo = FREE_KEY_DAILY_QUOTA.toLocaleString("en-US");
   if (!a.allowed) {
+    const after = buckets.length > 1 && b.kind === "address" ? `, after the ${buckets[0].cap} ${buckets[0].owner}` : "";
     const which = a.ip_used >= a.ip_cap
-      ? `${a.ip_cap} unkeyed calls a day from one address`
+      ? `${a.ip_cap} unkeyed calls a day from one address${after}`
       : `${a.global_cap} unkeyed calls a day across every caller`;
     return {
       rpc: rpcResult(rpcId, toolErr(
-        `The unkeyed allowance is spent — ${which} (${a.ip_used} of ${a.ip_cap} from this address, ${a.global_used} of ${a.global_cap} overall today). It resets at midnight UTC.`,
+        `The unkeyed allowance is spent — ${which} (${a.ip_used} of ${a.ip_cap} ${b.owner}, ${a.global_used} of ${a.global_cap} overall today). It resets at midnight UTC.`,
         `Get a free key at ${MINT_URL} — ${keyRaisesTo} calls a day, no account — and send it as Authorization: Bearer <key>.`,
       )),
       headers: { "Retry-After": String(secondsToMidnightUtc()) },
@@ -3584,10 +3651,13 @@ async function answerUnkeyed(
   const globalLeft = Math.max(0, a.global_cap - a.global_used);
   const left = Math.min(ipLeft, globalLeft);
   const worldClause = globalLeft < ipLeft ? `; ${globalLeft} across every unkeyed caller` : "";
-  const note = `unkeyed: ${ipLeft} of ${a.ip_cap} anonymous calls left today${worldClause}; a free key raises this to ${keyRaisesTo}`;
+  const whose = b.kind === "address" ? "" : ` ${b.owner}`;
+  const note = `unkeyed: ${ipLeft} of ${a.ip_cap} anonymous calls left today${whose}${worldClause}; a free key raises this to ${keyRaisesTo}`;
   const unkeyed = {
     callsLeftToday: ipLeft,
+    // The cap of the allowance that answered: an address's, a ChatGPT user's or Claude's pool.
     ipCap: a.ip_cap,
+    allowance: b.kind,
     globalLeftToday: globalLeft,
     globalCap: a.global_cap,
     resetsInSeconds: secondsToMidnightUtc(),

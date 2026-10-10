@@ -467,13 +467,18 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
     expect(between(MCP, "function inBandChallenge(", "\n}\n")).toMatch(/\.\.\.toolErr\(/);
   });
 
-  it("the unkeyed path logs the OpenAI subject hashed beside the address bucket and never keys the allowance on it", () => {
+  it("the unkeyed path logs the OpenAI subject hashed, and keys a bucket on it only from OpenAI's own addresses", () => {
     const unkeyed = between(MCP, "async function answerUnkeyed(", "\n}\n");
     expect(unkeyed).toMatch(/const subject = openaiSubjectOf\(params\);/);
-    expect(unkeyed).toMatch(/unkeyed subject \$\{\(await sha256Hex\(subject\)\)\.slice\(0, 16\)\} on address \$\{ipHash\}/);
-    // The bucket handed to mcp_anon_check is the address hash and nothing else.
-    expect(unkeyed).toMatch(/\.rpc\("mcp_anon_check", \{ p_ip_hash: ipHash, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: ANON_IP_CAP_PER_DAY \}\)/);
-    expect(unkeyed).not.toMatch(/p_ip_hash: subject|p_ip_hash: `/);
+    expect(unkeyed).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
+    expect(unkeyed).toMatch(/unkeyed subject \$\{subjectHash\} on address \$\{ipHash\}/);
+    // A subject is the caller's own word: it keys a user's bucket only when the
+    // platform-seen address is in OpenAI's published egress (egressHost), and
+    // only hashed. Every other caller is metered by the address hash.
+    expect(unkeyed).toMatch(/const host = await egressHost\(address, isChatGptCaller\(req\.headers, params\)\);/);
+    expect(unkeyed).toMatch(/if \(host === "chatgpt" && subject\) buckets\.push\(\{ key: `u:chatgpt:\$\{subjectHash\}`/);
+    expect(unkeyed).toMatch(/\.rpc\("mcp_anon_check", \{ p_ip_hash: b\.key, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: b\.cap \}\)/);
+    expect(unkeyed).not.toMatch(/p_ip_hash: subject|key: subject\b/);
     const reader = between(MCP, "const openaiSubjectOf = ", "\n};");
     expect(reader).toMatch(/`\$\{OPENAI_META_PREFIX\}subject`/);
     expect(reader).toMatch(/typeof v === "string" \? v\.trim\(\) : ""/);

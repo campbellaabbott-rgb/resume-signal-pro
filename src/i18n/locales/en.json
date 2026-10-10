@@ -5037,7 +5037,7 @@
     "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.",
     "connectCta": "Connect your agent",
     "passCta": "Buy or open your pass",
-    "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office, a home connection or a chat service's own servers count as one address, so the number left can start below {{freeCallsPerDay}} when others share it)."
+    "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} of the {{total}} fields listed here have no reading of the share still advertised at our 30-day cap. Each is withheld for a stated reason — an absence in our own record, never a finding about the field.",

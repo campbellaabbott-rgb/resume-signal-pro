@@ -5037,7 +5037,7 @@
     "passLine": "Um passe de {{passPrice}} $ dá-lhe {{passHours}} horas a toda a velocidade para pesquisar o quadro e candidatar-se a {{passApplications}} vagas por si. Nunca renova; inicie sessão para comprar.",
     "connectCta": "Ligar o seu agente",
     "passCta": "Comprar ou abrir o seu passe",
-    "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório, uma conexão doméstica ou os servidores de um serviço de chat contam como um só endereço, então o número restante pode começar abaixo de {{freeCallsPerDay}} quando outros o compartilham)."
+    "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} das {{total}} áreas listadas aqui não têm medida da parcela ainda anunciada ao atingir o nosso limite de 30 dias. Cada uma é retida por um motivo declarado — uma ausência no nosso próprio registo, nunca uma conclusão sobre a área.",

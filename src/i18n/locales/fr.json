@@ -5037,7 +5037,7 @@
     "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Sans reconduction ; connectez-vous pour l'acheter.",
     "connectCta": "Connecter votre agent",
     "passCta": "Acheter ou ouvrir votre pass",
-    "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau, une connexion domestique ou les serveurs d'un service de chat comptent pour une seule adresse, donc le nombre restant peut commencer sous {{freeCallsPerDay}} quand d'autres la partagent)."
+    "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} des {{total}} domaines listés ici n'ont pas de mesure de la part encore affichée à notre plafond de 30 jours. Chacune est retenue pour un motif énoncé : une absence dans notre propre relevé, jamais un constat sur le domaine.",

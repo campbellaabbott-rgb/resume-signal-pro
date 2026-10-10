@@ -136,7 +136,7 @@ export const MCP_APPLY_TOOLS = MCP_TOOLS.filter((t) => t.tier === "apply");
  */
 export const MCP_ANON_TOOL_NAMES: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"];
 export const MCP_ANON_TOOLS = MCP_TOOLS.filter((t) => MCP_ANON_TOOL_NAMES.includes(t.name));
-export const MCP_ANON_CAPS = { perAddressPerDay: 25, globalPerDay: 2000, searchRows: 10 } as const;
+export const MCP_ANON_CAPS = { perAddressPerDay: 25, hostPoolPerDay: 500, globalPerDay: 2000, searchRows: 10 } as const;
 /** Calls a day on a free key — api_key_issue's c_quota (migration 20260826214700), mirrored. */
 export const MCP_FREE_KEY_DAILY_QUOTA = 1000;
 
@@ -213,11 +213,12 @@ export const MCP_SERVER_ADDRESS_NOTE = "This address is on Supabase, the company
 
 /**
  * The gloss of "address", used once per panel where the cap is first named.
- * Replaces "per address" everywhere: a chat service's own servers are one
- * address, so from Claude or ChatGPT the number left can start below the cap.
+ * A chat service's own servers carry all its users, so a call from ChatGPT's
+ * or Claude's published egress has the host's own allowance first (agent-mcp
+ * ANON_HOST_POOL_PER_DAY): per person from ChatGPT, one pool from Claude.
  */
 export const MCP_ADDRESS_GLOSS =
-  `${MCP_ANON_CAPS.perAddressPerDay} free calls a day per network address — an office, a home connection, or a chat service's own servers count as one address, so from Claude or ChatGPT the number left can start below ${MCP_ANON_CAPS.perAddressPerDay} because other people share it.`;
+  `${MCP_ANON_CAPS.perAddressPerDay} free calls a day per network address — an office or a home connection counts as one address. From ChatGPT each person has their own ${MCP_ANON_CAPS.perAddressPerDay}; from Claude, whose servers carry every user, calls come first from a pool of ${MCP_ANON_CAPS.hostPoolPerDay} a day that all Claude users share, then from the address's own ${MCP_ANON_CAPS.perAddressPerDay}.`;
 
 /** The three things that need an account, said under every host's steps. */
 export const MCP_NEEDS_ACCOUNT_LINE =
@@ -445,7 +446,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       s === "on"
         ? `The first time Claude needs your account — to open a posting in full, to check a shortlist, or to apply — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
         : s === "off" ? chatOff("Claude") : UNKNOWN_LINE,
-    verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask "${ASK_STATS}": the answer names the number of open postings and a note that reads "unkeyed: N of ${MCP_ANON_CAPS.perAddressPerDay} anonymous calls left today".`,
+    verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask "${ASK_STATS}": the answer names the number of open postings and a note that begins "unkeyed:" and says how many anonymous calls are left today.`,
   },
   {
     id: "chatgpt",

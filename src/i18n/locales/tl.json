@@ -5037,7 +5037,7 @@
     "passLine": "Ang ${{passPrice}} na pass ay nagbibigay dito ng {{passHours}} oras sa buong bilis para mag-research sa job board at mag-apply sa {{passApplications}} trabaho para sa iyo. Hindi kailanman nagre-renew; mag-sign in para bumili.",
     "connectCta": "Ikonekta ang iyong agent",
     "passCta": "Bumili o buksan ang iyong pass",
-    "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina, koneksyon sa bahay, o ang sariling mga server ng isang chat service ay binibilang bilang isang address, kaya maaaring magsimula sa mas mababa sa {{freeCallsPerDay}} ang natitira kapag may ibang gumagamit nito)."
+    "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina o koneksyon sa bahay ay binibilang bilang isang address; mula sa ChatGPT may sariling {{freeCallsPerDay}} ang bawat tao, at mula sa Claude, nauuna ang pang-araw-araw na pool na pinagsasaluhan ng lahat ng gumagamit ng Claude)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} sa {{total}} larangang nakalista rito ang walang sukat ng bahaging nakapaskil pa rin sa aming 30-araw na hangganan. Bawat isa ay ipinagpapaliban nang may nakasaad na dahilan — kakulangan ito sa aming sariling tala, hindi kailanman paghatol sa larangan.",
