@@ -4818,15 +4818,15 @@ export function FreeKeywordResults({
           previewLines={
             realKeywordGapStats && realKeywordGapStats.totalMissing > 0
               ? [
-                  t('freeResults.lockedInsights.kwHard', { count: realKeywordGapStats.criticalMissing, plural: realKeywordGapStats.criticalMissing === 1 ? '' : 's' }),
+                  t('freeResults.lockedInsights.kwHard', { count: realKeywordGapStats.criticalMissing }),
                   ...(realKeywordGapStats.certifications > 0
-                    ? [t('freeResults.lockedInsights.kwCerts', { count: realKeywordGapStats.certifications, plural: realKeywordGapStats.certifications === 1 ? '' : 's' })]
+                    ? [t('freeResults.lockedInsights.kwCerts', { count: realKeywordGapStats.certifications })]
                     : []),
                   ...(realKeywordGapStats.tools > 0
-                    ? [t('freeResults.lockedInsights.kwTools', { count: realKeywordGapStats.tools, plural: realKeywordGapStats.tools === 1 ? '' : 's' })]
+                    ? [t('freeResults.lockedInsights.kwTools', { count: realKeywordGapStats.tools })]
                     : []),
                   ...(realKeywordGapStats.methodology > 0
-                    ? [t('freeResults.lockedInsights.kwMethodology', { count: realKeywordGapStats.methodology, plural: realKeywordGapStats.methodology === 1 ? '' : 's' })]
+                    ? [t('freeResults.lockedInsights.kwMethodology', { count: realKeywordGapStats.methodology })]
                     : []),
                 ]
               : realKeywordGapStats
