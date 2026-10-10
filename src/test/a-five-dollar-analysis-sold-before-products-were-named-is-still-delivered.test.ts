@@ -29,7 +29,7 @@
  *   - and a legacy session is still redeemed once, never for another product,
  *     never unpaid.
  */
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
@@ -115,8 +115,17 @@ describe("a legacy session is redeemed once, for this product, and only paid", (
     h.aiPlan.push(gate, gate);
     const a = ask(id);
     const b = ask(id, `${RESUME} second tab`);
-    for (let i = 0; i < 200 && h.aiCalls() < 2; i++) await new Promise((r) => setImmediate(r));
-    expect(h.aiCalls(), "both requests must be inside the AI call at once").toBe(2);
+    // A WALL-CLOCK budget. It was 200 event-loop turns, which is no time at
+    // all on a loaded runner: CI run 37207688995 saw 0 calls, and the gate it
+    // never opened left both requests hanging into the next case (3 AI calls
+    // where 1 was asserted). The gate is released whatever happens here.
+    try {
+      await vi.waitFor(() => expect(h.aiCalls(), "both requests must be inside the AI call at once").toBe(2), { timeout: 3_000, interval: 5 });
+    } catch (e) {
+      open();
+      await Promise.allSettled([a, b]);
+      throw e;
+    }
     open();
     const [ra, rb] = await Promise.all([a, b]);
     expect([ra.status, rb.status]).toEqual([200, 200]);
