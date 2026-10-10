@@ -6,11 +6,13 @@
 #
 # THE CLAIMS, one line each below:
 #   - every changed function serves its 2026-10-09 build (or later), the new
-#     withdraw-subscription included; the review fixes of 2026-10-09 need .2 of
-#     stripe-webhook, withdraw-subscription, delete-account and both
-#     subscription checkouts, and .1 of process-email-queue (legal notices
-#     pass a drip unsubscribe) and free-keyword-scan (it bundles the comped
-#     scan-pack settlement);
+#     withdraw-subscription included; the review fixes of 2026-10-10 need .3 of
+#     stripe-webhook (a promotion's charge in the notices), withdraw-subscription
+#     (full refund without the service-start request), delete-account (plans
+#     cancelled and the agent off before the CV goes) and both subscription
+#     checkouts (the request on the plan), and .1 of process-email-queue (legal
+#     notices pass a drip unsubscribe) and free-keyword-scan (it bundles the
+#     comped scan-pack settlement);
 #   - withdraw-subscription is deployed with the EU/UK switch OFF (404
 #     not_available), as owner decision 3 requires until VAT registration;
 #   - the four migrations landed: subscription_notices (130000) and
@@ -19,7 +21,8 @@
 #     still refuses anon; 133000 (a constraint) is an INFO with its SQL;
 #   - the browser's English strings carry the new copy (the Terms line, the
 #     renewal line, the pass in Purchases, the withdrawal panel, the builder's
-#     import prompt, the FAQ's renewal sentence, the seller line);
+#     import prompt, the FAQ's renewal sentence, the seller line, and the
+#     2026-10-10 round's delete notes, Freelance Boost mark and Pro give-up line);
 #   - the crawler's /pricing FAQ says the plans renew and the trial converts;
 #   - the owner steps no read can prove are named as INFO.
 #
@@ -37,11 +40,11 @@ vd74_build() { # $1 fn, $2 method -> the x-fn-build header value
 }
 
 for PAIR in \
-  analyze-resume:1 api-key-request:1 create-agent-checkout:2 create-checkout:1 create-pass-checkout:1 \
-  create-portal-session:1 create-product-checkout:1 create-scan-pack-checkout:1 create-subscription-checkout:2 \
-  delete-account:2 get-account-data:1 retry-failed-deliveries:1 scan-credits:1 send-market-pulse:1 \
+  analyze-resume:1 api-key-request:1 create-agent-checkout:3 create-checkout:1 create-pass-checkout:1 \
+  create-portal-session:1 create-product-checkout:1 create-scan-pack-checkout:1 create-subscription-checkout:3 \
+  delete-account:3 get-account-data:1 retry-failed-deliveries:1 scan-credits:1 send-market-pulse:1 \
   send-product-email:1 send-scan-report:1 send-search-digest:1 verify-product-purchase:1 \
-  verify-scan-pack-purchase:1 withdraw-subscription:2 process-email-queue:1 free-keyword-scan:1; do
+  verify-scan-pack-purchase:1 withdraw-subscription:3 process-email-queue:1 free-keyword-scan:1; do
   FN=${PAIR%%:*}; SEQ=${PAIR#*:}
   H=$(vd74_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving, or the function is not deployed)"
@@ -49,8 +52,8 @@ for PAIR in \
   else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-09.$SEQ or later: the previous bundle is still serving)"; fi
 done
 WH74=$(vd74_build stripe-webhook GET)
-if build_ge stripe-webhook "$WH74" "2026-10-09" 2; then echo "PASS  stripe-webhook GET x-fn-build = $WH74 (subscription confirmation + trial reminder marked legal notices, the 14-day paragraph for EU/EEA/UK buyers only, pro_ grants not sales, Boost link mail)"
-else echo "FAIL  stripe-webhook GET x-fn-build = '${WH74}' (want stripe-webhook.2026-10-09.2 or later: no subscriber notices, or notices a drip unsubscribe drops)"; fi
+if build_ge stripe-webhook "$WH74" "2026-10-09" 3; then echo "PASS  stripe-webhook GET x-fn-build = $WH74 (subscription confirmation + trial reminder marked legal notices and stating a promotion's charge, the 14-day paragraph for EU/EEA/UK buyers only, pro_ grants not sales, Boost link mail)"
+else echo "FAIL  stripe-webhook GET x-fn-build = '${WH74}' (want stripe-webhook.2026-10-09.3 or later: no subscriber notices, notices a drip unsubscribe drops, or notices quoting the list price to a promotion)"; fi
 TC74=$(vd74_build create-test-checkout)
 echo "INFO  create-test-checkout preflight x-fn-build = '${TC74:-none}' (a dev-page function; deploy it only if the dev checkout page is used: want create-test-checkout.2026-10-09.1)"
 
@@ -106,7 +109,10 @@ else
               "billed to an address in the EU, the EEA or the UK|a plan billed elsewhere is told the withdrawal is not its right (review fix)" \
               "cancelled a subscription on this account|a refused delete after a cancel says the plan was cancelled (review fix)" \
               "from your latest scan|the builder offers a newer scan over an old draft (L3-11)" \
-              "Sold by|the seller line ships (renders only once the seller is set)"; do
+              "Sold by|the seller line ships (renders only once the seller is set)" \
+              "Your stored CV has been removed.|a refused delete says when the CV was already removed (2026-10-10 review)" \
+              "already bought on this device|a Freelance Boost bought here asks for the email link instead of loading a stored id (2026-10-10 review)" \
+              "We could not confirm your subscription yet|the Pro card stops saying it is confirming and frees Go Pro (2026-10-10 review)"; do
     S=${PAIR%%|*}; WHY=${PAIR#*|}
     if printf '%s' "$EN74" | grep -qF "$S"; then echo "PASS  English strings carry \"$S\": $WHY"
     else echo "FAIL  English strings lack \"$S\": $WHY -- the frontend with this wave is not published"; fi
@@ -127,6 +133,7 @@ echo "INFO  OWNER STEP (item 12, optional): set the Terms URL in Stripe (Setting
 echo "INFO  OWNER STEP (decision 3): leave EU_UK_SALES and VITE_EU_UK_SALES unset until the VAT registration; then turn on Stripe Tax (Dashboard > Tax, origin address, registrations) BEFORE setting both to 'on' together"
 echo "INFO  OWNER STEP (item 10): fill src/config/seller.ts and supabase/functions/_shared/seller.ts with the legal name and postal address once chosen, then redeploy the frontend and send-search-digest, send-market-pulse, send-scan-report"
 echo "INFO  OWNER STEP: mail (the subscriber notices, the withdrawal acknowledgement, the purchase links) is delivered only once notify.resumebooster.work has DNS; STRIPE_PORTAL_LOGIN_URL, when set, is named in the notices as the second way to cancel"
-echo "INFO  MEASURE: after the next new subscription, subscription_notices holds one 'confirmation' row for it, and checkout_starts.metadata carries termsVersion (when the button showed the line) and referral true/false; an affiliate referral on a non-catalogue checkout records a \$0 conversion (referral_commission none)"
-echo "INFO  MEASURE: get-account-data returns passes[] for a pass buyer; delete-account removes resumes/{user id}/, then cancels the account's plans, then deletes (one test account, owner-run)"
+echo "INFO  MEASURE: after the next new subscription, subscription_notices holds one 'confirmation' row for it, and checkout_starts.metadata carries termsVersion (null only for a press with no Terms line in its block: read origin_path and checkout_function) and referral true/false; an affiliate referral on a non-catalogue checkout records a \$0 conversion (referral_commission none)"
+echo "INFO  MEASURE: get-account-data returns passes[] for a pass buyer; delete-account cancels the account's plans, sets agent_mandates.active false, removes resumes/{user id}/, then deletes (one test account, owner-run)"
+echo "INFO  MEASURE: the next subscription bought with a promotion code gets a confirmation naming 'Your first charge, with your promotion' and the list price after it; verify-product-purchase 429s in its logs fall to near zero (a success-page load makes at most six calls)"
 echo "INFO  MEASURE: a subscription-confirmation or trial-ending to an address in suppressed_emails with reason 'unsubscribe' has an email_send_log 'sent' row, not 'suppressed' (SELECT l.status, count(*) FROM email_send_log l JOIN suppressed_emails s ON lower(l.recipient_email) = s.email AND s.reason = 'unsubscribe' WHERE l.template_name IN ('subscription-confirmation','trial-ending','subscription-withdrawal') GROUP BY 1)"
