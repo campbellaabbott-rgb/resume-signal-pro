@@ -31,7 +31,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-08.1";
+const FN_BUILD = "send-search-digest.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

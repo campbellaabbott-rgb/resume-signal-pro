@@ -259,14 +259,19 @@ export function computeFit(
   }
 
   const coverage = matched.length / postingTerms.length;
-  const precision = scan.terms.length ? matched.length / scan.terms.length : 0;
+  // A SHARE, SO AT MOST ONE (L8-13). The numerator counts posting terms found
+  // anywhere in the résumé TEXT, the denominator the résumé's own term list,
+  // which drops a term contained in a longer one; a compound-heavy résumé
+  // ("osha compliance dental, activation funnel") read precision 2.33 and the
+  // score 127-140, outside the 0-100 /v1/fit and fit_resume document.
+  const precision = scan.terms.length ? Math.min(1, matched.length / scan.terms.length) : 0;
   const reach = reachFactor(postingMinYears, scan.years);
   const raw = coverage === 0 || precision === 0
     ? 0
     : ((2 * coverage * precision) / (coverage + precision)) * 100;
   // A demoted match is still a match. Rounding a real overlap down to 0 would
   // print the one number this file refuses to print without meaning it.
-  const pct = raw === 0 ? 0 : Math.max(1, Math.round(raw * reach));
+  const pct = raw === 0 ? 0 : Math.min(100, Math.max(1, Math.round(raw * reach)));
 
   return { pct, matched, missing, totalRecognized: postingTerms.length, coverage, precision, reach };
 }

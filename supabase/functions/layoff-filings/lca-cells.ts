@@ -214,6 +214,62 @@ export async function decodeLcaCells(
   return rows;
 }
 
+// ── cells that are not the board's to carry (S8-024, S8-105) ────────────────
+
+/**
+ * THE REJECTED-PAIR LEDGER: board tokens a name match joined to another
+ * company's federal filings, verified by reading the board's own postings.
+ * Their cells are never posted. Add a token with the evidence, never remove
+ * one without it.
+ */
+export const LCA_REFUSED_TOKENS: Readonly<Record<string, string>> = {
+  // "SOCIAL FINANCE LLC" (SoFi, 186 applications) joined greenhouse:socialfinance,
+  // a Boston nonprofit with four roles; SoFi's own board (sofi) got nothing.
+  socialfinance: "SoFi's filings on a Boston nonprofit's board",
+  // "SIGMA SOFTWARE LLC/INC" (US consultancies) joined smartrecruiters:sigmasoftware2,
+  // a Ukrainian and Polish firm with zero US postings.
+  sigmasoftware2: "US consultancies' filings on a Ukrainian firm's board",
+};
+
+/**
+ * TOKENS CARRIED BY TWO VENDORS ARE TWO BOARDS (S8-105). A cell is keyed by
+ * company_token alone and the reader is asked by token, so a twin board on
+ * another vendor inherits the filings: 'sunday' is ashby Sunday Robotics and
+ * breezy Sunday, a Bangkok insurance broker, whose postings printed "Sunday
+ * filed 8 certified labor condition applications ... $190,000 to $425,000".
+ * Until cells are keyed by (vendor, token), no cell is posted for a token
+ * the catalogue carries under more than one vendor.
+ */
+export function twinVendorTokens(sources: ReadonlyArray<{ source: string; token: string }>): Set<string> {
+  const vendors = new Map<string, Set<string>>();
+  for (const s of sources) {
+    const v = vendors.get(s.token) ?? new Set<string>();
+    v.add(s.source);
+    vendors.set(s.token, v);
+  }
+  return new Set([...vendors].filter(([, v]) => v.size > 1).map(([t]) => t));
+}
+
+export interface LcaRefusal {
+  kept: LcaCell[];
+  ledger: number;
+  twin: number;
+  tokens: string[];
+}
+
+/** The cells this run may post, and the ones it refuses with the reason. */
+export function refuseLcaCells(rows: LcaCell[], twins: ReadonlySet<string>): LcaRefusal {
+  const out: LcaRefusal = { kept: [], ledger: 0, twin: 0, tokens: [] };
+  const refused = new Set<string>();
+  for (const r of rows) {
+    if (Object.prototype.hasOwnProperty.call(LCA_REFUSED_TOKENS, r.company_token)) { out.ledger += 1; refused.add(r.company_token); continue; }
+    if (twins.has(r.company_token)) { out.twin += 1; refused.add(r.company_token); continue; }
+    out.kept.push(r);
+  }
+  out.tokens = [...refused].sort();
+  return out;
+}
+
 /**
  * The whole call sequence for ONE run, built before any of it is sent.
  *

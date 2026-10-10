@@ -32,6 +32,8 @@ import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts
 import { spendAddressKey } from "../_shared/model-spend-gate.ts";
 
 // 2026-10-09.1: a reader's allowance is keyed on the platform's address, hourly (S8-062).
+// 2026-10-09.1 (wave3/board-data-ingest): the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
+// Provable from outside: every response, the preflight included, carries it.
 const FN_BUILD = "job-fit.2026-10-09.1";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,

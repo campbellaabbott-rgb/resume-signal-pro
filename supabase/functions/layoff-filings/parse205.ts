@@ -210,6 +210,30 @@ export function parse205(html: string): Parsed205 {
   return r;
 }
 
+/**
+ * A STATUS UPDATE ON A PLAN ALREADY FILED, not a new event (sweep S8-026).
+ * Freshworks' 2026-08-04 earnings 8-K repeated its May plan under Item 2.05,
+ * and the row re-dated that cut as new for ninety days. Deliberately narrow,
+ * because a false match hides a real reduction: the section must name the
+ * plan itself as previously announced ("the previously announced
+ * restructuring plan"), or say it is substantially complete. A bare "as
+ * previously announced in our Form 8-K" is NOT enough: a saved wind-down
+ * filing (holdout 0001213900-26-079061, a genuine workforce event) says that
+ * about its strategic review. Kept out of parse205() so the pinned port and
+ * its version stay as they are; the row builder combines the two (edgar.ts).
+ */
+const PRIOR_PLAN = /\b(?:previously|initially|originally)\s+(?:announced|disclosed|reported)\s+(?:(?:restructuring|workforce\s+reduction|reduction[-\s]in[-\s]force|realignment|reorganization|cost[-\s]reduction)\s+)?(?:plan|program|initiative|restructuring|reduction)s?\b/i;
+const PLAN_DONE = /\b(?:is|was|were|are|has\s+been|have\s+been)\s+(?:now\s+)?substantially\s+complete[d]?\b/i;
+// A NEW CUT UNDER AN OLD PLAN IS A NEW CUT: "an expansion of the previously
+// announced plan ... approximately 300 additional employees", "a second phase
+// of its previously announced restructuring plan, eliminating 450 positions".
+const NEW_CUT = /\bexpan(?:sion|ded|ds|d|ding)\s+(?:of|to)\b|\b(?:additional|further|incremental)\s+(?:(?:approximately|about|up\s+to)\s+)?(?:[\d,]+\s+)?(?:reductions?|positions|employees|roles|jobs|headcount|workforce|cuts|layoffs|eliminations?)\b|\b(?:second|third|next|new|subsequent)\s+(?:phase|round|stage|wave|tranche)\b/i;
+export function isStatusUpdate(sectionText: string | null): boolean {
+  if (!sectionText) return false;
+  if (NEW_CUT.test(sectionText)) return false;
+  return PRIOR_PLAN.test(sectionText) || PLAN_DONE.test(sectionText);
+}
+
 /** A confidence for the numeric reading: 1 when a number was read from the section, 0.5 when only a sentence, 0 when no section. */
 export function parseConfidence(p: Parsed205): number {
   if (!p.sectionText) return 0;

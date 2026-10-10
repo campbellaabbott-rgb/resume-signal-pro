@@ -6,6 +6,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
+import { takeJdHandoff } from "@/lib/jd-handoff";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
@@ -589,11 +590,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // next scan is a fit check against that exact posting.
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("rb_jd_handoff");
-      if (!raw) return;
-      sessionStorage.removeItem("rb_jd_handoff");
-      const h = JSON.parse(raw) as { jd?: string; title?: string; company?: string };
-      if (!h.jd || h.jd.trim().length < 80) return;
+      const h = takeJdHandoff();
+      if (!h) return;
       setJobDescriptionText(h.jd);
       toast({
         title: t("jobsPage.fitLoadedTitle", "Job description loaded"),

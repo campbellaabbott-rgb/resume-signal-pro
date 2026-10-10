@@ -485,20 +485,24 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
 
 describe("2. the header", () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-  it("carries an Agents item right after Jobs, an icon-only twin where the nav is hidden, and both fire nav_agents under testName nav", async () => {
+  it("carries an Agents item right after Jobs, a twin in the phone menu where the nav is hidden, and both fire nav_agents under testName nav", async () => {
     const fetchSpy = hookFetch();
     render(<MemoryRouter><Header /></MemoryRouter>);
+    // The wide nav's item; the phone menu is closed.
+    expect(screen.getAllByRole("link", { name: "Agents" }).length).toBe(1);
+    const wide = screen.getByRole("link", { name: "Agents" });
+    expect(wide.getAttribute("href")).toBe("/agents");
+    // Order in the wide nav: Jobs, then Agents.
+    const jobs = screen.getByRole("link", { name: "Jobs" });
+    expect(jobs.compareDocumentPosition(wide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The twin is the one that renders under 640px: in the phone menu (which
+    // replaced the icon-only link, S8-093).
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     const links = screen.getAllByRole("link", { name: "Agents" });
     expect(links.length).toBe(2);
     for (const l of links) expect(l.getAttribute("href")).toBe("/agents");
-    // Order in the wide nav: Jobs, then Agents.
-    const wide = links.find((l) => (l.textContent ?? "").trim() === "Agents")!;
-    const jobs = screen.getByRole("link", { name: "Jobs" });
-    expect(jobs.compareDocumentPosition(wide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The twin is the one that renders under 640px: icon-only, labelled.
-    const twin = links.find((l) => (l.textContent ?? "").trim() === "")!;
-    expect(twin.className).toMatch(/\bsm:hidden\b/);
-    expect(twin.getAttribute("aria-label")).toBe("Agents");
+    const twin = links.find((l) => l !== wide)!;
+    expect(twin.closest("#phone-nav"), "the twin lives in the phone menu").toBeTruthy();
     fireEvent.click(wide);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(1), SLOW);
     expect(tracked(fetchSpy)[0]).toMatchObject({ testName: "nav", variant: "nav_agents", eventType: "view" });
@@ -506,14 +510,20 @@ describe("2. the header", () => {
     // given identity once per tab session once the server has kept it (the
     // writer would answer "duplicate" and the visitor's budget was charged on
     // the attempt -- 2026-09-27), so a second click sends nothing...
+    // A navigation closes the phone menu, so the twin is re-found in a freshly
+    // opened one before each click.
+    const twinNow = () => {
+      if (!document.getElementById("phone-nav")) fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+      return screen.getAllByRole("link", { name: "Agents" }).find((l) => l.closest("#phone-nav"))!;
+    };
     await new Promise((r) => setTimeout(r, 0));
-    fireEvent.click(twin);
+    fireEvent.click(twinNow());
     await new Promise((r) => setTimeout(r, 20));
     expect(tracked(fetchSpy).length, "a repeat of an acknowledged identity is not re-sent").toBe(1);
     // ...and with the tab's sent map cleared, the twin proves it is wired to
     // the same event.
     sessionStorage.clear();
-    fireEvent.click(twin);
+    fireEvent.click(twinNow());
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(2), SLOW);
     expect(tracked(fetchSpy)[1]).toMatchObject({ testName: "nav", variant: "nav_agents", eventType: "view" });
   });

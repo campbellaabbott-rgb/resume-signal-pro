@@ -199,8 +199,15 @@ describe("a currency the parser can read and the table cannot rank is recorded",
    * salary-sorted text search exclude outright — so the postings vanish from
    * every pay surface with no disclosure anywhere. HKD is in that state today
    * and cannot be fixed without the column rewrite; this pins the set so the
-   * next addition to the parser's currency list fails here instead. */
-  it("HKD is the only detected currency with no arm, and every arm is detectable", () => {
+   * next addition to the parser's currency list fails here instead.
+   *
+   * SIX MORE, ON PURPOSE (register L13-19, 2026-10-09). TWD, ARS, CLP, COP,
+   * DOP and UYU were read as USD: "NT$2,000,000 per year" ranked as two
+   * million dollars at the top of the pay order, about thirty times its
+   * value. Unranked (out of the pay filters and the pay order) is the lesser
+   * harm until salary_rank_usd gets their arms, which is the same column
+   * rewrite HKD waits for (handed off in docs/wave3/board-data-ingest.md). */
+  it("HKD and the six dollar currencies read since L13-19 are the only detected currencies with no arm, and every arm is detectable", () => {
     const extract = codeOf(readFileSync(resolve(root, "supabase/functions/_shared/salary-extract.ts"), "utf8"));
     const iso = extract.match(/const P_ISO = \/\\b\(([A-Z|]+)\)\\b\/i;/);
     expect(iso, "P_ISO in salary-extract.ts no longer parses — the currency list moved").toBeTruthy();
@@ -208,7 +215,7 @@ describe("a currency the parser can read and the table cannot rank is recorded",
     expect(detected.length).toBeGreaterThan(15);
     const ranked = new Set(Object.keys(DEFS[0].arms));
     const unrankable = detected.filter((c) => !ranked.has(c));
-    expect(unrankable, "a currency the parser now reads has no arm in salary_rank_usd, so those postings rank NULL and are dropped by every pay filter with no disclosure").toEqual(["HKD"]);
+    expect(unrankable, "a currency the parser now reads has no arm in salary_rank_usd, so those postings rank NULL and are dropped by every pay filter with no disclosure").toEqual(["HKD", "TWD", "ARS", "CLP", "COP", "DOP", "UYU"]);
     // And nothing is ranked that the parser could never produce.
     expect([...ranked].filter((c) => !detected.includes(c)), "salary_rank_usd ranks a currency the parser cannot detect").toEqual([]);
   });

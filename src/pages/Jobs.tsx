@@ -66,6 +66,7 @@ import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerL
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
 import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
+import { employerGroupKey } from "@/lib/employer-group";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,6 +75,7 @@ import { heldBoardPass } from "@/lib/board-pass";
 import { readBoardFacets } from "@/lib/board-facets";
 import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { writeJdHandoff } from "@/lib/jd-handoff";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
@@ -849,10 +851,6 @@ const growthPct = (g: Pick<GrowthRow, "rate">) => Math.round((g.rate ?? 0) * 100
 // 14 days sits well inside the 30-day support, so the estimate at that horizon
 // is supported by the data rather than by its edge.
 export const URGENT_FILL_MAX_DAYS = 14;
-// Repost caution: relisting the same titles this often in the tracked window is
-// a pattern. Read against relists_90d, which is a floor, so the copy says "at
-// least".
-const REPOST_FLAG_MIN = 3;
 // "Fills fast" needs more than a positive rate: at least half of this
 // employer's roles gone inside the horizon. Below it, "apply early" is a nudge
 // rather than a finding.
@@ -1508,6 +1506,10 @@ interface BoardResponse {
   relatedTotal?: number;
   relatedCapped?: boolean;
   countUnavailable?: boolean;
+  /** A pay-ordered first page with nothing on it, and why: no match states pay,
+   *  or the pay read failed. Either way the matches exist, so "nothing matches"
+   *  would be false. */
+  sortUnavailable?: "no-stated-pay" | "unavailable";
   /** Proven floor when the exact total is unknowable (fuzzy tier at its cap):
    *  "at least this many match". Render as "M+", never as a total. */
   totalAtLeast?: number;
@@ -2406,6 +2408,17 @@ function JobAgentHandoff({ job, compact, track }: {
   );
 }
 
+/** The saved board scroll offsets, by address (see the restore in JobsBoard).
+ *  Anything that is not that shape (an older bare number) reads as none. */
+function readBoardScrolls(): Array<{ at: string; y: number }> {
+  try {
+    const v = JSON.parse(sessionStorage.getItem("rb_board_scroll") ?? "[]") as unknown;
+    return Array.isArray(v)
+      ? v.filter((e): e is { at: string; y: number } => !!e && typeof e.at === "string" && typeof e.y === "number")
+      : [];
+  } catch { return []; }
+}
+
 /** A fresh id per mounted board, written into every history entry the board
  *  writes, so a Back/Forward can tell its own entries from another page's. */
 const newBoardId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -2462,6 +2475,7 @@ export default function Jobs() {
 
 function JobsBoard({ boardId }: { boardId: string }) {
   const { t, i18n } = useTranslation();
+  const navType = useNavigationType();
   // The FX vintage as a reader sees it, once per language rather than five times
   // per render. The constant itself stays ISO — it is the page's half of a mirror
   // the SQL cannot import, and the cross-runtime guard parses it — but a machine
@@ -2751,6 +2765,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const BOARD_COUNT_CAP = 10_000;
   const fmtFacet = (n: number) => (n === BOARD_COUNT_CAP ? `${n.toLocaleString()}+` : n.toLocaleString());
   const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
+  // The server refused to count fields for this text search (facetSource
+  // "withheld": its counter is not the list's matcher), so the chips carry no
+  // numbers and the rail has to say why rather than look broken.
+  const [facetWithheld, setFacetWithheld] = useState(false);
   const catFacetSeq = useRef(0);
   // THE LAST UNFILTERED FACET, KEPT. The list reply carries the whole
   // board-wide categories facet only while nothing is bound; once a field is
@@ -3164,7 +3182,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     for (const id of compareIds) {
       const j = jobs.find((x) => x.id === id);
       if (!j?.token) continue;
-      const slug = j.token.split("~")[0];
+      const slug = employerGroupKey(j.token);
       if (compareCtx[slug]) continue;
       void getEmployerCtx(j.token).then((c) => setCompareCtx((prev) => ({ ...prev, [slug]: c })));
     }
@@ -3225,9 +3243,25 @@ function JobsBoard({ boardId }: { boardId: string }) {
   };
   // Batch 4: scroll restore — coming back to the board lands where you left.
   // (The restore effect lives below the `jobs` declaration.)
+  //
+  // KEYED BY THE ADDRESS IT WAS SAVED ON (S8-091). A bare number was restored
+  // on ANY later board mount, so Board -> Explore -> a field tile opened
+  // /jobs/field/healthcare 1,703px down, past its heading and count. The
+  // offset now carries the board's last address (the one it wrote, else the
+  // one it mounted on) and is restored only by a Back/Forward onto that same
+  // address.
   const scrollRestored = useRef(false);
+  const mountNavType = useRef(navType);
+  const mountAddress = useRef(`${window.location.pathname}${window.location.search}`);
   useEffect(() => () => {
-    try { sessionStorage.setItem("rb_board_scroll", String(window.scrollY)); } catch { /* cosmetic */ }
+    const at = boardAddress?.id === boardId ? boardAddress.at : mountAddress.current;
+    try {
+      // One offset per address, the ten most recent, so Back through two
+      // boards lands each where it was left.
+      const prev = readBoardScrolls().filter((e) => e.at !== at);
+      sessionStorage.setItem("rb_board_scroll", JSON.stringify([{ at, y: window.scrollY }, ...prev].slice(0, 10)));
+    } catch { /* cosmetic */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Activity strip data — lazy, non-blocking, real numbers or nothing.
   useEffect(() => {
@@ -3300,8 +3334,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   useEffect(() => {
     if (scrollRestored.current || jobs.length === 0 || initial.get("job")) return;
     scrollRestored.current = true;
+    if (mountNavType.current !== "POP") return;
     try {
-      const y = Number(sessionStorage.getItem("rb_board_scroll"));
+      const y = readBoardScrolls().find((e) => e.at === mountAddress.current)?.y ?? 0;
       if (y > 200) window.scrollTo({ top: y });
     } catch { /* cosmetic */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3429,6 +3464,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
     () => Object.keys(boardFilterBody({ ...filterState, category: "", inclUncat: false })).length === 0,
     [filterState],
   );
+  /**
+   * THE UNDO FOR A LIFTED PHRASE. The server reads "remote", "part time",
+   * "entry level" in the search box as filters and names them in
+   * intentFilters; the reader who meant the words as title text says so here,
+   * and every request for THAT query is sent with noIntent:true. Keyed to the
+   * query it was given for, so a new search starts lifting again on its own.
+   * Not a filter (never in boardFilterBody, no chip): it changes how the
+   * words are read, and the disclosure line is where it is shown and undone.
+   */
+  const [intentUndone, setIntentUndone] = useState<{ q: string; phrases: string[] } | null>(null);
+  const noIntent = !!q.trim() && intentUndone?.q === q.trim();
   /**
    * THE EXACT PER-FIELD COUNTS THIS PAGE MAY PRINT. Under any other filter
    * the list reply's own facet (one entry, the active field) is all there is
@@ -3871,7 +3917,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // The bump retires a probe still in flight: clearing "nurse" before its
     // probe answered let that reply pass the seq check and paint the nurse
     // counts over the unfiltered board's chips.
-    if (!activeFilters) { ++catFacetSeq.current; setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
+    if (!activeFilters) { ++catFacetSeq.current; setFilteredCats(null); setFacetWithheld(false); return; } // unfiltered: the cached board-wide facet is correct
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
       try {
@@ -3881,14 +3927,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // The facet answers "how many in each field", so it must not be
           // pre-narrowed to one field.
           category: undefined, includeUncategorised: undefined,
+          // The same words the list searched: an undone lift counts them as text too.
+          noIntent: noIntent || undefined,
         }, { retry: false });
         if (seq !== catFacetSeq.current) return; // a newer filter set superseded this
         const c = (res as { categories?: Record<string, number> } | null)?.categories;
         setFilteredCats(c && Object.keys(c).length ? c : null);
+        setFacetWithheld((res as { facetSource?: string } | null)?.facetSource === "withheld");
       } catch { /* counts are an enhancement — the dropdown works without them */ }
     }, 400);
     return () => clearTimeout(timer);
-  }, [q, filterState, categoryOnly]);
+  }, [q, filterState, categoryOnly, noIntent]);
 
   /**
    * A fit-ranked BROWSE is the one case where the rows on screen were chosen
@@ -3957,6 +4006,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // "is this board filtered" from that body — counting it there would
           // put a chip on screen the reader never set and cannot clear.
           hasDescription: fitBrowseNeedsDescriptions || undefined,
+          // The reader undid the board's reading of their words as filters
+          // (the Undo beside intentFilters): every word is search text (L8-06).
+          noIntent: noIntent || undefined,
           // Searches default to relevance ranking; the toggle bypasses it.
           // THE ORDER ON SCREEN IS THE ORDER IN THE BODY, and for the most
           // common request on this board it was not.
@@ -4123,7 +4175,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
         }
       }
     },
-    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions, discoveredView],
+    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions, discoveredView, noIntent],
   );
 
   // THE SURVIVING HISTORY ENTRY CAN BE STALE. Opening the detail panel pushes
@@ -4988,10 +5040,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
       const { data: res, error: err } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description: string | undefined = res?.description;
       if (err || !description) throw new Error(err?.message ?? "no description");
-      sessionStorage.setItem(
-        "rb_jd_handoff",
-        JSON.stringify({ jd: description, title: job.title, company: job.company, applyUrl: job.applyUrl }),
-      );
+      if (!writeJdHandoff({ jd: description, title: job.title, company: job.company, applyUrl: job.applyUrl })) {
+        throw new Error("description too short to hand over");
+      }
       navigate("/#upload");
     } catch (e) {
       console.error("[Jobs] detail failed:", e);
@@ -6057,18 +6108,30 @@ function JobsBoard({ boardId }: { boardId: string }) {
     && searchNewestFirst && data.hasMore === false;
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // New-since-last-visit: where the divider goes in the (recency-sorted) list —
-  // the first posting dated before your previous visit. Only meaningful on the
-  // default sort with no fit re-ordering; -1 disables the divider.
+  // New-since-last-visit: where the divider goes — the first posting dated
+  // before your previous visit. A divider placed by position is a claim that
+  // everything below it is older, so it is drawn only where the rendered order
+  // IS the stated date, newest first (S8-028): not under the employer weave,
+  // not on a relevance-ranked search, not across a two-group page, never on
+  // fit ranking. Undated postings neither place it nor count as old (they
+  // were read as epoch 0, which put the divider two cards in on the default
+  // browse above 57 newer ones). -1 disables the divider.
+  const dateOrdered = sortMode === "newest" && !fitRanking && !interleaveEmployers
+    && (!q.trim() || searchNewestFirst) && !data?.bucketedOrder;
   const newSinceIndex = useMemo(() => {
     const last = lastVisitRef.current;
-    if (!last || sortMode !== "newest" || fitRanking) return -1;
-    const idx = groupedJobs.findIndex((g) => {
-      const p = g.primary.postedAt ? new Date(g.primary.postedAt).getTime() : 0;
-      return p <= last;
-    });
-    return idx > 0 ? idx : -1; // 0 = nothing new; -1 = everything new / unknown
-  }, [groupedJobs, sortMode, fitRanking]);
+    if (!last || !dateOrdered) return -1;
+    const at = (g: { primary: BoardJob }) => {
+      const p = g.primary.postedAt ? new Date(g.primary.postedAt).getTime() : NaN;
+      return Number.isFinite(p) ? p : null;
+    };
+    const idx = groupedJobs.findIndex((g) => { const p = at(g); return p !== null && p <= last; });
+    if (idx <= 0) return -1; // 0 = nothing new; -1 = everything new / unknown
+    // Every dated posting below the line must be older: a list that is not
+    // really date-descending gets no divider rather than a wrong one.
+    if (groupedJobs.slice(idx).some((g) => { const p = at(g); return p !== null && p > last; })) return -1;
+    return idx;
+  }, [groupedJobs, dateOrdered]);
 
   // Split-pane auto-select: on wide screens the right column should never sit
   // empty — select the top result once the list settles. replace-mode URL so
@@ -6909,6 +6972,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
             // Compound keys hit their exact per-value entry above; the family
             // prefix stays as the fallback for any key left unspecialized.
             ...boardFilterBody({ ...filterState, ...(RELAX[c.key] ?? RELAX[c.key.split(":")[0]] ?? {}) }),
+            noIntent: noIntent || undefined,
           });
           // A FAILED PROBE IS NOT A MEASUREMENT OF ZERO — it is the absence of
           // a measurement, and it must leave the sample rather than join it as
@@ -6949,7 +7013,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // values than the zero path did, and a suppressed dep list that no longer
     // covers what the effect reads is how a probe goes on describing the
     // previous filter set.
-  }, [loading, refreshing, error, data, activeFilters, filterState, endTarget, jobs.length, pageTotalCount]);
+  }, [loading, refreshing, error, data, activeFilters, filterState, endTarget, jobs.length, pageTotalCount, noIntent]);
 
   /**
    * DID THE SERVER ITSELF SAY THE PAGING IS OVER?
@@ -7113,6 +7177,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // count a denominator that is still hiding the postings this line
           // exists to count.
           ...boardFilterBody({ ...filterState, ...patch }),
+          noIntent: noIntent || undefined,
         });
         // THE WORK-MODE SENTENCE COUNTS WHAT IT SAYS IT COUNTS.
         //
@@ -7190,7 +7255,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, refreshing, error, data, salaryFloor, salaryCeiling, payBasis, statedPayOnly, workMode, remoteOnly, filterState]);
+  }, [loading, refreshing, error, data, salaryFloor, salaryCeiling, payBasis, statedPayOnly, workMode, remoteOnly, filterState, noIntent]);
 
   // Inline keyword highlighting: the posting's own text with the fit
   // keywords marked in place — green for terms the resume covers, amber for
@@ -8410,6 +8475,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
             ? t("jobsPage.a11yLoading", "Loading openings…")
             : error
             ? t("jobsPage.a11yError", "Could not load openings. Try again.")
+            : shownCount === 0 && data?.sortUnavailable === "no-stated-pay"
+            ? t("jobsPage.sortNoStatedPayTitle", "None of these matches states its pay, so there is nothing to sort by pay")
+            : shownCount === 0 && data?.sortUnavailable
+            ? t("jobsPage.sortPayFailedTitle", "We couldn't read pay for this search just now")
             : shownCount === 0
             ? t("jobsPage.a11yNoResults", "No openings match these filters.")
             : t("jobsPage.a11yResults", "{{count}} openings shown.", { count: shownCount })}
@@ -8576,8 +8645,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
             {/* Live activity strip: the board IS alive — say so with measured
                 numbers only (each clause renders only when its data exists). */}
+            {/* sm+ only: at 375px this line is three rows (60px) of the fold,
+                and the first job sat at 1,006px on an 812px screen. */}
             {!landerCompany && (takedownsToday !== null || recheckP50Min !== null || !!data?.trackedTotal) && (
-              <span className="block text-[12px] text-muted-foreground mt-0.5">
+              <span className="hidden sm:block text-[12px] text-muted-foreground mt-0.5">
                 {/* THE TRACKED CORPUS, and it is deliberately not the headline.
                     The line above counts what a visitor can page to; this one
                     counts every posting the board holds INCLUDING the ~91k that
@@ -8836,11 +8907,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       : t("jobsPage.hhPaceThinUntracked", "Not enough of this company's roles have finished yet to say how fast it moves.")}
                   </li>
                 )}
-                {hiringCurve.relists_90d >= REPOST_FLAG_MIN && (
+                {relistCaution(hiringCurve) && (
                   <li className="text-warning/90">
-                    {/* "At least": we log a relisted title once a day per
-                        company, so this is a floor and never an exact tally. */}
-                    {t("jobsPage.hhRepostsFloor", "Re-listed the same role title at least {{n}} times during our tracking — routine reposting, or roles that keep reopening.", { n: hiringCurve.relists_90d })}
+                    {/* The card's and the drawer's rule (relistCaution), with
+                        the card tooltip's words: roles back against roles down. */}
+                    {t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: hiringCurve.relisted_roles_90d ?? 0, f: hiringCurve.filled_roles_90d ?? 0 })}
                   </li>
                 )}
               </ul>
@@ -9617,6 +9688,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 now spans the whole serving window instead of stopping at a
                 week, which was the only reason "posted in the last fortnight"
                 required hand-editing the URL. */}
+            {/* ONE ROW ON A PHONE. Six date chips wrapped to two rows there;
+                they scroll sideways under the same edge mask as the badge strip
+                (display:contents from sm up, so the wide layout is unchanged). */}
+            <div className="basis-full min-w-0 flex flex-nowrap items-center gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:contents">
             {([
               ["", t("jobsPage.freshAll", "Any date")],
               ["1", t("jobsPage.freshDay", "Today")],
@@ -9634,13 +9709,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 // could not tell which date window was applied.
                 aria-pressed={freshness === v}
                 title={v ? t("jobsPage.freshHint", "Counts company-stated posting dates only") : undefined}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                className={`shrink-0 whitespace-nowrap text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   freshness === v ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {label}
               </button>
             ))}
+            </div>
             {freshness && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.freshHint", "Counts company-stated posting dates only")}
@@ -9714,6 +9790,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               // designing for, and a toggle that expands nothing is noise.
               const worthToggling = cats.length > 6;
               return (
+            <>
             <div className="basis-full min-w-0 w-full flex items-start gap-2">
               {/* SWIPE ON TOUCH, EXPANDER ON DESKTOP — the same split this
                   file already uses for the disclosure row above.
@@ -9772,6 +9849,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 </button>
               )}
             </div>
+            {/* facetSource "withheld": the server would count these fields with
+                a different matcher than the list it serves, so it sends no
+                numbers for a text search, and the rail says so (L13-24). */}
+            {facetWithheld && q.trim() && (
+              <p className="basis-full text-[11px] text-muted-foreground" data-facet-withheld="">
+                {t("jobsPage.facetWithheld", "No counts beside the fields for a text search: we would count them a different way from the list, so they would not match it.")}
+              </p>
+            )}
+            </>
               );
             })()}
             {/* For you | All jobs — the board's differentiator as a first-class
@@ -9922,8 +10008,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
               className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
               title={t("jobsPage.sendSearchTip", "Copy a one-line prompt for your own AI agent: the filters and order you are looking at, as the arguments our MCP server's search takes.")}
             >
-              <Bot className="w-3.5 h-3.5" />
-              {t("jobsPage.sendSearchToAgent", "Send this search to my agent")}
+              <Bot className="w-3.5 h-3.5" aria-hidden="true" />
+              {/* Icon-only on a phone (the title and the accessible name keep
+                  the words): with its label it took a row of the fold alone. */}
+              <span className="sr-only sm:not-sr-only">{t("jobsPage.sendSearchToAgent", "Send this search to my agent")}</span>
             </button>
             {/* Why this order: the board explains its data everywhere else —
                 the ranking shouldn't be the one unexplained thing. */}
@@ -10711,11 +10799,34 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     );
                   })()}
                   {/* We rewrote their query. Say so. */}
-                  {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
+                  {!noIntent && Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
                         phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
-                      })}
+                      })}{" "}
+                      {/* The undo the disclosure promised: the same query again,
+                          every word searched as text (noIntent). */}
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => setIntentUndone({ q: q.trim(), phrases: data.intentFilters! })}
+                      >
+                        {t("jobsPage.intentUndo", "Search those words as text instead")}
+                      </button>
+                    </p>
+                  )}
+                  {noIntent && intentUndone && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.intentUndone", "Searched for {{phrases}} as words, not as a filter.", {
+                        phrases: intentUndone.phrases.map((p) => `“${p}”`).join(", "),
+                      })}{" "}
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => setIntentUndone(null)}
+                      >
+                        {t("jobsPage.intentRedo", "Apply them as filters again")}
+                      </button>
                     </p>
                   )}
                   {/* And when we removed results on their behalf. "engineer not
@@ -10953,6 +11064,34 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   {t("jobsPage.clearSearch", "Clear the search")}
                 </Button>
               )}
+            </div>
+          ) : jobs.length === 0 && data?.sortUnavailable ? (
+            /* THE PAY ORDER HAD NOTHING TO ORDER, WHICH IS NOT "NOTHING MATCHES".
+               The salary branch serves only postings with a comparable figure,
+               so an empty first page there means none of the matches states
+               pay (or the pay read failed): the matches exist, and the remedy
+               is the order, not a filter. */
+            <div className="rounded-2xl border border-border bg-card p-6 text-center my-4" data-sort-unavailable={data.sortUnavailable}>
+              <p className="font-semibold text-foreground mb-1">
+                {data.sortUnavailable === "no-stated-pay"
+                  ? t("jobsPage.sortNoStatedPayTitle", "None of these matches states its pay, so there is nothing to sort by pay")
+                  : t("jobsPage.sortPayFailedTitle", "We couldn't read pay for this search just now")}
+              </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                {data.sortUnavailable === "no-stated-pay"
+                  ? t("jobsPage.sortNoStatedPayBody", "Sorting by pay shows only postings with a figure we can compare. The matches are still there under another order.")
+                  : t("jobsPage.sortPayFailedBody", "The pay order did not answer this time. The matches are still there under another order, or try again in a moment.")}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button size="sm" variant="default" onClick={() => { setSortMode("newest"); if (q.trim()) setSearchNewestFirst(true); }}>
+                  {t("jobsPage.sortShowNewest", "Show them newest first")}
+                </Button>
+                {data.sortUnavailable === "unavailable" && (
+                  <Button size="sm" variant="outline" onClick={() => fetchJobs(0)}>
+                    {t("jobsPage.retry", "Try again")}
+                  </Button>
+                )}
+              </div>
             </div>
           ) : jobs.length === 0 ? (
             /* Server-zero: an actionable exit, never a dead end. Each button is
@@ -11212,8 +11351,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     The 6.3% is stated rather than hidden. The agent covers four
                     hiring systems, not the whole board, and a visitor who finds
                     that out AFTER paying is a refund and a bad review. */}
+                {/* sm+ only: at 375px the pitch was 130px between the count
+                    line and the first job; the cards' own badges still carry it. */}
                 {agentReadyOnPage > 0 && !agentOnly && (
-                  <span className="block text-[12px] text-muted-foreground mt-1">
+                  <span className="hidden sm:block text-[12px] text-muted-foreground mt-1">
                     <Sparkles className="inline w-3 h-3 text-primary -mt-0.5" aria-hidden />{" "}
                     {t("jobsPage.agentPitchCounted", "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.", { n: agentReadyOnPage })}{" "}
                     <Link to="/agent" className="text-primary underline underline-offset-2">
@@ -12108,14 +12249,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 it fires; only in its absence does the slot
                                 speak well of the employer.
 
-                                Not one gate moved: REPOST_FLAG_MIN,
                                 ACTIVELY_HIRING_MIN_CLOSED and
                                 URGENT_FILL_MAX_DAYS are the same numbers, read
-                                in the same order they were read before. One
-                                caution was added second (relistCaution, the
-                                one the detail pane prints), and the praise
-                                branch now asks the verdict, so the card and
-                                the pane can never disagree about an employer. */}
+                                in the same order they were read before. The
+                                caution is relistCaution, the one the detail
+                                pane and the compare drawer print (the card's
+                                own three-event rule is gone, S8-092), and the
+                                praise branch asks the verdict, so the card,
+                                the pane and the drawer can never disagree
+                                about an employer. */}
                             {job.token && (() => {
                               const hh = curveByToken[job.token];
                               // NO ROW YET IS NOT A VERDICT. The batch is in
@@ -12128,23 +12270,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               // let a windowed tenant render as a blank slot
                               // beside a green one.
                               if (!hh) return null;
-                              const churn = hh.relists_90d;
-                              // Repost caution: frequent same-title relistings — shown as a
-                              // neutral fact so the seeker can weigh it, never hidden. The
-                              // count is a floor (one logged relist per title per day), so
-                              // both the chip and its tip say "at least".
-                              if (churn >= REPOST_FLAG_MIN) {
-                                return (
-                                  <span
-                                    className="inline-flex items-center gap-1 whitespace-nowrap"
-                                    title={t("jobsPage.repostTipFloor", "This company re-listed the same role title at least {{n}} times during our tracking — we count a re-listed title once a day, so the real number can be higher. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: churn })}
-                                  >
-                                    <RefreshCw className="w-3 h-3 shrink-0" />
-                                    {t("jobsPage.repostChipFloor", "Re-lists roles often ({{n}}×+)", { n: churn })}
-                                  </span>
-                                );
-                              }
-                              // The role caution the detail pane prints (see relistCaution).
+                              // ONE CHURN RULE (S8-092). The card used to caution on
+                              // three same-title re-list EVENTS while the drawer and the
+                              // pane asked relistCaution (roles back > roles down, at
+                              // least ten), so an employer with 44 re-lists and 448 roles
+                              // down was cautioned here and praised in the drawer. The
+                              // card now asks the same function; a caution and a
+                              // "closes" verdict can never both show.
                               if (relistCaution(hh)) {
                                 const back = hh.relisted_roles_90d ?? 0;
                                 return (
@@ -13247,7 +13379,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         <li className="text-success">✓ {t("jobsPage.appliedBadge", "Applied")}</li>
                       )}
                       {(() => {
-                        const ctx = j.token ? compareCtx[j.token.split("~")[0]] : undefined;
+                        const ctx = j.token ? compareCtx[employerGroupKey(j.token)] : undefined;
                         if (!ctx) return null;
                         return (
                           <>

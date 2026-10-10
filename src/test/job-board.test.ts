@@ -479,8 +479,9 @@ describe("fit scoring + salary mapping", () => {
   });
 
   it("leverSalary formats ranges and rejects empties", () => {
-    expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("120k");
-    expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("$");
+    // Exact figures (L7-05): the k-rounding misstated monthly pay by 8-20%.
+    expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toContain("120,000");
+    expect(leverSalary({ min: 120000, max: 160000, currency: "USD", interval: "yearly" })).toMatch(/USD|\$/);
     expect(leverSalary(undefined)).toBeNull();
     expect(leverSalary({ currency: "USD" })).toBeNull();
   });
