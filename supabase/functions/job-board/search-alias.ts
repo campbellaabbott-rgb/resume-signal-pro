@@ -165,7 +165,8 @@ export function expandQuery(raw: string): { q: string; expansions: string[] } {
   const tokens = trimmed.toLowerCase().split(/\s+/);
   if (tokens.length > 6) return { q: raw, expansions: [] };
   // Per-position alternatives: the original token plus up to 2 alias phrases.
-  const alts = tokens.map((t) => [t, ...(ROLE_ALIASES[t] ?? []).slice(0, 2)]);
+  // Own keys only: ROLE_ALIASES["constructor"] is Object's, and the spread threw (n447).
+  const alts = tokens.map((t) => [t, ...(Object.prototype.hasOwnProperty.call(ROLE_ALIASES, t) ? ROLE_ALIASES[t] : []).slice(0, 2)]);
   // The reverse reading: the reader spelled out something employers abbreviate.
   const spelledOut = longestSpelledOutRun(tokens);
   if (!alts.some((a) => a.length > 1) && !spelledOut) return { q: raw, expansions: [] };

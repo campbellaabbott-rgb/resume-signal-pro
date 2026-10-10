@@ -23,10 +23,10 @@ describe("a deferred board is not a failed one", () => {
   });
 
   it("a board whose visit can return the cap reserves the cap, even in a cold slice", () => {
-    expect(CODE).toMatch(/const CAPPED_VISIT_VENDORS = new Set\(\["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs"\]\);/);
+    expect(CODE).toMatch(/const CAPPED_VISIT_VENDORS = new Set\(\["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs", "teamtailor"\]\);/);
     expect(CODE).toMatch(/const reserve = inHotPhase \|\| deepTokens\.has\(s\.token\) \|\| CAPPED_VISIT_VENDORS\.has\(s\.source\) \|\| !!s\.pages \? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;/);
     // every fetcher that carries a resume offset is in the set
-    for (const v of ["workday", "oracle", "icims", "smartrecruiters", "rippling"]) expect(CODE).toContain(`"${v}"`);
+    for (const v of ["workday", "oracle", "icims", "smartrecruiters", "rippling", "teamtailor"]) expect(CODE).toContain(`"${v}"`);
   });
 
   it("the desc sweep walks a first_seen cursor and hands it to the next hop", () => {

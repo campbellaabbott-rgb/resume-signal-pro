@@ -6663,6 +6663,14 @@ the ranked search (which carries its own total) has already failed.
 
 Above: `if (applied.hasStatedPay && row.capped !== true) return null;`
 
+DELETED IN .92 (sweep S8-089). 20260927034117 is live: on .90, 2026-10-08,
+the ranked tier answered `{q:"assistant", country:"IE", hasStatedPay:true}` with
+7 of 50 rows printing a rate with no annual figure, which only the migrated
+search_jobs serves (verify 5y(b)), and 20261008100200 carries the predicate
+forward. A stated-pay count is the capped count again. The rail gate of n316
+was removed in .91 (3827e271), when a text query's chips became withheld.
+The history below stands as the record of why it existed.
+
 DEPLOY-WINDOW COVER FOR THE ONE PREDICATE THAT MOVED IN TWO RUNTIMES.
 Delete this block, and the same gate in the category rail below, once
 verify-deploy 5y(c) reports the migration live (its own header says how).
@@ -10019,3 +10027,343 @@ listed resumebooster.lovable.app since .87, which let a Turnstile token solved
 on that foreign page mint a board pass here. It is removed in .91; the test
 now lists it among the hosts that must FAIL. The paid-product and Full
 Analysis emails had linked buyers to the same host until 2026-10-08 (PR #19).
+
+## n437-workday-accept-language
+
+Above: `withWorkdayLanguage` (request-headers.ts), which fetchWithTimeout
+sends every vendor request through.
+
+Deno's fetch, like Node's undici, sends `Accept-Language: *` when a request
+names no language, and job-board named none. Some Workday tenants answer that
+with `{"errorCode":"HTTP_500"}` and answer the same POST under `en-US` with
+their list. Measured from Node on 2026-10-08 against the public CXS lists:
+truist~wd1~careers 500 -> 200 (total 1,497), geico~wd1~External 500 -> 200
+(321), 7eleven~wd3~7eleven 500 -> 200 (72), wvumedicine~wd1~UHA 500 -> 200
+(742); nvidia~wd5~NVIDIAExternalCareerSite 200 either way. Page 0 threw, the
+failure streak grew, and after DEAD_BOARD_THRESHOLD over
+DEAD_BOARD_MIN_FAILING_MS the dormancy prune deleted what the board held.
+They also answer 500 under `fr-CA` and 200 with no header or an empty one: a
+tenant with one language refuses any other.
+
+ENGLISH ONLY AFTER A 500 (review, 2026-10-10). The first fix named en-US on
+every Workday request. Most tenants answer `*` in their own default language,
+and what the board stores was read that way: first 20 postings, `*` against
+en-US, desjardins~wd10~desjardins changed 20/20 titles and 6 locations
+('Conseiller ou conseillère, Gouvernance de l'IA' -> 'Senior Advisor, Data
+governance'), cbcrc~wd3~CBC_Radio-Canada_Jobs 10/20 titles, cdpq~wd10~CDPQ 2
+titles and every externalPath ('/job/Montral/...' -> '/job/Montreal/...',
+apply_url is built from it), bbva~wd3~BBVA 2 locationsText ('Ubicaciones: 2'
+-> '2 Locations'); the stored rows were French. The corrections diff would
+have rewritten those rows on the first visit and logged each as an employer
+edit. No-header and empty-header answers are the English ones too, so neither
+preserves what is stored. So the request goes out under the runtime's `*`
+first, byte-identical to .91, and only a 500 is retried under
+`en-US,en;q=0.9`. The answer is remembered per isolate by host + CXS site:
+a site that needed English goes straight to it, and a site seen answering
+`*` is never retried in English after a later 500 (a passing error on a
+bilingual tenant stays a failed read, as on .91, instead of an English page).
+Memo capped at 4,096 sites (cleared when full).
+
+TWO REFUSALS, AND THE MEMO READ AFTER EVERY ANSWER (second review,
+2026-10-10). A cold slice is a fresh isolate that reads each board once, and
+fetchWorkday sends a chunk's four pages together, so a site's first answer
+is usually the deciding one, and each page read the memo before its request
+went out: one passing 500, on page 0 or on a page whose chunk-mate had
+already come back French, switched the site to English for the isolate (the
+desjardins/cbcrc/cdpq flips above, logged as employer edits and flipped
+back by the next isolate). Now an unseen site's 500 is asked under `*` once
+more, English follows only a second 500, and the memo is re-read after each
+answer: a site another page has seen answering `*` keeps its 500 a failed
+page and never takes an English answer, and one seen needing English goes
+there at once. Cost: an English-only tenant pays two refusals per page in
+flight before its first English answer (up to 8 extra requests a chunk,
+once per isolate). A caller that names its
+own language keeps it, and no other vendor is touched: a named language may
+switch another vendor's descriptions. Recovery needs no data edit: a dormant
+board is re-probed every DORMANT_RECHECK_MS (12h) and a failing one by the
+retry lane, and the first 200 clears its entry.
+
+## n438-a-body-has-a-clock
+
+Above: `bodyDeadline` and `BODY_LATE_MARKER`, applied in fetchWithTimeout's
+`once`; `late` from readChunkPage.
+
+fetchWithTimeout cleared its abort timer when the response headers arrived,
+and nothing timed the body. A scratch repro (FETCH_TIMEOUT_MS 1,000, a server
+sending a byte every 500 ms) had headers at 19 ms and the body at 8,560 ms,
+nothing aborting (sweep S8-030). In a slice, one vendor that sends headers and
+then stalls holds a worker; Promise.all never settles and the isolate is
+killed before the post-loop writes (refresh_progress, board_failures, the deep
+cursor and its laps). No production death has been attributed to it yet.
+
+Now every vendor body has its own clock, started at its headers:
+`bodyMs`, FETCH_TIMEOUT_MS by default and STREAM_READ_BUDGET_MS for the
+streamed oversize read (which also has its own deadline). Expiry errors the
+stream, which cancels the source body like the byte bound does, with a
+message fetchBoard reads as "timeout". In a chunked walk (Workday, Oracle,
+iCIMS, UKG, ADP, USAJOBS) a late FIRST page throws (a timeout failure); a
+later one ends the walk with the pages read, as a window. A page held unread
+while earlier pages of its chunk are parsed runs its clock too; a chunk of
+five iCIMS pages (2-3 MB each) must be read within 20 s of its headers, or the
+walk ends there and resumes next visit.
+
+The in-flight bound the slice wall relies on is now 2 x FETCH_TIMEOUT_MS per
+request instead of unbounded.
+
+## n439-teamtailor-pages
+
+Above: `fetchTeamtailor`, TT_PAGE; teamtailor in CAPPED_VISIT_VENDORS and
+DERIVED_FEED_TOTAL_SOURCES.
+
+A Teamtailor jobs.rss serves 100 items a page and pages with `?offset=N`
+(groupeetam on 2026-10-08: 100, 100, 54, then an empty channel at 300). One
+GET was read as the whole board with no `windowed` flag (sweep S8-002), so on
+a board over 100 postings every item past 100 was never stored, and each new
+posting pushed a stored row to item 101, where it was stamped missing, closed
+after the grace as an unsuspect `full_read` takedown, and deleted. batchSuspect
+could not catch it: the feed served a full 100. A probe of the 2,274
+catalogued Teamtailor boards (offset=100 non-empty) found 58 such boards
+before Teamtailor began answering 403 to the burst (eutalents 2,600,
+anicuraglobal 642, academee 592, tutoringjobs 534, temporing 451, ...).
+
+Now a visit pages from the cursor in steps of 100, two whole pages (200), the
+most that fits the MAX_POSTINGS_PER_VISIT (250) the start gate reserves for
+it, like Oracle. (The first draft read ceil(250/100) = three pages, 300
+postings against that reservation, because the cap is checked after a whole
+page; review 2026-10-10.) A walk from the top that ends on a short or empty
+page is a whole read (the full-read prune stays on for every board of 199 or
+fewer). Anything else is windowed and resumes from
+nextOffset; absence on it is proven only by a lap (n104). The feed states no
+total, so the visit that finds the end of a RESUMED walk reports where it
+ended (`feedTotal = endOffset`), which is what lapTotal judges the wrap
+against; LapState.t0 is 0 for these boards, so the coverage ratio cannot
+fail a lap, and a lap is proven only by a walk that reached an end the feed
+itself served (a short page, or an empty channel, never a refusal: a refused
+or non-RSS later page is a window, a refused or non-RSS first page fails the
+board; before .92 a 200 that was not RSS read as an empty board). From the top
+the feed states no total and the stamp keeps null (n130); the board_state
+history keeps null too (DERIVED_FEED_TOTAL_SOURCES).
+
+A host that ignores ?offset serves its first page again; when every id on
+page 2 was on page 1 the visit is one window with no cursor and no claimed
+end, which is the immediate guard the register asked for (no catalogued
+board uses a custom host today; the `host` field is unused). A board of
+exactly 200 (or any multiple of 100 past it) ends each lap on an empty page,
+which proves it like a short page. Request cost: one GET for a board under
+100, two per visit above.
+
+THE REPAIR'S BOUND (review, 2026-10-10). Migration 20261009100300 marks the
+Teamtailor `full_read` closures the one-page read wrote, and it is applied
+after .92 serves, so its ceiling (max event_id) also took in the real
+`full_read` closures .92 writes from whole paged reads in between. So
+stampSliceWork writes `build` and `buildSince` on slice_stats
+(`firstSliceOf`: this bundle's version and the earliest start of a slice it
+finished fetching in, kept across slices, replaced when another build's
+stamp is there; status.sliceStats shows both), and the repair marks only
+closures with closed_at before buildSince + 5 minutes (closed_at is the
+write time; the slack covers an old-bundle slice in flight at the deploy).
+No stamp of .92 or later: no bound, every closure to the ceiling.
+
+## n440-a-replayed-lap-proof-closes-nothing-it-stamped
+
+Above: `lapOpenMs` and the `stampMs >= lapOpenMs` term of the vanish rule.
+
+n104's two-lap rule (the first proven wrap stamps, the second closes) assumed
+a lap is proven once. It can be proven twice: the proving visit drops its
+cursor in memory and deep_cursor is written once at slice end, so a failed
+write, a hop that dies, or an overlapping isolate writing its older cursor
+map (n137) leaves the cursor where it was; the next visit re-walks the tail
+in the same epoch and proves the same lap again. The rule compared only the
+stamp's age with the grace, so every row the first proof stamped was closed
+on one lap's evidence (sweep S8-031; no guard against a second proof in an
+epoch existed). Now a proof closes only a row stamped BEFORE the lap opened
+(LapState.t): the first proof's stamps are newer than its own lap's open
+time, so a replay changes nothing; the next lap opens after them and closes
+what is still missing. Stamps from before a board's first lap (lap_backfill)
+are older than the lap and close as before.
+
+Not changed: deep_cursor is still written whole at slice end (n137 keeps the
+cursor map out of the fold on purpose, because re-merging it moves rotation
+speed and needs its own measurement). With this rule a lost cursor write costs
+a re-read, never a closure.
+
+## n441-an-aged-row-on-a-windowed-board-leaves-its-exit-row
+
+Above: the truncated branch's `closeVanishedChunk(... aged ...)`.
+
+On a windowed board `vanished` holds only the ids the freshness cap aged out
+(nothing else is provable there), and every visit except the lap-proving one
+deleted them with no job_board_exits row, while a full read and the proving
+visit route the same ids through closeVanishedChunk, which writes the aged
+exit first and deletes only what was recorded (n416). The branch dates from
+d337de98 (July); sweep S8-084. job_board_exits keeps 90 days with no rollup,
+so a censoring row lost there is lost, and these are the largest employers.
+Now the truncated branch sends its aged ids through closeVanishedChunk too:
+an aged-out row is never a closure there (closeVanishedChunk reads
+agedOutIds), so it writes exactly the aged exit and deletes what landed. One
+extra read of the chunk's rows per visit that ages something out. Anything
+else in `vanished` can only be there before the missing_since column existed
+(the legacy path), and is deleted as before.
+
+## n442-a-posting-that-leaves-another-way-takes-its-tombstone
+
+Above: `dropTombstones`, called by closeVanishedChunk (for every deleted row
+that was not an age-out) and pruneWholeBoard (for every row it logged and
+deleted).
+
+A re-admission MOVES its tombstone to the date it came back on and keeps it
+(deleting it there reopens the Workday betterDate loop, n412). When that
+posting then left by a closure or a board prune, the moved tombstone stayed,
+and the same id relisted on a date within the 3-day margin was refused for up
+to 180 days (sweep S8-085). .91 (n427) let such a row back on every vendor
+whose stored date never moves; Workday's date moves, so there the refusal
+stood. Only a stored row that was re-admitted can hold a tombstone, so
+deleting `job_board_aged_out` rows by the ids that just left by a non-age
+path removes exactly those (and nothing an age-out wrote: the aged ids of the
+same chunk are excluded). Best-effort, in waitUntil: a tombstone left behind
+costs one refusal, as before. Volume measured by the sweep: about 20
+re-admissions in total.
+
+## n443-an-empty-page-inside-the-laps-total-and-a-stranded-cursor
+
+Above: `emptyInsideLapTotal` in the lap-proof condition; `cursorAfterFailure`
+with the streak's first failure (both read-window.ts).
+
+Two halves of n420, sweep S8-086.
+
+1. A Workday tenant that states its total only at offset 0 answers total 0
+   past it, so an empty page at depth is "ended" to emptyFirstPage. When the
+   cursor sat inside LAP_TAIL_SLACK of the lap's own offset-0 total (t0), the
+   wrap proved the lap on that page (a scratch run: cursor 780, t0 831 ->
+   lapProven) and stamped the unread tail missing, which hides those rows at
+   once. Now an empty visit at or before its cursor, inside t0, cannot prove
+   a lap: the walk still wraps (as n420 wants, so a cursor past a shrunken
+   feed is not asked forever), the lap opens again from the top against the
+   new offset-0 total, and a short page that really ends the feed inside the
+   slack still proves. Vendors with no t0 (Teamtailor) are unaffected.
+2. cursorAfterFailure reset the cursor on the second consecutive failure.
+   The retry lane re-tries a failing board after about 15 minutes, so two
+   transient failures threw away a 16,000-deep cursor and its lap. Now the
+   reset needs the streak (board_failures.firstFailedAt) to have run
+   CURSOR_STRAND_MS (6h): still far inside the 40-hour dormancy floor the
+   reset exists to stay ahead of. With no first-failure time recorded, the
+   second failure resets as before.
+
+## n444-a-federal-posting-carries-what-the-api-states
+
+Above: `usajobsDescriptions` and normalizeUsajobs (normalize.ts), the usajobs
+branch of the ingest's descs chain, and `OUR_READING_CHANGED`.
+
+USAJOBS rows landed from .89 (L7-01) with no description, no stated work mode,
+no pay period and country "US" on every row (sweeps S8-023, S8-083; on .91,
+7,927 federal rows, 0 described; 60 sampled had work mode and salary period
+null; 107 rows placed in Germany were stored US and a DE filter found none).
+The API's search reference puts JobSummary, MajorDuties, TeleworkEligible and
+RemoteIndicator under UserArea.Details, and the normaliser read the telework
+pair at the top level; PositionRemuneration's RateIntervalCode was dropped;
+PositionLocation[].CountryCode names the country ("Germany").
+
+Now: the body is JobSummary + MajorDuties (array or string) +
+QualificationSummary, stored at insert like every vendor's list payload;
+RemoteIndicator true is remote, TeleworkEligible true is hybrid, both stated
+false is on-site; the pay text carries its period ("per year", "per hour", a
+WC "without compensation" range states no pay), so salary_period follows from
+the existing parser; country is CountryCode's country, else the place's, else
+(nothing stated, or "United States") US.
+
+Not done: ingest never rewrites a stored description, and the board-level
+desc lane re-reads a board from offset 0, which for the national feed is its
+first 250 postings only, so the ~7,900 rows stored before .92 keep a null body
+until they close (most announcements run 2-4 weeks). Country, work mode and
+pay ARE corrected on the next visit by the corrections diff, and because .92
+changed our reading, not the agencies' postings, those four fields are patched
+without a field-change log row on usajobs until OUR_READING_CHANGED is removed
+(after 2026-11-09, when every live federal row has been re-read).
+
+## n445-the-date-and-pay-orders-match-a-stemmed-title
+
+Above: `titleStemmed` and `ftsQuery`, the NEWEST (newestTextSort) and SALARY
+(salaryTextSort) exits.
+
+Sweep S8-027. Both exits matched titles with the simple (unstemmed)
+configuration, so a plural query found only titles carrying the literal
+plural: q=teachers sort=newest ended at 243 rows (hasMore false) while
+countOnly counted 4,610, under "newest first across every posting whose title
+matches". ftsQuery's possessive variant did not help: websearch reads an
+unquoted `teachers or teacher s` as 'teachers' | 'teacher' & 's', so the
+variant matched any title with a stray "'s" anywhere ("Engineer II (Men's
+Health)" for q=engineers) and never a plain "Teacher".
+
+Now, for a RANKED-route query (no stopword, no token of three characters or
+fewer, not an employer or symbol), both exits match english stems:
+title_tsv @@ websearch_to_tsquery('english', q) narrows on its GIN index and
+to_tsvector('english', title) @@ the same query decides, evaluated only on the
+narrowed rows. title_tsv alone would also match the employer and department
+(an employer called "Teachers Federal Credit Union" for q=teachers), which
+would make the page's title caption false; the second predicate keeps it
+true, so sortMatcher stays "title". A SIMPLE-route query ("it teachers",
+"rn") keeps the simple matcher: the english index drops "it", and the router
+already sends those queries to the simple tier for that reason (R3). The pay
+order took the alias expansion already (wave 2, L8-02). ftsQuery's variant is
+now quoted, a phrase 'x' <-> 's', which still matches "Domino's" (stored as
+'domino' 's') in the simple tiers that use it.
+
+## n446-the-cold-cursor-passes-a-prefix
+
+Above: `baseConsumed`, rotation.ts `baseConsumedPrefix`, the post-loop
+`advanceProgress` call.
+
+Sweep S8-087. The post-loop write moved the cold cursor by the number of base
+boards started (baseAttempted, n059). That equals the boards read only while
+the starts are a prefix of the base slice, and two things break the prefix: a
+dormant board not due for recheck is skipped before it is counted (the cursor
+fell one short per skip and the next slice read the last started board again:
+~505 dormant of ~44k cold boards on 2026-10-08, ~1% duplicate fetches), and a
+board the reservation wait gave up on (YIELD_SPIN_LIMIT) is deferred while a
+later board still starts once the in-flight boards land (the count put the
+cursor past the deferred board, which then waited a rotation, and a started
+board was read twice).
+
+Now the cursor passes the prefix of the base slice whose boards were started
+or skipped as dormant (board keys, so a shared token's other vendor cannot
+stand in). A slice the posting, board, wall or heap budget stops in order
+moves exactly as before. A deferral ahead of later starts now costs a re-read
+of those starts instead of a rotation for the deferred board; it cannot stall
+the rotation on one board, because the reservation gate is fetched + in-flight
+against the budget, the same for every board, not a board's own size. The
+pre-loop optimistic write and slice_stats.cursorStep (n434; `started` is still
+baseAttempted) are unchanged.
+
+## n447-an-employer-name-without-its-filler-words
+
+Above: search-routing.ts `fillerFoldedAliases` and pickRoute's R1 lookup (now
+`pickRoute(qText, EMPLOYER_ALIASES, QUERY_FILLER)` at both call sites), and
+search-alias.ts expandQuery's ROLE_ALIASES lookup.
+
+Sweep S8-090. The router sees qText, the query after QUERY_FILLER is dropped
+("bank of america" -> "bank america"), while EMPLOYER_ALIASES is keyed on the
+whole folded display name ("bankofamerica"). 14 of the 499 names hold a
+filler word (Bank of America, University of Rochester, University of Miami,
+Coffee and Bagel Brands, Washington University in St. Louis, ...) and none of
+them ever routed: live on .90, 2026-10-08, q="bank of america" answered
+searchRoute null with droppedTerms ["of"], its third card MUFG's "Latin
+America" role. pickRoute now also looks the query up in a second key set,
+each name with its filler words folded out, built once per table: only names
+that keep two or more words ("Destination Careers" would otherwise claim every
+"destination" search), never a key the table already holds, never a key two
+names share. employer-aliases.ts is untouched (layoff-filings carries a byte
+copy).
+
+Found on the way: q="constructor" answered HTTP 500 on .90 (live, same day).
+EMPLOYER_ALIASES["constructor"] and ROLE_ALIASES["constructor"] read Object's
+own constructor; pickRoute read `.tokens.length` off it and expandQuery
+spread `.slice` of it, and both threw. Both lookups take own keys only.
+DID_YOU_MEAN has the same shape but only drops a function-valued field and
+skips the earned suggestion for that one query, so it is left as it is.
+
+Not done: the alias table's token lists are the 2026-08-21 snapshot and miss
+sub-boards added since (meijer Meijer_Market_Format and Meijer-New-Stores,
+boeing~wd1~INTERN). Regenerating it means re-copying it byte for byte into
+layoff-filings (guarded), and building the lists at serve time from the live
+company facet means a 1.3 MB read or an isolate memo on the search path;
+either is a decision for the owner, not made here.

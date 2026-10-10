@@ -57,7 +57,9 @@ describe("a cursor that outran the read", () => {
   });
 
   it("the POST-loop write advances by what was attempted, not by the composed length", () => {
-    expect(CODE).toMatch(/const \{ next: progressAfter, wrapped \} = advanceProgress\(\{\s*prev: \{ \.\.\.progressBefore, failedAcc, failedTotal \},\s*\.\.\.advanceArgs,\s*baseSliceLen: baseAttempted,\s*\}\);/);
+    // By the prefix started or skipped as dormant since .92 (S8-087, run in
+    // the-cold-cursor-counted-starts-not-positions); never the composed slice.
+    expect(CODE).toMatch(/const \{ next: progressAfter, wrapped \} = advanceProgress\(\{\s*prev: \{ \.\.\.progressBefore, failedAcc, failedTotal \},\s*\.\.\.advanceArgs,\s*baseSliceLen: baseConsumedPrefix\(baseSlice\.map\(boardKeyOf\), baseConsumed\),\s*\}\);/);
   });
 
   it("the PRE-loop write stays optimistic, or a dying slice wedges the rotation", () => {
@@ -65,7 +67,7 @@ describe("a cursor that outran the read", () => {
     // against a death, the second corrects a survival.
     const pre = CODE.indexOf("const { next } = advanceProgress({ prev: progressBefore, ...advanceArgs });");
     expect(pre, "the optimistic pre-loop advance must still be there").toBeGreaterThan(0);
-    expect(pre).toBeLessThan(CODE.indexOf("baseSliceLen: baseAttempted"));
+    expect(pre).toBeLessThan(CODE.indexOf("baseSliceLen: baseConsumedPrefix("));
   });
 
   it("the lanes are full-sized again — the throttle is gone", () => {

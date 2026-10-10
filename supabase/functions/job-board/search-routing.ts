@@ -123,9 +123,41 @@ export interface RouteDecision {
  * first because they are unambiguous; the stopword rule only claims a query no
  * other rule wanted.
  */
+type Aliases = Readonly<Record<string, { tokens: string[]; name: string }>>;
+const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+const fillerKeyMemo = new WeakMap<object, Map<string, { tokens: string[]; name: string }>>();
+
+/**
+ * Alias keys with the query parser's filler words folded out of the name
+ * ("Bank of America" -> "bankamerica"): the router sees the query after "of"
+ * is dropped, so a name holding one never matched its own key (S8-090, n447).
+ * Only names that keep two or more words (so "Destination Careers" never
+ * claims "destination"), never a key the table already holds, and never a key
+ * two names would share.
+ */
+export function fillerFoldedAliases(aliases: Aliases, filler: ReadonlySet<string>): ReadonlyMap<string, { tokens: string[]; name: string }> {
+  const memo = fillerKeyMemo.get(aliases);
+  if (memo) return memo;
+  const out = new Map<string, { tokens: string[]; name: string }>();
+  const shared = new Set<string>();
+  for (const hit of Object.values(aliases)) {
+    const words = hit.name.toLowerCase().split(/\s+/).filter((w) => foldName(w) !== "");
+    const kept = words.filter((w) => !filler.has(foldName(w)));
+    if (kept.length === words.length || kept.length < 2) continue;
+    const key = foldName(kept.join(" "));
+    if (own(aliases, key)) continue;
+    if (out.has(key) && out.get(key)!.name !== hit.name) shared.add(key);
+    out.set(key, hit);
+  }
+  for (const k of shared) out.delete(k);
+  fillerKeyMemo.set(aliases, out);
+  return out;
+}
+
 export function pickRoute(
   rawQ: string,
-  aliases: Readonly<Record<string, { tokens: string[]; name: string }>>,
+  aliases: Aliases,
+  filler?: ReadonlySet<string>,
 ): RouteDecision {
   const raw = String(rawQ ?? "").trim();
   if (!raw) return { route: "BROWSE", reason: "empty query" };
@@ -138,7 +170,8 @@ export function pickRoute(
   // real job titles when it was tried, measured by replaying the board's own
   // titles as queries.
   if (alnum.length >= 3 && !OCCUPATION_GUARD.has(alnum)) {
-    const hit = aliases[alnum];
+    // Own keys only: aliases["constructor"] was Object's constructor, and the route threw (n447).
+    const hit = own(aliases, alnum) ? aliases[alnum] : filler ? fillerFoldedAliases(aliases, filler).get(alnum) : undefined;
     if (hit && hit.tokens.length > 0) {
       return { route: "EMPLOYER", reason: `whole query matches employer ${hit.name}`, tokens: hit.tokens, matchedName: hit.name };
     }

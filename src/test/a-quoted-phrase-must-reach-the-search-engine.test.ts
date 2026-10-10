@@ -139,7 +139,7 @@ describe("a balanced pair of quotes survives to the RPC as one phrase", () => {
     expect(pipeline.ftsSafe('"it manager')).toBe("it manager");
     expect(pipeline.ftsSafe('it manager"')).toBe("it manager");
     expect(pipeline.ftsSafe('"a, b" (c)')).toBe('"a b" c');
-    expect(pipeline.ftsQuery("nurses"), "the possessive variant is untouched").toBe("nurses or nurse s");
+    expect(pipeline.ftsQuery("nurses"), "the possessive variant is one quoted phrase").toBe('nurses or "nurse s"');
     expect(pipeline.ftsQuery('"registered nurse"')).toBe('"registered nurse"');
     for (const site of [/\.textSearch\("title", ftsQuery\(qText\)/, /\.textSearch\("company", ftsQuery\(qText\)/]) {
       expect(BOARD, "the simple tiers must still bind through ftsQuery").toMatch(site);

@@ -94,8 +94,8 @@
  *   * the client's pay-control gate removed -> "no gap sentence on an ordinary
  *     browse, even when the server sends the field".
  *   * cappedCount's deploy-window stand-down removed, and separately the
- *     category rail's -> "the stated-pay count stands down from the RPC exactly
- *     where the two SQL versions could disagree".
+ *     category rail's -> the deploy-window case below. (The window closed on
+ *     2026-10-08 and .92 removed the stand-down; the case now holds it gone.)
  *   * the per-row counter renamed in the migration, and separately dropped from
  *     the refresh pass -> "the database publishes the PER-ROW invariant this
  *     widening rests on, not just the count nesting".
@@ -503,18 +503,19 @@ describe("the count and the page cannot describe different populations across th
    * PINNED BY STRUCTURE, NOT BY SPELLING: the stand-down must sit inside
    * cappedCount, after the row is read, and must be reachable — a gate written
    * before the RPC call would also skip the capped case it is required to keep. */
-  it("the stated-pay count stands down from the RPC exactly where the two SQL versions could disagree", () => {
+  /* THE WINDOW CLOSED (S8-089, 2026-10-08). 20260927034117 is live: on .90 the
+   * ranked tier answered q=assistant, IE, hasStatedPay with rows printing a rate
+   * and no annual figure, which only the migrated search_jobs serves (verify
+   * 5y(b)). The stand-down then only sent every stated-pay count to the uncapped
+   * exact path (3-9 s, a statement timeout near 150k matches), so .92 deleted
+   * it; a-deploy-window-guard-outlived-its-window runs the closure. */
+  it("the stated-pay count is the RPC's once both SQL versions agree, and the rail asks no RPC", () => {
     const i = BOARD.indexOf("const cappedCount = async ()");
     expect(i, "cappedCount is gone — this guard would be vacuous").toBeGreaterThan(0);
     const fn = BOARD.slice(i, BOARD.indexOf("\n  };", i));
-    const gate = /if \(applied\.hasStatedPay && row\.capped !== true\) return null;/.exec(fn);
-    expect(
-      gate,
-      "cappedCount no longer stands down for a stated-pay count. Until verify-deploy 5y(b) shows migration 20260927034117 live, this RPC and buildQuery can bind different pay columns, and the headline then describes a population the page does not — remove this only with that section green",
-    ).not.toBeNull();
-    // AFTER the read, or the capped case it must preserve never happens.
-    expect(fn.indexOf("const row = data[0]"), "the stand-down runs before the RPC's answer is read, so it also discards the capped answer it is supposed to keep")
-      .toBeLessThan(fn.indexOf("applied.hasStatedPay && row.capped"));
+    expect(fn, "cappedCount stands down for a stated-pay count again, after the migration it waited for went live")
+      .not.toMatch(/applied\.hasStatedPay/);
+    expect(fn, "cappedCount no longer reads the RPC's row").toMatch(/const row = data\[0\]/);
     // The category rail must not print numbers taken over the other population
     // either. Since .91 it asks no RPC at all: a text query's chips are withheld
     // and the filter-only rail counts through buildQuery (L13-24).

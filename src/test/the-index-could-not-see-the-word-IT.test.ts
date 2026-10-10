@@ -173,7 +173,7 @@ describe("the index can see the words people search for", () => {
     // morning, repeated here within hours. A behavioural reimplementation
     // proves a rule is right; only a source assertion proves it is connected.
     expect(
-      /return `\$\{safe\} or \$\{safe\.slice\(0, -1\)\} s`;/.test(fn),
+      /return `\$\{safe\} or "\$\{safe\.slice\(0, -1\)\} s"`;/.test(fn),
       "the shipped ftsQuery must emit the possessive variant",
     ).toBe(true);
     expect(
@@ -189,12 +189,14 @@ describe("the index can see the words people search for", () => {
     const ftsSafeLocal = (t: string) => t.replace(/[(),."'\\:]/g, " ").replace(/\s+/g, " ").trim();
     const ftsQueryLocal = (raw: string) => {
       const safe = ftsSafeLocal(raw);
-      if (/^[a-z0-9]+s$/i.test(safe) && safe.length >= 5) return `${safe} or ${safe.slice(0, -1)} s`;
+      if (/^[a-z0-9]+s$/i.test(safe) && safe.length >= 5) return `${safe} or "${safe.slice(0, -1)} s"`;
       return safe;
     };
     // MEASURED: "dominos" matched 0 rows, "dominos or domino s" matched 2,002.
-    expect(ftsQueryLocal("dominos")).toBe("dominos or domino s");
-    expect(ftsQueryLocal("mcdonalds")).toBe("mcdonalds or mcdonald s");
+    // The variant is quoted (S8-027): unquoted, websearch read it as
+    // 'domino' & 's', which any title with a stray "'s" anywhere satisfied.
+    expect(ftsQueryLocal("dominos")).toBe('dominos or "domino s"');
+    expect(ftsQueryLocal("mcdonalds")).toBe('mcdonalds or "mcdonald s"');
     // An apostrophe typed by the user already splits correctly via ftsSafe.
     expect(ftsQueryLocal("Domino's")).toBe("Domino s");
     // Ordinary words are untouched in effect — "engineers or engineer s"

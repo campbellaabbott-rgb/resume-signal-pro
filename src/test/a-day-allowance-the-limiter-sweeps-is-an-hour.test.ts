@@ -153,7 +153,9 @@ describe("what the hourly window depends on, read from source", () => {
       for (const m of src.matchAll(/p_window_minutes:\s*[A-Za-z_][A-Za-z0-9_]*\.windowMinutes\s*\?\?\s*(\d+)/g)) {
         windows.push({ file: relative(ROOT, f), minutes: Number(m[1]) });
       }
-      for (const m of src.matchAll(/p_window_minutes:\s*(?![A-Za-z_][A-Za-z0-9_]*\.windowMinutes\s*\?\?)([A-Za-z_][A-Za-z0-9_]*|\d+(?:\s*\*\s*\d+)?)/g)) {
+      // A `<x>.windowMinutes` read (job-fit's bucket, since .92) is vouched for
+      // by the `windowMinutes: <n>` literals collected below, not as a const.
+      for (const m of src.matchAll(/p_window_minutes:\s*(?![A-Za-z_][A-Za-z0-9_]*\.windowMinutes\b)([A-Za-z_][A-Za-z0-9_]*|\d+(?:\s*\*\s*\d+)?)/g)) {
         const term = m[1];
         if (/^\d/.test(term)) { windows.push({ file: relative(ROOT, f), minutes: evalTerm(term) }); continue; }
         const c = new RegExp(`const ${term}\\s*(?::\\s*number)?\\s*=\\s*(\\d+(?:\\s*\\*\\s*\\d+)?)`).exec(src);
