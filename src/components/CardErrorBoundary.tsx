@@ -30,10 +30,13 @@ export class CardErrorBoundary extends Component<Props, State> {
       const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
-        variant: `${this.props.section ?? "section"}: ${(error?.message ?? "unknown").slice(0, 100)}`,
+        // The section alone, within track-ab-event's 30 characters (S8-121:
+        // "section: message" was refused with a 400 nobody saw).
+        variant: (this.props.section ?? "section").slice(0, 30),
         eventType: "view",
         visitorId,
         metadata: {
+          message: (error?.message ?? "unknown").slice(0, 300),
           stack: (error?.stack ?? "").slice(0, 600),
           componentStack: (info?.componentStack ?? "").slice(0, 600),
           path: window.location.pathname,

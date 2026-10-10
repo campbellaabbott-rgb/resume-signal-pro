@@ -1,14 +1,15 @@
-// deploy-stamp: 2026-09-27T20:31Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { recordEvent, type Rpc } from "./budget.ts";
+import { metadataTooLarge, recordEvent, type Rpc } from "./budget.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Returned in every response so a deploy is provable from the outside: a
 // POST that answers without `build`, or with an older one, is the previous
 // bundle still serving. The same value rides as a response header on every
 // answer INCLUDING the CORS preflight, so a deploy can be checked with an
 // OPTIONS request that writes no row and spends no budget.
-const BUILD_VERSION = "2026-09-27.2";
+const BUILD_VERSION = "2026-10-09.1";
 
 // OPTIMIZATION: Removed alert system - not needed for tracking events
 // Removed EdgeRuntime dependency for simpler, faster execution
@@ -71,8 +72,14 @@ serve(async (req) => {
       return json({ error: 'Invalid input format' }, 400);
     }
 
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-                     req.headers.get('cf-connecting-ip') || 'unknown';
+    // Metadata of any size was stored (S8-019).
+    if (metadataTooLarge(metadata)) {
+      return json({ error: 'Metadata too large' }, 400);
+    }
+
+    // The platform's address, never the first forwarded hop: the caller
+    // writes that one, and it keyed the address tier, the only flood bound.
+    const clientIp = clientAddressOr(req.headers);
 
     const outcome = await recordEvent(rpc, { testName, variant, eventType, visitorId, metadata, clientIp });
 

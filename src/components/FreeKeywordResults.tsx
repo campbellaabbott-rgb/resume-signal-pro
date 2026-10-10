@@ -958,7 +958,7 @@ export function FreeKeywordResults({
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
   const scanCountData = useTodayScanCount();
-  const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
+  const { variant: contentDepthVariant, trackClick: trackContentDepthConversion } = useABTest('free_content_depth');
   // Diagnostic layout supersedes the gated-content experiment: locked/blurred
   // cards mid-report are interleaved commerce, which the layout decision
   // rejected. Deep insights render ungated for everyone.

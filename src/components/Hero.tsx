@@ -158,8 +158,8 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
   const [showAtsInfo, setShowAtsInfo] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   
-  const { variant: socialProofVariant, trackConversion: trackSocialProof } = useABTest('social_proof_placement');
-  const { variant: layoutVariant, trackConversion: trackLayout } = useABTest('hero_layout');
+  const { variant: socialProofVariant, trackClick: trackSocialProof } = useABTest('social_proof_placement');
+  const { variant: layoutVariant, trackClick: trackLayout } = useABTest('hero_layout');
 
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
 

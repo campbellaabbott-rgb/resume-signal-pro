@@ -46,7 +46,8 @@ export function useTimeOnPage(pageName: string = 'home') {
       // pathname-only page fields) — not a bare client invoke around it.
       postTrackEvent({
         testName: 'time_on_page',
-        variant: formatMilestone(milestone),
+        // The page is in the variant, as scroll_depth's is (S8-123).
+        variant: `${pageName}:${formatMilestone(milestone)}`.slice(0, 30),
         eventType: 'view',
         metadata: {
           page: pageName,

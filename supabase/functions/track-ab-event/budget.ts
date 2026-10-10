@@ -74,9 +74,29 @@
 // Pure functions, so a Deno test drives them with a fake RPC and the entry
 // point stays a thin parser around them.
 
-export const VISITOR_BUDGET_PER_HOUR = 150;
-export const ADDRESS_CEILING_PER_HOUR = 1500;
+export const VISITOR_BUDGET_PER_HOUR = 180;
+export const ADDRESS_CEILING_PER_HOUR = 1800;
 export const BUDGET_WINDOW_MINUTES = 60;
+
+// TIER 3 -- THE WHOLE SITE'S HOUR (S8-019). The address tier is keyed on an
+// address, so a flood from many addresses (or fresh visitor ids) was bounded
+// by nothing; with metadata of any size and no retention, the funnel the
+// owner decides from could be forged without limit. client_write_allowed's
+// global bucket caps every row the writer may take in an hour at more than
+// ten address ceilings, and a body's metadata is capped at METADATA_MAX_CHARS
+// of JSON (the error boundaries' message and two trimmed stacks fit).
+export const GLOBAL_CEILING_PER_HOUR = 20000;
+export const GLOBAL_BUDGET_SCOPE = "track-ab-event:global";
+export const METADATA_MAX_CHARS = 2048;
+
+/** True when the metadata, as stored, would exceed METADATA_MAX_CHARS. */
+export function metadataTooLarge(metadata: unknown): boolean {
+  try {
+    return JSON.stringify(metadata ?? {}).length > METADATA_MAX_CHARS;
+  } catch {
+    return true;
+  }
+}
 
 /** The rate_limits function name the visitor tier writes under. Not the address tier's. */
 export const VISITOR_BUDGET_FUNCTION = "track-ab-event:visitor";
@@ -91,6 +111,7 @@ export type TrackStatus =
   | "duplicate"
   | "rate_limited_visitor"
   | "rate_limited_address"
+  | "rate_limited_global"
   | "error";
 
 export interface TrackEvent {
@@ -125,6 +146,21 @@ export async function recordEvent(rpc: Rpc, ev: TrackEvent): Promise<TrackOutcom
     console.error("[TRACK-AB] visitor budget check failed, failing open:", visitor.error.message);
   } else if (visitor.data === false) {
     return { status: "rate_limited_visitor" };
+  }
+
+  // The site's hour: one bucket for every caller (per-address equal to the
+  // ceiling, because the writer's own tier is the address bound). A failed
+  // check fails open, like the visitor tier: the address ceiling still holds.
+  const site = await rpc("client_write_allowed", {
+    p_scope: GLOBAL_BUDGET_SCOPE,
+    p_per_address: GLOBAL_CEILING_PER_HOUR,
+    p_ceiling: GLOBAL_CEILING_PER_HOUR,
+    p_window_minutes: BUDGET_WINDOW_MINUTES,
+  });
+  if (site.error) {
+    console.error("[TRACK-AB] site budget check failed, failing open:", site.error.message);
+  } else if (site.data === false) {
+    return { status: "rate_limited_global" };
   }
 
   const wrote = await rpc("track_ab_event_optimized", {

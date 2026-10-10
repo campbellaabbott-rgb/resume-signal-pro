@@ -112,11 +112,15 @@ function lastMigrationDefining(fn: string): string {
  */
 function journeySize(): { total: number; terms: Record<string, number> } {
   const terms: Record<string, number> = {
-    scroll_milestones: arrayLength(code("src/hooks/use-scroll-depth.ts"), "SCROLL_MILESTONES"),
-    time_milestones: arrayLength(code("src/hooks/use-time-on-page.ts"), "TIME_MILESTONES"),
+    // Per page since 2026-10-09: the page is in the variant (S8-123), so a
+    // journey through every page that mounts the hook records each milestone
+    // once per page.
+    scroll_milestones: arrayLength(code("src/hooks/use-scroll-depth.ts"), "SCROLL_MILESTONES") * countInTree("src/pages", /\buseScrollDepth\(/g),
+    time_milestones: arrayLength(code("src/hooks/use-time-on-page.ts"), "TIME_MILESTONES") * countInTree("src/pages", /\buseTimeOnPage\(/g),
     funnel_stages: arrayLength(code("src/hooks/use-funnel-tracking.ts"), "FUNNEL_STAGES"),
     cohort_events: literalArgsOf(code("src/hooks/use-cohort-tracking.ts"), "trackCohortEvent").size,
-    ab_sites: ["src/components", "src/pages"].reduce((n, dir) => n + countInTree(dir, /\buseABTest\(/g), 0),
+    // A view and, since 2026-10-09, a click row under its own test name (S8-122).
+    ab_sites: 2 * ["src/components", "src/pages"].reduce((n, dir) => n + countInTree(dir, /\buseABTest\(/g), 0),
     optimization_once_events: literalArgsOf(code("src/hooks/use-optimization-tracking.ts"), "trackOnce").size,
     product_event_kinds: (() => {
       const m = /eventType: ((?:'[a-z_]+'\s*\|\s*)+'[a-z_]+')/.exec(code("src/hooks/use-conversion-tracking.ts"));
@@ -186,6 +190,10 @@ describe("the two-tier budget's numbers respect what they must", () => {
 
   it("a shared address admits at least ten visitors' budgets", () => {
     expect(addressCeiling).toBeGreaterThanOrEqual(10 * visitorBudget);
+  });
+
+  it("the site's hour admits at least ten address ceilings (S8-019)", () => {
+    expect(exportedNumber(BUDGET, "GLOBAL_CEILING_PER_HOUR")).toBeGreaterThanOrEqual(10 * addressCeiling);
   });
 
   it("the visitor budget is under check_rate_limit's own bound, or the tier fails open on every call", () => {

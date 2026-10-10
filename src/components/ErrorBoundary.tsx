@@ -29,10 +29,14 @@ export class ErrorBoundary extends Component<Props, State> {
       const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
-        variant: (error?.message ?? "unknown").slice(0, 120),
+        // A short, stable variant: track-ab-event refuses one over 30
+        // characters with a 400 the transport swallows, so a crash whose
+        // message was longer never arrived (S8-121). The message is metadata.
+        variant: "app",
         eventType: "view",
         visitorId,
         metadata: {
+          message: (error?.message ?? "unknown").slice(0, 300),
           stack: (error?.stack ?? "").slice(0, 600),
           componentStack: (info?.componentStack ?? "").slice(0, 600),
           path: window.location.pathname,
