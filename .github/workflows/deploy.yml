@@ -117,11 +117,13 @@ jobs:
       # and exited 0 on every push: a green "verify" that had compared nothing.
       # A run that cannot compare now FAILS, because "not verified" is not "OK".
       #
-      # RED UNTIL THE DEPLOY LANDS, BY DESIGN. Lovable deploys after the merge,
-      # so on a push that bumps job-board's BUILD_VERSION this job reads the
-      # previous build and fails, truthfully: production is not this commit
-      # yet. Re-run the job once the Lovable deploy is done; green then means
-      # production serves this build or a later one.
+      # RED WHILE PRODUCTION LAGS MAIN, BY DESIGN. The step compares the live
+      # job-board build with this commit's BUILD_VERSION and never looks at
+      # what the push changed, so EVERY push to main is red while production
+      # serves an older job-board build than main (2026-10-10: .90 live, .91
+      # on main), whatever that push touched. Deploy job-board through Lovable,
+      # then re-run the job; green means production serves this build or a
+      # later one.
       - name: Compare the live BUILD_VERSION against this commit
         run: |
           set -u

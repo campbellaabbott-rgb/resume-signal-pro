@@ -1,7 +1,7 @@
 # Wave 3: tests-ci
 
 Branch `wave3/tests-ci`, based on `origin/main` at 31647d4c (PR #25). No
-migrations. Seven edge functions get a build stamp, and nothing else in them
+migrations. Five edge functions get a build stamp, and nothing else in them
 changes. Four GitHub workflows change; they take effect when the branch is
 merged, with no deploy. Verifier section: `scripts/verify-deploy.d/78-wave3-tests-ci.sh`.
 
@@ -78,9 +78,17 @@ a dry run.
 
 **deploy.yml (L12-08).** The verify job read two secrets that were never set,
 so it warned and exited 0 on every push. It now reads `.env`. Any run that
-cannot compare fails, and the comparison is "this build or later". It is
-**red on a push that bumps job-board until the Lovable deploy lands**. Re-run
-the job after the deploy.
+cannot compare fails, including a version that is not `YYYY-MM-DD.N` (a
+letter-led value such as `degraded` sorted after every date and passed,
+89a9a159). The comparison is "this build or later".
+
+It is **red on every push to main while production serves an older job-board
+build than main**, whatever that push changed: the step compares the live
+build with the repo's BUILD_VERSION and never looks at the diff. On
+2026-10-10 production serves `.90` (live OPTIONS: `x-fn-build:
+job-board.2026-09-09.90`) and main carries `.91`, so from the merge of this
+branch every push gets a red Deploy run, and GitHub emails the owner, until
+job-board is deployed (owner step 1). Re-run the job after the deploy.
 
 **Vacuous guards (L12-12).** Three guards were sliced on anchors that no longer
 exist. They were re-anchored on code with bounds, or removed along with what
@@ -88,10 +96,16 @@ they tested. A planted mutant (a `return` in the headline track, the /jobs link
 moved below the panels) passes the old guards and fails the new ones.
 
 **setup.ts (L12-13).** The cleanup now deletes only PDFs that appeared after the
-setup loaded. Before, it deleted every `*.pdf` in the project root.
+setup loaded. Before, it deleted every `*.pdf` in the project root. The test
+runs the real setup: a child vitest on the suite's own config, started in a
+scratch directory that already holds a PDF (df5dedee).
 
 **The verifier (S8-124 to S8-129, L1-06).** See commit 3b78a7a5:
-- **Probes:** `probe` is a read-only GET.
+- **Probes:** `probe` is a read-only GET. Sections 63 and 65 call it for
+  their writers too (payment_revoke, payment_revoke_credits, agent_pass_settle,
+  search_digest_record_sent). They had kept their own POST through `R` until
+  07001b9f. No section POSTs a writer now: a test runs 63 and 65, reads every
+  literal `R` call site, and checks each target against its migration body.
 - **Build checks:** every one is `build_ge` or numeric, and the two stale
   "FAIL by construction" lines are gone.
 - **4c:** a refusal must name its reason, and the refusals count only beside a
@@ -105,31 +119,66 @@ setup loaded. Before, it deleted every `*.pdf` in the project root.
 - **Locking:** only one run can go at a time.
 - **`catalogSize`:** judged against this checkout's catalogue.
 
-## Functions (deploy all seven together, in one Lovable publish)
+## Functions (deploy all five together, in one Lovable publish)
 
-| Function | Build its OPTIONS must answer |
+| Function | Build its OPTIONS must answer (this or later) |
 |---|---|
-| application-fit | `application-fit.2026-10-09.1` |
 | create-test-coupon | `create-test-coupon.2026-10-09.1` |
 | generate-cohort-report | `generate-cohort-report.2026-10-09.1` |
-| job-fit | `job-fit.2026-10-09.1` |
 | scrape-linkedin | `scrape-linkedin.2026-10-09.1` |
 | warm-up | `warm-up.2026-10-09.1` |
-| layoff-filings | `layoff-filings.2026-10-09.1` (BUILD_VERSION 2026-10-09.1) |
+| layoff-filings | `layoff-filings.2026-10-09.2` (BUILD_VERSION 2026-10-09.2) |
 
-They are wrapped in `_shared/fn-build.ts` `stamped()`, a new file that nothing
-else imports. Status, body and the other headers are unchanged. Before this,
+**Two functions dropped, one at `.2`.** e65930d8 stamped seven functions it
+called untouched by other groups. Three are not:
+- wave3/job-board changes job-fit and application-fit and stamps both
+  `<fn>.2026-10-09.1`, with `x-fn-build` in their corsHeaders.
+- wave3/board-data-ingest changes layoff-filings and sets its BUILD_VERSION
+  to `2026-10-09.1`.
+
+This branch used the same three strings, so each branch's code could ship
+under a build the other had already made live.
+
+Bumping job-fit and application-fit to `.2` was not enough. Merged with
+wave3/job-board, job-fit conflicts, and application-fit merges with **no
+conflict** but declares `const FN_BUILD` twice, a module that does not
+compile (`git merge-file`, 2026-10-10). So this branch leaves both to
+job-board (dae8cb4f): they are back to main's source here, listed in the
+guard's owner list, and judged by job-board's section 71.
+
+layoff-filings stays stamped here, because board-data-ingest's version sends
+no header. It is at `.2`, and section 78 judges it from `.2`, so a live `.1`
+reads FAIL. Its merge conflicts are textual (the import line and
+BUILD_VERSION); the rule is under "Hand-offs".
+
+They are wrapped in `_shared/fn-build.ts` `stamped()`, a new file that only these
+five import. Status, body and the other headers are unchanged. Before this,
 each answered no `x-fn-build` (live OPTIONS, 2026-10-10). Every one passes
 `deno check`.
 
 **Migrations:** none.
 
+**Sections 63, 65 and 78 against production, 2026-10-10 (before any wave-2
+or wave-3 deploy).** Read-only, and it did not crash:
+- **78:** the five stamps FAIL (no header yet; layoff-filings wants `.2`).
+  The alarm's inputs PASS. The Deploy line FAILs, because main still runs
+  the old verify step.
+- **63 and 65:** the writer probes now go out as GETs. The four wave-2
+  functions not yet created answer PGRST202 and FAIL as "migration not
+  applied". `email_delivery_health`, which exists, answers 42501 on the GET
+  and PASSes. So a revoked function refuses a GET exactly as it refused the
+  POST.
+
 ## Owner steps
 
-1. Merge. The workflows take effect on main at once. Within 30 minutes,
+1. **Before merging, deploy job-board at main's BUILD_VERSION** (today
+   `2026-09-09.91`, live `.90`; `.92` once wave3/job-board is merged). The
+   alternative is a red Deploy run, with an email, on every push to main
+   until you do (see deploy.yml above).
+   Then merge. The workflows take effect on main at once. Within 30 minutes,
    board-health shows a scheduled run. If the board is unhealthy, it opens or
    updates an issue labelled `board-health` and emails you.
-2. Deploy the seven functions above (Lovable), then run
+2. Deploy the five functions above (Lovable), then run
    `bash scripts/verify-deploy.sh` (section 78, and section 49's ledger).
 3. **Owner decision (L12-02), not made here:** once `test` and `deno-tests` are
    green on main, require those two jobs in main's branch protection, and have
@@ -141,7 +190,7 @@ each answered no `x-fn-build` (live OPTIONS, 2026-10-10). Every one passes
 
 ## Rollback
 
-Revert the branch's commits. The workflows revert with the merge. For the seven
+Revert the branch's commits. The workflows revert with the merge. For the five
 functions, redeploying the previous source removes only the header. There is
 nothing to undo in the database.
 
@@ -151,6 +200,9 @@ nothing to undo in the database.
   on every push that does not break something. Section 78 prints the count.
 - **board-health:** scheduled runs every 30 minutes (section 78). The first
   one ever is the proof that the file now parses.
+- **Deploy verify:** red on every push while production lags main's job-board
+  build; green after a re-run once job-board is deployed. A red run naming
+  "not a YYYY-MM-DD.N build" means job-board's status changed shape.
 - **built-output:** stays red until seo-content fixes the duplicate titles.
   After that, a red run is a new finding about the site.
 - **The bot-wall sweep:** the first green scheduled run, on Monday 06:12 UTC,
@@ -164,15 +216,44 @@ nothing to undo in the database.
   Tapestry roles, and two Paylocity tenants with the same requisition id. The
   posting page title needs a distinguishing part (location or requisition), or
   the sitemap should keep only one of each pair.
-- **payments-account / email-ops:** `create-test-checkout` and `delete-account`
-  (payments-account), and `save-lead` and `recover-purchase` (email-ops), still
-  send no build. When you stamp them, remove them from `STAMPED_BY_ITS_OWNER` in
-  `src/test/a-function-that-names-no-build-cannot-be-told-from-a-stale-deploy.test.ts`.
-  That test fails until you do, because the list may only shrink.
+- **Integrator: job-fit and application-fit (wave3/job-board).** This branch
+  no longer changes them: its diff for both is empty, so job-board's version
+  merges as it is. Ignore the job-board note's "keep the later of the two if
+  both groups add it", because only one group stamps them now.
+- **Integrator: layoff-filings (wave3/board-data-ingest).** Two textual
+  conflicts:
+  - the import line: keep both, this branch's `stamped` import and
+    board-data-ingest's `refuseLcaCells`, `twinVendorTokens` and
+    `JOB_SOURCES`;
+  - BUILD_VERSION: this branch has `.2`, board-data-ingest `.1`.
+
+  The merge must carry a build neither branch shipped alone,
+  `BUILD_VERSION = "2026-10-09.3"`. Then:
+  - update `PINNED.version` in
+    `a-copy-of-the-catalogue-drifts-the-day-the-catalogue-moves.test.ts`
+    to `.3`;
+  - raise both floors to `.3`: section 78's `layoff-filings:2` and section
+    77's `build_ge "lf" "lf.$W77_LF" "2026-10-09" "1"`.
+
+  "This build or later" assumes one line of history. Across two branches,
+  either branch's number passes the other's floor. If both branches merge
+  before the next Lovable deploy, no half-merged build ever goes live, but
+  raise the floors anyway.
+- **Integrator: `STAMPED_BY_ITS_OWNER`.** All six listed functions are already
+  stamped on their owners' branches:
+  - create-test-checkout and delete-account on wave3/payments-account;
+  - recover-purchase and save-lead on wave3/email-ops;
+  - job-fit and application-fit on wave3/job-board.
+
+  The guard no longer fails when a listed function is stamped. A listed
+  function is excused only while it is wholly unstamped (70e93956). In the
+  wave merge commit, empty the list, so that a stamp lost later is caught.
+  Main stays green either way.
 - **agents-api:** `scripts/verify-deploy.d/45-agents-api.sh` had two probe
   arguments changed from null to typed values (`probe` is a GET now and a GET
   cannot carry null). Expect a merge conflict if you edited those lines.
-- **job-board / board-data-ingest:** when `job-board/sources.ts` changes:
+- **job-board / board-data-ingest:** when `job-board/sources.ts` changes (neither
+  wave-3 branch changes it today):
   1. Copy it into `layoff-filings/board-sources.ts`, as before.
   2. Bump layoff-filings' `BUILD_VERSION`.
   3. Update the pin in `a-copy-of-the-catalogue-drifts-the-day-the-catalogue-moves.test.ts`.
@@ -195,15 +276,15 @@ nothing to undo in the database.
 | L12-02 CI not a gate | interim fixed (every check runs). Branch protection is the owner's decision (above). |
 | L12-04 five render races | (1)(2)(3) fixed (f9b5b24e). (5) fixed (1135c820). (4) already fixed by wave 2 (ffc95454). |
 | L12-07 bot-wall sweep | fixed (7ef8edba lockfile and strict install, fc8cf5ed env) |
-| L12-08 deploy verify never compared | fixed (0a21c37d) |
+| L12-08 deploy verify never compared | fixed (0a21c37d); a letter-led version no longer passes (89a9a159) |
 | L12-10 dist guards skipped | fixed (7ef8edba, the built-output job) |
 | L12-11 Deno tests never run | fixed (7ef8edba) |
 | L12-12 vacuous slices | fixed (56fed3a1) |
-| L12-13 setup deletes PDFs | fixed (02b765ec) |
+| L12-13 setup deletes PDFs | fixed (02b765ec); the test now runs the real setup (df5dedee) |
 | L1-06 verifier false FAILs | (a) DAY30 default and (c) the lock fixed (3b78a7a5). (b) was already fixed in dba7eafa. |
 | S8-036 light-list timeout | already fixed by wave 2 (d3d23f52) |
-| S8-124 no or stale x-fn-build | the verifier side, 7 functions and the layoff-filings tie are fixed (3b78a7a5, e65930d8). PR #25 (8c43aa16) bumped the 13 stale stamps. 4 functions are left to their owners. |
-| S8-125 writer probes | fixed (3b78a7a5) |
+| S8-124 no or stale x-fn-build | Fixed: the verifier side, 5 functions and the layoff-filings tie (3b78a7a5, e65930d8). layoff-filings moved to `.2`, above a sibling's `.1` (eeb4f33c). job-fit and application-fit are left to wave3/job-board, which stamps them (dae8cb4f). PR #25 (8c43aa16) bumped the 13 stale stamps. The 6 owner-listed functions are stamped on their owners' branches, and the guard accepts either state (70e93956). |
+| S8-125 writer probes | fixed: `probe` (3b78a7a5), sections 63 and 65 (07001b9f) |
 | S8-126 45-scan-ai date pattern | fixed (3b78a7a5) |
 | S8-127 PASS with no positive control | fixed (3b78a7a5) |
 | S8-128 5u newest posting | fixed (3b78a7a5) |
