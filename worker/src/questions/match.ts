@@ -278,28 +278,37 @@ const RE_PORTFOLIO = /portfolio(?!\s+(?:management|manager|analy|optimi|construc
 
 /**
  * WHICH LABELS ARE CONTACT FIELDS AT ALL (sweep S8-044). The patterns above
- * are ordinary words, and they ran before the prepared draft was consulted:
- * "How would you address a conflict" got the home address, "experience with
- * mobile app development" the phone number, "portfolio management experience"
- * the LinkedIn URL, and "Emergency contact" the candidate's own phone.
- *
- * A contact pattern now counts only on a label that IS a field: one that says
- * whose detail it wants ("your phone number", "your home address", "LinkedIn
- * profile URL"), or a short label that is not a question, not a prose prompt
- * and not a textarea. Somebody else's details are never the candidate's.
- * Mirrored by the classifier's IDENTITY gate in _shared/application-questions.ts.
+ * ran before the prepared draft was consulted: "How would you address a
+ * conflict" got the home address, "experience with mobile app development"
+ * the phone number, "portfolio management experience" the LinkedIn URL, and
+ * "Emergency contact" the candidate's own phone. contactLabelIsAField decides;
+ * the review sheet's classifier carries the same block.
  */
-const RE_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
-const RE_QUESTION_SHAPE = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
-const RE_OTHER_PERSON = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
-const RE_OWN_CONTACT =
-  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website)\s+(?:url|link)|\bwhich\s+(?:city|town)\b|(?:city|town)\s+of\s+residence/i;
-function isContactField(q: DomQuestion, label: string): boolean {
-  if (RE_OTHER_PERSON.test(label)) return false;
-  if (RE_OWN_CONTACT.test(label)) return true;
-  if (q.type === "textarea" || RE_PROSE.test(label) || RE_QUESTION_SHAPE.test(label)) return false;
-  return label.split(/\s+/).filter(Boolean).length <= 5;
+// ── CONTACT FIELD OR ESSAY: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/application-questions.ts ──
+// A contact pattern is an ordinary word ("address a conflict", "mobile app
+// development"), so it counts only on a label that IS a field: one that says
+// whose detail it wants, one that opens with the detail and then ends or gives
+// a hint ("Phone number (include area code)", "Phone number where we can reach
+// you"), or a short label ending on it. Never a question, a prose prompt, a
+// textarea, or somebody else's detail. Rationale: docs/wave3/agents-api.md.
+const CF_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+const CF_QUESTION = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
+const CF_SOMEONE_ELSE = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
+const CF_OWN =
+  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|github|twitter|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website|github)\s+(?:url|link)|\bwhich\s+(?:city|town)\b|(?:city|town)\s+of\s+residence/i;
+const CF_HEAD =
+  /^\s*(?:(?:home|mobile|cell|primary|secondary|personal|best|preferred|daytime|work|current|permanent|mailing|postal|residential|street|contact|legal)\s+)*(?:e-?mail(?:\s+address)?|phone(?:\s+number)?|mobile(?:\s+(?:phone|number))?|cell(?:\s+phone)?(?:\s+number)?|telephone(?:\s+number)?|contact\s+(?:phone\s+)?number|address|linkedin(?:\s+(?:profile|url|link))*|github(?:\s+(?:profile|url|link))*|twitter(?:\s+handle)?|website|portfolio(?:\s+(?:url|link|website))?|zip(?:\s+code)?|post(?:al)?\s*code|city|(?:(?:full|first|last|middle|given|family|preferred)\s+)+name)\s*(?:$|[(\[:,;*?]|[–—]|\s-\s|\s(?:where|we|for|so|that)\b)/i;
+const CF_TAIL = /(?:e-?mail|phone|telephone|number|address|linkedin|github|twitter|website|portfolio|url|link|profile|code|zip|city|town|name|handle)$/i;
+export function contactLabelIsAField(label: string, fieldType: string): boolean {
+  if (CF_SOMEONE_ELSE.test(label)) return false;
+  if (CF_OWN.test(label)) return true;
+  const type = fieldType.toLowerCase();
+  if (type.includes("textarea") || type === "longtext" || CF_PROSE.test(label) || CF_QUESTION.test(label)) return false;
+  if (CF_HEAD.test(label)) return true;
+  const words = label.replace(/\([^)]*\)|\[[^\]]*\]/g, " ").split(/[^\p{L}\p{N}'-]+/u).filter(Boolean);
+  return words.length > 0 && words.length <= 6 && CF_TAIL.test(words[words.length - 1]!);
 }
+// ── end of the contact-field rule ──
 /** Sponsorship is an immigration question only in an immigration sentence:
  *  "sponsorship and partnership programs" got "No" (S8-044). */
 const RE_SPONSOR_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition/i;
@@ -532,7 +541,7 @@ function matchStanding(
   // --- Contact details, by label ---------------------------------------
   // Email FIRST: "Email Address" contains "address", and a street address in an
   // email field is a submitted application nobody can reply to.
-  const contact = isContactField(q, label);
+  const contact = contactLabelIsAField(label, q.type);
   if (contact && RE_EMAIL.test(label)) {
     return has(a.email) ? { kind: "fill", category: "email", value: a.email }
                         : text("email", "no email on file");
@@ -593,7 +602,7 @@ function matchStanding(
   // practice — "authorized to work in the US", "require sponsorship for a UK
   // visa" — and a single global boolean answering them produced false claims
   // about a real person's immigration status. See ./countries.ts.
-  const sponsorQ = RE_SPONSORSHIP.test(label) && !RE_PROSE.test(label)
+  const sponsorQ = RE_SPONSORSHIP.test(label) && !CF_PROSE.test(label)
     && (RE_SPONSOR_CONTEXT.test(label) || label.split(/\s+/).length <= 3);
   if (sponsorQ || RE_WORK_AUTH.test(label)) {
     const isSponsor = sponsorQ;

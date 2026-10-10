@@ -32,19 +32,35 @@ const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|legal\s*name|preferred
 
 /**
  * An IDENTITY token in an essay is not a field (S8-044: "mobile app
- * development" got the phone). Identity needs a label that says whose detail
- * it is, or a short non-question label. Mirrors isContactField (worker).
+ * development" got the phone). contactLabelIsAField decides; the worker's
+ * matcher carries the same block, so the sheet and the sender agree.
  */
-const PROSE_PROMPT = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
-const QUESTION_SHAPE = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
 const SOMEONE_ELSES_CONTACT = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
-const OWN_CONTACT =
-  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|github|twitter|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website|github)\s+(?:url|link)/i;
-function contactIsAField(l: string, words: number, fieldType: string): boolean {
-  if (OWN_CONTACT.test(l)) return true;
-  if (fieldType.includes("textarea") || fieldType === "longtext" || PROSE_PROMPT.test(l) || QUESTION_SHAPE.test(l)) return false;
-  return words <= 6;
+// ── CONTACT FIELD OR ESSAY: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/application-questions.ts ──
+// A contact pattern is an ordinary word ("address a conflict", "mobile app
+// development"), so it counts only on a label that IS a field: one that says
+// whose detail it wants, one that opens with the detail and then ends or gives
+// a hint ("Phone number (include area code)", "Phone number where we can reach
+// you"), or a short label ending on it. Never a question, a prose prompt, a
+// textarea, or somebody else's detail. Rationale: docs/wave3/agents-api.md.
+const CF_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+const CF_QUESTION = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
+const CF_SOMEONE_ELSE = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
+const CF_OWN =
+  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|github|twitter|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website|github)\s+(?:url|link)|\bwhich\s+(?:city|town)\b|(?:city|town)\s+of\s+residence/i;
+const CF_HEAD =
+  /^\s*(?:(?:home|mobile|cell|primary|secondary|personal|best|preferred|daytime|work|current|permanent|mailing|postal|residential|street|contact|legal)\s+)*(?:e-?mail(?:\s+address)?|phone(?:\s+number)?|mobile(?:\s+(?:phone|number))?|cell(?:\s+phone)?(?:\s+number)?|telephone(?:\s+number)?|contact\s+(?:phone\s+)?number|address|linkedin(?:\s+(?:profile|url|link))*|github(?:\s+(?:profile|url|link))*|twitter(?:\s+handle)?|website|portfolio(?:\s+(?:url|link|website))?|zip(?:\s+code)?|post(?:al)?\s*code|city|(?:(?:full|first|last|middle|given|family|preferred)\s+)+name)\s*(?:$|[(\[:,;*?]|[–—]|\s-\s|\s(?:where|we|for|so|that)\b)/i;
+const CF_TAIL = /(?:e-?mail|phone|telephone|number|address|linkedin|github|twitter|website|portfolio|url|link|profile|code|zip|city|town|name|handle)$/i;
+export function contactLabelIsAField(label: string, fieldType: string): boolean {
+  if (CF_SOMEONE_ELSE.test(label)) return false;
+  if (CF_OWN.test(label)) return true;
+  const type = fieldType.toLowerCase();
+  if (type.includes("textarea") || type === "longtext" || CF_PROSE.test(label) || CF_QUESTION.test(label)) return false;
+  if (CF_HEAD.test(label)) return true;
+  const words = label.replace(/\([^)]*\)|\[[^\]]*\]/g, " ").split(/[^\p{L}\p{N}'-]+/u).filter(Boolean);
+  return words.length > 0 && words.length <= 6 && CF_TAIL.test(words[words.length - 1]!);
 }
+// ── end of the contact-field rule ──
 
 // ORDINARY ENGLISH NOUNS that are identity only when the label is a FIELD, not
 // prose. Found by the real-label corpus on 2026-08-01: "Describe a time you
@@ -289,7 +305,7 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
     // Somebody else's phone or email is not the candidate's to fill, and not
     // the model's to invent: it stops for the candidate, like a referrer's name.
     if (SOMEONE_ELSES_CONTACT.test(l)) return "factual";
-    if (contactIsAField(l, bare.split(" ").length, t)) return "identity";
+    if (contactLabelIsAField(l, t)) return "identity";
   }
   if (IDENTITY_INTL.test(l)) return "identity";
   // Geographic/contact words that are also ordinary English. Identity only when

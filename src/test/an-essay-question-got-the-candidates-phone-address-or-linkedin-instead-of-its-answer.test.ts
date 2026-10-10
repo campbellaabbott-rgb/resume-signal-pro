@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { matchQuestion, normaliseLabel, type StandingAnswers } from "../../worker/src/questions/match.js";
+import { contactLabelIsAField as workerRule, matchQuestion, normaliseLabel, type StandingAnswers } from "../../worker/src/questions/match.js";
 import type { DomQuestion } from "../../worker/src/vendors/enumerate-dom.js";
-import { classifyQuestion } from "../../supabase/functions/_shared/application-questions";
+import { classifyQuestion, contactLabelIsAField as sheetRule } from "../../supabase/functions/_shared/application-questions";
 
 /**
  * Sweep S8-044. The contact patterns are ordinary words and ran before the
@@ -86,4 +88,71 @@ describe("the server classifier draws the same line", () => {
       expect(classifyQuestion(label, "")).toBe("identity");
     },
   );
+});
+
+/**
+ * Review of the gate above: the worker took a label without "your" as a field
+ * only at five words or fewer and the sheet's classifier at six, counted
+ * differently. So an ordinary field with a hint was refused by the worker
+ * (a required one blocked the send) while the sheet filled it from the
+ * profile, and past six words the sheet asked the model to write the
+ * candidate's phone or email. One rule now, the same block in both files.
+ */
+const HINTED_FIELDS: Array<[string, string, string]> = [
+  ["Mobile phone number (including country code)", "phone", A.phone],
+  ["Home Address (Street, City, State, Zip)", "address", A.address],
+  ["Phone number (mobile preferred, include area code)", "phone", A.phone],
+  ["Phone number where we can reach you during business hours", "phone", A.phone],
+  ["Email address (we will send your interview invite here)", "email", A.email],
+  ["Quel est votre numéro de téléphone ?", "phone", A.phone],
+];
+
+describe("a contact field with a hint is still a contact field, in both runtimes", () => {
+  it.each(HINTED_FIELDS)("the worker fills %s", (label, category, value) => {
+    expect(matchQuestion(ask(label, "text"), A)).toMatchObject({ kind: "fill", category, value });
+  });
+
+  it.each(HINTED_FIELDS)("the sheet calls %s identity, never a draft", (label) => {
+    expect(classifyQuestion(label, "input_text")).toBe("identity");
+  });
+
+  it.each([
+    "Email marketing tools you have used (list them)",
+    "Experience with mobile development frameworks such as React Native or Flutter",
+    "Portfolio management experience",
+    "Phone-based support experience",
+  ])("neither runtime takes %s for a contact field", (label) => {
+    const r = matchQuestion(ask(label, "text"), A);
+    expect(r && r.kind === "fill" ? r.value : null).not.toBeOneOf([A.phone, A.email, A.address, A.linkedin]);
+    expect(classifyQuestion(label, "input_text")).not.toBe("identity");
+  });
+});
+
+describe("the worker and the sheet decide a contact field with one rule", () => {
+  const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
+  const START = "// ── CONTACT FIELD OR ESSAY:";
+  const END = "// ── end of the contact-field rule ──";
+  const blockOf = (src: string) => {
+    const at = src.indexOf(START);
+    const to = src.indexOf(END);
+    if (at < 0 || to < at) throw new Error("the contact-field block is gone — RE-ANCHOR this guard");
+    return src.slice(at, to);
+  };
+
+  it("the block is byte-identical in the two files", () => {
+    const worker = blockOf(read("worker/src/questions/match.ts"));
+    expect(worker.length).toBeGreaterThan(1000);
+    expect(blockOf(read("supabase/functions/_shared/application-questions.ts"))).toBe(worker);
+  });
+
+  it("and both exports answer every label the same way", () => {
+    const labels = [
+      ...HINTED_FIELDS.map(([l]) => l), ...ESSAYS.map(([l]) => l),
+      "Email Address", "Mobile Number", "Secondary contact number", "LinkedIn Profile URL", "Your phone number",
+      "Emergency contact phone number", "Email marketing tools you have used (list them)",
+    ];
+    for (const type of ["text", "textarea"]) {
+      for (const l of labels) expect(workerRule(l, type), `${type}: ${l}`).toBe(sheetRule(l, type));
+    }
+  });
 });
