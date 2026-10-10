@@ -93,6 +93,33 @@ describe("without the migration (teeth)", () => {
   });
 });
 
+describe("the decision log (teeth, then with 20261009111000)", () => {
+  const forge = `INSERT INTO public.shortlist_decisions (candidate_id, owner_id, actor_email, action, old_value, new_value, created_at)
+                 VALUES ($1, $2, 'ceo@employer.test', 'reject', 'pending', 'rejected', '2020-01-02T00:00:00Z')`;
+
+  it("without it, an owner backdates a reject that never changed a status, under another actor's name", async () => {
+    const { db, candId } = await boot(false);
+    expect((await as(db, A, forge, [candId, A])).error).toBeNull();
+    const row = await one(db, `SELECT actor_email, created_at < '2021-01-01' AS backdated FROM public.shortlist_decisions WHERE candidate_id = $1`, [candId]);
+    expect(row).toEqual({ actor_email: "ceo@employer.test", backdated: true });
+    expect((await one(db, `SELECT status FROM public.shortlist_candidates WHERE id = $1`, [candId])).status).toBe("pending");
+  });
+
+  it("with it, a direct advance or reject is refused, and any other row carries the server's clock and the caller's own address", async () => {
+    const { db, candId } = await boot(true);
+    expect((await as(db, A, forge, [candId, A])).error).toMatch(/through shortlist_decide/);
+    const note = await as(db, A, `INSERT INTO public.shortlist_decisions (candidate_id, owner_id, actor_email, action, new_value, created_at)
+                                   VALUES ($1, $2, 'ceo@employer.test', 'override_score', '90', '2020-01-02T00:00:00Z')`, [candId, A]);
+    expect(note.error).toBeNull();
+    const row = await one(db, `SELECT actor_email, created_at > now() - interval '1 hour' AS fresh FROM public.shortlist_decisions WHERE candidate_id = $1`, [candId]);
+    expect(row).toEqual({ actor_email: "a@employer.test", fresh: true });
+    // shortlist_decide still logs its own advance, and the switch does not outlive it.
+    expect((await as(db, A, `SELECT public.shortlist_decide($1, 'advance', 'ok')`, [candId])).error).toBeNull();
+    const after = await as(db, A, `DO $$ BEGIN PERFORM public.shortlist_decide('${candId}', 'advance', 'ok'); ${forge.replace("$1", `'${candId}'`).replace("$2", `'${A}'`)}; END $$`);
+    expect(after.error).toMatch(/through shortlist_decide/);
+  });
+});
+
 describe("with 20261009111000", () => {
   it("an owner cannot rewrite an AI column, insert an evaluation, or change status without its decision", async () => {
     const { db, roleId, candId } = await boot(true);

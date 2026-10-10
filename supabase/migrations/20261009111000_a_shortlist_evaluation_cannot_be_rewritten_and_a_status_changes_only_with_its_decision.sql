@@ -17,7 +17,11 @@
 --   - shortlist_decide() (SECURITY INVOKER: the caller's own grants and RLS)
 --     writes the decision and the status in one transaction and raises what
 --     the page shows. Overrides stay decisions; the score is never rewritten.
---   - a decision may be logged only against the caller's own candidate.
+--   - a decision may be logged only against the caller's own candidate, its
+--     created_at and actor_email are the server's (the clock and the JWT),
+--     and an advance or reject is logged only by shortlist_decide, with the
+--     status it sets. A direct insert could backdate a row, name any actor,
+--     and log an advance or reject that never changed a status.
 --
 -- S8-110. shortlist-evaluate scored the JD the request body sent, and the row
 -- recorded only shortlist_roles.jd_version, which nothing ever bumped when the
@@ -82,6 +86,32 @@ CREATE POLICY "owners insert own decisions" ON public.shortlist_decisions
     AND EXISTS (SELECT 1 FROM public.shortlist_candidates c WHERE c.id = candidate_id AND c.owner_id = auth.uid())
   );
 
+CREATE OR REPLACE FUNCTION public.shortlist_decisions_stamp()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $fn$
+BEGIN
+  IF current_user NOT IN ('authenticated', 'anon') THEN
+    RETURN NEW;
+  END IF;
+  NEW.created_at := now();
+  NEW.actor_email := nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email';
+  IF NEW.action IN ('advance', 'reject')
+     AND coalesce(current_setting('shortlist.deciding', true), '') IS DISTINCT FROM NEW.candidate_id::text THEN
+    RAISE EXCEPTION 'An advance or reject is logged only with the status it sets, through shortlist_decide'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END
+$fn$;
+REVOKE ALL ON FUNCTION public.shortlist_decisions_stamp() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS shortlist_decisions_stamp ON public.shortlist_decisions;
+CREATE TRIGGER shortlist_decisions_stamp
+  BEFORE INSERT ON public.shortlist_decisions
+  FOR EACH ROW EXECUTE FUNCTION public.shortlist_decisions_stamp();
+
 -- ── One transaction for a human decision and the status it sets
 CREATE OR REPLACE FUNCTION public.shortlist_decide(p_candidate_id uuid, p_action text, p_reason text DEFAULT NULL)
 RETURNS jsonb
@@ -106,9 +136,11 @@ BEGIN
     RAISE EXCEPTION 'Candidate not found' USING ERRCODE = 'P0002';
   END IF;
   v_new := CASE p_action WHEN 'advance' THEN 'advanced' ELSE 'rejected' END;
+  PERFORM set_config('shortlist.deciding', c.id::text, true);
   INSERT INTO public.shortlist_decisions (candidate_id, owner_id, actor_email, action, old_value, new_value, reason)
   VALUES (c.id, c.owner_id, nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email', p_action, c.status, v_new, v_reason)
   RETURNING id INTO v_id;
+  PERFORM set_config('shortlist.deciding', '', true);
   UPDATE public.shortlist_candidates SET status = v_new WHERE id = c.id;
   RETURN jsonb_build_object('candidate_id', c.id, 'status', v_new, 'decision_id', v_id);
 END
@@ -158,6 +190,9 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'shortlist_candidates_guard' AND tgrelid = 'public.shortlist_candidates'::regclass AND NOT tgisinternal) THEN
     RAISE EXCEPTION 'shortlist_candidates_guard trigger missing';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'shortlist_decisions_stamp' AND tgrelid = 'public.shortlist_decisions'::regclass AND NOT tgisinternal) THEN
+    RAISE EXCEPTION 'shortlist_decisions_stamp trigger missing';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'shortlist_roles_jd_version' AND tgrelid = 'public.shortlist_roles'::regclass AND NOT tgisinternal) THEN
     RAISE EXCEPTION 'shortlist_roles_jd_version trigger missing';
