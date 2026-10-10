@@ -40,7 +40,12 @@ every deploy: anything main has that production does not is a FAIL line.
    the Lovable message generated from that exact commit and the verifier (plus
    the ledger) shows no gap.
 3. Held migrations go out in a second message once their prerequisites verify.
-4. Then the next integration may merge.
+4. CHANGELOG: once the deploy verifies, the user-visible changes it shipped get
+   changelog entries (src/data/changelog.ts + all nine src/i18n/changelog
+   files), every claim re-checked against production, dated by the day they
+   went live. They ship in the next frontend publish. Nothing not yet live gets
+   an entry.
+5. Then the next integration may merge.
 
 Branches keep working while main is frozen; they merge when it thaws, against
 the new main, and the ledger is re-run.
