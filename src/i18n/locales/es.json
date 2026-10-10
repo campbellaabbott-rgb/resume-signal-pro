@@ -26,7 +26,12 @@
     "guides": "Guías",
     "jobs": "Empleo",
     "explore": "Explorar",
-    "agents": "Agentes"
+    "agents": "Agentes",
+    "menu": "Menú",
+    "closeMenu": "Cerrar menú",
+    "phoneNavAriaLabel": "Menú del sitio",
+    "signIn": "Iniciar sesión",
+    "account": "Cuenta"
   },
   "hero": {
     "badge": "Tablón de empleo en vivo — cada oferta verificada en el sistema de la propia empresa",

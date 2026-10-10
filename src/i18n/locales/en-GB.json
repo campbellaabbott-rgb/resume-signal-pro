@@ -26,7 +26,12 @@
     "guides": "Guides",
     "jobs": "Jobs",
     "explore": "Explore",
-    "agents": "Agents"
+    "agents": "Agents",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "phoneNavAriaLabel": "Site menu",
+    "signIn": "Sign in",
+    "account": "Account"
   },
   "hero": {
     "badge": "Live job board — every posting verified from the company's own system",

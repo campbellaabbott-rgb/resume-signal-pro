@@ -26,7 +26,12 @@
     "guides": "Guides",
     "jobs": "Offres",
     "explore": "Explorer",
-    "agents": "Agents"
+    "agents": "Agents",
+    "menu": "Menu",
+    "closeMenu": "Fermer le menu",
+    "phoneNavAriaLabel": "Menu du site",
+    "signIn": "Se connecter",
+    "account": "Compte"
   },
   "hero": {
     "badge": "Tableau d'offres en direct — chaque annonce vérifiée sur le système de l'entreprise",

@@ -26,7 +26,12 @@
     "guides": "Guias",
     "jobs": "Vagas",
     "explore": "Explorar",
-    "agents": "Agentes"
+    "agents": "Agentes",
+    "menu": "Menu",
+    "closeMenu": "Fechar menu",
+    "phoneNavAriaLabel": "Menu do site",
+    "signIn": "Entrar",
+    "account": "Conta"
   },
   "hero": {
     "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",

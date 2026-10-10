@@ -26,7 +26,12 @@
     "guides": "Mga Gabay",
     "jobs": "Trabaho",
     "explore": "Tuklasin",
-    "agents": "Mga Agent"
+    "agents": "Mga Agent",
+    "menu": "Menu",
+    "closeMenu": "Isara ang menu",
+    "phoneNavAriaLabel": "Menu ng site",
+    "signIn": "Mag-sign in",
+    "account": "Account"
   },
   "hero": {
     "badge": "Live job board — bawat posting verified mula sa sariling sistema ng kumpanya",

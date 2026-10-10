@@ -26,7 +26,12 @@
     "guides": "Ratgeber",
     "jobs": "Jobs",
     "explore": "Entdecken",
-    "agents": "Agenten"
+    "agents": "Agenten",
+    "menu": "Menü",
+    "closeMenu": "Menü schließen",
+    "phoneNavAriaLabel": "Seitenmenü",
+    "signIn": "Anmelden",
+    "account": "Konto"
   },
   "hero": {
     "badge": "Live-Jobbörse — jede Stelle direkt im System des Unternehmens verifiziert",

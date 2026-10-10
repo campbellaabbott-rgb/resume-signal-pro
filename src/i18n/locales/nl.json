@@ -26,7 +26,12 @@
     "guides": "Gidsen",
     "jobs": "Vacatures",
     "explore": "Ontdek",
-    "agents": "Agents"
+    "agents": "Agents",
+    "menu": "Menu",
+    "closeMenu": "Menu sluiten",
+    "phoneNavAriaLabel": "Sitemenu",
+    "signIn": "Inloggen",
+    "account": "Account"
   },
   "hero": {
     "badge": "Live vacaturebord — elke vacature geverifieerd in het systeem van het bedrijf zelf",

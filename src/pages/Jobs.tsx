@@ -8644,8 +8644,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
               : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
             {/* Live activity strip: the board IS alive — say so with measured
                 numbers only (each clause renders only when its data exists). */}
+            {/* sm+ only: at 375px this line is three rows (60px) of the fold,
+                and the first job sat at 1,006px on an 812px screen. */}
             {!landerCompany && (takedownsToday !== null || recheckP50Min !== null || !!data?.trackedTotal) && (
-              <span className="block text-[12px] text-muted-foreground mt-0.5">
+              <span className="hidden sm:block text-[12px] text-muted-foreground mt-0.5">
                 {/* THE TRACKED CORPUS, and it is deliberately not the headline.
                     The line above counts what a visitor can page to; this one
                     counts every posting the board holds INCLUDING the ~91k that
@@ -9685,6 +9687,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 now spans the whole serving window instead of stopping at a
                 week, which was the only reason "posted in the last fortnight"
                 required hand-editing the URL. */}
+            {/* ONE ROW ON A PHONE. Six date chips wrapped to two rows there;
+                they scroll sideways under the same edge mask as the badge strip
+                (display:contents from sm up, so the wide layout is unchanged). */}
+            <div className="basis-full min-w-0 flex flex-nowrap items-center gap-2 overflow-x-auto [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:contents">
             {([
               ["", t("jobsPage.freshAll", "Any date")],
               ["1", t("jobsPage.freshDay", "Today")],
@@ -9702,13 +9708,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 // could not tell which date window was applied.
                 aria-pressed={freshness === v}
                 title={v ? t("jobsPage.freshHint", "Counts company-stated posting dates only") : undefined}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                className={`shrink-0 whitespace-nowrap text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   freshness === v ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {label}
               </button>
             ))}
+            </div>
             {freshness && (
               <span className="text-[11px] text-muted-foreground">
                 {t("jobsPage.freshHint", "Counts company-stated posting dates only")}
@@ -10000,8 +10007,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
               className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
               title={t("jobsPage.sendSearchTip", "Copy a one-line prompt for your own AI agent: the filters and order you are looking at, as the arguments our MCP server's search takes.")}
             >
-              <Bot className="w-3.5 h-3.5" />
-              {t("jobsPage.sendSearchToAgent", "Send this search to my agent")}
+              <Bot className="w-3.5 h-3.5" aria-hidden="true" />
+              {/* Icon-only on a phone (the title and the accessible name keep
+                  the words): with its label it took a row of the fold alone. */}
+              <span className="sr-only sm:not-sr-only">{t("jobsPage.sendSearchToAgent", "Send this search to my agent")}</span>
             </button>
             {/* Why this order: the board explains its data everywhere else —
                 the ranking shouldn't be the one unexplained thing. */}
@@ -11341,8 +11350,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     The 6.3% is stated rather than hidden. The agent covers four
                     hiring systems, not the whole board, and a visitor who finds
                     that out AFTER paying is a refund and a bad review. */}
+                {/* sm+ only: at 375px the pitch was 130px between the count
+                    line and the first job; the cards' own badges still carry it. */}
                 {agentReadyOnPage > 0 && !agentOnly && (
-                  <span className="block text-[12px] text-muted-foreground mt-1">
+                  <span className="hidden sm:block text-[12px] text-muted-foreground mt-1">
                     <Sparkles className="inline w-3 h-3 text-primary -mt-0.5" aria-hidden />{" "}
                     {t("jobsPage.agentPitchCounted", "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.", { n: agentReadyOnPage })}{" "}
                     <Link to="/agent" className="text-primary underline underline-offset-2">
