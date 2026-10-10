@@ -10,6 +10,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
+import { onetForRole } from "@/lib/onet-match";
 import { ROLE_PAGES, rolesForIndustry } from "@/data/roles";
 
 const industryLabel = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -44,7 +45,8 @@ export default function RoleKeywords() {
   const indName = industryLabel(role.industry);
   const keywords = [...new Set(data.primary)].slice(0, 20);
   const certs = [...new Set(data.certifications)].slice(0, 10);
-  const onet = ONET_EXPECTATIONS[role.industry];
+  // L1-05: the industry's occupation is cited only when it names this role.
+  const onet = onetForRole(role.title, ONET_EXPECTATIONS[role.industry]);
   const siblingRoles = rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
   const relatedTitles = [...new Set(data.titles)].filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
 

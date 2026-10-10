@@ -180,6 +180,7 @@ if (isMain) try {
   writeFileSync(entry, `
 export { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../supabase/functions/free-keyword-scan/industry-detection";
 export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-expectations";
+export { onetForRole } from "../src/lib/onet-match";
 export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { COMPETITORS } from "../src/data/competitors";
@@ -1312,7 +1313,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const indName = label(role.industry);
     const keywords = uniq(data.primary).slice(0, 20);
     const certs = uniq(data.certifications).slice(0, 10);
-    const onet = D.ONET_EXPECTATIONS[role.industry];
+    // L1-05: /roles/pilot cited Aircraft Mechanics as the Department of
+    // Labor's word on pilots. The industry's occupation is cited only when it
+    // names this role (src/lib/onet-match.ts).
+    const onet = D.onetForRole(role.title, D.ONET_EXPECTATIONS[role.industry]);
     const relatedTitles = uniq(data.titles).filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
     const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
     write({
@@ -1323,7 +1327,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name: indName, href: `/industries/${role.industry}` }, { name: role.title }])}
         <h1 class="text-3xl font-bold mb-3">${esc(role.title)} Resume Keywords &amp; ATS Expectations</h1>
-        <p class="text-muted-foreground mb-8">This is the live data our resume scanner uses when it detects a ${esc(role.title.toLowerCase())} resume — the keyword tables, certifications, and titles from our ${esc(indName.toLowerCase())} detection engine.</p>
+        <p class="text-muted-foreground mb-8">These are the ${esc(indName.toLowerCase())} keyword tables, certifications and titles our resume scanner checks when it reads a resume in that field, ${esc(role.title.toLowerCase())} resumes included. They are the field's lists, not a list written for this one title.</p>
         ${onetBlock(onet)}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on a ${esc(role.title.toLowerCase())} resume</h2>${kwChips(keywords)}</section>
         ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(role.title.toLowerCase())} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
