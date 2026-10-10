@@ -156,6 +156,44 @@ export type Database = {
           },
         ]
       }
+      affiliate_payout_requests: {
+        Row: {
+          affiliate_id: string
+          amount_cents: number
+          id: string
+          note: string | null
+          requested_at: string
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          affiliate_id: string
+          amount_cents: number
+          id?: string
+          note?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          affiliate_id?: string
+          amount_cents?: number
+          id?: string
+          note?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payout_requests_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_sessions: {
         Row: {
           affiliate_id: string
