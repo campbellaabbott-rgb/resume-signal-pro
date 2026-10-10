@@ -5277,5 +5277,27 @@
       "requestedTitle": "Na-request ang payout",
       "requestedBody": "Mag-e-email kami para ayusin ang bayad."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Malakas",
+    "mixed": "Halo-halo",
+    "risky": "Mapanganib",
+    "weak": "Mahina",
+    "growth": "Paglago",
+    "stable": "Matatag",
+    "stagnant": "Hindi umuusad",
+    "unclear": "Hindi malinaw",
+    "high": "Mataas",
+    "medium": "Katamtaman",
+    "low": "Mababa",
+    "entry": "Baguhan",
+    "mid": "Gitna",
+    "senior": "Senior",
+    "executive": "Ehekutibo",
+    "aligned": "Tugma",
+    "stretch": "Mapaghamon",
+    "mismatch": "Hindi tugma",
+    "readyToApply": "Handa nang mag-apply",
+    "fixTheseFirst": "Ayusin muna ang mga ito"
   }
 }

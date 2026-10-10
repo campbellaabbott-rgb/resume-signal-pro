@@ -5277,5 +5277,27 @@
       "requestedTitle": "Auszahlung angefragt",
       "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Stark",
+    "mixed": "Gemischt",
+    "risky": "Riskant",
+    "weak": "Schwach",
+    "growth": "Wachstum",
+    "stable": "Stabil",
+    "stagnant": "Stagnierend",
+    "unclear": "Unklar",
+    "high": "Hoch",
+    "medium": "Mittel",
+    "low": "Niedrig",
+    "entry": "Einstieg",
+    "mid": "Mittlere Ebene",
+    "senior": "Senior",
+    "executive": "Führungsebene",
+    "aligned": "Passend",
+    "stretch": "Ambitioniert",
+    "mismatch": "Unpassend",
+    "readyToApply": "Bereit zur Bewerbung",
+    "fixTheseFirst": "Zuerst beheben"
   }
 }

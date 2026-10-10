@@ -5277,5 +5277,27 @@
       "requestedTitle": "Pago solicitado",
       "requestedBody": "Te escribiremos por correo para organizar el pago."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Fuerte",
+    "mixed": "Mixto",
+    "risky": "Arriesgado",
+    "weak": "Débil",
+    "growth": "Crecimiento",
+    "stable": "Estable",
+    "stagnant": "Estancado",
+    "unclear": "Poco claro",
+    "high": "Alta",
+    "medium": "Media",
+    "low": "Baja",
+    "entry": "Inicial",
+    "mid": "Intermedio",
+    "senior": "Sénior",
+    "executive": "Ejecutivo",
+    "aligned": "Alineado",
+    "stretch": "Desafío",
+    "mismatch": "Desajuste",
+    "readyToApply": "Listo para postular",
+    "fixTheseFirst": "Corrige esto primero"
   }
 }

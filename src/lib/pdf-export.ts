@@ -1,62 +1,8 @@
 import jsPDF from 'jspdf';
+import { reportTone, shapeCareerSnapshot, shapeGamePlan } from '@/lib/career-report-shape';
 
-interface CareerSnapshotData {
-  careerSignalScore: {
-    overall: string;
-    performanceSignal: { score: string; summary: string };
-    trajectorySignal: { score: string; summary: string };
-    credibilitySignal: { score: string; summary: string };
-    seniorityAlignment: { currentLevel: string; targetFit: string; summary: string };
-  };
-  recruiterPerception: { summary: string };
-  topStrengths: { strength: string; evidence: string }[];
-  careerRisks: { risk: string; recruiterQuestion: string; mitigation: string }[];
-  positioningGuidance: {
-    idealPositioning: string;
-    rolesToTarget: string[];
-    rolesToAvoid: string[];
-    companyStages: string[];
-    storyFraming: string;
-  };
-  priorityFixes: { fix: string; impact: string; timeEstimate: string }[];
-}
-
-interface GraduateGamePlanData {
-  resumeReadinessGate: {
-    verdict: string;
-    confidence: string;
-    summary: string;
-    quickFixes: string[];
-  };
-  roleTargetingMap: {
-    summary: string;
-    priorityRoles: { title: string; whyFit: string }[];
-    rolesToAvoid: { title: string; reason: string }[];
-  };
-  applicationStrategy: {
-    weeklyTarget: string;
-    whereToApply: { channel: string; priority: string; tip: string }[];
-    whatToAvoid: string[];
-    keyInsight: string;
-  };
-  networkingPlaybook: {
-    approach: string;
-    outreachScript: { scenario: string; script: string };
-    linkedInTips: string[];
-  };
-  interviewReadiness: {
-    summary: string;
-    storiesToPrepare: { type: string; prompt: string }[];
-    whyThisRole: string;
-    projectTalkingPoints: string[];
-  };
-  thirtyDayPlan: {
-    week1: { focus: string; tasks: string[] };
-    week2: { focus: string; tasks: string[] };
-    week3: { focus: string; tasks: string[] };
-    week4: { focus: string; tasks: string[] };
-  };
-}
+// Both exports take the report in whatever shape it was stored and shape it
+// first (sweep S8-073): a missing list prints nothing instead of throwing.
 
 const COLORS = {
   primary: [59, 130, 246] as [number, number, number],
@@ -140,15 +86,18 @@ const addBulletPoint = (doc: jsPDF, text: string, y: number, bulletColor?: [numb
   return addText(doc, text, y, { indent: 28, maxWidth: 162 });
 };
 
-export const exportCareerSnapshotPDF = (data: CareerSnapshotData): void => {
+export const exportCareerSnapshotPDF = (stored: unknown): void => {
+  const data = shapeCareerSnapshot(stored).data;
   const doc = new jsPDF();
   let y = addHeader(doc, 'Career Snapshot Report', 'Your complete career signal analysis');
   
   // Overall Score Section
   y = addSectionTitle(doc, 'Career Signal Score', y);
   
-  const overallColor = data.careerSignalScore.overall === 'Strong' ? COLORS.success : 
-                       data.careerSignalScore.overall === 'Mixed' ? COLORS.warning : COLORS.destructive;
+  const overallTone = reportTone(data.careerSignalScore.overall);
+  const overallColor = overallTone === 'positive' ? COLORS.success :
+                       overallTone === 'neutral' ? COLORS.warning :
+                       overallTone === 'negative' ? COLORS.destructive : COLORS.muted;
   
   doc.setFillColor(...overallColor);
   doc.roundedRect(20, y - 3, 60, 10, 3, 3, 'F');
@@ -240,14 +189,15 @@ export const exportCareerSnapshotPDF = (data: CareerSnapshotData): void => {
   doc.save('career-snapshot-report.pdf');
 };
 
-export const exportGraduateGamePlanPDF = (data: GraduateGamePlanData): void => {
+export const exportGraduateGamePlanPDF = (stored: unknown): void => {
+  const data = shapeGamePlan(stored).data;
   const doc = new jsPDF();
   let y = addHeader(doc, 'Graduate Game Plan', 'Your personalized 30-day career launch guide');
   
   // Resume Readiness
   y = addSectionTitle(doc, 'Resume Readiness', y);
   
-  const isReady = data.resumeReadinessGate.verdict === 'Ready to Apply';
+  const isReady = reportTone(data.resumeReadinessGate.verdict) === 'positive';
   const statusColor = isReady ? COLORS.success : COLORS.warning;
   
   doc.setFillColor(...statusColor);

@@ -5,12 +5,13 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { parseReportJson, shapeCareerSnapshot } from "../_shared/career-report-shape.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-career-snapshot.2026-10-04.1";
+const FN_BUILD = "generate-career-snapshot.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -220,61 +221,51 @@ Analyze this resume from a senior recruiter's perspective and generate the Caree
 
     logStep("Calling AI API");
 
-    const { response } = await callAIWithModelFallback(apiKey, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.7,
-      maxTokens: 4000,
-      jsonResponse: true,
-      models: chainFrom("google/gemini-2.5-pro"),
-      context: "CAREER-SNAPSHOT",
-    });
-
-    const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("No content returned from AI");
-    }
-
-    logStep("AI response received", { contentLength: content.length });
-
-    // Parse the JSON response
-    let careerSnapshot;
-    try {
-      careerSnapshot = JSON.parse(content);
-    } catch (parseError) {
-      // Try to extract JSON from the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        careerSnapshot = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("Failed to parse AI response as JSON");
+    // A reply ships only when it has the whole shape (sweep S8-073); else the
+    // next model is asked, inside one 125 s budget. Verdicts come back in
+    // English (career-report-shape.ts, S8-034).
+    const models = chainFrom("google/gemini-2.5-pro");
+    const startedAt = Date.now();
+    let careerSnapshot: unknown = null;
+    let modelUsed = models[0];
+    let problems: string[] = [];
+    for (let i = 0; i < models.length;) {
+      const left = 125_000 - (Date.now() - startedAt);
+      if (left < 5_000) break;
+      const call = await callAIWithModelFallback(apiKey, {
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        maxTokens: 4000,
+        jsonResponse: true,
+        models: models.slice(i),
+        deadlineMs: left,
+        context: "CAREER-SNAPSHOT",
+      });
+      const rateLimitResponse = await checkAiGatewayResponse(call.response, corsHeaders);
+      if (rateLimitResponse) return rateLimitResponse;
+      const result = await call.response.json().catch(() => null);
+      const parsed = parseReportJson(result?.choices?.[0]?.message?.content);
+      const shaped = parsed ? shapeCareerSnapshot(parsed) : null;
+      problems = shaped ? shaped.problems : ["the reply is not JSON"];
+      if (shaped && problems.length === 0) {
+        careerSnapshot = shaped.data;
+        modelUsed = call.modelUsed;
+        break;
       }
+      logStep("Reply refused", { model: call.modelUsed, problems: problems.slice(0, 5) });
+      i = models.indexOf(call.modelUsed) + 1;
+      if (i <= 0) break;
     }
-
-    // Validate required fields
-    if (!careerSnapshot.careerSignalScore || !careerSnapshot.recruiterPerception || 
-        !careerSnapshot.topStrengths || !careerSnapshot.positioningGuidance) {
-      throw new Error("Career Snapshot response missing required fields");
-    }
-
-    logStep("Career Snapshot generated successfully", {
-      overallSignal: careerSnapshot.careerSignalScore?.overall,
-      strengthsCount: careerSnapshot.topStrengths?.length,
-      risksCount: careerSnapshot.careerRisks?.length
-    });
+    if (!careerSnapshot) throw new UnusableModelOutput(`Career Snapshot reply incomplete: ${problems.slice(0, 3).join("; ")}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: careerSnapshot,
-        modelUsed: "google/gemini-2.5-pro"
+        modelUsed
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -283,6 +274,12 @@ Analyze this resume from a senior recruiter's perspective and generate the Caree
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("Error generating Career Snapshot", { error: errorMessage });
     
+    if (error instanceof UnusableModelOutput) {
+      return new Response(
+        JSON.stringify({ error: "The AI returned an incomplete report. Please try again.", retryable: true }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

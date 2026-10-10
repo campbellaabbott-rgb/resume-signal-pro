@@ -5277,5 +5277,27 @@
       "requestedTitle": "Pagamento pedido",
       "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Forte",
+    "mixed": "Misto",
+    "risky": "Arriscado",
+    "weak": "Fraco",
+    "growth": "Crescimento",
+    "stable": "Estável",
+    "stagnant": "Estagnado",
+    "unclear": "Pouco claro",
+    "high": "Alta",
+    "medium": "Média",
+    "low": "Baixa",
+    "entry": "Inicial",
+    "mid": "Pleno",
+    "senior": "Sênior",
+    "executive": "Executivo",
+    "aligned": "Alinhado",
+    "stretch": "Desafio",
+    "mismatch": "Incompatível",
+    "readyToApply": "Pronto para se candidatar",
+    "fixTheseFirst": "Corrija isto primeiro"
   }
 }

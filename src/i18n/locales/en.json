@@ -5277,5 +5277,27 @@
       "requestedTitle": "Payout requested",
       "requestedBody": "We will email you to arrange payment."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Strong",
+    "mixed": "Mixed",
+    "risky": "Risky",
+    "weak": "Weak",
+    "growth": "Growth",
+    "stable": "Stable",
+    "stagnant": "Stagnant",
+    "unclear": "Unclear",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "entry": "Entry",
+    "mid": "Mid",
+    "senior": "Senior",
+    "executive": "Executive",
+    "aligned": "Aligned",
+    "stretch": "Stretch",
+    "mismatch": "Mismatch",
+    "readyToApply": "Ready to Apply",
+    "fixTheseFirst": "Fix These First"
   }
 }

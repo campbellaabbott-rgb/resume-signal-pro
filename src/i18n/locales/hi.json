@@ -5277,5 +5277,27 @@
       "requestedTitle": "पेआउट का अनुरोध किया गया",
       "requestedBody": "भुगतान तय करने के लिए हम आपको ईमेल करेंगे।"
     }
+  },
+  "careerReportEnum": {
+    "strong": "मज़बूत",
+    "mixed": "मिश्रित",
+    "risky": "जोखिम भरा",
+    "weak": "कमज़ोर",
+    "growth": "विकास",
+    "stable": "स्थिर",
+    "stagnant": "ठहरा हुआ",
+    "unclear": "अस्पष्ट",
+    "high": "उच्च",
+    "medium": "मध्यम",
+    "low": "कम",
+    "entry": "प्रारंभिक",
+    "mid": "मध्य स्तर",
+    "senior": "वरिष्ठ",
+    "executive": "कार्यकारी",
+    "aligned": "अनुरूप",
+    "stretch": "चुनौतीपूर्ण",
+    "mismatch": "बेमेल",
+    "readyToApply": "आवेदन के लिए तैयार",
+    "fixTheseFirst": "पहले इन्हें ठीक करें"
   }
 }

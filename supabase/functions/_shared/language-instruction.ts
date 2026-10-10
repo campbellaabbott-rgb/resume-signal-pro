@@ -49,6 +49,11 @@ export function resolveLanguageName(language: unknown): string | null {
  * in the user's selected language. Returns an empty string for English (the
  * default/fallback), since prompts are already written in English and an
  * explicit "respond in English" instruction would just be noise.
+ *
+ * Only free text is translated. JSON keys and the fixed choices a format lists
+ * stay in English: the pages and PDFs pick colours and verdicts by them, and
+ * "translate every label" turned a Spanish buyer's "Strong" into "Fuerte", a
+ * red 30% gauge (sweep S8-034). The pages translate those values themselves.
  */
 export function buildLanguageInstruction(language: unknown): string {
   if (typeof language !== "string") return "";
@@ -58,5 +63,5 @@ export function buildLanguageInstruction(language: unknown): string {
   if (!LANGUAGE_NAMES[code] && base === "en") return "";
   const name = LANGUAGE_NAMES[code] ?? LANGUAGE_NAMES[base] ?? (LOCALE_SHAPE.test(code) ? code : null);
   if (!name) return "";
-  return `\n\nRespond entirely in ${name}. Every field in your output — all text, labels, and explanations — must be written in ${name}, not English.`;
+  return `\n\nRespond in ${name}. Write all free text in your output (sentences, summaries, explanations, titles, tips, scripts) in ${name}, not English. Keep every JSON key, and every value the format gives as a fixed choice (for example "Strong", "High" or "Ready to Apply"), exactly as written in English; do not translate those.`;
 }

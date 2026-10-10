@@ -5277,5 +5277,27 @@
       "requestedTitle": "Uitbetaling aangevraagd",
       "requestedBody": "We mailen je om de betaling te regelen."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Sterk",
+    "mixed": "Gemengd",
+    "risky": "Risicovol",
+    "weak": "Zwak",
+    "growth": "Groei",
+    "stable": "Stabiel",
+    "stagnant": "Stagnerend",
+    "unclear": "Onduidelijk",
+    "high": "Hoog",
+    "medium": "Gemiddeld",
+    "low": "Laag",
+    "entry": "Starter",
+    "mid": "Medior",
+    "senior": "Senior",
+    "executive": "Directie",
+    "aligned": "Passend",
+    "stretch": "Uitdaging",
+    "mismatch": "Niet passend",
+    "readyToApply": "Klaar om te solliciteren",
+    "fixTheseFirst": "Eerst oplossen"
   }
 }
