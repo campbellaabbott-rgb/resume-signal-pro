@@ -21,7 +21,10 @@
  * the purchase, report, affiliate and queued mails carry the reply address.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { purchaseLinkFor } from "../../supabase/functions/_shared/purchase-links";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -104,6 +107,24 @@ describe("the purchase mail opens what was bought, and a reply reaches a person"
       expect(m.reply_to, "a reply went to a sending address nobody reads").toBe(REPLY);
     });
   }
+
+  it("every product create-product-checkout sells links back to the page its Checkout returns to", () => {
+    const src = readFileSync(resolve(__dirname, "../../supabase/functions/create-product-checkout/index.ts"), "utf8");
+    const catalogue = [...src.slice(src.indexOf("const PRODUCTS"), src.indexOf("\n};", src.indexOf("const PRODUCTS"))).matchAll(/^ {2}(\w+): \{[\s\S]*?productType: "(\w+)"/gm)].map((m) => [m[1], m[2]] as const);
+    expect(catalogue.length).toBeGreaterThanOrEqual(12);
+    // The success_url create-product-checkout hands Stripe, for each product.
+    expect(src).toContain("`${origin}/freelance-boost?session_id={CHECKOUT_SESSION_ID}`");
+    expect(src).toContain("`${origin}/product-success?session_id={CHECKOUT_SESSION_ID}&product=${productId}`");
+    for (const [productId, productType] of catalogue) {
+      const expected = productId.startsWith("freelance")
+        ? `https://resumebooster.work/freelance-boost?session_id=${SESSION}`
+        : `https://resumebooster.work/product-success?session_id=${SESSION}&product=${productId}`;
+      expect(purchaseLinkFor(productType, SESSION), productType).toBe(expected);
+    }
+    const fa = readFileSync(resolve(__dirname, "../../supabase/functions/create-checkout/index.ts"), "utf8");
+    expect(fa).toContain("success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`");
+    expect(purchaseLinkFor("full_analysis", SESSION)).toBe(`https://resumebooster.work/success?session_id=${SESSION}`);
+  });
 
   it("a product made on its own page is not announced as ready", async () => {
     await internal("send-product-email", { email: "buyer@example.com", productType: "full_analysis", productName: "Full Resume Analysis", sessionId: SESSION });
