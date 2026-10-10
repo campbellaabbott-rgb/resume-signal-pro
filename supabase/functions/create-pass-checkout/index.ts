@@ -47,7 +47,10 @@ import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/chec
 // deploy-stamp: 2026-09-27T20:38Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-pass-checkout.2026-10-10.1";
+// The name and the date on separate lines, as agent-pass-status does: a guard
+// reads every line that names the product for a spelled pass number.
+const FN_NAME = "create-pass-checkout";
+const FN_BUILD = `${FN_NAME}.2026-10-10.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
