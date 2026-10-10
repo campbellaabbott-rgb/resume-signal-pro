@@ -48,18 +48,22 @@ export function postingCheckState(status, body) {
 
 /**
  * The posting paths a bake must account for. `recheck` maps every posting
- * path the live sitemap, the committed sitemap or the ledger names (other
- * than a kept stub) to the day it was first published; `stubs` holds the
- * ledger's gone postings still inside the keep window, re-written without a
- * re-check. A gone entry past the window is dropped: by then a crawler has
- * read its noindex, and the address falls back to the homepage's canonical.
+ * path the ledger or a sitemap names (other than a kept stub) to the day it
+ * was first published; `stubs` holds the ledger's gone postings still inside
+ * the keep window, re-written without a re-check. A gone entry past the
+ * window is dropped: by then a crawler has read its noindex, and the address
+ * falls back to the homepage's canonical. A sitemap path the ledger names in
+ * ANY state is the ledger's to decide, never re-added from a sitemap: an
+ * expired gone path still named by a stale sitemap was re-read on every bake.
  */
 export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, keepDays = POSTING_STUB_KEEP_DAYS }) {
   const recheck = new Map();
   const stubs = new Map();
   const postings = ledger && typeof ledger === "object" && ledger.postings && typeof ledger.postings === "object" ? ledger.postings : {};
+  const named = new Set();
   for (const [path, e] of Object.entries(postings)) {
     if (!idFromPath(path) || !e || typeof e !== "object") continue;
+    named.add(path);
     if (e.state === "gone") {
       const age = dayDiff(e.since, today);
       if (age !== null && age >= 0 && age <= keepDays) stubs.set(path, { ...e });
@@ -70,12 +74,21 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
   for (const xml of sitemaps) {
     for (const m of String(xml || "").matchAll(/<loc>([^<]+)<\/loc>/g)) {
       const path = m[1].trim().replace(/^https?:\/\/[^/]+/, "");
-      if (!idFromPath(path) || stubs.has(path) || recheck.has(path)) continue;
+      if (!idFromPath(path) || named.has(path) || recheck.has(path)) continue;
       recheck.set(path, today);
     }
   }
   return { recheck, stubs };
 }
+
+/**
+ * The sitemaps a bake carries posting URLs from. The committed sitemap is a
+ * fallback for a bake that could not read the live ledger: a hosted build
+ * never updates it, so once the live ledger is read it names nothing the
+ * ledger does not already decide, only stale paths to re-read.
+ */
+export const carrySitemaps = ({ ledgerSource, liveSitemap, committedSitemap }) =>
+  ledgerSource === "live" ? [liveSitemap ?? ""] : [liveSitemap ?? "", committedSitemap ?? ""];
 
 /**
  * The noindex page a posting URL keeps once the posting has no live page

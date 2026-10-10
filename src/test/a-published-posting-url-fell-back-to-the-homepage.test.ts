@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import {
   POSTING_STUB_KEEP_DAYS,
+  carrySitemaps,
   postingCarryBase,
   postingCheckState,
   postingStubPage,
@@ -62,6 +63,37 @@ describe("the carry base is everything the live site published, uncapped", () =>
   });
 });
 
+describe("an expired gone posting is not re-read from a stale sitemap", () => {
+  // Reviewer, 2026-10-10: past the keep window a gone ledger entry went into
+  // neither set, so the committed sitemap (which a hosted build never
+  // updates) put it back on the re-check list; the board answered "gone"
+  // again, the stub kept its old date, and the same path was re-read on
+  // every bake, one budget read each, until the fresh pool was starved.
+  const gonePath = posting(77);
+  const ledger = { postings: { [gonePath]: { state: "gone", since: "2026-10-11", first: "2026-10-01" } } };
+  const committed = sitemap([gonePath, posting(78)]);
+
+  it("inside the keep window it is a kept stub, not a re-check", () => {
+    const base = postingCarryBase({ ledger, sitemaps: ["", committed], idFromPath: postingIdFromPath, today: "2026-11-01" });
+    expect(base.stubs.has(gonePath)).toBe(true);
+    expect(base.recheck.has(gonePath)).toBe(false);
+  });
+
+  it("past the window it is dropped, and a sitemap still naming it does not bring it back", () => {
+    const base = postingCarryBase({ ledger, sitemaps: ["", committed], idFromPath: postingIdFromPath, today: "2026-12-15" });
+    expect(base.stubs.has(gonePath)).toBe(false);
+    expect(base.recheck.has(gonePath), "the ledger decided this path; a stale sitemap cannot re-open it").toBe(false);
+    expect(base.recheck.has(posting(78)), "a path no ledger names is still carried").toBe(true);
+  });
+
+  it("once the live ledger is read the committed sitemap is not carried at all", () => {
+    const live = sitemap([posting(1)]);
+    expect(carrySitemaps({ ledgerSource: "live", liveSitemap: live, committedSitemap: committed })).toEqual([live]);
+    expect(carrySitemaps({ ledgerSource: "committed", liveSitemap: live, committedSitemap: committed })).toEqual([live, committed]);
+    expect(carrySitemaps({ ledgerSource: "none", liveSitemap: null, committedSitemap: committed })).toEqual(["", committed]);
+  });
+});
+
 describe("only the board's own answer retires a page", () => {
   it("reads found, gone and unchecked from the detail action's answer", () => {
     expect(postingCheckState(200, { job: { id: "x" }, description: "..." })).toBe("found");
@@ -115,7 +147,7 @@ describe("the bake is wired to the live site's record and writes the next one", 
     expect(read).toBeGreaterThan(-1);
     expect(ledger).toBeGreaterThan(-1);
     expect(read).toBeLessThan(firstWrite);
-    expect(bake).toMatch(/sitemaps: \[liveSitemap \?\? "", committedSitemap\]/);
+    expect(bake).toMatch(/sitemaps: carrySitemaps\(\{ ledgerSource, liveSitemap, committedSitemap \}\)/);
     expect(bake).toMatch(/writeFileSync\(join\(dist, PRERENDER_LEDGER_PATH\.slice\(1\)\), ledgerJson\)/);
   });
 });

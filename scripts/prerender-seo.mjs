@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  pageLastmod, postingCarryBase, postingCheckState, postingStubPage, selectLanders,
+  carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingStubPage, selectLanders,
 } from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -2010,7 +2010,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       try { committedSitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
       const carryBase = postingCarryBase({
         ledger: ledgerIn,
-        sitemaps: [liveSitemap ?? "", committedSitemap],
+        sitemaps: carrySitemaps({ ledgerSource, liveSitemap, committedSitemap }),
         idFromPath: D.postingIdFromPath,
         today: TODAY,
       });
