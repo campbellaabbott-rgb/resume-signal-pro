@@ -850,10 +850,6 @@ const growthPct = (g: Pick<GrowthRow, "rate">) => Math.round((g.rate ?? 0) * 100
 // 14 days sits well inside the 30-day support, so the estimate at that horizon
 // is supported by the data rather than by its edge.
 export const URGENT_FILL_MAX_DAYS = 14;
-// Repost caution: relisting the same titles this often in the tracked window is
-// a pattern. Read against relists_90d, which is a floor, so the copy says "at
-// least".
-const REPOST_FLAG_MIN = 3;
 // "Fills fast" needs more than a positive rate: at least half of this
 // employer's roles gone inside the horizon. Below it, "apply early" is a nudge
 // rather than a finding.
@@ -2411,6 +2407,17 @@ function JobAgentHandoff({ job, compact, track }: {
   );
 }
 
+/** The saved board scroll offsets, by address (see the restore in JobsBoard).
+ *  Anything that is not that shape (an older bare number) reads as none. */
+function readBoardScrolls(): Array<{ at: string; y: number }> {
+  try {
+    const v = JSON.parse(sessionStorage.getItem("rb_board_scroll") ?? "[]") as unknown;
+    return Array.isArray(v)
+      ? v.filter((e): e is { at: string; y: number } => !!e && typeof e.at === "string" && typeof e.y === "number")
+      : [];
+  } catch { return []; }
+}
+
 /** A fresh id per mounted board, written into every history entry the board
  *  writes, so a Back/Forward can tell its own entries from another page's. */
 const newBoardId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -2467,6 +2474,7 @@ export default function Jobs() {
 
 function JobsBoard({ boardId }: { boardId: string }) {
   const { t, i18n } = useTranslation();
+  const navType = useNavigationType();
   // The FX vintage as a reader sees it, once per language rather than five times
   // per render. The constant itself stays ISO — it is the page's half of a mirror
   // the SQL cannot import, and the cross-runtime guard parses it — but a machine
@@ -3234,9 +3242,25 @@ function JobsBoard({ boardId }: { boardId: string }) {
   };
   // Batch 4: scroll restore — coming back to the board lands where you left.
   // (The restore effect lives below the `jobs` declaration.)
+  //
+  // KEYED BY THE ADDRESS IT WAS SAVED ON (S8-091). A bare number was restored
+  // on ANY later board mount, so Board -> Explore -> a field tile opened
+  // /jobs/field/healthcare 1,703px down, past its heading and count. The
+  // offset now carries the board's last address (the one it wrote, else the
+  // one it mounted on) and is restored only by a Back/Forward onto that same
+  // address.
   const scrollRestored = useRef(false);
+  const mountNavType = useRef(navType);
+  const mountAddress = useRef(`${window.location.pathname}${window.location.search}`);
   useEffect(() => () => {
-    try { sessionStorage.setItem("rb_board_scroll", String(window.scrollY)); } catch { /* cosmetic */ }
+    const at = boardAddress?.id === boardId ? boardAddress.at : mountAddress.current;
+    try {
+      // One offset per address, the ten most recent, so Back through two
+      // boards lands each where it was left.
+      const prev = readBoardScrolls().filter((e) => e.at !== at);
+      sessionStorage.setItem("rb_board_scroll", JSON.stringify([{ at, y: window.scrollY }, ...prev].slice(0, 10)));
+    } catch { /* cosmetic */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Activity strip data — lazy, non-blocking, real numbers or nothing.
   useEffect(() => {
@@ -3309,8 +3333,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   useEffect(() => {
     if (scrollRestored.current || jobs.length === 0 || initial.get("job")) return;
     scrollRestored.current = true;
+    if (mountNavType.current !== "POP") return;
     try {
-      const y = Number(sessionStorage.getItem("rb_board_scroll"));
+      const y = readBoardScrolls().find((e) => e.at === mountAddress.current)?.y ?? 0;
       if (y > 200) window.scrollTo({ top: y });
     } catch { /* cosmetic */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6082,18 +6107,30 @@ function JobsBoard({ boardId }: { boardId: string }) {
     && searchNewestFirst && data.hasMore === false;
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // New-since-last-visit: where the divider goes in the (recency-sorted) list —
-  // the first posting dated before your previous visit. Only meaningful on the
-  // default sort with no fit re-ordering; -1 disables the divider.
+  // New-since-last-visit: where the divider goes — the first posting dated
+  // before your previous visit. A divider placed by position is a claim that
+  // everything below it is older, so it is drawn only where the rendered order
+  // IS the stated date, newest first (S8-028): not under the employer weave,
+  // not on a relevance-ranked search, not across a two-group page, never on
+  // fit ranking. Undated postings neither place it nor count as old (they
+  // were read as epoch 0, which put the divider two cards in on the default
+  // browse above 57 newer ones). -1 disables the divider.
+  const dateOrdered = sortMode === "newest" && !fitRanking && !interleaveEmployers
+    && (!q.trim() || searchNewestFirst) && !data?.bucketedOrder;
   const newSinceIndex = useMemo(() => {
     const last = lastVisitRef.current;
-    if (!last || sortMode !== "newest" || fitRanking) return -1;
-    const idx = groupedJobs.findIndex((g) => {
-      const p = g.primary.postedAt ? new Date(g.primary.postedAt).getTime() : 0;
-      return p <= last;
-    });
-    return idx > 0 ? idx : -1; // 0 = nothing new; -1 = everything new / unknown
-  }, [groupedJobs, sortMode, fitRanking]);
+    if (!last || !dateOrdered) return -1;
+    const at = (g: { primary: BoardJob }) => {
+      const p = g.primary.postedAt ? new Date(g.primary.postedAt).getTime() : NaN;
+      return Number.isFinite(p) ? p : null;
+    };
+    const idx = groupedJobs.findIndex((g) => { const p = at(g); return p !== null && p <= last; });
+    if (idx <= 0) return -1; // 0 = nothing new; -1 = everything new / unknown
+    // Every dated posting below the line must be older: a list that is not
+    // really date-descending gets no divider rather than a wrong one.
+    if (groupedJobs.slice(idx).some((g) => { const p = at(g); return p !== null && p > last; })) return -1;
+    return idx;
+  }, [groupedJobs, dateOrdered]);
 
   // Split-pane auto-select: on wide screens the right column should never sit
   // empty — select the top result once the list settles. replace-mode URL so
@@ -8867,11 +8904,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       : t("jobsPage.hhPaceThinUntracked", "Not enough of this company's roles have finished yet to say how fast it moves.")}
                   </li>
                 )}
-                {hiringCurve.relists_90d >= REPOST_FLAG_MIN && (
+                {relistCaution(hiringCurve) && (
                   <li className="text-warning/90">
-                    {/* "At least": we log a relisted title once a day per
-                        company, so this is a floor and never an exact tally. */}
-                    {t("jobsPage.hhRepostsFloor", "Re-listed the same role title at least {{n}} times during our tracking — routine reposting, or roles that keep reopening.", { n: hiringCurve.relists_90d })}
+                    {/* The card's and the drawer's rule (relistCaution), with
+                        the card tooltip's words: roles back against roles down. */}
+                    {t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: hiringCurve.relisted_roles_90d ?? 0, f: hiringCurve.filled_roles_90d ?? 0 })}
                   </li>
                 )}
               </ul>
@@ -12200,14 +12237,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 it fires; only in its absence does the slot
                                 speak well of the employer.
 
-                                Not one gate moved: REPOST_FLAG_MIN,
                                 ACTIVELY_HIRING_MIN_CLOSED and
                                 URGENT_FILL_MAX_DAYS are the same numbers, read
-                                in the same order they were read before. One
-                                caution was added second (relistCaution, the
-                                one the detail pane prints), and the praise
-                                branch now asks the verdict, so the card and
-                                the pane can never disagree about an employer. */}
+                                in the same order they were read before. The
+                                caution is relistCaution, the one the detail
+                                pane and the compare drawer print (the card's
+                                own three-event rule is gone, S8-092), and the
+                                praise branch asks the verdict, so the card,
+                                the pane and the drawer can never disagree
+                                about an employer. */}
                             {job.token && (() => {
                               const hh = curveByToken[job.token];
                               // NO ROW YET IS NOT A VERDICT. The batch is in
@@ -12220,23 +12258,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               // let a windowed tenant render as a blank slot
                               // beside a green one.
                               if (!hh) return null;
-                              const churn = hh.relists_90d;
-                              // Repost caution: frequent same-title relistings — shown as a
-                              // neutral fact so the seeker can weigh it, never hidden. The
-                              // count is a floor (one logged relist per title per day), so
-                              // both the chip and its tip say "at least".
-                              if (churn >= REPOST_FLAG_MIN) {
-                                return (
-                                  <span
-                                    className="inline-flex items-center gap-1 whitespace-nowrap"
-                                    title={t("jobsPage.repostTipFloor", "This company re-listed the same role title at least {{n}} times during our tracking — we count a re-listed title once a day, so the real number can be higher. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.", { n: churn })}
-                                  >
-                                    <RefreshCw className="w-3 h-3 shrink-0" />
-                                    {t("jobsPage.repostChipFloor", "Re-lists roles often ({{n}}×+)", { n: churn })}
-                                  </span>
-                                );
-                              }
-                              // The role caution the detail pane prints (see relistCaution).
+                              // ONE CHURN RULE (S8-092). The card used to caution on
+                              // three same-title re-list EVENTS while the drawer and the
+                              // pane asked relistCaution (roles back > roles down, at
+                              // least ten), so an employer with 44 re-lists and 448 roles
+                              // down was cautioned here and praised in the drawer. The
+                              // card now asks the same function; a caution and a
+                              // "closes" verdict can never both show.
                               if (relistCaution(hh)) {
                                 const back = hh.relisted_roles_90d ?? 0;
                                 return (
