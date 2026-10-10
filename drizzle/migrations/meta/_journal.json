@@ -750,6 +750,13 @@
       "when": 1791672473520,
       "tag": "0106_20261008100000_a_twins_read_kept_a_deferred_boards_rows_out_of_the_48h_sweep",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1791672481596,
+      "tag": "0107_20261008100100_the_stale_window_reads_a_board_stamp_by_its_board",
+      "breakpoints": true
     }
   ]
 }
