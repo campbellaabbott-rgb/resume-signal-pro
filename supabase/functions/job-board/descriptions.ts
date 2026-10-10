@@ -115,16 +115,21 @@ export function buildEmbedInput(
 export function clusterKey(companyKey: string, title: string): string {
   // The company side is a display NAME since 2026-07-25 (so one employer's
   // several feed tokens fold together); normalize it the same way as titles.
-  const companyKey0 = (companyKey || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  // LETTERS AND DIGITS OF EVERY SCRIPT (L13-22): [^a-z0-9] erased every
+  // Cyrillic and CJK title, so all of Raiffeisen Bank's Ukrainian roles
+  // ("Інкасатор", "Головний економіст") shared one key and one card.
+  const companyKey0 = (companyKey || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
   const t = (title || "")
     .toLowerCase()
     // location/req qualifiers that ride along on the title
     .replace(/[([{][^)\]}]*[)\]}]/g, " ")
     // requisition ids: R12345, JR-9620, #2025-031054
     .replace(/#?\b(?:jr|r|req|job)?[-\s]?\d[\d-]{3,}\b/gi, " ")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
-  return `${companyKey0} ${t}`;
+  // A title that normalises to nothing is never folded with another: it keys
+  // on its own spelling.
+  return t === "" ? `${companyKey0} \u0001${(title || "").trim().toLowerCase()}` : `${companyKey0} ${t}`;
 }
 
 /**

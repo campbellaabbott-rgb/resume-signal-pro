@@ -234,7 +234,7 @@ const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Pas
 /** The JSON-RPC methods this server answers, for the error that names them. */
 const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
 /** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
-const FN_BUILD = "agent-mcp.2026-10-05.2";
+const FN_BUILD = "agent-mcp.2026-10-09.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */

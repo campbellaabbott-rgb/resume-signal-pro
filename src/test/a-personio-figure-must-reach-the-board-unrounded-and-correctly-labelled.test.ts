@@ -102,16 +102,17 @@ describe("a Personio figure reaches the board unrounded and correctly labelled",
     expect(read?.annualMax).toBe(42604);
   });
 
-  it("does not take leverSalary's rounding, which raises the employer's floor", () => {
-    // THE REASON THIS READER IS NOT A ONE-LINE REUSE. Same pair, same vendor
-    // shape, through the helper that already accepts it.
-    const rounded = leverSalary({ min: 3500, max: 4000, currency: "EUR", interval: "monthly" });
-    const roundedRead = parseSalaryStructured(rounded, null, null);
-    expect(roundedRead?.annualMin).toBe(48000); // the employer said 42,000
+  it("reads the pair unrounded, and so, since L7-05, does leverSalary", () => {
+    // THIS READER WAS NOT A ONE-LINE REUSE because leverSalary rounded each end
+    // to the nearest thousand: the same pair read 48,000 against the employer's
+    // 42,000. Since 2026-10-09 (register L7-05) leverSalary goes through the same
+    // formatter, so the two vendors' pairs reach the board as the same text.
+    const lever = leverSalary({ min: 3500, max: 4000, currency: "EUR", interval: "monthly" });
+    expect(parseSalaryStructured(lever, null, null)?.annualMin).toBe(42000);
     const faithful = asIngestWouldRead(byId("2811482"));
     expect(faithful?.annualMin).toBe(42000);
     expect(faithful?.annualMax).toBe(48000);
-    expect(rounded).not.toBe(byId("2811482").salary);
+    expect(lever).toBe(byId("2811482").salary);
   });
 
   it("refuses the pair when the employer's period label contradicts the magnitude", () => {
@@ -294,7 +295,7 @@ describe("a Personio figure reaches the board unrounded and correctly labelled",
     // And the correction path has to ask it, or the log fills with fiction.
     const CODE = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
     expect(CODE).toContain("const sameMoney = statesTheSameMoney(nextPay, curPay, payCountry);");
-    expect(CODE).toContain('if (sameMoney || firstVendorRead) patch.salary = nextPay;\n          else put("salary", row.salary, prev.salary, false);');
+    expect(CODE).toContain('if (sameMoney || firstVendorRead || ourRewrite) patch.salary = nextPay;\n          else put("salary", row.salary, prev.salary, false);');
   });
 
   it("does not record the FIRST figure a newly-read vendor field gives us as an employer edit either", () => {

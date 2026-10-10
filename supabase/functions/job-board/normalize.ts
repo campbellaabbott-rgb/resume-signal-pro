@@ -740,7 +740,11 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // vendor's own structured country, written by the Workday place reader below
 // through the detail sweeps — measured agreeing with 136 of 136 rows we had
 // already placed correctly, and disagreeing only where we were wrong.
-export const COUNTRY_MAP_VERSION = 7;
+// 8 (2026-10-09, L7-14): a trailing ", XX" naming the city table's own
+// country wins ("Bangalore, IN", "Berlin, DE", "Toronto, ON, CA"), and an
+// upper-case trailing US state code beats a country word earlier in the
+// string ("Mexico, MO", "Lake Wales, FL", "... Albany, NY"); "tunis" added.
+export const COUNTRY_MAP_VERSION = 8;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -1044,6 +1048,7 @@ const CITY_COUNTRY = new Map<string, string>([
   ["tokyo", "JP"],
   ["torino", "IT"],
   ["toronto", "CA"],
+  ["tunis", "TN"],
   ["toulouse", "FR"],
   ["trondheim", "NO"],
   ["tucson", "US"],
@@ -1076,12 +1081,27 @@ export function cityCountry(location: string): string | null {
   return null;
 }
 
+/** The trailing ", XX" (optionally a ZIP after it) a location ends with, upper case as written. */
+const P_TRAILING_CODE = /,\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/;
+
 export function detectCountry(location: string | null | undefined): string | null {
   if (!location) return null;
   const s = String(location).slice(0, 300);
   // The two measured US towns whose names are countries — see the docblock on
   // countryWordNamesAUsTown for why this is a named pair and not a reordering.
   if (countryWordNamesAUsTown(s)) return "US";
+  // THE LAST TWO LETTERS FIRST (L7-14). A trailing ", XX" collides between a
+  // US state and an ISO country: "Bangalore, IN", "Berlin, DE", "Jakarta, ID",
+  // "Bogota, CO" were filed US, and "Toronto, ON, CA" too. When the leading
+  // segment is a city the table places in XX, XX is that country. Otherwise an
+  // upper-case state code at the very end is the US, ahead of a country word
+  // earlier in the string: "Mexico, MO" was MX, "Lake Wales, FL" GB.
+  const tail = P_TRAILING_CODE.exec(s);
+  if (tail) {
+    const city = cityCountry(s.split(",")[0]);
+    if (city !== null && city === tail[1]) return city;
+    if (US_STATE_CODES.has(tail[1])) return "US";
+  }
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
@@ -1583,11 +1603,36 @@ interface LeverJob {
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" };
-const fmtAmount = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+// EXACT FIGURES (L7-05). This rounded every end to the nearest thousand
+// ("£4k–4k" for £3,700 a month, "$1k–1k" for $1,200-$1,300), and the annual
+// columns were parsed from that text: azul stored 48,000 against a true 44,400.
+const fmtAmount = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+/** A vendor's pay-interval word to the board's period, or null when it names none. */
+export function vendorPayPeriod(v: unknown): StatedPayPeriod | null {
+  const s = String(v ?? "").toLowerCase();
+  if (/hour/.test(s)) return "hour";
+  if (/\bday|daily/.test(s)) return "day";
+  if (/week/.test(s)) return "week";
+  if (/month/.test(s)) return "month";
+  if (/year|annual|annum/.test(s)) return "year";
+  return null;
+}
 
 export function leverSalary(r?: { min?: number; max?: number; currency?: string; interval?: string }): string | null {
   if (!r || (!r.min && !r.max)) return null;
+  // A one-time payment is not a rate of pay.
+  if (/one[- ]?time/i.test(r.interval ?? "")) return null;
   const sym = CURRENCY_SYMBOL[r.currency ?? ""] ?? (r.currency ? `${r.currency} ` : "");
+  const min = typeof r.min === "number" && r.min > 0 ? r.min : null;
+  const max = typeof r.max === "number" && r.max > 0 ? r.max : null;
+  // The vendor's own interval, through the one formatter whose output the
+  // parser reads back to the same figures (statedPayText), when it maps.
+  const period = vendorPayPeriod(r.interval);
+  if (period !== null) {
+    const stated = statedPayText(period, min ?? max, min !== null ? max : null, r.currency ?? null, CURRENCY_SYMBOL[r.currency ?? ""] ?? null);
+    if (stated !== null) return stated;
+  }
   const range = [r.min, r.max].filter((n): n is number => typeof n === "number" && n > 0).map(fmtAmount).join("–");
   if (!range) return null;
   const interval = r.interval ? `/${r.interval.replace(/-time|ly$/i, (m) => (m.toLowerCase() === "ly" ? "" : m))}` : "";
@@ -2180,7 +2225,7 @@ interface RecruiteeOffer {
   published_at?: string | null;
   created_at?: string | null;
   employment_type_code?: string | null;
-  salary?: { min?: string | number | null; max?: string | number | null; type?: string | null; currency?: string | null } | null;
+  salary?: { min?: string | number | null; max?: string | number | null; period?: string | null; type?: string | null; currency?: string | null } | null;
 }
 
 export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: string, token: string): JobPosting[] {
@@ -2188,8 +2233,18 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
     .map((o) => {
       const location = o.location || [o.city, o.country].filter(Boolean).join(", ");
       const sal = o.salary;
+      // THE PERIOD IS salary.period (L7-04). This read salary.type, which the
+      // API does not send, so "EUR 1350 - 1575" lost its month: a monthly
+      // figure under 20k got no annual value and one of 20k+ was read as
+      // annual at a twelfth (nts CZK 35,000/month stored 35,000 a year).
+      const salPeriod = sal ? vendorPayPeriod(sal.period ?? sal.type) : null;
+      const salMin = sal ? statedPayFigure(sal.min) : null;
+      const salMax = sal ? statedPayFigure(sal.max) : null;
       const salary = sal && sal.min && sal.max
-        ? `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max}${sal.type ? ` ${sal.type}` : ""}`.trim()
+        ? (salPeriod !== null && salMin !== null
+            ? statedPayText(salPeriod, salMin, salMax, sal.currency ?? null, null)
+              ?? `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max} ${STATED_PAY_PERIOD_WORD[salPeriod]}`.trim()
+            : `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max}${sal.type ? ` ${sal.type}` : ""}`.trim())
         : null;
       // Hybrid first — see the SmartRecruiters note; Recruitee exposes all
       // three booleans and a hybrid offer commonly sets `remote` too.
@@ -2376,6 +2431,14 @@ function icimsSalary(d: IcimsJobData): string | null {
   return null;
 }
 
+/** iCIMS' own ISO-2, unless the location text resolves to a different country. */
+export function icimsCountry(feedCode: unknown, location: string | null | undefined): string | null {
+  const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
+  const fromText = detectCountry(location);
+  if (code !== null && fromText !== null && fromText !== code) return fromText;
+  return code ?? fromText;
+}
+
 export function normalizeIcims(raw: IcimsJobItem[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : [])
     .map((item) => {
@@ -2413,7 +2476,10 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         salary: icimsSalary(d),
         // country_code is the FEED's own ISO-2 — better than location-text
         // detection, same treatment Rippling gets.
-        country: /^[A-Za-z]{2}$/.test(String(d.country_code ?? "")) ? String(d.country_code).toUpperCase() : null,
+        // ...UNLESS the location text says plainly somewhere else (L7-15): the
+        // Smoothie King tenant's stores at "KCMO, MO" and "Indian Land, SC"
+        // carried country_code FR.
+        country: icimsCountry(d.country_code, location),
         // The feed's apply_url ends in /login — an email-collection wall with
         // NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
         // /job path renders the actual posting; never send a seeker to a

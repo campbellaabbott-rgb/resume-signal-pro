@@ -41,14 +41,30 @@ export function parseMinYears(text: string): number | null {
   // "<n>[+ | -m] year(s) … (experience|work|industry|professional)", allowing a
   // short intervening noun phrase ("8 years of LEADERSHIP experience") but never
   // crossing a sentence boundary (so "founded 10 years ago. …experience" can't tie).
-  const forward = /(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b[^.?!\n]{0,30}?(?:experience|exp\b|work|professional|industry|hands-on)/g;
+  // (?<!\d): the number starts where the digits start -- "135 years" was read
+  // as 35 (L7-09). And no digit in the gap, so "21 years old ... 2 years of
+  // experience" or "2 years Python, 8 years leadership experience" cannot
+  // bind the first number to the second one's experience word.
+  const forward = /(?<!\d)(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b[^.?!\n\d]{0,30}?(?:experience|exp\b|work|professional|industry|hands-on)/g;
   // "(experience|minimum|at least|requires)[ :of] <n> year(s)"
-  const backward = /(?:experience|minimum|at least|requires?|require)\s*(?:of|:|is)?\s*(\d{1,2})\s*\+?\s*years?/g;
+  const backward = /(?:experience|minimum|at least|requires?|require)\s*(?:of|:|is)?\s*(?<!\d)(\d{1,2})\s*\+?\s*years?/g;
   for (const re of [forward, backward]) {
     let m: RegExpExecArray | null;
     while ((m = re.exec(t)) !== null) {
       const n = Number(m[1]);
-      if (Number.isFinite(n) && n >= 0 && n <= 40) nums.push(n);
+      const at = m.index + m[0].indexOf(m[1]);
+      const before = t.slice(Math.max(0, at - 24), at);
+      const after = t.slice(m.index + m[0].length, m.index + m[0].length + 16);
+      // A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "at least 18 years of age",
+      // "21 years old or older". Cut entry roles' fit by 60% and filed cashiers
+      // under expert.
+      if (/^\s*(?:of\s+age|old|or\s+older|of\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
+      // THE COMPANY'S YEARS ARE NOT THE CANDIDATE'S (L7-09): "for more than 40
+      // years, X has been the industry's partner", "for over 135 years".
+      if (/\b(?:for|over|nearly|almost)\s+(?:more\s+than\s+|over\s+|nearly\s+|almost\s+)?$/.test(before)) continue;
+      // A requirement above 20 years is a company-age or boilerplate sentence,
+      // never a hiring bar on this board.
+      if (Number.isFinite(n) && n >= 0 && n <= 20) nums.push(n);
     }
   }
   return nums.length ? Math.max(...nums) : null;
@@ -56,10 +72,21 @@ export function parseMinYears(text: string): number | null {
 
 // Seniority from the title alone, when no explicit years are stated. Returns null
 // for titles with no seniority signal — honest "unspecified" rather than a guess.
+// L7-08. Bare "staff", "lead" and "partner" fit tech titles and law firms; on
+// this board they are mostly hourly and entry roles (Staff Accountant, Staff
+// Nurse, Kitchen Staff, Shift Lead, Lead Cashier, Care Partner), which the
+// senior and expert filters filled with while the entry filter lost them.
+// "staff" is senior only as the engineering rung; "lead" is not a rung beside
+// a shift, a team, a crew or a store-floor job; "partner" is expert only as
+// a firm's partner.
+const STAFF_RUNG = /\bstaff\s+(?:(?:software|data|machine learning|ml|ai|product|security|site reliability|platform|backend|back-end|frontend|front-end|full[- ]?stack|systems?|infrastructure|cloud|devops|mobile|research|applied|hardware|firmware|network)\s+)*(?:engineer|scientist|developer|designer|architect|analyst|researcher|swe|sre)\b/;
+const LEAD_NOT_A_RUNG = /\b(?:shift|team|crew|store|line|floor|cashier|sales|retail|warehouse|production|area|key|front end|front desk|kitchen|cook|bar|server)\s+lead\b|\blead\s+(?:cashier|teller|associate|server|cook|host|clerk|driver|custodian|housekeeper|caregiver|cleaner|picker|packer|sales associate)\b/;
+const FIRM_PARTNER = /\b(?:managing|equity|senior|founding|general|named)\s+partner\b|\bpartner\s*,\s*(?:law|legal|litigation|corporate|tax|audit|advisory|consulting)\b/;
 export function bandFromTitle(title: string): ExperienceBand | null {
   const t = title.toLowerCase();
-  if (/\b(chief|ceo|cfo|coo|cto|ciso|cmo|cro|c-level|vp|svp|evp|vice president|head of|director|managing director|partner)\b/.test(t)) return "expert";
-  if (/\b(senior|sr\.?|staff|principal|lead|architect|distinguished)\b/.test(t)) return "senior";
+  if (/\b(chief|ceo|cfo|coo|cto|ciso|cmo|cro|c-level|vp|svp|evp|vice president|head of|director|managing director)\b/.test(t) || FIRM_PARTNER.test(t)) return "expert";
+  if (/\b(senior|sr\.?|principal|architect|distinguished)\b/.test(t) || STAFF_RUNG.test(t)) return "senior";
+  if (/\blead\b/.test(t) && !LEAD_NOT_A_RUNG.test(t)) return "senior";
   if (/\b(intern|internship|trainee|apprentice|entry[ -]?level|junior|jr\.?|graduate|new grad|early career)\b/.test(t)) return "entry";
   return null;
 }

@@ -119,16 +119,17 @@ describe("the three search functions, before and after 20261008100200", { timeou
     await db.close();
   });
 
-  it("a text-derived 'Munich, DE' or 'Chennai, IN' is stored as US and still matches Delaware or Indiana: the residual this file does not fix", async () => {
-    // detectCountry reads ', DE' and ', IN' as US state codes before it looks
-    // at the city, and the gate reads the stored country. When the follow-up
-    // teaches detectCountry the city first, this test fails and is flipped.
-    expect(stored("Munich, DE")).toBe("US");
-    expect(stored("Chennai, IN")).toBe("US");
+  it("a text-derived 'Munich, DE' or 'Chennai, IN' is stored as its own country and no longer matches Delaware or Indiana (the residual, fixed by the follow-up)", async () => {
+    // FLIPPED 2026-10-09 (register L7-14, wave 3 board-data-ingest): detectCountry
+    // now reads a trailing code that is the leading city's own country as that
+    // country before it reads a US state code, so the stored country is right
+    // and the gate this file added excludes the rows by it.
+    expect(stored("Munich, DE")).toBe("DE");
+    expect(stored("Chennai, IN")).toBe("IN");
     const db = await boot();
     await db.exec(MIG);
-    expect((await three(db, param("Indiana"))).ranked).toEqual(["in-india-text", "in-us"]);
-    expect((await three(db, param("Delaware"))).ranked).toEqual(["de-germany-text", "de-us"]);
+    expect((await three(db, param("Indiana"))).ranked).toEqual(["in-us"]);
+    expect((await three(db, param("Delaware"))).ranked).toEqual(["de-us"]);
     await db.close();
   });
 

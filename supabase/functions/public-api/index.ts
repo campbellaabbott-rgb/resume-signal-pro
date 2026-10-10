@@ -280,7 +280,7 @@ const LIST_FILTERS = [
 // 2026-10-08.1: /v1/changes leaves suspect closure batches out unless
 // include_suspect=true, and marks them when it serves them. 2026-10-08.2:
 // suspectBatch is null, not false, on a closure nobody assessed.
-const FN_BUILD = "public-api.2026-10-08.2";
+const FN_BUILD = "public-api.2026-10-09.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
