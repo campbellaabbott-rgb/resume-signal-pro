@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "@/config/score-method";
+import { buildScoreAudit } from "../../supabase/functions/free-keyword-scan/report-meta";
 
 /**
  * WHAT WAS WRONG (register L4-05; SEO report S4, measured 2026-10-08 with a
@@ -24,8 +25,12 @@ const SCAN = codeOf(readFileSync(resolve(ROOT, "supabase/functions/free-keyword-
 
 describe("the methodology mirror matches the scorer it describes", () => {
   it("the four audit parts and their points are the scoreAudit items, in order", () => {
-    const items = [...SCAN.matchAll(/\{ label: '([^']+)', earned: [^}]*?possible: (\d+)/g)].map((m) => Number(m[2]));
-    expect(items).toEqual(SCORE_AUDIT_PARTS.map((p) => p.possible));
+    // wave3/scan-ai moved the audit into free-keyword-scan/report-meta.ts
+    // (buildScoreAudit, S8-072: the items now sum to the stated score). The
+    // scorer is RUN here, not read: the report the scan serves is what it builds.
+    expect(SCAN, "the scan no longer builds its audit with buildScoreAudit").toMatch(/responseData\.scoreAudit = buildScoreAudit\(/);
+    const audit = buildScoreAudit({ total: 70, breakdown: { keywords: 70, format: 70, quantification: 70 }, details: { keywords: "", format: "", quantification: "", content: "" } });
+    expect(audit.items.map((i) => i.possible)).toEqual(SCORE_AUDIT_PARTS.map((p) => p.possible));
     expect(SCORE_AUDIT_PARTS.reduce((a, p) => a + p.possible, 0)).toBe(100);
   });
 

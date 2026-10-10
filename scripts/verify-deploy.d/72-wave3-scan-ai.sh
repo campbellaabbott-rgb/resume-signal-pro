@@ -61,12 +61,16 @@ case "$SL72" in
   '[]'|'['*) echo "FAIL  shortlist_candidates answered anon with rows or an empty list: the table grants were not revoked";;
   *) echo "FAIL  shortlist_candidates as anon -> ${SL72:0:160}";;
 esac
-SD72=$(R shortlist_decide '{"p_candidate_id":"00000000-0000-4000-8000-000000000000","p_action":"verify-deploy-probe","p_reason":null}')
+# A read-only GET, never a POST: shortlist_decide WRITES (a decision row and a
+# status), and a POST would commit had its revoke regressed (S8-125, the rule
+# section 63/65's probe follows). PostgREST runs a GET in a READ ONLY
+# transaction; p_reason defaults to NULL, so the GET leaves it out.
+SD72=$(curl -s -m 60 "$B/rest/v1/rpc/shortlist_decide?p_candidate_id=00000000-0000-4000-8000-000000000000&p_action=verify-deploy-probe" -H "apikey: $K" -H "Authorization: Bearer $K")
 SD72C=$(printf '%s' "$SD72" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS":(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
 case "$SD72C" in
   42501) echo "PASS  shortlist_decide exists and refuses anon by name (42501): a decision and its status are one transaction (S8-041)";;
   PGRST202) echo "FAIL  shortlist_decide not found (PGRST202): 20261009111000 has not applied, and the new Shortlist page cannot record a decision";;
-  22023) echo "FAIL  shortlist_decide ran for anon (it refused the probe's action): EXECUTE was not revoked from anon";;
+  22023|25006) echo "FAIL  shortlist_decide ran for anon ($SD72C: it refused the probe's action, or tried to write and only the read-only GET stopped it): EXECUTE was not revoked from anon";;
   *) echo "FAIL  shortlist_decide as anon -> $SD72C $(printf '%s' "$SD72" | head -c 160) (want 42501)";;
 esac
 echo "INFO  20261009110000 (check_rate_limit sweeps only rows older than 1,440 minutes, S8-011) writes on every call, so it is not called here; its DO block checks the live body at apply time and src/test/a-day-allowance-the-limiter-sweeps-is-an-hour.test.ts runs it in pglite"

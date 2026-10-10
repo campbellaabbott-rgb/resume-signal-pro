@@ -89,9 +89,13 @@ vd74_table() { # $1 table, $2 a column the migration creates, $3 what it proves,
 vd74_table subscription_notices subscription_id "each subscription notice is claimed once (confirmation, trial reminder, withdrawal)" 20261009130000
 vd74_table lifecycle_reads day "the closure log is metered per account per day (S8-018)" 20261009131000
 vd74_table api_key_requests terms_version "a key request keeps the Terms version its button showed (item 12)" 20261009132000
-LC74=$(R get_application_lifecycle '{"p_job_ids":[]}')
+# A read-only GET: since 20261009131000 get_application_lifecycle WRITES (it
+# meters lifecycle_reads per account per day), so a POST would commit a row had
+# its revoke regressed (S8-125). PostgREST runs a GET in a READ ONLY transaction.
+LC74=$(curl -s -m 60 "$B/rest/v1/rpc/get_application_lifecycle?p_job_ids=%7B%7D" -H "apikey: $K" -H "Authorization: Bearer $K")
 case "$LC74" in
   *'"42501"'*|*'permission denied'*) echo "PASS  get_application_lifecycle refuses anon (42501): signed-in only, metered by 20261009131000";;
+  *'"25006"'*) echo "FAIL  get_application_lifecycle is CALLABLE as anon: it tried to write its meter and only this read-only GET stopped it";;
   *) echo "FAIL  get_application_lifecycle as anon -> ${LC74:0:160} (want 42501)";;
 esac
 echo "INFO  20261009133000 (a constraint, not readable as anon): SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'subscription_notices_kind_check'; -- want kind IN ('confirmation','trial_ending','withdrawal')"

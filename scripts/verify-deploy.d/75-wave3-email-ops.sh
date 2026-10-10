@@ -36,12 +36,15 @@ done
 
 # Migrations: each new reader exists and is closed to the publishable key (42501), not missing (PGRST202).
 vd75_code() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON")}})'; }
-for P75 in 'market_pulse_confirm_unsent|{"p_email":"nobody@example.invalid","p_token_hash":"0000000000000000000000000000000000000000000000000000000000000000"}|20261009141000' \
-           'cron_http_refusals|{"p_minutes":60}|20261009143000' \
-           'get_failed_deliveries_for_retry|{"p_limit":1}|20261009140000'; do
+# Read-only GETs, never POSTs (S8-125): market_pulse_confirm_unsent WRITES (it
+# takes a confirmation back), and a POST would commit had its revoke regressed.
+# PostgREST runs a GET in a READ ONLY transaction (25006 if it ever tried).
+for P75 in 'market_pulse_confirm_unsent|p_email=nobody%40example.invalid&p_token_hash=0000000000000000000000000000000000000000000000000000000000000000|20261009141000' \
+           'cron_http_refusals|p_minutes=60|20261009143000' \
+           'get_failed_deliveries_for_retry|p_limit=1|20261009140000'; do
   N75=${P75%%|*}; REST75=${P75#*|}; A75=${REST75%|*}; M75=${REST75##*|}
-  C75=$(R "$N75" "$A75" | vd75_code)
-  case "$C75" in 42501) echo "PASS  $N75 as anon -> 42501 (exists, service-role only)";; PGRST202) echo "FAIL  $N75 -> PGRST202 ($M75 has not applied)";; *) echo "FAIL  $N75 as anon -> $C75 (want 42501)";; esac
+  C75=$(curl -s -m 60 "$B/rest/v1/rpc/$N75?$A75" -H "apikey: $K" -H "Authorization: Bearer $K" | vd75_code)
+  case "$C75" in 42501) echo "PASS  $N75 as anon -> 42501 (exists, service-role only)";; PGRST202) echo "FAIL  $N75 -> PGRST202 ($M75 has not applied)";; 25006) echo "FAIL  $N75 is CALLABLE as anon: it tried to write and only this read-only GET stopped it";; *) echo "FAIL  $N75 as anon -> $C75 (want 42501)";; esac
 done
 echo "INFO  20261009140000 cannot be read from here (its body is the service role's): the pglite test proves the 15-minute 'generating' rule; after the deploy, a row stuck in generating for 15+ min should move to delivered or generation_failed on the next retry-failed-deliveries run"
 

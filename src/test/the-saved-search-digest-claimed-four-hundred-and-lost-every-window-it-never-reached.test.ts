@@ -103,6 +103,13 @@ describe("the pulse and the agent digest hand back what the clock left", () => {
   it("the agent digest: mandates past 100 s keep their cursor", async () => {
     const list = Array.from({ length: 10 }, (_, i) => ({ ad_user_id: `u-${i}`, ad_email: `m${i}@example.com`, ad_prev_sent_at: prevOf(i) }));
     db.rpcs.agent_digest_claim_batch = () => ({ data: list, error: null });
+    // The digest reads each plan by account (agents-api S8-076, merged beside
+    // this group's clock in wave 3), so every claimed account is entitled here.
+    db.rpcs.agent_subscription_rows = (a) => ({
+      data: list.filter((l) => (a.p_user_ids as string[]).includes(l.ad_user_id))
+        .map((l) => ({ user_id: l.ad_user_id, email: l.ad_email, status: "active", current_period_end: new Date(realNow() + 9e8).toISOString() })),
+      error: null,
+    });
     for (const l of list) db.rows("agent_mandates").push({ user_id: l.ad_user_id, email_last_sent_at: NOW_STAMP, apply_mode: "review", auto_apply_daily_cap: 5 });
     // Each mandate's queue read moves the clock 30 s.
     const realFrom = db.from.bind(db);

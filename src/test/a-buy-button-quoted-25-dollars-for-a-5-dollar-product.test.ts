@@ -73,9 +73,15 @@ describe("no locale string types one of our prices", () => {
 });
 
 describe("the surfaces that quoted a price now read it", () => {
-  it("the free report's final button renders the Full Analysis price the checkout charges", () => {
+  it("the free report's Full Analysis button renders the Full Analysis price the checkout charges", () => {
+    // wave3/scan-ai replaced the report's final "$25" button with the next-steps
+    // offer (owner decision 1); the property is the same: the button that
+    // buys the Full Analysis prints priceDisplay, and no locale price.
     const c = codeOf(readFileSync(resolve(ROOT, "src/components/FreeKeywordResults.tsx"), "utf8"));
-    expect(c).toMatch(/\{getFinalCtaText\(\)\} — \{priceDisplay\}/);
+    const at = c.indexOf('data-offer="fullAnalysis"');
+    expect(at, "the report's Full Analysis button moved").toBeGreaterThan(0);
+    expect(c.slice(at, c.indexOf("</button>", at))).toMatch(/\{priceDisplay\}/);
+    expect(c).not.toMatch(/freeScan\.cta\.price/);
     expect(c).toMatch(/const priceDisplay = isLocalCurrency \? `\$\$\{fullAnalysisPrice\}/);
   });
 
