@@ -1,4 +1,4 @@
-import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
+import { Lock, Clock, CloudOff, BookOpen, ExternalLink, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSafeTranslation } from "@/hooks/use-safe-translation";
 import { useScanTotals } from "@/hooks/use-scan-totals";
@@ -28,20 +28,10 @@ export function TrustIndicators() {
       descriptionKey: "trustIndicators.badges.autoDelete.description"
     },
     {
-      icon: Shield,
-      labelKey: "trustIndicators.badges.gdpr.label",
-      descriptionKey: "trustIndicators.badges.gdpr.description"
-    },
-    {
       icon: CloudOff,
       labelKey: "trustIndicators.badges.zeroStorage.label",
       descriptionKey: "trustIndicators.badges.zeroStorage.description"
     },
-    {
-      icon: Zap,
-      labelKey: "trustIndicators.badges.instant.label",
-      descriptionKey: "trustIndicators.badges.instant.description"
-    }
   ];
 
   return (

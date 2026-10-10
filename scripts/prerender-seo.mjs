@@ -1062,6 +1062,9 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // The ONLY industry count: every surface computes from the engine's actual
   // table (the audit found 58 and 59 hardcoded on the same page).
   const NIND = Object.keys(D.INDUSTRY_KEYWORDS).length;
+  // The interface languages, counted from the locale files that ship (en and
+  // en-GB are one language). Copy said "10 languages" over eight.
+  const UI_LANGUAGES = new Set(readdirSync(join(root, "src/i18n/locales")).filter((f) => f.endsWith(".json")).map((f) => f.split(/[-.]/)[0])).size;
   // Hoisted from the jobs-lander block: the /explore prerender links the same
   // field pages.
   const CATEGORY_LANDERS = [
@@ -1589,17 +1592,16 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     isFallback: true,
     path: "/",
     title: BOARD_TOTAL
-      // 61 chars with the number in — was 76 with "Live Job Board: " wedged
-      // in the middle, and Google truncated it at "Zero Ghost…" (audit
-      // 2026-08-28). The two claims that sell are the count and the ghost
-      // promise; the product category survives in the description.
-      ? `Resume Booster — ${plusClaim(BOARD_TOTAL, 50000)} Verified Openings, Zero Ghost Jobs`
-      : "Resume Booster — Verified Openings, Zero Ghost Jobs",
+      // Owner decision 2026-10-08: say where the jobs come from (the
+      // employers' own hiring systems), never an absolute the data cannot
+      // prove. Mirrored by src/pages/Index.tsx's head.
+      ? `Resume Booster — ${plusClaim(BOARD_TOTAL, 50000)} Live Jobs Straight From Employers`
+      : "Resume Booster — Live Jobs Straight From Employers",
     // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
     // clamp below cut it at "…Upload your CV and an AI…" — the snippet Google
     // shows literally trailed off before the word "agent", so the change that
     // made the agent the homepage's headline never reached the search result.
-    description: "A live job board with zero ghost jobs — every opening straight from the employer's own hiring system. An AI agent ranks them to your CV and applies for you.",
+    description: "Live jobs straight from employers' own hiring systems, re-checked all day. An AI agent ranks them to your CV and applies where employers allow.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -1608,7 +1610,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         url: SITE,
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${NIND} industries and 10 languages.`,
+        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${NIND} industries, with an interface in ${UI_LANGUAGES} languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       },
       // NO WebSite ENTITY HERE — index.html already ships one in the template,
@@ -1629,12 +1631,18 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         provider: { "@type": "Organization", name: "Resume Booster", url: SITE },
         areaServed: "Worldwide",
         description: "Reads your CV, ranks live verified openings against it, writes a tailored application for each, answers the employer's own screening questions, and submits on hiring systems that permit it. It never fabricates experience and never solves a CAPTCHA or evades a bot check.",
-        offers: { "@type": "Offer", priceCurrency: "USD", description: "Included with a Resume Booster account" },
+        // L1-08: the offer said "Included with a Resume Booster account" with
+        // no price, for a $99-a-month plan. Both ways to buy it, from the
+        // products mirror the checkouts read.
+        offers: [
+          { "@type": "Offer", price: String(D.SUBSCRIPTIONS.agent.priceUsd), priceCurrency: "USD", description: `Agent plan, billed monthly until cancelled`, url: `${SITE}/agent` },
+          { "@type": "Offer", price: String(D.PASS.priceUsd), priceCurrency: "USD", description: `Agent Pass: ${D.PASS.sessionHours} hours for an agent you bring yourself`, url: `${SITE}/agents/pass` },
+        ],
       },
     ],
     content: `
-      <h1 class="text-3xl font-bold mb-3">Every job here is real. The agent applies for you.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one pulled straight from the employer's own hiring system — never scraped, no dated posting older than 30 days, re-checked live at the moment you apply. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems. The agent applies for you.</h1>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one read from the employer's own hiring system and re-checked all day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
         <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
         <ul class="space-y-1.5">
@@ -2249,7 +2257,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         description: `Browse ${countPhrase}${boardCompanies ? `, pulled from ${fmt(boardCompanies)} company job boards with roles open now` : ", pulled from companies' own official job boards"} and re-checked continuously. Check your resume's fit free before you apply.`,
         content: `
           <h1>Live ${label} jobs</h1>
-          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No scraped listings, no aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
           <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
@@ -2414,7 +2422,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; no dated posting older than 30 days.`,
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No scraped listings, no aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
           <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
@@ -2471,7 +2479,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         content: `
           <h1>The Entry-Level Index</h1>
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks each job board by the SHARE of its open roles that are early-career, with the raw count as the tie-break. Not by who posts the most, which only ever ranks the largest boards. One row per board, so an employer running several counts once per board.</p>
-          <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator or a scrape, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
           ${DATA_FIGURES.entry.html}
           <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
@@ -3197,12 +3205,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const lines = [];
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
-    lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup; the résumé text is deleted after 24 hours and the report that quotes it after 7 days. See /llms.txt for the short overview.`);
+    lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, an interface in ${UI_LANGUAGES} languages, native Spanish résumé detection. Free scan, no signup; the résumé text is deleted after 24 hours and the report that quotes it after 7 days. See /llms.txt for the short overview.`);
     // A corpus line in the file answer engines quote is a live reading or
     // nothing: a snapshot-fed bake prints no board total here (L4-03).
     if (BOARD_TOTAL && facetsSource !== "snapshot") {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}), no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -3316,7 +3324,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         // this whole finding is about, one file down from the sentence.
         sub(/across all [\d,]+\+ (?:companies|company job boards) on the board/, `across all ${plusClaim(BOARD_COMPANIES, 1000)} company job boards on the board`);
       }
-      sub(/\b\d+ industries, 10 languages\b/, `${NIND} industries, 10 languages`);
+      sub(/\b\d+ industries, an interface in \d+ languages\b/, `${NIND} industries, an interface in ${UI_LANGUAGES} languages`);
       sub(/\b\d+ industry pages\b/, `${NIND} industry pages`);
       // The source list is a CONFIG fact, not a live count, so it refreshes
       // on every bake from the same constant the board's own source note

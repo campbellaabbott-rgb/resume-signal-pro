@@ -34,10 +34,8 @@
     "heading": "Arrêtez de deviner.",
     "headingHighlight": "Décrochez des entretiens.",
     "subheading": "Même document, même score, à chaque fois — comparé à de vrais scans de votre secteur, chaque citation vérifiée contre votre CV. Pas l'avis de ChatGPT ou de Claude.",
-    "price": "25 $",
     "oneTime": "paiement unique",
     "nofees": "Paiement unique • Sans renouvellement automatique • Résultats instantanés",
-    "roi": "Un entretien = 25 $ rentabilisés",
     "trusted": "Fait confiance par",
     "jobSeekers": "chercheurs d'emploi",
     "seeSample": "Voir un exemple d'analyse",
@@ -55,8 +53,7 @@
     "private": "100% privé",
     "headline": {
       "get": "Le site d'emploi avec",
-      "recruiterGrade": "zéro offre fantôme",
-      "feedback": "— plus de 550 000 offres vérifiées, adaptées à votre CV",
+      "recruiterGrade": "des offres en direct, tirées des systèmes de recrutement des employeurs",
       "feedbackLive": "— {{n}}+ offres vérifiées, comparées à votre CV",
       "feedbackPlain": "— chaque offre vérifiée, comparée à votre CV"
     },
@@ -110,7 +107,7 @@
       "approved": "Approuvé par les recruteurs"
     },
     "socialFirst": {
-      "joinThousands": "Analyse gratuite · Sans inscription · Résultats en 60 secondes environ",
+      "joinThousands": "Analyse gratuite · Sans inscription",
       "subheading": "Téléversez votre CV et obtenez un score reproductible — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
       "recentActivityCount": "{{count}} personnes",
       "recentActivityText": "ont scanné leur CV dans la dernière heure"
@@ -144,12 +141,10 @@
     "testimonialQuote": "J'ai corrigé mon CV en 10 minutes. J'ai eu 3 appels d'entretien la même semaine.",
     "testimonialAuthorName": "— Sarah K., Ingénieure logiciel",
     "transparentScoring": "notation IA transparente, sans boîte noire",
-    "factGdpr": "Conforme au RGPD",
     "factAutoDelete": "CV supprimé sous 7 jours",
     "factNoStorage": "Jamais vendu",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobs": "Parcourir 550 000+ offres vérifiées",
     "browseJobsLive": "Parcourir {{n}}+ offres vérifiées",
     "browseJobsPlain": "Parcourir le site d'offres vérifiées"
   },
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. Analyse IA",
-        "description": "Notre IA effectue 24 vérifications distinctes en ~10 secondes."
+        "description": "Notre IA effectue 24 vérifications distinctes."
       },
       "results": {
         "title": "3. Obtenez les Résultats",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Vraie analyse IA",
-      "results": "Résultats en ~10 sec",
+      "results": "Résultats sur la même page",
       "private": "100% privé"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Signaux d'alarme",
       "plusMore": "+12 autres"
     },
-    "scanFooter": "Résultats en ~90 secondes • 7 scans gratuits par jour",
+    "scanFooter": "7 scans gratuits par jour",
     "getFreeAnalysis": "Obtenir une analyse de CV gratuite",
     "orGetCompleteAnalysis": "Ou obtenez l'analyse complète pour",
     "securePaymentStripe": "Paiement sécurisé via Stripe",
@@ -426,7 +421,6 @@
     "feature": "Fonctionnalité",
     "templates": "Modèles",
     "free": "Gratuit",
-    "cta": "Essayer — 25 $",
     "ctaText": "Essayer",
     "features": {
       "atsScoring": "Scoring ATS en 5 catégories",
@@ -462,8 +456,7 @@
         "quote": "Le service est super utile et pratique.",
         "role": "Utilisateur Reddit • Client payant"
       }
-    },
-    "trustMessage": "Rejoignez des milliers de chercheurs d'emploi qui ont amélioré leurs CV avec un feedback honnête."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,23 +466,15 @@
       },
       "ssl": {
         "label": "SSL 256-bit",
-        "description": "Chiffrement niveau bancaire"
+        "description": "Chiffré pendant le transfert"
       },
       "autoDelete": {
         "label": "Supprimé sous 7 jours",
         "description": "Vos données, votre contrôle"
       },
-      "gdpr": {
-        "label": "Conforme RGPD",
-        "description": "Confidentialité d'abord"
-      },
       "zeroStorage": {
         "label": "Jamais vendu",
         "description": "Ni aux recruteurs, ni à personne"
-      },
-      "instant": {
-        "label": "Livraison Instantanée",
-        "description": "Résultats en 30 secondes"
       }
     },
     "methodology": {
@@ -519,7 +504,7 @@
     "actionPlan": "Plan d'action",
     "redFlags": "Signaux d'alerte",
     "linkedinAnalysis": "Analyse LinkedIn",
-    "includedFree": "Inclus gratuitement",
+    "includedInFullAnalysis": "Dans l'analyse complète",
     "strength": "point fort",
     "suggestedHeadline": "Titre suggéré",
     "aboutSection": "Section À propos",
@@ -569,7 +554,6 @@
       "title": "Débloquez votre analyse complète",
       "description": "Obtenez un feedback complet avec réécriture des puces, stratégies ATS et plan d'action prioritaire.",
       "button": "Obtenir l'analyse complète",
-      "price": "25 $",
       "processing": "Traitement..."
     }
   },
@@ -734,8 +718,7 @@
     },
     "oneTime": "paiement unique",
     "guarantee": "Résultats instantanés • Paiement unique",
-    "button": "Obtenir mon analyse",
-    "roi": "Un entretien = 25 $ rentabilisés"
+    "button": "Obtenir mon analyse"
   },
   "scanProgress": {
     "title": "Analyse IA en cours",
@@ -1411,8 +1394,7 @@
       "aiRewrittenResume": "CV réécrit par IA",
       "customCoverLetter": "Lettre de motivation personnalisée",
       "beforeAfterComparison": "Comparaison avant/après",
-      "keywordOptimization": "Optimisation des mots-clés",
-      "priorityProcessing": "Traitement prioritaire"
+      "keywordOptimization": "Optimisation des mots-clés"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Analyse détaillée complète du score ATS",
@@ -1732,7 +1714,7 @@
       },
       "cost": {
         "feature": "Coût",
-        "us": "5 à 25 $ paiement unique",
+        "us": "{{min}} à {{max}} paiement unique",
         "them": "150 à 500 $+"
       },
       "atsOptimization": {
@@ -2508,22 +2490,19 @@
     "privacyMatters": "Votre vie privée compte",
     "titlePrefix": "Votre CV est",
     "titleHighlight": "en sécurité avec nous",
-    "heroSubtitle": "Nous avons conçu Resume Booster selon des principes de sécurité avant tout. Vos documents de carrière méritent une protection de niveau bancaire, et c'est exactement ce que nous offrons.",
+    "heroSubtitle": "Ce que nous conservons, combien de temps, à qui cela est transmis et comment le faire supprimer — par écrit, pour que vous puissiez le vérifier.",
     "badges": {
       "ssl": "SSL 256 bits",
-      "retention": "Délais publiés",
-      "gdpr": "Conforme RGPD"
+      "retention": "Délais publiés"
     },
     "stats": {
       "resumesAnalyzed": "CV analysés",
-      "betterResults": "Signalent de meilleurs résultats",
-      "avgDelivery": "Délai de livraison moyen",
-      "dataBreaches": "Violations de données"
+      "betterResults": "Signalent de meilleurs résultats"
     },
     "security": {
       "ssl": {
         "title": "Chiffrement SSL 256 bits",
-        "description": "Votre CV est protégé par un chiffrement de niveau bancaire pendant le téléversement et le traitement. Nous utilisons la même norme de sécurité que les grandes institutions financières."
+        "description": "Votre CV nous parvient, ainsi qu'aux services qui le traitent, par des connexions chiffrées (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "Ce que conserve l'analyse gratuite",
@@ -2534,8 +2513,8 @@
         "description": "Les tâches de suppression tournent toutes les 15 minutes pour le stockage temporaire et toutes les heures pour le cache de rapports, le cache d'IA et les analyses payantes : aucun ne dépasse son délai annoncé de plus d'une heure."
       },
       "gdpr": {
-        "title": "Conforme au RGPD",
-        "description": "Nous respectons des normes européennes strictes de protection des données. Vous pouvez demander la suppression de toute donnée à tout moment."
+        "title": "Vos droits sur vos données",
+        "description": "Où que vous viviez, vous pouvez demander à tout moment une copie des données que nous détenons sur vous, ou leur suppression."
       },
       "neverSold": {
         "title": "Jamais vendu",
@@ -2636,7 +2615,7 @@
     "trustedByTitle": "La confiance des candidats des plus grandes entreprises",
     "trustedBySubtitle": "Les professionnels des grandes entreprises utilisent Resume Booster pour décrocher le poste de leurs rêves.",
     "ctaTitle": "Prêt à améliorer votre CV ?",
-    "ctaSubtitle": "Rejoignez des milliers de candidats qui ont amélioré leur CV grâce à notre analyse alimentée par l'IA.",
+    "ctaSubtitle": "Analyse gratuite, sans inscription. Chaque ligne citée dans le rapport est vérifiée par rapport à votre propre CV.",
     "ctaButton": "Obtenez votre scan gratuit",
     "dataFence": {
       "badge": "Indépendance des données",
@@ -2776,7 +2755,7 @@
     "noSubscriptions": "Paiements uniques • Ne se renouvellent jamais automatiquement",
     "titlePrefix": "Choisissez votre",
     "titleHighlight": "Boost de CV",
-    "subtitle": "Des corrections rapides aux forfaits de carrière complets. Payez une fois, utilisez pour toujours.",
+    "subtitle": "Des corrections rapides aux forfaits de carrière complets. Les produits à l'unité se paient une fois ; Pro et le forfait Agent se renouvellent chaque mois jusqu'à résiliation.",
     "secureCheckout": "Paiement sécurisé",
     "instantAccess": "Accès instantané",
     "stripeProtected": "Protégé par Stripe",
@@ -4464,7 +4443,7 @@
     "deleteAccount": "Supprimer le compte",
     "welcome": "Bienvenue ! Obtenons votre premier score 🎯",
     "trackerEmpty": "Suivez vos candidatures — statut, dates et score d'envoi, au même endroit.",
-    "trackerEmptyCta": "Parcourez plus de 550 000 offres vérifiées — en sauvegarder une lance votre suivi",
+    "trackerEmptyCta": "Parcourez les offres vérifiées — en sauvegarder une lance votre suivi",
     "status": {
       "saved": "Sauvegardée",
       "applied": "Envoyée",
@@ -5019,9 +4998,9 @@
   },
   "homeHero": {
     "badge": "Site d'offres en direct + agent IA",
-    "headlinePre": "Chaque offre ici est réelle.",
+    "headlinePre": "Des offres en direct, tirées des systèmes de recrutement des employeurs.",
     "headlineHighlight": "L'agent postule pour vous.",
-    "sub": "Des offres issues directement des systèmes de recrutement des entreprises — jamais aspirées, revérifiées toute la journée. Déposez votre CV : l'agent les classe toutes, rédige chaque candidature honnêtement et la soumet là où l'employeur le permet.",
+    "sub": "Des offres lues dans les systèmes de recrutement des entreprises elles-mêmes et revérifiées toute la journée. Déposez votre CV : l'agent les classe toutes, rédige chaque candidature honnêtement et la soumet là où l'employeur le permet.",
     "statOpenings": "offres vérifiées",
     "statCompanies": "entreprises",
     "statSendable": "que l'agent peut soumettre pour vous",

@@ -153,11 +153,6 @@ export function ProductSelectionModal({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-foreground">{product.name}</span>
-                    {'savings' in product && product.savings && (
-                      <Badge variant="secondary" className="text-xs">
-                        {product.savings}
-                      </Badge>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
                   <div className="flex flex-wrap gap-x-3 gap-y-1">

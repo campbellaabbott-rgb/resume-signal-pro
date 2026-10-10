@@ -34,10 +34,8 @@
     "heading": "Huwag nang hulaan.",
     "headingHighlight": "Simulan na ang makakuha ng interview.",
     "subheading": "Parehong dokumento, parehong iskor, tuwing susubukan — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado laban sa iyong resume. Hindi opinyon ng ChatGPT o Claude.",
-    "price": "$25",
     "oneTime": "isang beses lang",
     "nofees": "Isang beses na bayad • Walang auto-renew • Instant na resulta",
-    "roi": "Isang interview = Bawi na ang $25",
     "trusted": "Pinagkakatiwalaan ng",
     "jobSeekers": "mga naghahanap ng trabaho",
     "seeSample": "Tingnan ang Sample Analysis",
@@ -55,8 +53,7 @@
     "private": "100% private",
     "headline": {
       "get": "Ang job board na may",
-      "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 550,000+ verified na trabaho, tugma sa resume mo",
+      "recruiterGrade": "mga live na trabaho mula mismo sa sariling hiring system ng mga employer",
       "feedbackLive": "— {{n}}+ beripikadong bakante, itinugma sa resume mo",
       "feedbackPlain": "— bawat bakante beripikado, itinugma sa resume mo"
     },
@@ -110,7 +107,7 @@
       "approved": "Recruiter-approved"
     },
     "socialFirst": {
-      "joinThousands": "Libreng scan · Walang sign-up · Resulta sa humigit-kumulang 60 segundo",
+      "joinThousands": "Libreng scan · Walang sign-up",
       "subheading": "I-upload ang iyong resume at makakuha ng nauulit na iskor — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
       "recentActivityCount": "{{count}} katao",
       "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
@@ -144,12 +141,10 @@
     "testimonialQuote": "Naayos ang resume ko sa loob ng 10 minuto. Nakakuha ng 3 interview call sa parehong linggo.",
     "testimonialAuthorName": "— Sarah K., Software Engineer",
     "transparentScoring": "transparent na AI scoring, walang black box",
-    "factGdpr": "Sumusunod sa GDPR",
     "factAutoDelete": "Binubura ang resume sa loob ng 7 araw",
     "factNoStorage": "Hindi kailanman ibinebenta",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobs": "Tingnan ang 550,000+ verified na trabaho",
     "browseJobsLive": "Tingnan ang {{n}}+ beripikadong trabaho",
     "browseJobsPlain": "Tingnan ang beripikadong job board"
   },
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. AI Analysis",
-        "description": "Nagsasagawa ang aming AI ng 24 na iba't ibang pagsusuri sa ~10 segundo."
+        "description": "Nagsasagawa ang aming AI ng 24 na iba't ibang pagsusuri."
       },
       "results": {
         "title": "3. Kumuha ng Resulta",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Tunay na AI analysis",
-      "results": "Resulta sa ~10 seg",
+      "results": "Resulta sa parehong pahina",
       "private": "100% private"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 pa"
     },
-    "scanFooter": "Resulta sa ~90 segundo • 7 libreng scan kada araw",
+    "scanFooter": "7 libreng scan kada araw",
     "getFreeAnalysis": "Kumuha ng Libreng Resume Analysis",
     "orGetCompleteAnalysis": "O kunin ang kumpletong analysis sa halagang",
     "securePaymentStripe": "Secure na bayad gamit ang Stripe",
@@ -426,7 +421,6 @@
     "feature": "Feature",
     "templates": "Templates",
     "free": "Libre",
-    "cta": "Subukan Ngayon — $25",
     "ctaText": "Subukan Ngayon",
     "features": {
       "atsScoring": "5-Kategoryang ATS Scoring",
@@ -462,8 +456,7 @@
         "quote": "Ang serbisyo ay super nakakatulong at kapaki-pakinabang.",
         "role": "Reddit User • Nagbayad na Customer"
       }
-    },
-    "trustMessage": "Sumali sa libu-libong naghahanap ng trabaho na nagpabuti ng kanilang resume gamit ang tapat at recruiter-grade na feedback."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,23 +466,15 @@
       },
       "ssl": {
         "label": "256-bit SSL",
-        "description": "Bank-level encryption"
+        "description": "Naka-encrypt habang ipinapadala"
       },
       "autoDelete": {
         "label": "Binubura sa 7 araw",
         "description": "Iyong data, iyong kontrol"
       },
-      "gdpr": {
-        "label": "GDPR Compliant",
-        "description": "Privacy muna"
-      },
       "zeroStorage": {
         "label": "Hindi ibinebenta",
         "description": "Hindi sa mga recruiter, hindi kaninuman"
-      },
-      "instant": {
-        "label": "Instant Delivery",
-        "description": "Resulta sa 30 segundo"
       }
     },
     "methodology": {
@@ -519,7 +504,7 @@
     "actionPlan": "Action Plan",
     "redFlags": "Mga Red Flag",
     "linkedinAnalysis": "LinkedIn Analysis",
-    "includedFree": "Kasama nang Libre",
+    "includedInFullAnalysis": "Kasama sa Full Analysis",
     "strength": "lakas",
     "suggestedHeadline": "Iminumungkahing Headline",
     "aboutSection": "About Section",
@@ -569,7 +554,6 @@
       "title": "I-unlock ang Iyong Buong Pagsusuri",
       "description": "Kumuha ng komprehensibong feedback na may detalyadong bullet rewrites, ATS optimization strategies, at prioritized na action plan.",
       "button": "Kumuha ng Buong Pagsusuri",
-      "price": "$25",
       "processing": "Pinoproseso..."
     }
   },
@@ -734,8 +718,7 @@
     },
     "oneTime": "isang beses lang",
     "guarantee": "Instant na resulta • Isang beses na bayad",
-    "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "Isang interview = $25 na-recover"
+    "button": "Kunin ang Aking Analysis Ngayon"
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
@@ -1411,8 +1394,7 @@
       "aiRewrittenResume": "AI-rewritten na resume",
       "customCoverLetter": "Custom na cover letter",
       "beforeAfterComparison": "Before/after comparison",
-      "keywordOptimization": "Keyword optimization",
-      "priorityProcessing": "Priority processing"
+      "keywordOptimization": "Keyword optimization"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Buong breakdown ng ATS score",
@@ -1732,7 +1714,7 @@
       },
       "cost": {
         "feature": "Gastos",
-        "us": "$5 – $25 isang-beses",
+        "us": "{{min}} – {{max}} isang-beses",
         "them": "$150 – $500+"
       },
       "atsOptimization": {
@@ -2508,22 +2490,19 @@
     "privacyMatters": "Mahalaga ang Iyong Privacy",
     "titlePrefix": "Ang Iyong Resume ay",
     "titleHighlight": "Ligtas Sa Amin",
-    "heroSubtitle": "Binuo namin ang Resume Booster gamit ang mga prinsipyong security-first. Ang iyong mga dokumento sa karera ay karapat-dapat sa proteksyon sa antas ng bangko, at ito mismo ang ibinibigay namin.",
+    "heroSubtitle": "Ano ang itinatago namin, gaano katagal, kanino ito napupunta, at paano ito ipabura — nakasulat, para masuri mo.",
     "badges": {
       "ssl": "256-bit SSL",
-      "retention": "Nakalathalang Retention",
-      "gdpr": "GDPR Compliant"
+      "retention": "Nakalathalang Retention"
     },
     "stats": {
       "resumesAnalyzed": "Na-analyze na Resume",
-      "betterResults": "Nag-report ng Mas Magandang Resulta",
-      "avgDelivery": "Average na Oras ng Paghahatid",
-      "dataBreaches": "Data Breach"
+      "betterResults": "Nag-report ng Mas Magandang Resulta"
     },
     "security": {
       "ssl": {
         "title": "256-bit SSL Encryption",
-        "description": "Protektado ang iyong resume gamit ang encryption sa antas ng bangko habang nag-upload at nagproseso. Ginagamit namin ang parehong security standard ng mga malalaking institusyong pinansyal."
+        "description": "Dumarating ang resume mo sa amin at sa mga serbisyong nagpoproseso nito sa mga naka-encrypt na koneksyon (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "Ano ang Iniimbak ng Libreng Scan",
@@ -2534,8 +2513,8 @@
         "description": "Tumatakbo ang mga deletion job kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache, AI cache at mga bayad na pagsusuri, kaya walang lumalampas sa nakasaad na oras nito nang higit sa isang oras."
       },
       "gdpr": {
-        "title": "GDPR Compliant",
-        "description": "Sinusunod namin ang mahigpit na European data protection standard. Maaari kang humiling ng pagtanggal ng anumang data anumang oras."
+        "title": "Ang Iyong Karapatan sa Data",
+        "description": "Saan ka man nakatira, maaari kang humingi anumang oras ng kopya ng data namin tungkol sa iyo, o ng pagbura nito."
       },
       "neverSold": {
         "title": "Hindi Kailanman Ibinebenta",
@@ -2636,7 +2615,7 @@
     "trustedByTitle": "Pinagkakatiwalaan ng mga Job Seeker sa Nangungunang Kumpanya",
     "trustedBySubtitle": "Ginagamit ng mga propesyonal mula sa nangungunang kumpanya ang Resume Booster upang makuha ang trabahong kanilang pinangarap.",
     "ctaTitle": "Handa na Pahusayin ang Iyong Resume?",
-    "ctaSubtitle": "Sumali sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming AI-powered analysis.",
+    "ctaSubtitle": "Libreng scan, walang sign-up. Sinusuri ang bawat sinipi na linya sa report laban sa sarili mong resume.",
     "ctaButton": "Kunin ang Iyong Libreng Scan",
     "dataFence": {
       "badge": "Kalayaan ng datos",
@@ -2776,7 +2755,7 @@
     "noSubscriptions": "Isang-pagkakataong bayad • Hindi awtomatikong nagre-renew",
     "titlePrefix": "Piliin ang Iyong",
     "titleHighlight": "Resume Boost",
-    "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Magbayad isang beses, gamitin habambuhay.",
+    "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Isang beses binabayaran ang mga one-time na produkto; ang Pro at ang Agent plan ay nire-renew buwan-buwan hanggang kanselahin mo.",
     "secureCheckout": "Secure na checkout",
     "instantAccess": "Instant na access",
     "stripeProtected": "Protektado ng Stripe",
@@ -4464,7 +4443,7 @@
     "deleteAccount": "Burahin ang account",
     "welcome": "Welcome! Kunin natin ang unang score mo 🎯",
     "trackerEmpty": "I-track kung saan ka nag-apply — status, petsa, at score na ipinadala, sa isang lugar.",
-    "trackerEmptyCta": "Tingnan ang 550,000+ verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
+    "trackerEmptyCta": "Tingnan ang mga verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
     "status": {
       "saved": "Naka-save",
       "applied": "Naipasa",
@@ -5019,9 +4998,9 @@
   },
   "homeHero": {
     "badge": "Live na job board + AI apply agent",
-    "headlinePre": "Totoo ang bawat trabaho rito.",
+    "headlinePre": "Mga live na trabaho, mula mismo sa sariling hiring system ng mga employer.",
     "headlineHighlight": "Nag-a-apply ang agent para sa iyo.",
-    "sub": "Mga bakanteng galing mismo sa sariling hiring system ng mga kumpanya — hindi kailanman scraped, sinusuri buong araw. I-upload ang CV mo: inaayos ng agent ang bawat isa laban dito, isinusulat nang tapat ang bawat aplikasyon, at isinusumite kung saan pinapayagan ng employer.",
+    "sub": "Mga bakanteng binasa mula sa sariling hiring system ng mga kumpanya at sinusuri buong araw. I-upload ang CV mo: inaayos ng agent ang bawat isa laban dito, isinusulat nang tapat ang bawat aplikasyon, at isinusumite kung saan pinapayagan ng employer.",
     "statOpenings": "beripikadong bakante",
     "statCompanies": "kumpanya",
     "statSendable": "kayang isumite ng agent para sa iyo",

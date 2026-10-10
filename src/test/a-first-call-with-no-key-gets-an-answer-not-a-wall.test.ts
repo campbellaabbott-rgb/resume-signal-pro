@@ -48,7 +48,8 @@ const PAGE = stripTs(read("src/pages/AgentConnect.tsx"));
 const TEST_CLIENT = stripTs(read("src/lib/mcp-test.ts"));
 const PRERENDER = stripTs(read("scripts/prerender-seo.mjs"));
 const LLMS = read("public/llms.txt");
-const LLMS_AGENTS_LINE = LLMS.split("\n").find((l) => l.includes("(/agents)")) ?? "";
+// Relative or absolute: the file's links name the domain since 2026-10-09.
+const LLMS_AGENTS_LINE = LLMS.split("\n").find((l) => /\((?:https:\/\/resumebooster\.work)?\/agents\)/.test(l)) ?? "";
 /**
  * What the hand-written /agents bullet must and must not say about hosts,
  * as a pure function of the line. The line also carries a REACH sentence

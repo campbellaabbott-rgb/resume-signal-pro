@@ -371,7 +371,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
                 {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                  {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
+                  {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
                 </span>{" "}
                 {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
@@ -507,7 +507,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
             >
               {t('hero.headline.get', 'The job board with')}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
+                {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
               </span>{" "}
               {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
@@ -678,10 +678,6 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               endorsement wall, which read as fake and undercut trust */}
           <div className="animate-fade-in hidden sm:block" style={{ animationDelay: "0.35s" }}>
             <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-muted-foreground/70">
-              <span className="flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-success/70" />
-                {t('hero.factGdpr', 'GDPR compliant')}
-              </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-success/70" />
                 {t('hero.factAutoDelete', 'Resume deleted within 7 days')}

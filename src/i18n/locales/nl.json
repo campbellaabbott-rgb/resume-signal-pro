@@ -34,10 +34,8 @@
     "heading": "Stop met gissen.",
     "headingHighlight": "Begin met sollicitatiegesprekken.",
     "subheading": "Zelfde document, zelfde score, elke keer — vergeleken met echte scans in jouw sector, elk citaat geverifieerd tegen je cv. Geen mening van ChatGPT of Claude.",
-    "price": "$ 25",
     "oneTime": "eenmalig",
     "nofees": "Eenmalige betaling • Geen automatische verlenging • Directe resultaten",
-    "roi": "Eén gesprek = $ 25 terugverdiend",
     "trusted": "Vertrouwd door",
     "jobSeekers": "werkzoekenden",
     "seeSample": "Bekijk voorbeeldanalyse",
@@ -55,8 +53,7 @@
     "private": "100% privé",
     "headline": {
       "get": "Het vacaturebord met",
-      "recruiterGrade": "nul spookvacatures",
-      "feedback": "— 550.000+ geverifieerde vacatures, gematcht met je cv",
+      "recruiterGrade": "live vacatures rechtstreeks uit de wervingssystemen van werkgevers",
       "feedbackLive": "— {{n}}+ geverifieerde vacatures, afgestemd op uw cv",
       "feedbackPlain": "— elke vacature geverifieerd, afgestemd op uw cv"
     },
@@ -110,7 +107,7 @@
       "approved": "Recruiter-goedgekeurd"
     },
     "socialFirst": {
-      "joinThousands": "Gratis scan · Geen aanmelding · Resultaten in ongeveer 60 seconden",
+      "joinThousands": "Gratis scan · Geen aanmelding",
       "subheading": "Upload je cv en krijg een reproduceerbare score — vergeleken met echte scans in jouw sector, elk citaat geverifieerd. Geen chatbot-mening.",
       "recentActivityCount": "{{count}} mensen",
       "recentActivityText": "hebben hun cv in het afgelopen uur gescand"
@@ -144,12 +141,10 @@
     "testimonialQuote": "Mijn cv binnen 10 minuten opgelost. Diezelfde week 3 gesprekken gekregen.",
     "testimonialAuthorName": "— Sarah K., Software-engineer",
     "transparentScoring": "transparante AI-beoordeling, geen black box",
-    "factGdpr": "AVG-conform",
     "factAutoDelete": "Cv binnen 7 dagen verwijderd",
     "factNoStorage": "Nooit verkocht",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobs": "Bekijk 550.000+ geverifieerde vacatures",
     "browseJobsLive": "Bekijk {{n}}+ geverifieerde vacatures",
     "browseJobsPlain": "Bekijk het geverifieerde vacaturebord"
   },
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. AI Analyse",
-        "description": "Onze AI voert 24 verschillende controles uit in ~10 seconden."
+        "description": "Onze AI voert 24 verschillende controles uit."
       },
       "results": {
         "title": "3. Krijg Resultaten",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Echte AI-analyse",
-      "results": "Resultaten in ~10 sec",
+      "results": "Resultaten op dezelfde pagina",
       "private": "100% privé"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Waarschuwingssignalen",
       "plusMore": "+12 meer"
     },
-    "scanFooter": "Resultaten in ~90 seconden • 7 gratis scans per dag",
+    "scanFooter": "7 gratis scans per dag",
     "getFreeAnalysis": "Gratis cv-analyse krijgen",
     "orGetCompleteAnalysis": "Of krijg de volledige analyse voor",
     "securePaymentStripe": "Veilige betaling via Stripe",
@@ -426,7 +421,6 @@
     "feature": "Functie",
     "templates": "Templates",
     "free": "Gratis",
-    "cta": "Probeer nu — $ 25",
     "ctaText": "Probeer nu",
     "features": {
       "atsScoring": "5-categorie ATS-scoring",
@@ -462,8 +456,7 @@
         "quote": "De service is super behulpzaam en nuttig.",
         "role": "Reddit-gebruiker • Betalende klant"
       }
-    },
-    "trustMessage": "Sluit je aan bij duizenden werkzoekenden die hun CV hebben verbeterd met eerlijke recruiter-feedback."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,23 +466,15 @@
       },
       "ssl": {
         "label": "256-bit SSL",
-        "description": "Bankniveau-encryptie"
+        "description": "Versleuteld tijdens verzending"
       },
       "autoDelete": {
         "label": "Verwijderd in 7 dagen",
         "description": "Jouw data, jouw controle"
       },
-      "gdpr": {
-        "label": "AVG Conform",
-        "description": "Privacy eerst"
-      },
       "zeroStorage": {
         "label": "Nooit verkocht",
         "description": "Niet aan recruiters, aan niemand"
-      },
-      "instant": {
-        "label": "Directe Levering",
-        "description": "Resultaten in 30 seconden"
       }
     },
     "methodology": {
@@ -519,7 +504,7 @@
     "actionPlan": "Actieplan",
     "redFlags": "Red Flags",
     "linkedinAnalysis": "LinkedIn-analyse",
-    "includedFree": "Gratis inbegrepen",
+    "includedInFullAnalysis": "In de volledige analyse",
     "strength": "sterk punt",
     "suggestedHeadline": "Voorgestelde headline",
     "aboutSection": "Over-sectie",
@@ -569,7 +554,6 @@
       "title": "Ontgrendel je volledige analyse",
       "description": "Krijg uitgebreide feedback met gedetailleerde bullet-herschrijvingen, ATS-optimalisatiestrategieën en geprioriteerd actieplan.",
       "button": "Volledige analyse",
-      "price": "$ 25",
       "processing": "Verwerken..."
     }
   },
@@ -734,8 +718,7 @@
     },
     "oneTime": "eenmalig",
     "guarantee": "Directe resultaten • Eenmalige betaling",
-    "button": "Mijn analyse nu",
-    "roi": "Eén gesprek = $ 25 terugverdiend"
+    "button": "Mijn analyse nu"
   },
   "scanProgress": {
     "title": "AI-analyse bezig",
@@ -1411,8 +1394,7 @@
       "aiRewrittenResume": "Door AI herschreven cv",
       "customCoverLetter": "Aangepaste motivatiebrief",
       "beforeAfterComparison": "Voor/na-vergelijking",
-      "keywordOptimization": "Zoekwoordoptimalisatie",
-      "priorityProcessing": "Prioriteitsverwerking"
+      "keywordOptimization": "Zoekwoordoptimalisatie"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Volledige uitsplitsing van ATS-score",
@@ -1732,7 +1714,7 @@
       },
       "cost": {
         "feature": "Kosten",
-        "us": "€5 – €25 eenmalig",
+        "us": "{{min}} – {{max}} eenmalig",
         "them": "€140 – €450+"
       },
       "atsOptimization": {
@@ -2508,22 +2490,19 @@
     "privacyMatters": "Jouw privacy is belangrijk",
     "titlePrefix": "Jouw cv is",
     "titleHighlight": "veilig bij ons",
-    "heroSubtitle": "We hebben Resume Booster gebouwd met security-first-principes. Jouw carrièredocumenten verdienen beveiliging op bankniveau, en dat is precies wat we bieden.",
+    "heroSubtitle": "Wat we bewaren, hoe lang, naar wie het gaat en hoe u het laat verwijderen — op papier, zodat u het kunt controleren.",
     "badges": {
       "ssl": "256-bit SSL",
-      "retention": "Gepubliceerde termijnen",
-      "gdpr": "AVG-conform"
+      "retention": "Gepubliceerde termijnen"
     },
     "stats": {
       "resumesAnalyzed": "Geanalyseerde cv's",
-      "betterResults": "Melden betere resultaten",
-      "avgDelivery": "Gemiddelde levertijd",
-      "dataBreaches": "Datalekken"
+      "betterResults": "Melden betere resultaten"
     },
     "security": {
       "ssl": {
         "title": "256-bit SSL-versleuteling",
-        "description": "Je cv wordt beschermd met versleuteling op bankniveau tijdens het uploaden en verwerken. We gebruiken dezelfde beveiligingsstandaard als grote financiële instellingen."
+        "description": "Uw cv gaat via versleutelde verbindingen (HTTPS/TLS) naar ons en naar de diensten die het verwerken."
       },
       "freeScan": {
         "title": "Wat de gratis scan bewaart",
@@ -2534,8 +2513,8 @@
         "description": "Verwijdertaken draaien elke 15 minuten voor de tijdelijke opslag en elk uur voor de rapportcache, de AI-cache en betaalde analyses, dus geen daarvan blijft meer dan een uur langer dan de genoemde termijn."
       },
       "gdpr": {
-        "title": "AVG-conform",
-        "description": "We houden ons aan strikte Europese gegevensbeschermingsnormen. Je kunt op elk moment verwijdering van je gegevens aanvragen."
+        "title": "Uw rechten op uw gegevens",
+        "description": "Waar u ook woont, u kunt op elk moment een kopie vragen van de gegevens die we over u hebben, of de verwijdering ervan."
       },
       "neverSold": {
         "title": "Nooit verkocht",
@@ -2636,7 +2615,7 @@
     "trustedByTitle": "Vertrouwd door werkzoekenden bij topbedrijven",
     "trustedBySubtitle": "Professionals van toonaangevende bedrijven gebruiken Resume Booster om hun droombaan te bemachtigen.",
     "ctaTitle": "Klaar om je cv te verbeteren?",
-    "ctaSubtitle": "Sluit je aan bij duizenden werkzoekenden die hun cv hebben verbeterd met onze AI-gestuurde analyse.",
+    "ctaSubtitle": "Gratis scan, geen aanmelding. Elke geciteerde regel in het rapport wordt gecontroleerd tegen uw eigen cv.",
     "ctaButton": "Krijg je gratis scan",
     "dataFence": {
       "badge": "Data-onafhankelijkheid",
@@ -2776,7 +2755,7 @@
     "noSubscriptions": "Eenmalige betalingen • Verlengen nooit automatisch",
     "titlePrefix": "Kies je",
     "titleHighlight": "Cv-boost",
-    "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmaal betalen, voor altijd gebruiken.",
+    "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmalige producten betaalt u één keer; Pro en het Agent-abonnement verlengen maandelijks tot u opzegt.",
     "secureCheckout": "Veilig afrekenen",
     "instantAccess": "Direct toegang",
     "stripeProtected": "Beschermd door Stripe",
@@ -4464,7 +4443,7 @@
     "deleteAccount": "Account verwijderen",
     "welcome": "Welkom! Laten we je eerste score halen 🎯",
     "trackerEmpty": "Volg waar je hebt gesolliciteerd — status, datums en de verzonden score, op één plek.",
-    "trackerEmptyCta": "Bekijk 550.000+ geverifieerde vacatures — er één opslaan start je tracker",
+    "trackerEmptyCta": "Bekijk geverifieerde vacatures — er één opslaan start je tracker",
     "status": {
       "saved": "Opgeslagen",
       "applied": "Verstuurd",
@@ -5019,9 +4998,9 @@
   },
   "homeHero": {
     "badge": "Live vacaturebord + AI-sollicitatieagent",
-    "headlinePre": "Elke vacature hier is echt.",
+    "headlinePre": "Live vacatures, rechtstreeks uit de wervingssystemen van werkgevers.",
     "headlineHighlight": "De agent solliciteert voor u.",
-    "sub": "Vacatures rechtstreeks uit de wervingssystemen van bedrijven — nooit gescrapet, de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
+    "sub": "Vacatures gelezen uit de eigen wervingssystemen van bedrijven en de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
     "statOpenings": "geverifieerde vacatures",
     "statCompanies": "bedrijven",
     "statSendable": "kan de agent voor u indienen",

@@ -156,7 +156,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
             </button>
             
             <p className="text-xs text-muted-foreground mt-4">
-              {t('finalCta.roi')}
+              {t('freeResults.oneInterviewPaidForItself', { price: `$${PRODUCTS.fullAnalysis.priceUsd}` })}
             </p>
           </div>
         </div>

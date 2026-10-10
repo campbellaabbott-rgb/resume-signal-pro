@@ -5124,7 +5124,6 @@ export function FreeKeywordResults({
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-bold uppercase tracking-wider text-primary-foreground/80">{t('freeResults.bestValue')}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">{PRODUCTS.premiumPackage.savings}</span>
           </div>
           <h3 className="text-2xl font-bold text-primary-foreground mb-2">
             {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.headline}
@@ -5139,7 +5138,6 @@ export function FreeKeywordResults({
               t('freeResults.premiumFeatures.customCoverLetter'),
               t('freeResults.premiumFeatures.beforeAfterComparison'),
               t('freeResults.premiumFeatures.keywordOptimization'),
-              t('freeResults.premiumFeatures.priorityProcessing')
             ].map((feature, i) => (
               <div key={i} className="flex items-center gap-2 text-xs text-primary-foreground/90">
                 <CheckCircle2 className="w-3 h-3 text-primary-foreground shrink-0" />
@@ -5247,7 +5245,7 @@ export function FreeKeywordResults({
           disabled={isLoading}
           className="gap-2 px-10 h-14 text-lg font-bold bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:via-primary/90 hover:to-primary/70 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          {getFinalCtaText()} — {t('freeScan.cta.price')}
+          {getFinalCtaText()} — {priceDisplay}
           <ArrowRight className="w-5 h-5" />
         </Button>
         <WalletPaymentBadge className="mt-3" />

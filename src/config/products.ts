@@ -104,10 +104,8 @@ export const PRODUCTS = {
       'AI-rewritten resume (ATS-optimized)',
       'Custom cover letter',
       'Before/after comparison',
-      'Priority processing'
     ],
     badge: 'Best Value',
-    savings: 'Save $6'
   },
   atsDefense: {
     id: 'ats_defense',
@@ -241,6 +239,17 @@ export function isProductHidden(id: ProductId): boolean {
 // Get all purchasable products (for display)
 export function getAllProducts() {
   return Object.values(PRODUCTS).filter((p) => !HIDDEN_PRODUCT_IDS.some((id) => PRODUCTS[id] === p));
+}
+
+/**
+ * The lowest and highest one-time price in the catalogue a buyer can reach
+ * (hidden products excluded), for every sentence that quotes "a range": the
+ * /vs pages said "$3-29" and the comparison table "$5 – $25" while the
+ * catalogue ran wider (L4-08, S8-012).
+ */
+export function oneTimePriceRangeUsd(): { min: number; max: number } {
+  const prices = getAllProducts().map((p) => Number(p.priceUsd)).filter((n) => n > 0);
+  return { min: Math.min(...prices), max: Math.max(...prices) };
 }
 
 // Get $5 add-on products (Resume Roast is free with scanner)

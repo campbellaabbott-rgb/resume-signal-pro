@@ -1,4 +1,5 @@
 import { ScanSearch, FileSearch, ListChecks, Users, MessageSquare, ShieldCheck, BarChart3, GitCompare, Globe2 } from "lucide-react";
+import { TEMP_RESUME_HOURS } from "@/lib/resume-retention";
 
 // Pre-scan expectation setter: exactly what the free report contains, shown
 // before anyone uploads. Every item here must correspond to a real report
@@ -23,7 +24,7 @@ export function WhatYouGetSection() {
             What you get with the free scan
           </h2>
           <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-            No signup, no payment, no resume stored. One upload returns all of this:
+            No signup, no payment; the résumé text is deleted after {TEMP_RESUME_HOURS} hours. One upload returns all of this:
           </p>
         </div>
 

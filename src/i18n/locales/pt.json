@@ -34,10 +34,8 @@
     "heading": "Pare de adivinhar.",
     "headingHighlight": "Comece a conseguir entrevistas.",
     "subheading": "Mesmo documento, mesma pontuação, sempre — comparada com escaneamentos reais do seu setor, com cada citação verificada contra o seu currículo. Não é a opinião do ChatGPT nem do Claude.",
-    "price": "$25",
     "oneTime": "pagamento único",
     "nofees": "Pagamento único • Sem renovação automática • Resultados instantâneos",
-    "roi": "Uma entrevista = $25 que se paga sozinho",
     "trusted": "Confiado por",
     "jobSeekers": "candidatos",
     "seeSample": "Ver Análise de Exemplo",
@@ -55,8 +53,7 @@
     "private": "100% privado",
     "headline": {
       "get": "O quadro de vagas com",
-      "recruiterGrade": "zero vagas fantasma",
-      "feedback": "— mais de 550.000 vagas verificadas, combinadas com o seu currículo",
+      "recruiterGrade": "vagas ao vivo direto dos sistemas de contratação dos empregadores",
       "feedbackLive": "— {{n}}+ vagas verificadas, comparadas com o seu CV",
       "feedbackPlain": "— cada vaga verificada, comparada com o seu CV"
     },
@@ -110,7 +107,7 @@
       "approved": "Aprovado por recrutadores"
     },
     "socialFirst": {
-      "joinThousands": "Análise grátis · Sem cadastro · Resultados em cerca de 60 segundos",
+      "joinThousands": "Análise grátis · Sem cadastro",
       "subheading": "Envie seu currículo e receba uma pontuação reproduzível — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
       "recentActivityCount": "{{count}} pessoas",
       "recentActivityText": "verificaram o currículo na última hora"
@@ -144,12 +141,10 @@
     "testimonialQuote": "Corrigi o meu currículo em 10 minutos. Recebi 3 chamadas de entrevista na mesma semana.",
     "testimonialAuthorName": "— Sarah K., Engenheira de Software",
     "transparentScoring": "pontuação de IA transparente, sem caixa preta",
-    "factGdpr": "Compatível com GDPR",
     "factAutoDelete": "Currículo apagado no prazo de 7 dias",
     "factNoStorage": "Nunca vendido",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobs": "Ver mais de 550.000 vagas verificadas",
     "browseJobsLive": "Explore {{n}}+ vagas verificadas",
     "browseJobsPlain": "Explore o mural verificado"
   },
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. Análise IA",
-        "description": "A nossa IA realiza 24 verificações distintas em ~10 segundos."
+        "description": "A nossa IA realiza 24 verificações distintas."
       },
       "results": {
         "title": "3. Obtenha Resultados",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Análise IA real",
-      "results": "Resultados em ~10 seg",
+      "results": "Resultados na mesma página",
       "private": "100% privado"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Sinais de Alerta",
       "plusMore": "+12 mais"
     },
-    "scanFooter": "Resultados em ~90 segundos • 7 verificações gratuitas por dia",
+    "scanFooter": "7 verificações gratuitas por dia",
     "getFreeAnalysis": "Obter Análise Gratuita do Currículo",
     "orGetCompleteAnalysis": "Ou obtenha a análise completa por",
     "securePaymentStripe": "Pagamento seguro via Stripe",
@@ -426,7 +421,6 @@
     "feature": "Funcionalidade",
     "templates": "Modelos",
     "free": "Grátis",
-    "cta": "Experimente Agora — $25",
     "ctaText": "Experimente Agora",
     "features": {
       "atsScoring": "Pontuação ATS de 5 Categorias",
@@ -462,8 +456,7 @@
         "quote": "O serviço é super útil e prático.",
         "role": "Utilizador Reddit • Cliente pagante"
       }
-    },
-    "trustMessage": "Junte-se a milhares de candidatos que melhoraram os seus currículos com feedback honesto e de nível profissional."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,23 +466,15 @@
       },
       "ssl": {
         "label": "SSL 256-bit",
-        "description": "Criptografia nível bancário"
+        "description": "Encriptado em trânsito"
       },
       "autoDelete": {
         "label": "Apagado em 7 dias",
         "description": "Seus dados, seu controle"
       },
-      "gdpr": {
-        "label": "Conforme LGPD",
-        "description": "Privacidade primeiro"
-      },
       "zeroStorage": {
         "label": "Nunca vendido",
         "description": "Nem a recrutadores, nem a ninguém"
-      },
-      "instant": {
-        "label": "Entrega Instantânea",
-        "description": "Resultados em 30 segundos"
       }
     },
     "methodology": {
@@ -519,7 +504,7 @@
     "actionPlan": "Plano de Ação",
     "redFlags": "Sinais de Alerta",
     "linkedinAnalysis": "Análise do LinkedIn",
-    "includedFree": "Incluído Grátis",
+    "includedInFullAnalysis": "Na Análise Completa",
     "strength": "força",
     "suggestedHeadline": "Título Sugerido",
     "aboutSection": "Secção Sobre",
@@ -569,7 +554,6 @@
       "title": "Desbloqueie a Sua Análise Completa",
       "description": "Obtenha feedback abrangente com reescritas detalhadas de tópicos, estratégias de otimização ATS e um plano de ação prioritizado.",
       "button": "Obter Análise Completa",
-      "price": "$25",
       "processing": "A processar..."
     }
   },
@@ -734,8 +718,7 @@
     },
     "oneTime": "pagamento único",
     "guarantee": "Resultados instantâneos • Pagamento único",
-    "button": "Obter a Minha Análise Agora",
-    "roi": "Uma entrevista = $25 que se paga sozinho"
+    "button": "Obter a Minha Análise Agora"
   },
   "scanProgress": {
     "title": "Análise IA em Progresso",
@@ -1411,8 +1394,7 @@
       "aiRewrittenResume": "Currículo reescrito por IA",
       "customCoverLetter": "Carta de apresentação personalizada",
       "beforeAfterComparison": "Comparação antes/depois",
-      "keywordOptimization": "Otimização de palavras-chave",
-      "priorityProcessing": "Processamento prioritário"
+      "keywordOptimization": "Otimização de palavras-chave"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Análise completa da pontuação ATS",
@@ -1732,7 +1714,7 @@
       },
       "cost": {
         "feature": "Custo",
-        "us": "$5 – $25 pagamento único",
+        "us": "{{min}} – {{max}} pagamento único",
         "them": "$150 – $500+"
       },
       "atsOptimization": {
@@ -2508,22 +2490,19 @@
     "privacyMatters": "A sua privacidade importa",
     "titlePrefix": "O seu currículo está",
     "titleHighlight": "seguro connosco",
-    "heroSubtitle": "Construímos o Resume Booster com princípios de segurança em primeiro lugar. Os seus documentos de carreira merecem proteção ao nível bancário, e é exatamente isso que oferecemos.",
+    "heroSubtitle": "O que guardamos, durante quanto tempo, para quem vai e como pedir a eliminação — por escrito, para que possa verificar.",
     "badges": {
       "ssl": "SSL de 256 bits",
-      "retention": "Prazos publicados",
-      "gdpr": "Conforme com o RGPD"
+      "retention": "Prazos publicados"
     },
     "stats": {
       "resumesAnalyzed": "Currículos analisados",
-      "betterResults": "Reportam melhores resultados",
-      "avgDelivery": "Tempo médio de entrega",
-      "dataBreaches": "Violações de dados"
+      "betterResults": "Reportam melhores resultados"
     },
     "security": {
       "ssl": {
         "title": "Encriptação SSL de 256 bits",
-        "description": "O seu currículo é protegido com encriptação ao nível bancário durante o carregamento e processamento. Usamos o mesmo padrão de segurança das principais instituições financeiras."
+        "description": "O seu currículo chega até nós e aos serviços que o processam por ligações encriptadas (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "O que a análise gratuita guarda",
@@ -2534,8 +2513,8 @@
         "description": "As tarefas de eliminação correm a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas, por isso nenhum deles ultrapassa o prazo indicado em mais de uma hora."
       },
       "gdpr": {
-        "title": "Conforme com o RGPD",
-        "description": "Seguimos padrões europeus rigorosos de proteção de dados. Pode solicitar a eliminação de quaisquer dados em qualquer momento."
+        "title": "Os seus direitos sobre os dados",
+        "description": "Onde quer que viva, pode pedir a qualquer momento uma cópia dos dados que temos sobre si, ou a sua eliminação."
       },
       "neverSold": {
         "title": "Nunca vendido",
@@ -2636,7 +2615,7 @@
     "trustedByTitle": "A confiança de candidatos nas melhores empresas",
     "trustedBySubtitle": "Profissionais de empresas líderes usam o Resume Booster para conseguir os seus empregos de sonho.",
     "ctaTitle": "Pronto para melhorar o seu currículo?",
-    "ctaSubtitle": "Junte-se a milhares de candidatos que melhoraram os seus currículos com a nossa análise alimentada por IA.",
+    "ctaSubtitle": "Análise grátis, sem registo. Cada linha citada no relatório é verificada contra o seu próprio currículo.",
     "ctaButton": "Obtenha a sua verificação gratuita",
     "dataFence": {
       "badge": "Independência dos dados",
@@ -2776,7 +2755,7 @@
     "noSubscriptions": "Pagamentos únicos • Nunca renovam automaticamente",
     "titlePrefix": "Escolha o seu",
     "titleHighlight": "Impulso de Currículo",
-    "subtitle": "De correções rápidas a pacotes de carreira completos. Pague uma vez, use para sempre.",
+    "subtitle": "De correções rápidas a pacotes de carreira completos. Os produtos avulsos pagam-se uma vez; o Pro e o plano Agent renovam todos os meses até cancelar.",
     "secureCheckout": "Checkout seguro",
     "instantAccess": "Acesso instantâneo",
     "stripeProtected": "Protegido pela Stripe",
@@ -4464,7 +4443,7 @@
     "deleteAccount": "Excluir conta",
     "welcome": "Bem-vindo! Vamos à sua primeira pontuação 🎯",
     "trackerEmpty": "Acompanhe onde você se candidatou — status, datas e a pontuação enviada, tudo em um lugar.",
-    "trackerEmptyCta": "Explore mais de 550.000 vagas verificadas — salvar uma inicia seu rastreador",
+    "trackerEmptyCta": "Explore vagas verificadas — salvar uma inicia seu rastreador",
     "status": {
       "saved": "Salva",
       "applied": "Enviada",
@@ -5019,9 +4998,9 @@
   },
   "homeHero": {
     "badge": "Mural ao vivo + agente de IA",
-    "headlinePre": "Cada vaga aqui é real.",
+    "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
     "headlineHighlight": "O agente candidata-se por si.",
-    "sub": "Vagas retiradas diretamente dos sistemas de recrutamento das empresas — nunca raspadas, reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
+    "sub": "Vagas lidas dos próprios sistemas de recrutamento das empresas e reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
     "statOpenings": "vagas verificadas",
     "statCompanies": "empresas",
     "statSendable": "o agente pode submeter por si",

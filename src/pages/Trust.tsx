@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { useScanTotals } from "@/hooks/use-scan-totals";
 import {
-  Shield, Lock, Clock, CloudOff, Zap, Users,
+  Shield, Lock, Clock, CloudOff, Users,
   CheckCircle2, BookOpen, FileCheck,
   Eye, Server, Globe, Sparkles, Scale
 } from "lucide-react";
@@ -105,8 +105,6 @@ export default function Trust() {
     ...(totals
       ? [{ value: totals.total_scans.toLocaleString(), label: t('trustPage.stats.resumesAnalyzed'), icon: FileCheck }]
       : []),
-    { value: "30s", label: t('trustPage.stats.avgDelivery'), icon: Zap },
-    { value: "0", label: t('trustPage.stats.dataBreaches'), icon: Shield },
   ];
 
   return (
@@ -142,10 +140,6 @@ export default function Trust() {
                   <Clock className="w-4 h-4 text-primary" />
                   <span className="text-sm">{t('trustPage.badges.retention')}</span>
                 </a>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-                  <Shield className="w-4 h-4 text-primary" />
-                  <span className="text-sm">{t('trustPage.badges.gdpr')}</span>
-                </div>
               </div>
             </div>
           </div>

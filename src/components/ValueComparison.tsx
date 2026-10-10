@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { oneTimePriceRangeUsd } from "@/config/products";
 
 interface ComparisonRow {
   feature: string;
@@ -18,7 +19,9 @@ export function ValueComparison() {
     },
     {
       feature: t('valueComparison.rows.cost.feature'),
-      us: t('valueComparison.rows.cost.us'),
+      // The catalogue's own range (L4-08 / S8-012): "$5 – $25" was typed
+      // into nine locale files while the catalogue ran wider.
+      us: t('valueComparison.rows.cost.us', { min: `$${oneTimePriceRangeUsd().min}`, max: `$${oneTimePriceRangeUsd().max}` }),
       them: t('valueComparison.rows.cost.them'),
     },
     {

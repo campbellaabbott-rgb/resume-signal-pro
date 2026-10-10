@@ -34,10 +34,8 @@
     "heading": "Schluss mit Raten.",
     "headingHighlight": "Mehr Vorstellungsgespräche.",
     "subheading": "Gleiches Dokument, gleicher Score, jedes Mal — verglichen mit echten Scans Ihrer Branche, jedes Zitat gegen Ihren Lebenslauf verifiziert. Keine ChatGPT- oder Claude-Meinung.",
-    "price": "25 $",
     "oneTime": "einmalig",
     "nofees": "Einmalige Zahlung • Keine automatische Verlängerung • Sofortige Ergebnisse",
-    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert",
     "trusted": "Vertrauen von",
     "jobSeekers": "Bewerbern",
     "seeSample": "Beispielanalyse ansehen",
@@ -61,8 +59,7 @@
     "freeScanReveals": "Ihr kostenloser Scan zeigt:",
     "headline": {
       "get": "Die Jobbörse mit",
-      "recruiterGrade": "null Geisterjobs",
-      "feedback": "— über 550.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf",
+      "recruiterGrade": "Live-Stellen direkt aus den Bewerbungssystemen der Arbeitgeber",
       "feedbackLive": "— {{n}}+ verifizierte Stellen, passend zu Ihrem Lebenslauf",
       "feedbackPlain": "— jede Stelle verifiziert, passend zu Ihrem Lebenslauf"
     },
@@ -110,7 +107,7 @@
       "approved": "Recruiter-geprüft"
     },
     "socialFirst": {
-      "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse in ca. 60 Sekunden",
+      "joinThousands": "Kostenloser Scan · Keine Anmeldung",
       "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen reproduzierbaren Score — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
       "recentActivityCount": "{{count}} Personen",
       "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
@@ -144,12 +141,10 @@
     "testimonialQuote": "Habe meinen Lebenslauf in 10 Minuten korrigiert. Hatte in derselben Woche 3 Vorstellungsgespräche.",
     "testimonialAuthorName": "— Sarah K., Softwareentwicklerin",
     "transparentScoring": "transparente KI-Bewertung, keine Blackbox",
-    "factGdpr": "DSGVO-konform",
     "factAutoDelete": "Lebenslauf nach spätestens 7 Tagen gelöscht",
     "factNoStorage": "Nie verkauft",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobs": "550.000+ verifizierte Jobs ansehen",
     "browseJobsLive": "{{n}}+ geprüfte Stellen durchsuchen",
     "browseJobsPlain": "Geprüftes Stellenboard durchsuchen"
   },
@@ -178,7 +173,7 @@
       },
       "analysis": {
         "title": "2. KI-Analyse",
-        "description": "Unsere KI führt 24 verschiedene Prüfungen in ~10 Sekunden durch."
+        "description": "Unsere KI führt 24 verschiedene Prüfungen durch."
       },
       "results": {
         "title": "3. Ergebnisse erhalten",
@@ -213,7 +208,7 @@
     },
     "footer": {
       "realAi": "Echte KI-Analyse",
-      "results": "Ergebnisse in ~10 Sek.",
+      "results": "Ergebnisse auf derselben Seite",
       "private": "100% privat"
     }
   },
@@ -370,7 +365,7 @@
       "redFlags": "Warnsignale",
       "plusMore": "+12 weitere"
     },
-    "scanFooter": "Ergebnisse in ~90 Sekunden • 7 kostenlose Scans pro Tag",
+    "scanFooter": "7 kostenlose Scans pro Tag",
     "getFreeAnalysis": "Kostenlose Lebenslaufanalyse erhalten",
     "orGetCompleteAnalysis": "Oder erhalte die vollständige Analyse für",
     "securePaymentStripe": "Sichere Zahlung über Stripe",
@@ -426,7 +421,6 @@
     "feature": "Funktion",
     "templates": "Vorlagen",
     "free": "Kostenlos",
-    "cta": "Jetzt testen — 25 $",
     "ctaText": "Jetzt testen",
     "features": {
       "atsScoring": "5-Kategorien ATS-Scoring",
@@ -462,8 +456,7 @@
         "quote": "Der Service ist super hilfreich und nützlich.",
         "role": "Reddit-Nutzer • Zahlender Kunde"
       }
-    },
-    "trustMessage": "Schließen Sie sich Tausenden an, die ihre Lebensläufe mit ehrlichem Recruiter-Feedback verbessert haben."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,23 +466,15 @@
       },
       "ssl": {
         "label": "256-Bit SSL",
-        "description": "Bankniveau-Verschlüsselung"
+        "description": "Verschlüsselte Übertragung"
       },
       "autoDelete": {
         "label": "Löschung in 7 Tagen",
         "description": "Ihre Daten, Ihre Kontrolle"
       },
-      "gdpr": {
-        "label": "DSGVO-konform",
-        "description": "Datenschutz zuerst"
-      },
       "zeroStorage": {
         "label": "Nie verkauft",
         "description": "Nicht an Recruiter, an niemanden"
-      },
-      "instant": {
-        "label": "Sofortlieferung",
-        "description": "Ergebnisse in 30 Sekunden"
       }
     },
     "methodology": {
@@ -519,7 +504,7 @@
     "actionPlan": "Aktionsplan",
     "redFlags": "Red Flags",
     "linkedinAnalysis": "LinkedIn-Analyse",
-    "includedFree": "Kostenlos inklusive",
+    "includedInFullAnalysis": "In der Vollanalyse",
     "strength": "Stärke",
     "suggestedHeadline": "Vorgeschlagene Headline",
     "aboutSection": "About-Abschnitt",
@@ -569,7 +554,6 @@
       "title": "Vollständige Analyse freischalten",
       "description": "Erhalten Sie umfassendes Feedback mit detaillierten Stichpunkt-Rewrites, ATS-Optimierung und priorisiertem Aktionsplan.",
       "button": "Vollanalyse erhalten",
-      "price": "25 $",
       "processing": "Wird verarbeitet..."
     }
   },
@@ -734,8 +718,7 @@
     },
     "oneTime": "einmalig",
     "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
-    "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = 25 $ amortisiert"
+    "button": "Jetzt Analyse erhalten"
   },
   "scanProgress": {
     "title": "KI-Analyse läuft",
@@ -1411,8 +1394,7 @@
       "aiRewrittenResume": "KI-umgeschriebener Lebenslauf",
       "customCoverLetter": "Individuelles Anschreiben",
       "beforeAfterComparison": "Vorher/Nachher-Vergleich",
-      "keywordOptimization": "Keyword-Optimierung",
-      "priorityProcessing": "Bevorzugte Bearbeitung"
+      "keywordOptimization": "Keyword-Optimierung"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Vollständige ATS-Score-Aufschlüsselung",
@@ -1732,7 +1714,7 @@
       },
       "cost": {
         "feature": "Kosten",
-        "us": "5 € – 25 € einmalig",
+        "us": "{{min}} – {{max}} einmalig",
         "them": "150 € – 500 €+"
       },
       "atsOptimization": {
@@ -2508,22 +2490,19 @@
     "privacyMatters": "Deine Privatsphäre ist uns wichtig",
     "titlePrefix": "Dein Lebenslauf ist",
     "titleHighlight": "bei uns sicher",
-    "heroSubtitle": "Wir haben Resume Booster nach dem Prinzip „Sicherheit zuerst“ entwickelt. Deine Karrieredokumente verdienen Schutz auf Bankniveau – genau das bieten wir.",
+    "heroSubtitle": "Was wir speichern, wie lange, an wen es geht und wie Sie es löschen lassen — schriftlich, damit Sie es nachprüfen können.",
     "badges": {
       "ssl": "256-Bit-SSL",
-      "retention": "Offengelegte Fristen",
-      "gdpr": "DSGVO-konform"
+      "retention": "Offengelegte Fristen"
     },
     "stats": {
       "resumesAnalyzed": "Analysierte Lebensläufe",
-      "betterResults": "Berichten von besseren Ergebnissen",
-      "avgDelivery": "Durchschnittliche Lieferzeit",
-      "dataBreaches": "Datenschutzverletzungen"
+      "betterResults": "Berichten von besseren Ergebnissen"
     },
     "security": {
       "ssl": {
         "title": "256-Bit-SSL-Verschlüsselung",
-        "description": "Dein Lebenslauf wird während des Uploads und der Verarbeitung mit Verschlüsselung auf Bankniveau geschützt. Wir nutzen den gleichen Sicherheitsstandard wie große Finanzinstitute."
+        "description": "Ihr Lebenslauf wird über verschlüsselte Verbindungen (HTTPS/TLS) zu uns und zu den Diensten übertragen, die ihn verarbeiten."
       },
       "freeScan": {
         "title": "Was der Gratis-Scan aufbewahrt",
@@ -2534,8 +2513,8 @@
         "description": "Löschjobs laufen alle 15 Minuten für den Zwischenspeicher und stündlich für den Bericht-Cache, den KI-Cache und bezahlte Analysen, sodass keines davon seine angegebene Frist um mehr als eine Stunde überschreitet."
       },
       "gdpr": {
-        "title": "DSGVO-konform",
-        "description": "Wir halten uns an strenge europäische Datenschutzstandards. Du kannst jederzeit die Löschung deiner Daten beantragen."
+        "title": "Ihre Datenrechte",
+        "description": "Egal, wo Sie wohnen: Sie können jederzeit eine Kopie der Daten anfordern, die wir über Sie speichern, oder deren Löschung verlangen."
       },
       "neverSold": {
         "title": "Nie verkauft",
@@ -2636,7 +2615,7 @@
     "trustedByTitle": "Vertraut von Bewerbern bei Top-Unternehmen",
     "trustedBySubtitle": "Fachkräfte führender Unternehmen nutzen Resume Booster, um ihre Traumjobs zu bekommen.",
     "ctaTitle": "Bereit, deinen Lebenslauf zu verbessern?",
-    "ctaSubtitle": "Schließe dich Tausenden von Bewerbern an, die ihre Lebensläufe mit unserer KI-gestützten Analyse verbessert haben.",
+    "ctaSubtitle": "Kostenloser Scan, keine Anmeldung. Jede zitierte Zeile im Bericht wird mit Ihrem eigenen Lebenslauf abgeglichen.",
     "ctaButton": "Hol dir deinen kostenlosen Scan",
     "dataFence": {
       "badge": "Datenunabhängigkeit",
@@ -2776,7 +2755,7 @@
     "noSubscriptions": "Einmalzahlungen • Verlängern sich nie automatisch",
     "titlePrefix": "Wähle deinen",
     "titleHighlight": "Lebenslauf-Boost",
-    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmal zahlen, für immer nutzen.",
+    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmalprodukte zahlen Sie einmal; Pro und der Agent-Plan verlängern sich monatlich, bis Sie kündigen.",
     "secureCheckout": "Sicherer Checkout",
     "instantAccess": "Sofortiger Zugang",
     "stripeProtected": "Durch Stripe geschützt",
@@ -4464,7 +4443,7 @@
     "deleteAccount": "Konto löschen",
     "welcome": "Willkommen! Holen wir Ihren ersten Score 🎯",
     "trackerEmpty": "Verfolgen Sie Ihre Bewerbungen — Status, Daten und der gesendete Score an einem Ort.",
-    "trackerEmptyCta": "Über 550.000 verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
+    "trackerEmptyCta": "Verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
     "status": {
       "saved": "Gespeichert",
       "applied": "Beworben",
@@ -5019,9 +4998,9 @@
   },
   "homeHero": {
     "badge": "Live-Stellenboard + KI-Bewerbungsagent",
-    "headlinePre": "Jede Stelle hier ist echt.",
+    "headlinePre": "Live-Stellen, direkt aus den Bewerbungssystemen der Arbeitgeber.",
     "headlineHighlight": "Der Agent bewirbt sich für Sie.",
-    "sub": "Stellen direkt aus den Bewerbersystemen der Unternehmen — nie gescrapt, den ganzen Tag neu geprüft. Laden Sie Ihren Lebenslauf hoch: der Agent bewertet jede Stelle, schreibt jede Bewerbung ehrlich und reicht ein, wo Arbeitgeber es zulassen.",
+    "sub": "Stellen, gelesen aus den eigenen Bewerbersystemen der Unternehmen und den ganzen Tag neu geprüft. Laden Sie Ihren Lebenslauf hoch: der Agent bewertet jede Stelle, schreibt jede Bewerbung ehrlich und reicht ein, wo Arbeitgeber es zulassen.",
     "statOpenings": "verifizierte Stellen",
     "statCompanies": "Unternehmen",
     "statSendable": "kann der Agent für Sie einreichen",

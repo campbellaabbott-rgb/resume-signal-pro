@@ -65,7 +65,7 @@ export function ScanOutcomeAsk({ reportId }: { reportId: string }) {
       </div>
       {answered && (
         <p className="text-xs text-success mt-2">
-          Recorded — thank you. Every answer sharpens the benchmarks we publish.
+          Recorded — thank you. Your answers help us study which scores lead to interviews; no public figure is built from them yet.
         </p>
       )}
     </div>

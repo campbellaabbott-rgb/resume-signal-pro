@@ -300,7 +300,7 @@ export function AnalysisPreview() {
               <div className="flex items-center gap-2">
                 <Linkedin className="w-5 h-5 text-[#0077B5]" />
                 <span className="text-sm font-semibold">{t('preview.linkedinAnalysis')}</span>
-                <span className="text-xs bg-[#0077B5]/20 text-[#0077B5] px-2 py-0.5 rounded-full">{t('preview.includedFree')}</span>
+                <span className="text-xs bg-[#0077B5]/20 text-[#0077B5] px-2 py-0.5 rounded-full">{t('preview.includedInFullAnalysis')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-lg font-bold text-[#0077B5]">{sampleLinkedIn.profileStrength}%</span>
