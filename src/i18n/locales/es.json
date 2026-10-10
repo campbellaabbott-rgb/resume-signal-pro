@@ -5215,7 +5215,8 @@
     "applyNote": "La postulación ocurre en el sistema de selección del propio empleador. Este tablero nunca republica una vacante ni se interpone entre tú y la empresa.",
     "descHeading": "La descripción del propio empleador",
     "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días y desaparece en cuanto el feed del empleador deja de incluirla.",
-    "theEmployer": "el empleador"
+    "theEmployer": "el empleador",
+    "theEmployerPossessive": "del empleador"
   },
   "pulseConfirm": {
     "title": "Confirma tu pulso mensual del mercado",

@@ -5215,7 +5215,8 @@
     "applyNote": "A candidatura decorre no sistema de recrutamento do próprio empregador. Este quadro nunca republica uma vaga nem se coloca entre si e o empregador.",
     "descHeading": "A descrição do próprio empregador",
     "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
-    "theEmployer": "o empregador"
+    "theEmployer": "o empregador",
+    "theEmployerPossessive": "do empregador"
   },
   "pulseConfirm": {
     "title": "Confirme seu pulso mensal do mercado",

@@ -48,8 +48,10 @@ import {
   postingPageDescription,
   postingPagePath,
   postingPageTitle,
+  postingEmployer,
   type PostingRow,
 } from "@/components/jobs/posting-page";
+import { possessive } from "@/lib/company-display";
 
 const SITE = "https://resumebooster.work";
 
@@ -227,7 +229,9 @@ export default function JobPosting() {
 
   const paragraphs = description ? jdParagraphs(description) : [];
   const path = postingPagePath(id) ?? "/jobs";
-  const company = (job?.company ?? "").trim();
+  // The employer by the name it uses, not its vendor tenant code (F1).
+  const company = job?.company ? postingEmployer(job) : "";
+  const companyPossessive = company ? possessive(company) : "";
   const heading = live && job?.title ? job.title : t("jobPostingPage.genericHeading", "Job posting");
   // THE GONE COPY IS FOR "GONE" ONLY. It used to cover every state that was
   // not ready, so a renderer that snapshotted while loading, after a transient
@@ -367,7 +371,7 @@ export default function JobPosting() {
                   <Button asChild size="lg">
                     <a href={job.applyUrl} target="_blank" rel="noopener noreferrer nofollow">
                       {company
-                        ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{company}}'s own site", company })
+                        ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{companyPossessive}} own site", company, companyPossessive })
                         : t("jobPostingPage.applyCtaPlain", "Apply on the employer's own site")}
                       <ExternalLink className="w-4 h-4 ml-1.5" />
                     </a>
@@ -405,8 +409,9 @@ export default function JobPosting() {
                 <p className="text-xs text-muted-foreground mt-10">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
-                      "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
+                      "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
                     company: company || t("jobPostingPage.theEmployer", "the employer"),
+                    companyPossessive: companyPossessive || t("jobPostingPage.theEmployerPossessive", "the employer's"),
                     days: BOARD_FRESH_WINDOW_DAYS,
                   })}
                 </p>

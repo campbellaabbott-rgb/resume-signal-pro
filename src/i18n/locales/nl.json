@@ -5215,7 +5215,8 @@
     "applyNote": "De sollicitatie verloopt via het eigen wervingssysteem van de werkgever. Dit bord plaatst een vacature nooit opnieuw en gaat nooit tussen jou en de werkgever staan.",
     "descHeading": "De eigen omschrijving van de werkgever",
     "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond en verdwijnt zodra de feed van de werkgever hem niet meer bevat.",
-    "theEmployer": "de werkgever"
+    "theEmployer": "de werkgever",
+    "theEmployerPossessive": "van de werkgever"
   },
   "pulseConfirm": {
     "title": "Bevestig je maandelijkse marktpuls",
