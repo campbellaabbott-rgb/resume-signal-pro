@@ -4610,6 +4610,8 @@
     "deleteUnlinkedPlan": "Cette adresse a un abonnement qui n'est pas lié à ce compte. Résiliez-le d'abord depuis la page de facturation de Stripe, puis supprimez le compte. Rien n'a été supprimé.",
     "deleteRetry": "Votre compte n'a pas été supprimé : nous n'avons pas pu retirer votre CV enregistré ou résilier votre abonnement. Réessayez dans une minute.",
     "deletePlanCancelled": "Nous avons résilié un abonnement de ce compte, il ne vous sera donc plus facturé, mais le compte lui-même n'a pas été supprimé. Réessayez dans une minute, ou contactez le support si cela échoue encore.",
+    "deleteAgentStopped": "Votre agent de candidature a été désactivé.",
+    "deleteCvRemoved": "Votre CV enregistré a été supprimé.",
     "deleteFailed": "La suppression du compte a échoué. Contactez l'assistance.",
     "lifecycleGoingDown": "Lors de notre dernière vérification, cette offre n'était plus sur le site carrières de l'employeur. Nous la daterons quand son retrait sera confirmé.",
     "getMoreCredits": "Obtenir plus de crédits →",

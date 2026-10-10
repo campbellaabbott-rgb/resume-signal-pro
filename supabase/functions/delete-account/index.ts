@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T18:00Z
+// deploy-stamp: 2026-10-10T15:00Z
 // GDPR account deletion: verifies the caller's JWT and deletes their auth
 // user. user_scans / user_profiles / user_applications rows cascade via FK.
 // Email-keyed purchase records are retained (legal/accounting basis), but the
@@ -11,12 +11,14 @@
 //          and the owner-only policies meant nobody could remove them after.
 // Both are done before the user is deleted, and either failing stops the
 // delete: an account must not vanish while its card is still charged or its
-// CV is still kept. THE ORDER (wave 3 review): the plans are READ first (a
-// failure changes nothing), the files are removed next (removing them again
-// on a retry is harmless), and the plans are cancelled LAST, just before the
-// user goes, because a cancel cannot be undone. A refusal after a cancel says
-// how many went (subscriptionsCancelled), so the page never says nothing
-// changed when something did.
+// CV is still kept. THE ORDER (wave 3 reviews): the plans are READ first (a
+// failure changes nothing) and CANCELLED next; then the apply agent is
+// switched off (agent_mandates.active, which the broker enforces), and only
+// then do the CV files go. Removing the files first left, on a failed cancel,
+// a billing plan and a running agent whose mandate pointed at a deleted CV,
+// so it could submit applications with none. A refusal after a cancel says
+// how many went (subscriptionsCancelled), and one after the agent was
+// switched off says so (agentStopped), so the page never says nothing changed.
 //
 // WHICH SUBSCRIPTIONS IT MAY CANCEL. While sign-ups are auto-confirmed anyone
 // can register a subscriber's address, so the address alone does not make a
@@ -35,7 +37,7 @@ import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without deleting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "delete-account.2026-10-09.2";
+const FN_BUILD = "delete-account.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,7 +115,37 @@ Deno.serve(async (req) => {
       return json({ error: "Deletion is unavailable right now. Nothing was deleted.", code: "billing_unreadable" }, 503);
     }
 
-    // 2. The CV files: every object under resumes/{user id}/, removed.
+    // 2. The plans: cancelled before anything else goes (see THE ORDER).
+    const cancelled: string[] = [];
+    const sofar = () => (cancelled.length ? { subscriptionsCancelled: cancelled.length } : {});
+    if (stripe) {
+      try {
+        for (const s of mine) {
+          await stripe.subscriptions.cancel(s.id);
+          cancelled.push(s.id);
+        }
+      } catch (e) {
+        console.error("[DELETE-ACCOUNT] Stripe cancel:", e instanceof Error ? e.message : e);
+        return json({
+          error: "We couldn't cancel your subscription, so your CV was kept and the account was not deleted. Please try again in a minute.",
+          code: "subscription_cancel_failed",
+          ...sofar(),
+        }, 503);
+      }
+    }
+
+    // 3. The agent, switched off before its CV goes: nothing is sent without it.
+    const { error: offErr } = await admin.from("agent_mandates").update({ active: false }).eq("user_id", user.id);
+    if (offErr) {
+      console.error("[DELETE-ACCOUNT] Agent off:", offErr.message);
+      return json({
+        error: "We couldn't switch off your apply agent, so your CV was kept and the account was not deleted. Please try again in a minute.",
+        code: "files_not_deleted",
+        ...sofar(),
+      }, 503);
+    }
+
+    // 4. The CV files: every object under resumes/{user id}/, removed.
     try {
       const bucket = admin.storage.from(RESUME_BUCKET);
       for (;;) {
@@ -128,33 +160,17 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.error("[DELETE-ACCOUNT] Storage:", e instanceof Error ? e.message : e);
       return json({
-        error: "We couldn't delete your stored CV, so no plan was cancelled and the account was not deleted. Please try again in a minute.",
+        error: "We couldn't delete your stored CV, so the account was not deleted. Your apply agent is switched off. Please try again in a minute.",
         code: "files_not_deleted",
+        agentStopped: true,
+        ...sofar(),
       }, 503);
-    }
-
-    // 3. The plans, last: a cancel cannot be undone.
-    const cancelled: string[] = [];
-    if (stripe) {
-      try {
-        for (const s of mine) {
-          await stripe.subscriptions.cancel(s.id);
-          cancelled.push(s.id);
-        }
-      } catch (e) {
-        console.error("[DELETE-ACCOUNT] Stripe cancel:", e instanceof Error ? e.message : e);
-        return json({
-          error: "We couldn't cancel your subscription, so the account was not deleted. Please try again in a minute.",
-          code: "subscription_cancel_failed",
-          ...(cancelled.length ? { subscriptionsCancelled: cancelled.length } : {}),
-        }, 503);
-      }
     }
 
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) {
       console.error("[DELETE-ACCOUNT] Failed:", delErr);
-      return json({ error: "Deletion failed", ...(cancelled.length ? { subscriptionsCancelled: cancelled.length } : {}) }, 500);
+      return json({ error: "Deletion failed", agentStopped: true, cvRemoved: true, ...sofar() }, 500);
     }
 
     console.log(`[DELETE-ACCOUNT] Deleted user ${user.id}; subscriptions cancelled: ${cancelled.length}`);

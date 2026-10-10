@@ -47,7 +47,7 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
 import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
-import { deleteRefusalKey, type DeleteRefusal } from "@/lib/account-delete";
+import { deleteRefusalKeys, type DeleteRefusal } from "@/lib/account-delete";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
 interface FixItem { step: string; done: boolean }
@@ -670,8 +670,8 @@ export default function Account() {
       return;
     }
     // The function refuses when a plan could not be read or cancelled or the
-    // CV could not be removed (L6-30, L3-13), and says when a plan was already
-    // cancelled: the message follows its answer (lib/account-delete).
+    // CV could not be removed (L6-30, L3-13), and says what had already
+    // changed: the message follows its answer (lib/account-delete).
     let refusal: DeleteRefusal = null;
     try {
       const ctx = (error as { context?: { clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
@@ -679,7 +679,7 @@ export default function Account() {
     } catch { /* body unreadable */ }
     setDeleting(false);
     setConfirmDelete(false);
-    alert(t(deleteRefusalKey(refusal)));
+    alert(deleteRefusalKeys(refusal).map((k) => t(k)).join(" "));
   };
 
   if (loading || !session) {

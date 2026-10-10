@@ -4610,6 +4610,8 @@
     "deleteUnlinkedPlan": "This address has a subscription that isn't linked to this account. Cancel it from Stripe's billing page first, then delete the account. Nothing was deleted.",
     "deleteRetry": "Your account was not deleted: we couldn't finish removing your stored CV or cancelling your subscription. Please try again in a minute.",
     "deletePlanCancelled": "We cancelled a subscription on this account, so it will not charge you again, but the account itself was not deleted. Please try again in a minute, or contact support if it fails again.",
+    "deleteAgentStopped": "Your apply agent has been switched off.",
+    "deleteCvRemoved": "Your stored CV has been removed.",
     "deleteFailed": "Account deletion failed. Please contact support.",
     "lifecycleGoingDown": "Our last check did not find this posting on the employer's board. We'll date it once it is confirmed down.",
     "getMoreCredits": "Get more credits →",

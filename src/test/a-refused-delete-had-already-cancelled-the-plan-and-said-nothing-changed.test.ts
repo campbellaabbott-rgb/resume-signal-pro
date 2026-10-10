@@ -14,11 +14,11 @@
  * either failure stopped the delete "with nothing deleted".
  *
  * WHAT HOLDS NOW, against the shipped handler with Stripe, storage and auth
- * faked: the plans are read first, the files removed next, and the plans
- * cancelled last, just before the user goes; a storage failure cancels
- * nothing; a cancel that fails partway says how many went, and the page's
- * message for that answer says a plan was cancelled, never that nothing
- * changed.
+ * faked: a cancel that fails partway says how many went, a storage failure
+ * after the cancels says they went, and the page's message for either says a
+ * plan was cancelled, never that nothing changed. (The order itself, plans
+ * cancelled before the CV goes, is pinned by
+ * a-refused-delete-left-the-agent-billing-and-applying-with-its-cv-gone.test.ts.)
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -105,21 +105,20 @@ const del = async () => {
 const said = (body: Record<string, unknown>) => (en.accountPage as unknown as Record<string, string>)[deleteRefusalKey(body).replace("accountPage.", "")];
 
 describe("deleting an account, in the order that cannot strand a cancelled plan", () => {
-  it("removes the files before it cancels anything, and cancels just before the user goes", async () => {
+  it("cancels the plans, then removes the files, then deletes the user", async () => {
     const r = await del();
     expect(r.status).toBe(200);
-    expect(state.order).toEqual(["remove", "cancel:sub_pro", "cancel:sub_agent", "deleteUser"]);
+    expect(state.order).toEqual(["cancel:sub_pro", "cancel:sub_agent", "remove", "deleteUser"]);
   });
 
-  it("a storage failure cancels no plan, and the page says the account was not deleted", async () => {
+  it("a storage failure after the cancels says they went, and the page says a plan was cancelled", async () => {
     state.storageFails = true;
     const r = await del();
     expect(r.status).toBe(503);
-    expect(r.body.code).toBe("files_not_deleted");
-    expect(state.cancelled, "a plan was cancelled for a delete that did not happen").toEqual([]);
+    expect(r.body).toMatchObject({ code: "files_not_deleted", subscriptionsCancelled: 2 });
     expect(state.deleted).toEqual([]);
-    expect(said(r.body)).toBe(en.accountPage.deleteRetry);
-    expect(en.accountPage.deleteRetry).toMatch(/not deleted/);
+    expect(said(r.body)).toBe(en.accountPage.deletePlanCancelled);
+    expect(en.accountPage.deletePlanCancelled).toMatch(/not deleted/);
   });
 
   it("a cancel that fails partway says how many went, and the page says a plan was cancelled, not that nothing changed", async () => {
@@ -132,6 +131,16 @@ describe("deleting an account, in the order that cannot strand a cancelled plan"
     expect(deleteRefusalKey(r.body)).toBe("accountPage.deletePlanCancelled");
     expect(said(r.body)).toMatch(/cancelled a subscription/);
     expect(said(r.body)).not.toMatch(/nothing was deleted/i);
+  });
+
+  it("with no plan, a storage failure says the account was not deleted", async () => {
+    state.subs = [];
+    state.storageFails = true;
+    const r = await del();
+    expect(r.status).toBe(503);
+    expect(r.body.code).toBe("files_not_deleted");
+    expect(said(r.body)).toBe(en.accountPage.deleteRetry);
+    expect(en.accountPage.deleteRetry).toMatch(/not deleted/);
   });
 
   it("a Stripe read failure changes nothing at all", async () => {

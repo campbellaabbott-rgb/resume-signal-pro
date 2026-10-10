@@ -4610,6 +4610,8 @@
     "deleteUnlinkedPlan": "May subscription ang address na ito na hindi naka-link sa account na ito. Kanselahin muna ito sa billing page ng Stripe, saka burahin ang account. Walang nabura.",
     "deleteRetry": "Hindi nabura ang iyong account: hindi namin natapos ang pag-alis ng iyong naka-save na CV o ang pagkansela ng iyong subscription. Pakisubukang muli makalipas ang isang minuto.",
     "deletePlanCancelled": "Kinansela namin ang isang subscription sa account na ito, kaya hindi ka na nito sisingilin, pero hindi nabura ang account mismo. Pakisubukang muli makalipas ang isang minuto, o makipag-ugnayan sa support kung pumalya ulit.",
+    "deleteAgentStopped": "Naka-off na ang iyong apply agent.",
+    "deleteCvRemoved": "Natanggal na ang iyong naka-save na CV.",
     "deleteFailed": "Nabigo ang pagbura ng account. Makipag-ugnayan sa support.",
     "lifecycleGoingDown": "Sa huli naming pagsusuri, wala na ang posting na ito sa board ng employer. Lalagyan namin ito ng petsa kapag nakumpirmang tinanggal na.",
     "getMoreCredits": "Kumuha ng mas maraming credit →",

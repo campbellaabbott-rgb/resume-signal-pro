@@ -4610,6 +4610,8 @@
     "deleteUnlinkedPlan": "Für diese Adresse besteht ein Abonnement, das nicht mit diesem Konto verknüpft ist. Kündigen Sie es zuerst auf der Abrechnungsseite von Stripe und löschen Sie dann das Konto. Es wurde nichts gelöscht.",
     "deleteRetry": "Ihr Konto wurde nicht gelöscht: Wir konnten Ihren gespeicherten Lebenslauf nicht vollständig entfernen oder Ihr Abonnement nicht kündigen. Bitte versuchen Sie es in einer Minute erneut.",
     "deletePlanCancelled": "Wir haben ein Abonnement dieses Kontos gekündigt, es wird Ihnen also nichts mehr berechnet, aber das Konto selbst wurde nicht gelöscht. Bitte versuchen Sie es in einer Minute erneut oder wenden Sie sich an den Support, falls es wieder fehlschlägt.",
+    "deleteAgentStopped": "Ihr Bewerbungsagent wurde ausgeschaltet.",
+    "deleteCvRemoved": "Ihr gespeicherter Lebenslauf wurde entfernt.",
     "deleteFailed": "Das Löschen des Kontos ist fehlgeschlagen. Bitte wenden Sie sich an den Support.",
     "lifecycleGoingDown": "Bei unserer letzten Prüfung war diese Stelle nicht mehr auf der Karriereseite des Arbeitgebers. Ein Datum nennen wir erst, wenn feststeht, dass sie entfernt wurde.",
     "getMoreCredits": "Mehr Credits holen →",

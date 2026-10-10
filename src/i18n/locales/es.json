@@ -4610,6 +4610,8 @@
     "deleteUnlinkedPlan": "Esta dirección tiene una suscripción que no está vinculada a esta cuenta. Cancélala primero en la página de facturación de Stripe y luego elimina la cuenta. No se eliminó nada.",
     "deleteRetry": "Tu cuenta no se eliminó: no pudimos terminar de quitar tu CV guardado ni de cancelar tu suscripción. Vuelve a intentarlo en un minuto.",
     "deletePlanCancelled": "Cancelamos una suscripción de esta cuenta, así que no te volverá a cobrar, pero la cuenta en sí no se eliminó. Vuelve a intentarlo en un minuto o contacta con soporte si vuelve a fallar.",
+    "deleteAgentStopped": "Tu agente de candidaturas se ha desactivado.",
+    "deleteCvRemoved": "Tu CV guardado se ha eliminado.",
     "deleteFailed": "No se pudo eliminar la cuenta. Ponte en contacto con soporte.",
     "lifecycleGoingDown": "En nuestra última revisión esta oferta ya no estaba en el portal del empleador. Le pondremos fecha cuando se confirme que la retiraron.",
     "getMoreCredits": "Conseguir más créditos →",

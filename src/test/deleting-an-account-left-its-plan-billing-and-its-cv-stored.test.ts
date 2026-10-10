@@ -116,9 +116,8 @@ describe("deleting an account", () => {
     expect(state.removed.sort()).toEqual([`${USER_ID}/Jane_CV.pdf`, `${USER_ID}/Jane_CV_2026.pdf`]);
     expect(state.files, "another account's file was touched").toEqual([`${OTHER_ID}/Someone_else.pdf`]);
     expect(state.deleted).toEqual([USER_ID]);
-    // Files first (a retry is harmless), plans last (a cancel is final):
-    // a-refused-delete-had-already-cancelled-the-plan-and-said-nothing-changed.test.ts.
-    expect(state.order).toEqual(["remove", "cancel", "deleteUser"]);
+    // Plans first, then the CV: a-refused-delete-left-the-agent-billing-and-applying-with-its-cv-gone.test.ts.
+    expect(state.order).toEqual(["cancel", "remove", "deleteUser"]);
   });
 
   it("deletes nothing when Stripe cannot be read, so no plan is left billing a deleted account", async () => {
