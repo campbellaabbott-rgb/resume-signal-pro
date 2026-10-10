@@ -78,7 +78,8 @@ describe("filtered category counts are computed, not guessed or dropped", () => 
     // Unfiltered, the cached board-wide facet is already correct and free.
     // (The branch also retires a probe still in flight -- the race is held by
     // behaviour in a-cleared-search-cannot-keep-its-field-counts.test.tsx.)
-    expect(UI).toMatch(/if \(!activeFilters\) \{ \+\+catFacetSeq\.current; setFilteredCats\(null\); return; \}/);
+    // (It also clears the withheld-facet note, facetSource "withheld", 2026-10-09.)
+    expect(UI).toMatch(/if \(!activeFilters\) \{ \+\+catFacetSeq\.current; setFilteredCats\(null\); setFacetWithheld\(false\); return; \}/);
   });
 
   it("prefers the filter-aware count but still falls back to the board-wide one", () => {
