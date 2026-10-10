@@ -3641,6 +3641,60 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_revocations: {
+        Row: {
+          applications_stopped: number
+          claim_revoked: boolean
+          created_at: string
+          credits_clawed: number
+          email: string | null
+          grants_revoked: number
+          paid_at: string | null
+          pass_closed: boolean
+          payment_intent_id: string
+          product_type: string | null
+          reason: string
+          stripe_event_id: string | null
+          stripe_session_id: string | null
+          subscription_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          applications_stopped?: number
+          claim_revoked?: boolean
+          created_at?: string
+          credits_clawed?: number
+          email?: string | null
+          grants_revoked?: number
+          paid_at?: string | null
+          pass_closed?: boolean
+          payment_intent_id: string
+          product_type?: string | null
+          reason: string
+          stripe_event_id?: string | null
+          stripe_session_id?: string | null
+          subscription_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          applications_stopped?: number
+          claim_revoked?: boolean
+          created_at?: string
+          credits_clawed?: number
+          email?: string | null
+          grants_revoked?: number
+          paid_at?: string | null
+          pass_closed?: boolean
+          payment_intent_id?: string
+          product_type?: string | null
+          reason?: string
+          stripe_event_id?: string | null
+          stripe_session_id?: string | null
+          subscription_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pro_grants: {
         Row: {
           consumed_at: string | null
@@ -6676,6 +6730,25 @@ export type Database = {
         }[]
       }
       one_click_vendors: { Args: never; Returns: string[] }
+      payment_revoke: {
+        Args: {
+          p_credits?: number
+          p_email?: string
+          p_paid_at?: string
+          p_payment_intent_id: string
+          p_product_type?: string
+          p_reason: string
+          p_stripe_event_id?: string
+          p_stripe_session_id?: string
+          p_subscription_id?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      payment_revoke_credits: {
+        Args: { p_credits: number; p_email: string }
+        Returns: number
+      }
       pro_entitlement_rows: {
         Args: { p_user_id: string }
         Returns: {
