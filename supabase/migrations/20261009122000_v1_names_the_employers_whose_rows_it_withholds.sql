@@ -14,13 +14,17 @@
 -- an hour per isolate. It walks job_board_postings_source_posted_idx on the
 -- named sources only (about 79,000 rows for SmartRecruiters).
 --
--- SECURITY INVOKER, service_role only: it is a reader for one edge function,
--- not a client RPC. Safe to re-run.
+-- SECURITY DEFINER like every function that reads the corpus (the key-wall
+-- lockdown, 20260827130000, holds that an invoker reader of
+-- job_board_postings returns blank rows to a client instead of an error),
+-- and executable by service_role only: it is a reader for one edge function,
+-- not a client RPC, so no client role can call it. Safe to re-run.
 
 CREATE OR REPLACE FUNCTION public.v1_withheld_company_tokens(p_sources text[])
 RETURNS jsonb
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT coalesce(jsonb_agg(t.company_token ORDER BY t.company_token), '[]'::jsonb)
@@ -45,8 +49,8 @@ BEGIN
   IF v_fn IS NULL THEN
     RAISE EXCEPTION '20261009122000: v1_withheld_company_tokens(text[]) is missing';
   END IF;
-  IF (SELECT prosecdef FROM pg_proc WHERE oid = v_fn) THEN
-    RAISE EXCEPTION '20261009122000: v1_withheld_company_tokens must be SECURITY INVOKER';
+  IF NOT (SELECT prosecdef FROM pg_proc WHERE oid = v_fn) THEN
+    RAISE EXCEPTION '20261009122000: v1_withheld_company_tokens must be SECURITY DEFINER';
   END IF;
   IF has_function_privilege('anon', v_fn, 'EXECUTE') OR has_function_privilege('authenticated', v_fn, 'EXECUTE') THEN
     RAISE EXCEPTION '20261009122000: v1_withheld_company_tokens is executable by a client role';
