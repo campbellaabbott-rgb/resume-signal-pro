@@ -1100,7 +1100,11 @@ export function detectCountry(location: string | null | undefined): string | nul
   if (tail) {
     const city = cityCountry(s.split(",")[0]);
     if (city !== null && city === tail[1]) return city;
-    if (US_STATE_CODES.has(tail[1])) return "US";
+    if (US_STATE_CODES.has(tail[1])) {
+      // ...unless the string names that same country in words: "India, IN".
+      for (const [re, code] of COUNTRY_PATTERNS) if (code === tail[1] && re.test(s)) return code;
+      return "US";
+    }
   }
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
