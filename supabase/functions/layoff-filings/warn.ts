@@ -58,7 +58,8 @@ export function mapTable(map: StateMap, table: Table, feed: WarnRecord["feed"], 
   };
   const dropped = { noFiler: 0, noVisibleDate: 0, notWarn: 0 };
   const records: WarnRecord[] = [];
-  for (const row of table.rows) {
+  const rows = map.foldRows ? map.foldRows(table.rows) : table.rows;
+  for (const row of rows) {
     if (map.keepRow && !map.keepRow(row)) { dropped.notWarn += 1; continue; }
     const filerCell = get("filer", row);
     if (filerCell === "") { dropped.noFiler += 1; continue; }
@@ -71,8 +72,10 @@ export function mapTable(map: StateMap, table: Table, feed: WarnRecord["feed"], 
     if (filerForNorm === "") { dropped.noFiler += 1; continue; }
     const visibleDate = readDate(get("visible", row));
     if (visibleDate == null) { dropped.noVisibleDate += 1; continue; }
-    // "Notification Date(s)" can list several; the first is the notice date.
-    const noticeDate = p.noticeDate ? firstDateIn(get("noticeDate", row)) : null;
+    // A cell that lists several dates: the map says which is the notice's
+    // (Illinois' is the earliest); otherwise the first.
+    const noticeCell = p.noticeDate ? get("noticeDate", row) : "";
+    const noticeDate = !p.noticeDate ? null : map.noticeDateCell ? map.noticeDateCell(noticeCell) : firstDateIn(noticeCell);
     let workers: number | null = null;
     for (const h of map.columns.workers ?? []) {
       if (!header.includes(h)) continue;
@@ -129,6 +132,8 @@ export interface BuiltRows {
   futureDated: number;
   /** Notices older than the retention window; never inserted. */
   tooOld: number;
+  /** Notice dates later than the state's own stamp, refused as notice dates (S8-025). */
+  noticeAfterStamp: number;
   superseded: number;
   rescinded: number;
   latestPublicDate: string | null;
@@ -148,7 +153,15 @@ export async function buildWarnRows(
   const readIso = readAt.toISOString().slice(0, 10);
   const floor = addDays(readIso, -retentionDays);
   const keyed: Array<WarnRecord & { filingId: string }> = [];
-  for (const r of records) {
+  let noticeAfterStamp = 0;
+  for (const r0 of records) {
+    // A NOTICE CANNOT BE DATED AFTER THE STATE STAMPED IT (S8-025). Illinois'
+    // newest re-notification read as the notice put UnityPoint's May notice
+    // at 2026-08-10, kept it past the 90-day window and published negative
+    // lags. Such a date is refused as the notice date; the stamp dates it.
+    const late = r0.noticeDate != null && r0.noticeDate > r0.visibleDate;
+    if (late) noticeAfterStamp += 1;
+    const r = late ? { ...r0, noticeDate: null } : r0;
     const key = await dedupeKey({
       state: r.state, filerForNorm: r.filerForNorm, siteRaw: r.siteRaw, siteCity: r.siteCity,
       noticeDate: r.noticeDate, visibleDate: r.visibleDate, effectiveDate: r.effectiveDate, workers: r.workers,
@@ -200,7 +213,7 @@ export async function buildWarnRows(
       notice_pdf_url: r.noticePdfUrl,
     };
   });
-  return { rows, futureDated, tooOld, superseded, rescinded, latestPublicDate: latest };
+  return { rows, futureDated, tooOld, noticeAfterStamp, superseded, rescinded, latestPublicDate: latest };
 }
 
 // ── the Big Local News raw feed ────────────────────────────────────────────

@@ -43,6 +43,10 @@ export interface StateMap {
   filerCell?: (raw: string) => { filerRaw: string; filerForNorm: string; siteFromCell?: string | null };
   /** Override of the event-type reading when the state's vocabulary needs it. */
   eventType?: (kindCell: string, row: Record<string, string>) => EventType;
+  /** The notice date from its cell, when the first date in it is not the notice's (Illinois). */
+  noticeDateCell?: (cell: string) => string | null;
+  /** Rows that are one notice split across several lines (Oregon, by WARN#), folded before mapping. */
+  foldRows?: (rows: Record<string, string>[]) => Record<string, string>[];
   /** Rows the state lists but that are not WARN notices (Illinois' non-WARN layoff reports). */
   keepRow?: (row: Record<string, string>) => boolean;
   /** Was the header of this map checked against a saved copy of the state's file? */
@@ -71,6 +75,11 @@ export function resolveHeaders(map: StateMap, header: string[]): ResolvedHeaders
     const hit = cands.find((c) => set.has(c)) ?? null;
     pick[role] = hit;
     if (hit == null && (role === "filer" || role === "visible")) missing.push(role);
+    // AN UNVERIFIED MAP WHOSE COUNT RESOLVES TO NOTHING IS REFUSED (S8-106).
+    // Oregon's candidates matched none of its live headers ("Laid Off") while
+    // filer and visible did, so every notice was stored with workers NULL,
+    // the 50-worker bar hid all of them, and the feed reported ok.
+    if (hit == null && role === "workers" && cands.length > 0 && !map.verifiedAgainstSample) missing.push(role);
   }
   if (missing.length > 0) return { ok: false, missing, header };
   return { ok: true, pick };

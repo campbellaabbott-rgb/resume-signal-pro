@@ -84,6 +84,15 @@ export interface LayoffFiling {
   readAt: string;
   /** Further qualifying filings for the same token beyond this newest one. */
   moreN: number;
+  /**
+   * Does the filing describe a workforce event (S8-026)? TRUE for a WARN
+   * notice; for an 8-K, the parser's reading of its Item 2.05 section. NULL
+   * or FALSE: an exit-cost filing (a product line, a lease, a status update
+   * on a plan already filed), printed in neutral words. UNDEFINED: a reader
+   * from before the column existed, which keeps the old sentence rather than
+   * turning every 8-K neutral in the deploy window.
+   */
+  workforce?: boolean | null;
 }
 
 type Prefix = "lf" | "la";
@@ -136,6 +145,7 @@ export function readLayoffRow(raw: unknown, prefix: Prefix = "lf"): LayoffFiling
   const workers = numOrNull(g("workers"));
   if (source === "state_warn" && workers === null) return null;
   const more = prefix === "lf" ? numOrNull(g("more_n")) : Math.max(0, (numOrNull(g("total_n")) ?? 1) - 1);
+  const wf = g("workforce");
   return {
     companyToken: token,
     source: source as LayoffSource,
@@ -157,7 +167,13 @@ export function readLayoffRow(raw: unknown, prefix: Prefix = "lf"): LayoffFiling
     sourceName,
     readAt,
     moreN: Math.max(0, Math.round(more ?? 0)),
+    ...(wf === undefined ? {} : { workforce: wf === true ? true : wf === false ? false : null }),
   };
+}
+
+/** An 8-K whose Item 2.05 section the reader says is not a workforce event. */
+export function layoffIsExitCostOnly(row: Pick<LayoffFiling, "source" | "workforce">): boolean {
+  return row.source === "sec_8k_205" && row.workforce !== undefined && row.workforce !== true;
 }
 
 /** The one hide rule the RPC cannot apply: a state WARN notice is a US
@@ -332,7 +348,11 @@ export function layoffLineText(row: LayoffFiling, t: T): { text: string; linkLab
   } else {
     linkLabel = t("jobsPage.layoffSecFilingLink", "SEC filing");
     const common = { filer, reportDate: row.eventDate, filedDate: row.publicDate, sourceName: LINK_SLOT };
-    if (row.pct !== null) {
+    if (layoffIsExitCostOnly(row)) {
+      // Item 2.05 is exit or disposal costs; this section describes no
+      // workforce event we could read, so it is named, never called a cut.
+      text = t("jobsPage.layoffLineSecExit", "{{filer}} filed an 8-K under Item 2.05 (costs of exiting or disposing of an activity) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", common);
+    } else if (row.pct !== null) {
       text = t("jobsPage.layoffLineSecPct", "{{filer}} reported a workforce reduction of about {{pct}}% in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", { ...common, pct: fmtPct(row.pct) });
     } else if (row.headcount !== null) {
       text = t("jobsPage.layoffLineSecCount", "{{filer}} reported a workforce reduction of about {{headcount}} positions in an 8-K (Item 2.05) dated {{reportDate}}, filed with the SEC on {{filedDate}} · {{sourceName}} ↗", { ...common, headcount: fmtCount(row.headcount) });
@@ -428,7 +448,9 @@ export function LayoffFilingChip({ row, country }: LineProps) {
       <Info className="w-3 h-3 shrink-0" />
       {row.source === "state_warn"
         ? t("jobsPage.layoffChipWarn", "Layoff notice on file")
-        : t("jobsPage.layoffChipSec", "Workforce reduction filed")}
+        : layoffIsExitCostOnly(row)
+          ? t("jobsPage.layoffChipSecExit", "Exit-cost filing on file")
+          : t("jobsPage.layoffChipSec", "Workforce reduction filed")}
     </a>
   );
 }

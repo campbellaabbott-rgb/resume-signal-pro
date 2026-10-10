@@ -53,7 +53,7 @@ import {
 
 // .1 mirror; .1 of this date carries the certified H-1B wage cells, the action that loads them, the
 // measured coverage span they are labelled by, and the staged swap that replaces a period whole.
-export const BUILD_VERSION = "2026-09-25.1";
+export const BUILD_VERSION = "2026-10-09.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;
@@ -497,7 +497,8 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
       feed: f.feed, state: f.state, last_attempt_at: readAt.toISOString(),
       ...(v.ok ? { last_ok_at: readAt.toISOString() } : {}),
       ...(v.changed ? { latest_public_date: latest, rows_last_run: v.rows } : {}),
-      ...(v.etag ? { etag: v.etag } : {}),
+      // A validator is stored only for a read that was ok (S8-107).
+      ...(v.ok && v.etag ? { etag: v.etag } : {}),
       stale, note: v.note,
     });
     const ms = Date.now() - t0;
@@ -507,6 +508,16 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
     (v.ok ? console.log : console.error)(line);
     return { ok: v.ok, refused: v.refused === true, changed: v.changed, rows: v.rows, newRows: v.newRows, line };
   };
+  // A REFUSED FILE IS READ AGAIN, NEVER TAKEN AS UNCHANGED (S8-107). A
+  // refusal used to store the file's validator, so the next night's 304
+  // recorded the feed ok with no note and a broken verified feed read green
+  // until isStale tripped 21 days later. A refusal no longer stores one, and
+  // a row written before that change (or a map fixed since) is re-read
+  // without the conditional header instead of trusting a 304.
+  const priorRefused = !!prior?.note && /^header_mismatch/.test(prior.note);
+  const validator = priorRefused ? null : (prior?.etag ?? null);
+  const unchanged = (v: string | null, tag: string): Promise<FeedOutcome> =>
+    finish({ ok: true, changed: false, rows: prior?.rows_last_run ?? 0, newRows: 0, superseded: 0, rescinded: 0, latest: null, etag: v, note: null, tag });
   try {
     let table: Table | null = null;
     let tag = "";
@@ -514,10 +525,8 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
     let sourceUrl: string | undefined;
     if (f.feed === "tx_twc_xlsx") {
       const year = readAt.getUTCFullYear();
-      const cur = await fetchTwcYear(http, year, prior?.etag ?? null);
-      if (cur.status === 304) {
-        return finish({ ok: true, changed: false, rows: prior?.rows_last_run ?? 0, newRows: 0, superseded: 0, rescinded: 0, latest: null, etag: cur.lastModified, note: null, tag: `last_modified=unchanged` });
-      }
+      const cur = await fetchTwcYear(http, year, validator);
+      if (cur.status === 304) return unchanged(cur.lastModified, "last_modified=unchanged");
       if (cur.status !== 200 || !cur.table) throw new Error(`twc xlsx status ${cur.status}`);
       table = cur.table;
       etag = cur.lastModified;
@@ -540,10 +549,8 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
         if (prev.status === 200) table.rows.push(...prev.table.rows);
       }
     } else {
-      const raw = await fetchBlnRaw(http, f.map, prior?.etag ?? null);
-      if (raw.status === 304 || (raw.status === 200 && !raw.changed)) {
-        return finish({ ok: true, changed: false, rows: prior?.rows_last_run ?? 0, newRows: 0, superseded: 0, rescinded: 0, latest: null, etag: raw.etag, note: null, tag: "etag=unchanged" });
-      }
+      const raw = await fetchBlnRaw(http, f.map, validator);
+      if (raw.status === 304 || (raw.status === 200 && !raw.changed)) return unchanged(raw.etag, "etag=unchanged");
       if (raw.status !== 200 || raw.text == null) throw new Error(`bln raw status ${raw.status}`);
       table = tableFromCsv(raw.text, f.map);
       etag = raw.etag;
@@ -553,8 +560,10 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
     if (!mapped.ok) {
       // A file whose header the map does not recognise stores nothing; the
       // header it showed goes to the health row so the map can be pinned.
+      // NO ETAG (S8-107): stored, the next night's 304 recorded the feed ok
+      // with no note, and a broken verified feed read green for 21 days.
       return finish({
-        ok: false, refused: true, changed: true, rows: table.rows.length, newRows: 0, superseded: 0, rescinded: 0, latest: null, etag,
+        ok: false, refused: true, changed: true, rows: table.rows.length, newRows: 0, superseded: 0, rescinded: 0, latest: null, etag: null,
         note: `${mapped.reason} header=${JSON.stringify(mapped.header).slice(0, 300)}`, tag,
       });
     }
@@ -563,6 +572,7 @@ async function readOneFeed(client: SupabaseLike, http: Http, f: WarnFeed, readAt
     const noteParts = [
       f.map.verifiedAgainstSample ? null : "map_unverified",
       built.futureDated ? `future_dated=${built.futureDated}` : null,
+      built.noticeAfterStamp ? `notice_after_stamp=${built.noticeAfterStamp}` : null,
       mapped.dropped.noFiler ? `no_filer=${mapped.dropped.noFiler}` : null,
       mapped.dropped.noVisibleDate ? `no_visible_date=${mapped.dropped.noVisibleDate}` : null,
       mapped.dropped.notWarn ? `not_warn=${mapped.dropped.notWarn}` : null,

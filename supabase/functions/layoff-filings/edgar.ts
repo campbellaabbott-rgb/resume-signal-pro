@@ -12,7 +12,7 @@
 // history holds no candidate.
 
 import type { Http } from "./http.ts";
-import { parse205, parseConfidence, PARSER_VERSION, textOf, unescapeHtml } from "./parse205.ts";
+import { isStatusUpdate, parse205, parseConfidence, PARSER_VERSION, textOf, unescapeHtml } from "./parse205.ts";
 
 export const ATOM_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&count=100&output=atom";
 export const FTS_URL = "https://efts.sec.gov/LATEST/search-index";
@@ -280,11 +280,19 @@ export function buildSecRow(input: SecRowInput): { row: Record<string, unknown>;
       headcount: parsed?.headcount ?? null,
       headcount_basis: parsed?.headcountBasis ?? null,
       timing_text: parsed?.timing ?? null,
-      is_workforce_event: parsed ? parsed.isWorkforce : null,
+      // A status update on a plan already filed is not a new workforce event
+      // (S8-026): the readers print neutral copy and the partition skips it.
+      is_workforce_event: parsed ? parsed.isWorkforce && !isStatusUpdate(parsed.sectionText) : null,
       parse_confidence: parsed ? parseConfidence(parsed) : 0,
       parser_version: PARSER_VERSION,
     },
   };
+}
+
+/** A primary-document status worth asking again: throttled, server-side or
+ *  no answer. A 404/410 is the document's own answer and is stored as such. */
+export function documentReadIsTransient(status: number): boolean {
+  return status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
 function headOf(html: string): string {
@@ -363,7 +371,13 @@ export async function fetchFiling(
   let note: string | null = coNote;
   if (rec.primaryDocument) {
     const doc = await http.getText(primaryDocUrl(cik, adsh, rec.primaryDocument), { Accept: "text/html" });
-    if (doc.status === 200) html = doc.text; else note = `document_${doc.status}`;
+    if (doc.status === 200) html = doc.text;
+    else if (documentReadIsTransient(doc.status)) {
+      // NO ROW FOR A READ THAT MAY SUCCEED NEXT TIME (S8-108). Every ingest
+      // path skips a filing_id it already holds, so a placeholder stored on
+      // one throttled GET read "(document not read)" with no numbers forever.
+      return { row: null, requests: http.requests - before, note: `document_${doc.status}_retry`, parsedPct: false, amend: false, amendUnresolved: false };
+    } else note = `document_${doc.status}`;
   } else note = "no_primary_document";
   const isAmendment = rec.form === "8-K/A";
   const amendsAdsh = isAmendment ? resolveAmends(filings, rec) : null;

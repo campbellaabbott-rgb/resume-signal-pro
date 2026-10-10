@@ -192,11 +192,12 @@ Deno.test("FL: the REACT listing read directly is at the day's newest notificati
 
 Deno.test("every map without a saved sample says so, and refuses a file whose header it does not recognise", () => {
   const unverified = ALL_STATE_MAPS.filter((m) => !m.verifiedAgainstSample).map((m) => m.state).sort();
-  assertEquals(unverified, ["AZ", "GA", "IA", "MA", "MD", "OR", "VA"]);
+  assertEquals(unverified, ["AZ", "GA", "IA", "MA", "MD", "VA"]);
   const verified = ALL_STATE_MAPS.filter((m) => m.verifiedAgainstSample).map((m) => m.state).sort();
-  assertEquals(verified, ["CA", "FL", "IL", "NY", "OH", "TX", "WA"]);
+  // OR pinned from Big Local News' own raw or.csv on 2026-10-10 (S8-106).
+  assertEquals(verified, ["CA", "FL", "IL", "NY", "OH", "OR", "TX", "WA"]);
   const caTable = tableFromCsv(sampleText("bln-raw-ca.csv"), CA);
-  for (const m of [AZ, GA, IA, MA, MD, OR, VA]) {
+  for (const m of [AZ, GA, IA, MA, MD, VA]) {
     const r = mapTable(m, caTable, "bln_raw");
     assert(!r.ok, `${m.state} must not map California's header`);
     assertStringIncludes(r.ok ? "" : r.reason, "header_mismatch");
@@ -208,6 +209,10 @@ Deno.test("every map without a saved sample says so, and refuses a file whose he
   assert(ok.ok);
   const bad = resolveHeaders(MA, ["EMPLOYER", "CITY/TOWN"]);
   assert(!bad.ok && bad.missing.includes("visible"));
+  // An unverified map whose COUNT resolves to nothing is refused too (S8-106):
+  // Oregon's guessed candidates once stored every notice with workers NULL.
+  const noCount = resolveHeaders(MA, ["RECEIVED", "EMPLOYER", "CITY/TOWN", "REGION", "DATE(S) OF LAYOFFS"]);
+  assert(!noCount.ok && noCount.missing.includes("workers"));
   // Twelve raw maps plus the two direct states, one file each, no duplicates.
   assertEquals(new Set(ALL_STATE_MAPS.map((m) => m.state)).size, 14);
 });
@@ -221,9 +226,10 @@ Deno.test("the employer's notice date never stands in for the state's stamp: a h
       assert(!/notice/i.test(c), `${m.state}: ${JSON.stringify(c)} is a notice-date spelling in the visible slot`);
     }
   }
-  // The same header plus a received stamp resolves for the maps that name one.
-  const withReceived = [...noticeOnly, "Date Received"];
-  for (const m of [MD, AZ, VA, OR, IA, GA]) {
+  // The same header plus a received stamp (and a count each unverified map
+  // can read, which it now requires) resolves for the maps that name one.
+  const withReceived = [...noticeOnly, "Date Received", "Number of Employees Affected", "Employees Affected"];
+  for (const m of [MD, AZ, VA, IA, GA]) {
     const r = resolveHeaders(m, withReceived);
     assert(r.ok, `${m.state} resolves once the state's own stamp is present`);
     assertEquals(r.ok ? r.pick.visible : null, "Date Received");
@@ -381,9 +387,9 @@ Deno.test("a refused unverified map is a note on the slice, never a failed read;
   assertEquals(feedVerdict({ ok: false, refused: true }, verified), "failed", "a verified map that no longer recognises its state's header is a real failure");
   assertEquals(feedVerdict({ ok: false, refused: false }, unverified), "failed", "a fetch or write error on an unverified map is a failure");
   assertEquals(feedVerdict({ ok: false, refused: false }, verified), "failed");
-  // The seven maps shipped unverified all answer "refused" on California's header, so the slice's ok is untouched by them.
+  // The six maps still unverified all answer "refused" on California's header, so the slice's ok is untouched by them.
   const caTable = tableFromCsv(sampleText("bln-raw-ca.csv"), CA);
-  for (const m of [AZ, GA, IA, MA, MD, OR, VA]) {
+  for (const m of [AZ, GA, IA, MA, MD, VA]) {
     const r = mapTable(m, caTable, "bln_raw");
     assertEquals(feedVerdict({ ok: r.ok, refused: !r.ok }, m), "refused", m.state);
   }

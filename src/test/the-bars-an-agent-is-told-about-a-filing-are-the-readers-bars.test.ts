@@ -216,8 +216,19 @@ function fieldsOfReader(sql: string): string[] {
   const code = stripSql(sql);
   const m = /RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE sql/.exec(code);
   if (!m) throw new Error("the reader's RETURNS TABLE was not found — RE-ANCHOR this guard");
-  return [...m[1].matchAll(/^\s*lf_(\w+)\s+(?:text|int|date|numeric|timestamptz)/gm)].map((x) => x[1]).filter((f) => f !== "company_token");
+  return [...m[1].matchAll(/^\s*lf_(\w+)\s+(?:text|int|date|numeric|timestamptz|boolean)/gm)].map((x) => x[1]).filter((f) => f !== "company_token");
 }
+
+/**
+ * Reader columns the MCP field does not carry YET, each named with why.
+ * workforce (20261009160000, sweep S8-026): whether an 8-K's Item 2.05
+ * section describes a workforce event. The site prints neutral copy without
+ * it; the connector's field and schema are the agents-api group's to extend
+ * (handed off in docs/wave3/board-data-ingest.md). Until then the MCP
+ * schema already calls the source "an SEC 8-K Item 2.05 disclosure", never a
+ * reduction.
+ */
+const NOT_YET_ON_THE_CONNECTOR = ["workforce"];
 
 /** The fields the server's filing schema declares, and the ones it requires. */
 function fieldsOfSchema(schemaSrc: string): { declared: string[]; required: string[] } {
@@ -272,7 +283,10 @@ describe("the bars an agent is told about a filing are the reader's bars", () =>
   });
 
   it("the migrations the mirror is read from are resolved, and a re-anchor is a visible diff here", () => {
-    expect(READER_MIG).toBe("supabase/migrations/20260918100500_a_row_is_an_answer_and_no_row_is_never_no_filing.sql");
+    // RE-ANCHORED 2026-10-09. The reader was re-created to return lf_workforce
+    // (S8-026); its k CTE, and so both bars this file mirrors, is the
+    // 20260918100500 text unchanged.
+    expect(READER_MIG).toBe("supabase/migrations/20261009160000_an_exit_cost_filing_is_not_printed_as_a_workforce_reduction.sql");
     // RE-ANCHORED 2026-09-25. refresh_layoff_partition was re-issued to give its
     // day-30 gate the positive control the other two copies of that gate got the
     // same day; this assertion exists so that move is a visible diff rather than
@@ -387,7 +401,8 @@ describe("the bars an agent is told about a filing are the reader's bars", () =>
 
 describe("the field is the reader's row, null when nothing qualified, and no part of the record's judgement", () => {
   it("the reader's lf_ columns and the schema's fields are the same set, every one required, and the mapper writes each from its column", () => {
-    const columns = fieldsOfReader(READER_RAW);
+    const columns = fieldsOfReader(READER_RAW).filter((f) => !NOT_YET_ON_THE_CONNECTOR.includes(f));
+    expect(fieldsOfReader(READER_RAW), "a column named as not-yet-carried is not a reader column any more").toEqual(expect.arrayContaining(NOT_YET_ON_THE_CONNECTOR));
     expect(columns.length).toBeGreaterThanOrEqual(15);
     const { declared, required } = fieldsOfSchema(FILING_SCHEMA);
     expect([...declared].sort()).toEqual([...columns].sort());
@@ -462,7 +477,7 @@ describe("the field is the reader's row, null when nothing qualified, and no par
     const schemaLess = FILING_SCHEMA.replace(/\n    more_n: \{[^\n]*\n/, "\n");
     expect(schemaLess).not.toBe(FILING_SCHEMA);
     expect(fieldsOfSchema(schemaLess).declared).not.toContain("more_n");
-    const readerMore = READER_RAW.replace(/(\n\s*lf_more_n\s+int\n)/, "\n  lf_verdict        text,$1");
+    const readerMore = READER_RAW.replace(/(\n\s*lf_more_n\s+int,?\n)/, "\n  lf_verdict        text,$1");
     expect(readerMore).not.toBe(READER_RAW);
     expect(fieldsOfReader(readerMore)).toContain("verdict");
     expect([...fieldsOfSchema(FILING_SCHEMA).declared].sort()).not.toEqual([...fieldsOfReader(readerMore)].sort());
